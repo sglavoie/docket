@@ -241,7 +241,7 @@ The committed suite exercises the product contracts directly:
 | The same `Space` resolving to the project sheet on a header, and the enumerated project delete under one undo | `outliner-project-header-actions.json`, `outliner-project-delete-undo.json` |
 | Every entity surface's footer and `Space` sheet at the 60x20 minimum | `outliner-multiselect-minimum-layout.json`, `project-hub-minimum-layout.json`, `global-notes-resize-minimum-layout.json`, `task-attachments-minimum-layout.json`, `task-comments-minimum-layout.json` |
 | Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
-| Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `textgrammar_consumer_contract_test.go`, `quick_edit_test.go`, `outline_editor_test.go` |
+| Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `internal/tui/textgrammar_consumer_contract_test.go`, `internal/tui/quick_edit_test.go`, `internal/tui/outline_editor_test.go` |
 | Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
 | Cross-project `~task` capture and its completion, the `~N` count and both Peek reference directions, the direct dependency search with its `-~task`, `~0`, and unresolvable refusals, inline `-~task` and `~0` under undo and redo, and the locator an unavailable target falls back to | `capture-dependency-cross-project.json`, `search-dependency-direct.json`, `outliner-inline-edit-dependency-undo.json`, `outliner-dependency-unavailable-fallback.json` |
 | The row-level `~` picker: the stored set preselected, per-project categories qualifying a row without repeating the name, the source task owning no row, and one commit carrying an addition and a removal together | `outliner-task-reference-picker.json` |
@@ -265,7 +265,7 @@ The committed suite exercises the product contracts directly:
 | Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
-| Select Project's compact preview header and the task pane it fills, paged with `Ctrl+F`/`Ctrl+B` and dropped by the compact fallback | `project-hub-task-preview.json` plus `project_hub_preview_tasks_test.go` |
+| Select Project's compact preview header and the task pane it fills, paged with `Ctrl+F`/`Ctrl+B` and dropped by the compact fallback | `project-hub-task-preview.json` plus `internal/tui/project_hub_preview_tasks_test.go` for the rows the pane lists and `internal/tui/projecthub/project_hub_preview_tasks_test.go` for the paging — the basename exists in both packages |
 | The read-only conflict browser on `gc`: the refusal with nothing recorded, the strip's count, the list, the inspected record, `Esc` unwinding one level at a time, and the detail pane scrolling to its closing command at the narrowest width | `conflict-browser-open.json`, `conflict-browser-narrow-layout.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
 | Semantic task tag split, seeded in `#` and usage-derived in `f#`, which narrows tags alone | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
@@ -273,9 +273,9 @@ The committed suite exercises the product contracts directly:
 | Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
 | Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
 | Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
-| Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
-| Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `tag_chip_style_test.go` |
-| Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
+| Semantic colors in both themes | `theme-toggle.json` plus `internal/tui/theme/semantic_tag_title_style_test.go` |
+| Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `internal/tui/tag_chip_style_test.go` |
+| Deterministic launch and duplicate-submit hardening | `internal/tui/app_deterministic_startup_test.go`, `internal/tui/taskform/task_composer_test.go`, `internal/tui/taskform/task_form_save_create_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
 | Each surface's `?` naming its own grammar rather than the Outliner's | `project-hub-help.json`, `task-comments-help.json` |
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
@@ -285,7 +285,7 @@ The committed suite exercises the product contracts directly:
 | The ambient-advisory opt-out: the keyless `View → Advisories` row and its checkbox, the conflict count going absent rather than dim, and the choice surviving a relaunch | `advisories-menu-toggle.json` |
 | Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
-| Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `outliner_focus_test.go`, `filter_facets_projection_test.go` |
+| Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `internal/tui/outliner_focus_test.go`, `internal/tui/filter_facets_projection_test.go` |
 
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and

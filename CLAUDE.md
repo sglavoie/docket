@@ -36,9 +36,17 @@ commands.
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` schema-15 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
-and migration, `internal/tui` the sole Outliner root and operation
-registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
-concern in its layer.
+and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
+itself layered and acyclic: L0 `internal/tui/presentation`, `theme`, `textfit`,
+`taskref`, `status`, `pulse`, `keymap`; L1 `chrome`, `coordinator`; L2
+`grammar`, `query`; L3 `internal/tui/operation`; L4 `route`; L5 `listsurface`;
+L6 `help`; L7 the surfaces `notes`, `taskdetail`, `taskform`, `lens`,
+`conflict`, `projecthub`; L8 the root shell alone, which owns `AppModel`, the
+Outliner root, the concrete registrars, and the uitest harness.
+`scripts/tui_package_graph.tsv` is the whitelist of permitted edges, not a
+floor, and `tui_layer_fitness_test.go` enforces it against the real import
+graph: add the edge and its reason there in the change that writes the import.
+Keep a concern in its layer.
 
 A mutation resolves targets from one immutable workspace snapshot, validates in
 the application layer, and submits every project, domain, note, and attachment
@@ -163,8 +171,8 @@ only includes the last 30 days`.
 render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
-A preview pane splits through `listSurfacePreviewGeometry` and paints through
-`renderListSurfacePreview`, never a per-surface copy of either. The render owns
+A preview pane splits through `ListSurfacePreviewGeometry` and paints through
+`RenderListSurfacePreview`, never a per-surface copy of either. The render owns
 the tail clamp; `Ctrl+F`/`Ctrl+B` page it, never `Ctrl+D`/`Ctrl+U`, which stay
 the list cursor's, and they are claimed ahead of a search input and advertised
 only where a body can page. Select Project's header is a name, one meta line,
@@ -319,7 +327,7 @@ metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
 `bug` > `question` > `epic` > `story` > `feature` > `idea` only colors titles.
 
 `theme.TagChipStyle` is the single tag color authority under those titles, on
-the ≤65% ramp tier, and `orderedTaskTags` the single chip order; a slot is a
+the ≤65% ramp tier, and `OrderedTaskTags` the single chip order; a slot is a
 mnemonic, never a legend, so nothing may read a chip color back.
 
 Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is

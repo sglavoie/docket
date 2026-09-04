@@ -17,7 +17,7 @@ reads.
 | --- | --- | --- |
 | `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Delete alone on a task row; Edit, Archive, Delete on a project header |
 | `ProjectHubInputStrategy` | `ProjectOperationManifest` | Archive or Unarchive, bulk tags |
-| `NotesInputStrategy` | `notesOperationManifest` | Delete |
+| `NotesInputStrategy` | `NotesOperationManifest` | Delete |
 | `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
 | `CommentsInputStrategy` | `commentOperationManifest` | Delete |
 

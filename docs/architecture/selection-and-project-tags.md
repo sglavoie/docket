@@ -203,7 +203,7 @@ Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
 empty the projection. The retained `internal/tui/listsurface/tag_selector.go` path reached
-from `handler_tag.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
+from `internal/tui/handler_tag.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
 no semantic tier, because it never reads `taskTagListSource`; the obsolete
 bulk-selector message path has been removed.
 Those explaining surfaces wrap complete summaries inline; focusable picker
@@ -368,7 +368,7 @@ sheet over the single row under the cursor, hosted as `ContextActionHostNotes`
 and holding Delete alone; Delete is menu-only and delegates its confirmation
 back to the manager that owns the row, which is why Notes gains a sheet without
 gaining a selection. `NotesInputStrategy` is a peer strategy that declares those
-bindings, and `validateNotesOperationOnePath` holds them to the same
+bindings, and `ValidateNotesOperationOnePath` holds them to the same
 direct-or-menu rule as the Outliner and the Project Hub.
 Open/edit, create, rename, move, delete, undo, and redo
 all refresh the affected canonical collections through the workspace ledger;

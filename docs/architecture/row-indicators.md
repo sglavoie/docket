@@ -4,7 +4,8 @@
 
 A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
 renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>`
-for `deferWakeWindow` (72h, defined in `primary_view_shared.go`), then nothing.
+for `deferWakeWindow` (72h, defined in
+`internal/tui/query/primary_view_shared.go`), then nothing.
 The age reuses `formatRecencyChip` so a lapsed deferral is not formatted a
 second way. `taskWokeRecently` is the one lapsed-deferral predicate and
 `formatRecencyAge` is the one age token; the Peek dates line reads both rather

@@ -190,7 +190,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// exactly the bytes the qualifier adds, and says so here; the ratchet still
 	// refuses prose, which is what it was built to refuse. Expect one of these per
 	// remaining extraction that touches a name this file spells out.
-	const budget = 28779
+	//
+	// That raise is spent as well, and this one is the second that buys no rule
+	// either: it pays for the layer-ownership sentence becoming true. Phase 1 of
+	// the package split turned `internal/tui` from one package into twenty-two,
+	// so the clause calling it "the sole Outliner root and operation
+	// registry/executor" stopped naming anything a contributor could act on — and
+	// a forwarding address with no destination is worse than none, because the
+	// reader concludes the layering is prose rather than a graph and puts the
+	// next concern wherever it compiles. What replaces it is the same rule at the
+	// same altitude, spelled at the granularity that now exists: the eight
+	// layers, which packages sit in each, and the table plus fitness test that
+	// refuse an edge nobody declared. It is bought at cost, in the bytes the
+	// enumeration takes, and no rule elsewhere was trimmed to pay for it. Phase 2
+	// folds `outliner` out of the shell and rewrites this list once more; that is
+	// the same kind of raise and is argued then rather than pre-approved here.
+	const budget = 29397
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

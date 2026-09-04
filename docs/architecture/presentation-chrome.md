@@ -180,8 +180,9 @@ already closed by the time the operation resolves its target.
 
 The bar mints one category the grammar did not have: the menu-only operation. A
 descriptor with no binding in any `InputStrategy` was always legal, since nothing
-forces a key, but until the bar existed nothing could reach one. `menu_bar_test.go`
-bounds the category with its fourth parity rule — a menu-only operation's
+forces a key, but until the bar existed nothing could reach one.
+`internal/tui/menu_bar_test.go` bounds the category with its fourth parity
+rule — a menu-only operation's
 `TargetSource` must be `OperationTargetGlobal` or `OperationTargetScopedProjects`,
 so it is target-free or view-scoped and never a task or a project. That rule is
 independent of `operation.ValidateOperationOnePath`, which sees no menu spec and keeps

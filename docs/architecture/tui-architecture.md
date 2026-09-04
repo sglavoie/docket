@@ -9,6 +9,37 @@ scope are session state and are not restored. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
 receives no key or reload dispatch.
 
+`internal/tui` is one Bubble Tea product spread over a layered, acyclic set of
+packages, and the layer is what decides where a concern goes. L0 is bare
+vocabulary that renders no surface: `internal/tui/presentation` holds
+`PresentationID` and its `View*` constants, `theme` the color ramp and the
+tag-chip authority, `textfit` width measurement, truncation, wrapping and
+Markdown, `taskref` project-qualified task identity and dependency locators,
+`status` the status and notice vocabulary with the tick scheduler, `pulse` the
+workspace pulse and today pace, and `keymap` the `Binding` record a footer and
+a help pane project. L1 is `chrome` — footers, cards, dialogs, overlays, tab
+bars, forms, pickers, date formatting, layout constants, and the mode catalog —
+beside `coordinator`, the feature ports over `internal/app`. L2 is `grammar`
+for the capture, edit and search sigil surfaces and `query` for filter clauses
+and canonical-query state. L3 is `internal/tui/operation`: `OperationRegistry`,
+`OperationDescriptor`, `OperationBinding`, `OperationExecutor`, `InputStrategy`
+and the chord trie. L4 is `route`, the `View` interface with `Route`,
+`ViewRegistry` and the navigation and overlay stacks. L5 is `listsurface`, the
+shared base views, multi-select state, and cursor and preview geometry. L6 is
+`help`. L7 is the surfaces: `notes`, `taskdetail`, `taskform`, `lens`,
+`conflict`, and `projecthub`, whose only edge among themselves is
+`projecthub → notes`. L8 is the root shell, which still owns `AppModel`, the
+Outliner, the fifteen concrete registrars `registerOperationCatalog` drives,
+and the uitest harness.
+
+That graph is a table rather than a convention. `scripts/tui_package_graph.tsv`
+carries one row per package naming the complete set of siblings it may import,
+and it is a whitelist rather than a floor: an import absent from the row is a
+violation even when the target sits lower, which is what keeps a sideways edge
+inside one layer as reviewable as an upward one. `tui_layer_fitness_test.go`
+reads that table and fails on the real import graph, so an edge is added to the
+table, with the reason it exists, in the same change that writes the import.
+
 The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
 `Tab`/`Shift+Tab` cycle only that ordered catalog, and the `g` chord jumps
 straight to one of them. A project focus is a scope frame in the same Outliner,
@@ -113,7 +144,7 @@ which is what lets `Esc` restore the same rows.
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in
-`checklist_row_operations.go` as ordinary descriptors that apply only under a
+`internal/tui/checklist_row_operations.go` as ordinary descriptors that apply only under a
 checklist cursor. Eight of them reuse the key their task-row counterpart holds
 — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `A`, and `Space` — which works
 because resolution takes the first applicable binding and the two are disjoint

@@ -96,7 +96,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"`outlinerProjectOperationManifest` | Delete alone on a task row; " +
 			"Edit, Archive, Delete on a project header |",
 		"| `ProjectHubInputStrategy` | `ProjectOperationManifest` | Archive or Unarchive, bulk tags |",
-		"| `NotesInputStrategy` | `notesOperationManifest` | Delete |",
+		"| `NotesInputStrategy` | `NotesOperationManifest` | Delete |",
 		"| `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |",
 		"| `CommentsInputStrategy` | `commentOperationManifest` | Delete |",
 		"`DirectOnly` is the field that splits it",
@@ -212,7 +212,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`%` moves one parsed note",
 		"hosted as `ContextActionHostNotes` and holding Delete alone",
 		"delegates its confirmation back to the manager that owns the row, which is why Notes gains a sheet without gaining a selection",
-		"`validateNotesOperationOnePath` holds them to the same direct-or-menu rule",
+		"`ValidateNotesOperationOnePath` holds them to the same direct-or-menu rule",
 		"Malformed notes remain available for raw editing and deletion",
 		"Note tags, task links, pins, bulk actions, and archived owners remain outside the product",
 		"`renderNotesContent` asks `ListSurfacePreviewGeometry` for the split",

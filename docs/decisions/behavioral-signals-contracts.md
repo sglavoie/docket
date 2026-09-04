@@ -8,7 +8,7 @@ different keys, thresholds, precedence, wording, or drop positions.
 
 `indicatorDropLadder` is the narrow-row pressure order: position 1 disappears
 first and position 10 disappears last. The final order declared as
-`indicatorDropLadder` in `internal/tui/outliner_render_rows.go` is:
+`indicatorDropLadder` in `internal/tui/outliner_render_indicators.go` is:
 
 | Position | Segment | Reason |
 | ---: | --- | --- |
@@ -24,16 +24,16 @@ first and position 10 disappears last. The final order declared as
 | 10 | `check` | It names work already quiet on someone else's desk and remains the last survivor. |
 
 This preserves the existing rationale documented with `indicatorDropLadder` in
-`internal/tui/outliner_render_rows.go`: counts leave early while the most
+`internal/tui/outliner_render_indicators.go`: counts leave early while the most
 operational quiet-work signal leaves last. The draw order may group related
 segments, but pressure must follow the table above.
 
 The Doing-age text is `doing <age>`, reads `StateChangedAt`, and stays neutral:
-it does not participate in `pickHeroAttribute` at
-`internal/tui/hero_attribute.go`. Overdue, Waiting, due-today, and priority-1
-remain the only hero candidates. Adding Doing as a fourth competing urgency
-badge would contradict the existing `HeroKind` and `pickHeroAttribute`
-hierarchy in `internal/tui/hero_attribute.go`.
+it does not participate in `chrome.PickHeroAttribute` at
+`internal/tui/chrome/hero_attribute.go`. Overdue, Waiting, due-today, and
+priority-1 remain the only hero candidates. Adding Doing as a fourth competing
+urgency badge would contradict the existing `chrome.HeroKind` and
+`chrome.PickHeroAttribute` hierarchy in `internal/tui/chrome/hero_attribute.go`.
 
 The repeated-deferral signal starts at the third deferral. For
 `DeferCount >= 3`, its row segment is `deferred ×N`; smaller values render no
@@ -54,7 +54,8 @@ The lowercase row-refinement chord is `fs` ("filter stale"). Inspection of
 filter descriptors and the help view do not maintain a second key table: help
 fuzzy-filters the registry projection. The lowercase `f` keyspace this decision
 was taken against is bound by `SimplifiedInputStrategy` in
-`internal/tui/input_strategy.go`. The rows below carry their present keys: the
+`internal/tui/operation/input_strategy_simplified.go`. The rows below carry
+their present keys: the
 locked decision here is that Stale's key is `fs`, and this table is only the
 evidence that `fs` was free, so a later renumber inside it leaves the decision
 untouched. Task contexts subsequently took `fc` as an axis of their own, moving
@@ -74,14 +75,15 @@ completion age to `fa` and leaving `f#` to tags alone.
 
 `fs` is therefore an unused terminal below the existing `f` prefix. It must be
 registered as a chord in `SimplifiedInputStrategy`, not as a `DirectKey`.
-`(*OperationRegistry).Register` in `internal/tui/operation_registry.go` checks
+`(*OperationRegistry).Register` in `internal/tui/operation/operation_registry.go` checks
 unconditional direct-key collisions; like every existing filter descriptor
 created by `filterOperationDescriptor` in `internal/tui/filter_operations.go`,
 the stale descriptor has an empty `DirectKey` and an applicability predicate,
 so it does not claim a static direct key. Chord ownership is instead rejected by
-`(*inputChordNode).insert` in `internal/tui/input_strategy_trie.go`, where `fs` has no
-existing owner. The `validateActiveOperationShortcuts` pass in
-`internal/tui/operation_registry.go` likewise sees no direct-key claim.
+`(*inputChordNode).insert` in `internal/tui/operation/input_strategy_trie.go`,
+where `fs` has no existing owner. The `validateActiveOperationShortcuts` pass in
+`internal/tui/operation/operation_registry_validation.go` likewise sees no
+direct-key claim.
 
 ### Predicate, lane, and precedence
 
@@ -171,6 +173,8 @@ explicit ladder and have `operationalPulseVariants` in
 The user-facing terms fixed here are `doing`, `deferred`, `stale`, `today`,
 `median`, `pace`, `workspace`, `inbox`, `overdue`, and `done`. None appears in
 the retired product-concept map in `TestCurrentProductDocsExcludeRetiredConcepts`
-at `retired_product_vocabulary_test.go`. Future documentation and scenario names
+at the repository-root `retired_product_vocabulary_test.go`, which is in
+`package main` rather than under `internal/tui`. Future documentation and
+scenario names
 must keep these spellings or choose another term that also remains outside that
 map.
