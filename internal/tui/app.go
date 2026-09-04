@@ -8,13 +8,10 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -99,8 +96,12 @@ type AppModel struct {
 	// note commands stay AppModel methods. See note_index_controller.go.
 	noteIndex noteIndexController
 
-	operationRegistry *operation.OperationRegistry
-	operationExecutor *operation.OperationExecutor
+	// operations is the operation-wiring cluster: the descriptor registry, the
+	// invocation executor, the contextual action sheet and the value or
+	// confirmation step one invocation can open above it, and the chord prefix a
+	// key path has accumulated so far. The fifteen registrars and every handler
+	// stay AppModel methods. See operation_controller.go.
+	operations operationController
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	helpView      *help.HelpViewModel
@@ -188,15 +189,8 @@ type AppModel struct {
 	// themselves stay on AppModel. See task_mutation_controller.go.
 	taskMutation taskMutationController
 
-	// The contextual action flow is the only generic two-level overlay:
-	// action sheet -> value step. The sheet is host-agnostic; the host it was
-	// opened for travels on every message it emits. The value step is a
-	// ListSurface picker, or a text prompt when the value is typed.
-	contextActionSheet   *listsurface.ContextActionSheetModel
-	operationValuePicker *OperationValuePickerModel
-	operationTextPrompt  *OperationTextPromptModel
-
-	// The named-lens picker sits below that flow rather than inside it: it is
+	// The named-lens picker sits below the contextual action flow rather than
+	// inside it: it is
 	// the surface an action sheet is opened *from*, so it stays mounted beneath
 	// the sheet, prompt, and confirmation a lens action nests above it.
 	lensPicker *lens.NamedLensPickerModel
@@ -205,15 +199,6 @@ type AppModel struct {
 	// it registers no operations, so nothing ever nests above it, and Esc is the
 	// whole of its lifecycle.
 	conflictBrowser *conflict.ConflictBrowserModel
-
-	// A destructive contextual action prompts here and keeps its frozen request
-	// so cancellation returns to the sheet with nothing executed.
-	operationConfirm        chrome.ConfirmDialog
-	pendingOperationRequest operation.OperationExecutionRequest
-
-	// Keys already pressed toward an unfinished chord. A non-empty prefix owns
-	// the footer as a which-key row until the chord completes or is abandoned.
-	pendingChord []string
 }
 
 // AppOption is a functional option for configuring AppModel.

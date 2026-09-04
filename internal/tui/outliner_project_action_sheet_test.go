@@ -152,7 +152,7 @@ func TestOutlinerProjectOperationManifestIsRegisteredApplicableAndExecutable(t *
 	app, _, context := projectHeaderCursorApp(t)
 
 	for _, entry := range outlinerProjectOperationManifest() {
-		descriptor, registered := app.operationRegistry.Descriptor(entry.ID)
+		descriptor, registered := app.operations.registry.Descriptor(entry.ID)
 		if !registered {
 			t.Errorf("manifest operation %s is not registered in the production registry", entry.ID)
 			continue
@@ -161,7 +161,7 @@ func TestOutlinerProjectOperationManifestIsRegisteredApplicableAndExecutable(t *
 			t.Errorf("manifest operation %s is not applicable on a project header", entry.ID)
 			continue
 		}
-		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+		result := app.operations.executor.Execute(operation.OperationExecutionRequest{
 			ID:      entry.ID,
 			Context: context,
 		})
@@ -180,10 +180,10 @@ func TestOutlinerProjectOperationManifestIsRegisteredApplicableAndExecutable(t *
 		// Raising the sheet is the whole of what Space does, so it is the one
 		// entry whose evidence is the overlay rather than a message.
 		if entry.ID == operation.OperationProjectActions {
-			if app.contextActionSheet == nil {
+			if app.operations.actionSheet == nil {
 				t.Errorf("%s executed without raising the project sheet", entry.ID)
 			}
-			app.contextActionSheet = nil
+			app.operations.actionSheet = nil
 			continue
 		}
 		// Every other handler either produced work or asked for the value its

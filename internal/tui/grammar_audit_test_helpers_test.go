@@ -46,8 +46,8 @@ func pressFilterChord(t *testing.T, app *AppModel, keys string) tea.Cmd {
 			t.Fatalf("key %q of chord %q was not handled", key, keys)
 		}
 	}
-	if len(app.pendingChord) != 0 {
-		t.Fatalf("chord %q left pending prefix %v", keys, app.pendingChord)
+	if len(app.operations.chord) != 0 {
+		t.Fatalf("chord %q left pending prefix %v", keys, app.operations.chord)
 	}
 	return cmd
 }
@@ -118,7 +118,7 @@ func executeDirectPath(
 	path []string,
 ) operation.OperationExecutionResult {
 	t.Helper()
-	binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
+	binding, descriptor, resolution := model.operations.registry.InputBindingForSequence(
 		operation.InputStrategySimplified,
 		path,
 		ctx,
@@ -126,7 +126,7 @@ func executeDirectPath(
 	if resolution != operation.ChordTerminal {
 		t.Fatalf("key path %v resolution = %v, want terminal", path, resolution)
 	}
-	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
+	return model.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       descriptor.ID,
 		Context:  ctx,
 		Value:    binding.PresetValue,

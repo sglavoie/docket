@@ -117,26 +117,26 @@ func (m *AppModel) handleProjectParkConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if m.operationTextPrompt != nil {
-		dismiss, cmd := dispatchOverlayKey(m.operationTextPrompt, msg)
+	if m.operations.textPrompt != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operations.textPrompt, msg)
 		if dismiss {
-			m.operationTextPrompt = nil
+			m.operations.textPrompt = nil
 		}
 		return true, cmd
 	}
-	if m.operationValuePicker != nil {
-		dismiss, cmd := dispatchOverlayKey(m.operationValuePicker, msg)
+	if m.operations.valuePicker != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operations.valuePicker, msg)
 		if dismiss {
 			// The result message decides whether the sheet beneath should also
 			// close; cancellation returns to it.
-			m.operationValuePicker = nil
+			m.operations.valuePicker = nil
 		}
 		return true, cmd
 	}
-	if m.contextActionSheet != nil {
-		dismiss, cmd := dispatchOverlayKey(m.contextActionSheet, msg)
+	if m.operations.actionSheet != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operations.actionSheet, msg)
 		if dismiss {
-			m.contextActionSheet = nil
+			m.operations.actionSheet = nil
 		}
 		return true, cmd
 	}

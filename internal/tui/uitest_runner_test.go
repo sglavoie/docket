@@ -163,8 +163,8 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 // stable setup routes. These setup-only operations are never returned in
 // AvailableCommands.
 func (d *UITestDriver) runCommand(name string) error {
-	registry := d.app.operationRegistry
-	if registry == nil || d.app.operationExecutor == nil {
+	registry := d.app.operations.registry
+	if registry == nil || d.app.operations.executor == nil {
 		return fmt.Errorf("command %q: no operation registry is wired", name)
 	}
 	view := d.app.currentView()
@@ -193,7 +193,7 @@ func (d *UITestDriver) runCommand(name string) error {
 	ctx := d.app.operationCommandContext()
 	ctx.View = view
 	ctx.Capabilities.Add(CapabilityHarness)
-	result := d.app.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := d.app.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:      match.ID,
 		Context: ctx,
 	})

@@ -66,11 +66,11 @@ func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
 	press("esc")
 
 	press("space")
-	if driver.App().contextActionSheet == nil {
+	if driver.App().operations.actionSheet == nil {
 		t.Fatal("Space did not reach tui.comment.actions")
 	}
 	press("esc")
-	if driver.App().contextActionSheet != nil {
+	if driver.App().operations.actionSheet != nil {
 		t.Fatal("Esc left the comment action sheet open")
 	}
 
@@ -111,7 +111,7 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
-		if driver.App().contextActionSheet != nil {
+		if driver.App().operations.actionSheet != nil {
 			t.Fatalf("retired key %q opened the action sheet", key)
 		}
 	}

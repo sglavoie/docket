@@ -284,10 +284,10 @@ func (m *AppModel) coreOpenMenuBar() error {
 // than inside HelpItemsForInputStrategy so that stays a pure registry
 // projection and the grammar section stays Outliner-scoped.
 func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
-	if m.operationRegistry == nil {
+	if m.operations.registry == nil {
 		return nil
 	}
-	items := m.operationRegistry.HelpItemsForInputStrategy(
+	items := m.operations.registry.HelpItemsForInputStrategy(
 		operation.InputStrategySimplified,
 		m.operationCommandContext(),
 	)

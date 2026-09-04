@@ -16,11 +16,11 @@ import (
 func (m *AppModel) executeOperationOverlayRequest(
 	request operation.OperationExecutionRequest,
 ) tea.Cmd {
-	if m.operationExecutor == nil {
+	if m.operations.executor == nil {
 		m.err = fmt.Errorf("operation registry is unavailable")
 		return status.StatusTimeout(5 * time.Second)
 	}
-	result := m.operationExecutor.Execute(request)
+	result := m.operations.executor.Execute(request)
 	if result.Err != nil {
 		m.err = result.Err
 		return status.StatusTimeout(5 * time.Second)
@@ -40,7 +40,7 @@ func (m *AppModel) openOperationValueStep(request operation.OperationValueReques
 			m.err = err
 			return status.StatusTimeout(5 * time.Second)
 		}
-		m.operationTextPrompt = prompt
+		m.operations.textPrompt = prompt
 		return prompt.initCmd()
 	}
 	picker, err := m.newOperationValuePicker(request.Request, request.Provider)
@@ -48,13 +48,12 @@ func (m *AppModel) openOperationValueStep(request operation.OperationValueReques
 		m.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	m.operationValuePicker = picker
+	m.operations.valuePicker = picker
 	return nil
 }
 
 func (m *AppModel) clearOperationValueStep() {
-	m.operationValuePicker = nil
-	m.operationTextPrompt = nil
+	m.operations.clearValueStep()
 }
 
 // operationResultCmd converts a completed execution outcome into the Bubble Tea
@@ -75,7 +74,7 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case listsurface.ContextActionSheetResultMsg:
 		return true, m.applyContextActionSheetResult(typed)
 	case listsurface.ContextActionSheetClosedMsg:
-		m.contextActionSheet = nil
+		m.operations.actionSheet = nil
 		return true, nil
 	case lens.NamedLensPickerClosedMsg:
 		m.lensPicker = nil
@@ -140,7 +139,7 @@ func (m *AppModel) applyContextActionSheetResult(msg listsurface.ContextActionSh
 // confirmation step. An open sheet keeps ownership of the outcome so a failure
 // stays visible on it and only a completed action dismisses it.
 func (m *AppModel) resumeContextActionRequest(request operation.OperationExecutionRequest) tea.Cmd {
-	sheet := m.contextActionSheet
+	sheet := m.operations.actionSheet
 	if sheet == nil {
 		// The lens picker is the one surface an operation can be raised from
 		// without a sheet between, so it owns the resumed outcome the same way:
@@ -159,7 +158,7 @@ func (m *AppModel) resumeContextActionRequest(request operation.OperationExecuti
 	}
 	result, dismissed := sheet.Execute(request)
 	if dismissed {
-		m.contextActionSheet = nil
+		m.operations.actionSheet = nil
 		// The sheet was opened over the picker, which stays mounted: the row it
 		// acted on may have been renamed, rewritten, or removed underneath.
 		m.refreshNamedLensPicker()
@@ -169,38 +168,26 @@ func (m *AppModel) resumeContextActionRequest(request operation.OperationExecuti
 	})
 }
 
-const operationConfirmAction = "contextual-operation"
-
 // showOperationConfirmation prompts for a destructive contextual action and
 // freezes the executor-supplied request, which already carries Confirmed.
 func (m *AppModel) showOperationConfirmation(request operation.OperationConfirmationRequestMsg) {
-	m.pendingOperationRequest = request.Request
 	prompt := request.Label + "?"
 	if count := len(request.Targets.Entities()); count > 1 {
 		prompt = fmt.Sprintf("%s · %d targets?", request.Label, count)
 	}
-	m.operationConfirm.Show(operationConfirmAction, prompt)
+	m.operations.armConfirm(request.Request, prompt)
 }
 
 // handleOperationConfirmKey gives the contextual destructive confirmation modal
 // key priority: it consumes every key while active so nothing leaks into the
 // sheet beneath, and cancellation leaves that sheet exactly as it was.
 func (m *AppModel) handleOperationConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.operationConfirm.IsActive() {
-		return false, nil
+	switch m.operations.resolveConfirmKey(key) {
+	case confirmAnswerConfirmed:
+		return true, m.resumeContextActionRequest(m.operations.takeRequest())
+	case confirmAnswerSwallowed, confirmAnswerCanceled:
+		return true, nil
+	case confirmAnswerUnarmed:
 	}
-	confirmed, handled := m.operationConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
-		request := m.pendingOperationRequest
-		m.pendingOperationRequest = operation.OperationExecutionRequest{}
-		return true, m.resumeContextActionRequest(request)
-	}
-	switch key {
-	case "n", "N", "esc":
-		m.pendingOperationRequest = operation.OperationExecutionRequest{}
-	}
-	return true, nil
+	return false, nil
 }

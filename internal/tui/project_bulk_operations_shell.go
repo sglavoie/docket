@@ -8,10 +8,10 @@ import (
 )
 
 func (m *AppModel) registerProjectBulkOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderTagName,
 		pendingTextValueProvider,
 	); err != nil {

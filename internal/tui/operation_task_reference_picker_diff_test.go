@@ -151,7 +151,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			if cmd != nil {
 				model.handleOperationOverlayMessage(cmd())
 			}
-			picker := model.operationValuePicker
+			picker := model.operations.valuePicker
 			if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 				t.Fatalf("~ did not open the reference picker: %#v", picker)
 			}

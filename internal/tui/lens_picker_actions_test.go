@@ -54,7 +54,7 @@ func TestLensPickerSpaceOpensManagementActionsOverThePicker(t *testing.T) {
 
 	pressLens(t, model, "space")
 
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("Space raised no action sheet")
 	}
 	if model.lensPicker == nil {
@@ -71,7 +71,7 @@ func TestLensPickerSpaceOnTheSaveRowRaisesNoSheet(t *testing.T) {
 
 	pressLens(t, model, "space")
 
-	if model.contextActionSheet != nil {
+	if model.operations.actionSheet != nil {
 		t.Error("the save row named a management target it does not have")
 	}
 	if model.lensPicker == nil {
@@ -86,7 +86,7 @@ func TestLensPickerSheetEscapeReturnsToThePicker(t *testing.T) {
 
 	pressLens(t, model, "esc")
 
-	if model.contextActionSheet != nil {
+	if model.operations.actionSheet != nil {
 		t.Error("Esc left the action sheet mounted")
 	}
 	if model.lensPicker == nil {
@@ -105,7 +105,7 @@ func TestLensRenameReturnsToThePickerWithTheSameLensSelected(t *testing.T) {
 	pressLens(t, model, "space")
 	pressLens(t, model, "enter") // Rename
 
-	if model.operationTextPrompt == nil {
+	if model.operations.textPrompt == nil {
 		t.Fatal("Rename raised no name prompt")
 	}
 	// The prompt prefills the current name, so clearing it is what a real rename
@@ -116,7 +116,7 @@ func TestLensRenameReturnsToThePickerWithTheSameLensSelected(t *testing.T) {
 	typeLens(t, model, "Blocked")
 	pressLens(t, model, "enter")
 
-	if model.contextActionSheet != nil || model.operationTextPrompt != nil {
+	if model.operations.actionSheet != nil || model.operations.textPrompt != nil {
 		t.Error("a completed rename left a nested overlay mounted")
 	}
 	if model.lensPicker == nil {
@@ -145,10 +145,10 @@ func TestLensRenameCancelReturnsToTheActionSheet(t *testing.T) {
 
 	pressLens(t, model, "esc")
 
-	if model.operationTextPrompt != nil {
+	if model.operations.textPrompt != nil {
 		t.Error("Esc left the rename prompt mounted")
 	}
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("canceling the rename must return to the action sheet")
 	}
 	if model.lensPicker == nil {
@@ -170,10 +170,10 @@ func TestLensRenameFailureStaysOnTheActionSheet(t *testing.T) {
 	typeLens(t, model, "Stale")
 	pressLens(t, model, "enter")
 
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("a refused rename closed the action sheet")
 	}
-	if notice := model.contextActionSheet.Notice; !strings.Contains(notice, "already exists") {
+	if notice := model.operations.actionSheet.Notice; !strings.Contains(notice, "already exists") {
 		t.Errorf("sheet notice = %q, want the duplicate-name reason", notice)
 	}
 	if err := lensNamedErr(model, "Waiting"); err != nil {
@@ -190,16 +190,16 @@ func TestLensReplaceConfirmCancelReturnsToTheActionSheet(t *testing.T) {
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter") // Replace from current view
 
-	if !model.operationConfirm.IsActive() {
+	if !model.operations.confirm.IsActive() {
 		t.Fatal("Replace raised no confirmation")
 	}
 
 	pressLens(t, model, "esc")
 
-	if model.operationConfirm.IsActive() {
+	if model.operations.confirm.IsActive() {
 		t.Error("Esc left the confirmation active")
 	}
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("canceling the confirmation must return to the action sheet")
 	}
 	if model.lensPicker == nil {
@@ -222,7 +222,7 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	pressLens(t, model, "enter")
 	pressLens(t, model, "y")
 
-	if model.contextActionSheet != nil || model.operationConfirm.IsActive() {
+	if model.operations.actionSheet != nil || model.operations.confirm.IsActive() {
 		t.Error("a completed replace left a nested overlay mounted")
 	}
 	if model.lensPicker == nil {
@@ -248,7 +248,7 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 	pressLens(t, model, "space")
 	pressLens(t, model, "j", "j")
 	pressLens(t, model, "enter") // Delete lens
-	if !model.operationConfirm.IsActive() {
+	if !model.operations.confirm.IsActive() {
 		t.Fatal("Delete raised no confirmation")
 	}
 	pressLens(t, model, "y")
@@ -306,13 +306,13 @@ func TestLensDeleteConfirmCancelReturnsToTheActionSheet(t *testing.T) {
 	pressLens(t, model, "enter")
 	pressLens(t, model, "n")
 
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("canceling the confirmation must return to the action sheet")
 	}
 	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
 		t.Errorf("a canceled delete left %d lenses", got)
 	}
-	if model.pendingOperationRequest.ID != "" {
+	if model.operations.pendingRequest.ID != "" {
 		t.Error("a canceled confirmation left a pending request")
 	}
 }

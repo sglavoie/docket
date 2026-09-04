@@ -138,7 +138,7 @@ func (m *AppModel) openCommentsActionSheet(ctx operation.CommandContext, panel *
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		ctx,
 		commentActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
@@ -162,7 +162,7 @@ func (m *AppModel) openCommentsActionSheet(ctx operation.CommandContext, panel *
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 

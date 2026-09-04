@@ -215,10 +215,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f@ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterDue {
-			t.Fatalf("f@ did not open the due-date picker: %#v", app.operationValuePicker)
+		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterDue {
+			t.Fatalf("f@ did not open the due-date picker: %#v", app.operations.valuePicker)
 		}
-		items := app.operationValuePicker.surface.Items()
+		items := app.operations.valuePicker.surface.Items()
 		wantIDs := []listsurface.ListItemID{
 			"filter-due:overdue",
 			"filter-due:today",
@@ -234,7 +234,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 				t.Errorf("due-date picker item %d = %s, want %s", index, items[index].ID, wantID)
 			}
 		}
-		if current, ok := app.operationValuePicker.surface.CurrentItem(); !ok || current.ID != "filter-due:week" {
+		if current, ok := app.operations.valuePicker.surface.CurrentItem(); !ok || current.ID != "filter-due:week" {
 			t.Errorf("seeded cursor = %v (%v), want filter-due:week", current.ID, ok)
 		}
 	})
@@ -253,10 +253,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f$ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterStates {
-			t.Fatalf("f$ did not open the states picker: %#v", app.operationValuePicker)
+		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterStates {
+			t.Fatalf("f$ did not open the states picker: %#v", app.operations.valuePicker)
 		}
-		selected := app.operationValuePicker.surface.SelectedIDs()
+		selected := app.operations.valuePicker.surface.SelectedIDs()
 		if len(selected) != 1 || selected[0] != "state:waiting" {
 			t.Errorf("seeded selection = %v, want [state:waiting]", selected)
 		}
@@ -272,10 +272,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("fa produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterCompletionAge {
-			t.Fatalf("fa did not open the completion-age picker: %#v", app.operationValuePicker)
+		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterCompletionAge {
+			t.Fatalf("fa did not open the completion-age picker: %#v", app.operations.valuePicker)
 		}
-		items := app.operationValuePicker.surface.Items()
+		items := app.operations.valuePicker.surface.Items()
 		wantIDs := []listsurface.ListItemID{
 			"filter-completion-age:all",
 			"filter-completion-age:7",
@@ -290,7 +290,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 				t.Errorf("completion-age picker item %d = %s, want %s", index, items[index].ID, wantID)
 			}
 		}
-		if current, ok := app.operationValuePicker.surface.CurrentItem(); !ok || current.ID != "filter-completion-age:30" {
+		if current, ok := app.operations.valuePicker.surface.CurrentItem(); !ok || current.ID != "filter-completion-age:30" {
 			t.Errorf("seeded cursor = %v (%v), want filter-completion-age:30", current.ID, ok)
 		}
 	})
@@ -305,10 +305,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f# produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterTags {
-			t.Fatalf("f# did not open the tags picker: %#v", app.operationValuePicker)
+		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterTags {
+			t.Fatalf("f# did not open the tags picker: %#v", app.operations.valuePicker)
 		}
-		selected := app.operationValuePicker.surface.SelectedIDs()
+		selected := app.operations.valuePicker.surface.SelectedIDs()
 		if len(selected) != 1 || selected[0] != "tag:deep" {
 			t.Errorf("seeded selection = %v, want [tag:deep]", selected)
 		}
@@ -316,7 +316,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		// the same colors as # with no code of its own. This asserts that
 		// inheritance rather than restating it: the fixture carries the review
 		// workflow tag and the deep descriptive one, so both rules are exercised.
-		items := app.operationValuePicker.surface.Items()
+		items := app.operations.valuePicker.surface.Items()
 		if len(items) == 0 {
 			t.Fatal("f# picker has no rows to color")
 		}

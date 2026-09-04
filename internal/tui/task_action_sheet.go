@@ -240,14 +240,14 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 		}
 		sheet, err := NewTaskActionSheetModel(
 			m.GetOperationRegistry(),
-			m.operationExecutor,
+			m.operations.executor,
 			context,
 			subtitle,
 		)
 		if err != nil {
 			return err
 		}
-		m.contextActionSheet = sheet
+		m.operations.actionSheet = sheet
 		return nil
 	}
 	task, _ := m.getCurrentCursorTaskAndProject()
@@ -256,13 +256,13 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 	}
 	sheet, err := NewTaskActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		context,
 		task.Title,
 	)
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }

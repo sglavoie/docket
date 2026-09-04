@@ -23,7 +23,7 @@ func templateRowReason(t *testing.T, model *AppModel, id string) string {
 	t.Helper()
 	picker := openLensTemplateGallery(t, model)
 	reason := galleryRow(t, picker, id).DisabledReason
-	model.operationValuePicker = nil
+	model.operations.valuePicker = nil
 	return reason
 }
 
@@ -191,7 +191,7 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 
 			pressLens(t, model, "enter")
 
-			if model.operationValuePicker != nil {
+			if model.operations.valuePicker != nil {
 				t.Error("a refused add left the gallery mounted")
 			}
 			if model.lensPicker == nil {
@@ -218,10 +218,10 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 			// The reason is retained on the surface that raised it, and the gallery
 			// the same row reopens now reports the state the commit refused against.
 			pressLens(t, model, "enter")
-			if model.operationValuePicker == nil {
+			if model.operations.valuePicker == nil {
 				t.Fatal("retrying the add raised no gallery")
 			}
-			if got := galleryRow(t, model.operationValuePicker, template.ID).DisabledReason; got != phase.rowReason {
+			if got := galleryRow(t, model.operations.valuePicker, template.ID).DisabledReason; got != phase.rowReason {
 				t.Errorf("revisited row reason = %q, want %q", got, phase.rowReason)
 			}
 		})
@@ -255,7 +255,7 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	if model.runtime.Machine() != before {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
-	if model.operationValuePicker != nil {
+	if model.operations.valuePicker != nil {
 		t.Error("a failed commit left the gallery mounted")
 	}
 	if model.lensPicker == nil {

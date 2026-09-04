@@ -118,16 +118,16 @@ func lensOperationApplicable(ctx operation.CommandContext) bool {
 }
 
 func (m *AppModel) registerLensOperations() error {
-	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {
+	if m == nil || m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderLensName,
 		pendingTextValueProvider,
 	); err != nil {
 		return err
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderLensTemplate,
 		// Returning no immediate value asks the shell to open the built-in view
 		// gallery. Registering it here is also what makes the executor's own value

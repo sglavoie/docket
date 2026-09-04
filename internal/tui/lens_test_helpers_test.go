@@ -65,7 +65,7 @@ func executeLens(
 		request.Value = value
 		request.HasValue = true
 	}
-	return model.operationExecutor.Execute(request)
+	return model.operations.executor.Execute(request)
 }
 
 func machineLenses(t *testing.T, model *AppModel) config.NamedLensList {
@@ -172,10 +172,10 @@ func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePicke
 	if model.err != nil {
 		t.Fatalf("opening the gallery failed: %v", model.err)
 	}
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("the gallery did not open")
 	}
-	return model.operationValuePicker
+	return model.operations.valuePicker
 }
 
 // setMachineLenses replaces the machine-local saved list in memory, which is the
@@ -305,10 +305,10 @@ func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
 
 func sheetRowTitles(t *testing.T, model *AppModel) []string {
 	t.Helper()
-	if model.contextActionSheet == nil {
+	if model.operations.actionSheet == nil {
 		t.Fatal("no action sheet is mounted")
 	}
-	items := model.contextActionSheet.Surface.Items()
+	items := model.operations.actionSheet.Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)

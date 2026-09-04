@@ -64,14 +64,14 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 		// paint above the picker that raised them.
 		out = append(out, m.lensPicker)
 	}
-	if m.contextActionSheet != nil {
-		out = append(out, m.contextActionSheet)
+	if m.operations.actionSheet != nil {
+		out = append(out, m.operations.actionSheet)
 	}
-	if m.operationValuePicker != nil {
-		out = append(out, m.operationValuePicker)
+	if m.operations.valuePicker != nil {
+		out = append(out, m.operations.valuePicker)
 	}
-	if m.operationTextPrompt != nil {
-		out = append(out, m.operationTextPrompt)
+	if m.operations.textPrompt != nil {
+		out = append(out, m.operations.textPrompt)
 	}
 	if m.conflictBrowser != nil {
 		out = append(out, m.conflictBrowser)
@@ -88,8 +88,8 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	if overlay, armed := m.taskMutation.confirmOverlay(m.viewNav.width); armed {
 		return overlay
 	}
-	if m.operationConfirm.IsActive() {
-		return m.operationConfirm.RenderOverlay(m.viewNav.width)
+	if overlay, armed := m.operations.confirmOverlay(m.viewNav.width); armed {
+		return overlay
 	}
 
 	view := m.activeView()

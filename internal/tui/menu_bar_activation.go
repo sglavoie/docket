@@ -12,12 +12,12 @@ import (
 // against the view the user is left looking at rather than against one with a
 // dropdown over it.
 func (m *AppModel) activateMenuBarEntry(id operation.OperationID) tea.Cmd {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if !m.operations.wired() {
 		return nil
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	return operationResultCmd(m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	return operationResultCmd(m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	}))

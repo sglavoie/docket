@@ -170,7 +170,7 @@ func TestLensPickerSearchEnterOnSaveRowStillOpensTheNamePrompt(t *testing.T) {
 	}
 	pressLens(t, model, "enter")
 
-	if model.operationTextPrompt == nil {
+	if model.operations.textPrompt == nil {
 		t.Fatal("Enter on the save row raised no name prompt")
 	}
 	if model.lensPicker == nil {

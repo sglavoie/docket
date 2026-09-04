@@ -265,8 +265,8 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 
 func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
-	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+	app.operations.registry = operation.NewOperationRegistry()
+	app.operations.bindExecutor()
 	app.crossOutliner = outlinerView
 	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := app.registerCoreInputOperations(); err != nil {
@@ -290,7 +290,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *
 	if err := app.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := app.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
 	app.wireOutlinerOperationExecutor(outlinerView)
@@ -391,21 +391,21 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	appModel := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		deps:              newShellDeps(ledger),
-		projects:          map[string]*models.Project{project.ID: project},
-		persister:         coordinator.NewProjectService(),
-		appService:        svc,
-		viewNav:           newViewNavigationController(),
-		currentProject:    project,
-		nextOrder:         []outliner.PlanningTask{},
-		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []outliner.PlanningTask{},
-		todayIDs:          make(map[taskref.TaskIdentity]bool),
-		operationRegistry: operation.NewOperationRegistry(),
+		configManager:  manager,
+		runtime:        runtime,
+		deps:           newShellDeps(ledger),
+		projects:       map[string]*models.Project{project.ID: project},
+		persister:      coordinator.NewProjectService(),
+		appService:     svc,
+		viewNav:        newViewNavigationController(),
+		currentProject: project,
+		nextOrder:      []outliner.PlanningTask{},
+		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
+		today:          []outliner.PlanningTask{},
+		todayIDs:       make(map[taskref.TaskIdentity]bool),
+		operations:     newOperationController(),
 	}
-	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
+	appModel.operations.bindExecutor()
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MoveCursorToTask(task.ID)
@@ -432,7 +432,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := appModel.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)
 	}
 	appModel.wireOutlinerOperationExecutor(outlinerView)

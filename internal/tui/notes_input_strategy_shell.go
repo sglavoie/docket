@@ -22,7 +22,7 @@ func (m *AppModel) openNotesActionSheet(ctx operation.CommandContext) error {
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		ctx,
 		notes.NotesActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
@@ -46,7 +46,7 @@ func (m *AppModel) openNotesActionSheet(ctx operation.CommandContext) error {
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 		}
 	}
 	for _, id := range notes.NotesHostedNoteOperations() {
-		if err := m.operationExecutor.Register(operation.OperationBinding{
+		if err := m.operations.executor.Register(operation.OperationBinding{
 			OperationID:              id,
 			Views:                    []presentation.PresentationID{presentation.ViewNotes, presentation.ViewGlobalNotes},
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),

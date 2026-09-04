@@ -160,7 +160,7 @@ func sharesInputPath(strategy operation.InputStrategy, path []string, id operati
 func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	executor := app.operationExecutor
+	executor := app.operations.executor
 	ctx := taskActionParityContext(t, app)
 
 	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)

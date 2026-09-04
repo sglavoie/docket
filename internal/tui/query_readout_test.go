@@ -232,7 +232,7 @@ func TestQueryReadoutSaveAsLensRoutesThroughTheShell(t *testing.T) {
 	if !handled || saveCmd == nil {
 		t.Fatalf("the shell = handled %v cmd %T, want the name prompt opened", handled, saveCmd)
 	}
-	if app.operationTextPrompt == nil {
+	if app.operations.textPrompt == nil {
 		t.Fatal("saving from the readout did not reach the lens name prompt")
 	}
 }

@@ -204,7 +204,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		arm  func(*AppModel)
 	}{
 		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
-		{"value picker", func(app *AppModel) { app.operationValuePicker = &OperationValuePickerModel{} }},
+		{"value picker", func(app *AppModel) { app.operations.valuePicker = &OperationValuePickerModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
 			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)

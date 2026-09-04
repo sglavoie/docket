@@ -23,10 +23,10 @@ import (
 // cannot carry: the handler, which needs the shell's services.
 
 func (m *AppModel) registerNoteOperations() error {
-	if m == nil || m.operationExecutor == nil {
+	if m == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderNoteTitle,
 		pendingTextValueProvider,
 	); err != nil {

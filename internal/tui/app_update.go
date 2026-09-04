@@ -7,7 +7,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -26,11 +25,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 				m.crossOutliner.CancelCrossProjectLoad()
 			}
 			m.viewNav.navigation.ResetRoot()
-			m.contextActionSheet = nil
+			m.operations.clearOverlays()
 			m.lensPicker = nil
-			m.clearOperationValueStep()
-			m.operationConfirm.Cancel()
-			m.pendingOperationRequest = operation.OperationExecutionRequest{}
 			m.statusMessage = ""
 			outModel = m
 			outCmd = nil

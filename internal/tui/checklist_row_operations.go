@@ -120,10 +120,10 @@ func (m *AppModel) executeChecklistStart(
 }
 
 func (m *AppModel) registerChecklistRowOperations() error {
-	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {
+	if m == nil || m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderChecklistItem,
 		pendingTextValueProvider,
 	); err != nil {
@@ -273,7 +273,7 @@ func (m *AppModel) openChecklistActionSheet(context operation.CommandContext) er
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		context,
 		checklistActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
@@ -297,7 +297,7 @@ func (m *AppModel) openChecklistActionSheet(context operation.CommandContext) er
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 

@@ -45,7 +45,7 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 		return nil
 	}
 	picker, err := lens.NewNamedLensPickerModel(
-		m.operationExecutor,
+		m.operations.executor,
 		m.currentView(),
 		m.namedLensPickerSnapshot(),
 	)
@@ -67,12 +67,12 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 // need a record under the cursor stay unreachable from here — Create is the one
 // that names no record, which is why it is the one the readout can ask for.
 func (m *AppModel) saveViewAsLens() tea.Cmd {
-	if m == nil || m.operationExecutor == nil {
+	if m == nil || m.operations.executor == nil {
 		return nil
 	}
 	ctx := route.PresentationCommandContext(m.currentView())
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
-	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:      lens.OperationLensCreate,
 		Context: ctx,
 	})
@@ -107,8 +107,8 @@ func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea
 		return nil
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
-		m.operationRegistry,
-		m.operationExecutor,
+		m.operations.registry,
+		m.operations.executor,
 		m.lensPicker.CommandContext(msg.Entity),
 		lens.NamedLensActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
@@ -124,7 +124,7 @@ func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea
 		m.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 
@@ -158,8 +158,8 @@ func (m *AppModel) closeNamedLensOverlays() {
 		return
 	}
 	m.lensPicker = nil
-	m.contextActionSheet = nil
+	m.operations.actionSheet = nil
 	m.clearOperationValueStep()
-	m.operationConfirm.Cancel()
-	m.pendingOperationRequest = operation.OperationExecutionRequest{}
+	m.operations.confirm.Cancel()
+	m.operations.pendingRequest = operation.OperationExecutionRequest{}
 }

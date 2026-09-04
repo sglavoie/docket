@@ -18,27 +18,27 @@ import (
 // so the normal view Update path can process search, quick edit, and confirmation
 // keystrokes.
 func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if !m.operations.wired() {
 		return false, nil
 	}
 	view := m.currentView()
 	if view != presentation.ViewCrossProjectOutliner {
-		m.pendingChord = nil
+		m.operations.chord = nil
 		return false, nil
 	}
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil || !m.activeOutlinerRoute() {
-		m.pendingChord = nil
+		m.operations.chord = nil
 		return false, nil
 	}
 	if out.SimplifiedInlineControlOwnsInput() {
-		m.pendingChord = nil
+		m.operations.chord = nil
 		return false, nil
 	}
 
 	ctx := m.operationCommandContext()
 	ctx.View = view
-	sequence := append(slices.Clone(m.pendingChord), msg.String())
+	sequence := append(slices.Clone(m.operations.chord), msg.String())
 	return m.dispatchOperationKey(operation.InputStrategySimplified, sequence, ctx)
 }
 
@@ -56,27 +56,27 @@ func (m *AppModel) dispatchOperationKey(
 	ctx operation.CommandContext,
 ) (bool, tea.Cmd) {
 	if len(sequence) > 1 && operation.NormalizeOperationKey(sequence[len(sequence)-1]) == "esc" {
-		m.pendingChord = nil
+		m.operations.chord = nil
 		return true, nil
 	}
-	binding, _, resolution := m.operationRegistry.InputBindingForSequence(strategyID, sequence, ctx)
+	binding, _, resolution := m.operations.registry.InputBindingForSequence(strategyID, sequence, ctx)
 	switch resolution {
 	case operation.ChordPending:
-		m.pendingChord = sequence
+		m.operations.chord = sequence
 		return true, nil
 	case operation.ChordNoMatch:
 		// A complete strategy consumes unknown root keys instead of allowing a
 		// retired legacy key or an abandoned chord to run in the view beneath it.
-		m.pendingChord = nil
+		m.operations.chord = nil
 		if cmd := m.entityScopedKeyRejection(strategyID, sequence, ctx); cmd != nil {
 			return true, cmd
 		}
 		return true, m.chordMissStatus(strategyID, sequence)
 	case operation.ChordTerminal:
 	}
-	m.pendingChord = nil
+	m.operations.chord = nil
 
-	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       binding.OperationID,
 		Context:  ctx,
 		Value:    binding.PresetValue,
@@ -107,7 +107,7 @@ func (m *AppModel) entityScopedKeyRejection(
 	// asks whether the path reaches a refused operation rather than what category
 	// they share, because a shared key's two meanings need not agree.
 	if ctx.Entity.HasChecklistCursor {
-		if !m.operationRegistry.InputPrefixRefusedOnChecklistRow(strategyID, sequence) {
+		if !m.operations.registry.InputPrefixRefusedOnChecklistRow(strategyID, sequence) {
 			return nil
 		}
 		rejection := errors.New(operation.ChecklistRowRejectionMessage)
@@ -116,7 +116,7 @@ func (m *AppModel) entityScopedKeyRejection(
 	if !operation.CommandContextNamesNonTaskEntity(ctx) {
 		return nil
 	}
-	category, ok := m.operationRegistry.InputCategoryForPrefix(strategyID, sequence)
+	category, ok := m.operations.registry.InputCategoryForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (m *AppModel) entityScopedKeyRejection(
 // left silent because it never promised anything, but a chord that showed a
 // which-key row and then resolved to nothing has to say so.
 func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequence []string) tea.Cmd {
-	label, ok := m.operationRegistry.ChordGroupLabelForPrefix(strategyID, sequence)
+	label, ok := m.operations.registry.ChordGroupLabelForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}
@@ -140,17 +140,17 @@ func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequenc
 // descriptor and executor even when a subordinate route covers the Outliner.
 // Ctrl+C is currently the only such key.
 func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if !m.operations.wired() {
 		return false, nil
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = presentation.ViewCrossProjectOutliner
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	binding, _, ok := m.operationRegistry.InputBindingForKey(operation.InputStrategySimplified, key, ctx)
+	binding, _, ok := m.operations.registry.InputBindingForKey(operation.InputStrategySimplified, key, ctx)
 	if !ok {
 		return false, nil
 	}
-	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:      binding.OperationID,
 		Context: ctx,
 	})
@@ -165,21 +165,21 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
-	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
+	if m == nil || m.operations.registry == nil || len(m.operations.chord) == 0 {
 		return chrome.GuidanceSpec{}, false
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	hints := m.operationRegistry.DecoratedChordHintsForPrefix(
+	hints := m.operations.registry.DecoratedChordHintsForPrefix(
 		operation.InputStrategySimplified,
-		m.pendingChord,
+		m.operations.chord,
 		ctx,
 		m.crossOutliner.DecoratePendingChordHint,
 	)
 	if len(hints) == 0 {
 		return chrome.GuidanceSpec{}, false
 	}
-	return pendingChordGuidanceSpec(strings.Join(m.pendingChord, ""), hints), true
+	return pendingChordGuidanceSpec(strings.Join(m.operations.chord, ""), hints), true
 }
 
 func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome.GuidanceSpec {

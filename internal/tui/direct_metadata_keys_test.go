@@ -38,7 +38,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		single := taskOperationTestContext(loose, project)
 		bulk := bulkTaskActionTestContext(project, loose, project.GetTaskByID("story"))
 		for name, ctx := range map[string]operation.CommandContext{"single": single, "bulk": bulk} {
-			binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
+			binding, descriptor, resolution := model.operations.registry.InputBindingForSequence(
 				operation.InputStrategySimplified,
 				preset.path,
 				ctx,
@@ -76,7 +76,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"$", "t"}, want: operation.OperationCoreToday},
 	} {
 		ctx := taskOperationTestContext(loose, project)
-		binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
+		binding, descriptor, resolution := model.operations.registry.InputBindingForSequence(
 			operation.InputStrategySimplified,
 			action.path,
 			ctx,
@@ -159,8 +159,8 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		if !handled || cmd == nil {
 			t.Fatalf("!0 = handled %v cmd %T; want the clear-priority command", handled, cmd)
 		}
-		if len(app.pendingChord) != 0 {
-			t.Errorf("pending chord = %v, want cleared", app.pendingChord)
+		if len(app.operations.chord) != 0 {
+			t.Errorf("pending chord = %v, want cleared", app.operations.chord)
 		}
 	})
 
@@ -213,8 +213,8 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 			if cmd != nil {
 				app.handleOperationOverlayMessage(cmd())
 			}
-			if app.operationValuePicker == nil || app.operationValuePicker.provider != picker.provider {
-				t.Fatalf("%q did not open the %s picker: %#v", picker.key, picker.provider, app.operationValuePicker)
+			if app.operations.valuePicker == nil || app.operations.valuePicker.provider != picker.provider {
+				t.Fatalf("%q did not open the %s picker: %#v", picker.key, picker.provider, app.operations.valuePicker)
 			}
 		})
 	}

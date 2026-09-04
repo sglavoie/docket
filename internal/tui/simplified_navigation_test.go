@@ -171,7 +171,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 		app.crossOutliner.PeekMode = false
 		app.viewNav.width = width
 		app.crossOutliner.SetSize(width, 22)
-		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+		result := app.operations.executor.Execute(operation.OperationExecutionRequest{
 			ID:      operation.OperationCorePeek,
 			Context: app.operationCommandContext(),
 		})

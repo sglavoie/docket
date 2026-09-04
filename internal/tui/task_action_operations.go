@@ -143,10 +143,10 @@ func pendingPickedValueProvider(operation.OperationInvocation) operation.Operati
 }
 
 func (m *AppModel) registerTaskActionOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	executor := m.operationExecutor
+	executor := m.operations.executor
 	for _, provider := range []operation.ValueProviderID{
 		operation.ValueProviderState,
 		operation.ValueProviderPriority,

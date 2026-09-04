@@ -78,10 +78,10 @@ func projectTagVocabularyDescriptors() []operation.OperationDescriptor {
 }
 
 func (m *AppModel) registerProjectTagVocabularyOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	if err := m.operationExecutor.RegisterValueProvider(
+	if err := m.operations.executor.RegisterValueProvider(
 		operation.ValueProviderProjectTagDestination,
 		m.projectTagDestinationValue,
 	); err != nil {
@@ -162,7 +162,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		ctx,
 		projectTagVocabularyOperations,
 		listsurface.ContextActionSheetConfig{
@@ -186,7 +186,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 		return status.ErrorCmd("%v", err)
 	}
 	m.project.tagActionSubject = tag
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 

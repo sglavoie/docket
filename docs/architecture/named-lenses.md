@@ -212,7 +212,7 @@ query-exempt rows and `lensPickerActionOperation` dispatches them, so a saved-le
 row falls through to `lens.OperationLensApply` exactly as before; row identity travels
 as the stable `lens-picker:add-template` rather than as `Data`, which keeps
 `CurrentLens` the single "is this a saved lens" test. Overlay key precedence is
-`operationTextPrompt` → `operationValuePicker` → `contextActionSheet` →
+`operations.textPrompt` → `operations.valuePicker` → `operations.actionSheet` →
 `lensPicker`, so the gallery owns every key while it is open, and
 `resumeContextActionRequest` already hands a resumed no-sheet request back to the
 lens picker: a completed add therefore closes both overlays, a refusal is retained

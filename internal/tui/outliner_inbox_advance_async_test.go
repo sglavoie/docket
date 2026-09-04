@@ -32,8 +32,8 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 	}
 	env := newAppBulkPickerEnv(t, taskGroups...)
 	model := env.appModel()
-	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
+	model.operations.registry = operation.NewOperationRegistry()
+	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task operations: %v", err)
 	}
@@ -52,7 +52,7 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 // the command that carries the disk reload, without applying that reload yet.
 func (e *inboxAsyncEnv) commitState(t *testing.T, state models.WorkflowState) tea.Cmd {
 	t.Helper()
-	result := e.model.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := e.model.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetState,
 		Context:  e.model.operationCommandContext(),
 		Value:    state,

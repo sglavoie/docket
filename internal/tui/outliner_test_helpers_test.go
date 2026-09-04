@@ -23,8 +23,8 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.features = coordinator.NewFeatureCoordinators(service)
 	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
 	model.deps = newShellDeps(nil)
-	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
+	model.operations.registry = operation.NewOperationRegistry()
+	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
 
 	model.crossOutliner = outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
 	model.crossOutliner.Population.Projects = []*models.Project{project}
@@ -70,7 +70,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := model.registerSurfaceInputStrategies(); err != nil {
+	if err := model.operations.registerSurfaceInputStrategies(); err != nil {
 		t.Fatalf("register surface input strategies: %v", err)
 	}
 	model.wireOutlinerOperationExecutor(model.crossOutliner)

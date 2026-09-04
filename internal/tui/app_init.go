@@ -13,7 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -31,16 +30,16 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	dataDir := runtime.DataDir()
 
 	app := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		projects:          make(map[string]*models.Project),
-		persister:         coordinator.NewProjectService(),
-		viewNav:           newViewNavigationController(),
-		operationRegistry: operation.NewOperationRegistry(),
-		nextOrder:         []outliner.PlanningTask{},
-		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []outliner.PlanningTask{},
-		todayIDs:          make(map[taskref.TaskIdentity]bool),
+		configManager: manager,
+		runtime:       runtime,
+		projects:      make(map[string]*models.Project),
+		persister:     coordinator.NewProjectService(),
+		viewNav:       newViewNavigationController(),
+		operations:    newOperationController(),
+		nextOrder:     []outliner.PlanningTask{},
+		nextOrderIDs:  make(map[taskref.TaskIdentity]bool),
+		today:         []outliner.PlanningTask{},
+		todayIDs:      make(map[taskref.TaskIdentity]bool),
 	}
 
 	// The machine-local advisory setting is read before the options run, so
@@ -55,7 +54,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	for _, opt := range opts {
 		opt(app)
 	}
-	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+	app.operations.bindExecutor()
 
 	// Bind the primary feature coordinators to the application service. The
 	// service is built once per session over the storage-backed repository so a
@@ -139,13 +138,12 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	return app, nil
 }
 
-// registerOperationCatalog fills the registry with every operation family and
-// the input strategy that routes their direct keys.
+// registerOperationCatalog names the fifteen concrete registrars, in the order
+// the catalog is built in, and hands them to the operation controller that owns
+// the registries they fill. The order is load-bearing and the table is the whole
+// of it: a family is added here or it is not registered at all.
 func (app *AppModel) registerOperationCatalog() error {
-	registrations := []struct {
-		name     string
-		register func() error
-	}{
+	return app.operations.registerCatalog([]namedOperationRegistrar{
 		{"core input", app.registerCoreInputOperations},
 		{"task action", app.registerTaskActionOperations},
 		{"filter", app.registerFilterOperations},
@@ -161,39 +159,7 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"comment", app.registerCommentOperations},
 		{"checklist row", app.registerChecklistRowOperations},
 		{"lens", app.registerLensOperations},
-	}
-	for _, registration := range registrations {
-		if err := registration.register(); err != nil {
-			return fmt.Errorf("register %s operations: %w", registration.name, err)
-		}
-	}
-	if err := app.registerSurfaceInputStrategies(); err != nil {
-		return err
-	}
-	// The menu bar is a projection of the catalog above, so it is held to the
-	// catalog here: a menu naming an operation nobody registered fails startup
-	// rather than opening with a row missing.
-	return app.validateMenuBarSpecs()
-}
-
-// registerSurfaceInputStrategies holds every manifested surface to the one-path
-// rule and then installs its grammar. A surface that declares no bindings yet
-// names only its identity, so it passes through without a strategy.
-func (app *AppModel) registerSurfaceInputStrategies() error {
-	for _, gate := range surfaceOperationGates() {
-		if gate.validate != nil {
-			if err := gate.validate(gate.strategy); err != nil {
-				return fmt.Errorf("validate direct and menu placement for %s: %w", gate.strategy.ID, err)
-			}
-		}
-		if len(gate.strategy.Bindings) == 0 {
-			continue
-		}
-		if err := app.operationRegistry.RegisterInputStrategy(gate.strategy); err != nil {
-			return fmt.Errorf("register %s input strategy: %w", gate.strategy.ID, err)
-		}
-	}
-	return nil
+	})
 }
 
 // recoverTUIWorkspace runs before domain consumption or project load.

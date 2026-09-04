@@ -49,7 +49,7 @@ func coreInputOperationRefusesSearchProjection(id operation.OperationID) bool {
 // registerCoreInputOperations stages native final-grammar operations without
 // adding them to the retained legacy Command palette.
 func (m *AppModel) registerCoreInputOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range operation.CoreInputOperationDescriptors() {

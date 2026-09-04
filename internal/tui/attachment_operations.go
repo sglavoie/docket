@@ -169,7 +169,7 @@ func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, pane
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		ctx,
 		attachmentActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
@@ -194,7 +194,7 @@ func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, pane
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }
 

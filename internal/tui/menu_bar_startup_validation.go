@@ -16,15 +16,15 @@ import (
 // All with no cursor and a hidden bar, which is the state this resolution
 // describes; a machine whose file says otherwise changes what the rows show,
 // never which rows exist.
-func (m *AppModel) validateMenuBarSpecs() error {
-	strategy, ok := m.operationRegistry.InputStrategy(operation.InputStrategySimplified)
+func (c *operationController) validateMenuBarSpecs() error {
+	strategy, ok := c.registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		return fmt.Errorf("simplified input strategy is required")
 	}
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	menus, err := outliner.ResolveMenuEntries(
-		m.operationRegistry,
+		c.registry,
 		strategy,
 		ctx,
 		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true),

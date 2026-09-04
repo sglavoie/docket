@@ -16,18 +16,18 @@ func captureDestinationNamesForTest() []string {
 }
 
 func pendingChordHintRowForTest(m *AppModel) string {
-	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
+	if m == nil || m.operations.registry == nil || len(m.operations.chord) == 0 {
 		return ""
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	hints := m.operationRegistry.DecoratedChordHintsForPrefix(
+	hints := m.operations.registry.DecoratedChordHintsForPrefix(
 		operation.InputStrategySimplified,
-		m.pendingChord,
+		m.operations.chord,
 		ctx,
 		m.crossOutliner.DecoratePendingChordHint,
 	)
-	parts := []string{strings.Join(m.pendingChord, "") + "…"}
+	parts := []string{strings.Join(m.operations.chord, "") + "…"}
 	for _, hint := range hints {
 		parts = append(parts, hint.Key+" "+hint.Label)
 	}

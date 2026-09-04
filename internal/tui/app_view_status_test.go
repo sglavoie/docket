@@ -26,7 +26,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 		t.Fatalf("expected the Outliner hints before the picker opens, got:\n%s", hints)
 	}
 
-	app.operationValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	app.operations.valuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
 	withPicker := ansi.Strip(app.renderStatusBar())
 	if strings.Contains(withPicker, "colors its title.") {
 		t.Fatalf("picker explainer leaked into status bar:\n%s", withPicker)
@@ -35,7 +35,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 		t.Fatalf("expected Outliner hints while picker is open, got:\n%s", withPicker)
 	}
 
-	app.operationValuePicker = nil
+	app.operations.valuePicker = nil
 	if restored := ansi.Strip(app.renderStatusBar()); restored != hints {
 		t.Fatalf("expected the hints to return once the picker closes, got:\n%s", restored)
 	}
@@ -43,7 +43,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 
 func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T) {
 	app := pickerStatusBarApp(t)
-	app.operationValuePicker = newSemanticTagPickerForTest(t, nil, true)
+	app.operations.valuePicker = newSemanticTagPickerForTest(t, nil, true)
 	app.statusMessage = "Tagged 1 task(s)"
 
 	statusBar := ansi.Strip(app.renderStatusBar())
@@ -81,10 +81,10 @@ func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
 	assertOwnsStatus("transient status", "task saved")
 	app.statusMessage = ""
 
-	app.pendingChord = []string{"$"}
+	app.operations.chord = []string{"$"}
 	app.statusMessage = "hidden status"
 	assertOwnsStatus("pending chord", "Esc cancel")
-	app.pendingChord = nil
+	app.operations.chord = nil
 	app.statusMessage = ""
 
 	if restored := ansi.Strip(app.renderStatusBar()); restored != baseline {

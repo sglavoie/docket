@@ -83,8 +83,8 @@ func TestModifierKeyPressDoesNotAbandonAPendingChord(t *testing.T) {
 	if app.statusMessage == "fleftshift is not a filter action" {
 		t.Fatal("the bare Shift press was consumed as the chord's second key")
 	}
-	if len(app.pendingChord) != 0 {
-		t.Fatalf("f!2 left pending prefix %v", app.pendingChord)
+	if len(app.operations.chord) != 0 {
+		t.Fatalf("f!2 left pending prefix %v", app.operations.chord)
 	}
 	if out.Filter.Priority != 2 {
 		t.Fatalf("Priority = %d after f!2 with a Shift press mid-chord, want 2", out.Filter.Priority)

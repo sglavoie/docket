@@ -13,14 +13,14 @@ func TestLensPickerCreateClosesEveryOverlayAndLeavesTheNewLensActive(t *testing.
 	model := lensPickerApp(t)
 
 	pressLens(t, model, "enter")
-	if model.operationTextPrompt == nil {
+	if model.operations.textPrompt == nil {
 		t.Fatal("Enter on the save row raised no name prompt")
 	}
 	typeLens(t, model, "Focus")
 	pressLens(t, model, "enter")
 
-	if model.lensPicker != nil || model.contextActionSheet != nil ||
-		model.operationTextPrompt != nil || model.operationValuePicker != nil {
+	if model.lensPicker != nil || model.operations.actionSheet != nil ||
+		model.operations.textPrompt != nil || model.operations.valuePicker != nil {
 		t.Error("creating a lens left a lens overlay mounted")
 	}
 	if model.Overlays().Active() {
@@ -38,7 +38,7 @@ func TestLensPickerCreateCancelReturnsToThePicker(t *testing.T) {
 	pressLens(t, model, "enter")
 	pressLens(t, model, "esc")
 
-	if model.operationTextPrompt != nil {
+	if model.operations.textPrompt != nil {
 		t.Error("Esc left the name prompt mounted")
 	}
 	if model.lensPicker == nil {
@@ -68,7 +68,7 @@ func TestLensPickerCreateFailureStaysOnThePickerWithTheReason(t *testing.T) {
 	// The reason is retained on the surface that raised it, so the same row is
 	// still one Enter away from a corrected retry.
 	pressLens(t, model, "enter")
-	if model.operationTextPrompt == nil {
+	if model.operations.textPrompt == nil {
 		t.Fatal("retrying the save raised no name prompt")
 	}
 }
@@ -80,10 +80,10 @@ func TestLensPickerCreateFailureStaysOnThePickerWithTheReason(t *testing.T) {
 // happens to occupy.
 func selectGalleryRow(t *testing.T, model *AppModel, id string) {
 	t.Helper()
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("no gallery is mounted")
 	}
-	if !model.operationValuePicker.surface.SetCursorToID(lensTemplateItemID(id)) {
+	if !model.operations.valuePicker.surface.SetCursorToID(lensTemplateItemID(id)) {
 		t.Fatalf("the gallery has no row for template %s", id)
 	}
 }
@@ -96,7 +96,7 @@ func openAddTemplateGalleryFromPicker(t *testing.T, model *AppModel) {
 		t.Fatal("the picker has no Add built-in view row")
 	}
 	pressLens(t, model, "enter")
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("Enter on the add row raised no gallery")
 	}
 	if model.lensPicker == nil {
@@ -114,16 +114,16 @@ func TestLensPickerEnterOnTheAddRowOpensTheGalleryOverThePicker(t *testing.T) {
 	}
 	pressLens(t, model, "enter")
 
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("Enter on the add row raised no gallery")
 	}
-	if got := model.operationValuePicker.provider; got != operation.ValueProviderLensTemplate {
+	if got := model.operations.valuePicker.provider; got != operation.ValueProviderLensTemplate {
 		t.Errorf("gallery provider = %q, want %q", got, operation.ValueProviderLensTemplate)
 	}
 	if model.lensPicker == nil {
 		t.Error("the main picker must stay mounted beneath the gallery")
 	}
-	if model.contextActionSheet != nil {
+	if model.operations.actionSheet != nil {
 		t.Error("the add row opened a management sheet it names no target for")
 	}
 	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
@@ -137,7 +137,7 @@ func TestLensPickerAddTemplateCancelReturnsToTheMainPicker(t *testing.T) {
 
 	pressLens(t, model, "esc")
 
-	if model.operationValuePicker != nil {
+	if model.operations.valuePicker != nil {
 		t.Error("Esc left the gallery mounted")
 	}
 	if model.lensPicker == nil {
@@ -154,7 +154,7 @@ func TestLensPickerAddTemplateCancelReturnsToTheMainPicker(t *testing.T) {
 	}
 	// The main picker is live again, so the same row still reaches the gallery.
 	pressLens(t, model, "enter")
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("reopening the gallery from the retained picker failed")
 	}
 }
@@ -167,8 +167,8 @@ func TestLensPickerAddTemplateClosesEveryOverlayAndLeavesTheAddedLensActive(t *t
 
 	pressLens(t, model, "enter")
 
-	if model.lensPicker != nil || model.contextActionSheet != nil ||
-		model.operationValuePicker != nil || model.operationTextPrompt != nil {
+	if model.lensPicker != nil || model.operations.actionSheet != nil ||
+		model.operations.valuePicker != nil || model.operations.textPrompt != nil {
 		t.Error("adding a built-in view left a lens overlay mounted")
 	}
 	if model.Overlays().Active() {
@@ -198,7 +198,7 @@ func TestLensPickerAddTemplateFailureStaysOnThePickerWithTheReason(t *testing.T)
 
 	pressLens(t, model, "enter")
 
-	if model.operationValuePicker != nil {
+	if model.operations.valuePicker != nil {
 		t.Error("a refused add left the gallery mounted")
 	}
 	if model.lensPicker == nil {
@@ -216,7 +216,7 @@ func TestLensPickerAddTemplateFailureStaysOnThePickerWithTheReason(t *testing.T)
 	// The reason is retained on the surface that raised it, so the same row is
 	// still one Enter away from a corrected retry.
 	pressLens(t, model, "enter")
-	if model.operationValuePicker == nil {
+	if model.operations.valuePicker == nil {
 		t.Fatal("retrying the add raised no gallery")
 	}
 }
@@ -227,7 +227,7 @@ func TestLensPickerSpaceOnTheAddRowExplainsItself(t *testing.T) {
 
 	pressLens(t, model, "space")
 
-	if model.contextActionSheet != nil {
+	if model.operations.actionSheet != nil {
 		t.Error("the add row named a management target it does not have")
 	}
 	if model.lensPicker == nil {

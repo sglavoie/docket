@@ -17,7 +17,7 @@ import (
 // that is not a string at all. Add built-in view is the one operation that takes
 // a value here, so it is named once rather than passed by every caller.
 func executeLensValue(model *AppModel, value any) operation.OperationExecutionResult {
-	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
+	return model.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       lens.OperationLensAddTemplate,
 		Context:  lensOperationContext(operation.EntityIdentity{}),
 		Value:    value,
@@ -42,7 +42,7 @@ func addableTemplate(t *testing.T, model *AppModel) config.NamedLens {
 
 func TestLensAddTemplateIsAZeroTargetPickedMutation(t *testing.T) {
 	model := lensOperationApp(t)
-	descriptor, ok := model.operationRegistry.Descriptor(lens.OperationLensAddTemplate)
+	descriptor, ok := model.operations.registry.Descriptor(lens.OperationLensAddTemplate)
 	if !ok {
 		t.Fatal("the add-template operation is not registered")
 	}
@@ -133,10 +133,10 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	}
 	// Machine-local state rides no workspace transaction, so nothing here may
 	// reach the executor's undo ledger.
-	if undo := model.operationExecutor.Undo(); undo.Err == nil {
+	if undo := model.operations.executor.Undo(); undo.Err == nil {
 		t.Fatal("expected no undo entry for an added built-in view")
 	}
-	if redo := model.operationExecutor.Redo(); redo.Err == nil {
+	if redo := model.operations.executor.Redo(); redo.Err == nil {
 		t.Fatal("expected no redo entry for an added built-in view")
 	}
 }

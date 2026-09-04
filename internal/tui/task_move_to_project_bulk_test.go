@@ -39,7 +39,7 @@ func bulkMoveSelection(t *testing.T, m *AppModel, titles ...string) []TaskProjec
 // the move instead of refusing it.
 func executeBulkMoveToProject(t *testing.T, m *AppModel, destinationID string) tea.Msg {
 	t.Helper()
-	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskMoveToProject,
 		Context:  m.operationCommandContext(),
 		Value:    destinationID,
@@ -266,7 +266,7 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 
 	context := m.operationCommandContext()
 	context.Entity = outliner.TaskOperationEntity(source, sourceProject)
-	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskMoveToProject,
 		Context:  context,
 		Value:    destination.ID,

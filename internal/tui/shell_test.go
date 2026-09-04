@@ -117,12 +117,12 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	}
 
 	// A text-input overlay drives both Active and HasActiveTextInput.
-	app.operationTextPrompt = &OperationTextPromptModel{}
+	app.operations.textPrompt = &OperationTextPromptModel{}
 	if !o.Active() || !o.HasActiveTextInput() {
 		t.Error("text prompt should make overlays active and text-input")
 	}
 	o.ClearAll()
-	if o.Active() || app.operationTextPrompt != nil {
+	if o.Active() || app.operations.textPrompt != nil {
 		t.Error("ClearAll should dismiss every overlay")
 	}
 }

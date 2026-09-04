@@ -115,11 +115,11 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
 	press("space")
-	if driver.App().contextActionSheet == nil {
+	if driver.App().operations.actionSheet == nil {
 		t.Fatal("Space did not reach tui.attachment.actions")
 	}
 	press("esc")
-	if driver.App().contextActionSheet != nil {
+	if driver.App().operations.actionSheet != nil {
 		t.Fatal("Esc left the attachment action sheet open")
 	}
 
@@ -172,7 +172,7 @@ func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
-		if driver.App().contextActionSheet != nil {
+		if driver.App().operations.actionSheet != nil {
 			t.Fatalf("retired key %q opened the action sheet", key)
 		}
 		if driver.pendingCmd != nil {
@@ -235,7 +235,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
 	press("space")
-	sheet := driver.App().contextActionSheet
+	sheet := driver.App().operations.actionSheet
 	if sheet == nil {
 		t.Fatal("Space did not open the attachment action sheet")
 	}
@@ -255,7 +255,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	}
 	press("enter")
 
-	if driver.App().contextActionSheet != nil {
+	if driver.App().operations.actionSheet != nil {
 		t.Fatal("choosing Unlink left the sheet open over the confirmation")
 	}
 	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "unlink" {

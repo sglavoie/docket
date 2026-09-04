@@ -68,7 +68,7 @@ func (d *UITestDriver) SetDrainTimeout(timeout time.Duration) {
 // NewUITestDriver wraps an AppModel (typically built via NewAppModel, or by the
 // fixture helpers added in session 3) and applies an initial terminal size.
 func NewUITestDriver(app *AppModel, width, height int) *UITestDriver {
-	if _, registered := app.operationRegistry.Descriptor(operationHarnessNewProject); !registered {
+	if _, registered := app.operations.registry.Descriptor(operationHarnessNewProject); !registered {
 		if err := app.registerHarnessOperations(); err != nil {
 			panic("register TUI test operations: " + err.Error())
 		}
@@ -93,7 +93,7 @@ func (d *UITestDriver) Restart() error {
 	if err != nil {
 		return err
 	}
-	if _, registered := app.operationRegistry.Descriptor(operationHarnessNewProject); !registered {
+	if _, registered := app.operations.registry.Descriptor(operationHarnessNewProject); !registered {
 		if err := app.registerHarnessOperations(); err != nil {
 			return fmt.Errorf("register TUI test operations: %w", err)
 		}
@@ -241,7 +241,7 @@ func (d *UITestDriver) availableCommands() []UITestCommand {
 	if len(descriptors) == 0 {
 		return nil
 	}
-	operations := d.app.operationRegistry
+	operations := d.app.operations.registry
 	result := make([]UITestCommand, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		shortcut := operations.InputShortcutForOperation(operation.InputStrategySimplified, descriptor.ID)
@@ -263,12 +263,12 @@ func (d *UITestDriver) availableCommands() []UITestCommand {
 }
 
 func (d *UITestDriver) availableOperationDescriptors() []operation.OperationDescriptor {
-	if d == nil || d.app == nil || d.app.operationRegistry == nil {
+	if d == nil || d.app == nil || d.app.operations.registry == nil {
 		return nil
 	}
 	ctx := d.app.operationCommandContext()
 	ctx.View = d.app.currentView()
-	return d.app.operationRegistry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
+	return d.app.operations.registry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
 }
 
 // viewStackNames returns the human-readable names of the current view stack,
@@ -287,8 +287,8 @@ func (d *UITestDriver) viewStackNames() []string {
 // NewAppModel.
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
-	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+	app.operations.registry = operation.NewOperationRegistry()
+	app.operations.executor = operation.NewOperationExecutor(app.operations.registry)
 	o := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
 	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, o)
@@ -317,7 +317,7 @@ func newUITestApp() *AppModel {
 	if err := app.registerChecklistRowOperations(); err != nil {
 		panic(err)
 	}
-	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := app.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		panic(err)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)

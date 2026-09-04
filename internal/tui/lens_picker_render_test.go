@@ -299,11 +299,11 @@ func TestLensPickerIsClearedByNavigationCollapse(t *testing.T) {
 
 	model.clearTransientNavigationState()
 
-	if model.lensPicker != nil || model.contextActionSheet != nil ||
-		model.operationConfirm.IsActive() {
+	if model.lensPicker != nil || model.operations.actionSheet != nil ||
+		model.operations.confirm.IsActive() {
 		t.Error("a navigation collapse left a lens overlay mounted")
 	}
-	if model.pendingOperationRequest.ID != "" {
+	if model.operations.pendingRequest.ID != "" {
 		t.Error("a navigation collapse left a pending operation")
 	}
 	if model.Overlays().Active() || model.Overlays().HasActiveTextInput() {

@@ -28,7 +28,7 @@ import (
 func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 	descriptorFor := func(t *testing.T, model *AppModel) operation.OperationDescriptor {
 		t.Helper()
-		descriptor, ok := model.operationRegistry.Descriptor(operation.OperationTaskReferences)
+		descriptor, ok := model.operations.registry.Descriptor(operation.OperationTaskReferences)
 		if !ok {
 			t.Fatal("tui.task.references is not registered")
 		}
@@ -58,7 +58,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 		if cmd != nil {
 			model.handleOperationOverlayMessage(cmd())
 		}
-		if model.operationValuePicker != nil {
+		if model.operations.valuePicker != nil {
 			t.Fatalf("~ opened a picker from a project header row (handled = %v)", handled)
 		}
 	})
@@ -115,7 +115,7 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	if cmd != nil {
 		model.handleOperationOverlayMessage(cmd())
 	}
-	picker := model.operationValuePicker
+	picker := model.operations.valuePicker
 	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker over a selection: %#v", picker)
 	}
@@ -179,7 +179,7 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 	if cmd != nil {
 		model.handleOperationOverlayMessage(cmd())
 	}
-	picker := model.operationValuePicker
+	picker := model.operations.valuePicker
 	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker: %#v", picker)
 	}

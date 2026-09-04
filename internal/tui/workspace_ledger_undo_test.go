@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -186,21 +185,21 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	svc.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
 	appModel := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		deps:              newShellDeps(ledger),
-		projects:          map[string]*models.Project{project.ID: project},
-		persister:         coordinator.NewProjectService(),
-		appService:        svc,
-		viewNav:           newViewNavigationController(),
-		currentProject:    project,
-		nextOrder:         []outliner.PlanningTask{},
-		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []outliner.PlanningTask{},
-		todayIDs:          make(map[taskref.TaskIdentity]bool),
-		operationRegistry: operation.NewOperationRegistry(),
+		configManager:  manager,
+		runtime:        runtime,
+		deps:           newShellDeps(ledger),
+		projects:       map[string]*models.Project{project.ID: project},
+		persister:      coordinator.NewProjectService(),
+		appService:     svc,
+		viewNav:        newViewNavigationController(),
+		currentProject: project,
+		nextOrder:      []outliner.PlanningTask{},
+		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
+		today:          []outliner.PlanningTask{},
+		todayIDs:       make(map[taskref.TaskIdentity]bool),
+		operations:     newOperationController(),
 	}
-	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
+	appModel.operations.bindExecutor()
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MoveCursorToTask(taskID)
@@ -226,7 +225,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := appModel.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
 	appModel.wireOutlinerOperationExecutor(outlinerView)

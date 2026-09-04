@@ -16,7 +16,7 @@ import (
 
 // GetOperationRegistry returns the authoritative operation catalog.
 func (m *AppModel) GetOperationRegistry() *operation.OperationRegistry {
-	return m.operationRegistry
+	return m.operations.registry
 }
 
 // getActiveNotesView returns the currently active NotesViewModel (project or global).
@@ -153,7 +153,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 }
 
 func (m *AppModel) clearTransientNavigationState() {
-	m.pendingChord = nil
+	m.operations.chord = nil
 	m.project.clearArchive()
 	m.taskMutation.clearDelete()
 
@@ -257,7 +257,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 	if outlinerView == nil {
 		return
 	}
-	outlinerView.OperationRegistry = m.operationRegistry
+	outlinerView.OperationRegistry = m.operations.registry
 	outlinerView.SetPersistActiveLens(m.commitActiveLensPointer)
 	outlinerView.SetOutstandingConflicts(m.outstandingConflictCount)
 	outlinerView.SetAdvisoriesHidden(m.advisoriesHidden)

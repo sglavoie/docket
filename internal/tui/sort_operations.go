@@ -53,7 +53,7 @@ func sortAxisOperationDescriptors() []operation.OperationDescriptor {
 }
 
 func (m *AppModel) registerSortOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range sortAxisOperationDescriptors() {

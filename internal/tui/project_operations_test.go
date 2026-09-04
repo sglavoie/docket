@@ -21,7 +21,7 @@ func projectOperationContext(projectID string) operation.CommandContext {
 }
 
 func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) operation.OperationExecutionResult {
-	return app.operationExecutor.Execute(operation.OperationExecutionRequest{
+	return app.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	})
@@ -98,7 +98,7 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := executeProjectOperation(app, tc.id, projectOperationContext(tc.proj))
 			if result.ConfirmationRequired != nil {
-				result = app.operationExecutor.Execute(result.ConfirmationRequired.Request)
+				result = app.operations.executor.Execute(result.ConfirmationRequired.Request)
 			}
 			if result.Err == nil {
 				t.Fatalf("%s succeeded with %#v, want an unavailable result", tc.name, result.Message)
@@ -125,7 +125,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 		t.Fatalf("Open project notes emitted a Notes manager message for an archived project: %#v", result.Message)
 	}
 
-	descriptor, ok := app.operationRegistry.Descriptor(operation.OperationScopeOpenProjectNote)
+	descriptor, ok := app.operations.registry.Descriptor(operation.OperationScopeOpenProjectNote)
 	if !ok {
 		t.Fatal("Open project notes operation is not registered")
 	}

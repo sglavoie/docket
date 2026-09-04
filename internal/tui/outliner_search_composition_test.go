@@ -89,7 +89,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := app.operationCommandContext()
-	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+	if _, _, resolution := app.operations.registry.InputBindingForSequence(
 		operation.InputStrategySimplified, []string{"F", "#"}, ctx,
 	); resolution != operation.ChordTerminal {
 		t.Fatalf("F# resolution outside search = %v, want a terminal chord", resolution)
@@ -99,7 +99,7 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 	if !app.crossOutliner.HasSearchProjection() {
 		t.Fatal("the search projection did not start")
 	}
-	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+	if _, _, resolution := app.operations.registry.InputBindingForSequence(
 		operation.InputStrategySimplified, []string{"F", "#"}, app.operationCommandContext(),
 	); resolution != operation.ChordTerminal {
 		t.Fatalf("F# resolution under a narrowing query = %v, want it still live", resolution)
@@ -107,14 +107,14 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 
 	app.crossOutliner.ToggleRankedList()
 	searchCtx := app.operationCommandContext()
-	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+	if _, _, resolution := app.operations.registry.InputBindingForSequence(
 		operation.InputStrategySimplified, []string{"F", "#"}, searchCtx,
 	); resolution != operation.ChordNoMatch {
 		t.Fatalf("F# resolution under search = %v, want no match", resolution)
 	}
 	// The row facets keep resolving on the same context, which is the whole point
 	// of the split: one family composes and the other does not.
-	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+	if _, _, resolution := app.operations.registry.InputBindingForSequence(
 		operation.InputStrategySimplified, []string{"f", "#"}, searchCtx,
 	); resolution != operation.ChordTerminal {
 		t.Fatalf("f# resolution under search = %v, want a terminal chord", resolution)

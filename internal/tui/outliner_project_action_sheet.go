@@ -94,7 +94,7 @@ func projectActionSheetOperationDescriptor() operation.OperationDescriptor {
 
 // registerProjectActionSheetOperation binds Space on a project header.
 func (m *AppModel) registerProjectActionSheetOperation() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	return m.registerOperation(projectActionSheetOperationDescriptor(), operation.OperationBinding{
@@ -197,13 +197,13 @@ func (m *AppModel) openProjectActionSheet(context operation.CommandContext) erro
 	}
 	sheet, err := NewProjectActionSheetModel(
 		m.GetOperationRegistry(),
-		m.operationExecutor,
+		m.operations.executor,
 		context,
 		project.Name,
 	)
 	if err != nil {
 		return err
 	}
-	m.contextActionSheet = sheet
+	m.operations.actionSheet = sheet
 	return nil
 }

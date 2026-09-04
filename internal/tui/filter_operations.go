@@ -51,12 +51,12 @@ func filterOperationDescriptors() []operation.OperationDescriptor {
 }
 
 func (m *AppModel) registerFilterOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	// Priority is the only preset-only facet: each f!0-3 binding carries its
 	// threshold, so reaching the provider means a caller bypassed the grammar.
-	if err := m.operationExecutor.RegisterValueProvider(operation.ValueProviderFilterPriority,
+	if err := m.operations.executor.RegisterValueProvider(operation.ValueProviderFilterPriority,
 		func(operation.OperationInvocation) operation.OperationValueProviderResult {
 			return operation.OperationValueProviderResult{
 				Err: fmt.Errorf("this filter takes its value from the f!0-3 chord"),
@@ -74,7 +74,7 @@ func (m *AppModel) registerFilterOperations() error {
 		operation.ValueProviderFilterDependency,
 		operation.ValueProviderFilterProjectTags,
 	} {
-		if err := m.operationExecutor.RegisterValueProvider(provider,
+		if err := m.operations.executor.RegisterValueProvider(provider,
 			func(operation.OperationInvocation) operation.OperationValueProviderResult {
 				// Returning no immediate value asks the shell to open the provider's
 				// picker seeded from the current filter.

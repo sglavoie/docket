@@ -37,8 +37,8 @@ func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
 			return m.crossOutliner.Scope.ProjectID
 		},
 		TaskCounts:         m.projectHubTaskCounts,
-		OperationRegistry:  m.operationRegistry,
-		OperationExecutor:  m.operationExecutor,
+		OperationRegistry:  m.operations.registry,
+		OperationExecutor:  m.operations.executor,
 		DispatchKey:        m.dispatchOperationKey,
 		PreviewTaskPainter: newProjectPreviewPainter,
 	}

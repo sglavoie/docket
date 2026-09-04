@@ -181,19 +181,19 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	}
 	out.Confirm.Cancel()
 
-	app.operationTextPrompt = newOperationTextPromptModel(
+	app.operations.textPrompt = newOperationTextPromptModel(
 		operation.OperationExecutionRequest{}, "Name", "", "draft", "Name",
 	)
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationTextPrompt == nil {
-		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operationTextPrompt != nil)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.textPrompt == nil {
+		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operations.textPrompt != nil)
 	}
-	app.operationTextPrompt = nil
+	app.operations.textPrompt = nil
 
-	app.operationValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationValuePicker == nil {
-		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operationValuePicker != nil)
+	app.operations.valuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.valuePicker == nil {
+		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operations.valuePicker != nil)
 	}
-	app.operationValuePicker = nil
+	app.operations.valuePicker = nil
 
 	descriptor := contextActionTestDescriptor("test.ctrl-p-owner", "Owner")
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{descriptor}, nil)
@@ -207,15 +207,15 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	app.contextActionSheet = sheet
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.contextActionSheet == nil {
-		t.Fatalf("action sheet did not retain Ctrl+P: handled=%v sheet=%v", handled, app.contextActionSheet != nil)
+	app.operations.actionSheet = sheet
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.actionSheet == nil {
+		t.Fatalf("action sheet did not retain Ctrl+P: handled=%v sheet=%v", handled, app.operations.actionSheet != nil)
 	}
-	app.contextActionSheet = nil
+	app.operations.actionSheet = nil
 
-	app.operationConfirm.Show(operationConfirmAction, "Confirm?")
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operationConfirm.IsActive() {
-		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operationConfirm.IsActive())
+	app.operations.confirm.Show(operationConfirmAction, "Confirm?")
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operations.confirm.IsActive() {
+		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operations.confirm.IsActive())
 	}
 	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while an overlay owned input")

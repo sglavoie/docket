@@ -51,14 +51,14 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 		t.Fatal("fc produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterContexts {
-		t.Fatalf("fc did not open the context picker: %#v", app.operationValuePicker)
+	if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterContexts {
+		t.Fatalf("fc did not open the context picker: %#v", app.operations.valuePicker)
 	}
-	if title := app.operationValuePicker.title; title != "Filter by Context" {
+	if title := app.operations.valuePicker.title; title != "Filter by Context" {
 		t.Errorf("picker title = %q, want %q", title, "Filter by Context")
 	}
 
-	items := app.operationValuePicker.surface.Items()
+	items := app.operations.valuePicker.surface.Items()
 	wantIDs := []listsurface.ListItemID{
 		"filter-context:" + query.NoContextFilterKey,
 		"filter-context:deep",
@@ -101,7 +101,7 @@ func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.
 	}
 	app.handleOperationOverlayMessage(cmd())
 
-	selected := app.operationValuePicker.surface.SelectedIDs()
+	selected := app.operations.valuePicker.surface.SelectedIDs()
 	slices.Sort(selected)
 	want := []listsurface.ListItemID{"filter-context:errand", "filter-context:" + query.NoContextFilterKey}
 	slices.Sort(want)
@@ -117,7 +117,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	ctx := simplifiedOperationContext()
 	filter := &app.crossOutliner.Filter.CommonFilterState
 
-	both := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+	both := app.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{"errand", "deep"},
@@ -139,7 +139,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("a task carrying neither context should be hidden: %v", visible)
 	}
 
-	gap := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+	gap := app.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{query.NoContextFilterKey},
@@ -162,7 +162,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("the gap should exclude tasks carrying a context: %v", visible)
 	}
 
-	cleared := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+	cleared := app.operations.executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{},
@@ -194,11 +194,11 @@ func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
 		t.Fatal("f# produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterTags {
-		t.Fatalf("f# did not open the tags picker: %#v", app.operationValuePicker)
+	if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterTags {
+		t.Fatalf("f# did not open the tags picker: %#v", app.operations.valuePicker)
 	}
 
-	items := app.operationValuePicker.surface.Items()
+	items := app.operations.valuePicker.surface.Items()
 	for _, item := range items {
 		if item.CategoryID == taskContextCategory {
 			t.Errorf("f# offered a CONTEXTS row: %s", item.ID)

@@ -11,7 +11,7 @@ import (
 func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	executor := app.operationExecutor
+	executor := app.operations.executor
 
 	for _, descriptor := range registry.All() {
 		bindings := executor.Bindings(descriptor.ID)
@@ -61,7 +61,7 @@ var delegatedDestructiveConfirmations = map[operation.OperationID]string{
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 	app := parityAuditApp(t)
-	executor := app.operationExecutor
+	executor := app.operations.executor
 
 	destructive := 0
 	for _, descriptor := range app.GetOperationRegistry().All() {

@@ -118,7 +118,7 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	driver, panel, press := mountCommentsPanel(t)
 
 	press("space")
-	sheet := driver.App().contextActionSheet
+	sheet := driver.App().operations.actionSheet
 	if sheet == nil {
 		t.Fatal("Space did not open the comment action sheet")
 	}
@@ -128,7 +128,7 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	}
 
 	press("enter")
-	if driver.App().contextActionSheet != nil {
+	if driver.App().operations.actionSheet != nil {
 		t.Fatal("choosing Delete left the sheet open over the confirmation")
 	}
 	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "delete" {
@@ -261,7 +261,7 @@ func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 		if panel.AddMode || panel.EditMode || panel.ExpandedView {
 			t.Fatalf("unbound key %q changed the panel mode", key)
 		}
-		if driver.App().contextActionSheet != nil {
+		if driver.App().operations.actionSheet != nil {
 			t.Fatalf("unbound key %q opened an action sheet", key)
 		}
 		if got := driver.App().currentView(); got != presentation.ViewTaskComments {

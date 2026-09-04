@@ -3,7 +3,6 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -24,8 +23,9 @@ import (
 // ClearAll, which the AppModel now delegates to). Each facade reads through
 // whichever sub-state owns the field: ShellState's stack, route and geometry
 // come from the viewNav controller (view_navigation_controller.go), and
-// OverlayManager's overlay stack does too, while the per-overlay pointers it
-// clears are still AppModel fields.
+// OverlayManager's overlay stack does too, while the overlays of the contextual
+// action flow come from the operations controller
+// (operation_controller.go), which answers for the whole flow at once.
 
 // ShellContext is the shared UI contract a feature view uses to interrogate the
 // shell without importing AppModel internals. It is deliberately read-only:
@@ -122,19 +122,14 @@ func (m *AppModel) Overlays() OverlayManager { return OverlayManager{app: m} }
 // input, which the shell uses to suppress global single-key shortcuts.
 func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
-	return m.operationValuePicker != nil ||
-		m.operationTextPrompt != nil ||
-		m.contextActionSheet != nil ||
-		m.lensPicker != nil
+	return m.operations.overlayMounted() || m.lensPicker != nil
 }
 
 // Active reports whether any transient overlay is currently shown.
 func (o OverlayManager) Active() bool {
 	m := o.app
 	return m.viewNav.navigation.Overlays.Active() ||
-		m.contextActionSheet != nil ||
-		m.operationValuePicker != nil ||
-		m.operationTextPrompt != nil ||
+		m.operations.overlayMounted() ||
 		m.lensPicker != nil
 }
 
@@ -143,10 +138,6 @@ func (o OverlayManager) Active() bool {
 func (o OverlayManager) ClearAll() {
 	m := o.app
 	m.viewNav.navigation.Overlays.CancelAll()
-	m.contextActionSheet = nil
-	m.operationValuePicker = nil
-	m.operationTextPrompt = nil
+	m.operations.clearOverlays()
 	m.lensPicker = nil
-	m.operationConfirm.Cancel()
-	m.pendingOperationRequest = operation.OperationExecutionRequest{}
 }

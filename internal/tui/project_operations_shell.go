@@ -48,7 +48,7 @@ func (m *AppModel) projectOperationApplicability(
 // same reason and one more: its prompt names the cascade the executor's generic
 // sentence cannot count.
 func (m *AppModel) registerProjectOperations() error {
-	if m.operationRegistry == nil || m.operationExecutor == nil {
+	if m.operations.registry == nil || m.operations.executor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range projecthub.ProjectOperationDescriptors() {

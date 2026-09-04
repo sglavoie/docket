@@ -55,7 +55,7 @@ func taskOperationApplicable(
 	project *models.Project,
 ) bool {
 	t.Helper()
-	descriptor, ok := model.operationRegistry.Descriptor(id)
+	descriptor, ok := model.operations.registry.Descriptor(id)
 	if !ok {
 		t.Fatalf("operation %s is not registered", id)
 	}
@@ -94,7 +94,7 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	loose := project.GetTaskByID("loose")
 
 	descriptors := TaskActionSheetDescriptors(
-		model.operationRegistry,
+		model.operations.registry,
 		taskOperationTestContext(loose, project),
 	)
 	ordered := make([]operation.OperationID, 0, len(descriptors))
@@ -112,7 +112,7 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		t.Fatalf("manifest order = %v, want %v", ordered, want)
 	}
 	for _, id := range []operation.OperationID{operation.OperationTaskIndent, operation.OperationTaskOutdent} {
-		descriptor, ok := model.operationRegistry.Descriptor(id)
+		descriptor, ok := model.operations.registry.Descriptor(id)
 		if !ok {
 			t.Fatalf("operation %s is not registered", id)
 		}

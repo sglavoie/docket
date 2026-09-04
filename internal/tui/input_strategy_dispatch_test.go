@@ -14,12 +14,12 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 	newChordApp := func(t *testing.T) *AppModel {
 		t.Helper()
 		app := newUITestApp()
-		app.operationRegistry = operation.NewOperationRegistry()
-		app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+		app.operations.registry = operation.NewOperationRegistry()
+		app.operations.executor = operation.NewOperationExecutor(app.operations.registry)
 		if err := app.registerCoreInputOperations(); err != nil {
 			t.Fatalf("registerCoreInputOperations: %v", err)
 		}
-		if err := app.operationRegistry.RegisterInputStrategy(operation.InputStrategy{
+		if err := app.operations.registry.RegisterInputStrategy(operation.InputStrategy{
 			ID: operation.InputStrategySimplified,
 			Bindings: []operation.OperationKeyBinding{
 				{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}},
@@ -40,8 +40,8 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		if !handled || cmd != nil {
 			t.Fatalf("chord prefix = handled %v, cmd %v; want consumed with no command", handled, cmd)
 		}
-		if !slices.Equal(app.pendingChord, []string{","}) {
-			t.Fatalf("pending chord = %v, want [,]", app.pendingChord)
+		if !slices.Equal(app.operations.chord, []string{","}) {
+			t.Fatalf("pending chord = %v, want [,]", app.operations.chord)
 		}
 		row := pendingChordHintRowForTest(app)
 		if !strings.Contains(row, "h help") {
@@ -59,8 +59,8 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		if !handled || cmd == nil {
 			t.Fatalf("chord completion = handled %v, cmd %v; want the operation's command", handled, cmd)
 		}
-		if len(app.pendingChord) != 0 {
-			t.Errorf("pending chord = %v, want cleared", app.pendingChord)
+		if len(app.operations.chord) != 0 {
+			t.Errorf("pending chord = %v, want cleared", app.operations.chord)
 		}
 	})
 
@@ -77,8 +77,8 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 			app := newChordApp(t)
 			app.handleSimplifiedInputKey(comma)
 			abandon(app)
-			if len(app.pendingChord) != 0 {
-				t.Errorf("%s left pending chord %v, want cleared", name, app.pendingChord)
+			if len(app.operations.chord) != 0 {
+				t.Errorf("%s left pending chord %v, want cleared", name, app.operations.chord)
 			}
 		}
 	})
@@ -86,8 +86,8 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 
 func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T) {
 	app := newUITestApp()
-	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+	app.operations.registry = operation.NewOperationRegistry()
+	app.operations.executor = operation.NewOperationExecutor(app.operations.registry)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("registerCoreInputOperations: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	if err := app.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("registerChecklistRowOperations: %v", err)
 	}
-	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := app.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("RegisterInputStrategy: %v", err)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
