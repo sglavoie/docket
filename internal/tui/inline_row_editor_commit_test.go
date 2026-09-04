@@ -155,8 +155,8 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
 		destination := &models.Project{ID: "zeta-destination", Slug: "zeta-destination", Name: "Destination"}
 		out := NewOutlinerModel(nil, nil, nil)
-		out.loadedProjects = []*models.Project{source, destination}
-		out.crossSnapshotReady = true
+		out.population.projects = []*models.Project{source, destination}
+		out.population.snapshotReady = true
 		out.population.invalidate()
 		out.crossProjectRebuildRows()
 		for index, row := range out.rows {

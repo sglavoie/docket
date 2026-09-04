@@ -101,7 +101,7 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	home.Tasks = append(home.Tasks, second)
 	home.BuildTaskTree()
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.loadedProjects = []*models.Project{home, remote}
+	model.crossOutliner.population.projects = []*models.Project{home, remote}
 	model.crossOutliner.rows = []outlinerRow{
 		{task: subject, ProjectID: home.ID},
 		{task: second, ProjectID: home.ID},

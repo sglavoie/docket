@@ -33,7 +33,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	}
 
 	var targetProject *models.Project
-	for _, project := range cross.loadedProjects {
+	for _, project := range cross.population.projects {
 		if project != nil && len(project.Tasks) > 0 {
 			targetProject = project
 			break
@@ -136,7 +136,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if cross.scopedProjectID != project.ID {
 		t.Fatalf("project scope = %q, want %q", cross.scopedProjectID, project.ID)
 	}
-	if cross.crossLoading {
+	if cross.population.loading {
 		t.Fatal("completion left the Outliner refresh pending")
 	}
 	if screen := driver.Render(); strings.Contains(screen, "Unknown view") || strings.Contains(screen, "internal error:") {

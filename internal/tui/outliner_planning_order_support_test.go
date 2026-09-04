@@ -91,7 +91,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	m.rebuildPlanningFromRuntime()
 
 	cross := NewOutlinerModel(nil, manager, runtime)
-	cross.loadedProjects = projects
+	cross.population.projects = projects
 	if len(projects) == 1 {
 		cross.scopedProjectID = projects[0].ID
 	}

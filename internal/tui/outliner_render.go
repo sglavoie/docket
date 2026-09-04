@@ -7,7 +7,7 @@ import tea "charm.land/bubbletea/v2"
 func (m *OutlinerModel) View() tea.View {
 	if m.project == nil {
 		// Spinner/loading states handled by crossProjectView.
-		if m.crossSpinnerVisible || m.crossLoading {
+		if m.population.spinnerVisible || m.population.loading {
 			return tea.NewView(m.crossProjectView())
 		}
 		m.crossProjectRebuildRows()

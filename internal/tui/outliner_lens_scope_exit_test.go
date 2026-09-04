@@ -132,7 +132,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	app := lensOperationApp(t)
 	outliner := app.crossOutliner
-	base := slices.Clone(outliner.loadedProjects)
+	base := slices.Clone(outliner.population.projects)
 	baseline := loadedProjectIDs(outliner)
 
 	parked := primaryRowsProject("parked", primaryRowsTask("parked-waiting", models.StateWaiting))
@@ -151,10 +151,10 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	// A reload issued before the application lands afterwards carrying the
 	// population the pre-lens filter selects. It is not the one the facets ask
 	// for, so the debt is untouched and the frame now names that filter.
-	outliner.crossLoadGen++
+	outliner.population.loadGen++
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:            base,
-		generation:          outliner.crossLoadGen,
+		generation:          outliner.population.loadGen,
 		loadedProjectFilter: query.ProjectFilterFingerprint(&query.ProjectFilterState{}),
 	})
 	if !outliner.activeLens.projectFacetsAwaitingLoad {
@@ -164,7 +164,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	// The next reload reads under the live filter, which is the lens's own facets.
 	// The command names that filter itself: the model it lands against may have
 	// moved, so the read has to carry its own provenance.
-	outliner.crossLoadGen++
+	outliner.population.loadGen++
 	result, ok := outliner.loadCrossProjectsCmd()().(crossProjectsLoadedMsg)
 	if !ok {
 		t.Fatal("the reload command produced no cross-projects result")
@@ -271,7 +271,7 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *Out
 	outliner := scopeTestOutliner(append([]*models.Project{alpha, beta, parked}, extra...)...)
 	// The base task workspace holds no parked project; only the focus below
 	// admits it.
-	outliner.loadedProjects = []*models.Project{alpha, beta}
+	outliner.population.projects = []*models.Project{alpha, beta}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	app.crossOutliner = outliner
@@ -282,7 +282,7 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *Out
 	outliner.beginParkedProjectFocus(parked.ID)
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:       everything,
-		generation:     outliner.crossLoadGen,
+		generation:     outliner.population.loadGen,
 		focusProjectID: parked.ID,
 	})
 	if outliner.scopedProjectID != parked.ID || outliner.parkedFocusProjectID != parked.ID {
@@ -366,8 +366,8 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			if outliner.parkedFocusProjectID != "" {
 				t.Fatal("a project the facets select is population, not a focus exception")
 			}
-			if outliner.crossLoading != ordering.loading {
-				t.Fatalf("crossLoading = %t, want %t", outliner.crossLoading, ordering.loading)
+			if outliner.population.loading != ordering.loading {
+				t.Fatalf("population.loading = %t, want %t", outliner.population.loading, ordering.loading)
 			}
 			if !outliner.hasActiveLens() || outliner.activeLens != frame {
 				t.Fatal("the exit disturbed the active lens")

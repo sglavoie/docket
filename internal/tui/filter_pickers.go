@@ -358,7 +358,7 @@ func (m *AppModel) newFilterTagsPicker(
 // the loaded scope once there is one, and the whole task workspace before the
 // first load.
 func (m *AppModel) filterScopeProjects() []*models.Project {
-	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
+	if m.crossOutliner != nil && len(m.crossOutliner.population.projects) > 0 {
 		return m.crossOutliner.workModeScopeProjects()
 	}
 	return m.taskWorkspaceProjects()

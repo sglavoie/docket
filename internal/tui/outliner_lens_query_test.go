@@ -127,8 +127,8 @@ func typeLensQuery(t *testing.T, outliner *OutlinerModel, query string) {
 }
 
 func loadedProjectIDs(outliner *OutlinerModel) []string {
-	ids := make([]string, 0, len(outliner.loadedProjects))
-	for _, project := range outliner.loadedProjects {
+	ids := make([]string, 0, len(outliner.population.projects))
+	for _, project := range outliner.population.projects {
 		if project != nil {
 			ids = append(ids, project.ID)
 		}

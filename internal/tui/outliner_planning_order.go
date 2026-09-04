@@ -240,7 +240,7 @@ func (m *OutlinerModel) planningProjects() []*models.Project {
 	if m.project != nil {
 		return []*models.Project{m.project}
 	}
-	return m.loadedProjects
+	return m.population.projects
 }
 
 // locatorIndex returns the position of loc in order, or -1 when absent.

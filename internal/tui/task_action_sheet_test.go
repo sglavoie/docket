@@ -348,7 +348,7 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeySpace})
@@ -373,7 +373,7 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{
 		{task: first, ProjectID: project.ID},
 		{task: second, ProjectID: project.ID},
@@ -431,7 +431,7 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{
 		{task: first, ProjectID: project.ID},
 		{task: second, ProjectID: project.ID},

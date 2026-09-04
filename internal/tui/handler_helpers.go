@@ -40,7 +40,7 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 	if projectID == "" || m.crossOutliner == nil || m.persister == nil {
 		return
 	}
-	for _, project := range m.crossOutliner.loadedProjects {
+	for _, project := range m.crossOutliner.population.projects {
 		if project == nil || project.ID != projectID {
 			continue
 		}
@@ -96,11 +96,11 @@ func (m *AppModel) handleWithRefresh(popView, reload bool) tea.Cmd {
 			_ = m.persister.Load(currentProject)
 		}
 	}
-	// Cross-project outliner has its own loadedProjects cache that bypasses
+	// Cross-project outliner has its own population cache that bypasses
 	// m.currentProject, so a disk-backed reload is needed for mutations to
 	// any loaded project to become visible without leaving the view. The
 	// cursor is saved before reload and restored after refreshAllViews
-	// (which would otherwise clamp it to 0 while loadedProjects is briefly
+	// (which would otherwise clamp it to 0 while the population is briefly
 	// nil); the final clamp to the rebuilt row count happens later in
 	// handleCrossProjectsLoaded via crossProjectRebuildRows.
 	var crossReloadCmd tea.Cmd

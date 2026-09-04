@@ -125,7 +125,7 @@ func TestLensQueryPreservesSavedOrderRatherThanRelevanceOrder(t *testing.T) {
 
 	// The flat ranked list over the same words ranks a title hit above a body
 	// hit, which is exactly the ordering a lens must not adopt.
-	relevance := scopeTestOutliner(outliner.loadedProjects...)
+	relevance := scopeTestOutliner(outliner.population.projects...)
 	searchRankedList(relevance, "needle")
 	ranked := searchVisibleTaskIDs(relevance)
 	if slices.Equal(ranked, got) {

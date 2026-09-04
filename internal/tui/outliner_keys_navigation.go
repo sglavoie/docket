@@ -33,7 +33,7 @@ func (m *OutlinerModel) quickEditProjects() []*models.Project {
 	if m.project != nil {
 		return []*models.Project{m.project}
 	}
-	return m.loadedProjects
+	return m.population.projects
 }
 
 func taskLineEditRequest(source taskref.TaskIdentity, result *grammar.QuickEditResult) app.TaskLineEditRequest {

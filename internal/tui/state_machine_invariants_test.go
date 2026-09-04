@@ -331,7 +331,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		app := newTestAppModel()
 		outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 		outliner.MultiSelectMode = true
-		outliner.loadedProjects = []*models.Project{project}
+		outliner.population.projects = []*models.Project{project}
 		outliner.population.invalidate()
 		outliner.crossProjectRebuildRows()
 		outliner.selectAllVisible()

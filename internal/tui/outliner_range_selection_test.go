@@ -19,7 +19,7 @@ func rangeSelectionTestApp(t *testing.T) (*AppModel, *models.Project, []*models.
 	project := &models.Project{ID: "project", Name: "Project", Tasks: tasks}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{
 		{task: tasks[0], ProjectID: project.ID},
 		{IsSectionHeader: true, SectionName: "header"},

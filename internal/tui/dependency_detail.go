@@ -216,8 +216,8 @@ func (m *OutlinerModel) dependencyDetailProjects() []*models.Project {
 	if m == nil {
 		return nil
 	}
-	if len(m.loadedProjects) > 0 {
-		return m.loadedProjects
+	if len(m.population.projects) > 0 {
+		return m.population.projects
 	}
 	if m.project != nil {
 		return []*models.Project{m.project}
@@ -249,16 +249,4 @@ func (m *OutlinerModel) invalidateDependencyIndex() {
 		return
 	}
 	m.dependencyIndexCache = nil
-}
-
-// setLoadedProjects installs a new loaded population. It exists so replacing
-// that population and dropping the reading derived from it are one act: a
-// caller that assigned the slice directly would leave an index describing
-// projects the Outliner no longer holds until the next rebuild pass.
-func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
-	if m == nil {
-		return
-	}
-	m.loadedProjects = projects
-	m.invalidateDependencyIndex()
 }

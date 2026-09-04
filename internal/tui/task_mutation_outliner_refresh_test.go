@@ -16,7 +16,7 @@ import (
 )
 
 // installDistinctOutlinerSnapshot gives the Outliner the immutable workspace
-// snapshot it owns in production. Tests that point loadedProjects at the
+// snapshot it owns in production. Tests that point the loaded population at the
 // catalog objects cannot expose stale post-mutation rows because the mutation
 // updates the view's project pointer in place.
 func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outliner *OutlinerModel) {
@@ -31,7 +31,7 @@ func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outliner *Ou
 	if len(projects) == 0 {
 		t.Fatal("load Outliner snapshot: no active projects")
 	}
-	outliner.loadedProjects = projects
+	outliner.population.projects = projects
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 }
@@ -170,7 +170,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	_, cmd := model.Update(coordinator.TaskCreatedMsg{Result: &result})
 	runSession2AppCommand(t, model, cmd)
 
-	if outliner.crossLoading {
+	if outliner.population.loading {
 		t.Fatal("Outliner reload did not settle")
 	}
 	if !outlinerHasTask(outliner, project.ID, task.ID) {

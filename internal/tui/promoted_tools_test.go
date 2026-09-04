@@ -65,8 +65,8 @@ func TestPromotedToolNotesScope(t *testing.T) {
 			name: "archived project header cursor",
 			configure: func(app *AppModel) {
 				setTestAppProjects(app, workA, workB, home, archived)
-				app.crossOutliner.loadedProjects = append(
-					app.crossOutliner.loadedProjects, archived)
+				app.crossOutliner.population.projects = append(
+					app.crossOutliner.population.projects, archived)
 				app.crossOutliner.rows = []outlinerRow{
 					{IsProjectHeader: true, ProjectID: archived.ID},
 				}
@@ -81,7 +81,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app := newUITestApp()
 			setTestAppProjects(app, workA, workB, home)
-			app.crossOutliner.loadedProjects = []*models.Project{workA, workB, home}
+			app.crossOutliner.population.projects = []*models.Project{workA, workB, home}
 			test.configure(app)
 			app.operationRegistry = operation.NewOperationRegistry()
 			app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)

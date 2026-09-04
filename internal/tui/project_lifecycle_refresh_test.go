@@ -140,7 +140,7 @@ func newSession4EmptyProject(t *testing.T, dataDir, name string) *models.Project
 
 func session4LoadedProject(t *testing.T, cross *OutlinerModel, projectID string) *models.Project {
 	t.Helper()
-	for _, project := range cross.loadedProjects {
+	for _, project := range cross.population.projects {
 		if project != nil && project.ID == projectID {
 			return project
 		}
@@ -150,7 +150,7 @@ func session4LoadedProject(t *testing.T, cross *OutlinerModel, projectID string)
 }
 
 func session4HasLoadedProject(cross *OutlinerModel, projectID string) bool {
-	for _, project := range cross.loadedProjects {
+	for _, project := range cross.population.projects {
 		if project != nil && project.ID == projectID {
 			return true
 		}
@@ -321,7 +321,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectRestoredMsg{Project: live})
-				if fixture.cross.crossLoading {
+				if fixture.cross.population.loading {
 					t.Fatal("covered mutation started an unroutable cross-project reload")
 				}
 				if session4HasLoadedProject(fixture.cross, project.ID) {

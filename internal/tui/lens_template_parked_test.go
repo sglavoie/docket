@@ -29,7 +29,7 @@ func parkedTemplateApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Proje
 
 	model := lensOperationApp(t)
 	out := scopeTestOutliner(alpha, parkedOne, parkedTwo, archived)
-	out.loadedProjects = []*models.Project{alpha}
+	out.population.projects = []*models.Project{alpha}
 	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	model.crossOutliner = out
@@ -90,7 +90,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 	if out.activeLens.projectFacetsAwaitingLoad {
 		t.Fatal("a landed load left the population facets still owed")
 	}
-	if out.crossLoading {
+	if out.population.loading {
 		t.Fatal("the landed load left the loading state armed")
 	}
 }

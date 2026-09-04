@@ -186,7 +186,7 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 
 	other := project.GetTaskByID("other")
 	out := model.crossOutliner
-	out.loadedProjects = []*models.Project{project}
+	out.population.projects = []*models.Project{project}
 	out.rows = []outlinerRow{{task: other, ProjectID: project.ID}}
 	out.Cursor = 0
 

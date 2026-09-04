@@ -15,8 +15,8 @@ func (m *OutlinerModel) validateCrossFocusStack() {
 		return
 	}
 
-	projects := make(map[string]*models.Project, len(m.loadedProjects))
-	for _, project := range m.loadedProjects {
+	projects := make(map[string]*models.Project, len(m.population.projects))
+	for _, project := range m.population.projects {
 		if project != nil {
 			projects[project.ID] = project
 		}

@@ -169,7 +169,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	if m.statusMessage != "Reordered planning list" {
 		t.Fatalf("status = %q, want reorder success", m.statusMessage)
 	}
-	cross.loadedProjects = []*models.Project{project}
+	cross.population.projects = []*models.Project{project}
 	enterCrossMode(cross, chrome.ModeToday)
 	assertOrder(t, "Today after rebuild", visibleTaskIDs(cross), want)
 	assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID})
@@ -332,7 +332,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 		t.Fatalf("reload cursor anchor = %s/%s, want %s/%s",
 			cross.crossReloadProjectID, cross.crossReloadTaskID, project.ID, firstID)
 	}
-	cross.loadedProjects = []*models.Project{project}
+	cross.population.projects = []*models.Project{project}
 	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	cross.restoreCrossOutlinerCursorAfterReload(cross.Cursor, cross.ViewScrollOffset)

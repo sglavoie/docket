@@ -70,7 +70,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if m.crossOutliner == nil {
 			return true, nil
 		}
-		adopted := msg.generation == m.crossOutliner.crossLoadGen
+		adopted := msg.generation == m.crossOutliner.population.loadGen
 		if adopted {
 			m.adoptCrossProjectSnapshot(msg.projects)
 		}
@@ -107,7 +107,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		cmd, published := m.crossOutliner.handleLensProjectsLoaded(msg)
 		if published {
-			m.adoptCrossProjectSnapshot(m.crossOutliner.loadedProjects)
+			m.adoptCrossProjectSnapshot(m.crossOutliner.population.projects)
 		}
 		return true, cmd
 	case noteSearchIndexLoadedMsg:

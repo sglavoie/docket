@@ -103,9 +103,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 // restoration all supersede it, and a superseded result publishes nothing.
 func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) tea.Cmd {
 	m.discardPendingLensApplication()
-	m.crossLoadGen++
-	m.crossLoading = true
-	pending.generation = m.crossLoadGen
+	pending.generation = m.population.beginLoad()
 	m.pendingLens = pending
 	if m.activeLens != nil {
 		m.activeLens.pendingGeneration = pending.generation
@@ -142,7 +140,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 		// the right one.
 		return nil, false
 	}
-	if msg.generation != m.crossLoadGen || (m.activeLens != nil && m.activeLens.pendingGeneration != msg.generation) {
+	if msg.generation != m.population.loadGen || (m.activeLens != nil && m.activeLens.pendingGeneration != msg.generation) {
 		// This application was superseded or dismissed while its load ran. It
 		// publishes nothing, but it is still the one holding the loading state, so
 		// settle that here rather than leaving the model armed for a result that
@@ -193,7 +191,7 @@ func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, pro
 	// messages the runtime happened to deliver first.
 	projects = m.settleParkedFocusAgainstPopulation(projects)
 	m.setLoadedProjects(projects)
-	m.crossSnapshotReady = true
+	m.population.setSnapshotReady(true)
 	// The provenance is the filter this exit read under, not the one the model
 	// holds now: the two are the same on every route that reaches here, and
 	// recording the read's own filter is what keeps that an observation rather

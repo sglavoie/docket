@@ -100,7 +100,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			app.projects[beta.ID] = beta
 
 			outliner := app.crossOutliner
-			outliner.loadedProjects = []*models.Project{alpha, beta}
+			outliner.population.projects = []*models.Project{alpha, beta}
 			outliner.population.invalidate()
 			outliner.crossProjectRebuildRows()
 
@@ -161,7 +161,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	project.Tasks = append(project.Tasks, child)
 	project.BuildTaskTree()
 	app.projects[project.ID] = project
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.population.invalidate()
 	app.crossOutliner.crossProjectRebuildRows()
 	app.crossOutliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
@@ -198,7 +198,7 @@ func navigationAliasTestApp(t *testing.T) *AppModel {
 	project := scopeTestProject("project", "Project", "one")
 	app.projects[project.ID] = project
 	out := app.crossOutliner
-	out.loadedProjects = []*models.Project{project}
+	out.population.projects = []*models.Project{project}
 	out.SetSize(out.Width(), 11)
 	out.rows = make([]outlinerRow, 0, 12)
 	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
@@ -287,7 +287,7 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 
 	m.project = nil
 	m.primaryMode = chrome.ModeAll
-	m.loadedProjects = []*models.Project{project}
+	m.population.projects = []*models.Project{project}
 	m.rows[0].ProjectID = project.ID
 	if !m.simplifiedReorderEligible() {
 		t.Fatal("base all-project hierarchy did not allow same-project sibling reorder")
@@ -338,7 +338,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	app.projects[inbox.ID] = inbox
 	app.projects[project.ID] = project
-	app.crossOutliner.loadedProjects = []*models.Project{inbox, project}
+	app.crossOutliner.population.projects = []*models.Project{inbox, project}
 	app.crossOutliner.rows = []outlinerRow{{
 		task:      project.Tasks[0],
 		ProjectID: project.ID,
@@ -369,7 +369,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	app.projects[inbox.ID] = inbox
 	app.projects[project.ID] = project
-	app.crossOutliner.loadedProjects = []*models.Project{inbox, project}
+	app.crossOutliner.population.projects = []*models.Project{inbox, project}
 	app.crossOutliner.rows = []outlinerRow{
 		{IsProjectHeader: true, ProjectID: project.ID},
 		{task: project.Tasks[0], ProjectID: project.ID},
@@ -406,7 +406,7 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	shell.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	shell.projects[inbox.ID] = inbox
 	shell.projects[project.ID] = project
-	shell.crossOutliner.loadedProjects = []*models.Project{inbox, project}
+	shell.crossOutliner.population.projects = []*models.Project{inbox, project}
 	shell.crossOutliner.rows = []outlinerRow{
 		{IsProjectHeader: true, ProjectID: inbox.ID},
 	}

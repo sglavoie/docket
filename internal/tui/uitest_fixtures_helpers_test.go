@@ -258,7 +258,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	}
 	driver.bootLaunchCommands()
 	if w.currentProjectID != "" {
-		for _, project := range app.crossOutliner.loadedProjects {
+		for _, project := range app.crossOutliner.population.projects {
 			if project != nil && project.ID == w.currentProjectID {
 				app.currentProject = project
 				break

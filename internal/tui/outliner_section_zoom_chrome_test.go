@@ -20,7 +20,7 @@ import (
 func zoomChromeApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := newFilterChordTestApp(t)
-	for _, project := range app.crossOutliner.loadedProjects {
+	for _, project := range app.crossOutliner.population.projects {
 		for _, task := range project.Tasks {
 			task.UpdatedAt = time.Now()
 		}

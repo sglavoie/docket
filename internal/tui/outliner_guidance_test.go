@@ -97,7 +97,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			name: "no projects",
 			configure: func(out *OutlinerModel) {
 				out.project = nil
-				out.loadedProjects = nil
+				out.population.projects = nil
 				out.rows = nil
 			},
 			wantMessage: "No projects are available. Press P to open Projects.",
@@ -107,7 +107,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			name: "empty mode",
 			configure: func(out *OutlinerModel) {
 				out.project = project
-				out.loadedProjects = []*models.Project{project}
+				out.population.projects = []*models.Project{project}
 				out.primaryMode = chrome.ModeDue
 				out.rows = nil
 			},
@@ -118,7 +118,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			name: "filtered empty",
 			configure: func(out *OutlinerModel) {
 				out.project = project
-				out.loadedProjects = []*models.Project{project}
+				out.population.projects = []*models.Project{project}
 				out.primaryMode = chrome.ModeAll
 				out.filter.Priority = models.PriorityHigh
 				out.adoptFilterCarriers()
@@ -131,7 +131,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			name: "search empty",
 			configure: func(out *OutlinerModel) {
 				out.project = project
-				out.loadedProjects = []*models.Project{project}
+				out.population.projects = []*models.Project{project}
 				out.SetSearchQuery("missing")
 				out.rows = nil
 			},
@@ -142,7 +142,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			name: "Focus empty",
 			configure: func(out *OutlinerModel) {
 				out.project = project
-				out.loadedProjects = []*models.Project{project}
+				out.population.projects = []*models.Project{project}
 				out.focusStack = []FocusEntry{{TaskID: "missing"}}
 				out.rows = nil
 			},

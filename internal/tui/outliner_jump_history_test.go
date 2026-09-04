@@ -250,9 +250,9 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	capture3 := outliner3.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner3.armOutlinerRelocation(capture3)
 	outliner3.Cursor = 2 // User moved after commit but before the reload completed.
-	outliner3.crossLoadGen = 1
+	outliner3.population.loadGen = 1
 	outliner3.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
-		projects:   outliner3.loadedProjects,
+		projects:   outliner3.population.projects,
 		generation: 1,
 	})
 	if outliner3.relocationHistory.pending != nil || len(outliner3.relocationHistory.back) != 0 {
@@ -286,7 +286,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 func TestCtrlOAndCtrlIDispatchThroughTheSimplifiedOperationPipeline(t *testing.T) {
 	model := typedTestApp(t)
 	outliner := model.crossOutliner
-	project := outliner.loadedProjects[0]
+	project := outliner.population.projects[0]
 	target := &models.Task{ID: "target", Title: "target", WorkflowState: models.StateDoing}
 	before := &models.Task{ID: "before", Title: "before", WorkflowState: models.StateBacklog}
 	after := &models.Task{ID: "after", Title: "after", WorkflowState: models.StateBacklog}
@@ -328,7 +328,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	}
 
 	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
-	outliner.loadedProjects = env.projects
+	outliner.population.projects = env.projects
 	outliner.population.invalidate()
 	outliner.selectOutlinerMode(chrome.ModeAll)
 	model.crossOutliner = outliner

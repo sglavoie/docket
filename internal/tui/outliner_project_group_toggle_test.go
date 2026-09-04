@@ -200,7 +200,7 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	project := scopeTestProject("project", "Project", "task")
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	outliner.pushProjectScope(project.ID)

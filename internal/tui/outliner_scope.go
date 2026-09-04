@@ -87,7 +87,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 // counts, and work horizons route through this so scope is honored in one place.
 func (m *OutlinerModel) scopeProjects() []*models.Project {
 	if m.scopedProjectID == "" {
-		return m.loadedProjects
+		return m.population.projects
 	}
 	if p := m.scopedProject(); p != nil {
 		return []*models.Project{p}
@@ -95,13 +95,13 @@ func (m *OutlinerModel) scopeProjects() []*models.Project {
 	return nil
 }
 
-// scopedProject resolves the currently scoped project from loadedProjects, or
+// scopedProject resolves the currently scoped project from the loaded population, or
 // nil when unscoped or the project is no longer loaded.
 func (m *OutlinerModel) scopedProject() *models.Project {
 	if m.scopedProjectID == "" {
 		return nil
 	}
-	for _, p := range m.loadedProjects {
+	for _, p := range m.population.projects {
 		if p != nil && p.ID == m.scopedProjectID {
 			return p
 		}
@@ -227,8 +227,8 @@ func (m *OutlinerModel) dropParkedProjectFocus() {
 	}
 	m.parkedFocusProjectID = ""
 	m.parkedFocusReloadPending = true
-	retained := make([]*models.Project, 0, len(m.loadedProjects))
-	for _, project := range m.loadedProjects {
+	retained := make([]*models.Project, 0, len(m.population.projects))
+	for _, project := range m.population.projects {
 		if project != nil && project.ID == focused {
 			continue
 		}
@@ -460,9 +460,9 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	return "Focused project no longer exists — returned to the base scope", true
 }
 
-// projectIsLoaded reports whether a project ID is present in loadedProjects.
+// projectIsLoaded reports whether a project ID is present in the loaded population.
 func (m *OutlinerModel) projectIsLoaded(projectID string) bool {
-	for _, p := range m.loadedProjects {
+	for _, p := range m.population.projects {
 		if p != nil && p.ID == projectID {
 			return true
 		}
@@ -470,10 +470,10 @@ func (m *OutlinerModel) projectIsLoaded(projectID string) bool {
 	return false
 }
 
-// projectDisplayNameByID resolves a friendly project name from loadedProjects,
+// projectDisplayNameByID resolves a friendly project name from the loaded population,
 // falling back to the raw ID when the project is not loaded.
 func (m *OutlinerModel) projectDisplayNameByID(projectID string) string {
-	for _, p := range m.loadedProjects {
+	for _, p := range m.population.projects {
 		if p != nil && p.ID == projectID {
 			return p.Name
 		}

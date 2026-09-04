@@ -13,7 +13,7 @@ import (
 
 func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	baseline := slices.Clone(outliner.loadedProjects)
+	baseline := slices.Clone(outliner.population.projects)
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
 	lens = lensWithFacet(lens, "+parked:only")
@@ -27,7 +27,7 @@ func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 	if outliner.projectFilter.ParkedMode == query.ProjectPopulationOnly {
 		t.Fatal("the candidate filter must not be written to the live model")
 	}
-	if !slices.Equal(outliner.loadedProjects, baseline) {
+	if !slices.Equal(outliner.population.projects, baseline) {
 		t.Fatal("the live population changed before the load landed")
 	}
 
@@ -94,7 +94,7 @@ func TestLensProjectLoadIsSupersededByALaterRequest(t *testing.T) {
 
 func TestLensProjectLoadAbortsWhenNothingLoaded(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	baseline := slices.Clone(outliner.loadedProjects)
+	baseline := slices.Clone(outliner.population.projects)
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
 	lens = lensWithFacet(lens, "+parked:only")
@@ -110,10 +110,10 @@ func TestLensProjectLoadAbortsWhenNothingLoaded(t *testing.T) {
 	if outliner.hasActiveLens() {
 		t.Fatal("a wholly failed load installed a lens")
 	}
-	if !slices.Equal(outliner.loadedProjects, baseline) {
+	if !slices.Equal(outliner.population.projects, baseline) {
 		t.Fatal("a wholly failed load disturbed the live population")
 	}
-	if outliner.crossLoading {
+	if outliner.population.loading {
 		t.Fatal("a wholly failed load left the loading state armed")
 	}
 	if cmd == nil {
@@ -158,7 +158,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.collapsedSections["baseline-fold"] = true
-	baselineProjects := slices.Clone(outliner.loadedProjects)
+	baselineProjects := slices.Clone(outliner.population.projects)
 
 	lens := waitingLens(lensTestID(1), "Parked", "")
 	lens = lensWithFacet(lens, "+parked:only")
@@ -199,7 +199,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if outliner.hasSearchProjection() {
 		t.Fatal("restoration installed a search projection the frozen baseline never held")
 	}
-	if !slices.Equal(outliner.loadedProjects, baselineProjects) {
+	if !slices.Equal(outliner.population.projects, baselineProjects) {
 		t.Fatal("restoration did not return the pre-load population")
 	}
 }
@@ -211,7 +211,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(chrome.ModeInbox)
-	baselineProjects := slices.Clone(outliner.loadedProjects)
+	baselineProjects := slices.Clone(outliner.population.projects)
 
 	async := waitingLens(lensTestID(1), "Parked", "")
 	async = lensWithFacet(async, "+parked:only")
@@ -221,7 +221,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	stale := outliner.pendingLens.generation
 	// The 200ms delay has elapsed, so the spinner is on screen when the
 	// synchronous lens supersedes the load.
-	outliner.crossSpinnerVisible = true
+	outliner.population.spinnerVisible = true
 
 	if cmd := applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Waiting", "")); cmd != nil {
 		t.Fatal("an unchanged population must not start a load")
@@ -229,7 +229,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if outliner.pendingLens != nil {
 		t.Fatal("a synchronous lens left an application pending")
 	}
-	if outliner.crossLoading || outliner.crossSpinnerVisible {
+	if outliner.population.loading || outliner.population.spinnerVisible {
 		t.Fatal("a synchronous lens left the loading state armed")
 	}
 	if outliner.activeLens.pendingGeneration != 0 {
@@ -244,7 +244,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if outliner.activeLens == nil || outliner.activeLens.name != "Waiting" {
 		t.Fatal("the late result replaced the lens that superseded it")
 	}
-	if outliner.pendingLens != nil || outliner.crossLoading || outliner.crossSpinnerVisible {
+	if outliner.pendingLens != nil || outliner.population.loading || outliner.population.spinnerVisible {
 		t.Fatal("the late result left pending or loading state armed")
 	}
 
@@ -254,7 +254,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if outliner.primaryMode != chrome.ModeInbox {
 		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, chrome.ModeInbox)
 	}
-	if !slices.Equal(outliner.loadedProjects, baselineProjects) {
+	if !slices.Equal(outliner.population.projects, baselineProjects) {
 		t.Fatal("a superseded load leaked its population into the restored view")
 	}
 }

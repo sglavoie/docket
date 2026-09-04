@@ -344,7 +344,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
 	outliner := app.crossOutliner
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"focus": true}
 	outliner.adoptFilterCarriers()

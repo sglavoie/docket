@@ -37,7 +37,7 @@ func referencePickerFixture(t *testing.T) (*AppModel, *models.Task, *models.Proj
 	home.BuildTaskTree()
 
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.loadedProjects = []*models.Project{home, remote}
+	model.crossOutliner.population.projects = []*models.Project{home, remote}
 	model.crossOutliner.rows = []outlinerRow{{task: subject, ProjectID: home.ID}}
 	return model, subject, home, remote
 }
@@ -170,7 +170,7 @@ func concurrentReferencePickerFixture(t *testing.T) (*AppModel, *models.Task, *m
 		project.BuildTaskTree()
 	}
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.loadedProjects = []*models.Project{home, remote}
+	model.crossOutliner.population.projects = []*models.Project{home, remote}
 	subject := home.GetTaskByID("subject")
 	model.crossOutliner.rows = []outlinerRow{{task: subject, ProjectID: home.ID}}
 	return model, subject, home

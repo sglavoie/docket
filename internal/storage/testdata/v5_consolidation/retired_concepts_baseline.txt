@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 433
+# Total rows: 434
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -182,7 +182,7 @@ dependency	internal/tui/dependency_detail.go	dependencyOutlookBlocked	3
 dependency	internal/tui/dependency_detail.go	dependencyOutlookSettled	2
 dependency	internal/tui/dependency_detail.go	dependencyOutlookUnreadable	3
 dependency	internal/tui/dependency_detail.go	incomingDependencyDetails	1
-dependency	internal/tui/dependency_detail.go	invalidateDependencyIndex	2
+dependency	internal/tui/dependency_detail.go	invalidateDependencyIndex	1
 dependency	internal/tui/dependency_detail.go	lookupDependencyTarget	3
 dependency	internal/tui/dependency_detail.go	outgoingDependencyDetails	1
 dependency	internal/tui/feature_runtime.go	RuntimeDependencies	3
@@ -338,6 +338,7 @@ dependency	internal/tui/outliner_mode_wiring.go	DependencyFilterBlocked	1
 dependency	internal/tui/outliner_mode_wiring.go	DependencyFilterBlocking	1
 dependency	internal/tui/outliner_mode_wiring.go	dependencyIndex	1
 dependency	internal/tui/outliner_mode_wiring.go	passesDependencyFilter	2
+dependency	internal/tui/outliner_population_state.go	invalidateDependencyIndex	1
 dependency	internal/tui/outliner_primary_rows.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/outliner_primary_tree.go	CloneTaskDetachingDependencies	2
 dependency	internal/tui/outliner_quick_edit_view.go	Dependencies	2

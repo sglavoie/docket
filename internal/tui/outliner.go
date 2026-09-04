@@ -260,27 +260,21 @@ type OutlinerModel struct {
 	OpenAtTask *models.Task
 
 	// Cross-project mode fields (used when m.project == nil)
-	loadedProjects       []*models.Project   // Successfully loaded projects
-	crossSnapshotReady   bool                // True after the first cross-project snapshot has been accepted
-	crossLoading         bool                // True while cross-project load is in progress
-	crossSpinnerVisible  bool                // True once the 200ms delay has elapsed during an initial load
-	crossLoadGen         int                 // Generation counter; discards stale load results
-	crossSpinner         chrome.SpinnerModel // View-local spinner, independent of global save spinner
-	crossReloadProjectID string              // Project owning the cursor task captured before an async reload
-	crossReloadTaskID    string              // Cursor task captured before an async reload; restored after rows rebuild
-	crossReloadFromTop   bool                // One-shot scope-change guard that suppresses stale cursor restoration
+	crossReloadProjectID string // Project owning the cursor task captured before an async reload
+	crossReloadTaskID    string // Cursor task captured before an async reload; restored after rows rebuild
+	crossReloadFromTop   bool   // One-shot scope-change guard that suppresses stale cursor restoration
 
 	// crossReloadHeaderProjectID lands the cursor on one project sub-header after
 	// the next reload. Parking a project deletes every row the cursor was on, and
 	// an arbitrary clamp there reads as a crash rather than as a hidden project.
 	crossReloadHeaderProjectID string
 
-	// population is the memoization guard crossProjectRebuildRows consults: the
-	// inputs the last pass ran under, plus the one-shot bypass. Like the readout
-	// and the menu bar above it, it is a named field rather than promoted ones —
-	// outliner_population_state.go owns the cluster, and every caller that changes
-	// what the population would produce says so through m.population.invalidate()
-	// rather than by writing a flag.
+	// population is the cross-project population itself, the lifecycle of the
+	// read that replaces it, and the memoization guard crossProjectRebuildRows
+	// consults over it. Like the readout and the menu bar above it, it is a named
+	// field rather than promoted ones — outliner_population_state.go owns the
+	// cluster, and every caller that changes what the population would produce
+	// says so through m.population.invalidate() rather than by writing a flag.
 	population populationState
 
 	// scopedProjectID names the single project the global outliner is currently
@@ -428,17 +422,14 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd, _ := m.handleLensProjectsLoaded(msg)
 		return m, cmd
 	case crossSpinnerDelayMsg:
-		if m.crossLoading && !m.hasCrossProjectSnapshot() {
-			m.crossSpinnerVisible = true
-			m.crossSpinner = chrome.NewSpinner()
-			return m, m.crossSpinner.Tick()
+		if m.population.loading && !m.hasCrossProjectSnapshot() {
+			m.population.showSpinner()
+			return m, m.population.spinner.Tick()
 		}
 		return m, nil
 	case crossSpinnerTickMsg:
-		if m.crossSpinnerVisible {
-			var cmd tea.Cmd
-			m.crossSpinner, cmd = m.crossSpinner.Update(msg.inner)
-			return m, crossSpinnerTickFwd(cmd)
+		if m.population.spinnerVisible {
+			return m, crossSpinnerTickFwd(m.population.advanceSpinner(msg.inner))
 		}
 		return m, nil
 	}

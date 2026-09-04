@@ -103,7 +103,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]projecthub.ProjectTaskTally
 	}
 	var loader *workspace.Loader
 	if m.crossOutliner != nil {
-		for _, project := range m.crossOutliner.loadedProjects {
+		for _, project := range m.crossOutliner.population.projects {
 			if project != nil {
 				counts[project.ID] = projecthub.ProjectTaskTallyOf(project)
 			}

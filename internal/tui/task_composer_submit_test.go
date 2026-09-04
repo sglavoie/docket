@@ -278,7 +278,7 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 	appModel.crossOutliner = NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
-	appModel.crossOutliner.loadedProjects = []*models.Project{project}
+	appModel.crossOutliner.population.projects = []*models.Project{project}
 	appModel.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
 	appModel.navigation.ResetRoot()
 

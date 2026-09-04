@@ -167,7 +167,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	project := scopeTestProject("project", "Project", "task")
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: "task"}) {
@@ -205,7 +205,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	project := scopeTestProject("project", "Project", "task")
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 

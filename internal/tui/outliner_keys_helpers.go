@@ -16,7 +16,7 @@ func (m *OutlinerModel) ensureExpandedNodes() {
 		if m.project != nil {
 			m.markAllExpanded(m.project.ID, m.project.GetRootTasks())
 		} else {
-			for _, p := range m.loadedProjects {
+			for _, p := range m.population.projects {
 				m.markAllExpanded(p.ID, p.GetRootTasks())
 			}
 		}
@@ -92,7 +92,7 @@ func (m *OutlinerModel) setAllTaskFolds(expanded bool) bool {
 		return m.markAllFolds(m.project.ID, m.project.GetRootTasks(), false)
 	}
 	changed := false
-	for _, project := range m.loadedProjects {
+	for _, project := range m.population.projects {
 		if m.markAllFolds(project.ID, project.GetRootTasks(), false) {
 			changed = true
 		}

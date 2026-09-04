@@ -23,7 +23,7 @@ func (m *OutlinerModel) GetTaskRef() (*models.Task, *models.Project) {
 		return row.task, m.project
 	}
 
-	for _, proj := range m.loadedProjects {
+	for _, proj := range m.population.projects {
 		if proj.ID == row.ProjectID {
 			return row.task, proj
 		}
@@ -233,8 +233,8 @@ func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
 	if m.SelectedCount() == 0 {
 		return
 	}
-	admitted := make(map[string]bool, len(m.loadedProjects))
-	for _, project := range m.loadedProjects {
+	admitted := make(map[string]bool, len(m.population.projects))
+	for _, project := range m.population.projects {
 		if project != nil {
 			admitted[project.ID] = true
 		}

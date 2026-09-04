@@ -144,8 +144,8 @@ func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
 	now := time.Now()
-	app.crossOutliner.loadedProjects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
-	for _, task := range app.crossOutliner.loadedProjects[0].Tasks[1:] {
+	app.crossOutliner.population.projects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
+	for _, task := range app.crossOutliner.population.projects[0].Tasks[1:] {
 		task.UpdatedAt = now
 	}
 	app.crossOutliner.rebuildRows()

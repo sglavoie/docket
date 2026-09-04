@@ -182,7 +182,7 @@ func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.population.projects = []*models.Project{project}
 	app.crossOutliner.rows = []outlinerRow{
 		{task: first, ProjectID: project.ID},
 		{task: selected, ProjectID: project.ID},

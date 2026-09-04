@@ -112,8 +112,8 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 	snapshot := outlinerViewSnapshot{
 		presentation:         m.capturePresentationSnapshot(),
 		projectFilter:        m.projectFilter.Clone(),
-		loadedProjects:       slices.Clone(m.loadedProjects),
-		crossSnapshotReady:   m.crossSnapshotReady,
+		loadedProjects:       slices.Clone(m.population.projects),
+		crossSnapshotReady:   m.population.snapshotReady,
 		parkedFocusProjectID: m.parkedFocusProjectID,
 		scopedProjectID:      m.scopedProjectID,
 		scopeStack:           slices.Clone(m.scopeStack),
@@ -143,7 +143,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.projectFilter = snapshot.projectFilter.Clone()
 	m.adoptFilterCarriers()
 	m.setLoadedProjects(slices.Clone(snapshot.loadedProjects))
-	m.crossSnapshotReady = snapshot.crossSnapshotReady
+	m.population.setSnapshotReady(snapshot.crossSnapshotReady)
 	m.parkedFocusProjectID = snapshot.parkedFocusProjectID
 	m.scopedProjectID = snapshot.scopedProjectID
 	m.scopeStack = slices.Clone(snapshot.scopeStack)

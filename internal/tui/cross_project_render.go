@@ -8,25 +8,25 @@ import (
 // centered loading state. Later reloads retain the last accepted snapshot until
 // its replacement is ready, so rendering never passes through an empty frame.
 func (m *OutlinerModel) crossProjectView() string {
-	if m.crossLoading && !m.hasCrossProjectSnapshot() {
+	if m.population.loading && !m.hasCrossProjectSnapshot() {
 		return m.renderCrossLoadingState()
 	}
 	return m.renderCrossProjectContent()
 }
 
 // hasCrossProjectSnapshot reports whether there is stable content to render
-// while a refresh is in flight. The loadedProjects fallback keeps older tests
+// while a refresh is in flight. The loaded-projects fallback keeps older tests
 // and callers that install an in-memory snapshot directly compatible.
 func (m *OutlinerModel) hasCrossProjectSnapshot() bool {
-	return m.crossSnapshotReady || len(m.loadedProjects) > 0
+	return m.population.snapshotReady || len(m.population.projects) > 0
 }
 
 // renderCrossLoadingState renders a non-empty cold-load frame immediately,
 // adding the animated Dot spinner only after its short anti-flicker delay.
 func (m *OutlinerModel) renderCrossLoadingState() string {
 	label := "Loading projects…"
-	if m.crossSpinnerVisible {
-		label = m.crossSpinner.View() + " " + label
+	if m.population.spinnerVisible {
+		label = m.population.spinner.View() + " " + label
 	}
 	centered := lipgloss.NewStyle().
 		Width(m.Width()).

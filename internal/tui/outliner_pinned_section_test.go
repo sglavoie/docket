@@ -35,7 +35,7 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 	beta.Name, beta.Slug = "Beta", "beta"
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.loadedProjects = []*models.Project{beta, alpha}
+	outliner.population.projects = []*models.Project{beta, alpha}
 
 	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestPinnedAndDueTiesUsePinnedProjectThenAlphabeticalOrder(t *testing.T) {
 	beta.Pinned = true
 	runtime := testConfigWithProjects(alpha, beta)
 	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = []*models.Project{alpha, beta}
+	outliner.population.projects = []*models.Project{alpha, beta}
 
 	outliner.selectOutlinerMode(chrome.ModeAll)
 	if got := visibleQualifiedTaskIDs(outliner); !slices.Equal(got, []string{

@@ -29,7 +29,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 
 	model.crossOutliner = NewOutlinerModel(nil, model.configManager, model.runtime)
-	model.crossOutliner.loadedProjects = []*models.Project{project}
+	model.crossOutliner.population.projects = []*models.Project{project}
 	model.crossOutliner.SetSize(model.width, model.height-2)
 	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 
@@ -129,7 +129,7 @@ func containsProject(ids []string, want string) bool {
 func scopeTestOutliner(projects ...*models.Project) *OutlinerModel {
 	runtime := testConfigWithProjects(projects...)
 	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = projects
+	outliner.population.projects = projects
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	return outliner
@@ -146,7 +146,7 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 		MultiSelectState: listsurface.MultiSelectState{
 			Selected: make(map[taskref.TaskIdentity]bool),
 		},
-		loadedProjects: env.projects,
+		population: populationState{projects: env.projects},
 	}
 	outliner.taskItem = env.taskItem
 	return outliner
@@ -241,7 +241,7 @@ func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
 func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.RuntimeState) {
 	runtime := testConfigWithProjects(projects...)
 	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = projects
+	outliner.population.projects = projects
 	return outliner, runtime
 }
 

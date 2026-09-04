@@ -72,15 +72,14 @@ func crossSpinnerTickFwd(cmd tea.Cmd) tea.Cmd {
 // loading of all context-filtered projects plus a 200ms initial-spinner delay.
 func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 	if !m.hasCrossProjectSnapshot() {
-		m.crossSpinner = chrome.NewSpinner()
+		m.population.resetSpinner()
 	}
 	// An ordinary reload reads the live project filter, which is not the candidate
 	// filter a pending lens application is waiting on. That application can never
 	// publish behind this load, so it is abandoned here rather than left to have
 	// its result arrive against a model that has moved on.
 	m.discardPendingLensApplication()
-	m.crossLoading = true
-	m.crossLoadGen++
+	m.population.beginLoad()
 	return tea.Batch(
 		m.loadCrossProjectsCmd(),
 		status.TickCmd(crossSpinnerDelay, func(time.Time) tea.Msg {
@@ -94,7 +93,7 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 // collected for a non-blocking status bar warning, matching the AllTasks
 // continue-on-error pattern.
 func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
-	gen := m.crossLoadGen
+	gen := m.population.loadGen
 	runtime := m.runtime
 	svc := m.projectService
 	adopting := m.pendingParkedFocusID != ""
@@ -176,7 +175,7 @@ func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
 	// Becoming visible again means the surface that asked for a parked focus was
 	// dismissed before its load landed. Abandon it and reload the base workspace.
 	m.cancelParkedProjectFocus()
-	if m.crossLoading {
+	if m.population.loading {
 		return nil
 	}
 	savedCursor := m.Cursor
@@ -187,10 +186,10 @@ func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
 
 // handleCrossProjectsLoaded processes a completed load. Stale results
 // (generation mismatch) are discarded. Successful results populate
-// loadedProjects and rebuild rows. A status bar warning is returned for any
+// the population and rebuild rows. A status bar warning is returned for any
 // failed projects.
 func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) tea.Cmd {
-	if msg.generation != m.crossLoadGen {
+	if msg.generation != m.population.loadGen {
 		return nil // Stale result from a superseded load; discard.
 	}
 	if msg.focusProjectID != "" {
@@ -198,8 +197,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 		if detail, failed := parkedFocusFailureDetail(msg, msg.focusProjectID); failed {
 			// The base snapshot stays exactly as it was: a focus that could not be
 			// read must not disturb the workspace the user is still looking at.
-			m.crossLoading = false
-			m.crossSpinnerVisible = false
+			m.population.settleLoad()
 			m.crossReloadProjectID = ""
 			m.crossReloadTaskID = ""
 			return func() tea.Msg { return status.ErrorMsg{Err: errors.New(detail)} }
@@ -208,10 +206,9 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	fallbackCursor := m.Cursor
 	fallbackScrollOffset := m.ViewScrollOffset
 	m.discardDisplacedRelocationCapture()
-	m.crossLoading = false
-	m.crossSpinnerVisible = false
+	m.population.settleLoad()
 	m.setLoadedProjects(msg.projects)
-	m.crossSnapshotReady = true
+	m.population.setSnapshotReady(true)
 	m.recordLoadedPopulation(msg.loadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()
 	m.population.invalidate()
@@ -267,8 +264,8 @@ func parkedFocusFailureDetail(msg crossProjectsLoadedMsg, projectID string) (str
 	return "Could not open that project — it is no longer available", true
 }
 
-// crossProjectRebuildRows aggregates tasks from loadedProjects through the
-// canonical mode pipeline. Called by rebuildRows() when m.project == nil.
+// crossProjectRebuildRows aggregates tasks from the loaded population through
+// the canonical mode pipeline. Called by rebuildRows() when m.project == nil.
 //
 // A memoization guard short-circuits rebuilding when mode, search/filter state,
 // focus stack depth, and total task count are all unchanged from
@@ -278,7 +275,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.syncJumpProjection()
 	// Compute current guard inputs.
 	taskCount := 0
-	for _, proj := range m.loadedProjects {
+	for _, proj := range m.population.projects {
 		taskCount += len(proj.Tasks)
 	}
 	currentFingerprint := m.crossProjectRowsFingerprint()
@@ -304,7 +301,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Validation may have shortened the stack after the guard captured its old
 	// depth. Record the repaired depth so the next render remains a no-op.
 	m.population.recordFocusDepth(len(m.crossFocusStack))
-	if len(m.loadedProjects) == 0 {
+	if len(m.population.projects) == 0 {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		m.reseatNoteCursorAfterRebuild()
@@ -354,7 +351,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "project-filter=%q|", query.ProjectFilterFingerprint(&m.projectFilter))
-	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
+	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.population.projects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
 	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
@@ -411,11 +408,10 @@ func (m *OutlinerModel) cancelCrossProjectLoad() {
 	// An abandoned refresh takes any pending lens application with it: both are
 	// waiting on the same in-flight read.
 	m.discardPendingLensApplication()
-	if m.crossLoading {
-		m.crossLoadGen++
+	if m.population.loading {
+		m.population.supersede()
 	}
-	m.crossLoading = false
-	m.crossSpinnerVisible = false
+	m.population.settleLoad()
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
 	m.crossReloadHeaderProjectID = ""

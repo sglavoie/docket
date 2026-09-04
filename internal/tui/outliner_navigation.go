@@ -34,7 +34,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 	if m.project != nil {
 		projectID = m.project.ID
 	} else {
-		for _, project := range m.loadedProjects {
+		for _, project := range m.population.projects {
 			if project != nil && project.GetTaskByID(task.ID) == task {
 				projectID = project.ID
 				break
@@ -121,7 +121,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 		projectID = project.ID
 	}
 	if projectID == "" {
-		for _, p := range m.loadedProjects {
+		for _, p := range m.population.projects {
 			if p != nil && p.GetTaskByID(task.ID) == task {
 				projectID = p.ID
 				break

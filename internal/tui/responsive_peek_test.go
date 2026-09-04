@@ -215,7 +215,7 @@ func TestPeekModeSurvivesModeAndScopeChanges(t *testing.T) {
 	project.Tasks[0].ApplyWorkflowState(models.StateInbox)
 	setTestAppProjects(app, project)
 	outliner := app.crossOutliner
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	outliner.peekMode = true
@@ -276,7 +276,7 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 		[]*models.Task{task},
 	)
 	outliner := NewOutlinerModel(nil, nil, newTestConfig())
-	outliner.loadedProjects = []*models.Project{project}
+	outliner.population.projects = []*models.Project{project}
 	row := outlinerRow{
 		task: task, ProjectID: project.ID,
 		prefix: "│   │   └── ",

@@ -297,7 +297,7 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 		}
 		return outlinerEmptySearch
 	}
-	if m.project == nil && len(m.loadedProjects) == 0 {
+	if m.project == nil && len(m.population.projects) == 0 {
 		if query.HasActiveProjectFilters(&m.projectFilter) {
 			return outlinerEmptyProjectFiltered
 		}

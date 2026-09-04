@@ -1,21 +1,100 @@
 package tui
 
-// populationState is the rebuild memoization guard over the loaded project
-// population. It holds the inputs the last crossProjectRebuildRows pass ran
-// under — the row fingerprint, the focus-stack depth, and the total task count —
-// plus the one-shot flag that bypasses them.
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
+)
+
+// populationState is the cross-project population the Outliner reads whenever
+// m.project == nil, together with everything that replaces it and everything
+// memoized over it. Three concerns, one owner, because none of them is
+// separable from the others: the loaded project set, the lifecycle of the async
+// read that installs a new one, and the rebuild guard whose whole job is to
+// notice that the set changed.
 //
-// The flag is the reason this is a named sub-state rather than four promoted
+// The guard is the reason this is a named sub-state rather than promoted
 // fields. Everything that changes what the population would produce has to say
 // so, and it says so by calling invalidate(); "who invalidates the population"
 // is then a call graph rather than an assignment grep. The zero value is a cold
 // guard whose first pass always rebuilds, since an empty fingerprint cannot
 // match a real one.
 type populationState struct {
+	// projects is the successfully loaded set every cross-project read walks.
+	// snapshotReady records that a load was actually accepted, which is what lets
+	// a legitimately empty workspace render as empty rather than as still
+	// loading.
+	projects      []*models.Project
+	snapshotReady bool
+
+	// loading is true while a read is in flight and loadGen is the generation
+	// every result is matched against, so a superseded read publishes nothing.
+	// spinner and spinnerVisible are the cold-load animation, held back until
+	// crossSpinnerDelay has elapsed so a fast load never flashes one.
+	loading        bool
+	loadGen        int
+	spinnerVisible bool
+	spinner        chrome.SpinnerModel
+
+	// fingerprint, focusDepth and taskCount are the inputs the last
+	// crossProjectRebuildRows pass ran under; forceRebuild is the one-shot flag
+	// that bypasses them.
 	fingerprint  string
 	focusDepth   int
 	taskCount    int
 	forceRebuild bool
+}
+
+// setProjects installs a new loaded population. It is the only write to the
+// set, which is what lets setLoadedProjects below pair it with dropping the
+// reading derived from it.
+func (p *populationState) setProjects(projects []*models.Project) { p.projects = projects }
+
+// setSnapshotReady records whether the set standing here is an accepted
+// snapshot. The three routes that publish a real load pass true; the in-memory
+// baseline restore passes back the value it captured, because returning to a
+// baseline taken before any load landed must not claim one did.
+func (p *populationState) setSnapshotReady(ready bool) { p.snapshotReady = ready }
+
+// beginLoad opens a read and returns the generation it owns. The bump is what
+// makes every earlier read safe to abandon: a result whose generation is no
+// longer this one publishes nothing.
+func (p *populationState) beginLoad() int {
+	p.loading = true
+	p.loadGen++
+	return p.loadGen
+}
+
+// supersede rejects whatever is in flight without opening a read of its own. It
+// is the generation bump alone, for the callers that are abandoning a load
+// rather than replacing it.
+func (p *populationState) supersede() { p.loadGen++ }
+
+// settleLoad puts the read down. The spinner goes with it unconditionally: a
+// load that is over cannot be the one being waited on, whether it landed, was
+// canceled, or was refused.
+func (p *populationState) settleLoad() {
+	p.loading = false
+	p.spinnerVisible = false
+}
+
+// resetSpinner arms a fresh animation for a cold load without showing it yet.
+func (p *populationState) resetSpinner() { p.spinner = chrome.NewSpinner() }
+
+// showSpinner reveals the cold-load animation once its anti-flicker delay has
+// elapsed, restarting it so the first visible frame is the first frame.
+func (p *populationState) showSpinner() {
+	p.spinnerVisible = true
+	p.resetSpinner()
+}
+
+// advanceSpinner steps the animation one tick and hands back the Cmd that asks
+// for the next one.
+func (p *populationState) advanceSpinner(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
+	p.spinner, cmd = p.spinner.Update(msg)
+	return cmd
 }
 
 // invalidate declares the loaded population, or the projection taken over it,
@@ -48,3 +127,17 @@ func (p *populationState) record(fingerprint string, focusDepth, taskCount int) 
 // stack is the depth the next pass must compare against or that pass rebuilds
 // for nothing.
 func (p *populationState) recordFocusDepth(focusDepth int) { p.focusDepth = focusDepth }
+
+// setLoadedProjects installs a new loaded population. It exists so replacing
+// that population and dropping the reading derived from it are one act: a
+// caller that assigned the slice directly would leave an index describing
+// projects the Outliner no longer holds until the next rebuild pass. The
+// dependency index itself stays on the model, because it is built over the
+// single-project fallback too and so is not the population's to hold.
+func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
+	if m == nil {
+		return
+	}
+	m.population.setProjects(projects)
+	m.invalidateDependencyIndex()
+}

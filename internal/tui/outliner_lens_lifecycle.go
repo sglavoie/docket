@@ -206,7 +206,7 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 
 	if projects != nil {
 		m.setLoadedProjects(projects)
-		m.crossSnapshotReady = true
+		m.population.setSnapshotReady(true)
 	}
 	// Focus, folds, selection, and Peek are the view the user is in, not the lens:
 	// applyLensState writes only the lens-owned axes, scope among them.
@@ -289,7 +289,7 @@ func (m *OutlinerModel) discardPendingLensApplication() {
 	if m == nil || m.pendingLens == nil {
 		return
 	}
-	m.crossLoadGen++
+	m.population.supersede()
 	m.settlePendingLensApplication()
 }
 
@@ -301,8 +301,7 @@ func (m *OutlinerModel) settlePendingLensApplication() {
 		return
 	}
 	m.pendingLens = nil
-	m.crossLoading = false
-	m.crossSpinnerVisible = false
+	m.population.settleLoad()
 	if m.activeLens != nil {
 		m.activeLens.pendingGeneration = 0
 	}

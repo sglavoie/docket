@@ -49,7 +49,7 @@ func (m *OutlinerModel) searchDependencySuggestions(
 // search scope, so a scoped query still names a cross-project target by its
 // qualified alias instead of falling back to a bare locator.
 func (m *OutlinerModel) searchDependencyCandidates() []grammar.DependencyCandidate {
-	projects := m.loadedProjects
+	projects := m.population.projects
 	seen := make(map[app.TaskLocator]bool)
 	candidates := make([]grammar.DependencyCandidate, 0)
 	for _, task := range m.searchAutocompleteCandidateTasks() {

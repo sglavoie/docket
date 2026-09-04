@@ -48,8 +48,8 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	app := newTestAppModel()
 	project := scopeTestProject("alpha", "Alpha", "task")
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
-	cross.loadedProjects = []*models.Project{project}
-	cross.crossSnapshotReady = true
+	cross.population.projects = []*models.Project{project}
+	cross.population.snapshotReady = true
 	cross.SetSize(app.width, app.height-2)
 	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
@@ -59,17 +59,17 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
 	_ = cross.reloadCrossProjects()
-	abandonedGeneration := cross.crossLoadGen
-	cross.crossSpinnerVisible = true
+	abandonedGeneration := cross.population.loadGen
+	cross.population.spinnerVisible = true
 
 	model, cmd := app.Update(panicCustomMsg{})
 	if model == nil || cmd != nil {
 		t.Fatalf("panic recovery = model %T cmd %T, want model and no abandoned command", model, cmd)
 	}
-	if cross.crossLoading || cross.crossSpinnerVisible {
+	if cross.population.loading || cross.population.spinnerVisible {
 		t.Fatal("panic recovery left the cross-project refresh active")
 	}
-	if cross.crossLoadGen == abandonedGeneration {
+	if cross.population.loadGen == abandonedGeneration {
 		t.Fatal("panic recovery did not invalidate the abandoned load generation")
 	}
 	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
@@ -80,7 +80,7 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	}
 
 	app.Update(crossProjectsLoadedMsg{generation: abandonedGeneration})
-	if len(cross.loadedProjects) != 1 || cross.loadedProjects[0].ID != project.ID {
-		t.Fatalf("stale load replaced the recovered snapshot: %#v", cross.loadedProjects)
+	if len(cross.population.projects) != 1 || cross.population.projects[0].ID != project.ID {
+		t.Fatalf("stale load replaced the recovered snapshot: %#v", cross.population.projects)
 	}
 }

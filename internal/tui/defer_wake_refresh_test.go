@@ -207,11 +207,11 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		{"value picker", func(app *AppModel) { app.operationValuePicker = &OperationValuePickerModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
-			out.quickEdit.Enter(out.loadedProjects[0].Tasks[0], false)
+			out.quickEdit.Enter(out.population.projects[0].Tasks[0], false)
 		}},
 		{"visual selection", func(app *AppModel) {
 			out := app.crossOutliner
-			project := out.loadedProjects[0]
+			project := out.population.projects[0]
 			out.ReplaceSelection([]taskref.TaskIdentity{taskref.For(project.Tasks[0], project)})
 		}},
 		{"ranked list", func(app *AppModel) {
@@ -268,7 +268,7 @@ func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {
 	app := typedTestApp(t)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	out := app.crossOutliner
-	project := out.loadedProjects[0]
+	project := out.population.projects[0]
 
 	wake := time.Now().Add(2 * time.Hour).Round(0)
 	project.Tasks = append(project.Tasks, &models.Task{

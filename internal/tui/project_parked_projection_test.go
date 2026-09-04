@@ -94,7 +94,7 @@ func admittedWorkspace(runtime *config.RuntimeState, fixtures ...*models.Project
 
 func baseWorkspaceOutliner(runtime *config.RuntimeState, fixtures ...*models.Project) *OutlinerModel {
 	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = admittedWorkspace(runtime, fixtures...)
+	outliner.population.projects = admittedWorkspace(runtime, fixtures...)
 	return outliner
 }
 
@@ -181,7 +181,7 @@ func TestParkedProjectLeavesSearchProjection(t *testing.T) {
 
 // The tag facet falls back to the shell population whenever no cross-project
 // snapshot has landed, which is the one filter path that does not read
-// loadedProjects.
+// the loaded population.
 func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	shell := &AppModel{
@@ -270,7 +270,7 @@ func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = []*models.Project{active, parked}
+	outliner.population.projects = []*models.Project{active, parked}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 
@@ -280,7 +280,7 @@ func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   admittedWorkspace(runtime, active, parked),
-		generation: outliner.crossLoadGen,
+		generation: outliner.population.loadGen,
 	})
 
 	if outliner.IsTaskIdentitySelected(parkedIdentity) {
@@ -304,7 +304,7 @@ func TestReloadKeepsSelectionsHiddenByFilters(t *testing.T) {
 
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   admittedWorkspace(runtime, active, parked),
-		generation: outliner.crossLoadGen,
+		generation: outliner.population.loadGen,
 	})
 
 	if !outliner.IsTaskIdentitySelected(hidden) {
