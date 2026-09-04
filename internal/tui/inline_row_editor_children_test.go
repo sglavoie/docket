@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -229,7 +230,7 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 	// The shared fixture defers the edited task, which the default projection
 	// hides; the row has to exist before the editor can be rendered into it.
 	child.DeferredUntil = nil
-	out.SetSize(minTerminalWidth, 14)
+	out.SetSize(chrome.MinTerminalWidth, 14)
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
@@ -242,7 +243,7 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 	out.quickEdit.Input.CursorEnd()
 	out.quickEdit.RefreshDraft()
 
-	rendered := ansi.Strip(out.renderOutlinerTreeContent(minTerminalWidth))
+	rendered := ansi.Strip(out.renderOutlinerTreeContent(chrome.MinTerminalWidth))
 	if !strings.Contains(rendered, "EDIT TASK") || !strings.Contains(rendered, "Child <") {
 		t.Fatalf("minimum-width editor missing:\n%s", rendered)
 	}
@@ -250,7 +251,7 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 		t.Fatalf("minimum-width editor dropped the child dropdown:\n%s", rendered)
 	}
 	for _, line := range strings.Split(rendered, "\n") {
-		if got := lipgloss.Width(line); got > minTerminalWidth {
+		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
 			t.Errorf("line is %d columns at minimum width: %q", got, line)
 		}
 	}

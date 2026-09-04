@@ -9,12 +9,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 const taskComposerOverlayKey = "task-composer"
 
-func (m *AppModel) openTaskComposer(preset TaskComposerPreset) tea.Cmd {
-	composer := NewTaskComposerModel(preset, m.runtime)
+func (m *AppModel) openTaskComposer(preset taskform.TaskComposerPreset) tea.Cmd {
+	composer := taskform.NewTaskComposerModel(preset, m.runtime)
 	composer.SetCaptureCoordinator(m.features.Capture)
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
 	composer.SetSize(m.width, m.height-2)
@@ -41,7 +42,7 @@ func (m *AppModel) captureComposerPreset(
 	project *models.Project,
 	allProjects []*models.Project,
 	suggestedTag string,
-) (TaskComposerPreset, bool) {
+) (taskform.TaskComposerPreset, bool) {
 	contextual := project != nil
 	projects := m.availableProjects()
 	if len(projects) == 0 {
@@ -52,24 +53,24 @@ func (m *AppModel) captureComposerPreset(
 		project = m.projectByID(m.runtime.Catalog().SystemUnfiledProjectID)
 	}
 	if project == nil {
-		return TaskComposerPreset{}, false
+		return taskform.TaskComposerPreset{}, false
 	}
 	parts := make([]string, 0, 2)
 	if suggestedTag != "" {
 		parts = append(parts, "#"+suggestedTag)
 	}
-	kind := ComposerProject
+	kind := taskform.ComposerProject
 	if !contextual {
-		kind = ComposerGlobal
+		kind = taskform.ComposerGlobal
 	}
-	return TaskComposerPreset{
+	return taskform.TaskComposerPreset{
 		Kind:               kind,
 		HeaderLabel:        "Capture → " + project.Name,
 		Project:            project,
 		AllProjects:        projects,
 		InitialText:        strings.Join(parts, " "),
 		AllowProjectSwitch: true,
-		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+		Shared:             taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, true
 }
 
@@ -78,19 +79,19 @@ func (m *AppModel) captureComposerMessage(project *models.Project, allProjects [
 	if !ok {
 		return nil
 	}
-	return ShowTaskComposerMsg{Preset: preset}
+	return taskform.ShowTaskComposerMsg{Preset: preset}
 }
 
-func (m *AppModel) createComposerPreset(project *models.Project, parent *models.Task) TaskComposerPreset {
-	preset := TaskComposerPreset{
-		Kind:        ComposerProject,
+func (m *AppModel) createComposerPreset(project *models.Project, parent *models.Task) taskform.TaskComposerPreset {
+	preset := taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: m.availableProjects(),
-		Shared:      TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+		Shared:      taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}
 	if parent != nil {
 		parentID := parent.ID
-		preset.Kind = ComposerChild
+		preset.Kind = taskform.ComposerChild
 		preset.Shared.ParentID = &parentID
 		preset.Shared.Destination = app.CaptureDestinationBacklog
 	}
@@ -99,7 +100,7 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 
 // focusChildComposerPreset names the focused task in the composer header, so
 // capture inside a Focus is never mistaken for capture into the project root.
-func (m *AppModel) focusChildComposerPreset(project *models.Project, parent *models.Task) TaskComposerPreset {
+func (m *AppModel) focusChildComposerPreset(project *models.Project, parent *models.Task) taskform.TaskComposerPreset {
 	preset := m.createComposerPreset(project, parent)
 	preset.HeaderLabel = "Capture → child of " + parent.Title
 	return preset

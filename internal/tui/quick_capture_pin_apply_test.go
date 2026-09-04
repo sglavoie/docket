@@ -7,18 +7,19 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestTaskComposerCarriesPinIntoEveryCaptureRequest(t *testing.T) {
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:        ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, nil)
 	composer.Input.SetValue("First *pin\nSecond\nThird *pin")
 
-	reqs, ok := composer.parseCompactLines()
+	reqs, ok := composer.ParseCompactLines()
 	if !ok || len(reqs) != 3 {
 		t.Fatalf("parseCompactLines = %+v, %v", reqs, ok)
 	}
@@ -33,21 +34,21 @@ func TestTaskComposerCarriesPinIntoEveryCaptureRequest(t *testing.T) {
 
 func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:    ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:    taskform.ComposerProject,
 		Project: project,
 	}, appModel.runtime)
 	composer.Input.SetValue("Ship release *pin")
 
-	if cmd := composer.expandSingle(); cmd != nil {
+	if cmd := composer.ExpandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying a pin")
 	}
-	if composer.mode != ComposerCompact || composer.expanded != nil {
+	if composer.Mode != taskform.ComposerCompact || composer.Expanded != nil {
 		t.Fatal("composer entered expanded mode despite the refusal")
 	}
-	if len(composer.errors) != 1 ||
-		!strings.Contains(composer.errors[0].Message, "expanded mode cannot pin; submit the line with Enter instead") {
-		t.Fatalf("errors = %+v", composer.errors)
+	if len(composer.Errors) != 1 ||
+		!strings.Contains(composer.Errors[0].Message, "expanded mode cannot pin; submit the line with Enter instead") {
+		t.Fatalf("errors = %+v", composer.Errors)
 	}
 }
 

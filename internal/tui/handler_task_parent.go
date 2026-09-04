@@ -4,13 +4,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 // handleTaskParentMessages handles task parent selector messages.
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskParentMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case OpenParentSelectorMsg:
+	case taskform.OpenParentSelectorMsg:
 		return m.handleOpenParentSelector(msg)
 
 	case listsurface.ParentSelectedMsg:
@@ -20,7 +21,7 @@ func (m *AppModel) handleTaskParentMessages(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // handleOpenParentSelector handles the OpenParentSelectorMsg.
-func (m *AppModel) handleOpenParentSelector(msg OpenParentSelectorMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleOpenParentSelector(msg taskform.OpenParentSelectorMsg) (bool, tea.Cmd) {
 	selector := listsurface.NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
 	selector.ReparentTask = msg.ReparentTask
 	_, cmd := m.showViewInit(presentation.ViewParentSelector, selector)

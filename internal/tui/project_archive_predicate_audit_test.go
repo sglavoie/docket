@@ -47,7 +47,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/grammar/quick_capture_input.go:InitCaches":                       "availability: %project completes parked projects",
 	"internal/tui/grammar/quick_capture_parser_resolution.go:resolveProject":       "availability: %project resolves parked projects",
 	"internal/tui/task_action_sheet.go:taskActionDisabledReason":                   "lifecycle: an archived owner disables writing task actions",
-	"internal/tui/task_composer_capture.go:cycleProject":                           "availability: the composer cycles onto a parked destination",
+	"internal/tui/taskform/task_composer_capture.go:cycleProject":                  "availability: the composer cycles onto a parked destination",
 }
 
 // archiveAuditPackages are the layers whose availability decisions this audit

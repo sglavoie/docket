@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -15,7 +16,7 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CreateTaskMsg:
+	case taskform.CreateTaskMsg:
 		return m.handleCreateTask(msg)
 
 	case coordinator.TaskCreatedMsg:
@@ -30,7 +31,7 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // handleCreateTask handles the CreateTaskMsg.
-func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleCreateTask(msg taskform.CreateTaskMsg) (bool, tea.Cmd) {
 	project := msg.Project
 	if project == nil {
 		project = m.currentProject

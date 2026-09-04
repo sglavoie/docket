@@ -5,19 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
-	form := newTestTaskForm()
-	assertRequiredGuidance(t, "task form", form.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
-	form.err = errors.New("title is required")
-	assertRequiredGuidance(t, "invalid task form", form.guidanceSpec(), true, "Ctrl+S retry", "Esc cancel")
-
 	creator := &ProjectCreatorModel{}
 	assertRequiredGuidance(t, "project creator", creator.guidanceSpec(), true, "Enter create", "Esc cancel")
 	creator.ConfirmDiscard = true
@@ -34,19 +29,10 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 	if got := textEditor.GuidanceSpec().Supplemental; got != "External editor open" {
 		t.Fatalf("external-editor supplemental = %q", got)
 	}
-
-	composer := &TaskComposerModel{errors: []grammar.LineError{{Line: 1, Message: "invalid capture"}}}
-	spec, ok := composer.ContextualGuidance()
-	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter retry", "Esc cancel")
 }
 
 func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
-	form := newTestTaskForm()
-	form.activeTab = formTabChildren
-	form.err = errors.New("invalid task")
-
 	specs := []chrome.GuidanceSpec{
-		form.guidanceSpec(),
 		(&ProjectCreatorModel{}).guidanceSpec(),
 		(&ProjectEditorModel{hasChanges: true}).guidanceSpec(),
 		chrome.NewTextEditorModel("description", "").GuidanceSpec(),
@@ -60,40 +46,17 @@ func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
 }
 
 func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
-	form := newTestTaskForm()
-	form.err = errors.New("title is required")
-	form.SetSize(formMinWidth, formMinHeight)
-	assertFitsWithin(t, form.View().Content, formMinWidth, formMinHeight)
+	// The text editor derives its floor the same way the task form does, two
+	// rows below the terminal minimum, so the two budgets stay one number even
+	// though the form's own coverage now lives beside it in internal/tui/taskform.
+	const minHeight = chrome.MinTerminalHeight - 2
 
 	textEditor := chrome.NewTextEditorModel("description", "draft")
-	textEditor.SetSize(minTerminalWidth, formMinHeight)
+	textEditor.SetSize(chrome.MinTerminalWidth, minHeight)
 	textView := textEditor.View().Content
-	assertFitsWithin(t, textView, minTerminalWidth, formMinHeight)
+	assertFitsWithin(t, textView, chrome.MinTerminalWidth, minHeight)
 	if !strings.Contains(ansi.Strip(textView), "Ctrl+S save") || !strings.Contains(ansi.Strip(textView), "Esc cancel") {
 		t.Fatalf("text editor minimum layout lost required guidance:\n%s", ansi.Strip(textView))
-	}
-}
-
-func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {
-	form := newTestTaskForm()
-	form.SetSize(formMinWidth, formMinHeight)
-
-	renders := map[string]string{
-		"priority":  newFormPriorityPicker(form.draft.priority).render(formMinWidth, form.draft.priority),
-		"state":     newFormStatePicker(form.draft.state).render(formMinWidth, form.draft.state),
-		"flags":     newFormFlagsPicker(form.draft.pinned, form.draft.review).render(formMinWidth),
-		"due date":  newFormDueDatePicker(form.draft.dueDate).render(formMinWidth, form.draft.dueDate),
-		"checklist": form.renderChecklistEditOverlay(),
-		"subtask":   form.renderSubtaskEditOverlay(),
-	}
-	for name, rendered := range renders {
-		plain := ansi.Strip(rendered)
-		if !strings.Contains(plain, "Esc cancel") {
-			t.Errorf("%s picker lost required cancellation guidance:\n%s", name, plain)
-		}
-		if !strings.Contains(plain, "Enter") {
-			t.Errorf("%s picker lost required commit guidance:\n%s", name, plain)
-		}
 	}
 }
 
@@ -109,6 +72,23 @@ func TestQuickEditGuidanceOwnsGrammarAndLocalBarDoesNotDuplicateIt(t *testing.T)
 	for _, want := range []string{"!1-3/!0 priority", "#tag add tag", "@date/@0 due", "$destination destination", "*pin/*unpin pin", "%project move", ">parent/>0 parent", "<child adopt"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("quick-edit guidance = %q, want %q", got, want)
+		}
+	}
+}
+
+// assertFitsWithin fails if any rendered line exceeds width or the line count
+// exceeds height.
+func assertFitsWithin(t *testing.T, rendered string, width, height int) {
+	t.Helper()
+	lines := strings.Split(strings.TrimRight(rendered, "\n"), "\n")
+	if len(lines) > height {
+		t.Fatalf("render has %d lines, exceeds height %d:\n\n%s",
+			len(lines), height, ansi.Strip(rendered))
+	}
+	for _, line := range lines {
+		if w := lipgloss.Width(ansi.Strip(line)); w > width {
+			t.Fatalf("line exceeds width %d: %q (width=%d)\n\n%s",
+				width, ansi.Strip(line), w, ansi.Strip(rendered))
 		}
 	}
 }

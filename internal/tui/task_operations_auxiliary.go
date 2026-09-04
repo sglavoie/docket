@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -65,7 +66,7 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 	case operation.OperationTaskCopyTitleDescription:
 		return message(CopyTaskTitleAndDescMsg{Task: task})
 	case operation.OperationTaskNewChild:
-		return message(CreateTaskMsg{ParentTask: task, Project: project})
+		return message(taskform.CreateTaskMsg{ParentTask: task, Project: project})
 	default:
 		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
 	}

@@ -5,12 +5,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestHandleTaskMessagesCreateTask(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 
-	msg := CreateTaskMsg{}
+	msg := taskform.CreateTaskMsg{}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {
@@ -29,7 +30,7 @@ func TestHandleTaskMessagesCreateTaskWithParent(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	parentTask := project.Tasks[0]
 
-	msg := CreateTaskMsg{ParentTask: parentTask}
+	msg := taskform.CreateTaskMsg{ParentTask: parentTask}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {

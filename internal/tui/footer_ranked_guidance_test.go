@@ -32,13 +32,13 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	}
 
 	spec := pendingChordGuidanceSpec("w", hints)
-	lines := chrome.GuidanceLines(spec, minTerminalWidth)
+	lines := chrome.GuidanceLines(spec, chrome.MinTerminalWidth)
 	if len(lines) == 0 || len(lines) > 2 {
 		t.Fatalf("pending chord lines = %d, want 1..2: %q", len(lines), lines)
 	}
 	for _, line := range lines {
-		if got := lipgloss.Width(line); got > minTerminalWidth {
-			t.Fatalf("pending chord line width = %d, want <= %d: %q", got, minTerminalWidth, line)
+		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
+			t.Fatalf("pending chord line width = %d, want <= %d: %q", got, chrome.MinTerminalWidth, line)
 		}
 	}
 	joined := strings.Join(lines, "\n")
@@ -58,13 +58,13 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		last = index
 	}
 
-	rendered := chrome.RenderGuidance(spec, minTerminalWidth)
+	rendered := chrome.RenderGuidance(spec, chrome.MinTerminalWidth)
 	if got := lipgloss.Height(rendered); got > 3 {
 		t.Fatalf("pending chord footer height = %d, want divider plus at most two rows", got)
 	}
 	for line := range strings.SplitSeq(rendered, "\n") {
-		if got := lipgloss.Width(line); got > minTerminalWidth {
-			t.Fatalf("rendered pending chord line width = %d, want <= %d: %q", got, minTerminalWidth, ansi.Strip(line))
+		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
+			t.Fatalf("rendered pending chord line width = %d, want <= %d: %q", got, chrome.MinTerminalWidth, ansi.Strip(line))
 		}
 	}
 }
@@ -78,7 +78,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 			break
 		}
 	}
-	outliner.SetSize(minTerminalWidth, minTerminalHeight-2)
+	outliner.SetSize(chrome.MinTerminalWidth, chrome.MinTerminalHeight-2)
 
 	hints := app.operationRegistry.GuidanceHintsForInputStrategy(
 		operation.InputStrategySimplified, outliner.operationCommandContext(),
@@ -101,7 +101,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	if !ok {
 		t.Fatal("Outliner did not provide its operation footer")
 	}
-	lines := chrome.GuidanceLines(spec, minTerminalWidth)
+	lines := chrome.GuidanceLines(spec, chrome.MinTerminalWidth)
 	if len(lines) != 1 {
 		t.Fatalf("Outliner browse guidance rows = %d, want one: %q", len(lines), lines)
 	}
@@ -110,7 +110,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 			t.Fatalf("Outliner guidance omits ranked hint %q: %q", want, lines[0])
 		}
 	}
-	if lipgloss.Width(lines[0]) > minTerminalWidth {
+	if lipgloss.Width(lines[0]) > chrome.MinTerminalWidth {
 		t.Fatalf("normal guidance exceeds one row: %q", lines[0])
 	}
 
@@ -118,7 +118,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// wide size they would otherwise be visible, so their absence proves the
 	// footer uses live descriptor applicability rather than a static key list.
 	outliner.MultiSelectMode = true
-	outliner.SetSize(240, minTerminalHeight-2)
+	outliner.SetSize(240, chrome.MinTerminalHeight-2)
 	spec, ok = outliner.ContextualGuidance()
 	if !ok {
 		t.Fatal("selected Outliner did not provide its operation footer")

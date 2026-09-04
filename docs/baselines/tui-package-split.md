@@ -111,7 +111,7 @@ the pre-split tree and is consistently pessimistic.
 | `taskref` | 2 | 2 | 2 |
 | `status` | 10 | 10 | 10 |
 | `pulse` | 13 | 12 | 12 |
-| `chrome` | 61 | 50 | 49 |
+| `chrome` | 61 | 50 | 51 |
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
@@ -121,8 +121,9 @@ the pre-split tree and is consistently pessimistic.
 | `help` | 4 | 3 | 3 |
 | `notes` | 32 | 41 | 37 |
 | `taskdetail` | 6 | 0 | 0 |
+| `taskform` | 28 | 0 | 0 |
 
-Running total against 631: **454**.
+Running total against 631: **456**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -158,10 +159,13 @@ four struct fields and three methods the `must export` column does not count:
 projection because eight files the assignment table gave it could not move at
 all; see the header of `scripts/tui_package_assignments.tsv`.
 
-The row reads 49 rather than 48 because Session 2.21 added one name to it after
-the fact. `JoinGuidanceContext` was promoted into `footer_helpers.go` by the
-`help` extraction, not by `chrome`'s own; it is charged here rather than to
-`help` because this is the package that now declares it. Expect a later
+The row reads 51 rather than 48 because two later sessions added names to it
+after the fact. `JoinGuidanceContext` was promoted into `footer_helpers.go` by
+the `help` extraction, not by `chrome`'s own, and Session 2.24 promoted
+`minTerminalWidth` and `minTerminalHeight` out of `app_view_state.go` into
+`layout_constants.go` as `MinTerminalWidth` and `MinTerminalHeight`; all three
+are charged here rather than to `help` or `taskform` because this is the package
+that now declares them. Expect a later
 extraction to reopen a closed row this way whenever the declaration it needs
 belongs below it — the running total is over declarations, not over sessions.
 
@@ -875,6 +879,64 @@ carries in-package copies of eleven helpers from five shell files, on the
 `newTestSecondaryCoordinators` was required: `./scripts/dead_code.sh` reports an
 unreferenced test helper, so a duplicated helper must be duplicated only where
 both copies are read.
+
+`taskform` is the second row whose two count columns are honestly zero, and it
+came in 28 under a projection of 28 for the same reason `taskdetail` did: every
+package-level name the shell calls — `NewTaskComposerModel`,
+`TaskComposerPreset`, `TaskComposerSharedAttributes`, the `Composer*` kinds and
+modes, `NewTaskFormModelCreate`, `TaskFormModel` and the task messages in
+`app_messages_tasks.go` — was already exported before the move. The 28 files it
+took are the ones `scripts/tui_package_assignments.tsv` assigns it, which is a
+narrower set than the session brief's prose names: `parent_selector.go` is
+`listsurface`, `priority_picker.go` and the five `fullscreen_*_helpers.go` are
+`chrome`, and `task_state_picker.go` and `task_tags_picker.go` stay in the
+shell. The TSV is the authority when the two disagree.
+
+The real cost is nine members, all on `TaskComposerModel`: the fields `Preset`,
+`Mode`, `Expanded`, `Errors` and `SubmissionInFlight`, and the methods
+`ParseCompactLines`, `CreateCompact`, `ExpandSingle` and `ExpandRequest`. All
+nine are read by shell *tests* only — six files drive the composer through them
+— and all nine survive `./scripts/dead_code.sh`, the fields because exported
+struct fields are invisible to `deadcode` and the four methods because each has
+an in-package production caller. `preset`, `submissionInFlight` and
+`expandRequest` each had exactly one consumer, which under the "decide, don't
+defer" rule is a candidate for moving the consumer down instead; the three were
+promoted rather than moved because their one consumer is a shell-wide
+integration test that also drives `AppModel`, `newCrossProjectTestEnv` and the
+composer overlay route, and would not survive the boundary.
+
+The one upward dependency the production files had was `minTerminalHeight`, from
+which `task_form_view.go` derives `formMinHeight = minTerminalHeight - 2`. Both
+terminal floors were promoted into `chrome/layout_constants.go` rather than
+respelled as a literal in `taskform`, so the derivation the code comment and
+`task_form_view_test.go` both assert stays one number; the promotion is charged
+to the `chrome` row above.
+
+The mandated sweep for unexported methods named in shell `interface{ ... }`
+literals found no break caused by this move — `captureWireable` and
+`taskFormWireable` name exported methods, so the composer still satisfies both —
+but it did surface a live regression the `listsurface` extraction left behind.
+`footer_flash.go` declared `viewStatusOwner` over a lowercase `clearStatus()`;
+once `InteractiveViewState` moved down and the method became `ClearStatus`,
+nothing in package `tui` implemented the interface, so the two assertions at
+`footer_flash.go` and `handler_view_core.go` had been returning `ok == false`
+since commit `e8174a15` and a view's own status line was never cleared by its
+expiry tick. It is fixed here, and `var _ viewStatusOwner = (*OutlinerModel)(nil)`
+now makes that class of failure a compile error rather than a silent one. **Give
+every shell interface literal a compile-time conformance assertion for the type
+it exists for; the sweep only finds what someone remembers to run.**
+
+Fifteen test files moved down whole and one was split:
+`form_editor_guidance_test.go` covered the task form, the composer, both project
+editors and the text editor in the same four tests, so its form and composer
+halves became `internal/tui/taskform/task_form_guidance_test.go` and the shell
+kept the rest. One test moved for a member rather than a file:
+`TestTaskComposerExpandSingleAndRejectMultiline` reads
+`Expanded.draft.{title, priority, tags}`, and moving it down was cheaper than
+exporting a draft struct and three of its fields for one assertion.
+`internal/tui/taskform/taskform_test_helpers_test.go` carries in-package copies
+of thirteen helpers, and the shell had to re-declare `assertFitsWithin`, which
+left it with `task_form_view_test.go`.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

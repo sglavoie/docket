@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestCaptureDependencyAutocompleteOffersOpenWorkAcrossProjects(t *testing.T) {
@@ -168,14 +169,14 @@ func TestRowEditorDependencySuggestionsFollowLiveMutations(t *testing.T) {
 func TestMultilineCaptureCarriesDependenciesPerLine(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	projects := []*models.Project{home, routed}
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:        ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     home,
 		AllProjects: projects,
 	}, nil)
 	composer.Input.SetValue("First ~2\nSecond ~routed:1 ~4")
 
-	requests, ok := composer.parseCompactLines()
+	requests, ok := composer.ParseCompactLines()
 	if !ok || len(requests) != 2 {
 		t.Fatalf("parseCompactLines = %+v, %v", requests, ok)
 	}
@@ -188,15 +189,15 @@ func TestMultilineCaptureCarriesDependenciesPerLine(t *testing.T) {
 	}
 
 	composer.Input.SetValue("First ~2\nSecond ~999")
-	requests, ok = composer.parseCompactLines()
+	requests, ok = composer.ParseCompactLines()
 	if ok || requests != nil {
 		t.Fatalf("parseCompactLines = %+v, %v; want the whole batch refused", requests, ok)
 	}
-	if len(composer.errors) != 1 || composer.errors[0].Line != 2 {
-		t.Fatalf("errors = %+v, want one on line 2", composer.errors)
+	if len(composer.Errors) != 1 || composer.Errors[0].Line != 2 {
+		t.Fatalf("errors = %+v, want one on line 2", composer.Errors)
 	}
-	if !strings.Contains(composer.errors[0].Message, "dependency not found") {
-		t.Fatalf("error = %q, want a dependency-reference diagnostic", composer.errors[0].Message)
+	if !strings.Contains(composer.Errors[0].Message, "dependency not found") {
+		t.Fatalf("error = %q, want a dependency-reference diagnostic", composer.Errors[0].Message)
 	}
 }
 

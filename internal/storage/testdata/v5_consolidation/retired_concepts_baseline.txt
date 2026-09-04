@@ -403,11 +403,11 @@ dependency	internal/tui/query_readout.go	Dependency	2
 dependency	internal/tui/query_readout.go	DependencyFilterAll	1
 dependency	internal/tui/query_readout.go	DependencyFilterClauses	1
 dependency	internal/tui/query_readout.go	FilterQueryDependencyFields	1
-dependency	internal/tui/task_composer.go	Dependencies	1
-dependency	internal/tui/task_composer.go	DependencyLocators	1
 dependency	internal/tui/task_operation_commands.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	TaskOperationSetDependencies	1
+dependency	internal/tui/taskform/task_composer.go	Dependencies	1
+dependency	internal/tui/taskform/task_composer.go	DependencyLocators	1
 dependency	internal/tui/taskref/task_clone.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/taskref/task_clone.go	Dependencies	2
 dependency	internal/tui/theme/styles_misc.go	DependencyIndicatorBlockedStyle	1

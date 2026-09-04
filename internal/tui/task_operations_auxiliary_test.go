@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 // auxiliaryTaskTestApp builds a registered app over one project holding a story
@@ -76,7 +77,7 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 			}
 		},
 		operation.OperationTaskNewChild: func(t *testing.T, msg any) {
-			create := msg.(CreateTaskMsg)
+			create := msg.(taskform.CreateTaskMsg)
 			assertTaskMessageTarget(t, create.ParentTask, task)
 		},
 		operation.OperationTaskTogglePin: func(t *testing.T, msg any) {

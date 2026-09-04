@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -68,7 +69,7 @@ type AppModel struct {
 
 	// taskComposer is the sole live compact/expanded task mutation overlay.
 	// Capture/form presentation IDs remain observations for embedded modes.
-	taskComposer *TaskComposerModel
+	taskComposer *taskform.TaskComposerModel
 
 	// appService is the same application service the feature coordinators wrap,
 	// retained directly for the few AppModel-owned overlays that mutate

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestParseQuickCaptureChildReferences(t *testing.T) {
@@ -273,11 +274,11 @@ func TestTaskComposerMapsResolvedChildrenIntoEveryRequest(t *testing.T) {
 			{ID: "task-3", ShortID: 3, Title: "Charlie"},
 		},
 	}
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:        ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: []*models.Project{project},
-		Shared: TaskComposerSharedAttributes{
+		Shared: taskform.TaskComposerSharedAttributes{
 			Priority: 2,
 			Tags:     []string{"shared"},
 			Due:      &due,
@@ -285,7 +286,7 @@ func TestTaskComposerMapsResolvedChildrenIntoEveryRequest(t *testing.T) {
 	}, nil)
 	composer.Input.SetValue("First <1 <Bravo #line\nSecond <3")
 
-	reqs, ok := composer.parseCompactLines()
+	reqs, ok := composer.ParseCompactLines()
 	if !ok || len(reqs) != 2 {
 		t.Fatalf("parseCompactLines = %+v, %v", reqs, ok)
 	}
@@ -324,25 +325,25 @@ func TestTaskComposerReportsChildFailuresOnTheirSourceLine(t *testing.T) {
 			{ID: "task-2", ShortID: 2, Title: "Implement search"},
 		},
 	}
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:        ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, nil)
 	composer.Input.SetValue("Fine <1\nMissing <9\nAmbiguous <Implement")
 
-	reqs, ok := composer.parseCompactLines()
+	reqs, ok := composer.ParseCompactLines()
 	if ok || reqs != nil {
 		t.Fatalf("parseCompactLines = %+v, %v; want a rejected batch", reqs, ok)
 	}
-	if len(composer.errors) != 2 {
-		t.Fatalf("errors = %+v, want two", composer.errors)
+	if len(composer.Errors) != 2 {
+		t.Fatalf("errors = %+v, want two", composer.Errors)
 	}
-	if composer.errors[0].Line != 2 || !strings.Contains(composer.errors[0].Message, "child not found: '9'") {
-		t.Fatalf("first error = %+v", composer.errors[0])
+	if composer.Errors[0].Line != 2 || !strings.Contains(composer.Errors[0].Message, "child not found: '9'") {
+		t.Fatalf("first error = %+v", composer.Errors[0])
 	}
-	if composer.errors[1].Line != 3 || !strings.Contains(composer.errors[1].Message, "is ambiguous") {
-		t.Fatalf("second error = %+v", composer.errors[1])
+	if composer.Errors[1].Line != 3 || !strings.Contains(composer.Errors[1].Message, "is ambiguous") {
+		t.Fatalf("second error = %+v", composer.Errors[1])
 	}
 }
 
@@ -355,20 +356,20 @@ func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
 	project.Tasks = append(project.Tasks, existing)
 	project.BuildTaskTree()
 
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:    ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:    taskform.ComposerProject,
 		Project: project,
 	}, appModel.runtime)
 	composer.Input.SetValue("Adopter <1")
 
-	if cmd := composer.expandSingle(); cmd != nil {
+	if cmd := composer.ExpandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying child references")
 	}
-	if composer.mode != ComposerCompact || composer.expanded != nil {
+	if composer.Mode != taskform.ComposerCompact || composer.Expanded != nil {
 		t.Fatal("composer entered expanded mode despite the refusal")
 	}
-	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].Message, "cannot adopt children") {
-		t.Fatalf("errors = %+v", composer.errors)
+	if len(composer.Errors) != 1 || !strings.Contains(composer.Errors[0].Message, "cannot adopt children") {
+		t.Fatalf("errors = %+v", composer.Errors)
 	}
 }
 
@@ -383,15 +384,15 @@ func TestTaskComposerCommitsAdoptedChildrenInOneTransaction(t *testing.T) {
 	}
 	grandchild.ParentID = &adoptee.ID
 	env := newScenarioEnv(t, "composer-adoption", adoptee, grandchild)
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:    ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:    taskform.ComposerProject,
 		Project: env.project,
-		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+		Shared:  taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
 	composer.Input.SetValue("Adopter <1 <Adoptee")
 
-	cmd := composer.createCompact(false)
+	cmd := composer.CreateCompact(false)
 	if cmd == nil {
 		t.Fatal("adoption returned nil command")
 	}

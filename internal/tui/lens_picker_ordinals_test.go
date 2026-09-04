@@ -226,7 +226,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 	if got := max(namedLensPickerInnerWidth(narrowWidth)-4, 12); got != 20 {
 		t.Fatalf("contentWidth at %d columns = %d, want the narrow branch 20", narrowWidth, got)
 	}
-	for _, width := range []int{narrowWidth, minTerminalWidth, 80} {
+	for _, width := range []int{narrowWidth, chrome.MinTerminalWidth, 80} {
 		rendered := ansi.Strip(model.lensPicker.Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		if !strings.Contains(rendered, "2 ●* Stale") {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -202,20 +203,20 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			model.features = coordinator.NewFeatureCoordinators(model.appService)
 			installDistinctOutlinerSnapshot(t, model, outliner)
 
-			composer := NewTaskComposerModel(TaskComposerPreset{
-				Kind:        ComposerProject,
+			composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+				Kind:        taskform.ComposerProject,
 				Project:     project,
 				AllProjects: []*models.Project{project},
-				Shared: TaskComposerSharedAttributes{
+				Shared: taskform.TaskComposerSharedAttributes{
 					Destination: domainapp.CaptureDestinationInbox,
 				},
 			}, model.runtime)
 			composer.SetCaptureCoordinator(model.features.Capture)
 			composer.Input.SetValue("Planned task $" + string(tc.destination))
 
-			cmd := composer.createCompact(false)
+			cmd := composer.CreateCompact(false)
 			if cmd == nil {
-				t.Fatalf("$%s capture returned nil command: %+v", tc.destination, composer.errors)
+				t.Fatalf("$%s capture returned nil command: %+v", tc.destination, composer.Errors)
 			}
 			created, ok := cmd().(coordinator.TaskCreatedMsg)
 			if !ok || created.Result == nil || !created.PlanningChanged {

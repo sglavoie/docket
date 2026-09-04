@@ -71,11 +71,21 @@ type statusStamper interface {
 // viewStatusOwner is that same status line seen by the expiry timer: it stamps
 // generations, declares whether the current message is transient, and clears
 // itself when its tick comes back.
+//
+// Every method here must be exported. An unexported method name is qualified by
+// its declaring package in a Go method set, so once InteractiveViewState moved
+// down to internal/tui/listsurface, a lowercase clearStatus() in this literal
+// became unsatisfiable by any view — a silent ok == false that no build, vet, or
+// lint pass reports. The assertion below is what makes that failure loud.
 type viewStatusOwner interface {
 	statusStamper
 	StatusIsTransient() bool
-	clearStatus()
+	ClearStatus()
 }
+
+// The Outliner is the view this interface exists for, so its conformance is
+// asserted at compile time rather than discovered as a dead type switch.
+var _ viewStatusOwner = (*OutlinerModel)(nil)
 
 // footerFlashProbe is the status identity compared across one Update. The
 // shell's own message carries a sequence, but m.err has ~87 assignment sites

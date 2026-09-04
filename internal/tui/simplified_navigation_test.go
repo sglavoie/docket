@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -342,7 +343,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 		ProjectID: project.ID,
 	}}
 
-	base, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	base, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok {
 		t.Fatalf("base capture returned %T", app.coreCaptureMessage())
 	}
@@ -351,7 +352,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	}
 
 	app.crossOutliner.scopedProjectID = project.ID
-	focused, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	focused, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || focused.Preset.Project != project {
 		t.Fatalf("focused capture = %#v, want project %v", focused, project)
 	}
@@ -374,7 +375,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	}
 
 	app.crossOutliner.Cursor = 0
-	header, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	header, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || header.Preset.Project != project {
 		t.Fatalf("header capture = %#v, want project %v", header, project)
 	}
@@ -383,7 +384,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	}
 
 	app.crossOutliner.Cursor = 1
-	task, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
+	task, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || task.Preset.Project != inbox {
 		t.Fatalf("task-row capture = %#v, want system Inbox %v", task, inbox)
 	}
@@ -413,11 +414,11 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 		{ProjectID: project.ID, TaskID: story.ID},
 	}
 
-	focused, ok := shell.coreCaptureMessage().(ShowTaskComposerMsg)
+	focused, ok := shell.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok {
 		t.Fatalf("focus capture returned %T", shell.coreCaptureMessage())
 	}
-	if focused.Preset.Kind != ComposerChild {
+	if focused.Preset.Kind != taskform.ComposerChild {
 		t.Fatalf("focus capture kind = %v, want ComposerChild", focused.Preset.Kind)
 	}
 	if focused.Preset.Shared.ParentID == nil || *focused.Preset.Shared.ParentID != story.ID {
@@ -436,7 +437,7 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	// At the nesting cap a child would be detached back to the root, so capture
 	// degrades to the focus root's project rather than refusing.
 	story.Level = models.MaxNestingDepth
-	capped, ok := shell.coreCaptureMessage().(ShowTaskComposerMsg)
+	capped, ok := shell.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || capped.Preset.Project != project {
 		t.Fatalf("capped focus capture = %#v, want project %v", capped, project)
 	}

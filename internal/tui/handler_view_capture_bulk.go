@@ -1,11 +1,14 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskform"
+)
 
 // handleCaptureAndBulkMessages handles the Task Composer.
 func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowTaskComposerMsg:
+	case taskform.ShowTaskComposerMsg:
 		return true, m.openTaskComposer(msg.Preset)
 
 	}

@@ -43,7 +43,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 			return true, nil
 		}
 		if owner, ok := m.activeView().(viewStatusOwner); ok && owner.StatusStamp() == msg.Seq {
-			owner.clearStatus()
+			owner.ClearStatus()
 		}
 		return true, nil
 

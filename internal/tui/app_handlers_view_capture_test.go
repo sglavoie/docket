@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
@@ -22,18 +23,18 @@ func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	if app.currentView() != presentation.ViewTaskComposer {
 		t.Errorf("currentView should be TaskComposer after ShowTaskComposerMsg, got %v", app.currentView())
 	}
-	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*TaskComposerModel)
+	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
 	if !ok {
 		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
 	}
-	if capture.preset.Project != project {
-		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.preset.Project, project, inbox)
+	if capture.Preset.Project != project {
+		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.Preset.Project, project, inbox)
 	}
-	if !capture.preset.AllowProjectSwitch {
+	if !capture.Preset.AllowProjectSwitch {
 		t.Fatal("contextual quick capture unexpectedly disabled project switching")
 	}
-	if len(capture.preset.AllProjects) != 2 {
-		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.preset.AllProjects))
+	if len(capture.Preset.AllProjects) != 2 {
+		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.Preset.AllProjects))
 	}
 }
 
@@ -45,18 +46,18 @@ func TestTaskComposerCaptureDefaultsToSystemUnfiled(t *testing.T) {
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*TaskComposerModel)
+	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
 	if !ok {
 		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
 	}
-	if capture.preset.Project != inbox {
-		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.preset.Project, inbox)
+	if capture.Preset.Project != inbox {
+		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.Preset.Project, inbox)
 	}
-	if !capture.preset.AllowProjectSwitch {
+	if !capture.Preset.AllowProjectSwitch {
 		t.Fatal("context-free quick capture unexpectedly disabled project switching")
 	}
-	if len(capture.preset.AllProjects) != 2 {
-		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.preset.AllProjects))
+	if len(capture.Preset.AllProjects) != 2 {
+		t.Fatalf("quick capture project cache has %d projects, want 2", len(capture.Preset.AllProjects))
 	}
 }
 

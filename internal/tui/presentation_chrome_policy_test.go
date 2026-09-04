@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 type staticCompletionActivityReader struct {
@@ -135,13 +136,13 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "task composer", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+			m := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, nil)
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
 		{name: "task form", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewTaskFormModelCreate(project, nil, nil)
+			m := taskform.NewTaskFormModelCreate(project, nil, nil)
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

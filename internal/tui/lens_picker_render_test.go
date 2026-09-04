@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
@@ -241,7 +242,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	if got := lensPickerItemNamed(t, model, long).PrimaryStyle; got == nil {
 		t.Fatal("the oversized row carries no accent, so its truncation is untested")
 	}
-	for _, width := range []int{minTerminalWidth, 80, 200} {
+	for _, width := range []int{chrome.MinTerminalWidth, 80, 200} {
 		rendered := ansi.Strip(model.lensPicker.Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		// An accent is styling, never columns: the name survives truncation to the
@@ -252,10 +253,10 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	}
 	// The minimum supported terminal must still show the modal's own chrome,
 	// which is what renderWithin's reservation buys.
-	rendered := ansi.Strip(model.lensPicker.RenderWithin(minTerminalWidth, minTerminalHeight))
-	assertNoLensPickerOverflow(t, rendered, minTerminalWidth)
-	if lines := strings.Count(rendered, "\n") + 1; lines > minTerminalHeight {
-		t.Errorf("minimum-terminal render is %d lines, taller than %d", lines, minTerminalHeight)
+	rendered := ansi.Strip(model.lensPicker.RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight))
+	assertNoLensPickerOverflow(t, rendered, chrome.MinTerminalWidth)
+	if lines := strings.Count(rendered, "\n") + 1; lines > chrome.MinTerminalHeight {
+		t.Errorf("minimum-terminal render is %d lines, taller than %d", lines, chrome.MinTerminalHeight)
 	}
 
 	if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{}); err != nil {

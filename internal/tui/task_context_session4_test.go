@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 func TestQuickCaptureParsesContextAndRefusesClearBySurface(t *testing.T) {
@@ -71,21 +72,21 @@ func TestContextAutocompleteUsesProjectVocabulary(t *testing.T) {
 
 func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
-	composer := NewTaskComposerModel(TaskComposerPreset{
-		Kind:        ComposerProject,
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, appModel.runtime)
 	composer.Input.SetValue("Ship release ##Client-Acme")
 
-	reqs, ok := composer.parseCompactLines()
+	reqs, ok := composer.ParseCompactLines()
 	if !ok || len(reqs) != 1 || reqs[0].Context != "client-acme" {
 		t.Fatalf("context requests = %+v ok=%v", reqs, ok)
 	}
-	if cmd := composer.expandSingle(); cmd != nil {
+	if cmd := composer.ExpandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying a context")
 	}
-	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].Message, "expanded mode cannot set context") {
-		t.Fatalf("expand errors = %+v", composer.errors)
+	if len(composer.Errors) != 1 || !strings.Contains(composer.Errors[0].Message, "expanded mode cannot set context") {
+		t.Fatalf("expand errors = %+v", composer.Errors)
 	}
 }

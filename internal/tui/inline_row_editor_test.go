@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -194,13 +195,13 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	parent := project.Tasks[0]
 	parent.Title = "Parent marker with a deliberately long descriptive title"
 	project.BuildTaskTree()
-	minimum := ansi.Strip(out.quickEditMetadataLine(row, project, minTerminalWidth))
+	minimum := ansi.Strip(out.quickEditMetadataLine(row, project, chrome.MinTerminalWidth))
 	for _, want := range []string{"EDIT TASK", "[project]", "Parent", "today"} {
 		if !strings.Contains(minimum, want) {
 			t.Errorf("minimum-width metadata missing mandatory segment %q: %q", want, minimum)
 		}
 	}
-	if got := lipgloss.Width(minimum); got > minTerminalWidth {
+	if got := lipgloss.Width(minimum); got > chrome.MinTerminalWidth {
 		t.Errorf("minimum-width metadata is %d columns: %q", got, minimum)
 	}
 

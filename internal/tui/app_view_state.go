@@ -4,22 +4,18 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
-
-// minTerminalWidth is the minimum terminal width required to render the TUI.
-const minTerminalWidth = 60
-
-// minTerminalHeight is the minimum terminal height required to render the TUI.
-const minTerminalHeight = 20
 
 // handleWindowSize updates dimensions for all views.
 func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
-	m.tooNarrow = msg.Width < minTerminalWidth
-	m.tooShort = msg.Height < minTerminalHeight
+	m.tooNarrow = msg.Width < chrome.MinTerminalWidth
+	m.tooShort = msg.Height < chrome.MinTerminalHeight
 	// All views (including full-height ones) are sized to height-2, matching the
 	// open path: showView's full-height SetSize is immediately clobbered by
 	// ViewRegistry.Register re-applying the registry's stored height-2. Views
@@ -42,7 +38,7 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	if m.activeTaskComposer() {
 		updated, cmd := m.taskComposer.Update(msg)
-		if composer, ok := updated.(*TaskComposerModel); ok {
+		if composer, ok := updated.(*taskform.TaskComposerModel); ok {
 			m.taskComposer = composer
 			m.views.Register(presentation.ViewTaskComposer, composer)
 		}

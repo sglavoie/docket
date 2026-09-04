@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -71,9 +72,9 @@ func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 
 func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	rendered := picker.RenderWithin(minTerminalWidth, minTerminalHeight)
-	if got := lipgloss.Height(rendered); got > minTerminalHeight {
-		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight)
+	rendered := picker.RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight)
+	if got := lipgloss.Height(rendered); got > chrome.MinTerminalHeight {
+		t.Fatalf("picker height = %d, want <= %d", got, chrome.MinTerminalHeight)
 	}
 	plain := ansi.Strip(rendered)
 	// The explainer needs three lines at this width, so the border columns sit

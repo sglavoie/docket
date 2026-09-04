@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -56,7 +57,7 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 	if identity, focused := out.focusRootIdentity(); focused {
 		if task, focusProject := m.taskAndProjectForIdentity(identity); task != nil && focusProject != nil {
 			if taskAcceptsDeeperChild(task) {
-				return ShowTaskComposerMsg{Preset: m.focusChildComposerPreset(focusProject, task)}
+				return taskform.ShowTaskComposerMsg{Preset: m.focusChildComposerPreset(focusProject, task)}
 			}
 			project = focusProject
 		}

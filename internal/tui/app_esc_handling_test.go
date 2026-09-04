@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
 // TestHandleEscKey_PropagatesForModalViews verifies that views implementing
@@ -64,8 +65,8 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 
 	t.Run("TaskComposer", func(t *testing.T) {
 		app := newTestAppModel()
-		_ = app.openTaskComposer(TaskComposerPreset{
-			Kind:    ComposerProject,
+		_ = app.openTaskComposer(taskform.TaskComposerPreset{
+			Kind:    taskform.ComposerProject,
 			Project: testutil.NewTestProjectWithTasks("test"),
 		})
 		if app.currentView() != presentation.ViewTaskComposer {

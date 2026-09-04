@@ -21,7 +21,3 @@ func syntheticKeyStr(s string) tea.KeyPressMsg {
 func syntheticCtrlKey(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
 }
-
-func syntheticShiftKey(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code, Mod: tea.ModShift}
-}

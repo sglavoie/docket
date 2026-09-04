@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -34,7 +35,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	if m.tooNarrow || m.tooShort {
 		msg := fmt.Sprintf("Terminal too small (need %d×%d, have %d×%d)",
-			minTerminalWidth, minTerminalHeight, m.width, m.height)
+			chrome.MinTerminalWidth, chrome.MinTerminalHeight, m.width, m.height)
 		style := lipgloss.NewStyle().
 			Width(m.width).
 			Height(m.height).
