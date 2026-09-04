@@ -82,14 +82,8 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 // renderConfirmDialogOverlay checks if an active confirm dialog should render
 // as a floating overlay box.
 func (m *AppModel) renderConfirmDialogOverlay() string {
-	if m.projectArchiveConfirm.IsActive() {
-		return m.projectArchiveConfirm.RenderOverlay(m.viewNav.width)
-	}
-	if m.projectDeleteConfirm.IsActive() {
-		return m.projectDeleteConfirm.RenderOverlay(m.viewNav.width)
-	}
-	if m.projectParkConfirm.IsActive() {
-		return m.projectParkConfirm.RenderOverlay(m.viewNav.width)
+	if overlay, armed := m.project.confirmOverlay(m.viewNav.width); armed {
+		return overlay
 	}
 	if overlay, armed := m.taskMutation.confirmOverlay(m.viewNav.width); armed {
 		return overlay

@@ -14,7 +14,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
@@ -93,16 +92,12 @@ type AppModel struct {
 	// once, after the launch population lands, and forgotten either way.
 	pendingLaunchLens *config.NamedLens
 
-	// noteIndexRows is the workspace-wide note snapshot the Outliner's search
-	// tier ranks. It is shell-owned because NotesAtLocations reads disk and the
-	// tier is scored on every keystroke: the read happens once per invalidation,
-	// asynchronously, and the Outliner only ever reads the retained result.
-	// noteIndexGeneration discards a superseded read, and noteIndexOwners is the
-	// owner-catalog fingerprint that decides whether an availability change owes
-	// a reload at all.
-	noteIndexRows       []notes.LocatedNoteRow
-	noteIndexGeneration int
-	noteIndexOwners     string
+	// noteIndex is the notes cluster: the workspace-wide note snapshot the
+	// Outliner's search tier ranks, the generation that discards a superseded
+	// read, and the owner-catalog fingerprint that decides whether an
+	// availability change owes a reload at all. The surface handlers and the
+	// note commands stay AppModel methods. See note_index_controller.go.
+	noteIndex noteIndexController
 
 	operationRegistry *operation.OperationRegistry
 	operationExecutor *operation.OperationExecutor
@@ -181,29 +176,11 @@ type AppModel struct {
 		Original  string
 	}
 
-	// Pending project archive/unarchive confirmation
-	pendingProjectArchive        *models.Project
-	pendingProjectArchiveArchive bool
-	projectArchiveConfirm        chrome.ConfirmDialog
-
-	// Pending project delete confirmation. Deleting is the one project act that
-	// removes files, so it keeps its own dialog rather than sharing the archive
-	// one: the prompt counts the cascade the archive sentence never names.
-	pendingProjectDelete *models.Project
-	projectDeleteConfirm chrome.ConfirmDialog
-
-	// Pending project park confirmation. Only a tag edit that newly adds the
-	// reserved parked tag prompts; every other project tag applies straight away.
-	pendingProjectTags       *models.Project
-	pendingProjectTagsSet    []string
-	pendingProjectBulkTags   *projectBulkTagEdit
-	pendingProjectEditorSave *projecthub.ProjectEditorSave
-	projectParkConfirm       chrome.ConfirmDialog
-
-	// projectTagActionSubject is the tag the vocabulary sheet edits. It lives
-	// here rather than in the sheet's frozen value because a nested value step
-	// overwrites that value on its way back to the executor.
-	projectTagActionSubject string
+	// project is the project cluster: the archive lifecycle, the delete cascade,
+	// the one park confirmation the tag picker, the bulk tag actions and the
+	// project editor all raise, and the tag the vocabulary sheet edits. Every
+	// commit stays an AppModel method. See project_controller.go.
+	project projectController
 
 	// taskMutation is the task-mutation cluster: the shell-owned task deletion
 	// and outline-apply confirmations, each holding the pending value its

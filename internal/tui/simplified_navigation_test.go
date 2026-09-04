@@ -476,9 +476,9 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "one")
-	app.pendingProjectArchive = project
-	app.pendingProjectArchiveArchive = true
-	app.projectArchiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, "Archive?")
+	app.project.pendingArchive = project
+	app.project.archiving = true
+	app.project.archiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, "Archive?")
 	app.taskMutation.pendingDelete = taskDeletePending{
 		roots: []TaskProjectRef{{Task: project.Tasks[0], Project: project}},
 	}
@@ -486,9 +486,9 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 
 	jumpToOutlinerRootForTest(app)
 
-	if app.projectArchiveConfirm.IsActive() ||
-		app.pendingProjectArchive != nil ||
-		app.pendingProjectArchiveArchive {
+	if app.project.archiveConfirm.IsActive() ||
+		app.project.pendingArchive != nil ||
+		app.project.archiving {
 		t.Fatal("Ctrl+Esc left a project archive confirmation pending")
 	}
 	if app.taskMutation.deleteConfirm.IsActive() || len(app.taskMutation.pendingDelete.roots) != 0 {

@@ -109,13 +109,13 @@ func (m *AppModel) executeProjectTagVocabulary(
 	invocation operation.OperationInvocation,
 	targets []operation.OperationTarget,
 ) operation.OperationHandlerResult {
-	if m.projectTagActionSubject == "" {
+	if m.project.tagActionSubject == "" {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("no project tag is selected")}
 	}
 	message := projecthub.ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
 		Action:     projectTagVocabularyActions[invocation.Descriptor.ID],
-		Tag:        m.projectTagActionSubject,
+		Tag:        m.project.tagActionSubject,
 	}
 	for _, target := range targets {
 		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
@@ -137,7 +137,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 		}
 		message.Replacement = replacement
 	}
-	m.projectTagActionSubject = ""
+	m.project.tagActionSubject = ""
 	return operation.OperationHandlerResult{Message: message}
 }
 
@@ -185,7 +185,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 	if err != nil {
 		return status.ErrorCmd("%v", err)
 	}
-	m.projectTagActionSubject = tag
+	m.project.tagActionSubject = tag
 	m.contextActionSheet = sheet
 	return nil
 }
@@ -214,7 +214,7 @@ func (m *AppModel) projectTagDestinationValue(operation.OperationInvocation) ope
 }
 
 func (m *AppModel) strandedProjectTagMembers() []*models.Project {
-	tag := m.projectTagActionSubject
+	tag := m.project.tagActionSubject
 	if tag == "" {
 		return nil
 	}
@@ -233,7 +233,7 @@ func (m *AppModel) strandedProjectTagMembers() []*models.Project {
 func (m *AppModel) newProjectTagDestinationPicker(
 	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	subject := m.projectTagActionSubject
+	subject := m.project.tagActionSubject
 	if subject == "" {
 		return nil, fmt.Errorf("no project tag is selected")
 	}

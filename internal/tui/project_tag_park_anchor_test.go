@@ -37,7 +37,7 @@ func parkTagMembersThroughProjectTagVocabulary(
 	for _, member := range members {
 		targets = append(targets, operation.OperationTargetFor(operation.ProjectEntity(member.ID)))
 	}
-	app.projectTagActionSubject = tag
+	app.project.tagActionSubject = tag
 	result := app.executeProjectTagVocabulary(
 		operation.OperationInvocation{Descriptor: operation.OperationDescriptor{ID: operationProjectTagParkAll}},
 		targets,

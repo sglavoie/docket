@@ -115,15 +115,14 @@ func noteSearchIndexFingerprint(owners []noteSearchIndexOwner) string {
 // population — routes here rather than mutating the rows directly.
 func (m *AppModel) requestNoteSearchIndexLoad() tea.Cmd {
 	owners := m.noteSearchIndexOwners()
-	m.noteIndexOwners = noteSearchIndexFingerprint(owners)
-	m.noteIndexGeneration++
+	generation := m.noteIndex.beginLoad(noteSearchIndexFingerprint(owners))
 	// A typed nil *app.Service would satisfy the interface without satisfying
 	// the nil check inside the command, so the seam is narrowed here.
 	var service notes.ProjectNoteService
 	if m.appService != nil {
 		service = m.appService
 	}
-	return noteSearchIndexCmd(service, m.noteIndexGeneration, owners)
+	return noteSearchIndexCmd(service, generation, owners)
 }
 
 // refreshNoteSearchIndexOwners reloads only when the owner catalog actually
@@ -131,14 +130,14 @@ func (m *AppModel) requestNoteSearchIndexLoad() tea.Cmd {
 // re-reading every note collection from disk for a task edit would put a full
 // notes read behind an ordinary keystroke.
 func (m *AppModel) refreshNoteSearchIndexOwners() tea.Cmd {
-	if noteSearchIndexFingerprint(m.noteSearchIndexOwners()) == m.noteIndexOwners {
+	if !m.noteIndex.ownersMoved(noteSearchIndexFingerprint(m.noteSearchIndexOwners())) {
 		return nil
 	}
 	return m.requestNoteSearchIndexLoad()
 }
 
 func (m *AppModel) handleNoteSearchIndexLoaded(msg noteSearchIndexLoadedMsg) {
-	if msg.generation != m.noteIndexGeneration {
+	if !m.noteIndex.awaits(msg.generation) {
 		return
 	}
 	if msg.err != nil {
@@ -147,7 +146,7 @@ func (m *AppModel) handleNoteSearchIndexLoaded(msg noteSearchIndexLoadedMsg) {
 		logging.Warn("failed to load the Outliner note search index: %v", msg.err)
 		return
 	}
-	m.noteIndexRows = msg.rows
+	m.noteIndex.adopt(msg.rows)
 	m.invalidateOutlinerForNoteSearchIndex()
 }
 
@@ -177,5 +176,5 @@ func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 // method value rather than a copied slice so an invalidation that lands while a
 // search projection is open is visible to the very next rebuild.
 func (m *AppModel) noteSearchIndexRows() []notes.LocatedNoteRow {
-	return m.noteIndexRows
+	return m.noteIndex.rows
 }

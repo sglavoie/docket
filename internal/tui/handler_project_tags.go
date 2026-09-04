@@ -30,9 +30,10 @@ func (m *AppModel) requestProjectTags(project *models.Project, tags []string) te
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
 		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
-	m.pendingProjectTags = project
-	m.pendingProjectTagsSet = normalized
-	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, projectParkPrompt(project.Name, project))
+	m.project.armPark(
+		projectParkPending{project: project, tags: normalized},
+		projectParkPrompt(project.Name, project),
+	)
 	return nil
 }
 
@@ -47,8 +48,10 @@ func (m *AppModel) requestProjectEditorPark(save *projecthub.ProjectEditorSave) 
 	if m.runtime.IsSystemUnfiledProject(save.Project.ID) {
 		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
-	m.pendingProjectEditorSave = save
-	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, projectParkPrompt(save.Name, save.Project))
+	m.project.armPark(
+		projectParkPending{editorSave: save},
+		projectParkPrompt(save.Name, save.Project),
+	)
 	return nil
 }
 
@@ -57,16 +60,6 @@ func (m *AppModel) requestProjectEditorPark(save *projecthub.ProjectEditorSave) 
 // passed separately because an editor save may be renaming the project it parks.
 func projectParkPrompt(name string, project *models.Project) string {
 	return fmt.Sprintf("Park %s? %s Active Projects.", name, projectParkImpactClause(project))
-}
-
-// clearPendingProjectTags is the single cancel path for the shared park
-// confirmation, so it releases whichever pending edit raised the prompt.
-func (m *AppModel) clearPendingProjectTags() {
-	m.pendingProjectTags = nil
-	m.pendingProjectTagsSet = nil
-	m.pendingProjectBulkTags = nil
-	m.pendingProjectEditorSave = nil
-	m.projectParkConfirm.Cancel()
 }
 
 // commitProjectTags persists the replacement tag set through the ordinary

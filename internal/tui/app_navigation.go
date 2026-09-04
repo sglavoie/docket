@@ -154,7 +154,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 
 func (m *AppModel) clearTransientNavigationState() {
 	m.pendingChord = nil
-	m.clearPendingProjectArchive()
+	m.project.clearArchive()
 	m.taskMutation.clearDelete()
 
 	m.Overlays().ClearAll()

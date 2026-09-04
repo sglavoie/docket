@@ -49,8 +49,7 @@ func (m *AppModel) requestProjectBulkTags(msg projecthub.ProjectBulkTagsMsg) tea
 	if len(edit.parking) == 0 {
 		return m.commitProjectBulkTags(edit)
 	}
-	m.pendingProjectBulkTags = &edit
-	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, fmt.Sprintf(
+	m.project.armPark(projectParkPending{bulk: &edit}, fmt.Sprintf(
 		"Park %s? %s Active Projects.",
 		projectCountPhrase(len(edit.parking)),
 		projectBulkParkImpactClause(edit.parking),

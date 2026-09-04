@@ -105,60 +105,15 @@ func (m *AppModel) performGlobalTaskUndoRedoForProject(_ *models.Project, redo b
 }
 
 func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.projectArchiveConfirm.IsActive() {
-		return false, nil
-	}
-
-	confirmed, handled := m.projectArchiveConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
-		return true, func() tea.Msg { return projecthub.ProjectArchiveConfirmedMsg{} }
-	}
-	switch key {
-	case "n", "N", "esc":
-		m.clearPendingProjectArchive()
-	}
-	return true, nil
+	return projectConfirmKey(m.project.resolveArchiveKey(key), projecthub.ProjectArchiveConfirmedMsg{})
 }
 
 func (m *AppModel) handleProjectDeleteConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.projectDeleteConfirm.IsActive() {
-		return false, nil
-	}
-
-	confirmed, handled := m.projectDeleteConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
-		return true, func() tea.Msg { return projecthub.ProjectDeleteConfirmedMsg{} }
-	}
-	switch key {
-	case "n", "N", "esc":
-		m.clearPendingProjectDelete()
-	}
-	return true, nil
+	return projectConfirmKey(m.project.resolveDeleteKey(key), projecthub.ProjectDeleteConfirmedMsg{})
 }
 
 func (m *AppModel) handleProjectParkConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.projectParkConfirm.IsActive() {
-		return false, nil
-	}
-
-	confirmed, handled := m.projectParkConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
-		return true, func() tea.Msg { return projecthub.ProjectParkConfirmedMsg{} }
-	}
-	switch key {
-	case "n", "N", "esc":
-		m.clearPendingProjectTags()
-	}
-	return true, nil
+	return projectConfirmKey(m.project.resolveParkKey(key), projecthub.ProjectParkConfirmedMsg{})
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {

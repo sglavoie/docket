@@ -69,23 +69,23 @@ func TestNoteSearchIndexCmdOrdersRowsAndLabelsOwners(t *testing.T) {
 func TestNoteSearchIndexKeepsItsRowsAgainstStaleAndFailedReads(t *testing.T) {
 	live := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Live", "live.md")}
 	stale := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Stale", "stale.md")}
-	model := &AppModel{noteIndexGeneration: 3, noteIndexRows: live}
+	model := &AppModel{noteIndex: noteIndexController{generation: 3, rows: live}}
 
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, rows: stale})
-	if len(model.noteIndexRows) != 1 || model.noteIndexRows[0].Note.Title != "Live" {
-		t.Fatalf("index rows = %+v, want the superseded read discarded", model.noteIndexRows)
+	if len(model.noteIndex.rows) != 1 || model.noteIndex.rows[0].Note.Title != "Live" {
+		t.Fatalf("index rows = %+v, want the superseded read discarded", model.noteIndex.rows)
 	}
 
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 3, err: errors.New("read failed")})
-	if len(model.noteIndexRows) != 1 || model.noteIndexRows[0].Note.Title != "Live" {
-		t.Fatalf("index rows = %+v, want a failed refresh to leave the retained rows", model.noteIndexRows)
+	if len(model.noteIndex.rows) != 1 || model.noteIndex.rows[0].Note.Title != "Live" {
+		t.Fatalf("index rows = %+v, want a failed refresh to leave the retained rows", model.noteIndex.rows)
 	}
 
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 3, rows: stale})
-	if len(model.noteIndexRows) != 1 || model.noteIndexRows[0].Note.Title != "Stale" {
-		t.Fatalf("index rows = %+v, want the current generation adopted", model.noteIndexRows)
+	if len(model.noteIndex.rows) != 1 || model.noteIndex.rows[0].Note.Title != "Stale" {
+		t.Fatalf("index rows = %+v, want the current generation adopted", model.noteIndex.rows)
 	}
-	if got := model.noteSearchIndexRows(); !slices.Equal(got, model.noteIndexRows) {
+	if got := model.noteSearchIndexRows(); !slices.Equal(got, model.noteIndex.rows) {
 		t.Fatalf("injected accessor = %+v, want the retained rows", got)
 	}
 }
@@ -99,7 +99,7 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 	task.Title = "Unrelated"
 	alpha := primaryRowsProject("alpha", task)
 	outlinerView := scopeTestOutliner(alpha)
-	model := &AppModel{crossOutliner: outlinerView, noteIndexGeneration: 4}
+	model := &AppModel{crossOutliner: outlinerView, noteIndex: noteIndexController{generation: 4}}
 	outlinerView.SetNoteSearchIndex(model.noteSearchIndexRows)
 
 	// The search opens against an index that has nothing to say about it, which
@@ -157,7 +157,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 		noteIndexRow(global, "Widget notes", "widget-c.md"),
 	}
 	outlinerView := scopeTestOutliner(alpha)
-	model := &AppModel{crossOutliner: outlinerView, noteIndexGeneration: 2, noteIndexRows: rows}
+	model := &AppModel{crossOutliner: outlinerView, noteIndex: noteIndexController{generation: 2, rows: rows}}
 	outlinerView.SetNoteSearchIndex(model.noteSearchIndexRows)
 
 	searchRankedList(outlinerView, "widget")
@@ -233,20 +233,20 @@ func TestNoteSearchIndexReloadsOnlyForAnOwnerCatalogChange(t *testing.T) {
 	if cmd := model.requestNoteSearchIndexLoad(); cmd == nil {
 		t.Fatalf("the first load produced no command")
 	}
-	generation := model.noteIndexGeneration
+	generation := model.noteIndex.generation
 	if cmd := model.refreshNoteSearchIndexOwners(); cmd != nil {
 		t.Fatalf("an unchanged owner catalog requested a reload")
 	}
-	if model.noteIndexGeneration != generation {
-		t.Fatalf("generation moved to %d without a reload", model.noteIndexGeneration)
+	if model.noteIndex.generation != generation {
+		t.Fatalf("generation moved to %d without a reload", model.noteIndex.generation)
 	}
 
-	model.noteIndexOwners = "a different owner catalog"
+	model.noteIndex.owners = "a different owner catalog"
 	if cmd := model.refreshNoteSearchIndexOwners(); cmd == nil {
 		t.Fatalf("a changed owner catalog requested no reload")
 	}
-	if model.noteIndexGeneration != generation+1 {
-		t.Fatalf("generation = %d, want the reload to supersede the previous read", model.noteIndexGeneration)
+	if model.noteIndex.generation != generation+1 {
+		t.Fatalf("generation = %d, want the reload to supersede the previous read", model.noteIndex.generation)
 	}
 }
 

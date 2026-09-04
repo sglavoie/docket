@@ -1,11 +1,6 @@
 package tui
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -148,45 +143,11 @@ func TestTaskMutationControllerConfirmOverlayAnswersForTheArmedPrompt(t *testing
 func TestTaskMutationClusterHasOneHome(t *testing.T) {
 	t.Parallel()
 
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve caller for package directory")
-	}
-	appFile := filepath.Join(filepath.Dir(thisFile), "app.go")
-	parsed, err := parser.ParseFile(token.NewFileSet(), appFile, nil, 0)
-	if err != nil {
-		t.Fatalf("parse app.go: %v", err)
-	}
-
 	clustered := map[string]bool{
 		"pendingTaskDelete":    true,
 		"taskDeleteConfirm":    true,
 		"pendingOutlineApply":  true,
 		"outlineDeleteConfirm": true,
 	}
-	controllerFields := 0
-	ast.Inspect(parsed, func(node ast.Node) bool {
-		spec, isType := node.(*ast.TypeSpec)
-		if !isType || spec.Name.Name != "AppModel" {
-			return true
-		}
-		model, isStruct := spec.Type.(*ast.StructType)
-		if !isStruct {
-			return true
-		}
-		for _, field := range model.Fields.List {
-			for _, name := range field.Names {
-				if clustered[name.Name] {
-					t.Errorf("AppModel field %s belongs to the taskMutation controller", name.Name)
-				}
-				if name.Name == "taskMutation" {
-					controllerFields++
-				}
-			}
-		}
-		return false
-	})
-	if controllerFields != 1 {
-		t.Errorf("AppModel taskMutation fields = %d, want exactly 1", controllerFields)
-	}
+	assertAppModelClusterHasOneHome(t, "taskMutation", clustered)
 }

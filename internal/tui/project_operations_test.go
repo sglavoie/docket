@@ -168,7 +168,7 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("archive request produced cmd %v instead of arming the confirmation", cmd)
 	}
-	if !app.projectArchiveConfirm.IsActive() {
+	if !app.project.archiveConfirm.IsActive() {
 		t.Fatal("project archive did not arm the shell confirmation")
 	}
 }
