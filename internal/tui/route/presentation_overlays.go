@@ -1,11 +1,11 @@
-package tui
+package route
 
 import "github.com/sglavoie/tt/internal/tui/presentation"
 
-// overlayForPresentation maps only transient renderer identities to the typed
+// OverlayForPresentation maps only transient renderer identities to the typed
 // overlay stack. Primary and secondary destinations are installed through
 // their typed route activation methods, never inferred from a renderer ID.
-func overlayForPresentation(view presentation.PresentationID) (Overlay, bool, error) {
+func OverlayForPresentation(view presentation.PresentationID) (Overlay, bool, error) {
 	switch view {
 	case presentation.ViewHelp:
 		return referenceOverlayFor(ReferenceHelp)

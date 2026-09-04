@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -68,7 +69,7 @@ func (m *ProjectHubModel) projectHubRenderConfig(height int) ListSurfaceRenderCo
 
 func (m *ProjectHubModel) subtitle() string {
 	var subtitle string
-	if m.mode == ProjectHubModePinned {
+	if m.mode == route.ProjectHubModePinned {
 		subtitle = fmt.Sprintf("%d pinned active", m.pinnedActiveProjectCount())
 	} else {
 		subtitle = fmt.Sprintf(
@@ -102,7 +103,7 @@ func (m *ProjectHubModel) pinnedActiveProjectCount() int {
 // operational title renderer.
 func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
 	title := "Select Project"
-	if m.mode == ProjectHubModePinned {
+	if m.mode == route.ProjectHubModePinned {
 		title = "Select Pinned Project"
 	}
 	return chrome.RenderFullscreenTitleWithPulse(
@@ -282,7 +283,7 @@ func (m *AppModel) executeProjectHubOperation(invocation operation.OperationInvo
 // activeProjectHub returns the mounted Project Hub, or nil when Manage is on
 // another module.
 func (m *AppModel) activeProjectHub() *ProjectHubModel {
-	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != ManageProjects {
+	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != route.ManageProjects {
 		return nil
 	}
 	hub, _ := m.manageHub.ActiveModuleView().(*ProjectHubModel)

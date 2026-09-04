@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // The menu bar is a projection of the operation catalog, so these are the
@@ -35,7 +36,7 @@ var productionInputStrategies = []operation.InputStrategyID{
 // menuBarCommandContext is the launch context: the Outliner presentation with
 // the simplified grammar and a cursor that names nothing.
 func menuBarCommandContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return ctx
 }

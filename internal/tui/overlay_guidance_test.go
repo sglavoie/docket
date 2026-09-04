@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func session8GuidanceText(spec chrome.GuidanceSpec) string {
@@ -207,7 +208,7 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 
 	views := []struct {
 		name string
-		view View
+		view route.View
 	}{
 		{name: "tag selector", view: NewTagSelectorModel(task, source, nil)},
 		{name: "parent selector", view: NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)},

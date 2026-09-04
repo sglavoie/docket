@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestPromotedToolNotesScope(t *testing.T) {
@@ -20,13 +21,13 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		name           string
 		configure      func(*AppModel)
 		wantProjectIDs []string
-		wantScope      NotesScope
+		wantScope      route.NotesScope
 	}{
 		{
 			name:           "all",
 			configure:      func(*AppModel) {},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
-			wantScope:      AllNotesScope(),
+			wantScope:      route.AllNotesScope(),
 		},
 		{
 			name: "project focus",
@@ -34,7 +35,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.scopedProjectID = workB.ID
 			},
 			wantProjectIDs: []string{workB.ID},
-			wantScope:      AllNotesScope(),
+			wantScope:      route.AllNotesScope(),
 		},
 		{
 			name: "task row cursor",
@@ -45,7 +46,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.cursor = 0
 			},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
-			wantScope:      AllNotesScope(),
+			wantScope:      route.AllNotesScope(),
 		},
 		{
 			name: "project header cursor",
@@ -57,7 +58,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.cursor = 1
 			},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
-			wantScope:      ProjectNotesScope(workB.ID),
+			wantScope:      route.ProjectNotesScope(workB.ID),
 		},
 		{
 			name: "archived project header cursor",
@@ -71,7 +72,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.cursor = 0
 			},
 			wantProjectIDs: []string{home.ID, archived.ID, workA.ID, workB.ID},
-			wantScope:      AllNotesScope(),
+			wantScope:      route.AllNotesScope(),
 		},
 	}
 
@@ -105,24 +106,24 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 	tests := []struct {
 		name    string
 		message any
-		check   func(*testing.T, RouteParams)
+		check   func(*testing.T, route.RouteParams)
 	}{
 		{
 			name:    "all notes",
-			message: ShowNotesManagerMsg{Scope: AllNotesScope()},
-			check: func(t *testing.T, params RouteParams) {
-				got, ok := params.(ManageParams)
-				if !ok || got != (ManageParams{Module: ManageNotes, NotesScope: AllNotesScope()}) {
+			message: ShowNotesManagerMsg{Scope: route.AllNotesScope()},
+			check: func(t *testing.T, params route.RouteParams) {
+				got, ok := params.(route.ManageParams)
+				if !ok || got != (route.ManageParams{Module: route.ManageNotes, NotesScope: route.AllNotesScope()}) {
 					t.Fatalf("All Notes route params = %#v", params)
 				}
 			},
 		},
 		{
 			name:    "global notes",
-			message: ShowNotesManagerMsg{Scope: GlobalNotesScope()},
-			check: func(t *testing.T, params RouteParams) {
-				got, ok := params.(ManageParams)
-				if !ok || got != (ManageParams{Module: ManageNotes, NotesScope: GlobalNotesScope()}) {
+			message: ShowNotesManagerMsg{Scope: route.GlobalNotesScope()},
+			check: func(t *testing.T, params route.RouteParams) {
+				got, ok := params.(route.ManageParams)
+				if !ok || got != (route.ManageParams{Module: route.ManageNotes, NotesScope: route.GlobalNotesScope()}) {
 					t.Fatalf("Global Notes route params = %#v", params)
 				}
 			},
@@ -133,11 +134,11 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app := newTestAppModel()
 			_, _ = app.Update(test.message)
-			route := app.navigation.Primary.Current()
-			if route.ID() != SecondaryTool || app.navigation.Primary.Depth() != 2 {
-				t.Fatalf("route = %s depth %d, want typed SecondaryTool child", route.ID(), app.navigation.Primary.Depth())
+			current := app.navigation.Primary.Current()
+			if current.ID() != route.SecondaryTool || app.navigation.Primary.Depth() != 2 {
+				t.Fatalf("route = %s depth %d, want typed SecondaryTool child", current.ID(), app.navigation.Primary.Depth())
 			}
-			test.check(t, route.Params())
+			test.check(t, current.Params())
 		})
 	}
 }

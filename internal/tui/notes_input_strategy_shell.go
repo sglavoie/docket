@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // openNotesActionSheet raises the shell-owned sheet over the Notes manager. The
@@ -138,7 +139,7 @@ func (m *AppModel) executeNotesSurfaceOperation(invocation operation.OperationIn
 // a note mutation result can find its renderer from anywhere; a dispatched key
 // already knows Manage is what it came from.
 func (m *AppModel) activeNotesManager() *NotesViewModel {
-	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != ManageNotes {
+	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != route.ManageNotes {
 		return nil
 	}
 	notes, _ := m.manageHub.ActiveModuleView().(*NotesViewModel)

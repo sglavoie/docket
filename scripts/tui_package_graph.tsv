@@ -71,6 +71,13 @@
 #     below the surface that owns the concept; `presentation` is where the bare
 #     enum lives and `listsurface` spells it through an alias, so this edge
 #     carries one declaration and no behavior.
+#   - `route -> theme` was added in Session 2.17. `view_accent.go` was assigned
+#     to `route`, not `theme`, back in Session 2.1 precisely because the accent
+#     category is navigation identity: `presentationAccentCategory` reads a
+#     PresentationID and `accentColorForCategory` resolves the four
+#     `theme.Accent*` variables it names. Only the resolution step is theme's,
+#     and it is four constant reads, so the edge carries no rendering. It cannot
+#     close a cycle: `theme` is L0 and depends on nothing.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -92,7 +99,7 @@ coordinator	L1	taskref,status
 grammar	L2	chrome,theme,textfit,taskref
 query	L2	theme,pulse,taskref,chrome,grammar
 operation	L3	presentation,chrome,taskref,status,grammar,query
-route	L4	presentation,chrome,operation
+route	L4	presentation,chrome,operation,theme
 listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation
 help	L6	listsurface,operation,chrome,grammar,keymap
 notes	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help

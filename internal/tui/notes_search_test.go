@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -64,7 +65,7 @@ func TestNotesSearchRankingPrefersTitlesAndUsesDeterministicTies(t *testing.T) {
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -96,7 +97,7 @@ func TestNotesSearchSmartCaseNarrowsThenFallsBackWithLabel(t *testing.T) {
 			{Title: "api cleanup", Filename: "lower.md", ModifiedAt: time.Unix(1, 0)},
 		},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 	view.SetSize(120, 24)
 
@@ -155,7 +156,7 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		project,
@@ -265,7 +266,7 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		project,
@@ -277,12 +278,12 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEnter))
 
-	view.SetScope(GlobalNotesScope())
+	view.SetScope(route.GlobalNotesScope())
 	if view.SearchQuery() != "needle" || len(view.visibleRows) != 1 ||
 		view.visibleRows[0].Location != app.GlobalNoteLocation() {
 		t.Fatalf("Global scope lost search: query=%q rows=%#v", view.SearchQuery(), view.visibleRows)
 	}
-	view.SetScope(ProjectNotesScope(project.ID))
+	view.SetScope(route.ProjectNotesScope(project.ID))
 	if view.SearchQuery() != "needle" || len(view.visibleRows) != 1 ||
 		view.visibleRows[0].Location != app.ProjectNoteLocation(project.ID) {
 		t.Fatalf("project scope lost search: query=%q rows=%#v", view.SearchQuery(), view.visibleRows)

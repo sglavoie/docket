@@ -4,21 +4,13 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
-)
-
-// ProjectHubMode identifies the population exposed by the Project Hub. All is
-// the zero value so existing route and message callers retain the full Hub.
-type ProjectHubMode uint8
-
-const (
-	ProjectHubModeAll ProjectHubMode = iota
-	ProjectHubModePinned
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // ShowProjectHubMsg opens the searchable project selection and administration
 // surface in the requested population mode.
 type ShowProjectHubMsg struct {
-	Mode ProjectHubMode
+	Mode route.ProjectHubMode
 }
 
 // The operation ID predates the dedicated Project Hub and remains stable for
@@ -148,7 +140,7 @@ type projectHubActionTarget struct {
 type ProjectHubModel struct {
 	BaseSearchableView
 	runtime          *config.RuntimeState
-	mode             ProjectHubMode
+	mode             route.ProjectHubMode
 	taskCounts       map[string]projectTaskTally
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel

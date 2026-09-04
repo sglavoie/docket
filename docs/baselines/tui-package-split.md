@@ -116,9 +116,11 @@ the pre-split tree and is consistently pessimistic.
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
 | `operation` | 124 | 162 | 159 |
+| `route` | 14 | 16 | Session 2.18 |
 
-Running total against 631: **381**. `grammar` contributes 58, not 154, because
-its two counted columns are on a different basis from every row above them:
+Running total against 631: **381**, plus whatever `route` settles on.
+`grammar` contributes 58, not 154, because its two counted columns are on a
+different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
 where the other rows count package-level declarations and name their members in
 prose. Session 2.12 withdrew 42 of the 196 — 27 declarations and 15 members —
@@ -446,6 +448,75 @@ identity on both sides of a boundary the list surface sits above. The list
 surface keeps its own vocabulary through a type alias, so not one of its
 references had to be requalified — the cheapest shape available whenever an
 identity is genuinely shared rather than owned.
+
+`route` spends 16 of its projected 14 at the production move, plus four
+methods the declaration column does not count: `PopViewMsg.ClosePopStyle`,
+`PresentationChromePolicy.WorkspacePulseEligible`, `NotesScope.Valid` and
+`NotesScope.CommandScope`. The overshoot is one family. `presentation_chrome_policy.go`
+carried two enums and a struct that were entirely private to the shell before
+the move, so `PresentationChromeKind`, `PresentationGuidanceOwner`,
+`PresentationChromePolicy` and their six constants are ten of the sixteen; the
+projection counted only the identifiers the pre-split tree referenced across
+what would become the boundary, and a policy the shell read through one accessor
+looks like one name until the type itself has to cross.
+
+Two of the four methods are the same shape as `pulse`'s struct fields: a
+receiver moved and its callers stayed. The other two are the session's one real
+design decision. `NotesScope.valid()` and `NotesScope.commandScope()` were
+declared in the shell on a type that moved, which is the failure `tuiqualify`
+cannot see — it rewrites a method *declaration* into
+`func (scope route.NotesScope) valid()`, which does not compile. Both moved down
+into `route/typed_route.go` beside their receiver. `NotesScope.matches` could
+not follow them: it takes an `app.NoteLocation`, and a method on a route type
+would have put `internal/app` inside L4 for one predicate. It became the free
+function `notesScopeMatches(scope, location)` in `notes_view_rows.go`, which is
+step 3 read backwards — a member with one consumer moves into that consumer even
+when its receiver does not.
+
+`ProjectHubMode` is the only identifier the moving set read from outside itself,
+and it moved *down* rather than being imported: `ManageParams` carries it and
+`canonicalRouteParams` range-checks it, so L4 held a type L7 declared. It is now
+`route/project_hub_mode.go`, and `projecthub` reads it back through the edge its
+graph row already allowed. Nothing else in `project_hub_types.go` could follow,
+because the rest of that file is pinned to `projectHubTaskFilter`.
+
+Two assignment rows are corrected, both recorded in the header of
+`scripts/tui_package_assignments.tsv`. `operation_text_prompt.go` is `tui`, not
+`route`: every one of its consumers is in the shell, and `handleKey` and
+`render` are the unexported methods the shell's own `keyInterceptor` and
+`widthRenderer` select on, so moving it would have renamed them on every other
+overlay too. `pipeline_stage.go` appears in this session's brief but the table
+gives it to `listsurface`, and the table is authoritative; both its consumers
+are in `app_view_status.go`, so that row is the `listsurface` session's to weigh.
+
+One graph edge the whitelist did not have: `route -> theme`, for the four
+`theme.Accent*` reads in `accentColorForCategory`. `view_accent.go` was assigned
+to `route` rather than `theme` back in Session 2.1 precisely because the accent
+*category* is navigation identity; only the last step, resolving a category to a
+color, is theme's, and it is four constant reads with no rendering.
+
+`route`'s test split lands in Session 2.18, but two tests moved in this session
+because they read `PresentationChromePolicy`'s unexported fields directly. They
+are the exhaustiveness pair — `TestPresentationChromePolicyClassifiesEveryPresentation`
+and `TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners` — and they
+took `allPresentations()` with them into
+`internal/tui/route/presentation_chrome_policy_test.go`. The rest of that file
+stays in the shell: it renders through `AppModel`, `coordinator` and `config`,
+which an L4 test file may not import. Moving those two is what kept `kind` and
+`guidance` unexported instead of adding two accessors `scripts/dead_code.sh`
+would then have called unreachable.
+
+The shell's own navigation fixtures were rewritten rather than given a seam.
+`setTestPresentationPath` and `pushTestPresentationOverlay` used to write
+`Overlay.presentation` and `Overlay.hasPresentation` by hand; both fields are
+`route`'s now, and the only production writer is `OverlayForPresentation`. Every
+view the two helpers are ever called with is installable through the real
+authority — the transient ones through `installTypedPresentation`, and
+`ViewNotes`/`ViewGlobalNotes` through the typed `SecondaryTool` Manage child
+they are only ever reached through in production — so the fallback became a
+`manageRouteForPresentation` helper and the field writes disappeared. Exporting
+a constructor for a test would have failed the dead-code gate anyway, which is
+the same trap the `operation` session recorded one row above.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

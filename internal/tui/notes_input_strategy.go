@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // Notes surface operation IDs. They name what the Notes grammar does to the
@@ -85,7 +86,7 @@ func (m *NotesViewModel) dispatchNotesKey(key string) tea.Cmd {
 }
 
 func (m *NotesViewModel) notesCommandContext() operation.CommandContext {
-	ctx := PresentationCommandContext(m.presentationID())
+	ctx := route.PresentationCommandContext(m.presentationID())
 	ctx.Capabilities.Add(operation.CapabilityNotesManager)
 	if row := m.currentRow(); row != nil {
 		ctx.CurrentEntity = noteRowEntity(*row)
@@ -96,7 +97,7 @@ func (m *NotesViewModel) notesCommandContext() operation.CommandContext {
 // presentationID names the renderer the current scope selects, matching the
 // hub's own mapping so a Notes-scoped binding resolves under either spelling.
 func (m *NotesViewModel) presentationID() presentation.PresentationID {
-	if m.scope.Kind == NotesScopeProject {
+	if m.scope.Kind == route.NotesScopeProject {
 		return presentation.ViewNotes
 	}
 	return presentation.ViewGlobalNotes

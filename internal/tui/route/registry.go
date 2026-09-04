@@ -1,4 +1,4 @@
-package tui
+package route
 
 import (
 	tea "charm.land/bubbletea/v2"

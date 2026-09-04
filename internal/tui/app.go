@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -76,7 +77,7 @@ type AppModel struct {
 	// navigation is the sole live shell authority. PresentationID values attached
 	// to routes and overlays select renderers; they never form a second
 	// navigation stack.
-	navigation     NavigationState
+	navigation     route.NavigationState
 	startupMessage tea.Msg
 
 	// pendingLaunchLens is the lens the machine-local active-lens pointer named
@@ -100,7 +101,7 @@ type AppModel struct {
 	height int
 
 	// View registry for centralized view management
-	views *ViewRegistry
+	views *route.ViewRegistry
 
 	operationRegistry *operation.OperationRegistry
 	operationExecutor *operation.OperationExecutor

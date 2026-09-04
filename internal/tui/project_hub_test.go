@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // projectHubApp builds a two-project shell whose cross-project Outliner is
@@ -30,9 +31,9 @@ func projectHubApp(t *testing.T) *AppModel {
 	return app
 }
 
-func openProjectHub(t *testing.T, app *AppModel, modes ...ProjectHubMode) *ProjectHubModel {
+func openProjectHub(t *testing.T, app *AppModel, modes ...route.ProjectHubMode) *ProjectHubModel {
 	t.Helper()
-	mode := ProjectHubModeAll
+	mode := route.ProjectHubModeAll
 	if len(modes) > 0 {
 		mode = modes[0]
 	}

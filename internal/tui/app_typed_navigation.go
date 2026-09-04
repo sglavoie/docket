@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -17,7 +18,7 @@ func (m *AppModel) currentPresentationView() presentation.PresentationID {
 	return presentation.ViewCrossProjectOutliner
 }
 
-func taskWorkspacePresentation(_ TaskWorkspaceParams) presentation.PresentationID {
+func taskWorkspacePresentation(_ route.TaskWorkspaceParams) presentation.PresentationID {
 	// TaskWorkspace routes are app-scoped only, so the single authoritative cross
 	// Outliner always renders them; project scopes are Outliner scope frames
 	// rather than a second presentation identity.
@@ -29,8 +30,8 @@ func taskWorkspacePresentation(_ TaskWorkspaceParams) presentation.PresentationI
 func (m *AppModel) presentationPath() []presentation.PresentationID {
 	routes := m.navigation.Primary.Routes()
 	path := make([]presentation.PresentationID, 0, len(routes)+m.navigation.Overlays.Depth())
-	for _, route := range routes {
-		if view, ok := m.presentationForRoute(route); ok {
+	for _, primary := range routes {
+		if view, ok := m.presentationForRoute(primary); ok {
 			path = append(path, view)
 		}
 	}
@@ -39,49 +40,49 @@ func (m *AppModel) presentationPath() []presentation.PresentationID {
 			path = append(path, view)
 			continue
 		}
-		if route, ok := overlay.ReferenceRoute(); ok {
-			if view, mapped := m.presentationForRoute(route); mapped {
+		if reference, ok := overlay.ReferenceRoute(); ok {
+			if view, mapped := m.presentationForRoute(reference); mapped {
 				path = append(path, view)
 				continue
 			}
 		}
-		if overlay.Kind() == OverlayComposer && overlay.Key() == taskComposerOverlayKey && m.taskComposer != nil {
+		if overlay.Kind() == route.OverlayComposer && overlay.Key() == taskComposerOverlayKey && m.taskComposer != nil {
 			path = append(path, presentation.ViewTaskComposer)
 		}
 	}
 	return path
 }
 
-func (m *AppModel) presentationForRoute(route Route) (presentation.PresentationID, bool) {
-	if view, ok := route.Presentation(); ok && view != presentation.ViewUnknown {
+func (m *AppModel) presentationForRoute(target route.Route) (presentation.PresentationID, bool) {
+	if view, ok := target.Presentation(); ok && view != presentation.ViewUnknown {
 		return view, true
 	}
-	switch route.ID() {
-	case TaskWorkspace:
-		params, ok := route.Params().(TaskWorkspaceParams)
+	switch target.ID() {
+	case route.TaskWorkspace:
+		params, ok := target.Params().(route.TaskWorkspaceParams)
 		if !ok {
 			return 0, false
 		}
 		return taskWorkspacePresentation(params), true
-	case SecondaryTool:
-		switch params := route.Params().(type) {
-		case ManageParams:
-			if m.manageHub != nil && manageParamsEqual(params, m.manageHub.Params()) {
+	case route.SecondaryTool:
+		switch params := target.Params().(type) {
+		case route.ManageParams:
+			if m.manageHub != nil && route.ManageParamsEqual(params, m.manageHub.Params()) {
 				if view, ok := m.manageHub.PresentationView(); ok {
 					return view, true
 				}
 			}
 			return manageModulePresentation(params)
 		}
-	case Reference:
-		params, ok := route.Params().(ReferenceParams)
+	case route.Reference:
+		params, ok := target.Params().(route.ReferenceParams)
 		if !ok {
 			return 0, false
 		}
 		switch params.Kind {
-		case ReferenceHelp:
+		case route.ReferenceHelp:
 			return presentation.ViewHelp, true
-		case ReferenceOutlineErrors:
+		case route.ReferenceOutlineErrors:
 			return presentation.ViewOutlineErrors, true
 		}
 	}
@@ -91,11 +92,11 @@ func (m *AppModel) presentationForRoute(route Route) (presentation.PresentationI
 // outlinerPrimary resolves the canonical Task Workspace model beneath shell
 // overlays.
 func (m *AppModel) outlinerPrimary() (*OutlinerModel, bool) {
-	route := m.navigation.Primary.Current()
-	if route.ID() != TaskWorkspace {
+	current := m.navigation.Primary.Current()
+	if current.ID() != route.TaskWorkspace {
 		return nil, false
 	}
-	_, ok := route.Params().(TaskWorkspaceParams)
+	_, ok := current.Params().(route.TaskWorkspaceParams)
 	if !ok {
 		return nil, false
 	}
@@ -125,20 +126,20 @@ func (m *AppModel) activeManageHub() bool {
 
 // manageHubPrimary returns Manage beneath shell overlays so palette and
 // collection result handlers resolve the same embedded module as direct keys.
-func (m *AppModel) manageHubPrimary() (*ManageHubModel, ManageParams, bool) {
+func (m *AppModel) manageHubPrimary() (*ManageHubModel, route.ManageParams, bool) {
 	if m.manageHub == nil {
-		return nil, ManageParams{}, false
+		return nil, route.ManageParams{}, false
 	}
-	route := m.navigation.Primary.Current()
-	if route.ID() != SecondaryTool {
-		return nil, ManageParams{}, false
+	current := m.navigation.Primary.Current()
+	if current.ID() != route.SecondaryTool {
+		return nil, route.ManageParams{}, false
 	}
-	if _, hasPresentation := route.Presentation(); hasPresentation {
-		return nil, ManageParams{}, false
+	if _, hasPresentation := current.Presentation(); hasPresentation {
+		return nil, route.ManageParams{}, false
 	}
-	params, ok := route.Params().(ManageParams)
-	if !ok || !manageParamsEqual(params, m.manageHub.Params()) {
-		return nil, ManageParams{}, false
+	params, ok := current.Params().(route.ManageParams)
+	if !ok || !route.ManageParamsEqual(params, m.manageHub.Params()) {
+		return nil, route.ManageParams{}, false
 	}
 	return m.manageHub, params, true
 }
@@ -148,7 +149,7 @@ func (m *AppModel) manageHubPrimary() (*ManageHubModel, ManageParams, bool) {
 // their presentation through a typed Reference route instead of the legacy
 // Presentation field, so both forms must cover the primary child for rendering,
 // input dispatch, and one-layer Esc ownership.
-func overlayCoversPrimary(overlay Overlay) bool {
+func overlayCoversPrimary(overlay route.Overlay) bool {
 	if _, hasPresentation := overlay.Presentation(); hasPresentation {
 		return true
 	}
@@ -156,7 +157,7 @@ func overlayCoversPrimary(overlay Overlay) bool {
 	return hasReference
 }
 
-func (m *AppModel) activeView() View {
+func (m *AppModel) activeView() route.View {
 	if m.activeTaskComposer() {
 		return m.taskComposer
 	}
@@ -175,7 +176,7 @@ func (m *AppModel) installTypedPresentation(view presentation.PresentationID) bo
 	if view == presentation.ViewUnknown {
 		return false
 	}
-	if overlay, ok, err := overlayForPresentation(view); err == nil && ok {
+	if overlay, ok, err := route.OverlayForPresentation(view); err == nil && ok {
 		m.navigation.Overlays.Push(overlay, nil)
 		return true
 	}
@@ -183,14 +184,14 @@ func (m *AppModel) installTypedPresentation(view presentation.PresentationID) bo
 	return false
 }
 
-func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
-	if route.ID() != TaskWorkspace {
+func (m *AppModel) activateTaskWorkspaceRoute(target route.Route) tea.Cmd {
+	if target.ID() != route.TaskWorkspace {
 		return nil
 	}
-	if _, ok := route.Params().(TaskWorkspaceParams); !ok {
+	if _, ok := target.Params().(route.TaskWorkspaceParams); !ok {
 		return nil
 	}
-	if err := m.navigation.ReplaceDestination(route); err != nil {
+	if err := m.navigation.ReplaceDestination(target); err != nil {
 		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
 	return nil
@@ -198,14 +199,14 @@ func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
 
 func (m *AppModel) popTypedPresentation() bool {
 	if overlay, ok := m.navigation.Overlays.CloseTop(); ok {
-		if overlay.Kind() == OverlayComposer && overlay.Key() == taskComposerOverlayKey {
+		if overlay.Kind() == route.OverlayComposer && overlay.Key() == taskComposerOverlayKey {
 			m.taskComposer = nil
 		}
 		return true
 	}
 
 	current := m.navigation.Primary.Current()
-	if current.ID() == SecondaryTool {
+	if current.ID() == route.SecondaryTool {
 		// Secondary tools are hierarchical children: a single Esc
 		// dismisses the child directly back to the launching destination without an
 		// intermediate landing retreat.
@@ -217,11 +218,11 @@ func (m *AppModel) popTypedPresentation() bool {
 	return false
 }
 
-func (m *AppModel) pushTypedOverlay(kind OverlayKind, key string) {
+func (m *AppModel) pushTypedOverlay(kind route.OverlayKind, key string) {
 	if current, ok := m.navigation.Overlays.Current(); ok && current.Kind() == kind && current.Key() == key {
 		return
 	}
-	overlay, err := NewOverlay(kind, key)
+	overlay, err := route.NewOverlay(kind, key)
 	if err == nil {
 		m.navigation.Overlays.Push(overlay, func() {
 			m.cancelTypedOverlayPresentation(kind, key)
@@ -233,9 +234,9 @@ func (m *AppModel) pushTypedOverlay(kind OverlayKind, key string) {
 // switch or Home reset cancels the typed overlay stack. Successful closes use
 // their owning close methods; cancellation must not recursively mutate the
 // stack it is currently unwinding.
-func (m *AppModel) cancelTypedOverlayPresentation(kind OverlayKind, key string) {
+func (m *AppModel) cancelTypedOverlayPresentation(kind route.OverlayKind, key string) {
 	switch kind {
-	case OverlayComposer:
+	case route.OverlayComposer:
 		if key == taskComposerOverlayKey {
 			m.taskComposer = nil
 		}

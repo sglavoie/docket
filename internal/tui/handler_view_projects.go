@@ -3,14 +3,15 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowProjectHubMsg:
-		return true, m.activateManageHub(ManageParams{
-			Module:         ManageProjects,
+		return true, m.activateManageHub(route.ManageParams{
+			Module:         route.ManageProjects,
 			ProjectHubMode: msg.Mode,
 		})
 
@@ -26,7 +27,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// The reset drops any parked focus after presentationCmd captured it, so
 		// supersede that load with one that requests the base workspace alone.
 		return true, tea.Batch(
-			m.activateTaskWorkspaceRoute(outlinerRootRoute()),
+			m.activateTaskWorkspaceRoute(route.OutlinerRootRoute()),
 			presentationCmd,
 			m.crossOutliner.takeParkedFocusReload(),
 		)

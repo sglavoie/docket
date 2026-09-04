@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // taskDeleteEnv wires the canonical shell-owned deletion transaction over the
@@ -104,7 +105,7 @@ func (e *taskDeleteEnv) appModel() *AppModel {
 		persister:         coordinator.NewProjectService(),
 		appService:        e.svc,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(e.svc),
-		views:             NewViewRegistry(),
+		views:             route.NewViewRegistry(),
 		width:             80,
 		height:            24,
 	}

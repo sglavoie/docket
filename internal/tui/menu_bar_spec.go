@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // The menu bar is a third projection of the one operation grammar, beside the
@@ -323,7 +324,7 @@ func (m *AppModel) validateMenuBarSpecs() error {
 	if !ok {
 		return fmt.Errorf("simplified input strategy is required")
 	}
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	menus, err := resolveMenuEntries(
 		m.operationRegistry,

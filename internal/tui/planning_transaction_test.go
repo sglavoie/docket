@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -122,7 +123,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
 		width:             80,
 		height:            24,
-		views:             NewViewRegistry(),
+		views:             route.NewViewRegistry(),
 		currentProject:    project,
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),

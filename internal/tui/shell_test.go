@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func newShellTestApp() *AppModel {
@@ -28,8 +29,8 @@ func TestCurrentRouteBinding(t *testing.T) {
 	// selection is an Outliner scope frame, not a project-scoped root route.
 	app.pushView(presentation.ViewCrossProjectOutliner)
 	r := app.CurrentRoute()
-	workspace, ok := r.Params().(TaskWorkspaceParams)
-	if r.ID() != TaskWorkspace || !ok || workspace.Scope != AppEntityScope() {
+	workspace, ok := r.Params().(route.TaskWorkspaceParams)
+	if r.ID() != route.TaskWorkspace || !ok || workspace.Scope != route.AppEntityScope() {
 		t.Errorf("Outliner route = %s %+v, want app-scoped root", r.ID(), r.Params())
 	}
 
@@ -37,18 +38,18 @@ func TestCurrentRouteBinding(t *testing.T) {
 	jumpToOutlinerRootForTest(app)
 	app.pushView(presentation.ViewCrossProjectOutliner)
 	r = app.CurrentRoute()
-	workspace, ok = r.Params().(TaskWorkspaceParams)
-	if !ok || workspace.Scope != AppEntityScope() {
+	workspace, ok = r.Params().(route.TaskWorkspaceParams)
+	if !ok || workspace.Scope != route.AppEntityScope() {
 		t.Errorf("cross-project Outliner route scope = %+v, want app", workspace.Scope)
 	}
 
 	// Overlays do not replace the typed primary route.
-	overlay, err := NewOverlay(OverlayForm, "test:search")
+	overlay, err := route.NewOverlay(route.OverlayForm, "test:search")
 	if err != nil {
 		t.Fatalf("NewOverlay: %v", err)
 	}
 	app.navigation.Overlays.Push(overlay, nil)
-	if got := app.CurrentRoute().ID(); got != TaskWorkspace {
+	if got := app.CurrentRoute().ID(); got != route.TaskWorkspace {
 		t.Errorf("CurrentRoute under search = %s, want TaskWorkspace", got)
 	}
 }
@@ -63,7 +64,7 @@ func TestShellStateFacade(t *testing.T) {
 	if s.CurrentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("CurrentView = %s, want CrossProjectOutliner", s.CurrentView())
 	}
-	if s.CurrentRoute().ID() != TaskWorkspace {
+	if s.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Errorf("root route = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}
 	if s.Depth() != 1 || len(s.Stack()) != 1 || s.Stack()[0] != presentation.ViewCrossProjectOutliner {
@@ -72,22 +73,22 @@ func TestShellStateFacade(t *testing.T) {
 	// The Outliner presentation replaces the single root in place and stays
 	// app-scoped; project selection is an Outliner scope frame, not a root route.
 	app.pushView(presentation.ViewCrossProjectOutliner)
-	if s.CurrentRoute().ID() != TaskWorkspace {
+	if s.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Errorf("CurrentRoute = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}
-	sp, ok := s.CurrentRoute().Params().(TaskWorkspaceParams)
-	if !ok || sp.Scope != AppEntityScope() {
+	sp, ok := s.CurrentRoute().Params().(route.TaskWorkspaceParams)
+	if !ok || sp.Scope != route.AppEntityScope() {
 		t.Errorf("root scope = %+v, want app-scoped root", s.CurrentRoute().Params())
 	}
 	// A secondary tool stacks above the root.
-	route := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
-	if err := app.navigation.Primary.PushChild(route); err != nil {
+	child := mustRoute(t, route.SecondaryTool, route.ManageParams{Module: route.ManageProjects})
+	if err := app.navigation.Primary.PushChild(child); err != nil {
 		t.Fatal(err)
 	}
 	if s.AtRoot() {
 		t.Error("expected not AtRoot after pushing a child")
 	}
-	if s.CurrentRoute().ID() != SecondaryTool {
+	if s.CurrentRoute().ID() != route.SecondaryTool {
 		t.Errorf("child route = %s, want SecondaryTool", s.CurrentRoute().ID())
 	}
 }

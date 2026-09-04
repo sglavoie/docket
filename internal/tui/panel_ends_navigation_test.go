@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // TestPanelEndKeysReachBothEndsOfTheList holds Notes, Comments, and Attachments
@@ -192,7 +193,7 @@ func mountEndsNavigationNotes(t *testing.T) *NotesViewModel {
 			{Title: "Third", Filename: "third.md", ModifiedAt: time.Unix(1, 0)},
 		},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 	return view

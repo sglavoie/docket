@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -397,14 +398,14 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		appService:        svc,
 		width:             80,
 		height:            24,
-		views:             NewViewRegistry(),
+		views:             route.NewViewRegistry(),
 		currentProject:    project,
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
-		navigation:        NewNavigationState(),
+		navigation:        route.NewNavigationState(),
 	}
 	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
 	outliner := NewOutlinerModel(project, manager, runtime)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -243,7 +244,7 @@ func TestNotesPreviewAnchorKeyResetsOnEveryAxisAndHoldsManualPagingOtherwise(t *
 		app.ProjectNoteLocation(project.ID): {note, other},
 		app.GlobalNoteLocation():            {global},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 	view.SetSize(100, 24)
 	applyNotesSearch(view, "kestrel")
@@ -312,7 +313,7 @@ func TestNotesPreviewAnchorKeyResetsOnEveryAxisAndHoldsManualPagingOtherwise(t *
 		row := view.currentRow()
 		row.Note.Body = "- prepended lead line\n" + row.Note.Body
 	})
-	reanchor(t, "scope", func() { view.SetScope(GlobalNotesScope()) })
+	reanchor(t, "scope", func() { view.SetScope(route.GlobalNotesScope()) })
 	if view.currentRow().Note.Filename != "global.md" {
 		t.Fatalf("scope change left the cursor on %q", view.currentRow().Note.Filename)
 	}

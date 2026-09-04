@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -36,10 +37,10 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		runtime:           runtime,
 		projects:          make(map[string]*models.Project),
 		persister:         coordinator.NewProjectService(),
-		navigation:        NewNavigationState(),
+		navigation:        route.NewNavigationState(),
 		width:             80,
 		height:            24,
-		views:             NewViewRegistry(),
+		views:             route.NewViewRegistry(),
 		operationRegistry: operation.NewOperationRegistry(),
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),

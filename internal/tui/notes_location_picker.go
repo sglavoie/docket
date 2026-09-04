@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 type notesLocationPickerPurpose uint8
@@ -24,7 +25,7 @@ const (
 
 type notesLocationPickerItem struct {
 	Label    string
-	Scope    NotesScope
+	Scope    route.NotesScope
 	Location app.NoteLocation
 }
 
@@ -36,11 +37,11 @@ func (item notesLocationPickerItem) CountValue() int { return 0 }
 
 func (item notesLocationPickerItem) ItemID() string {
 	switch item.Scope.Kind {
-	case NotesScopeAll:
+	case route.NotesScopeAll:
 		return "notes-location:all"
-	case NotesScopeGlobal:
+	case route.NotesScopeGlobal:
 		return "notes-location:global"
-	case NotesScopeProject:
+	case route.NotesScopeProject:
 		return "notes-location:project:" + item.Scope.ProjectID
 	default:
 		return ""
@@ -79,7 +80,7 @@ func (picker *notesLocationPicker) contains(item notesLocationPickerItem) bool {
 
 func newNotesLocationPicker(
 	purpose notesLocationPickerPurpose,
-	currentScope NotesScope,
+	currentScope route.NotesScope,
 	excludedLocation app.NoteLocation,
 	projects []*models.Project,
 ) *notesLocationPicker {
@@ -87,14 +88,14 @@ func newNotesLocationPicker(
 	if purpose == notesLocationPickerScope {
 		items = append(items, notesLocationPickerItem{
 			Label: "All Notes",
-			Scope: AllNotesScope(),
+			Scope: route.AllNotesScope(),
 		})
 	}
 	global := app.GlobalNoteLocation()
 	if purpose != notesLocationPickerMove || global != excludedLocation {
 		items = append(items, notesLocationPickerItem{
 			Label:    "Global",
-			Scope:    GlobalNotesScope(),
+			Scope:    route.GlobalNotesScope(),
 			Location: global,
 		})
 	}
@@ -112,7 +113,7 @@ func newNotesLocationPicker(
 		}
 		items = append(items, notesLocationPickerItem{
 			Label:    label,
-			Scope:    ProjectNotesScope(project.ID),
+			Scope:    route.ProjectNotesScope(project.ID),
 			Location: location,
 		})
 	}
@@ -153,7 +154,7 @@ func newNotesLocationPicker(
 	case notesLocationPickerCreation:
 		selectedScope = notesCreationDefaultScope(currentScope)
 	case notesLocationPickerMove:
-		selectedScope = NotesScope{}
+		selectedScope = route.NotesScope{}
 	case notesLocationPickerScope:
 	}
 	for _, item := range items {
@@ -165,11 +166,11 @@ func newNotesLocationPicker(
 	return model
 }
 
-func notesCreationDefaultScope(scope NotesScope) NotesScope {
-	if scope.Kind == NotesScopeProject && strings.TrimSpace(scope.ProjectID) != "" {
-		return ProjectNotesScope(scope.ProjectID)
+func notesCreationDefaultScope(scope route.NotesScope) route.NotesScope {
+	if scope.Kind == route.NotesScopeProject && strings.TrimSpace(scope.ProjectID) != "" {
+		return route.ProjectNotesScope(scope.ProjectID)
 	}
-	return GlobalNotesScope()
+	return route.GlobalNotesScope()
 }
 
 func (picker *notesLocationPicker) Init() tea.Cmd {

@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -63,7 +64,7 @@ func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -113,7 +114,7 @@ func TestNotesManagerRetainsPartialResultsAndOwnerErrors(t *testing.T) {
 	}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -143,7 +144,7 @@ func TestNotesManagerScopeDerivationAndRefreshPreserveLocatedSelection(t *testin
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -163,11 +164,11 @@ func TestNotesManagerScopeDerivationAndRefreshPreserveLocatedSelection(t *testin
 		t.Fatalf("refresh selection = %#v, want project duplicate", row)
 	}
 
-	view.SetScope(GlobalNotesScope())
+	view.SetScope(route.GlobalNotesScope())
 	if len(view.visibleRows) != 1 || view.visibleRows[0].Location != app.GlobalNoteLocation() {
 		t.Fatalf("global rows = %#v", view.visibleRows)
 	}
-	view.SetScope(ProjectNotesScope(alpha.ID))
+	view.SetScope(route.ProjectNotesScope(alpha.ID))
 	if len(view.visibleRows) != 1 || view.visibleRows[0].Identity() != projectID {
 		t.Fatalf("project rows = %#v", view.visibleRows)
 	}
@@ -180,7 +181,7 @@ func TestNotesManagerTotalSnapshotFailureBlocksRows(t *testing.T) {
 	snapshotErr := errors.New("snapshot failed")
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		&combinedNotesService{snapshotErr: snapshotErr},
 		nil,
 	)
@@ -212,7 +213,7 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 	malformed := &models.Note{Title: "Broken", Filename: filename, ParseError: "missing frontmatter"}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 			app.ProjectNoteLocation(beta.ID): {malformed},
 		}},
@@ -244,7 +245,7 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		project,
@@ -287,7 +288,7 @@ func TestNotesManagerCreationOffersEveryActiveProject(t *testing.T) {
 	beta := &models.Project{ID: "beta", Name: "Beta", Path: t.TempDir()}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		alpha,
@@ -305,7 +306,7 @@ func TestNotesManagerCreationOffersEveryActiveProject(t *testing.T) {
 	var got []app.NoteLocation
 	for _, item := range view.locationPicker.SourceItems() {
 		got = append(got, item.Location)
-		if item.Scope.Kind == NotesScopeAll {
+		if item.Scope.Kind == route.NotesScopeAll {
 			t.Fatal("creation picker offered All Notes as a destination")
 		}
 	}
@@ -325,7 +326,7 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 	beta := &models.Project{ID: "beta", Name: "Beta Launch", Path: t.TempDir()}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		GlobalNotesScope(),
+		route.GlobalNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 		alpha,
@@ -338,26 +339,26 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 	if view.locationPicker == nil || !view.HasTextInput() || !view.ShouldCaptureEsc() {
 		t.Fatal("p did not open a focused scope picker that owns Esc")
 	}
-	if got := view.locationPicker.SelectedItem().Scope; got != GlobalNotesScope() {
+	if got := view.locationPicker.SelectedItem().Scope; got != route.GlobalNotesScope() {
 		t.Fatalf("initial scope picker selection = %#v, want Global", got)
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyDown))
-	if got := view.locationPicker.SelectedItem().Scope; got != ProjectNotesScope(alpha.ID) {
+	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
 		t.Fatalf("Down selection = %#v, want Alpha", got)
 	}
 	_, _ = view.Update(syntheticCtrlKey('j'))
-	if got := view.locationPicker.SelectedItem().Scope; got != ProjectNotesScope(beta.ID) {
+	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(beta.ID) {
 		t.Fatalf("Ctrl+J selection = %#v, want Beta", got)
 	}
 	_, _ = view.Update(syntheticCtrlKey('k'))
-	if got := view.locationPicker.SelectedItem().Scope; got != ProjectNotesScope(alpha.ID) {
+	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
 		t.Fatalf("Ctrl+K selection = %#v, want Alpha", got)
 	}
 	for _, r := range "launch" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	filtered := view.locationPicker.FilteredItems()
-	if len(filtered) != 1 || filtered[0].Scope != ProjectNotesScope(beta.ID) {
+	if len(filtered) != 1 || filtered[0].Scope != route.ProjectNotesScope(beta.ID) {
 		t.Fatalf("filtered scope locations = %#v, want Beta", filtered)
 	}
 
@@ -370,7 +371,7 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 		t.Fatalf("scope cancel result = %#v", result)
 	}
 	_, _ = view.Update(result)
-	if view.locationPicker != nil || view.scope != GlobalNotesScope() {
+	if view.locationPicker != nil || view.scope != route.GlobalNotesScope() {
 		t.Fatalf("scope cancel changed manager state: picker=%v scope=%#v", view.locationPicker, view.scope)
 	}
 }
@@ -378,7 +379,7 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 func TestNotesScopePickerEmptyResultsAreSafeAndResize(t *testing.T) {
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 	)

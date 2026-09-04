@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -39,7 +40,7 @@ func newTaskStructureTestProject() *models.Project {
 }
 
 func taskOperationTestContext(task *models.Task, project *models.Project) operation.CommandContext {
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(task, project)
 	return context

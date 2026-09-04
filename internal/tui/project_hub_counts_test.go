@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
@@ -58,11 +59,11 @@ func TestPinnedProjectHubListsPinnedActiveAndParkedProjectsOnly(t *testing.T) {
 	archived.Path = t.TempDir()
 	addTestAppProject(app, archived)
 
-	hub := openProjectHub(t, app, ProjectHubModePinned)
-	if hub.Mode() != ProjectHubModePinned {
+	hub := openProjectHub(t, app, route.ProjectHubModePinned)
+	if hub.Mode() != route.ProjectHubModePinned {
 		t.Fatalf("Hub mode = %v, want pinned", hub.Mode())
 	}
-	if params := app.CurrentRoute().Params().(ManageParams); params.ProjectHubMode != ProjectHubModePinned {
+	if params := app.CurrentRoute().Params().(route.ManageParams); params.ProjectHubMode != route.ProjectHubModePinned {
 		t.Fatalf("pinned Hub route params = %+v", params)
 	}
 	wantCategories := []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
@@ -93,7 +94,7 @@ func TestPinnedProjectHubSearchAndTaskFilterIntersectPinnedPopulation(t *testing
 	app.projects["empty"].Pinned = true
 	app.projects["alpha"].Pinned = false
 	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"], app.projects["empty"])
-	hub := openProjectHub(t, app, ProjectHubModePinned)
+	hub := openProjectHub(t, app, route.ProjectHubModePinned)
 
 	hub.SetSearchQuery("bet")
 	hub.applyProjectFilter()
@@ -118,7 +119,7 @@ func TestPinnedProjectHubRefreshPrunesRemovedCursorAndSelection(t *testing.T) {
 	alpha := app.projects["alpha"]
 	alpha.Pinned = true
 	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"])
-	hub := openProjectHub(t, app, ProjectHubModePinned)
+	hub := openProjectHub(t, app, route.ProjectHubModePinned)
 	focusProjectHubItem(t, hub, "project-hub:project:alpha")
 	hub.toggleProjectHubSelection()
 

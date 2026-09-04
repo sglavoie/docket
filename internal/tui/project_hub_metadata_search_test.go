@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // Metadata-search fixture identities. The Hub is searched by these exact words,
@@ -124,7 +125,7 @@ func TestProjectHubSearchMatchesDescriptionsAndProjectTags(t *testing.T) {
 // answers its description and both tag spellings, and the unpinned projects stay
 // outside the population no matter which of their words is typed.
 func TestPinnedProjectHubSearchMatchesProjectMetadata(t *testing.T) {
-	hub := openProjectHub(t, projectHubMetadataApp(t), ProjectHubModePinned)
+	hub := openProjectHub(t, projectHubMetadataApp(t), route.ProjectHubModePinned)
 
 	for _, query := range []string{"telemetry broker", "infrastructure", "#infrastructure"} {
 		assertProjectHubMatches(t, hub, query, "project-hub:project:harbor")
@@ -140,7 +141,7 @@ func TestPinnedProjectHubSearchMatchesProjectMetadata(t *testing.T) {
 // project, and task text is the Outliner's `/` to search.
 func TestProjectHubSearchNeverMatchesTaskContent(t *testing.T) {
 	app := projectHubMetadataApp(t)
-	for _, mode := range []ProjectHubMode{ProjectHubModeAll, ProjectHubModePinned} {
+	for _, mode := range []route.ProjectHubMode{route.ProjectHubModeAll, route.ProjectHubModePinned} {
 		hub := openProjectHub(t, app, mode)
 		for _, query := range []string{
 			"escrow packet",    // task title

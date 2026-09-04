@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -41,7 +42,7 @@ func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	if hub.HasActiveSearch() || hub.SearchQuery() != "bet" {
 		t.Fatalf("Esc left search active=%v query=%q", hub.HasActiveSearch(), hub.SearchQuery())
 	}
-	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != presentation.ViewProjectHub {
+	if app.CurrentRoute().ID() != route.SecondaryTool || app.currentView() != presentation.ViewProjectHub {
 		t.Fatalf("first Esc closed Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
 	}
 	if len(hub.surface.Matches()) != 1 {
@@ -49,7 +50,7 @@ func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	}
 
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if !handled || app.CurrentRoute().ID() != TaskWorkspace {
+	if !handled || app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatalf("filtered browse Esc handled=%v route=%s, want Outliner", handled, app.CurrentRoute().ID())
 	}
 }
@@ -70,7 +71,7 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 		t.Fatalf("search Enter emitted %#v, want beta", cmd())
 	}
 	app.handleViewActionMessages(selected)
-	if app.crossOutliner.scopedProjectID != "beta" || app.CurrentRoute().ID() != TaskWorkspace {
+	if app.crossOutliner.scopedProjectID != "beta" || app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatalf(
 			"selection landed project=%q route=%s",
 			app.crossOutliner.scopedProjectID,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //nolint:gocyclo
@@ -45,13 +46,13 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		}
 	}()
 
-	// Handle all trivial close-view messages via the closeViewMsg interface.
+	// Handle all trivial close-view messages via the CloseViewMsg interface.
 	// This eliminates individual case arms for ~35 Close*Msg types that only
 	// pop the view stack.
-	if cv, ok := msg.(closeViewMsg); ok {
+	if cv, ok := msg.(route.CloseViewMsg); ok {
 		var cmd tea.Cmd
-		switch cv.closePopStyle() {
-		case popToAnchor:
+		switch cv.ClosePopStyle() {
+		case route.PopToAnchor:
 			cmd = m.popToAnchorView()
 		default:
 			cmd = m.popView()

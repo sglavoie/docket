@@ -6,14 +6,15 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-func NewProjectHubModel(runtime *config.RuntimeState, modes ...ProjectHubMode) *ProjectHubModel {
+func NewProjectHubModel(runtime *config.RuntimeState, modes ...route.ProjectHubMode) *ProjectHubModel {
 	if runtime == nil {
 		runtime = config.EmptyRuntimeState("")
 	}
-	mode := ProjectHubModeAll
+	mode := route.ProjectHubModeAll
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
@@ -25,7 +26,7 @@ func NewProjectHubModel(runtime *config.RuntimeState, modes ...ProjectHubMode) *
 
 func (m *ProjectHubModel) Init() tea.Cmd { return nil }
 
-func (m *ProjectHubModel) Mode() ProjectHubMode { return m.mode }
+func (m *ProjectHubModel) Mode() route.ProjectHubMode { return m.mode }
 
 func (m *ProjectHubModel) SetOperationSystem(
 	registry *operation.OperationRegistry,

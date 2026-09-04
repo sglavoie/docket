@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func operationTestDescriptor(id, label string) operation.OperationDescriptor {
@@ -75,7 +76,7 @@ func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T)
 		t.Fatalf("Register inbox: %v", err)
 	}
 
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity.TaskID = "ready"
 	applicable, err := registry.ForContext(ctx)
 	if err != nil || len(applicable) != 1 || applicable[0].ID != ready.ID {

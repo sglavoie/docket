@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -43,11 +44,11 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	}
 
 	if current := m.activeView(); current != nil {
-		policy, classified := chromePolicyForPresentation(m.currentPresentationView())
-		if injector, ok := current.(pulse.WorkspacePulseAware); classified && policy.workspacePulseEligible() && ok {
+		policy, classified := route.ChromePolicyForPresentation(m.currentPresentationView())
+		if injector, ok := current.(pulse.WorkspacePulseAware); classified && policy.WorkspacePulseEligible() && ok {
 			injector.SetWorkspacePulse(m.workspacePulse)
 		}
-		if injector, ok := current.(pulse.CompletionActivityAware); classified && policy.workspacePulseEligible() && ok {
+		if injector, ok := current.(pulse.CompletionActivityAware); classified && policy.WorkspacePulseEligible() && ok {
 			injector.SetCompletionActivity(m.completionActivity)
 		}
 	}
@@ -65,9 +66,9 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// error, loading), replace the view's footer with the AppModel status bar.
 	// Further exception: zen mode suppresses even transient status overlays.
 	if currentView := m.activeView(); currentView != nil {
-		if caps, ok := currentView.(ViewCapabilities); ok && caps.IsFullHeight() {
+		if caps, ok := currentView.(route.ViewCapabilities); ok && caps.IsFullHeight() {
 			inZen := false
-			if zenView, ok := currentView.(ZenModeView); ok {
+			if zenView, ok := currentView.(route.ZenModeView); ok {
 				inZen = zenView.IsZenMode()
 			}
 			if !inZen && (m.statusMessage != "" || m.err != nil) {

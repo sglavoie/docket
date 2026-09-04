@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -37,7 +38,7 @@ type ParentSelectedMsg struct {
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.
-type CloseParentSelectorMsg struct{ PopViewMsg }
+type CloseParentSelectorMsg struct{ route.PopViewMsg }
 
 // ShowTaskComposerMsg opens the canonical typed composer preset directly.
 type ShowTaskComposerMsg struct {

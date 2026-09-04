@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestOperationDiscoveryExcludesRetiredProductConcepts(t *testing.T) {
@@ -175,7 +176,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
 
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(e.parent, e.alpha)
 

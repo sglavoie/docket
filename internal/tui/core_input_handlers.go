@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -25,16 +26,16 @@ func commandMessage(cmd tea.Cmd) tea.Msg {
 // task cursor can narrow the manager. The header is re-resolved against the
 // shell's note-owner population, since an archived project the archived facet
 // loaded is never an owner and would only bounce back to All Notes.
-func (m *AppModel) coreNotesScope() NotesScope {
+func (m *AppModel) coreNotesScope() route.NotesScope {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
-		return AllNotesScope()
+		return route.AllNotesScope()
 	}
 	header := out.cursorProjectHeaderProject()
 	if header == nil || m.activeProjectByID(header.ID) == nil {
-		return AllNotesScope()
+		return route.AllNotesScope()
 	}
-	return ProjectNotesScope(header.ID)
+	return route.ProjectNotesScope(header.ID)
 }
 
 // coreCaptureMessage routes base capture to the workspace-owned System Inbox

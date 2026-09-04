@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -69,7 +70,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 	if m == nil || m.operationExecutor == nil {
 		return nil
 	}
-	ctx := PresentationCommandContext(m.currentView())
+	ctx := route.PresentationCommandContext(m.currentView())
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operationLensCreate,

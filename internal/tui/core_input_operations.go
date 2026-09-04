@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -260,7 +261,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		// what positions the cursor on it once it is there.
 		if out, ok := m.outlinerPrimary(); ok {
 			if identity, onNote := out.cursorNoteIdentity(); onNote {
-				message = ShowNotesManagerMsg{Scope: AllNotesScope(), Focus: identity}
+				message = ShowNotesManagerMsg{Scope: route.AllNotesScope(), Focus: identity}
 			}
 		}
 	case operation.OperationCorePeek:
@@ -274,7 +275,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreSelectProject:
 		message = ShowProjectHubMsg{}
 	case operation.OperationCoreSelectPinned:
-		message = ShowProjectHubMsg{Mode: ProjectHubModePinned}
+		message = ShowProjectHubMsg{Mode: route.ProjectHubModePinned}
 	case operation.OperationCoreMultiSelect:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.toggleCursorSelection()

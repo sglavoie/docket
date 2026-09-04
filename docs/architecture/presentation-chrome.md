@@ -4,7 +4,7 @@
 
 `WorkspacePulse` is app-owned workspace state with Inbox, Today, overdue, and
 current-local-day Done counts. Full-screen presentations receive it through the
-exhaustive `presentationChromePolicy`; transient selectors and pickers remain
+exhaustive `route.PresentationChromePolicy`; transient selectors and pickers remain
 pulse-free and preserve the host's title row. There are no presentation
 exemptions: every reachable presentation has shell, surface, or overlay guidance
 ownership.

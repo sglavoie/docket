@@ -66,6 +66,7 @@
 #   - operation_text_prompt.go is route, not chrome. It names twelve operation
 #     identifiers, reads tui.operationLensRename, and declares
 #     (*AppModel).newOperationTextPrompt, which pins that half to the shell.
+#     Session 2.17 corrected this row a second time; see its note below.
 #   - parent_selector.go, tag_selector.go and tag_add_shared.go are listsurface,
 #     not chrome. All three are ListSurfaceAdapter pickers, and the two tag ones
 #     also name query.TagInfo.
@@ -196,6 +197,30 @@
 #     and the root retired_product_vocabulary_test.go compile untouched.
 #     surface_operation_gates.go is its production caller, which is what keeps
 #     it off scripts/dead_code.sh's unused list.
+#
+# Session 2.17 minted one identifier file and corrected one row again:
+#   - ProjectHubMode with ProjectHubModeAll and ProjectHubModePinned left
+#     project_hub_types.go (projecthub) for route/project_hub_mode.go. It is the
+#     one identifier the whole route moving set reads from outside itself:
+#     ManageParams carries a ProjectHubMode field and canonicalRouteParams
+#     range-checks it, so L4 held a type L7 declared. Nothing else in
+#     project_hub_types.go could follow, because the file is pinned to
+#     projectHubTaskFilter. All three names were already exported, so the move
+#     promotes nothing; projecthub reads them back through route, which its row
+#     in scripts/tui_package_graph.tsv already allows.
+#   - operation_text_prompt.go is tui, not route. Session 2.8 moved it out of
+#     chrome because it names operation identifiers, and route was the nearest
+#     package that could hold them; Session 2.17 read its consumers and found
+#     every one of them in the shell -- the AppModel field, app_update_keys.go,
+#     app_view_overlays.go, operation_overlay.go and shell.go. Moving it exports
+#     OperationTextPromptModel's constructor and its three methods for zero
+#     in-package readers, and handleKey and render are the unexported methods
+#     the shell's own keyInterceptor and widthRenderer interfaces select on, so
+#     the move would rename them on every other overlay too. This is
+#     task_operation_manifest.go's shape from Session 2.16.
+#   - pipeline_stage.go is not route's, whatever session 2.17's brief lists.
+#     This table gives it to listsurface, and its two consumers are both in
+#     app_view_status.go, so that row is the listsurface session's to weigh.
 #
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
@@ -417,7 +442,7 @@ operation_target.go	operation	L3	receiver:ResolvedOperationTargets
 operation_target_context.go	tui	L8	receiver:AppModel
 operation_target_context_outliner.go	outliner	L7	receiver:OutlinerModel
 operation_task_reference_picker.go	tui	L8	assigned
-operation_text_prompt.go	route	L4	receiver:OperationTextPromptModel
+operation_text_prompt.go	tui	L8	receiver:OperationTextPromptModel
 operation_value_list_sources.go	projecthub	L7	receiver:moveProjectPickerItem
 operation_value_membership.go	tui	L8	receiver:AppModel
 operation_value_payloads.go	operation	L3	receiver:ValueProviderID
@@ -552,6 +577,7 @@ quick_edit_preview.go	grammar	L2	assigned
 registry.go	route	L4	assigned
 render_audit_hook.go	textfit	L0	assigned
 route.go	route	L4	assigned
+route/project_hub_mode.go	route	L4	assigned
 shared_navigation.go	listsurface	L5	assigned
 shared_render.go	chrome	L1	assigned
 shared_render_helpers.go	listsurface	L5	assigned

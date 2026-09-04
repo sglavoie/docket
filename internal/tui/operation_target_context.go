@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -25,7 +26,7 @@ type operationSelectionCountsProvider interface {
 // primary view.
 func (m *AppModel) operationCommandContext() operation.CommandContext {
 	view := m.currentView()
-	ctx := PresentationCommandContext(view)
+	ctx := route.PresentationCommandContext(view)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		ctx = manage.CommandContext()

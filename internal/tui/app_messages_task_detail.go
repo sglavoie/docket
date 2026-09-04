@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // =============================================================================
@@ -15,7 +16,7 @@ type ShowTaskCommentsMsg struct {
 }
 
 // CloseTaskCommentsMsg closes the comments view.
-type CloseTaskCommentsMsg struct{ PopViewMsg }
+type CloseTaskCommentsMsg struct{ route.PopViewMsg }
 
 // CommentAddedMsg signals a comment was added.
 type CommentAddedMsg struct{ TransactionID string }
@@ -37,4 +38,4 @@ type ShowTaskAttachmentsMsg struct {
 }
 
 // CloseTaskAttachmentsMsg closes the attachments view.
-type CloseTaskAttachmentsMsg struct{ PopViewMsg }
+type CloseTaskAttachmentsMsg struct{ route.PopViewMsg }

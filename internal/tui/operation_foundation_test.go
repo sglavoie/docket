@@ -8,11 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func foundationTestContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = operation.EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.CurrentEntity = operation.TaskEntity("project-b", "task-current")
 	ctx.Selection.Tasks = []taskref.TaskIdentity{{ProjectID: "project-a", TaskID: "task-1"}}
@@ -215,7 +216,7 @@ func TestFoundationInvariants(t *testing.T) {
 }
 
 func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = operation.ProjectNoteEntity("project-a", "design.md")
 	ctx.Selection.EntityIdentities = []operation.EntityIdentity{
 		WorkspaceTagEntity("#review"),
@@ -262,7 +263,7 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 }
 
 func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.T) {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = operation.EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
@@ -305,7 +306,7 @@ func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.
 }
 
 func TestOperationTargetResolverRejectsStaleAndEmptyTargets(t *testing.T) {
-	stale := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	stale := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	stale.CurrentEntity = operation.EntityIdentity{Kind: operation.EntityKindNote, Name: "orphan.md"}
 	stale.Selection.EntityIdentities = []operation.EntityIdentity{{Kind: operation.EntityKindTask, ProjectID: "gone"}}
 
@@ -423,7 +424,7 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 		t.Fatalf("Register binding: %v", err)
 	}
 
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Selection.EntityIdentities = []operation.EntityIdentity{
 		ProjectTagEntity("project-a", "#api"),
 		WorkspaceTagEntity("review"),

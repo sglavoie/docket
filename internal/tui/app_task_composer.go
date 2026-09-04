@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 const taskComposerOverlayKey = "task-composer"
@@ -19,7 +20,7 @@ func (m *AppModel) openTaskComposer(preset TaskComposerPreset) tea.Cmd {
 	composer.SetSize(m.width, m.height-2)
 	m.taskComposer = composer
 	m.views.Register(presentation.ViewTaskComposer, composer)
-	m.pushTypedOverlay(OverlayComposer, taskComposerOverlayKey)
+	m.pushTypedOverlay(route.OverlayComposer, taskComposerOverlayKey)
 	m.setAccentOnView(composer)
 	return composer.Init()
 }
@@ -29,7 +30,7 @@ func (m *AppModel) activeTaskComposer() bool {
 		return false
 	}
 	overlay, ok := m.navigation.Overlays.Current()
-	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {
+	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		return false
 	}
 	_, hasPresentation := overlay.Presentation()

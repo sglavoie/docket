@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // TestNoteRowDropsItsCueThenItsOwnerAsWidthFalls holds the note row to the task
@@ -102,7 +103,7 @@ func TestNoteTierAndNotesManagerShareOneScorer(t *testing.T) {
 	// The manager derives its own visible rows from the same snapshot. Only the
 	// fields deriveVisibleRows reads are set: the scorer is what is under test,
 	// not the file read that ordinarily fills loadedRows.
-	manager := &NotesViewModel{scope: AllNotesScope(), loadedRows: rows, searchApplied: query}
+	manager := &NotesViewModel{scope: route.AllNotesScope(), loadedRows: rows, searchApplied: query}
 	manager.deriveVisibleRows()
 	if len(manager.searchMatches) != len(tier) {
 		t.Fatalf("manager admitted %d notes, tier admitted %d",
@@ -186,7 +187,7 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	if !isShow {
 		t.Fatalf("Open Note emitted %T, want ShowNotesManagerMsg", result.Message)
 	}
-	if message.Scope != AllNotesScope() {
+	if message.Scope != route.AllNotesScope() {
 		t.Fatalf("Open Note opened scope %+v, want every note reachable", message.Scope)
 	}
 	if message.Focus != identity {

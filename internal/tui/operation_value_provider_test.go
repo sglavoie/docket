@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -261,7 +262,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	other := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
 	env := newAppBulkPickerEnv(t, []*models.Task{common}, []*models.Task{other})
 	model := env.appModel()
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{common, other} {
@@ -331,7 +332,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	second.Context = "office"
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{first, second} {

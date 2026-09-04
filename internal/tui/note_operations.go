@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // Note operation IDs. Every one of them targets a single note identity, which
@@ -210,7 +211,7 @@ func (m *AppModel) noteOperationResult(
 
 	case operationNoteMove:
 		return operation.OperationHandlerResult{Message: ShowNotesManagerMsg{
-			Scope: AllNotesScope(),
+			Scope: route.AllNotesScope(),
 			Focus: NoteRowIdentity{
 				Location: resolved.Location,
 				Filename: note.Filename,

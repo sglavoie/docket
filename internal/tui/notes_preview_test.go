@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // notesPreviewFixture mounts a Notes manager over one Global owner plus one
@@ -26,7 +27,7 @@ func notesPreviewFixture(t *testing.T, notes ...*models.Note) *NotesViewModel {
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 		app.ProjectNoteLocation(project.ID): notes,
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 	return view
 }

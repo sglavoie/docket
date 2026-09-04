@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -188,9 +189,9 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 
 func (m *NotesViewModel) scopeLabel() string {
 	switch m.scope.Kind {
-	case NotesScopeGlobal:
+	case route.NotesScopeGlobal:
 		return "Global"
-	case NotesScopeProject:
+	case route.NotesScopeProject:
 		return m.locationLabel(app.ProjectNoteLocation(m.scope.ProjectID))
 	default:
 		return "All Notes"
@@ -214,9 +215,9 @@ func (m *NotesViewModel) scopeCountLabel() string {
 		)
 	}
 	switch m.scope.Kind {
-	case NotesScopeGlobal:
+	case route.NotesScopeGlobal:
 		return fmt.Sprintf("%d Global notes", count)
-	case NotesScopeProject:
+	case route.NotesScopeProject:
 		return fmt.Sprintf("%d notes in %s", count, m.scopeLabel())
 	default:
 		ownerCount := len(m.requestedLocations()) - len(m.collectionErrors)

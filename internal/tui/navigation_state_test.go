@@ -4,38 +4,40 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
-	stack := NewPrimaryRouteStack()
-	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+	stack := route.NewPrimaryRouteStack()
+	if stack.Depth() != 1 || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("initial stack = %+v", stack.Routes())
 	}
 
 	// The Outliner (TaskWorkspace) is the sole destination and is app-scoped;
 	// replacing the destination swaps the single root frame rather than stacking.
 	// Project selection is an Outliner scope frame, not a project-rooted route.
-	replacement := mustRoute(t, TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	replacement := mustRoute(t, route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.AppEntityScope()})
 	if err := stack.ReplaceDestination(replacement); err != nil {
 		t.Fatal(err)
 	}
-	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+	if stack.Depth() != 1 || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("destination replacement = %+v", stack.Routes())
 	}
-	if err := stack.ReplaceDestination(mustRoute(t, Reference, ReferenceParams{})); err == nil {
+	if err := stack.ReplaceDestination(mustRoute(t, route.Reference, route.ReferenceParams{})); err == nil {
 		t.Fatal("Reference unexpectedly accepted as a destination")
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
+	secondary := mustRoute(t, route.SecondaryTool, route.ManageParams{Module: route.ManageProjects})
 	if err := stack.PushChild(secondary); err != nil {
 		t.Fatal(err)
 	}
 	popped, ok := stack.Pop()
-	if !ok || popped.ID() != SecondaryTool || stack.Current().ID() != TaskWorkspace {
+	if !ok || popped.ID() != route.SecondaryTool || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("pop = %s ok=%v current=%s", popped.ID(), ok, stack.Current().ID())
 	}
 	stack.ResetRoot()
-	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+	if stack.Depth() != 1 || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("reset stack = %+v", stack.Routes())
 	}
 	if _, ok := stack.Pop(); ok {
@@ -44,25 +46,25 @@ func TestPrimaryRouteStackPushReplacePopReset(t *testing.T) {
 }
 
 func TestPrimaryRouteStackBoundsChildren(t *testing.T) {
-	stack := NewPrimaryRouteStack()
-	first := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
+	stack := route.NewPrimaryRouteStack()
+	first := mustRoute(t, route.SecondaryTool, route.ManageParams{Module: route.ManageProjects})
 	if err := stack.PushChild(first); err != nil {
 		t.Fatal(err)
 	}
 
-	secondary := mustRoute(t, SecondaryTool, ManageParams{Module: ManageProjects})
+	secondary := mustRoute(t, route.SecondaryTool, route.ManageParams{Module: route.ManageProjects})
 	if err := stack.PushChild(secondary); err != nil {
 		t.Fatal(err)
 	}
-	if stack.Depth() != 2 || stack.Current().ID() != SecondaryTool {
+	if stack.Depth() != 2 || stack.Current().ID() != route.SecondaryTool {
 		t.Fatalf("replaced child stack = %+v, want root + SecondaryTool", stack.Routes())
 	}
 
 	popped, ok := stack.Pop()
-	if !ok || popped.ID() != SecondaryTool {
+	if !ok || popped.ID() != route.SecondaryTool {
 		t.Fatalf("pop = %s ok=%v, want SecondaryTool", popped.ID(), ok)
 	}
-	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+	if stack.Depth() != 1 || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("stack after child pop = %+v, want sole Outliner root", stack.Routes())
 	}
 }
@@ -72,39 +74,39 @@ func TestPrimaryRouteStackBoundsChildren(t *testing.T) {
 // at construction (project selection is an Outliner scope frame, not a route),
 // so the route stack can never replace its root with a second project root.
 func TestTaskWorkspaceRejectsProjectRouteScope(t *testing.T) {
-	if _, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: ProjectEntityScope("p1")}); !errors.Is(err, ErrTaskWorkspaceProjectScope) {
+	if _, err := route.NewRoute(route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.ProjectEntityScope("p1")}); !errors.Is(err, route.ErrTaskWorkspaceProjectScope) {
 		t.Fatalf("project-scoped TaskWorkspace error = %v, want ErrTaskWorkspaceProjectScope", err)
 	}
 
 	// App scope remains the one valid destination scope.
-	app, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	app, err := route.NewRoute(route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.AppEntityScope()})
 	if err != nil {
 		t.Fatalf("app-scoped TaskWorkspace unexpectedly rejected: %v", err)
 	}
-	params, ok := app.Params().(TaskWorkspaceParams)
-	if !ok || params.Scope.Kind != ScopeApp || params.Scope.ProjectID != "" {
+	params, ok := app.Params().(route.TaskWorkspaceParams)
+	if !ok || params.Scope.Kind != route.ScopeApp || params.Scope.ProjectID != "" {
 		t.Fatalf("app-scoped params = %+v, want canonical app scope", app.Params())
 	}
 
 	// The route stack cannot be pointed at a project root because no such route
 	// can be built; ReplaceDestination only ever receives the app-scoped root.
-	stack := NewPrimaryRouteStack()
+	stack := route.NewPrimaryRouteStack()
 	if err := stack.ReplaceDestination(app); err != nil {
 		t.Fatalf("app-scoped destination replacement failed: %v", err)
 	}
-	if stack.Depth() != 1 || stack.Current().ID() != TaskWorkspace {
+	if stack.Depth() != 1 || stack.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("stack after replacement = %+v", stack.Routes())
 	}
-	if got := stack.Current().Params().(TaskWorkspaceParams); got.Scope.Kind != ScopeApp {
+	if got := stack.Current().Params().(route.TaskWorkspaceParams); got.Scope.Kind != route.ScopeApp {
 		t.Fatalf("root scope = %+v, want app-scoped root", got.Scope)
 	}
 }
 
 func TestOverlayStackNestingAndCancellation(t *testing.T) {
 	var canceled []string
-	first, _ := NewOverlay(OverlayForm, "search")
-	second, _ := NewOverlay(OverlayPicker, "status")
-	stack := OverlayStack{}
+	first, _ := route.NewOverlay(route.OverlayForm, "search")
+	second, _ := route.NewOverlay(route.OverlayPicker, "status")
+	stack := route.OverlayStack{}
 	stack.Push(first, func() {
 		canceled = append(canceled, "search")
 	})
@@ -113,7 +115,7 @@ func TestOverlayStackNestingAndCancellation(t *testing.T) {
 	})
 
 	closed, ok := stack.CloseTop()
-	if !ok || closed.Kind() != OverlayPicker {
+	if !ok || closed.Kind() != route.OverlayPicker {
 		t.Fatalf("close top = %s ok=%v", closed.Kind(), ok)
 	}
 	if len(canceled) != 0 {
@@ -127,15 +129,15 @@ func TestOverlayStackNestingAndCancellation(t *testing.T) {
 }
 
 func TestNavigationDestinationChangeCancelsOverlays(t *testing.T) {
-	state := NewNavigationState()
-	overlay, _ := NewOverlay(OverlayComposer, "new-task")
+	state := route.NewNavigationState()
+	overlay, _ := route.NewOverlay(route.OverlayComposer, "new-task")
 	canceled := false
 	state.Overlays.Push(overlay, func() { canceled = true })
-	workspace := mustRoute(t, TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	workspace := mustRoute(t, route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.AppEntityScope()})
 	if err := state.ReplaceDestination(workspace); err != nil {
 		t.Fatal(err)
 	}
-	if !canceled || state.Overlays.Active() || state.Primary.Current().ID() != TaskWorkspace {
+	if !canceled || state.Overlays.Active() || state.Primary.Current().ID() != route.TaskWorkspace {
 		t.Fatalf("destination transition canceled=%v overlay=%v current=%s", canceled, state.Overlays.Active(), state.Primary.Current().ID())
 	}
 }

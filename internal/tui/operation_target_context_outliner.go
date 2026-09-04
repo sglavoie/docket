@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -15,7 +16,7 @@ import (
 // row is.
 
 func (m *OutlinerModel) operationCommandContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	task, project := m.getTaskRef()
 	header := m.cursorProjectHeaderProject()

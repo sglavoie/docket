@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // projectOperationApplicability composes the entity-shape check with the same
@@ -142,7 +143,7 @@ func (m *AppModel) projectOperationMessage(id operation.OperationID, project *mo
 	case operation.OperationProjectDelete:
 		return ProjectDeleteRequestMsg{Project: project}
 	case operation.OperationScopeOpenProjectNote:
-		return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
+		return ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
 	default:
 		return nil
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // newTestAppModel creates an AppModel for testing with a temp config file.
@@ -25,10 +26,10 @@ func newTestAppModel() *AppModel {
 		deps:          newShellDeps(nil),
 		projects:      make(map[string]*models.Project),
 		persister:     coordinator.NewProjectService(),
-		navigation:    NewNavigationState(),
+		navigation:    route.NewNavigationState(),
 		width:         80,
 		height:        24,
-		views:         NewViewRegistry(),
+		views:         route.NewViewRegistry(),
 	}
 }
 
@@ -49,10 +50,10 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		deps:           newShellDeps(nil),
 		projects:       map[string]*models.Project{project.ID: project},
 		persister:      coordinator.NewProjectService(),
-		navigation:     NewNavigationState(),
+		navigation:     route.NewNavigationState(),
 		width:          80,
 		height:         24,
-		views:          NewViewRegistry(),
+		views:          route.NewViewRegistry(),
 		currentProject: project,
 	}
 
@@ -60,10 +61,11 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 }
 
 // setTestPresentationPath installs renderer identities through the same typed
-// route/overlay authority as production. The fallback is only for deliberately
-// partial fixtures that lack the entity data a production route requires.
+// route/overlay authority as production: an overlay if the presentation has an
+// overlay class, otherwise the typed Manage child the collection surfaces are
+// only ever reached through.
 func setTestPresentationPath(app *AppModel, views ...presentation.PresentationID) {
-	app.navigation = NewNavigationState()
+	app.navigation = route.NewNavigationState()
 	for _, view := range views {
 		if view == presentation.ViewUnknown {
 			continue
@@ -75,24 +77,39 @@ func setTestPresentationPath(app *AppModel, views ...presentation.PresentationID
 		if app.installTypedPresentation(view) {
 			continue
 		}
-		overlay, err := NewOverlay(OverlayForm, "test:"+view.String())
-		if err != nil {
+		if err := app.navigation.PushChild(manageRouteForPresentation(view)); err != nil {
 			panic(err)
 		}
-		overlay.presentation = view
-		overlay.hasPresentation = true
-		app.navigation.Overlays.Push(overlay, nil)
 	}
 }
 
 func pushTestPresentationOverlay(app *AppModel, view presentation.PresentationID) {
-	overlay, err := NewOverlay(OverlayForm, "test:"+view.String())
+	if !app.installTypedPresentation(view) {
+		panic("no typed overlay carries presentation " + view.String())
+	}
+}
+
+// manageRouteForPresentation rebuilds the typed Manage route behind a
+// collection renderer. A fixture project ID suffices: with no live hub the
+// shell derives the presentation from the params alone, so the route stays the
+// authority even for shells assembled without a runtime.
+func manageRouteForPresentation(view presentation.PresentationID) route.Route {
+	params := route.ManageParams{Module: route.ManageNotes}
+	switch view {
+	case presentation.ViewGlobalNotes:
+		params.NotesScope = route.GlobalNotesScope()
+	case presentation.ViewNotes:
+		params.NotesScope = route.ProjectNotesScope("test-notes-scope")
+	case presentation.ViewProjectHub:
+		params = route.ManageParams{Module: route.ManageProjects}
+	default:
+		panic("no typed route installs presentation " + view.String())
+	}
+	target, err := route.NewRoute(route.SecondaryTool, params)
 	if err != nil {
 		panic(err)
 	}
-	overlay.presentation = view
-	overlay.hasPresentation = true
-	app.navigation.Overlays.Push(overlay, nil)
+	return target
 }
 
 func setTestAppProjects(app *AppModel, projects ...*models.Project) {

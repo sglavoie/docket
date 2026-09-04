@@ -1,4 +1,4 @@
-package tui
+package route
 
 import (
 	"errors"
@@ -11,9 +11,9 @@ type primaryRouteFrame struct {
 	route Route
 }
 
-// outlinerRootRoute is the sole primary root: the global (Active Projects)
+// OutlinerRootRoute is the sole primary root: the global (Active Projects)
 // Outliner. Every navigation stack bottoms out here; there is no Home root.
-func outlinerRootRoute() Route {
+func OutlinerRootRoute() Route {
 	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	if err != nil {
 		panic(err)
@@ -27,7 +27,7 @@ func outlinerRootRoute() Route {
 type PrimaryRouteStack struct{ frames []primaryRouteFrame }
 
 func NewPrimaryRouteStack() PrimaryRouteStack {
-	return PrimaryRouteStack{frames: []primaryRouteFrame{{route: outlinerRootRoute()}}}
+	return PrimaryRouteStack{frames: []primaryRouteFrame{{route: OutlinerRootRoute()}}}
 }
 
 func (s *PrimaryRouteStack) ensureRoot() {

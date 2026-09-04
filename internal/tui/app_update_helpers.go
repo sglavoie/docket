@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // keyInterceptor is implemented by overlay widgets that intercept key presses
@@ -26,12 +27,12 @@ func dispatchOverlayKey(overlay keyInterceptor, msg tea.KeyPressMsg) (dismiss bo
 	return dismissed, tea.Batch(cmds...)
 }
 
-func (m *AppModel) currentViewCapabilities() ViewCapabilities {
+func (m *AppModel) currentViewCapabilities() route.ViewCapabilities {
 	view := m.activeView()
 	if view == nil {
 		return nil
 	}
-	if caps, ok := view.(ViewCapabilities); ok {
+	if caps, ok := view.(route.ViewCapabilities); ok {
 		return caps
 	}
 	return nil

@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -48,7 +49,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 }
 
 func executeEntityOperation(app *AppModel, id operation.OperationID, entity operation.EntityIdentity) operation.OperationExecutionResult {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = entity
 	return app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
@@ -83,7 +84,7 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 
 	move := executeEntityOperation(model, operationNoteMove, operation.ProjectNoteEntity(project.ID, filename))
 	moveManager, ok := move.Message.(ShowNotesManagerMsg)
-	if !ok || moveManager.Scope != AllNotesScope() ||
+	if !ok || moveManager.Scope != route.AllNotesScope() ||
 		moveManager.Focus != (NoteRowIdentity{
 			Location: app.ProjectNoteLocation(project.ID),
 			Filename: filename,
@@ -110,7 +111,7 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 
 	// CurrentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	if noteOperationApplicable(ctx) {
 		t.Fatal("a note operation was offered with only a project in focus")
 	}
@@ -289,12 +290,12 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 
 	view := NewNotesViewModelWithService(
 		storage.GlobalNotesDir(model.runtime.DataDir()),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		model.appService,
 		nil,
 		project,
 	)
-	model.manageHub.params = ManageParams{Module: ManageNotes, NotesScope: view.scope}
+	model.manageHub.params = route.ManageParams{Module: route.ManageNotes, NotesScope: view.scope}
 	model.manageHub.active = view
 	view.SetOperationSystem(model.GetOperationRegistry(), model.dispatchOperationKey)
 	view.SetSize(80, 24)

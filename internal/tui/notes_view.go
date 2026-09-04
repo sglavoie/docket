@@ -11,19 +11,9 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
-
-func (s NotesScope) valid() bool {
-	switch s.Kind {
-	case NotesScopeAll, NotesScopeGlobal:
-		return s.ProjectID == ""
-	case NotesScopeProject:
-		return strings.TrimSpace(s.ProjectID) != ""
-	default:
-		return false
-	}
-}
 
 // NoteRowIdentity is the stable workspace identity of a note row. Filenames
 // alone are deliberately insufficient because owners may use the same name.
@@ -65,7 +55,7 @@ type NotesViewModel struct {
 	BaseView
 
 	notesDir    string
-	scope       NotesScope
+	scope       route.NotesScope
 	noteService projectNoteService
 	noteLedger  *storage.WorkspaceLedger
 
@@ -135,7 +125,7 @@ func (m *NotesViewModel) SetOperationSystem(
 // projects must be the note owners returned by Runtime.AvailableProjects().
 func NewNotesViewModelWithService(
 	notesDir string,
-	scope NotesScope,
+	scope route.NotesScope,
 	service projectNoteService,
 	ledger *storage.WorkspaceLedger,
 	projects ...*models.Project,
@@ -209,10 +199,10 @@ func noteOwnerCatalog(
 // normalized to All Notes so the shell can replace its typed route immediately.
 func (m *NotesViewModel) RefreshWorkspace(projects ...*models.Project) bool {
 	m.setOwnerProjects(projects)
-	scopeInvalid := m.scope.Kind == NotesScopeProject &&
+	scopeInvalid := m.scope.Kind == route.NotesScopeProject &&
 		!m.locationAvailable(app.ProjectNoteLocation(m.scope.ProjectID))
 	if scopeInvalid {
-		m.scope = AllNotesScope()
+		m.scope = route.AllNotesScope()
 	}
 	m.refreshLocationPicker()
 	m.loadNotes()

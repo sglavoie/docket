@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // =============================================================================
@@ -14,13 +15,13 @@ import (
 // initial All/Global/project view. Focus is optional; its zero value leaves the
 // manager's default selection unchanged.
 type ShowNotesManagerMsg struct {
-	Scope      NotesScope
+	Scope      route.NotesScope
 	Focus      NoteRowIdentity
 	MoveSource noteMutationRef
 }
 
 // CloseNotesManagerMsg closes the Notes manager's single secondary-tool route.
-type CloseNotesManagerMsg struct{ PopViewMsg }
+type CloseNotesManagerMsg struct{ route.PopViewMsg }
 
 // ProjectNoteMutationResultMsg reports one committed note transaction. Location
 // may be either a project collection or the workspace-global collection. The command that emits

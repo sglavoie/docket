@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
@@ -94,7 +95,7 @@ func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 		cmd()
 	}
 	hub, ok := app.manageHub.ActiveModuleView().(*ProjectHubModel)
-	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != presentation.ViewProjectHub || !ok {
+	if app.CurrentRoute().ID() != route.SecondaryTool || app.currentView() != presentation.ViewProjectHub || !ok {
 		t.Fatalf("Project Hub landed on %s/%s (%T)", app.CurrentRoute().ID(), app.currentView(), app.manageHub.ActiveModuleView())
 	}
 	if hub.HasActiveSearch() {
@@ -113,10 +114,10 @@ func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		path []string
-		mode ProjectHubMode
+		mode route.ProjectHubMode
 	}{
-		{name: "Ctrl+P pinned", path: []string{"ctrl+p"}, mode: ProjectHubModePinned},
-		{name: "uppercase P all", path: []string{"P"}, mode: ProjectHubModeAll},
+		{name: "Ctrl+P pinned", path: []string{"ctrl+p"}, mode: route.ProjectHubModePinned},
+		{name: "uppercase P all", path: []string{"P"}, mode: route.ProjectHubModeAll},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := executeDirectPath(t, app, ctx, test.path)
@@ -131,9 +132,9 @@ func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 			if cmd != nil {
 				cmd()
 			}
-			params := app.CurrentRoute().Params().(ManageParams)
+			params := app.CurrentRoute().Params().(route.ManageParams)
 			hub, mounted := app.manageHub.ActiveModuleView().(*ProjectHubModel)
-			mountedMode := ProjectHubMode(255)
+			mountedMode := route.ProjectHubMode(255)
 			if mounted {
 				mountedMode = hub.Mode()
 			}
@@ -154,7 +155,7 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	if handled, cmd := app.handleSimplifiedInputKey(ctrlP); handled || cmd != nil {
 		t.Fatalf("active search let Ctrl+P reach the Outliner grammar: handled=%v cmd=%v", handled, cmd)
 	}
-	if app.CurrentRoute().ID() != TaskWorkspace {
+	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while search owned input")
 	}
 	out.ClearSearch()
@@ -163,7 +164,7 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	if handled, cmd := app.handleSimplifiedInputKey(ctrlP); handled || cmd != nil {
 		t.Fatalf("active confirmation let Ctrl+P reach the Outliner grammar: handled=%v cmd=%v", handled, cmd)
 	}
-	if app.CurrentRoute().ID() != TaskWorkspace {
+	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while confirmation owned input")
 	}
 	out.confirm.Cancel()
@@ -204,7 +205,7 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operationConfirm.IsActive() {
 		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operationConfirm.IsActive())
 	}
-	if app.CurrentRoute().ID() != TaskWorkspace {
+	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while an overlay owned input")
 	}
 }

@@ -1,9 +1,12 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
+)
 
 func (m *AppModel) activeOutliner() *OutlinerModel {
-	if m == nil || m.navigation.Primary.Current().ID() != TaskWorkspace {
+	if m == nil || m.navigation.Primary.Current().ID() != route.TaskWorkspace {
 		return nil
 	}
 	return m.crossOutliner

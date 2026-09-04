@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -61,7 +62,7 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	m.currentProject = nil
 	presentationCmd := m.prepareCrossProjectOutliner()
 	m.navigation.ResetRoot()
-	routeCmd := m.activateTaskWorkspaceRoute(outlinerRootRoute())
+	routeCmd := m.activateTaskWorkspaceRoute(route.OutlinerRootRoute())
 	cmd = tea.Batch(presentationCmd, routeCmd)
 	m.setInfoStatus("Project was removed — returning to the Outliner")
 	return true, cmd
@@ -104,7 +105,7 @@ func (m *AppModel) popView() tea.Cmd {
 	var resumeCmd tea.Cmd
 	if v := m.views.Get(cv); v != nil {
 		m.setAccentOnView(v)
-		if handler, ok := v.(ViewResumeHandler); popped && ok {
+		if handler, ok := v.(route.ViewResumeHandler); popped && ok {
 			resumeCmd = handler.OnResume()
 		}
 	}
@@ -133,10 +134,10 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		// Capture the view label for the Esc undo hint before any state changes.
 		var closingLabel string
 		if view := m.views.Get(closingView); view != nil {
-			if resetter, ok := view.(ViewExitResetter); ok {
+			if resetter, ok := view.(route.ViewExitResetter); ok {
 				resetter.OnExit()
 			}
-			if labeler, ok := view.(StatusBarLabeler); ok {
+			if labeler, ok := view.(route.StatusBarLabeler); ok {
 				closingLabel = labeler.StatusBarLabel()
 			}
 		}
@@ -174,7 +175,7 @@ func (m *AppModel) popToAnchorView() tea.Cmd {
 func (m *AppModel) currentAccentColor() color.Color {
 	path := m.presentationPath()
 	for i := len(path) - 1; i >= 0; i-- {
-		if c := ViewAccentColor(path[i]); c != nil {
+		if c := route.ViewAccentColor(path[i]); c != nil {
 			return c
 		}
 	}
@@ -186,8 +187,8 @@ func (m *AppModel) currentAccentColor() color.Color {
 
 // setAccentOnView injects the accent color for the current view stack top into
 // any view that implements AccentColorSetter.
-func (m *AppModel) setAccentOnView(view View) {
-	if v, ok := view.(AccentColorSetter); ok {
+func (m *AppModel) setAccentOnView(view route.View) {
+	if v, ok := view.(route.AccentColorSetter); ok {
 		v.SetAccentColor(m.currentAccentColor())
 	}
 }
@@ -228,7 +229,7 @@ type taskFormWireable interface {
 // wireSecondaryCoordinators injects the shell's shared coordinators into a view
 // as it is registered, so a view's mutation handlers can commit through the
 // application layer without every construction site threading the coordinator.
-func (m *AppModel) wireSecondaryCoordinators(view View) {
+func (m *AppModel) wireSecondaryCoordinators(view route.View) {
 	if w, ok := view.(bulkWireable); ok {
 		w.SetBulkCoordinator(m.secondaryFeatures.Bulk)
 	}
@@ -261,7 +262,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 	outliner.setAdvisoriesHidden(m.advisoriesHidden)
 }
 
-func (m *AppModel) showView(viewType presentation.PresentationID, view View) {
+func (m *AppModel) showView(viewType presentation.PresentationID, view route.View) {
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
@@ -279,7 +280,7 @@ func (m *AppModel) showView(viewType presentation.PresentationID, view View) {
 
 // showViewInit is showView + return true, view.Init(). Used by handlers that
 // create a view, push it, and immediately return its Init command.
-func (m *AppModel) showViewInit(viewType presentation.PresentationID, view View) (bool, tea.Cmd) {
+func (m *AppModel) showViewInit(viewType presentation.PresentationID, view route.View) (bool, tea.Cmd) {
 	m.showView(viewType, view)
 	return true, view.Init()
 }

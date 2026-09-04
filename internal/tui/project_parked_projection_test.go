@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -211,7 +212,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	shell := &AppModel{
 		runtime:  runtime,
 		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
-		views:    NewViewRegistry(),
+		views:    route.NewViewRegistry(),
 	}
 	assertIDs(t, shell.operationScopeProjectIDs(nil), active.ID)
 

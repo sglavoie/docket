@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -130,9 +131,9 @@ func (m *AppModel) registerHarnessOperations() error {
 		{operationHarnessProjectNotes, "show notes", operation.OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()
 			if project != nil {
-				return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
+				return ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
 			}
-			return ShowNotesManagerMsg{Scope: AllNotesScope()}
+			return ShowNotesManagerMsg{Scope: route.AllNotesScope()}
 		}},
 		{operationHarnessOutlineErrors, "outline errors", operation.OperationCategorySystem, func() tea.Msg {
 			// The outline refusal surface is only reachable through an external
@@ -386,9 +387,9 @@ func (m *AppModel) harnessTaskContentEdited(title string, retry bool) tea.Msg {
 func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {
 	presentationCmd := m.prepareCrossProjectOutliner()
 	m.crossOutliner.ApplyOpenOptions(options)
-	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
+	target, err := route.NewRoute(route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.AppEntityScope()})
 	if err != nil {
 		return status.ErrorMsg{Err: err}
 	}
-	return operation.OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)}
+	return operation.OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(target), presentationCmd)}
 }

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -205,7 +206,7 @@ func (m *NotesViewModel) handleLocationPickerResult(
 		scope := msg.Item.Scope
 		return m, func() tea.Msg {
 			return ManageHubModuleSelectedMsg{
-				Params: ManageParams{Module: ManageNotes, NotesScope: scope},
+				Params: route.ManageParams{Module: route.ManageNotes, NotesScope: scope},
 			}
 		}
 	case notesLocationPickerCreation:

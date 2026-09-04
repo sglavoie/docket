@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
@@ -123,7 +124,7 @@ func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view present
 		t.Fatalf("renderer path under typed composer = %v, want %v", obs.ViewStack, wantPath)
 	}
 	overlay, ok := driver.App().navigation.Overlays.Current()
-	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {
+	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		t.Fatalf("typed composer overlay = %+v, open=%v", overlay, ok)
 	}
 	if _, legacy := overlay.Presentation(); legacy {

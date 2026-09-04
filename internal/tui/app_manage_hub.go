@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -45,7 +46,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		// ledger after construction. Keep the hub on the shell's current seams
 		// rather than retaining a stale history handle.
 		m.manageHub.deps = deps
-		if m.manageHub.params.Module == ManageNotes {
+		if m.manageHub.params.Module == route.ManageNotes {
 			m.manageHub.activeKey = ""
 		}
 	}
@@ -57,24 +58,24 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 // Manage destination. No embedded legacy model enters route
 // history; PresentationID remains only a presentation observation for commands and
 // existing overlay return messages.
-func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
-	route, err := NewRoute(SecondaryTool, params)
+func (m *AppModel) activateManageHub(params route.ManageParams) tea.Cmd {
+	target, err := route.NewRoute(route.SecondaryTool, params)
 	if err != nil {
 		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
-	params = route.Params().(ManageParams)
+	params = target.Params().(route.ManageParams)
 
 	hub := m.ensureManageHub()
-	missingProject := params.Module == ManageNotes &&
-		params.NotesScope.Kind == NotesScopeProject &&
+	missingProject := params.Module == route.ManageNotes &&
+		params.NotesScope.Kind == route.NotesScopeProject &&
 		m.activeProjectByID(params.NotesScope.ProjectID) == nil
 	if missingProject {
-		params.NotesScope = AllNotesScope()
-		route, err = NewRoute(SecondaryTool, params)
+		params.NotesScope = route.AllNotesScope()
+		target, err = route.NewRoute(route.SecondaryTool, params)
 		if err != nil {
 			return func() tea.Msg { return status.ErrorMsg{Err: err} }
 		}
-		params = route.Params().(ManageParams)
+		params = target.Params().(route.ManageParams)
 	}
 	if activateErr := hub.Activate(params); activateErr != nil {
 		return func() tea.Msg { return status.ErrorMsg{Err: activateErr} }
@@ -90,11 +91,11 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		m.registerManageModulePresentation(params, active)
 	}
 
-	if m.navigation.Primary.Current().ID() == SecondaryTool {
+	if m.navigation.Primary.Current().ID() == route.SecondaryTool {
 		m.navigation.Overlays.CancelAll()
-		err = m.navigation.Primary.ReplaceCurrentMode(route)
+		err = m.navigation.Primary.ReplaceCurrentMode(target)
 	} else {
-		err = m.navigation.PushChild(route)
+		err = m.navigation.PushChild(target)
 	}
 	if err != nil {
 		return func() tea.Msg { return status.ErrorMsg{Err: err} }
@@ -107,7 +108,7 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	return nil
 }
 
-func (m *AppModel) registerManageModulePresentation(params ManageParams, view View) {
+func (m *AppModel) registerManageModulePresentation(params route.ManageParams, view route.View) {
 	if m.views == nil || view == nil {
 		return
 	}
@@ -129,8 +130,8 @@ func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 	_, params, ok := m.manageHubPrimary()
-	if !ok || params.Module != ManageNotes ||
-		params.NotesScope.Kind != NotesScopeProject ||
+	if !ok || params.Module != route.ManageNotes ||
+		params.NotesScope.Kind != route.NotesScopeProject ||
 		m.activeProjectByID(params.NotesScope.ProjectID) != nil {
 		return false, nil
 	}
@@ -140,7 +141,7 @@ func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 	if notes := m.getActiveNotesView(); notes != nil {
 		notes.RefreshWorkspace(m.availableProjects()...)
 	}
-	params.NotesScope = AllNotesScope()
+	params.NotesScope = route.AllNotesScope()
 	m.setInfoStatus("Project was removed — showing All Notes")
 	return true, m.activateManageHub(params)
 }
@@ -166,7 +167,7 @@ func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
 		m.currentProject = nil
 	}
 	params := m.manageHub.params
-	params.NotesScope = AllNotesScope()
+	params.NotesScope = route.AllNotesScope()
 	message := "Project is unavailable — showing All Notes"
 	m.setInfoStatus(message)
 	cmd := m.activateManageHub(params)

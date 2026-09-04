@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -227,7 +228,7 @@ func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which one an operation means.
 func (m *TaskCommentsModel) commentsCommandContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewTaskComments)
+	ctx := route.PresentationCommandContext(presentation.ViewTaskComments)
 	ctx.Capabilities.Add(operation.CapabilityCommentsPanel)
 	return ctx
 }

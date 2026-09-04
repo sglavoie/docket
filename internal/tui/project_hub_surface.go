@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
@@ -39,7 +40,7 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 // projectHubCategories orders the listing groups: the base task workspace
 // first, then the archived tail.
 func (m *ProjectHubModel) projectHubCategories() []ListCategory {
-	if m.mode == ProjectHubModePinned {
+	if m.mode == route.ProjectHubModePinned {
 		return []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
 	}
 	return []ListCategory{
@@ -88,7 +89,7 @@ func projectHubAliases(project *models.Project, lifecycle string) []string {
 func (m *ProjectHubModel) projectHubItems() []ListItem {
 	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
-		if project == nil || (m.mode == ProjectHubModePinned && !project.Pinned) || m.projectHubFilterHides(project) {
+		if project == nil || (m.mode == route.ProjectHubModePinned && !project.Pinned) || m.projectHubFilterHides(project) {
 			continue
 		}
 		label := project.Name
@@ -109,7 +110,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			Data: projectHubEntry{Kind: projectHubEntryActive, Project: project},
 		})
 	}
-	if m.mode == ProjectHubModePinned {
+	if m.mode == route.ProjectHubModePinned {
 		return items
 	}
 	for _, project := range m.runtime.ArchivedProjects() {

@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // refreshProjectHubEmptyStates keeps the empty copy naming whichever narrowing
@@ -18,7 +19,7 @@ func (m *ProjectHubModel) refreshProjectHubEmptyStates() {
 }
 
 func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
-	if m.mode == ProjectHubModePinned && m.pinnedActiveProjectCount() == 0 {
+	if m.mode == route.ProjectHubModePinned && m.pinnedActiveProjectCount() == 0 {
 		return ListEmptyState{
 			Title:  "No active projects are pinned.",
 			Detail: "Press Esc to return to the Outliner; P opens the full Project Hub.",
@@ -26,12 +27,12 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 	}
 	switch m.taskFilter {
 	case projectHubTaskFilterWithOpenTasks:
-		if m.mode == ProjectHubModePinned {
+		if m.mode == route.ProjectHubModePinned {
 			return ListEmptyState{Title: "No pinned projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
 		return ListEmptyState{Title: "No projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
 	case projectHubTaskFilterWithoutOpenTasks:
-		if m.mode == ProjectHubModePinned {
+		if m.mode == route.ProjectHubModePinned {
 			return ListEmptyState{Title: "Every pinned project holds open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
 		return ListEmptyState{Title: "Every project holds open tasks.", Detail: m.projectHubFilterAdvice()}
@@ -51,7 +52,7 @@ func (m *ProjectHubModel) projectHubFilterAdvice() string {
 
 func (m *ProjectHubModel) projectHubNextFilterPhrase() string {
 	next := m.taskFilter.next()
-	if m.mode != ProjectHubModePinned {
+	if m.mode != route.ProjectHubModePinned {
 		return next.phrase()
 	}
 	switch next {
@@ -67,7 +68,7 @@ func (m *ProjectHubModel) projectHubNextFilterPhrase() string {
 func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
 	title := "No projects match this search."
 	browsePopulation := "every project"
-	if m.mode == ProjectHubModePinned {
+	if m.mode == route.ProjectHubModePinned {
 		title = "No pinned projects match this search."
 		browsePopulation = "pinned projects"
 	}
@@ -111,7 +112,7 @@ func (m *ProjectHubModel) activateProjectHubCurrent() tea.Cmd {
 }
 
 func (m *ProjectHubModel) projectHubCommandContext(projectID string) operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewProjectHub)
+	ctx := route.PresentationCommandContext(presentation.ViewProjectHub)
 	ctx.Capabilities.Add(operation.CapabilityProjectHub)
 	if projectID != "" {
 		ctx.CurrentEntity = operation.ProjectEntity(projectID)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
@@ -27,9 +28,9 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 		}
 	}
 
-	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
+	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 	assertLedger("direct project notes", presentation.ViewNotes)
-	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
+	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 	assertLedger("direct global notes", presentation.ViewGlobalNotes)
 
 }
@@ -46,7 +47,7 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	shell.appService = service
 	shell.deps = newShellDeps(nil)
 
-	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()}); !handled {
+	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()}); !handled {
 		t.Fatal("ShowNotesManagerMsg was not handled")
 	}
 	notes, ok := shell.views.Get(presentation.ViewGlobalNotes).(*NotesViewModel)

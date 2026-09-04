@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 type notesMoveService struct {
@@ -47,7 +48,7 @@ func TestNotesMovePickerOffersEveryOtherOwner(t *testing.T) {
 			}}
 			view := NewNotesViewModelWithService(
 				t.TempDir(),
-				AllNotesScope(),
+				route.AllNotesScope(),
 				service,
 				nil,
 				alpha,
@@ -62,7 +63,7 @@ func TestNotesMovePickerOffersEveryOtherOwner(t *testing.T) {
 			var got []app.NoteLocation
 			for _, item := range view.locationPicker.SourceItems() {
 				got = append(got, item.Location)
-				if item.Scope.Kind == NotesScopeAll {
+				if item.Scope.Kind == route.NotesScopeAll {
 					t.Fatal("move picker offered All Notes as a destination")
 				}
 			}
@@ -103,7 +104,7 @@ func TestNotesMoveEnterCommitsFrozenLocatedRequestWithoutConfirmation(t *testing
 	}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -113,7 +114,7 @@ func TestNotesMoveEnterCommitsFrozenLocatedRequestWithoutConfirmation(t *testing
 
 	_, _ = view.Update(syntheticKey('%'))
 	view.locationPicker.SetCursorToID(notesLocationPickerItem{
-		Scope: ProjectNotesScope(beta.ID),
+		Scope: route.ProjectNotesScope(beta.ID),
 	}.ItemID())
 	note.Title = "live pointer changed"
 	note.Body = "live body changed"
@@ -162,7 +163,7 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 		}}
 		view := NewNotesViewModelWithService(
 			t.TempDir(),
-			AllNotesScope(),
+			route.AllNotesScope(),
 			service,
 			nil,
 			project,
@@ -185,7 +186,7 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 		}}
 		view := NewNotesViewModelWithService(
 			t.TempDir(),
-			AllNotesScope(),
+			route.AllNotesScope(),
 			service,
 			nil,
 		)
@@ -205,7 +206,7 @@ func TestNotesMoveResultSelectsCommittedDestinationIdentity(t *testing.T) {
 	alpha := shell.currentProject
 	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, alpha, beta)
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
+	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 	view := shell.getActiveNotesView()
 	source := app.ProjectNoteLocation(alpha.ID)
 	destination := app.ProjectNoteLocation(beta.ID)
@@ -258,7 +259,7 @@ func TestNotesMoveSourceScopeReappliesSearchAndClampsAfterRowDisappears(t *testi
 	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, alpha, beta)
 	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{
-		Scope: ProjectNotesScope(alpha.ID),
+		Scope: route.ProjectNotesScope(alpha.ID),
 	})
 	view := shell.getActiveNotesView()
 	source := app.ProjectNoteLocation(alpha.ID)
@@ -354,7 +355,7 @@ func TestNotesMoveFailureKeepsVisibleOwnership(t *testing.T) {
 	}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		project,
@@ -383,7 +384,7 @@ func TestNotesMoveKeymapAndHelpStayInParity(t *testing.T) {
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 		app.GlobalNoteLocation(): {{Title: "Move me", Filename: "move.md"}},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 
 	if !slices.Contains(view.HandledKeys(), "%") {

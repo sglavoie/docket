@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func (m *NotesViewModel) requestedLocations() []app.NoteLocation {
@@ -25,7 +26,7 @@ func (m *NotesViewModel) loadNotes() {
 	m.collectionErrors = nil
 	m.snapshotError = nil
 
-	if !m.scope.valid() {
+	if !m.scope.Valid() {
 		m.snapshotError = fmt.Errorf("invalid notes scope %q", m.scope.Kind)
 		m.visibleRows = nil
 		m.cursor = 0
@@ -75,7 +76,7 @@ func (m *NotesViewModel) loadNotes() {
 
 // SetScope derives a new visible list from the canonical loaded rows without
 // rebuilding the workspace snapshot.
-func (m *NotesViewModel) SetScope(scope NotesScope) {
+func (m *NotesViewModel) SetScope(scope route.NotesScope) {
 	selectedID, preserveSelection := m.selectedIdentity()
 	m.locationPicker = nil
 	m.moveSource = nil
@@ -88,7 +89,7 @@ func (m *NotesViewModel) deriveVisibleRows() {
 	m.visibleRows = m.visibleRows[:0]
 	m.searchMatches = nil
 	m.searchCaseRelaxed = false
-	if !m.scope.valid() {
+	if !m.scope.Valid() {
 		return
 	}
 	query := strings.TrimSpace(m.activeSearchQuery())
@@ -99,7 +100,7 @@ func (m *NotesViewModel) deriveVisibleRows() {
 			m.searchMatches = make(map[NoteRowIdentity]noteSearchMatch)
 		}
 		for _, row := range m.loadedRows {
-			if !m.scope.matches(row.Location) {
+			if !notesScopeMatches(m.scope, row.Location) {
 				continue
 			}
 			if query != "" {
@@ -204,21 +205,25 @@ func (m *NotesViewModel) SearchQuery() string {
 func (m *NotesViewModel) scopedRowCount() int {
 	count := 0
 	for _, row := range m.loadedRows {
-		if m.scope.matches(row.Location) {
+		if notesScopeMatches(m.scope, row.Location) {
 			count++
 		}
 	}
 	return count
 }
 
-func (s NotesScope) matches(location app.NoteLocation) bool {
-	switch s.Kind {
-	case NotesScopeAll:
+// notesScopeMatches is a function rather than a method on route.NotesScope
+// because the scope is navigation identity and app.NoteLocation is a durable
+// collection locator; pinning the two together would put internal/app inside
+// the route layer for this one predicate.
+func notesScopeMatches(scope route.NotesScope, location app.NoteLocation) bool {
+	switch scope.Kind {
+	case route.NotesScopeAll:
 		return true
-	case NotesScopeGlobal:
+	case route.NotesScopeGlobal:
 		return location.Scope == app.NoteScopeGlobal
-	case NotesScopeProject:
-		return location.Scope == app.NoteScopeProject && location.ProjectID == s.ProjectID
+	case route.NotesScopeProject:
+		return location.Scope == app.NoteScopeProject && location.ProjectID == scope.ProjectID
 	default:
 		return false
 	}

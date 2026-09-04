@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -77,14 +78,14 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
 		width:             120,
 		height:            40,
-		views:             NewViewRegistry(),
+		views:             route.NewViewRegistry(),
 		currentProject:    projects[0],
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
-		navigation:        NewNavigationState(),
+		navigation:        route.NewNavigationState(),
 	}
 	m.operationExecutor = operation.NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()

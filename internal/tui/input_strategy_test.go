@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func registeredSimplifiedOperationRegistry(t *testing.T) *operation.OperationRegistry {
@@ -50,7 +51,7 @@ func simplifiedTaskActionDescriptors() []operation.OperationDescriptor {
 }
 
 func simplifiedOperationContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return ctx
 }

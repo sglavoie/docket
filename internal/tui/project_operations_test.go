@@ -6,12 +6,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // projectOperationContext mimics a non-Project-Hub host naming one frozen
 // project.
 func projectOperationContext(projectID string) operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = operation.ProjectEntity(projectID)
 	return ctx
 }
@@ -44,7 +45,7 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	fromOtherHost := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("beta"))
 
 	hubMsg, ok := fromHub.Message.(ShowNotesManagerMsg)
-	if !ok || hubMsg.Scope != ProjectNotesScope("beta") {
+	if !ok || hubMsg.Scope != route.ProjectNotesScope("beta") {
 		t.Fatalf("Project Hub notes emitted %#v, want beta", fromHub.Message)
 	}
 	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesManagerMsg)
@@ -147,7 +148,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 }
 
 func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.ScopeProjectIDs = []string{"alpha", "beta"}
 	if projectOperationApplicable(ctx) {
 		t.Fatal("a multi-project scope must not supply a project operation target")

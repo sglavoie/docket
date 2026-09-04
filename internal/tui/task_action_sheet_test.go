@@ -12,11 +12,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func taskActionTestContext() operation.CommandContext {
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = operation.EntityContext{ProjectID: "project", TaskID: "task"}
 	return context
@@ -25,7 +26,7 @@ func taskActionTestContext() operation.CommandContext {
 // bulkTaskActionTestContext freezes a visual selection over live tasks, the same
 // shape openTaskActionSheet builds from the Outliner's selected rows.
 func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) operation.CommandContext {
-	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(tasks))

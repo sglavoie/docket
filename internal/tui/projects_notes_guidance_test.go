@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestProjectHubGuidanceFollowsBrowseSearchSelectionAndActions(t *testing.T) {
@@ -92,7 +93,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 		app.GlobalNoteLocation(): {{Title: "Global note", Filename: "global.md"}},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	shell := mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
@@ -150,7 +151,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 
 func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.T) {
 	empty := NewNotesViewModelWithService(
-		t.TempDir(), AllNotesScope(),
+		t.TempDir(), route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}}, nil,
 	)
 	mountNotesManager(t, empty)
@@ -169,7 +170,7 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 		})
 	}
 	view := NewNotesViewModelWithService(
-		t.TempDir(), GlobalNotesScope(),
+		t.TempDir(), route.GlobalNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 			app.GlobalNoteLocation(): notes,
 		}}, nil,

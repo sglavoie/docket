@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // The named-lens picker is the one surface the lens lifecycle is reachable
@@ -240,7 +241,7 @@ func (model *NamedLensPickerModel) Notice() string {
 // AppModel.saveViewAsLens; every operation that needs a record under the cursor
 // is reachable only through this one, because nothing else supplies the entity.
 func (model *NamedLensPickerModel) commandContext(entity operation.EntityIdentity) operation.CommandContext {
-	ctx := PresentationCommandContext(model.view)
+	ctx := route.PresentationCommandContext(model.view)
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	ctx.CurrentEntity = entity
 	return ctx

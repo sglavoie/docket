@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -29,7 +30,7 @@ func (transaction *operationTestTransaction) Rollback() error {
 }
 
 func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *testing.T) {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = operation.EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
@@ -117,7 +118,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 }
 
 func TestOperationTargetResolverSelectedTasksFallsBackToCurrentTask(t *testing.T) {
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = operation.EntityContext{ProjectID: "project", TaskID: "current"}
 	descriptor := operation.OperationDescriptor{
 		ID:                "task.bulk",
@@ -207,7 +208,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 		t.Fatalf("Register binding: %v", err)
 	}
 
-	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},

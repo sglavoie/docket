@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func newBulkPickerTestTask(t *testing.T, shortID int, title string, tags ...string) *models.Task {
@@ -110,8 +111,8 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 		configManager: e.mgr, runtime: testRuntimeAt(e.cfg.DataDir(), e.cfg),
 		deps:     newShellDeps(nil),
 		projects: projects, persister: coordinator.NewProjectService(), appService: e.svc,
-		secondaryFeatures: e.features, views: NewViewRegistry(),
-		navigation: NewNavigationState(), width: 80, height: 24,
+		secondaryFeatures: e.features, views: route.NewViewRegistry(),
+		navigation: route.NewNavigationState(), width: 80, height: 24,
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -134,7 +135,7 @@ func footerBackgroundStyleParts(background color.Color) (prefix, suffix string) 
 // footer, since AppModel.View sizes and pads content against its height.
 func (m *AppModel) renderStatusBar() string {
 	footer := m.renderFooterChrome()
-	provider, ok := m.activeView().(ViewStatusStripProvider)
+	provider, ok := m.activeView().(route.ViewStatusStripProvider)
 	if !ok {
 		return footer
 	}
@@ -199,7 +200,7 @@ func (m *AppModel) renderFooterChrome() string {
 	// return once it clears. renderGuidance emits its own separator, so
 	// return it directly rather than prefixing the local one.
 	if view := m.activeView(); view != nil {
-		if provider, ok := view.(ContextualGuidanceProvider); ok {
+		if provider, ok := view.(route.ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
 				return renderFooter(chrome.RenderGuidanceText(spec, m.width))
 			}
@@ -244,7 +245,7 @@ func (m *AppModel) renderFooterChrome() string {
 
 	// Add filter pill if current view has active filters.
 	if view := m.activeView(); view != nil {
-		if fp, ok := view.(ActiveFilterProvider); ok {
+		if fp, ok := view.(route.ActiveFilterProvider); ok {
 			if count := fp.ActiveFilterCount(); count > 0 {
 				filterLabel := "filters"
 				if count == 1 {
@@ -257,7 +258,7 @@ func (m *AppModel) renderFooterChrome() string {
 
 	// Prepend mode badge when the current view is in a named mode.
 	if view := m.activeView(); view != nil {
-		if mi, ok := view.(ModeIndicator); ok {
+		if mi, ok := view.(route.ModeIndicator); ok {
 			if label, c := mi.ActiveMode(); label != "" {
 				badge := lipgloss.NewStyle().
 					Bold(true).
@@ -377,7 +378,7 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 	// Use the registered view's StatusBarLabel when available.
 	if label == "" {
 		if view := m.views.Get(vt); view != nil {
-			if labeler, ok := view.(StatusBarLabeler); ok {
+			if labeler, ok := view.(route.StatusBarLabeler); ok {
 				raw := labeler.StatusBarLabel()
 				// Strip "Project: " prefix from project tree label for compactness.
 				label = strings.TrimPrefix(raw, "Project: ")

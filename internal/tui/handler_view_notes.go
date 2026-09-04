@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -104,7 +105,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		if m.manageHub != nil {
 			_, hadNotesManager = m.manageHub.ActiveModuleView().(*NotesViewModel)
 		}
-		cmd := m.activateManageHub(ManageParams{Module: ManageNotes, NotesScope: msg.Scope})
+		cmd := m.activateManageHub(route.ManageParams{Module: route.ManageNotes, NotesScope: msg.Scope})
 		if hadNotesManager {
 			if nv := m.getActiveNotesView(); nv != nil {
 				nv.RefreshWorkspace(m.availableProjects()...)

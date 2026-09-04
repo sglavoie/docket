@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *testing.T) {
@@ -29,7 +30,7 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		alpha,
@@ -43,7 +44,7 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 	_, _ = view.Update(syntheticKey('%'))
 	betaItem := notesLocationPickerItem{
 		Label:    beta.Name,
-		Scope:    ProjectNotesScope(beta.ID),
+		Scope:    route.ProjectNotesScope(beta.ID),
 		Location: app.ProjectNoteLocation(beta.ID),
 	}
 	view.locationPicker.SetCursorToID(betaItem.ItemID())
@@ -125,7 +126,7 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 			shell := typedTestApp(t)
 			project := shell.currentProject
 			_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{
-				Scope: ProjectNotesScope(project.ID),
+				Scope: route.ProjectNotesScope(project.ID),
 			})
 			notes := shell.getActiveNotesView()
 			notes.searchApplied = "needle"
@@ -135,9 +136,9 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 			setTestAppProjects(shell, tc.projects(project)...)
 			_ = shell.refreshActiveNotesManager()
 
-			params := shell.CurrentRoute().Params().(ManageParams)
+			params := shell.CurrentRoute().Params().(route.ManageParams)
 			notes = shell.getActiveNotesView()
-			if params.NotesScope != AllNotesScope() || notes.scope != AllNotesScope() {
+			if params.NotesScope != route.AllNotesScope() || notes.scope != route.AllNotesScope() {
 				t.Fatalf("invalid scope survived refresh: route %#v model %#v", params.NotesScope, notes.scope)
 			}
 			if notes.locationPicker != nil {
@@ -170,7 +171,7 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 	alpha := shell.currentProject
 	beta := &models.Project{ID: "beta", Name: "Old Destination", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, alpha, beta)
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
+	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 	notes := shell.getActiveNotesView()
 	_, _ = notes.Update(syntheticKey('a'))
 	for _, r := range "renamed" {
@@ -204,14 +205,14 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 func TestNotesManagerReopenRebuildsActiveOwnerCatalog(t *testing.T) {
 	shell := typedTestApp(t)
 	alpha := shell.currentProject
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
+	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 	notes := shell.getActiveNotesView()
 
 	renamedAlpha := *alpha
 	renamedAlpha.Name = "Alpha Renamed"
 	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, &renamedAlpha, beta)
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
+	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 
 	if shell.getActiveNotesView() != notes {
 		t.Fatal("reopening Notes rebuilt the manager instead of refreshing it")
@@ -245,7 +246,7 @@ func TestNotesMutationRefreshPreservesProjectScopeAndAcceptedSearch(t *testing.T
 				},
 			}}
 			_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{
-				Scope: ProjectNotesScope(project.ID),
+				Scope: route.ProjectNotesScope(project.ID),
 			})
 			notes := shell.getActiveNotesView()
 			notes.noteService = service
@@ -266,7 +267,7 @@ func TestNotesMutationRefreshPreservesProjectScopeAndAcceptedSearch(t *testing.T
 				SuccessMessage: "Changed",
 			})
 
-			if notes.scope != ProjectNotesScope(project.ID) ||
+			if notes.scope != route.ProjectNotesScope(project.ID) ||
 				notes.SearchQuery() != "needle" ||
 				len(notes.visibleRows) != 1 ||
 				notes.visibleRows[0].Identity() != (NoteRowIdentity{
@@ -330,7 +331,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	}}
 	view := NewNotesViewModelWithService(
 		t.TempDir(),
-		AllNotesScope(),
+		route.AllNotesScope(),
 		service,
 		nil,
 		projects...,
@@ -421,7 +422,7 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 		app.GlobalNoteLocation(): {{Title: "Needle", Filename: "needle.md"}},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
 	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 

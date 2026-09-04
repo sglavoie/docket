@@ -13,24 +13,13 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // ManageHubModuleSelectedMsg changes the active Manage mode without creating a
 // child route. The shell owns the corresponding typed route replacement.
 type ManageHubModuleSelectedMsg struct {
-	Params ManageParams
-}
-
-var manageModuleNames = [...]string{
-	"Notes",
-	"Projects",
-}
-
-func (module ManageModule) String() string {
-	if int(module) < len(manageModuleNames) {
-		return manageModuleNames[module]
-	}
-	return fmt.Sprintf("ManageModule(%d)", module)
+	Params route.ManageParams
 }
 
 // ManageHubDependencies collects the existing transaction-backed collection
@@ -40,7 +29,7 @@ type ManageHubDependencies struct {
 	Runtime            *config.RuntimeState
 	NoteService        projectNoteService
 	HistoryLedger      *storage.WorkspaceLedger
-	Wire               func(View)
+	Wire               func(route.View)
 	ResolveProject     func(string) *models.Project
 	ActiveProjectFocus func() string
 	TaskCounts         func() map[string]projectTaskTally
@@ -57,8 +46,8 @@ type ManageHubModel struct {
 	BaseView
 	deps ManageHubDependencies
 
-	params    ManageParams
-	active    View
+	params    route.ManageParams
+	active    route.View
 	activeKey string
 }
 
@@ -68,9 +57,9 @@ func NewManageHubModel(deps ManageHubDependencies) *ManageHubModel {
 	}
 	return &ManageHubModel{
 		deps: deps,
-		params: ManageParams{
-			Module:     ManageNotes,
-			NotesScope: AllNotesScope(),
+		params: route.ManageParams{
+			Module:     route.ManageNotes,
+			NotesScope: route.AllNotesScope(),
 		},
 	}
 }
@@ -88,7 +77,7 @@ func (m *ManageHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	updated, cmd := m.active.Update(msg)
-	if view, ok := updated.(View); ok {
+	if view, ok := updated.(route.View); ok {
 		m.active = view
 	}
 	return m, cmd
@@ -97,19 +86,19 @@ func (m *ManageHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // Activate validates and installs one collection module. App scope and project
 // scope share one hub slot, so changing scope replaces the embedded model
 // without creating another route identity.
-func (m *ManageHubModel) Activate(params ManageParams) error {
+func (m *ManageHubModel) Activate(params route.ManageParams) error {
 	previousParams := m.params
-	route, err := NewRoute(SecondaryTool, params)
+	target, err := route.NewRoute(route.SecondaryTool, params)
 	if err != nil {
 		return err
 	}
-	params = route.Params().(ManageParams)
+	params = target.Params().(route.ManageParams)
 	m.params = params
 	if _, err := m.projectForNotesScope(params); err != nil {
 		return err
 	}
 	key := manageModuleCacheKey(params)
-	if params.Module == ManageNotes && previousParams.Module == ManageNotes {
+	if params.Module == route.ManageNotes && previousParams.Module == route.ManageNotes {
 		if notes, ok := m.active.(*NotesViewModel); ok {
 			notes.SetScope(params.NotesScope)
 			m.activeKey = key
@@ -119,13 +108,13 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	}
 	// Projects reads live state at construction time, so a cached instance would
 	// show stale rows.
-	if key == m.activeKey && m.active != nil && params.Module != ManageProjects {
+	if key == m.activeKey && m.active != nil && params.Module != route.ManageProjects {
 		return nil
 	}
 
-	var view View
+	var view route.View
 	switch params.Module {
-	case ManageNotes:
+	case route.ManageNotes:
 		notes := NewNotesViewModelWithService(
 			storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
 			params.NotesScope,
@@ -135,7 +124,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		)
 		notes.SetOperationSystem(m.deps.OperationRegistry, m.deps.DispatchKey)
 		view = notes
-	case ManageProjects:
+	case route.ManageProjects:
 		hub := NewProjectHubModel(m.deps.Runtime, params.ProjectHubMode)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
 		if m.deps.ActiveProjectFocus != nil {
@@ -155,12 +144,12 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	return nil
 }
 
-func (m *ManageHubModel) projectForNotesScope(params ManageParams) (*models.Project, error) {
-	if params.Module != ManageNotes || params.NotesScope.Kind != NotesScopeProject {
+func (m *ManageHubModel) projectForNotesScope(params route.ManageParams) (*models.Project, error) {
+	if params.Module != route.ManageNotes || params.NotesScope.Kind != route.NotesScopeProject {
 		return nil, nil
 	}
 	if params.NotesScope.ProjectID == "" {
-		return nil, ErrProjectRequired
+		return nil, route.ErrProjectRequired
 	}
 	if m.deps.ResolveProject == nil {
 		return nil, fmt.Errorf("project %q is unavailable", params.NotesScope.ProjectID)
@@ -172,7 +161,7 @@ func (m *ManageHubModel) projectForNotesScope(params ManageParams) (*models.Proj
 	return project, nil
 }
 
-func manageModuleCacheKey(params ManageParams) string {
+func manageModuleCacheKey(params route.ManageParams) string {
 	return fmt.Sprintf(
 		"%d:%d:%s:%d",
 		params.Module,
@@ -187,7 +176,7 @@ func (m *ManageHubModel) prepareActiveView() {
 		return
 	}
 	m.active.SetSize(m.width, m.height)
-	if setter, ok := m.active.(AccentColorSetter); ok {
+	if setter, ok := m.active.(route.AccentColorSetter); ok {
 		setter.SetAccentColor(m.AccentColor())
 	}
 	if m.deps.Wire != nil {
@@ -195,9 +184,9 @@ func (m *ManageHubModel) prepareActiveView() {
 	}
 }
 
-func (m *ManageHubModel) Params() ManageParams { return m.params }
+func (m *ManageHubModel) Params() route.ManageParams { return m.params }
 
-func (m *ManageHubModel) ActiveModuleView() View { return m.active }
+func (m *ManageHubModel) ActiveModuleView() route.View { return m.active }
 
 func (m *ManageHubModel) View() tea.View {
 	if m.active != nil {
@@ -215,7 +204,7 @@ func (m *ManageHubModel) SetSize(width, height int) {
 
 func (m *ManageHubModel) SetAccentColor(accent color.Color) {
 	m.BaseView.SetAccentColor(accent)
-	if setter, ok := m.active.(AccentColorSetter); ok {
+	if setter, ok := m.active.(route.AccentColorSetter); ok {
 		setter.SetAccentColor(accent)
 	}
 }
@@ -228,14 +217,14 @@ func (m *ManageHubModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) 
 }
 
 func (m *ManageHubModel) ShouldCaptureEsc() bool {
-	if caps, ok := m.active.(ViewCapabilities); ok {
+	if caps, ok := m.active.(route.ViewCapabilities); ok {
 		return caps.ShouldCaptureEsc()
 	}
 	return false
 }
 
 func (m *ManageHubModel) HasTextInput() bool {
-	if caps, ok := m.active.(ViewCapabilities); ok {
+	if caps, ok := m.active.(route.ViewCapabilities); ok {
 		return caps.HasTextInput()
 	}
 	return false
@@ -245,7 +234,7 @@ func (m *ManageHubModel) IsFullHeight() bool {
 	if m.active == nil {
 		return true
 	}
-	if caps, ok := m.active.(ViewCapabilities); ok {
+	if caps, ok := m.active.(route.ViewCapabilities); ok {
 		return caps.IsFullHeight()
 	}
 	return false
@@ -273,7 +262,7 @@ func (m *ManageHubModel) IsMultiSelectActive() bool {
 }
 
 func (m *ManageHubModel) ActiveFilterCount() int {
-	if provider, ok := m.active.(ActiveFilterProvider); ok {
+	if provider, ok := m.active.(route.ActiveFilterProvider); ok {
 		return provider.ActiveFilterCount()
 	}
 	return 0
@@ -296,13 +285,13 @@ func (m *ManageHubModel) GetHelpItems() []operation.HelpItem {
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {
-	if m.params.Module == ManageProjects {
+	if m.params.Module == route.ManageProjects {
 		return m.params.Module.String()
 	}
 	switch m.params.NotesScope.Kind {
-	case NotesScopeGlobal:
+	case route.NotesScopeGlobal:
 		return "Notes · Global"
-	case NotesScopeProject:
+	case route.NotesScopeProject:
 		return "Notes · Project"
 	default:
 		return "Notes · All"
@@ -311,8 +300,8 @@ func (m *ManageHubModel) StatusBarLabel() string {
 
 func (m *ManageHubModel) CommandContext() operation.CommandContext {
 	if view, ok := m.PresentationView(); ok {
-		ctx := PresentationCommandContext(view)
-		if m.params.Module == ManageNotes && m.params.NotesScope.commandScope().Kind == ScopeProject {
+		ctx := route.PresentationCommandContext(view)
+		if m.params.Module == route.ManageNotes && m.params.NotesScope.CommandScope().Kind == route.ScopeProject {
 			delete(ctx.Capabilities, operation.CapabilityAppScope)
 			ctx.Capabilities.Add(operation.CapabilityProjectScope)
 		} else {
@@ -336,7 +325,7 @@ func (m *ManageHubModel) CommandContext() operation.CommandContext {
 // expose every available note owner; project Notes exposes only its selected
 // owner.
 func (m *ManageHubModel) ScopeProjectIDs() []string {
-	if m.params.Module == ManageNotes && m.params.NotesScope.Kind == NotesScopeProject {
+	if m.params.Module == route.ManageNotes && m.params.NotesScope.Kind == route.NotesScopeProject {
 		return []string{m.params.NotesScope.ProjectID}
 	}
 	projects := m.deps.Runtime.AvailableProjects()
@@ -355,14 +344,14 @@ func (m *ManageHubModel) PresentationView() (presentation.PresentationID, bool) 
 	return manageModulePresentation(m.params)
 }
 
-func manageModulePresentation(params ManageParams) (presentation.PresentationID, bool) {
+func manageModulePresentation(params route.ManageParams) (presentation.PresentationID, bool) {
 	switch params.Module {
-	case ManageNotes:
-		if params.NotesScope.Kind == NotesScopeProject {
+	case route.ManageNotes:
+		if params.NotesScope.Kind == route.NotesScopeProject {
 			return presentation.ViewNotes, true
 		}
 		return presentation.ViewGlobalNotes, true
-	case ManageProjects:
+	case route.ManageProjects:
 		return presentation.ViewProjectHub, true
 	default:
 		return 0, false

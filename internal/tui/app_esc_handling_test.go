@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // TestHandleEscKey_PropagatesForModalViews verifies that views implementing
@@ -24,7 +25,7 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 	alwaysCaptureViews := []struct {
 		name    string
 		viewTyp presentation.PresentationID
-		view    View
+		view    route.View
 	}{
 		{
 			name:    "TextEditor",
@@ -43,7 +44,7 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 			}
 
 			// Verify the view reports ShouldCaptureEsc() == true
-			caps, ok := tc.view.(ViewCapabilities)
+			caps, ok := tc.view.(route.ViewCapabilities)
 			if !ok {
 				t.Fatalf("%s does not implement ViewCapabilities", tc.name)
 			}

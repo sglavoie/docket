@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -171,7 +172,7 @@ func (m *TaskAttachmentsModel) dispatchAttachmentsKey(key string) tea.Cmd {
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which item an operation means.
 func (m *TaskAttachmentsModel) attachmentsCommandContext() operation.CommandContext {
-	ctx := PresentationCommandContext(presentation.ViewTaskAttachments)
+	ctx := route.PresentationCommandContext(presentation.ViewTaskAttachments)
 	ctx.Capabilities.Add(operation.CapabilityAttachmentsPanel)
 	return ctx
 }

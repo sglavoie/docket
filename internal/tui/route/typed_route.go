@@ -1,4 +1,4 @@
-package tui
+package route
 
 import (
 	"errors"
@@ -74,6 +74,18 @@ const (
 	ManageNotes ManageModule = iota
 	ManageProjects
 )
+
+var manageModuleNames = [...]string{
+	"Notes",
+	"Projects",
+}
+
+func (module ManageModule) String() string {
+	if int(module) < len(manageModuleNames) {
+		return manageModuleNames[module]
+	}
+	return fmt.Sprintf("ManageModule(%d)", module)
+}
 
 // NotesScopeKind identifies the collection subset selected by the workspace-wide
 // Notes manager. Unlike EntityScope, it preserves the meaningful distinction
@@ -223,7 +235,7 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 	}
 }
 
-func manageParamsEqual(left, right ManageParams) bool {
+func ManageParamsEqual(left, right ManageParams) bool {
 	return left == right
 }
 
@@ -242,7 +254,22 @@ func canonicalNotesScope(id RouteID, scope NotesScope) (NotesScope, error) {
 	}
 }
 
-func (scope NotesScope) commandScope() EntityScope {
+// Valid reports whether a scope's project binding matches its kind. All Notes
+// and Global carry no project; one project scope requires one.
+func (scope NotesScope) Valid() bool {
+	switch scope.Kind {
+	case NotesScopeAll, NotesScopeGlobal:
+		return scope.ProjectID == ""
+	case NotesScopeProject:
+		return strings.TrimSpace(scope.ProjectID) != ""
+	default:
+		return false
+	}
+}
+
+// CommandScope collapses a notes scope onto the app-or-project entity scope
+// commands are discovered against.
+func (scope NotesScope) CommandScope() EntityScope {
 	if scope.Kind == NotesScopeProject {
 		return ProjectEntityScope(scope.ProjectID)
 	}

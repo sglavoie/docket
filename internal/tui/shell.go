@@ -5,6 +5,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // This file extracts three cohesive shell concerns out of the AppModel
@@ -31,7 +32,7 @@ import (
 type ShellContext interface {
 	// CurrentRoute returns the route instance for the topmost view, bound to
 	// the active project/task where the route's scope calls for it.
-	CurrentRoute() Route
+	CurrentRoute() route.Route
 	// CurrentView returns the topmost view type.
 	CurrentView() presentation.PresentationID
 	// Size returns the current terminal width and height.
@@ -67,11 +68,11 @@ func (s ShellState) AtRoot() bool {
 func (s ShellState) Size() (int, int) { return s.app.width, s.app.height }
 
 // CurrentRoute returns the route instance for the topmost view.
-func (s ShellState) CurrentRoute() Route { return s.app.CurrentRoute() }
+func (s ShellState) CurrentRoute() route.Route { return s.app.CurrentRoute() }
 
 // CurrentRoute returns the live primary route. Overlays are skipped because
 // they belong to the separate overlay stack.
-func (m *AppModel) CurrentRoute() Route {
+func (m *AppModel) CurrentRoute() route.Route {
 	return m.navigation.Primary.Current()
 }
 
@@ -105,8 +106,8 @@ func (w WorkspaceSession) ProjectStack() []string { return w.app.projectStack }
 
 // ViewContext assembles the shared view construction context for the workspace,
 // sized to the shell's current geometry for view construction.
-func (w WorkspaceSession) ViewContext() ViewContext {
-	return ViewContext{}
+func (w WorkspaceSession) ViewContext() route.ViewContext {
+	return route.ViewContext{}
 }
 
 // OverlayManager centralizes transient overlays layered above the routed view

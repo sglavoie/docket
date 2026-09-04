@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -25,7 +26,7 @@ import (
 // exist, or at a region the current query never matched.
 type notesPreviewKey struct {
 	identity NoteRowIdentity
-	scope    NotesScope
+	scope    route.NotesScope
 	// query is the active draft or the accepted query, whichever the visible rows
 	// were derived from, and caseSensitive is the case mode that produced them —
 	// including the relaxed retry, so a fallback anchors on the rows it returned.

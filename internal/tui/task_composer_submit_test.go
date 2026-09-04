@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -258,7 +259,7 @@ func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 		t.Fatal("Task Composer message did not activate Task Composer")
 	}
 	overlay, ok := appModel.navigation.Overlays.Current()
-	if !ok || overlay.Kind() != OverlayComposer || overlay.Key() != taskComposerOverlayKey {
+	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		t.Fatalf("overlay = %+v", overlay)
 	}
 	if _, legacy := overlay.Presentation(); legacy {

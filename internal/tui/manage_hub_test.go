@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 type manageHubNotesPort struct {
@@ -29,17 +30,17 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 	tests := []struct {
 		name   string
 		open   func(*AppModel, *models.Project) (bool, tea.Cmd)
-		params ManageParams
+		params route.ManageParams
 	}{
 		{name: "project notes", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
-		}, params: ManageParams{Module: ManageNotes, NotesScope: ProjectNotesScope("project")}},
+			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.ProjectNotesScope("project")}},
 		{name: "global notes", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
-		}, params: ManageParams{Module: ManageNotes, NotesScope: GlobalNotesScope()}},
+			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
+		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.GlobalNotesScope()}},
 		{name: "all notes", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
-		}, params: ManageParams{Module: ManageNotes, NotesScope: AllNotesScope()}},
+			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
+		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.AllNotesScope()}},
 	}
 
 	for _, tc := range tests {
@@ -47,7 +48,7 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 			app := typedTestApp(t)
 			project := app.currentProject
 			want := tc.params
-			if want.NotesScope.Kind == NotesScopeProject {
+			if want.NotesScope.Kind == route.NotesScopeProject {
 				want.NotesScope.ProjectID = project.ID
 			}
 			handled, _ := tc.open(app, project)
@@ -55,12 +56,12 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 				t.Fatal("deep link was not handled")
 			}
 
-			route := app.CurrentRoute()
-			params, ok := route.Params().(ManageParams)
-			if route.ID() != SecondaryTool || !ok || params != want {
-				t.Fatalf("deep link route = %s/%#v, want Manage/%#v", route.ID(), route.Params(), want)
+			current := app.CurrentRoute()
+			params, ok := current.Params().(route.ManageParams)
+			if current.ID() != route.SecondaryTool || !ok || params != want {
+				t.Fatalf("deep link route = %s/%#v, want Manage/%#v", current.ID(), current.Params(), want)
 			}
-			if _, legacy := route.Presentation(); legacy {
+			if _, legacy := current.Presentation(); legacy {
 				t.Fatal("live Manage module retained an independent legacy presentation")
 			}
 			if app.activeView() != app.manageHub || app.manageHub.Params() != want {
@@ -70,7 +71,7 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 			// A single Esc dismisses the child tool directly back to its launching
 			// destination — the sole Outliner root — with no intermediate landing.
 			app.handleGlobalKeyPress(syntheticSpecialKey(27))
-			if app.CurrentRoute().ID() != TaskWorkspace {
+			if app.CurrentRoute().ID() != route.TaskWorkspace {
 				t.Fatalf("Esc route = %s, want TaskWorkspace (Outliner root)", app.CurrentRoute().ID())
 			}
 		})
@@ -80,10 +81,10 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
+	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 	globalNotes := app.manageHub.ActiveModuleView().(*NotesViewModel)
-	if params := app.CurrentRoute().Params().(ManageParams); params.NotesScope != GlobalNotesScope() ||
-		globalNotes.scope != GlobalNotesScope() ||
+	if params := app.CurrentRoute().Params().(route.ManageParams); params.NotesScope != route.GlobalNotesScope() ||
+		globalNotes.scope != route.GlobalNotesScope() ||
 		app.manageHub.StatusBarLabel() != "Notes · Global" {
 		t.Fatalf("initial Global scope = %#v/%#v/%q", params.NotesScope, globalNotes.scope, app.manageHub.StatusBarLabel())
 	}
@@ -92,7 +93,7 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 		t.Fatal("Manage Hub did not forward p to the Notes scope picker")
 	}
 	globalNotes.locationPicker.SetCursorToID(notesLocationPickerItem{
-		Scope: ProjectNotesScope(project.ID),
+		Scope: route.ProjectNotesScope(project.ID),
 	}.ItemID())
 	_, cmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
@@ -103,14 +104,14 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 		t.Fatal("project scope result emitted no route change")
 	}
 	app.handleManageHubMessages(cmd())
-	params := app.CurrentRoute().Params().(ManageParams)
+	params := app.CurrentRoute().Params().(route.ManageParams)
 	notes, ok := app.manageHub.ActiveModuleView().(*NotesViewModel)
 	var resolvedProject *models.Project
 	if ok {
 		resolvedProject = notes.projectByID(project.ID)
 	}
-	if params.NotesScope != ProjectNotesScope(project.ID) || !ok ||
-		notes.scope != ProjectNotesScope(project.ID) ||
+	if params.NotesScope != route.ProjectNotesScope(project.ID) || !ok ||
+		notes.scope != route.ProjectNotesScope(project.ID) ||
 		resolvedProject == nil || resolvedProject.ID != project.ID {
 		t.Fatalf("project scope = %#v/%T, want %q/%p", params.NotesScope, app.manageHub.ActiveModuleView(), project.ID, project)
 	}
@@ -135,24 +136,24 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		scope             NotesScope
+		scope             route.NotesScope
 		wantProjectIDs    []string
 		wantStatus        string
 		wantPresentation  presentation.PresentationID
 		wantAppCapability bool
 	}{
 		{
-			name: "all", scope: AllNotesScope(),
+			name: "all", scope: route.AllNotesScope(),
 			wantProjectIDs: operation.NormalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · All", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
-			name: "global", scope: GlobalNotesScope(),
+			name: "global", scope: route.GlobalNotesScope(),
 			wantProjectIDs: operation.NormalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · Global", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
-			name: "project", scope: ProjectNotesScope(project.ID),
+			name: "project", scope: route.ProjectNotesScope(project.ID),
 			wantProjectIDs: []string{project.ID},
 			wantStatus:     "Notes · Project", wantPresentation: presentation.ViewNotes,
 		},
@@ -210,7 +211,7 @@ func TestNotesManagerMessageFocusIsLocationQualified(t *testing.T) {
 		Filename: filename,
 	}
 	handled, _ := app.handleNotesMessages(ShowNotesManagerMsg{
-		Scope: AllNotesScope(),
+		Scope: route.AllNotesScope(),
 		Focus: focus,
 	})
 	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
@@ -226,7 +227,7 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	other := &models.Project{ID: "other", Name: "Other Project", Slug: "other"}
 	setTestAppProjects(app, project, other)
 
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
+	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
 	notes.visibleRows = []LocatedNoteRow{{
 		Note:       &models.Note{Filename: "one.md", Title: "One"},
@@ -270,9 +271,9 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 		t.Fatalf("Manage collection grammar = %v, want %v", gotHelp, wantHelp)
 	}
 
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope("missing")})
-	params := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != SecondaryTool || params.NotesScope != AllNotesScope() ||
+	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope("missing")})
+	params := app.CurrentRoute().Params().(route.ManageParams)
+	if app.CurrentRoute().ID() != route.SecondaryTool || params.NotesScope != route.AllNotesScope() ||
 		app.manageHub.ActiveModuleView().(*NotesViewModel).locationPicker != nil {
 		t.Fatalf("missing project fallback = %s/%#v, want All Notes without a picker", app.CurrentRoute().ID(), params)
 	}
@@ -288,14 +289,14 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			name:     "global",
 			location: apppkg.GlobalNoteLocation(),
 			open: func(app *AppModel, _ *models.Project) {
-				app.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
+				app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 			},
 		},
 		{
 			name:     "project",
 			location: apppkg.ProjectNoteLocation("project"),
 			open: func(app *AppModel, project *models.Project) {
-				app.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
+				app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 			},
 		},
 	}
@@ -361,15 +362,15 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 func TestManageHubRemovedProjectFallsBackToAllNotes(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
+	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 	setTestAppProjects(app)
 
 	handled, _ := app.handleGlobalKeyPress(syntheticKey('j'))
 	if !handled {
 		t.Fatal("removed Manage project scope was not normalized")
 	}
-	params := app.CurrentRoute().Params().(ManageParams)
-	if app.CurrentRoute().ID() != SecondaryTool || params.Module != ManageNotes || params.NotesScope != AllNotesScope() {
+	params := app.CurrentRoute().Params().(route.ManageParams)
+	if app.CurrentRoute().ID() != route.SecondaryTool || params.Module != route.ManageNotes || params.NotesScope != route.AllNotesScope() {
 		t.Fatalf("removed project fallback = %s/%#v, want All Notes", app.CurrentRoute().ID(), params)
 	}
 	if app.currentProject != nil {
