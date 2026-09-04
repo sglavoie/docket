@@ -61,7 +61,7 @@ func (m *AppModel) anchorOutlinerCursorAfterProjectPark(projectIDs ...string) {
 	if !onScreen {
 		return
 	}
-	out.crossReloadHeaderProjectID = anchor
+	out.population.anchorReloadHeader(anchor)
 }
 
 func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {

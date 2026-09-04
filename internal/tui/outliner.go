@@ -259,22 +259,13 @@ type OutlinerModel struct {
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task
 
-	// Cross-project mode fields (used when m.project == nil)
-	crossReloadProjectID string // Project owning the cursor task captured before an async reload
-	crossReloadTaskID    string // Cursor task captured before an async reload; restored after rows rebuild
-	crossReloadFromTop   bool   // One-shot scope-change guard that suppresses stale cursor restoration
-
-	// crossReloadHeaderProjectID lands the cursor on one project sub-header after
-	// the next reload. Parking a project deletes every row the cursor was on, and
-	// an arbitrary clamp there reads as a crash rather than as a hidden project.
-	crossReloadHeaderProjectID string
-
-	// population is the cross-project population itself, the lifecycle of the
-	// read that replaces it, and the memoization guard crossProjectRebuildRows
-	// consults over it. Like the readout and the menu bar above it, it is a named
-	// field rather than promoted ones — outliner_population_state.go owns the
-	// cluster, and every caller that changes what the population would produce
-	// says so through m.population.invalidate() rather than by writing a flag.
+	// population is the cross-project population itself (used when m.project ==
+	// nil), the lifecycle of the read that replaces it, where the cursor lands
+	// once it has, and the memoization guard crossProjectRebuildRows consults
+	// over it. Like the readout and the menu bar above it, it is a named field
+	// rather than promoted ones — outliner_population_state.go owns the cluster,
+	// and every caller that changes what the population would produce says so
+	// through m.population.invalidate() rather than by writing a flag.
 	population populationState
 
 	// scopedProjectID names the single project the global outliner is currently

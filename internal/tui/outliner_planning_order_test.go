@@ -328,9 +328,9 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	if m.err != nil {
 		t.Fatalf("hierarchical reorder failed: %v", m.err)
 	}
-	if cross.crossReloadProjectID != project.ID || cross.crossReloadTaskID != firstID {
+	if cross.population.reloadProjectID != project.ID || cross.population.reloadTaskID != firstID {
 		t.Fatalf("reload cursor anchor = %s/%s, want %s/%s",
-			cross.crossReloadProjectID, cross.crossReloadTaskID, project.ID, firstID)
+			cross.population.reloadProjectID, cross.population.reloadTaskID, project.ID, firstID)
 	}
 	cross.population.projects = []*models.Project{project}
 	cross.population.invalidate()

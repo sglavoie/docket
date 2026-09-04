@@ -66,7 +66,7 @@ func TestProjectTagParkAllMembersAnchorsTheOutlinerCursorOnASurvivor(t *testing.
 	fixture := newSession4LifecycleFixture(t, first, survivor, second)
 
 	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
-	if got := fixture.cross.crossReloadHeaderProjectID; got != survivor.ID {
+	if got := fixture.cross.population.reloadHeaderProjectID; got != survivor.ID {
 		t.Fatalf("bulk park anchor = %q, want the surviving header %q", got, survivor.ID)
 	}
 	runSession2AppCommand(t, fixture.app, cmd)
@@ -100,7 +100,7 @@ func TestProjectBulkParkFromTheProjectHubCapturesNoOutlinerAnchor(t *testing.T) 
 	if handled, _ := fixture.app.handleProjectMessages(projecthub.ProjectParkConfirmedMsg{}); !handled {
 		t.Fatal("park confirmation was not handled")
 	}
-	if got := fixture.cross.crossReloadHeaderProjectID; got != "" {
+	if got := fixture.cross.population.reloadHeaderProjectID; got != "" {
 		t.Fatalf("hub bulk park captured anchor %q, want none", got)
 	}
 }
@@ -115,7 +115,7 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	fixture.cross.Cursor = len(fixture.cross.rows) - 1
 
 	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
-	anchor := fixture.cross.crossReloadHeaderProjectID
+	anchor := fixture.cross.population.reloadHeaderProjectID
 	if anchor != first.ID && anchor != second.ID {
 		t.Fatalf("bulk park anchor = %q, want a departing project as the section-header sentinel", anchor)
 	}

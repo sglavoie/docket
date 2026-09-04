@@ -198,7 +198,7 @@ func TestProjectEditorParkConfirmCommitsTheWholeEditAtomically(t *testing.T) {
 		slices.Contains(fixture.app.runtime.TaskWorkspaceProjects(), live) {
 		t.Fatal("parked project stayed in the base task workspace")
 	}
-	if got := fixture.cross.crossReloadHeaderProjectID; got != sibling.ID {
+	if got := fixture.cross.population.reloadHeaderProjectID; got != sibling.ID {
 		t.Fatalf("park anchor = %q, want the surviving sibling header %q", got, sibling.ID)
 	}
 	if !strings.Contains(fixture.app.statusMessage, "Fp to show · u undo") {

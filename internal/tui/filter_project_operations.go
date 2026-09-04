@@ -53,7 +53,7 @@ func (m *AppModel) projectFilterReloadCmd(text string) tea.Cmd {
 	}
 	// The population is about to change underneath the cursor, so restoring the
 	// previous row would fight the facet the user just applied.
-	out.crossReloadFromTop = true
+	out.population.requestReloadFromTop()
 	return tea.Batch(
 		out.reloadCrossProjects(),
 		func() tea.Msg { return status.StatusMsg(text) },

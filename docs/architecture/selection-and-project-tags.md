@@ -305,7 +305,7 @@ one undo entry.
 
 Setting the reserved tag is the one project tag edit that confirms first. The
 prompt names the task count leaving the base workspace, the committed status
-names both recovery routes, `OutlinerModel.crossReloadHeaderProjectID` lands the
+names both recovery routes, the population's `reloadHeaderProjectID` lands the
 cursor on a surviving project header instead of letting `clampCursor` choose,
 and the base scope anchor reads `Active Projects · N parked` for as long as
 anything is parked. Descriptive tags apply with no prompt.

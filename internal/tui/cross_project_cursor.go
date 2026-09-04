@@ -8,8 +8,7 @@ func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 	if !row.isTaskRow() || row.task == nil || row.ProjectID == "" || row.task.ID == "" {
 		return
 	}
-	m.crossReloadProjectID = row.ProjectID
-	m.crossReloadTaskID = row.task.ID
+	m.population.captureReloadCursor(row.ProjectID, row.task.ID)
 }
 
 // restoreCrossOutlinerCursorAfterReload consumes the captured cursor identity
@@ -18,11 +17,7 @@ func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 // following task at equal distance. When no tasks remain, the ordinary navigable
 // row clamp still permits an empty section or project header to receive focus.
 func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset int) {
-	projectID, taskID := m.crossReloadProjectID, m.crossReloadTaskID
-	headerProjectID := m.crossReloadHeaderProjectID
-	m.crossReloadProjectID = ""
-	m.crossReloadTaskID = ""
-	m.crossReloadHeaderProjectID = ""
+	projectID, taskID, headerProjectID := m.population.takeReloadTarget()
 	m.ViewScrollOffset = fallbackScrollOffset
 	if headerProjectID != "" {
 		if !m.moveCursorToProjectHeader(headerProjectID) {

@@ -9,10 +9,11 @@ import (
 
 // populationState is the cross-project population the Outliner reads whenever
 // m.project == nil, together with everything that replaces it and everything
-// memoized over it. Three concerns, one owner, because none of them is
+// memoized over it. Four concerns, one owner, because none of them is
 // separable from the others: the loaded project set, the lifecycle of the async
-// read that installs a new one, and the rebuild guard whose whole job is to
-// notice that the set changed.
+// read that installs a new one, where the cursor lands once that read replaces
+// the rows underneath it, and the rebuild guard whose whole job is to notice
+// that the set changed.
 //
 // The guard is the reason this is a named sub-state rather than promoted
 // fields. Everything that changes what the population would produce has to say
@@ -36,6 +37,17 @@ type populationState struct {
 	loadGen        int
 	spinnerVisible bool
 	spinner        chrome.SpinnerModel
+
+	// reloadProjectID and reloadTaskID name the cursor task captured before a
+	// read starts, so the row it moved to can be found again afterwards.
+	// reloadHeaderProjectID overrides that with one project sub-header, for the
+	// mutations that delete every row the cursor was on. reloadFromTop is the
+	// one-shot refusal to restore anything, for a change that makes the old
+	// position meaningless rather than merely displaced.
+	reloadProjectID       string
+	reloadTaskID          string
+	reloadHeaderProjectID string
+	reloadFromTop         bool
 
 	// fingerprint, focusDepth and taskCount are the inputs the last
 	// crossProjectRebuildRows pass ran under; forceRebuild is the one-shot flag
@@ -95,6 +107,62 @@ func (p *populationState) advanceSpinner(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	p.spinner, cmd = p.spinner.Update(msg)
 	return cmd
+}
+
+// captureReloadCursor records the task the cursor holds, so the read about to
+// start can be told where the user was standing when it began.
+func (p *populationState) captureReloadCursor(projectID, taskID string) {
+	p.reloadProjectID = projectID
+	p.reloadTaskID = taskID
+}
+
+// clearReloadCursor drops the captured task without touching the header anchor
+// or the from-top flag. It is what a read that published nothing owes: the
+// capture describes rows that were never replaced, so restoring it later would
+// move a cursor nobody asked to move.
+func (p *populationState) clearReloadCursor() {
+	p.reloadProjectID = ""
+	p.reloadTaskID = ""
+}
+
+// anchorReloadHeader names the project sub-header the cursor must land on after
+// the next read, overriding any captured task. Set by the mutations that remove
+// the rows the cursor was standing on.
+func (p *populationState) anchorReloadHeader(projectID string) { p.reloadHeaderProjectID = projectID }
+
+// requestReloadFromTop declares the next read's population different enough that
+// the old position means nothing, so nothing should be restored onto it.
+func (p *populationState) requestReloadFromTop() { p.reloadFromTop = true }
+
+// consumeReloadFromTop reports whether the read now starting must land at the
+// top, and spends the flag if so. The stale capture goes with it, because a
+// from-top read is exactly the one whose captured row must not come back.
+func (p *populationState) consumeReloadFromTop() bool {
+	if !p.reloadFromTop {
+		return false
+	}
+	p.clearReloadCursor()
+	p.reloadFromTop = false
+	return true
+}
+
+// takeReloadTarget hands back where the cursor should land and spends every
+// target in one act, so the restore that follows cannot be replayed by the next
+// read. The header anchor outranks the captured task; the caller decides that,
+// because only it knows what to do when neither resolves.
+func (p *populationState) takeReloadTarget() (projectID, taskID, headerProjectID string) {
+	projectID, taskID, headerProjectID = p.reloadProjectID, p.reloadTaskID, p.reloadHeaderProjectID
+	p.clearReloadCursor()
+	p.reloadHeaderProjectID = ""
+	return projectID, taskID, headerProjectID
+}
+
+// clearReloadTarget forgets every reload intent, including the from-top flag.
+// An abandoned read leaves no successor to honor them.
+func (p *populationState) clearReloadTarget() {
+	p.clearReloadCursor()
+	p.reloadHeaderProjectID = ""
+	p.reloadFromTop = false
 }
 
 // invalidate declares the loaded population, or the projection taken over it,

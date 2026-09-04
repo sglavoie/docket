@@ -198,8 +198,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 			// The base snapshot stays exactly as it was: a focus that could not be
 			// read must not disturb the workspace the user is still looking at.
 			m.population.settleLoad()
-			m.crossReloadProjectID = ""
-			m.crossReloadTaskID = ""
+			m.population.clearReloadCursor()
 			return func() tea.Msg { return status.ErrorMsg{Err: errors.New(detail)} }
 		}
 	}
@@ -386,11 +385,7 @@ func loadedProjectIDsFingerprint(projects []*models.Project) string {
 
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	m.parkedFocusReloadPending = false
-	if m.crossReloadFromTop {
-		m.crossReloadProjectID = ""
-		m.crossReloadTaskID = ""
-		m.crossReloadFromTop = false
-	} else {
+	if !m.population.consumeReloadFromTop() {
 		m.preserveCrossOutlinerCursorForReload()
 	}
 	return m.startCrossProjectLoad()
@@ -412,10 +407,7 @@ func (m *OutlinerModel) cancelCrossProjectLoad() {
 		m.population.supersede()
 	}
 	m.population.settleLoad()
-	m.crossReloadProjectID = ""
-	m.crossReloadTaskID = ""
-	m.crossReloadHeaderProjectID = ""
-	m.crossReloadFromTop = false
+	m.population.clearReloadTarget()
 }
 
 // parkedProjectCount counts the non-archived projects the parked tag keeps out
