@@ -29,7 +29,7 @@ func readoutTestApp(t *testing.T) *AppModel {
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
 	app.crossOutliner.loadedProjects = []*models.Project{project}
-	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.population.invalidate()
 	app.crossOutliner.rebuildRows()
 	return app
 }

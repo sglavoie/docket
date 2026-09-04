@@ -145,7 +145,7 @@ func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
 	outliner.adoptFilterCarriers()
 	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outliner.sort = outliner.treeSort
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"waiting"}) {

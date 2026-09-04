@@ -204,7 +204,7 @@ func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, pro
 	if !m.clearProjectScope() {
 		// Defensive: the scope owns the rebuild, so there is one to do only when it
 		// declined to restore anything.
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		m.crossProjectRebuildRows()
 		m.clampCursor()
 	}

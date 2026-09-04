@@ -333,7 +333,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 			cross.crossReloadProjectID, cross.crossReloadTaskID, project.ID, firstID)
 	}
 	cross.loadedProjects = []*models.Project{project}
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	cross.restoreCrossOutlinerCursorAfterReload(cross.Cursor, cross.ViewScrollOffset)
 	if task, selectedProject := cross.GetTaskRef(); task == nil || selectedProject == nil ||

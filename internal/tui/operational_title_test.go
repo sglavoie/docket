@@ -162,7 +162,7 @@ func TestOutlinerFocusContextStaysOnHeaderRow(t *testing.T) {
 	m := scopeTestOutliner(project)
 	m.SetSize(100, 20)
 	m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: "launch"}}
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 
 	rendered := m.renderOutlinerTreeContent(100)

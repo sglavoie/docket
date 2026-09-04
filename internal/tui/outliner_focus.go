@@ -81,7 +81,7 @@ func (m *OutlinerModel) pushFocusFrame(identity taskref.TaskIdentity, cursorInde
 		CursorIndex:  cursorIndex,
 		ScrollOffset: scrollOffset,
 	})
-	m.crossForceRebuild = true
+	m.population.invalidate()
 }
 
 // climbFocusLevel replaces the top frame with one rooted at the focus root's own
@@ -119,7 +119,7 @@ func (m *OutlinerModel) popFocusFrame() (cursorIndex, scrollOffset int) {
 	if len(m.crossFocusStack) > 0 {
 		top := m.crossFocusStack[len(m.crossFocusStack)-1]
 		m.crossFocusStack = m.crossFocusStack[:len(m.crossFocusStack)-1]
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		return top.CursorIndex, top.ScrollOffset
 	}
 	return m.Cursor, m.ViewScrollOffset
@@ -165,7 +165,7 @@ func (m *OutlinerModel) popFocusLevel() bool {
 		m.crossFocusStack = m.crossFocusStack[:len(m.crossFocusStack)-1]
 		m.Cursor = top.CursorIndex
 		m.ViewScrollOffset = top.ScrollOffset
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		m.rebuildRows()
 		return true
 	}
@@ -193,7 +193,7 @@ func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
 		scroll: m.ViewScrollOffset,
 	}
 	m.peekMode = false
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.moveCursorToHeaderKey(key)
 	return true
@@ -210,7 +210,7 @@ func (m *OutlinerModel) exitSectionZoom() bool {
 	m.zoom = sectionZoom{}
 	m.Cursor = cursor
 	m.ViewScrollOffset = scroll
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.clampCursor()
 	return true
@@ -226,7 +226,7 @@ func (m *OutlinerModel) clearSectionZoom() {
 		return
 	}
 	m.zoom = sectionZoom{}
-	m.crossForceRebuild = true
+	m.population.invalidate()
 }
 
 // zoomSectionAtCursor narrows the Outliner to the section the cursor header

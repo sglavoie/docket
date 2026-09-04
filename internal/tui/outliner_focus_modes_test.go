@@ -127,7 +127,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		{ProjectID: project.ID, TaskID: insideNext.ID},
 		{ProjectID: project.ID, TaskID: outsideNext.ID},
 	})
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
 		t.Fatal("could not enter fixture Focus")

@@ -36,7 +36,7 @@ func projectHubApp(t *testing.T) *AppModel {
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.SetSize(120, 40)
 	app.crossOutliner.loadedProjects = []*models.Project{alpha, beta}
-	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.population.invalidate()
 	app.crossOutliner.rebuildRows()
 	return app
 }
@@ -114,7 +114,7 @@ func projectHubDiskApp(t *testing.T) *AppModel {
 	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.SetSize(120, 40)
 	app.crossOutliner.loadedProjects = []*models.Project{alpha, beta}
-	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.population.invalidate()
 	app.crossOutliner.rebuildRows()
 	return app
 }

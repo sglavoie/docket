@@ -34,7 +34,7 @@ tick rather than a second scheduler. Each row rebuild stores `nextDeferWake`,
 the `earliestDeferWake` min-scan over the flat `project.Tasks` of the scoped
 projects, which already contains every nested child, so no tree walk is needed.
 `wakeDeferredRows` compares that clock against the tick and, once it is past,
-clears it and sets `crossForceRebuild` and nothing else, leaving the render pass
+clears it and calls `m.population.invalidate()` and nothing else, leaving the render pass
 Bubble Tea runs next as the single rebuild authority and
 `computeOutlinerViewport` as sole owner of `ViewScrollOffset`.
 `safeToRebuildForWake` refuses while an overlay, picker, inline row editor,
@@ -138,10 +138,11 @@ The index is built once per row-rebuild pass, not once per reference per row per
 frame, which is strictly cheaper than the linear scan it replaced.
 `OutlinerModel.dependencyIndex` builds it lazily over `dependencyDetailProjects`
 and holds it until `invalidateDependencyIndex` drops it, which `setLoadedProjects`
-and the `crossForceRebuild` path both do. Invalidation is by replacement, never
-by patching. The older note here argued a memo would risk a stale color when a
-target in another project changed state without a row rebuild; it cannot, because
-changing a target's state is a mutation and a mutation sets that force flag.
+and the `m.population.invalidate()` path both do. Invalidation is by replacement,
+never by patching. The older note here argued a memo would risk a stale color when
+a target in another project changed state without a row rebuild; it cannot,
+because changing a target's state is a mutation and a mutation invalidates the
+population.
 `quickEditOptionalMetadata` builds its own unstyled `~N`: that is a grammar echo
 of the edit buffer, not a row indicator, and it is deliberately left uncolored.
 

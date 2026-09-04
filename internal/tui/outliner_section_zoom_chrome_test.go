@@ -25,7 +25,7 @@ func zoomChromeApp(t *testing.T) *AppModel {
 			task.UpdatedAt = time.Now()
 		}
 	}
-	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.population.invalidate()
 	app.crossOutliner.rebuildRows()
 	return app
 }
@@ -37,7 +37,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 
 	out.filter.Tags = map[string]bool{"missing": true}
 	out.adoptFilterCarriers()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.rebuildRows()
 	out.clampCursor()
 
@@ -118,7 +118,7 @@ func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 	out := app.crossOutliner
 	out.filter.Priority = models.PriorityHigh
 	out.adoptFilterCarriers()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.rebuildRows()
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())
 

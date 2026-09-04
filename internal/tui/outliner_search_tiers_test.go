@@ -239,7 +239,7 @@ func TestSearchAttributionRefreshesWithEveryRebuildAndOrdinaryRowsCarryNone(t *t
 	project := primaryRowsProject("alpha", task)
 	outliner := scopeTestOutliner(project)
 
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	for _, row := range outliner.rows {
 		if row.MatchSource != matchSourceNone {
@@ -248,7 +248,7 @@ func TestSearchAttributionRefreshesWithEveryRebuildAndOrdinaryRowsCarryNone(t *t
 	}
 
 	rebuild := func() {
-		outliner.crossForceRebuild = true
+		outliner.population.invalidate()
 		outliner.crossProjectRebuildRows()
 	}
 	searchSource := func() outlinerMatchSource {

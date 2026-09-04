@@ -76,7 +76,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.focusStack = slices.Clone(f.focusStack)
 	m.crossFocusStack = slices.Clone(f.crossFocusStack)
 	m.zoom = f.zoom
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
 }
@@ -236,7 +236,7 @@ func (m *OutlinerModel) dropParkedProjectFocus() {
 	}
 	m.setLoadedProjects(retained)
 	m.pruneSelectionsOutsideLoadedProjects()
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
 }
@@ -276,7 +276,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	m.clearSectionZoom()
 	m.Cursor = 0
 	m.resetViewScrollOffset()
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
 }
@@ -314,7 +314,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 	// Defensive: scoped without a frame (should not happen); reset in place.
 	m.dropParkedProjectFocus()
 	m.scopedProjectID = ""
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
 	return true
@@ -358,7 +358,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.Cursor = 0
 	m.resetViewScrollOffset()
 	m.selectOutlinerMode(chrome.ModeAll)
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.clampCursor()
 }
@@ -454,7 +454,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	m.clearSectionZoom()
 	m.Cursor = 0
 	m.resetViewScrollOffset()
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
 	return "Focused project no longer exists — returned to the base scope", true

@@ -13,7 +13,7 @@ import (
 // projection kept. The rebuild is forced because a lens query changes no scope.
 func lensNarrowedIDs(outliner *OutlinerModel, query string) []string {
 	outliner.setLensQuery(query)
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	return searchVisibleTaskIDs(outliner)
 }
@@ -260,7 +260,7 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeInbox, SetMode: true})
 	outliner.filter.Pinned = true
 	outliner.adoptFilterCarriers()
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("Inbox under a pinned facet = %v, want an empty mode projection", got)
@@ -303,7 +303,7 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	// no fixture task is pinned, so the AND leaves nothing.
 	outliner.filter.Pinned = true
 	outliner.adoptFilterCarriers()
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("ranked list under the pinned facet = %v, want the facet to gate it", got)

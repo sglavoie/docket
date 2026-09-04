@@ -103,7 +103,7 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 	if invocation.Descriptor.ID == operation.OperationSortClear {
 		out.sort.Reset()
 		out.treeSort.Reset()
-		out.crossForceRebuild = true
+		out.population.invalidate()
 		rebuildOutlinerPreservingCursor(out)
 		return operation.OperationHandlerResult{Status: "Sort cleared"}
 	}
@@ -121,7 +121,7 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 
 	out.sort.Toggle(field)
 	out.treeSort = out.sort
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	rebuildOutlinerPreservingCursor(out)
 	status := "Sorting by " + sortStateLabel(out.sort)
 	if exempt := out.manualOrderSectionNames(); len(exempt) > 0 {

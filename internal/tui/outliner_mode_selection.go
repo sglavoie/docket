@@ -149,7 +149,7 @@ func (m *OutlinerModel) selectOutlinerMode(id chrome.OutlinerModeID) (tea.Model,
 	m.applyOutlinerModeTransition(mode)
 	m.primaryMode = mode.ID
 	m.clearStaleForRecentMode()
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	return m, nil
 }

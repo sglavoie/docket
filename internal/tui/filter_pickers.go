@@ -282,7 +282,7 @@ func prospectiveOutlinerStateCounts(
 		[]CrossProjectFocusEntry(nil),
 		outliner.crossFocusStack...,
 	)
-	projection.crossForceRebuild = true
+	projection.population.invalidate()
 	projection.rebuildRows()
 
 	// A matching descendant can retain a non-matching ancestor as hierarchy

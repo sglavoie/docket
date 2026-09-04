@@ -94,7 +94,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		m.refreshRuntime()
 		m.rebuildPlanningFromRuntime()
 		if m.crossOutliner != nil {
-			m.crossOutliner.crossForceRebuild = true
+			m.crossOutliner.population.invalidate()
 		}
 		project := m.projectByID(res.ProjectID)
 		if project == nil {

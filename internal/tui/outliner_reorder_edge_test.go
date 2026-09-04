@@ -74,7 +74,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		cross.crossForceRebuild = true
+		cross.population.invalidate()
 		cross.crossProjectRebuildRows()
 		if got := visibleTaskIDs(cross); len(got) != 3 {
 			t.Fatalf("filtered rows = %v, want 3 (hidden sibling pruned)", got)

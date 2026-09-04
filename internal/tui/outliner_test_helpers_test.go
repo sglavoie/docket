@@ -130,7 +130,7 @@ func scopeTestOutliner(projects ...*models.Project) *OutlinerModel {
 	runtime := testConfigWithProjects(projects...)
 	outliner := NewOutlinerModel(nil, nil, runtime)
 	outliner.loadedProjects = projects
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	return outliner
 }

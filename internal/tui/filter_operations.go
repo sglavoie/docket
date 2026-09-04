@@ -227,7 +227,7 @@ func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit filterCl
 			Message: operation.OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.status)},
 		}
 	}
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	rebuildOutlinerPreservingCursor(out)
 	return operation.OperationHandlerResult{Status: edit.status}
 }

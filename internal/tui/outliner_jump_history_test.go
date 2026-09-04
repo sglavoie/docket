@@ -329,7 +329,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 
 	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
 	outliner.loadedProjects = env.projects
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.selectOutlinerMode(chrome.ModeAll)
 	model.crossOutliner = outliner
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)

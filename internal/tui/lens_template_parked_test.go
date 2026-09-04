@@ -30,7 +30,7 @@ func parkedTemplateApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Proje
 	model := lensOperationApp(t)
 	out := scopeTestOutliner(alpha, parkedOne, parkedTwo, archived)
 	out.loadedProjects = []*models.Project{alpha}
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	model.crossOutliner = out
 	out.SetSize(model.width, model.height-2)

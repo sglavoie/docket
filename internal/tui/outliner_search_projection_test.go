@@ -76,7 +76,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	// threshold: an unset priority is effectively below Low.
 	outliner.filter.Priority = models.PriorityLow
 	outliner.adoptFilterCarriers()
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
 		[]taskref.TaskIdentity{{ProjectID: alpha.ID, TaskID: inbox.ID}}) {
@@ -132,7 +132,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner.adoptFilterCarriers()
 	outliner.collapsedSections = map[string]bool{"saved-section": true}
 	outliner.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToProjectTask(second.ID, project.ID) {
 		t.Fatal("failed to seed cursor")
@@ -209,14 +209,14 @@ func TestScopeWideSearchRefreshesAfterMutationsAndShowsNoMatches(t *testing.T) {
 
 	matching.Title = "No longer matches"
 	appearing.Description = "Needle added by mutation"
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{appearing.ID}) {
 		t.Fatalf("refreshed search = %v, want appearing task", got)
 	}
 
 	appearing.Description = "Removed again"
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if len(outliner.rows) != 0 {
 		t.Fatalf("no-match projection retained rows: %v", searchVisibleTaskIDs(outliner))

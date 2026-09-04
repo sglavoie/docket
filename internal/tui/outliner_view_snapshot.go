@@ -170,7 +170,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	}
 	m.recencyProjection = snapshot.recencyProjection
 
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.restoreSearchCursor(snapshot.presentation.cursor)
 }

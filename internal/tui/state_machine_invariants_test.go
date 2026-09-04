@@ -332,7 +332,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 		outliner.MultiSelectMode = true
 		outliner.loadedProjects = []*models.Project{project}
-		outliner.crossForceRebuild = true
+		outliner.population.invalidate()
 		outliner.crossProjectRebuildRows()
 		outliner.selectAllVisible()
 
@@ -342,7 +342,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 
 		outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
 		outliner.adoptFilterCarriers()
-		outliner.crossForceRebuild = true
+		outliner.population.invalidate()
 		outliner.crossProjectRebuildRows()
 
 		if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {

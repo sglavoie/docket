@@ -101,7 +101,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 
 			outliner := app.crossOutliner
 			outliner.loadedProjects = []*models.Project{alpha, beta}
-			outliner.crossForceRebuild = true
+			outliner.population.invalidate()
 			outliner.crossProjectRebuildRows()
 
 			projectHeader := -1
@@ -162,7 +162,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	project.BuildTaskTree()
 	app.projects[project.ID] = project
 	app.crossOutliner.loadedProjects = []*models.Project{project}
-	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.population.invalidate()
 	app.crossOutliner.crossProjectRebuildRows()
 	app.crossOutliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 

@@ -100,7 +100,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("persist pinned completion fixture: %v", err)
 	}
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	cross.NavigateToTaskInProject(target, project)
 

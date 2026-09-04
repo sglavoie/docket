@@ -116,7 +116,7 @@ func (m *OutlinerModel) toggleRankedList() bool {
 	if m.rankedList {
 		m.clearSectionZoom()
 	}
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	rebuildOutlinerPreservingCursor(m)
 	return true
 }
@@ -132,7 +132,7 @@ func (m *OutlinerModel) beginSearchProjection() {
 	m.closeMenuBar()
 	snapshot := m.capturePresentationSnapshot()
 	m.searchProjection = &snapshot
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 }
 
@@ -160,7 +160,7 @@ func (m *OutlinerModel) SetSearchQuery(query string) {
 	}
 	m.BaseSearchableView.SetSearchQuery(query)
 	if m.hasSearchProjection() {
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		rebuildOutlinerPreservingCursor(m)
 	}
 }
@@ -181,7 +181,7 @@ func (m *OutlinerModel) ClearSearch() {
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 	m.restorePresentationSnapshot(*snapshot)
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.restoreSearchCursor(snapshot.cursor)
 }

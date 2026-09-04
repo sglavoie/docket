@@ -35,7 +35,7 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg)
 	m.refreshRuntime()
 	m.rebuildPlanningFromRuntime()
 	if m.crossOutliner != nil {
-		m.crossOutliner.crossForceRebuild = true
+		m.crossOutliner.population.invalidate()
 	}
 	m.setInfoStatus("Reordered planning list")
 	return tea.Batch(m.refreshTaskViewsAfterPlanningMutation()...)

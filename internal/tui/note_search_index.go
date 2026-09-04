@@ -182,7 +182,7 @@ func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 	if identity, onNote := m.crossOutliner.cursorNoteIdentity(); onNote {
 		m.crossOutliner.noteCursorReseat = identity
 	}
-	m.crossOutliner.crossForceRebuild = true
+	m.crossOutliner.population.invalidate()
 }
 
 // noteSearchIndexRows is the accessor the Outliner is injected with. It is a

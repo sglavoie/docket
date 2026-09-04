@@ -271,7 +271,7 @@ func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	outliner := NewOutlinerModel(nil, nil, runtime)
 	outliner.loadedProjects = []*models.Project{active, parked}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 
 	activeIdentity := taskref.For(active.Tasks[0], active)

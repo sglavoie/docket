@@ -51,7 +51,7 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	cross.loadedProjects = []*models.Project{project}
 	cross.crossSnapshotReady = true
 	cross.SetSize(app.width, app.height-2)
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(presentation.ViewCrossProjectOutliner, cross)

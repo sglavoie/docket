@@ -156,7 +156,7 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	outliner := model.crossOutliner
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	for index, row := range outliner.rows {
 		if row.isTaskRow() {
@@ -216,7 +216,7 @@ func TestPeekModeSurvivesModeAndScopeChanges(t *testing.T) {
 	setTestAppProjects(app, project)
 	outliner := app.crossOutliner
 	outliner.loadedProjects = []*models.Project{project}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	outliner.peekMode = true
 

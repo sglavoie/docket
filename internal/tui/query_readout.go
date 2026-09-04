@@ -450,14 +450,14 @@ func (m *OutlinerModel) peelQueryReadoutAxis(row queryReadoutRow) bool {
 		m.ClearSearch()
 	case queryReadoutAxisLensQuery:
 		m.setLensQuery("")
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		rebuildOutlinerPreservingCursor(m)
 	case queryReadoutAxisClauses:
 		m.replaceFilterClauses(row.fields, nil)
 		if queryReadoutRowRequiresReload(row) {
 			return true
 		}
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		rebuildOutlinerPreservingCursor(m)
 	}
 	return false

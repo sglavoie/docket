@@ -214,7 +214,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossSnapshotReady = true
 	m.recordLoadedPopulation(msg.loadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.restoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
 	switch {
@@ -272,8 +272,8 @@ func parkedFocusFailureDetail(msg crossProjectsLoadedMsg, projectID string) (str
 //
 // A memoization guard short-circuits rebuilding when mode, search/filter state,
 // focus stack depth, and total task count are all unchanged from
-// the previous call. The guard is bypassed when crossForceRebuild is true (set
-// after mutations) or when a fresh load completes.
+// the previous call. The guard is bypassed when m.population.invalidate() has
+// been called (after mutations) or when a fresh load completes.
 func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.syncJumpProjection()
 	// Compute current guard inputs.
@@ -287,18 +287,12 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Short-circuit when all guard inputs match the previous call and no force
 	// rebuild has been requested. This prevents redundant rebuilds on no-op
 	// events like window resize or view reactivation.
-	if !m.crossForceRebuild &&
-		currentFingerprint == m.crossLastRowsFingerprint &&
-		currentFocusDepth == m.crossLastFocusDepth &&
-		taskCount == m.crossLastTaskCount {
+	if m.population.memoized(currentFingerprint, currentFocusDepth, taskCount) {
 		return
 	}
 
 	// Update guard state and consume the force flag.
-	m.crossLastRowsFingerprint = currentFingerprint
-	m.crossLastFocusDepth = currentFocusDepth
-	m.crossLastTaskCount = taskCount
-	m.crossForceRebuild = false
+	m.population.record(currentFingerprint, currentFocusDepth, taskCount)
 	// The reference index is a reading of the population this pass is about to
 	// walk, so it is dropped here and nowhere else on this path: every force
 	// flag and every fresh load reaches this line, and a pass the guard
@@ -309,7 +303,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.validateCrossFocusStack()
 	// Validation may have shortened the stack after the guard captured its old
 	// depth. Record the repaired depth so the next render remains a no-op.
-	m.crossLastFocusDepth = len(m.crossFocusStack)
+	m.population.recordFocusDepth(len(m.crossFocusStack))
 	if len(m.loadedProjects) == 0 {
 		m.pruneInvisibleSelections()
 		m.clampCursor()

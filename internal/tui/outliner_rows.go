@@ -116,7 +116,7 @@ func (m *OutlinerModel) rebuildRows() {
 		// crossProjectRebuildRows is bypassed. The render path calls
 		// crossProjectRebuildRows directly (not via rebuildRows), so it
 		// still benefits from the guard on no-op events like window resize.
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		m.crossProjectRebuildRows()
 		return
 	}

@@ -245,7 +245,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
 		cross.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
-		cross.crossForceRebuild = true
+		cross.population.invalidate()
 		cross.crossProjectRebuildRows()
 		if got := visibleTaskTitles(cross); !slices.Equal(got, []string{"Other Root", "Parent"}) {
 			t.Fatalf("collapsed pinned rows = %v, want the child hidden", got)

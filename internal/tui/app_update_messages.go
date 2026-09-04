@@ -169,7 +169,7 @@ func (m *AppModel) wakeDeferredRows(now time.Time) bool {
 	}
 	out := m.crossOutliner
 	out.nextDeferWake = time.Time{}
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	return true
 }
 

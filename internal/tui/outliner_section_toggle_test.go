@@ -168,7 +168,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
 	outliner.loadedProjects = []*models.Project{project}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: "task"}) {
 		t.Fatal("task is missing before s dispatch")
@@ -206,7 +206,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
 	outliner.loadedProjects = []*models.Project{project}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 
 	headers := outliner.visibleSectionHeaders()

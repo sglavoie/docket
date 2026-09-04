@@ -275,11 +275,13 @@ type OutlinerModel struct {
 	// an arbitrary clamp there reads as a crash rather than as a hidden project.
 	crossReloadHeaderProjectID string
 
-	// Memoization guard for crossProjectRebuildRows
-	crossLastRowsFingerprint string
-	crossLastFocusDepth      int
-	crossLastTaskCount       int
-	crossForceRebuild        bool // When true, bypasses the memoization guard on next rebuild
+	// population is the memoization guard crossProjectRebuildRows consults: the
+	// inputs the last pass ran under, plus the one-shot bypass. Like the readout
+	// and the menu bar above it, it is a named field rather than promoted ones —
+	// outliner_population_state.go owns the cluster, and every caller that changes
+	// what the population would produce says so through m.population.invalidate()
+	// rather than by writing a flag.
+	population populationState
 
 	// scopedProjectID names the single project the global outliner is currently
 	// scoped to. Empty means the authoritative all-projects scope. Only

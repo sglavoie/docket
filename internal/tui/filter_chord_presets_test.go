@@ -106,7 +106,7 @@ func TestFilteredEmptyStateAdvertisesWorkingClearChord(t *testing.T) {
 	out := app.crossOutliner
 	out.filter.Tags = map[string]bool{"missing": true}
 	out.adoptFilterCarriers()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.rebuildRows()
 
 	if visible := visibleOutlinerTaskIDs(out); len(visible) != 0 {
@@ -354,7 +354,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	}
 	outliner.filter.SetStateFilter(selectedStates)
 	outliner.adoptFilterCarriers()
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.rebuildRows()
 
 	picker, err := app.newFilterStatesPicker(operation.OperationExecutionRequest{})

@@ -23,6 +23,6 @@ func (m *OutlinerModel) applyOutlinerRouteState(route config.OutlinerRouteState)
 	route = config.NormalizeOutlinerRouteState(route)
 
 	m.selectOutlinerMode(chrome.OutlinerModeID(route.Mode))
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 }

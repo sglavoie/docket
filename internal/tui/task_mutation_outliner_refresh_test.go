@@ -32,7 +32,7 @@ func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outliner *Ou
 		t.Fatal("load Outliner snapshot: no active projects")
 	}
 	outliner.loadedProjects = projects
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 }
 
@@ -289,7 +289,7 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 	})
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	rebuildOutlinerPreservingCursor(outliner)
 
 	var got []string

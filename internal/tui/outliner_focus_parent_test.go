@@ -100,7 +100,7 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	rooted := false
 	for index, row := range out.rows {
@@ -130,7 +130,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && len(row.task.Children) == 0 {
@@ -193,7 +193,7 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 
 	identity := searchProjectionCursorOnTitle(t, out, "Create login form")
@@ -225,7 +225,7 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	out.selectOutlinerMode(chrome.ModeToday)
 

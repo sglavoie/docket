@@ -201,7 +201,7 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	app.projects[project.ID] = project
 	outliner := app.crossOutliner
 	outliner.loadedProjects = []*models.Project{project}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	outliner.pushProjectScope(project.ID)
 	if groups := outliner.visibleProjectGroupHeaders(); len(groups) != 0 {

@@ -130,7 +130,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 // rows so the mode's live rows and flags are exactly what production renders.
 func enterCrossMode(cross *OutlinerModel, id chrome.OutlinerModeID) {
 	cross.selectOutlinerMode(id)
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 }
 

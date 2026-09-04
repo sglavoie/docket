@@ -157,7 +157,7 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 		out := NewOutlinerModel(nil, nil, nil)
 		out.loadedProjects = []*models.Project{source, destination}
 		out.crossSnapshotReady = true
-		out.crossForceRebuild = true
+		out.population.invalidate()
 		out.crossProjectRebuildRows()
 		for index, row := range out.rows {
 			if row.task != nil && row.task.ID == task.ID && row.ProjectID == source.ID {
@@ -172,7 +172,7 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	capture := out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	destination.Tasks = append(destination.Tasks, task)
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	_, recorded := out.finishTaskLineEditRelocation(capture, taskref.For(task, destination))
 	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, destination) || len(out.relocationHistory.back) != 1 {
@@ -182,7 +182,7 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	out, source, _, task = makeOutliner()
 	capture = out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	_, recorded = out.finishTaskLineEditRelocation(capture, taskref.TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
 	if recorded || out.CurrentTaskIdentity().TaskID != "neighbor" || len(out.relocationHistory.back) != 0 {

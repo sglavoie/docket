@@ -51,7 +51,7 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 		if m.runtime != nil {
 			coordinator.CopyCatalogMetadata(project, m.runtime.GetProject(projectID))
 		}
-		m.crossOutliner.crossForceRebuild = true
+		m.crossOutliner.population.invalidate()
 		m.crossOutliner.crossProjectRebuildRows()
 		m.crossOutliner.clampCursor()
 		return

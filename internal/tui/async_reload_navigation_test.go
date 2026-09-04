@@ -68,7 +68,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
 	cross.loadedProjects = projects
 	cross.selectOutlinerMode(chrome.ModeAll)
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
@@ -279,7 +279,7 @@ func TestCrossProjectReloadMissingCursorTaskPrefersFollowingTask(t *testing.T) {
 	cross.loadedProjects = []*models.Project{original}
 	cross.crossSnapshotReady = true
 	cross.pushProjectScope(original.ID)
-	cross.crossForceRebuild = true
+	cross.population.invalidate()
 	cross.crossProjectRebuildRows()
 	cross.Cursor = session2TaskRow(t, cross, original.ID, "removed")
 	cross.ViewScrollOffset = 1

@@ -232,7 +232,7 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 		projectFacetsAwaitingLoad:   facetsAwaitingLoad,
 		loadedPopulationFingerprint: population,
 	}
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	m.rebuildRows()
 	m.restoreSearchCursor(anchor)
 	// This is the one place a lens becomes live, so it is the only honest place to
@@ -405,7 +405,7 @@ func (m *OutlinerModel) handleLensQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.
 	m.BaseSearchableView.SetSearchQuery("")
 	if changed {
 		m.setLensQuery(m.SearchInputValue())
-		m.crossForceRebuild = true
+		m.population.invalidate()
 		rebuildOutlinerPreservingCursor(m)
 	}
 	return m, cmd
@@ -418,7 +418,7 @@ func (m *OutlinerModel) commitLensQueryEdit() {
 	query := m.SearchInputValue()
 	m.endLensQueryEdit()
 	m.setLensQuery(query)
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	rebuildOutlinerPreservingCursor(m)
 }
 
@@ -429,7 +429,7 @@ func (m *OutlinerModel) cancelLensQueryEdit() {
 	origin := m.lensQueryEditOrigin
 	m.endLensQueryEdit()
 	m.setLensQuery(origin)
-	m.crossForceRebuild = true
+	m.population.invalidate()
 	rebuildOutlinerPreservingCursor(m)
 }
 

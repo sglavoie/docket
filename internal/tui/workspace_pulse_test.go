@@ -172,7 +172,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.completionActivity = cached
 	model.workspacePulse.Done = cached.CompletedToday()
-	model.crossOutliner.crossForceRebuild = false
+	model.crossOutliner.population.forceRebuild = false
 	model.crossOutliner.nextDeferWake = tickAt.Add(-time.Minute)
 
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
@@ -187,7 +187,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	if model.workspacePulse.Done != 1 {
 		t.Fatalf("Done = %d, want the new local day's count rather than the previous day's 2", model.workspacePulse.Done)
 	}
-	if !model.crossOutliner.crossForceRebuild {
+	if !model.crossOutliner.population.forceRebuild {
 		t.Fatal("periodic tick did not use its supplied timestamp for the defer wake")
 	}
 

@@ -44,7 +44,7 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 
 	child.ParentID = nil
 	project.BuildTaskTree()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != root.ID {
 		t.Fatalf("reparent recovery stack = %+v, want root frame", out.crossFocusStack)
@@ -62,7 +62,7 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 
 	project.Tasks = []*models.Task{child, grandchild, remaining, outside}
 	project.BuildTaskTree()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	if len(out.crossFocusStack) != 0 {
 		t.Fatalf("removed root retained Focus frames: %+v", out.crossFocusStack)
@@ -77,7 +77,7 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	project.Tasks = append(project.Tasks, root)
 	root.Title = "Restored by undo"
 	project.BuildTaskTree()
-	out.crossForceRebuild = true
+	out.population.invalidate()
 	out.crossProjectRebuildRows()
 	if len(out.crossFocusStack) != 0 {
 		t.Fatalf("undo-like restore silently re-entered Focus: %+v", out.crossFocusStack)

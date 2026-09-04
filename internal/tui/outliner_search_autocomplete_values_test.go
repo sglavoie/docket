@@ -153,7 +153,7 @@ func TestSearchAutocompleteProjectsComeFromTheLoadedScope(t *testing.T) {
 
 	// Narrowing the loaded scope narrows the offer in the same pass.
 	outliner.loadedProjects = []*models.Project{alpha}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	typeSearchAC(outliner, "%")
 	if got := searchACValues(outliner); slices.Contains(got, beta.Slug) {
@@ -209,7 +209,7 @@ func TestSearchAutocompleteProjectsRankTypedPartial(t *testing.T) {
 	// Ranking never reaches for a project the query in front of it could not
 	// match: dropping the target from the loaded scope drops it from the offer.
 	outliner.loadedProjects = projects[:len(projects)-1]
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	typeSearchAC(outliner, "%roadmap")
 	if got := searchACValues(outliner); len(got) != 0 {

@@ -252,7 +252,7 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	outliner := scopeTestOutliner(alpha)
 	outliner.activeLens = &activeLensFrame{lensID: "lens", name: "Groundwork"}
 	outliner.setLensQuery("needle")
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if outliner.lensGate == nil {
 		t.Fatal("the canonical path did not compile the lens narrowing")

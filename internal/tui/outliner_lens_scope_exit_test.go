@@ -272,7 +272,7 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *Out
 	// The base task workspace holds no parked project; only the focus below
 	// admits it.
 	outliner.loadedProjects = []*models.Project{alpha, beta}
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	app.crossOutliner = outliner
 	outliner.SetSize(app.width, app.height-2)

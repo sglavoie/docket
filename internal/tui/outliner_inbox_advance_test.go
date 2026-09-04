@@ -24,7 +24,7 @@ func inboxAdvanceOutliner(t *testing.T, projects ...*models.Project) *OutlinerMo
 }
 
 func inboxAdvanceRebuild(outliner *OutlinerModel) {
-	outliner.crossForceRebuild = true
+	outliner.population.invalidate()
 	outliner.rebuildRows()
 }
 

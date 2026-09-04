@@ -223,7 +223,7 @@ func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
 
 			// A frame that did not descend from the one before it would be
 			// truncated here with a recovery notice instead of surviving.
-			out.crossForceRebuild = true
+			out.population.invalidate()
 			out.crossProjectRebuildRows()
 			assertStack("after rebuild")
 			if out.focusNotice != "" {
