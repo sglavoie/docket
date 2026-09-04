@@ -111,15 +111,16 @@ the pre-split tree and is consistently pessimistic.
 | `taskref` | 2 | 2 | 2 |
 | `status` | 10 | 10 | 10 |
 | `pulse` | 13 | 12 | 12 |
-| `chrome` | 61 | 50 | 48 |
+| `chrome` | 61 | 50 | 49 |
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
 | `operation` | 124 | 162 | 159 |
 | `route` | 14 | 16 | 9 |
 | `listsurface` | 29 | 26 | 23 |
+| `help` | 4 | 3 | 3 |
 
-Running total against 631: **413**.
+Running total against 631: **417**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -154,6 +155,13 @@ four struct fields and three methods the `must export` column does not count:
 `TextEditorModel.GuidanceSpec`. `chrome` also came in eleven under its
 projection because eight files the assignment table gave it could not move at
 all; see the header of `scripts/tui_package_assignments.tsv`.
+
+The row reads 49 rather than 48 because Session 2.21 added one name to it after
+the fact. `JoinGuidanceContext` was promoted into `footer_helpers.go` by the
+`help` extraction, not by `chrome`'s own; it is charged here rather than to
+`help` because this is the package that now declares it. Expect a later
+extraction to reopen a closed row this way whenever the declaration it needs
+belongs below it — the running total is over declarations, not over sessions.
 
 Reproduce the withdrawal set with a `go/packages` pass keyed on the *string*
 form of each object rather than its pointer, because `Tests: true` loads a
@@ -693,6 +701,58 @@ a registry, invoked through an executor, guidance assembled from a live keymap �
 and a contract between two layers belongs above both, not inside the lower one.
 The placement is right and the stated justification is not; check a pinned
 placement against the file before repeating its rationale.
+
+`help` is the first L6 package and the smallest extraction so far: seven files,
+three promoted declarations against a projection of four, and no promoted field
+or method at all. `HelpViewModel` is a `route.View`, so everything the shell
+calls on it was already exported; what the move forced public is three
+package-level functions the shell or a shell test calls — `HelpItemsFromKeyMap`,
+`HelpCmd` and `GrammarHelpItems`. The stutter in the first two is accepted, on
+`listsurface.RenderListSurfaceRow`'s precedent. Production and test moved in the
+same session, so the last two columns are equal, and nothing was left promoted
+for a test alone.
+
+Two promotions the projection expected did not happen, and both were avoided the
+same way — by moving the test rather than the declaration:
+
+- `helpKeyColumnWidth` and `renderContent` stayed unexported because
+  `help_render_test.go` moved down with them. Its one shell dependency was
+  `SimplifiedInputStrategy()`, and `input_strategy_simplified_shell.go` is only a
+  re-export, so the test now calls `operation.SimplifiedInputStrategy()` and is
+  homeable. Check a blocking identifier for a re-export before sizing a promotion
+  around it.
+- `joinGuidanceContext` moved *up* out of `notes_guidance.go` into
+  `chrome/footer_helpers.go` as `JoinGuidanceContext`. Left in the shell it would
+  have forced `help -> notes`, an L6 package importing L7; supplemental guidance
+  context is guidance vocabulary rather than either caller's, and Notes and Help
+  are the two consumers. That promotion is charged to `chrome`'s row above,
+  because `chrome` is what declares it now.
+
+One test split and one was rewritten, which is the shape Session 2.19 predicted
+at roughly one per package. `TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates`
+left `overlay_guidance_test.go` for `help/help_guidance_test.go`, since every
+state it sets is a `HelpViewModel` field, and it carries its own copies of
+`guidanceText` and `assertGuidance` — the duplication the `listsurface` session
+recorded as the only move available for a test helper.
+`TestHelpGrammarSectionComesFromCanonicalRegistry` left
+`textgrammar_consumer_contract_test.go` the same way.
+`TestCommentsHelpKeyRaisesTheCommentsGrammar` could not move and did not need
+to: it read the pushed viewer's unexported `viewName` and `items`, and now reads
+the same two off the `help.ShowHelpMsg` the panel raises, which is what
+`handler_view_core.go` hands to `NewHelpViewModel`. That is the
+`project_hub_help_test.go` pattern already in the tree, and it keeps the
+Outliner-key negative assertions at full strength.
+
+Two facts to carry forward. The graph row was wrong in a direction the earlier
+sessions had not hit: it predicted `help -> grammar`, but `help_grammar.go`
+reads `internal/textgrammar`, the parser package, and never
+`internal/tui/grammar`, the surface package the column names. Read a predicted
+edge against the import path, not the identifier prefix. And the session's
+completion contract asserted that `help_grammar.go` "went to `grammar` in
+Session 2.11", which it did not; the file is `help`'s, as both tables have said
+since Session 1.5, and since Session 2.14 moved `HelpItem` down to `operation`
+at L3 the alternative is no longer merely unwarranted but impossible — `grammar`
+is L2 and cannot name an L3 type. Both table headers now carry that note.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

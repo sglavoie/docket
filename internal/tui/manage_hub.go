@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -277,7 +278,7 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *ManageHubModel) GetHelpItems() []operation.HelpItem {
-	if provider, ok := m.active.(HelpProvider); ok {
+	if provider, ok := m.active.(help.HelpProvider); ok {
 		return append([]operation.HelpItem(nil), provider.GetHelpItems()...)
 	}
 	// Both collections answer HelpProvider, so an unactivated hub has no grammar

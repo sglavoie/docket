@@ -77,7 +77,7 @@ hidden `end` alias documented once rather than four times or not at all — and
 
 A `?` section is the category its own projection assigned, not a second
 classification laid over it. `helpSectionsForCategories`
-(`internal/tui/help_render.go`) is the one ordering rule the body and the tab bar
+(`internal/tui/help/help_render.go`) is the one ordering rule the body and the tab bar
 both read: the canonical `helpSectionOrder` first, then any category that list
 does not name in first-seen order, then `Other`. A projection that mints a new
 category therefore gets a section for free and can never be silently swallowed.
@@ -88,7 +88,7 @@ label hides — `defer` reaches **Set Due or Defer**, `hidden` reaches **Filter 
 Due or Deferred** — and the row appends the aliases that earned it as a muted
 suffix, dropped whole rather than clipped when the description column has no
 room. Aliases feed matching only: their positions index into the alias, not into
-the rendered columns. `grammarHelpItems()` (`internal/tui/help_grammar.go`) then
+the rendered columns. `GrammarHelpItems()` (`internal/tui/help/help_grammar.go`) then
 adds the **Capture & Edit Grammar** section from
 `textgrammar.GuideDefinitions` over the union of the capture, edit, and search
 surfaces, making the sigil language discoverable outside the composer's own `?`.

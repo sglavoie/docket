@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ const helpKeyColumnWidth = 17
 // helpSectionOrder is the display order of `?` help sections. Its names are the
 // categories the projections actually emit: OperationCategoryLabel produces the
 // registry ones, the keymap-projected providers add View, Actions, and Filters,
-// and grammarHelpItems adds the last. A category absent from this list still
+// and GrammarHelpItems adds the last. A category absent from this list still
 // renders — helpSectionsForCategories appends it in first-seen order — so a new
 // category is never silently swallowed.
 var helpSectionOrder = []string{
@@ -270,7 +270,7 @@ func (m *HelpViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	}
 	spec.Supplemental = m.helpScrollSupplemental()
 	if len(m.filteredItems) == 0 {
-		spec.Supplemental = joinGuidanceContext("no matching help items", spec.Supplemental)
+		spec.Supplemental = chrome.JoinGuidanceContext("no matching help items", spec.Supplemental)
 	}
 	return spec, true
 }

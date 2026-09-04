@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -111,7 +112,7 @@ func (m *TaskAttachmentsModel) ShouldCaptureEsc() bool {
 
 // GetHelpItems returns help items for the attachments view.
 func (m *TaskAttachmentsModel) GetHelpItems() []operation.HelpItem {
-	return helpItemsFromKeyMap(m.buildKeyMap())
+	return help.HelpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *TaskAttachmentsModel) StatusBarLabel() string { return "Attachments" }

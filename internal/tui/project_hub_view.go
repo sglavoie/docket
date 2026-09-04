@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -161,7 +162,7 @@ func (m *ProjectHubModel) GetHelpItems() []operation.HelpItem {
 	for _, item := range items {
 		documented[strings.ToLower(item.Key)] = true
 	}
-	for _, item := range helpItemsFromKeyMap(m.projectHubGuidanceKeyMap(m.guidanceState())) {
+	for _, item := range help.HelpItemsFromKeyMap(m.projectHubGuidanceKeyMap(m.guidanceState())) {
 		if !documented[strings.ToLower(item.Key)] {
 			items = append(items, item)
 		}

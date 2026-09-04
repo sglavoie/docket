@@ -92,6 +92,17 @@
 #     `pulse.WorkspacePulseState` as the bottom of the three-level embed chain.
 #     None can close a cycle: `taskref`, `status` and `pulse` are L0 and
 #     `query` is L2, and no package below L5 reaches `listsurface`.
+#   - `help -> route,theme,textfit,pulse` were added and `help -> grammar`
+#     removed in Session 2.21, when the package was extracted and its row could
+#     be read off real imports rather than predicted. The viewer is a full-screen
+#     view, so it satisfies `route.View`, embeds `pulse.WorkspacePulseState`
+#     through the shared base, styles every column with `theme`, and wraps a
+#     description with `textfit`. The removed edge was a name collision:
+#     `help_grammar.go` projects the capture sigils into help rows, but it reads
+#     them from `internal/textgrammar`, the parser package, and never from
+#     `internal/tui/grammar`, the surface package this column names. None of the
+#     four can close a cycle: `theme`, `textfit` and `pulse` are L0 and `route`
+#     is L4, and no package below L6 reaches `help`.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -115,7 +126,7 @@ query	L2	theme,pulse,taskref,chrome,grammar
 operation	L3	presentation,chrome,taskref,status,grammar,query
 route	L4	presentation,chrome,operation,theme
 listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation,taskref,query,status,pulse
-help	L6	listsurface,operation,chrome,grammar,keymap
+help	L6	listsurface,operation,chrome,keymap,route,theme,textfit,pulse
 notes	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 taskdetail	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help

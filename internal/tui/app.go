@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -108,7 +109,7 @@ type AppModel struct {
 	operationExecutor *operation.OperationExecutor
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	helpView      *HelpViewModel
+	helpView      *help.HelpViewModel
 	crossOutliner *OutlinerModel
 
 	// Focus view session state (persists across view navigation within a session)

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -290,5 +291,5 @@ func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
 		operation.InputStrategySimplified,
 		m.operationCommandContext(),
 	)
-	return append(items, grammarHelpItems()...)
+	return append(items, help.GrammarHelpItems()...)
 }

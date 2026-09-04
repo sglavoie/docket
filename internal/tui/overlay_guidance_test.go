@@ -35,33 +35,10 @@ func assertSession8Guidance(t *testing.T, state string, spec chrome.GuidanceSpec
 	}
 }
 
-func TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates(t *testing.T) {
-	model := NewHelpViewModel([]operation.HelpItem{{Key: "j", Description: "Move", Category: "Navigate"}}, "Outliner")
-	model.SetSize(90, 24)
-
-	spec, ok := model.ContextualGuidance()
-	assertSession8Guidance(t, "browse", spec, ok, "? close", "/ filter", "\\ find tab", "j/k scroll")
-	if spec.Rows != 1 {
-		t.Fatalf("browse rows = %d, want 1", spec.Rows)
-	}
-
-	model.searchMode = true
-	spec, ok = model.ContextualGuidance()
-	assertSession8Guidance(t, "filter edit", spec, ok, "Enter apply filter", "Esc cancel edit", "\\ find tab")
-	if spec.Rows != 2 {
-		t.Fatalf("filter-edit rows = %d, want 2", spec.Rows)
-	}
-
-	model.searchMode = false
-	model.tabSearchMode = true
-	spec, ok = model.ContextualGuidance()
-	assertSession8Guidance(t, "tab find", spec, ok, "Enter apply tab", "Esc cancel find", "/ edit filter")
-
-	model.tabSearchMode = false
-	model.filteredItems = nil
-	spec, ok = model.ContextualGuidance()
-	assertSession8Guidance(t, "empty", spec, ok, "no matching help items", "? close")
-}
+// The `?` viewer's own guidance states moved to
+// internal/tui/help/help_guidance_test.go with the package, since every state
+// they set is HelpViewModel's own field. What stays here is the guidance of the
+// overlays the shell still owns.
 
 func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.T) {
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{

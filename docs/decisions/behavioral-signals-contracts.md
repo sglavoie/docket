@@ -50,7 +50,7 @@ the row and Peek still show counts at or above the shared threshold.
 
 The lowercase row-refinement chord is `fs` ("filter stale"). Inspection of
 `filterOperationDescriptors` in `internal/tui/filter_operations.go` and
-`(*HelpViewModel).filterItems` in `internal/tui/help_filter.go` confirms that
+`(*HelpViewModel).filterItems` in `internal/tui/help/help_filter.go` confirms that
 filter descriptors and the help view do not maintain a second key table: help
 fuzzy-filters the registry projection. The lowercase `f` keyspace this decision
 was taken against is bound by `SimplifiedInputStrategy` in

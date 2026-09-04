@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -315,7 +316,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.app.views.Register(presentation.ViewHelp, NewHelpViewModel(nil, "Help"))
+				fixture.app.views.Register(presentation.ViewHelp, help.NewHelpViewModel(nil, "Help"))
 				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})

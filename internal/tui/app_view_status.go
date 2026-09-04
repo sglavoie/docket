@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -218,7 +219,7 @@ func (m *AppModel) renderFooterChrome() string {
 	currentView := m.currentView()
 	showHelp := false
 	if view := m.activeView(); view != nil {
-		if _, ok := view.(HelpProvider); ok {
+		if _, ok := view.(help.HelpProvider); ok {
 			showHelp = true
 		}
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/help"
 )
 
 func TestCaptureDependencyAutocompleteOffersOpenWorkAcrossProjects(t *testing.T) {
@@ -223,7 +224,7 @@ func TestDependencyGrammarReachesBothHelpSurfaces(t *testing.T) {
 	}
 
 	var helpKeys, helpDescriptions []string
-	for _, item := range grammarHelpItems() {
+	for _, item := range help.GrammarHelpItems() {
 		helpKeys = append(helpKeys, item.Key)
 		helpDescriptions = append(helpDescriptions, item.Description)
 	}

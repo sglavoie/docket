@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -333,7 +334,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			message = commandMessage(out.takeParkedFocusReload())
 		}
 	case operation.OperationCoreHelp:
-		message = ShowHelpMsg{
+		message = help.ShowHelpMsg{
 			ViewName: "Outliner",
 			Items:    m.coreInputHelpItems(),
 		}

@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -18,11 +18,11 @@ type ShowHelpMsg struct {
 	Items    []operation.HelpItem
 }
 
-// helpCmd raises the help viewer for one named surface. It sits beside the
+// HelpCmd raises the help viewer for one named surface. It sits beside the
 // message it constructs rather than with the navigation helpers, because a
 // surface asking for `?` is asking the shell to push a view, not to move a
 // cursor.
-func helpCmd(name string, items []operation.HelpItem) tea.Cmd {
+func HelpCmd(name string, items []operation.HelpItem) tea.Cmd {
 	return func() tea.Msg {
 		return ShowHelpMsg{ViewName: name, Items: items}
 	}

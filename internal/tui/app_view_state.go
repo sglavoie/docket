@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -61,7 +62,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	switch currentView {
 	case presentation.ViewHelp:
 		if v := m.views.Get(presentation.ViewHelp); v != nil {
-			m.helpView = v.(*HelpViewModel)
+			m.helpView = v.(*help.HelpViewModel)
 		}
 	case presentation.ViewCrossProjectOutliner:
 		if v, ok := m.views.Get(presentation.ViewCrossProjectOutliner).(*OutlinerModel); ok {

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -129,7 +130,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			return m, m.redoNoteMutation()
 		case "?":
-			return m, helpCmd("Notes", m.GetHelpItems())
+			return m, help.HelpCmd("Notes", m.GetHelpItems())
 		case "esc":
 			if m.searchApplied != "" {
 				m.clearSearch()

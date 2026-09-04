@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"strings"
@@ -12,7 +12,7 @@ import (
 // not an operation: no key dispatches it and the registry never sees it.
 const helpGrammarCategory = "Capture & Edit Grammar"
 
-// grammarHelpItems projects the shared inline grammar into `?` help rows, giving
+// GrammarHelpItems projects the shared inline grammar into `?` help rows, giving
 // textgrammar.GuideDefinitions a second consumer beside the capture composer's
 // syntax guide. Without it the sigils are documented only behind `?` inside `a`,
 // so a user who never opens the composer cannot discover @@defer at all.
@@ -23,7 +23,7 @@ const helpGrammarCategory = "Capture & Edit Grammar"
 // swaps in the search wording for the bare SurfaceSearch mask, which keeps these
 // rows describing what a sigil does rather than what it matches. Legacy entries
 // are already excluded by Definitions.
-func grammarHelpItems() []operation.HelpItem {
+func GrammarHelpItems() []operation.HelpItem {
 	surfaces := textgrammar.SurfaceCapture | textgrammar.SurfaceEdit | textgrammar.SurfaceSearch
 	definitions := textgrammar.GuideDefinitions(surfaces)
 	items := make([]operation.HelpItem, 0, len(definitions))

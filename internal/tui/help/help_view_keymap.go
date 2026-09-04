@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"github.com/sglavoie/tt/internal/tui/keymap"

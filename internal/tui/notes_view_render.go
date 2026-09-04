@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -269,7 +270,7 @@ func (m *NotesViewModel) GetHelpItems() []operation.HelpItem {
 	for _, item := range items {
 		documented[strings.ToLower(item.Key)] = true
 	}
-	for _, item := range helpItemsFromKeyMap(m.buildKeyMap()) {
+	for _, item := range help.HelpItemsFromKeyMap(m.buildKeyMap()) {
 		if !documented[strings.ToLower(item.Key)] {
 			items = append(items, item)
 		}

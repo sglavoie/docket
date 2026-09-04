@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -156,7 +157,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "help", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewHelpViewModel(nil, "Outliner")
+			m := help.NewHelpViewModel(nil, "Outliner")
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

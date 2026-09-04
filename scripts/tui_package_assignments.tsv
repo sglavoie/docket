@@ -230,6 +230,23 @@
 #     file in the shell keeps two unexported helpers with their only caller
 #     instead of promoting them across a boundary for zero in-package readers.
 #
+# Session 2.21 made one declaration-level move and closed one open row:
+#   - joinGuidanceContext left notes_guidance.go (notes) for footer_helpers.go
+#     as chrome.JoinGuidanceContext. Supplemental guidance context is guidance
+#     vocabulary rather than either caller's: Notes appends the cursor's
+#     location to its hints and help_render.go appends the empty-result note,
+#     and both must read as one row with one separator. Left in notes it would
+#     have forced help -> notes, an edge from L6 into L7.
+#   - help_grammar.go is help, as this table has said since Session 1.5, and
+#     Session 2.21's completion contract repeating that it "went to grammar in
+#     Session 2.11" does not change it. Session 2.11 left the file here and
+#     flagged that the reason -- it returns []HelpItem, which help owned -- would
+#     have to be revisited if HelpItem moved down. Session 2.14 did move it, to
+#     operation at L3, and the answer came out the same way for a stronger
+#     reason: grammar is L2, so grammarHelpItems returning []operation.HelpItem
+#     would be an upward import the layer fitness test fails on. The file is
+#     help's for good, and the grammar it reads is internal/textgrammar.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.

@@ -61,7 +61,7 @@ func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		spec.Supplemental = fmt.Sprintf("search: %s", query)
 	}
 	spec.Hints = append(spec.Hints, m.previewPagingGuidance(12)...)
-	spec.Supplemental = joinGuidanceContext(spec.Supplemental, m.currentLocationGuidance())
+	spec.Supplemental = chrome.JoinGuidanceContext(spec.Supplemental, m.currentLocationGuidance())
 	return spec, true
 }
 
@@ -115,14 +115,4 @@ func (m *NotesViewModel) currentLocationGuidance() string {
 		return ""
 	}
 	return "location: " + label
-}
-
-func joinGuidanceContext(parts ...string) string {
-	values := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if part = strings.TrimSpace(part); part != "" {
-			values = append(values, part)
-		}
-	}
-	return strings.Join(values, " · ")
 }

@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -41,25 +42,25 @@ func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("? raised no help on the Project Hub")
 	}
-	help, ok := cmd().(ShowHelpMsg)
+	raised, ok := cmd().(help.ShowHelpMsg)
 	if !ok {
-		t.Fatalf("? produced %T, want ShowHelpMsg", cmd())
+		t.Fatalf("? produced %T, want help.ShowHelpMsg", cmd())
 	}
-	if help.ViewName != "Projects" {
-		t.Fatalf("help header = %q, want \"Projects\"", help.ViewName)
+	if raised.ViewName != "Projects" {
+		t.Fatalf("help header = %q, want \"Projects\"", raised.ViewName)
 	}
 
-	documented := make(map[string]string, len(help.Items))
-	for _, item := range help.Items {
+	documented := make(map[string]string, len(raised.Items))
+	for _, item := range raised.Items {
 		documented[item.Key] = item.Description
 	}
 	if documented["Enter"] != "Open project" {
-		t.Fatalf("Hub help describes Enter as %q, want the Hub's own grammar: %+v", documented["Enter"], help.Items)
+		t.Fatalf("Hub help describes Enter as %q, want the Hub's own grammar: %+v", documented["Enter"], raised.Items)
 	}
 	// `?` documents itself only because the keymap names it: the core descriptor
 	// is inapplicable off the Outliner, so the registry half of the merge drops it.
 	if documented["?"] != "Help" {
-		t.Fatalf("Hub help omits ? itself: %+v", help.Items)
+		t.Fatalf("Hub help omits ? itself: %+v", raised.Items)
 	}
 	for _, outlinerOnly := range []string{"tab", "T", "ctrl+p"} {
 		if description, listed := documented[outlinerOnly]; listed {
@@ -72,7 +73,7 @@ func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
 	// The input's own cursor blink can ride along, so the message decides rather
 	// than the presence of a command.
 	if _, cmd := searching.Update(syntheticKey('?')); cmd != nil {
-		if raised, isHelp := cmd().(ShowHelpMsg); isHelp {
+		if raised, isHelp := cmd().(help.ShowHelpMsg); isHelp {
 			t.Fatalf("? raised %q help from inside the query instead of typing a character", raised.ViewName)
 		}
 	}

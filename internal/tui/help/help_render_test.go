@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"strings"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
-	strategy := SimplifiedInputStrategy()
+	strategy := operation.SimplifiedInputStrategy()
 	key := operation.DisplayKeysForOperation(strategy, operation.OperationTaskSetState)
 	if !strings.HasPrefix(key, "$") {
 		t.Fatalf("Set State key = %q, want the $ chord prefix", key)
@@ -59,7 +59,7 @@ func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 }
 
 func TestHelpRenderKeyColumnFitsEveryComposedSpelling(t *testing.T) {
-	strategy := SimplifiedInputStrategy()
+	strategy := operation.SimplifiedInputStrategy()
 	seen := make(map[operation.OperationID]bool, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
 		if seen[binding.OperationID] {

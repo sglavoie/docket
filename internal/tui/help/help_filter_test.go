@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"slices"

@@ -1,4 +1,4 @@
-package tui
+package help
 
 import (
 	"charm.land/bubbles/v2/textinput"
@@ -25,7 +25,7 @@ type HelpProvider interface {
 	GetHelpItems() []operation.HelpItem
 }
 
-func helpItemsFromKeyMap(km *keymap.KeyMap) []operation.HelpItem {
+func HelpItemsFromKeyMap(km *keymap.KeyMap) []operation.HelpItem {
 	raw := km.HelpItems()
 	items := make([]operation.HelpItem, len(raw))
 	for i, item := range raw {

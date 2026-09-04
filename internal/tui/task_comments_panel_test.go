@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
@@ -159,28 +160,35 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	if got := driver.App().currentView(); got != presentation.ViewHelp {
 		t.Fatalf("? left the panel on %v, want the Help view", got)
 	}
-	help, ok := driver.App().views.Get(presentation.ViewHelp).(*HelpViewModel)
-	if !ok {
-		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(presentation.ViewHelp))
+	if _, ok := driver.App().views.Get(presentation.ViewHelp).(*help.HelpViewModel); !ok {
+		t.Fatalf("the Help view is %T, want *help.HelpViewModel", driver.App().views.Get(presentation.ViewHelp))
 	}
-	if help.viewName != "Comments" {
-		t.Fatalf("help header = %q, want \"Comments\"", help.viewName)
+	// The grammar is read off the message the panel raises rather than out of the
+	// viewer it produced: ShowHelpMsg is what handler_view_core.go hands to
+	// NewHelpViewModel, so the two carry the same rows, and the message says them
+	// in the panel's own package.
+	raised, ok := panel.handleNormalKey("?")().(help.ShowHelpMsg)
+	if !ok {
+		t.Fatalf("? raised %T, want help.ShowHelpMsg", panel.handleNormalKey("?")())
+	}
+	if raised.ViewName != "Comments" {
+		t.Fatalf("help header = %q, want \"Comments\"", raised.ViewName)
 	}
 
-	documented := make(map[string]string, len(help.items))
-	for _, item := range help.items {
+	documented := make(map[string]string, len(raised.Items))
+	for _, item := range raised.Items {
 		documented[item.Key] = item.Description
 	}
 	if documented["enter"] != "Expand comment" {
-		t.Fatalf("Comments help describes Enter as %q, want the panel's own grammar: %+v", documented["enter"], help.items)
+		t.Fatalf("Comments help describes Enter as %q, want the panel's own grammar: %+v", documented["enter"], raised.Items)
 	}
 	if documented["space"] != "Comment actions" {
-		t.Fatalf("Comments help omits the Space sheet: %+v", help.items)
+		t.Fatalf("Comments help omits the Space sheet: %+v", raised.Items)
 	}
 	// `?` documents itself only because the keymap names it: the core descriptor
 	// is inapplicable off the Outliner, so a registry projection would drop it.
 	if documented["?"] != "Help" {
-		t.Fatalf("Comments help omits ? itself: %+v", help.items)
+		t.Fatalf("Comments help omits ? itself: %+v", raised.Items)
 	}
 	for _, outlinerOnly := range []string{"tab", "T", "ctrl+p"} {
 		if description, listed := documented[outlinerOnly]; listed {

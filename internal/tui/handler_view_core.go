@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -18,8 +19,8 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.err = msg.Err
 		return true, tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
 
-	case ShowHelpMsg:
-		m.helpView = NewHelpViewModel(msg.Items, msg.ViewName)
+	case help.ShowHelpMsg:
+		m.helpView = help.NewHelpViewModel(msg.Items, msg.ViewName)
 		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
 

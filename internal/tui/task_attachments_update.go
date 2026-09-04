@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -94,7 +95,7 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 		return cmd
 	}
 	if key == "?" {
-		return helpCmd("Attachments", m.GetHelpItems())
+		return help.HelpCmd("Attachments", m.GetHelpItems())
 	}
 	// The core undo descriptors answer only to the Outliner, so the press asks
 	// the shell for the one workspace ledger rather than dispatching. Update has

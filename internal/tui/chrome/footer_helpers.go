@@ -422,3 +422,18 @@ func RequiredActionGuidanceSpec(commit string, optional ...string) GuidanceSpec 
 func EscapeGuidanceSpec() GuidanceSpec {
 	return GuidanceSpec{Hints: OptionalGuidanceHints(0, "Esc back", "? help"), Rows: 1}
 }
+
+// JoinGuidanceContext joins the supplemental fragments a surface wants under
+// its hints into the one separator the guidance row uses, dropping the blanks.
+// It lives here rather than beside either caller because supplemental context
+// is guidance vocabulary: Notes appends the cursor's location to it and Help
+// appends its empty-result note, and both must read as one line.
+func JoinGuidanceContext(parts ...string) string {
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			values = append(values, part)
+		}
+	}
+	return strings.Join(values, " · ")
+}

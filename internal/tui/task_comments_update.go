@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -150,7 +151,7 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	// to the Outliner, so raising it through the executor would render the Outliner
 	// grammar; the panel names its own instead.
 	if key == "?" {
-		return helpCmd("Comments", m.GetHelpItems())
+		return help.HelpCmd("Comments", m.GetHelpItems())
 	}
 	// The core undo descriptors answer only to the Outliner, so the press asks the
 	// shell for the one workspace ledger rather than dispatching. Update has

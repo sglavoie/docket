@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -95,7 +96,7 @@ func (m *AppModel) registerHarnessOperations() error {
 		{operationHarnessOutliner, "outliner", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessOutlinerRoot, "outliner root", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessReference, "reference", operation.OperationCategorySystem, func() tea.Msg {
-			return ShowHelpMsg{
+			return help.ShowHelpMsg{
 				ViewName: "Outliner",
 				Items:    m.coreInputHelpItems(),
 			}

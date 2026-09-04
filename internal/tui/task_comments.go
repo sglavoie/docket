@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -150,7 +151,7 @@ func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 // Outliner, so the registry half of a merge would contribute nothing and only the
 // keymap can name this panel's own grammar.
 func (m *TaskCommentsModel) GetHelpItems() []operation.HelpItem {
-	return helpItemsFromKeyMap(m.buildKeyMap())
+	return help.HelpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *TaskCommentsModel) StatusBarLabel() string { return "Comments" }
