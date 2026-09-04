@@ -17,7 +17,7 @@ func TestNewAppModelWiresShellDeps(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "tt.json")
 	manager := config.NewManager(configPath)
 
-	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager, WithPersister(NewMockPersister()))
+	app, err := NewAppModel(testRuntimeAt(cfg.DataDir(), cfg), manager, withPersister(newMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}

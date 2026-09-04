@@ -54,12 +54,12 @@ func TestFoundationInvariants(t *testing.T) {
 				"note:project-a/design.md",
 			},
 			{
-				"workspace tag", WorkspaceTagEntity(" #backend "),
+				"workspace tag", workspaceTagEntity(" #backend "),
 				operation.EntityIdentity{Kind: operation.EntityKindTag, Scope: operation.EntityScopeGlobal, Name: "backend"},
 				"tag:backend",
 			},
 			{
-				"project tag", ProjectTagEntity("project-a", "#api"),
+				"project tag", projectTagEntity("project-a", "#api"),
 				operation.EntityIdentity{
 					Kind: operation.EntityKindTag, Scope: operation.EntityScopeProject,
 					ProjectID: "project-a", Name: "api",
@@ -67,22 +67,22 @@ func TestFoundationInvariants(t *testing.T) {
 				"tag:project-a/api",
 			},
 			{
-				"scope", ScopeEntity("project-a"),
+				"scope", scopeEntity("project-a"),
 				operation.EntityIdentity{Kind: operation.EntityKindScope, Name: "project-a"},
 				"scope:project-a",
 			},
 			{
-				"mode", ModeEntity(chrome.ModeInbox),
+				"mode", modeEntity(chrome.ModeInbox),
 				operation.EntityIdentity{Kind: operation.EntityKindMode, Name: "inbox"},
 				"mode:inbox",
 			},
 			{
-				"tool", ToolEntity("weekly-review"),
+				"tool", toolEntity("weekly-review"),
 				operation.EntityIdentity{Kind: operation.EntityKindTool, Name: "weekly-review"},
 				"tool:weekly-review",
 			},
 			{
-				"operation", OperationEntity("tui.task.edit"),
+				"operation", operationEntity("tui.task.edit"),
 				operation.EntityIdentity{Kind: operation.EntityKindOperation, Name: "tui.task.edit"},
 				"operation:tui.task.edit",
 			},
@@ -138,7 +138,7 @@ func TestFoundationInvariants(t *testing.T) {
 				ProjectID: "project-a", Name: "scratch.md",
 			}},
 			{"tag without name", operation.EntityIdentity{Kind: operation.EntityKindTag, Scope: operation.EntityScopeGlobal}},
-			{"tag that normalizes away", WorkspaceTagEntity(" # ")},
+			{"tag that normalizes away", workspaceTagEntity(" # ")},
 			{"mode with project", operation.EntityIdentity{
 				Kind: operation.EntityKindMode, ProjectID: "project-a", Name: "inbox",
 			}},
@@ -219,9 +219,9 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = operation.ProjectNoteEntity("project-a", "design.md")
 	ctx.Selection.EntityIdentities = []operation.EntityIdentity{
-		WorkspaceTagEntity("#review"),
-		ProjectTagEntity("project-a", "api"),
-		WorkspaceTagEntity("review"),
+		workspaceTagEntity("#review"),
+		projectTagEntity("project-a", "api"),
+		workspaceTagEntity("review"),
 	}
 
 	current := operation.OperationDescriptor{
@@ -254,8 +254,8 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 		t.Fatalf("Resolve selected entities: %v", err)
 	}
 	wantSelected := []operation.EntityIdentity{
-		WorkspaceTagEntity("review"),
-		ProjectTagEntity("project-a", "api"),
+		workspaceTagEntity("review"),
+		projectTagEntity("project-a", "api"),
 	}
 	if got := targets.Entities(); !slices.Equal(got, wantSelected) {
 		t.Fatalf("selected entities = %v, want %v", got, wantSelected)
@@ -426,16 +426,16 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Selection.EntityIdentities = []operation.EntityIdentity{
-		ProjectTagEntity("project-a", "#api"),
-		WorkspaceTagEntity("review"),
+		projectTagEntity("project-a", "#api"),
+		workspaceTagEntity("review"),
 	}
 	result := executor.Execute(operation.OperationExecutionRequest{ID: descriptor.ID, Context: ctx})
 	if result.Err != nil {
 		t.Fatalf("Execute: %v", result.Err)
 	}
 	want := []operation.EntityIdentity{
-		WorkspaceTagEntity("review"),
-		ProjectTagEntity("project-a", "api"),
+		workspaceTagEntity("review"),
+		projectTagEntity("project-a", "api"),
 	}
 	if !slices.Equal(received, want) {
 		t.Fatalf("handler targets = %v, want %v", received, want)

@@ -95,7 +95,7 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 		return fmt.Errorf("operation %s requires exactly one handler kind", binding.OperationID)
 	}
 	binding.Views = append([]presentation.PresentationID(nil), binding.Views...)
-	binding.RequiredCapabilities = CloneCapabilitySet(binding.RequiredCapabilities)
+	binding.RequiredCapabilities = cloneCapabilitySet(binding.RequiredCapabilities)
 	executor.bindings[binding.OperationID] = append(executor.bindings[binding.OperationID], binding)
 	return nil
 }

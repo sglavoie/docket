@@ -4,7 +4,6 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -60,11 +59,23 @@ func (m *HelpViewModel) ShouldCaptureEsc() bool {
 	return m.HasActiveSearch()
 }
 
-// SetSize sets the view dimensions.
+// cycleTab advances a tab index by delta with wrapping.
+// delta is typically +1 (right) or -1 (left).
+//
+// It lives here rather than in listsurface because the help viewer is its only
+// caller: nothing on a list surface cycles a tab.
+func cycleTab(current *int, count, delta int) {
+	if count <= 1 {
+		return
+	}
+	*current = ((*current+delta)%count + count) % count
+}
+
 func (m *HelpViewModel) innerWidth() int {
 	return max(m.width-2, 0)
 }
 
+// SetSize sets the view dimensions.
 func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
 
@@ -166,13 +177,13 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "shift+left":
-			listsurface.CycleTab(&m.activeTab, len(m.categories)+1, -1)
+			cycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
 			return m, nil
 		case "shift+right":
-			listsurface.CycleTab(&m.activeTab, len(m.categories)+1, 1)
+			cycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
@@ -217,13 +228,13 @@ func (m *HelpViewModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.tabSearchInput.Focus()
 		return m, textinput.Blink
 	case "shift+left":
-		listsurface.CycleTab(&m.activeTab, len(m.categories)+1, -1)
+		cycleTab(&m.activeTab, len(m.categories)+1, -1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())
 		m.viewport.GotoTop()
 		return m, nil
 	case "shift+right":
-		listsurface.CycleTab(&m.activeTab, len(m.categories)+1, 1)
+		cycleTab(&m.activeTab, len(m.categories)+1, 1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())
 		m.viewport.GotoTop()

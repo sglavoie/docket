@@ -238,7 +238,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 // kept when it was parked never re-enters the session's Today/Next membership.
 func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
-	persister := NewMockPersister()
+	persister := newMockPersister()
 	persister.Projects[active.ID] = active
 	persister.Projects[parked.ID] = parked
 	shell := &AppModel{

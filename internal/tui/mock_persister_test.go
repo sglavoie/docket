@@ -5,9 +5,9 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
-// MockPersister implements the Persister interface for testing.
+// mockPersister implements the Persister interface for testing.
 // It allows controlling return values and tracking calls to persistence methods.
-type MockPersister struct {
+type mockPersister struct {
 	// Configurable errors for each operation
 	LoadError error
 
@@ -18,15 +18,15 @@ type MockPersister struct {
 	Projects map[string]*models.Project
 }
 
-// NewMockPersister creates a new MockPersister with initialized slices.
-func NewMockPersister() *MockPersister {
-	return &MockPersister{
+// newMockPersister creates a new mockPersister with initialized slices.
+func newMockPersister() *mockPersister {
+	return &mockPersister{
 		LoadCalls: make([]*models.Project, 0),
 		Projects:  make(map[string]*models.Project),
 	}
 }
 
-func (m *MockPersister) Load(project *models.Project) error {
+func (m *mockPersister) Load(project *models.Project) error {
 	m.LoadCalls = append(m.LoadCalls, project)
 	if m.LoadError != nil {
 		return m.LoadError
@@ -38,5 +38,5 @@ func (m *MockPersister) Load(project *models.Project) error {
 	return nil
 }
 
-// Verify MockPersister implements Persister interface
-var _ coordinator.Persister = (*MockPersister)(nil)
+// Verify mockPersister implements Persister interface
+var _ coordinator.Persister = (*mockPersister)(nil)

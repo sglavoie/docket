@@ -6,7 +6,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func WithPersister(p coordinator.Persister) AppOption {
+// withPersister sets a custom Persister for the AppModel. It exists only for
+// tests that need a mock implementation, which is why it lives here rather than
+// beside the other AppOptions in app_init.go.
+func withPersister(p coordinator.Persister) AppOption {
 	return func(app *AppModel) {
 		app.persister = p
 	}

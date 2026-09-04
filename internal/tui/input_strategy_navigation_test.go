@@ -10,7 +10,7 @@ import (
 
 func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	runtime := newTestConfig()
-	app, err := NewAppModel(runtime, nil, WithPersister(NewMockPersister()))
+	app, err := NewAppModel(runtime, nil, withPersister(newMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestScrollChordResolvesEveryAnchor(t *testing.T) {
 
 func TestRemovedFinderKeyDoesNotEscapeChildRoutes(t *testing.T) {
 	runtime := newTestConfig()
-	app, err := NewAppModel(runtime, nil, WithPersister(NewMockPersister()))
+	app, err := NewAppModel(runtime, nil, withPersister(newMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}

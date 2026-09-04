@@ -87,14 +87,3 @@ func (v *BaseView) ContentWidth() int {
 func (v *BaseView) ContentHeight() int {
 	return max(v.height-2, 0)
 }
-
-// WrapCursor wraps a cursor position within list bounds.
-// delta is typically 1 (down) or -1 (up).
-// CycleTab advances a tab index by delta with wrapping.
-// delta is typically +1 (right) or -1 (left).
-func CycleTab(current *int, count, delta int) {
-	if count <= 1 {
-		return
-	}
-	*current = ((*current+delta)%count + count) % count
-}

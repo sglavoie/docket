@@ -49,7 +49,7 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 		return OperationDescriptor{}, err
 	}
 	descriptor.Aliases = normalizeOperationAliases(descriptor.Label, descriptor.Aliases)
-	descriptor.RequiredCapabilities = CloneCapabilitySet(descriptor.RequiredCapabilities)
+	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor, nil
 }
 
@@ -64,11 +64,11 @@ func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) e
 
 func cloneOperationDescriptor(descriptor OperationDescriptor) OperationDescriptor {
 	descriptor.Aliases = append([]string(nil), descriptor.Aliases...)
-	descriptor.RequiredCapabilities = CloneCapabilitySet(descriptor.RequiredCapabilities)
+	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor
 }
 
-func CloneCapabilitySet(capabilities CapabilitySet) CapabilitySet {
+func cloneCapabilitySet(capabilities CapabilitySet) CapabilitySet {
 	if len(capabilities) == 0 {
 		return nil
 	}

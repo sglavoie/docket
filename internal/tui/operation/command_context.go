@@ -198,7 +198,7 @@ type CommandContext struct {
 // copies rather than with any one sheet, because every sheet that freezes a
 // context needs the same copy.
 func CloneCommandContext(context CommandContext) CommandContext {
-	context.Capabilities = CloneCapabilitySet(context.Capabilities)
+	context.Capabilities = cloneCapabilitySet(context.Capabilities)
 	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
 	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
 	context.Selection.EntityIdentities = append(

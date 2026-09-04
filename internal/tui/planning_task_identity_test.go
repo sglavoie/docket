@@ -63,7 +63,7 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 		{ProjectID: beta.ID, TaskID: betaToday.ID},
 	})
 
-	persister := NewMockPersister()
+	persister := newMockPersister()
 	persister.Projects[alpha.ID] = alpha
 	persister.Projects[beta.ID] = beta
 	shell := &AppModel{

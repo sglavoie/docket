@@ -99,15 +99,6 @@ func ProjectNoteEntity(projectID, filename string) EntityIdentity {
 	})
 }
 
-// WorkspaceTagEntity returns the identity of one tag aggregated across the
-// workspace.
-// ProjectTagEntity returns the identity of one tag inside one project.
-// ScopeEntity returns the identity of one context scope, reusing the stable
-// scope catalog ID the Scope Hub already lists rows under.
-// ModeEntity returns the identity of one Outliner catalog mode.
-// ToolEntity returns the identity of one promoted or secondary tool.
-// OperationEntity returns the identity of one registered operation, letting an
-// operation target another operation.
 // EntityForTaskIdentity converts a task identity into the typed operation
 // identity. It is Task's inverse and a free function rather than a method
 // because taskref owns TaskIdentity, so only that package may declare on it.

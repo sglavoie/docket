@@ -1212,3 +1212,163 @@ created, `syntheticKey`/`syntheticSpecialKey`/`syntheticCtrlKey` in
 work at all: every one of them already keeps its shared fixtures in a
 `*_test_helpers_test.go`, because each extraction session wrote that file when it
 homed its tests.
+
+## Export minimisation sweep (Session 3.2)
+
+The forced-export count at the Phase 1 boundary, re-measured against
+`context.md`'s **631** rather than accumulated from the sessions that spent it,
+is **494**. The running total those sessions recorded is 510; the two numbers
+are on different bases and both are reported below, because the reconciliation
+is the interesting part.
+
+A name is counted as forced by the split when all three hold: it is exported
+today in a package under `internal/tui/`, its lower-first spelling was an
+unexported package-scope declaration in the pre-split tree at `3d3e7d2d`, and
+its exported spelling did not already exist there. Test entry points
+(`Test*`/`Benchmark*`/`Example*`/`Fuzz*`) are excluded, and so is the root
+shell, which exports nothing the split forced. Rebuild the two baseline name
+sets from the archived tree rather than from `git show`, so the whole package is
+parsed at once:
+
+```sh
+mkdir -p /tmp/ttbase && git archive 3d3e7d2d internal/tui | tar -x -C /tmp/ttbase
+```
+
+The oracle is name-based on purpose — it needs no commit-by-commit attribution —
+and it has exactly two blind spots, which are also the whole delta: a
+declaration **renamed** on the way into its package looks pre-existing or looks
+new depending on the spelling it landed on, and **members** (struct fields and
+methods) are invisible to it, where several sessions charged their own rows for
+some. Neither is worth correcting: the budget is over declarations, and the
+sessions that counted members say so in their prose above.
+
+| package | recorded by its session | re-measured | delta |
+| --- | --- | --- | --- |
+| `operation` | 159 | 159 | 0 |
+| `query` | 62 | 56 | -6 |
+| `grammar` | 58 | 50 | -8 |
+| `chrome` | 51 | 51 | 0 |
+| `notes` | 37 | 36 | -1 |
+| `projecthub` | 30 | 32 | +2 |
+| `listsurface` | 23 | 22 | -1 |
+| `lens` | 23 | 21 | -2 |
+| `theme` | 18 | 18 | 0 |
+| `pulse` | 12 | 9 | -3 |
+| `status` | 10 | 10 | 0 |
+| `textfit` | 9 | 9 | 0 |
+| `route` | 9 | 9 | 0 |
+| `coordinator` | 3 | 7 | +4 |
+| `help` | 3 | 3 | 0 |
+| `taskref` | 2 | 1 | -1 |
+| `conflict` | 1 | 1 | 0 |
+| `presentation` `taskdetail` `taskform` `keymap` | 0 | 0 | 0 |
+| **total** | **510** | **494** | **-16** |
+
+`operation`'s zero is two offsetting facts rather than agreement: it measured
+160 before this session and the withdrawal below took it to 159. Fifteen of the
+sixteen remaining delta are basis drift, and one is that withdrawal. The number
+that matters against the budget is that 494 of 631 projected forced exports were
+actually spent, 137 under, with `taskdetail` and `taskform` accounting for 34 of
+the saving by spending none of their projected 6 and 28, and the rest coming
+from extractions that moved a whole cluster together instead of across a
+boundary.
+
+### Every export with exactly one consumer package
+
+760 exported declarations in the sub-packages are read by exactly one package
+outside their own; 383 of those were forced by the split. The recipe's step 3
+asks each one to move into that consumer or be justified. The split is:
+
+| single consumer | exports | forced by the split |
+| --- | --- | --- |
+| the root shell | 683 | 351 |
+| a sibling sub-package | 77 | 32 |
+
+The 351 with the root shell as their only consumer all stay, for one reason:
+moving them back is undoing the extraction. The shell is the 206-file god-struct
+residue Phase 2 exists to break up, and it is the only consumer of `operation`'s
+128 descriptor constants, `query`'s 51 filter-clause builders, `notes`' 33
+operation names and `projecthub`'s 32 because it is still the only place an
+`OutlinerModel` or an `AppModel` lives. Each of those gains its second consumer
+when Phase 2 splits the struct that reads it, and none of them can be evaluated
+against step 3 before then.
+
+The 32 forced exports whose only consumer is a sibling are the real question,
+and 23 of them are answered by the tree rather than by judgement: they have a
+production reader inside their own package, so "move it into the consumer" is
+duplication or a layer inversion, not a move. Two more are read by their own
+package's tests. The remaining seven have no in-package reader at all, and each
+is kept deliberately:
+
+| export | sole consumer | why it stays |
+| --- | --- | --- |
+| `chrome.RenderWrappingTabBar` | `help` | a thin exported door onto `renderWrappingTabBarColored`, which stays in `chrome`; moving the door strands the renderer |
+| `chrome.RenderEmptyState` | `notes` | declared in `fullscreen_layout_helpers.go` and named by a sibling helper's doc; the fullscreen layout family stays whole |
+| `chrome.TruncateAndPad` | `notes` | the card primitive, wrapping `textfit.TruncateIntentional` under the audited-clip rule; `chrome` owns cards and layout constants |
+| `chrome.RenderFormLabelShared` | `projecthub` | one family in one file with `RenderFormLabelWithWidth`; splitting them puts the same label rule in two packages |
+| `chrome.RenderFormLabelWithWidth` | `taskform` | the other half of that family |
+| `status.CursorFlashTimeout` | `listsurface` | moving it replaces one crossing name with three — `TickCmd`, the duration and the clear message — against CLAUDE.md's rule that app timers go through `status.TickCmd` |
+| `theme.WorkflowStateGroupAccentStyle` | `lens` | reads the package-level `lensAccent*Style` vars `rebuildLensAccentStyles` rewrites on `ApplyTheme`; moving it duplicates that state or makes `lens` call back up on every rebuild |
+
+`listsurface.RenderListSurfacePreview` is in the 23 rather than here, and would
+have stayed regardless: CLAUDE.md names it as the single painter a preview pane
+goes through, "never a per-surface copy of either".
+
+### What the sweep actually withdrew
+
+Rerunning the withdrawability oracle — no consumer outside the declaring
+package, not named by that package's own exported signature surface, not a live
+enum member — leaves 193 candidates across the sub-packages and **none** forced
+by the split. The one that was, `operation.CloneCapabilitySet`, is now
+`cloneCapabilitySet` (`operation_registry_validation.go`, with call sites in
+`operation_executor.go` and `command_context.go`). The 193 are pre-existing
+public vocabulary the split never touched — 146 of them `theme` style variables
+— which Session 2.2 already ruled is not a Phase 1 exit condition.
+
+One export moved instead of being withdrawn: `listsurface.CycleTab` is now
+`cycleTab` in `internal/tui/help/help_view.go`, its only caller. It was exported
+before the split, so it never counted against the 631; the move is step 3 paying
+out on the cross-package surface rather than on the budget.
+
+The eight exported test-only helpers named in the session brief are gone as
+exported symbols. `WithPersister`, `MockPersister` and `NewMockPersister` are
+`withPersister`, `mockPersister` and `newMockPersister`; the six
+`EntityIdentity` constructors are `workspaceTagEntity`, `projectTagEntity`,
+`scopeEntity`, `modeEntity`, `toolEntity` and `operationEntity`. All nine are
+unexported rather than deleted, because each has live callers: `mockPersister`
+is read by six shell test files and the entity constructors by sixteen call
+sites in `operation_foundation_test.go`. Unexporting is what the deliverable
+asks for — the exported symbol ceases to exist — and it is the only option
+`deadcode` leaves, since deleting a helper a test reads breaks the build and
+exporting one only a test reads makes it dead in the production graph.
+
+Thirty further exported names in the shell's `_test.go` files have no consumer
+outside the package and are deliberately left alone: the uitest harness — 14
+`Fixture*`, 8 `UITestAction*`, `BuiltinFixtureNames`, `CapabilityHarness`,
+`LoadScenario`, `ParseScenario`, `RunScenarioFixture`, `NewUITestDriver`,
+`NewCopiedWorkspaceDriver` and `NewFixtureDriver`. `context.md` decides that
+one: do not promote the harness to a non-test package. None was forced by the
+split.
+
+### Orphaned doc comments
+
+The expansion note flagged two production doc comments describing a symbol their
+file does not declare. Generalising the check over the whole tree — compare the
+identifier a doc comment's first line names against the declaration it is
+attached to, and report only when that identifier is declared somewhere in the
+repo — found four more, all residue from an earlier extraction moving or
+deleting the symbol:
+
+| site | claimed |
+| --- | --- |
+| `internal/tui/app_init.go` | `WithPersister`, above `NewAppModel` |
+| `internal/tui/operation/operation_entity.go` | the six entity constructors, above `EntityForTaskIdentity` |
+| `internal/tui/listsurface/base_view.go` | `WrapCursor`, which exists nowhere in the repo, above `CycleTab` |
+| `internal/tui/help/help_view.go` | `SetSize`, above `innerWidth` |
+| `internal/tui/query/picker_items.go` | `TagInfo`, above `(TagInfo).FilterText` |
+
+All are repaired: the doc either moved with its symbol into the test helper file
+that now declares it, moved back above the declaration it describes, or was
+deleted where the symbol was. Expect this residue from any extraction that
+leaves a doc block behind, and expect `deadcode` not to catch it — a comment is
+not a declaration.

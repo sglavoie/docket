@@ -5,7 +5,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// TagInfo implements PickerItem for tag selection.
 // FilterText returns the tag name for filtering.
 func (t TagInfo) FilterText() string {
 	return t.Name
