@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -277,7 +278,7 @@ func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 	if hub.actions == nil {
 		t.Fatal("Space did not freeze the project action target")
 	}
-	if !hub.actions.surface.SetCursorToID(ListItemID("project-hub-action:" + string(operationScopeArchiveProject))) {
+	if !hub.actions.surface.SetCursorToID(ListItemID("project-hub-action:" + string(operation.OperationScopeArchiveProject))) {
 		t.Fatal("archive action was not selectable")
 	}
 

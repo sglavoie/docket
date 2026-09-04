@@ -13,7 +13,7 @@ func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
 	newRegistry := func(t *testing.T) *operation.OperationRegistry {
 		t.Helper()
 		registry := operation.NewOperationRegistry()
-		for _, descriptor := range coreInputOperationDescriptors()[:2] {
+		for _, descriptor := range operation.CoreInputOperationDescriptors()[:2] {
 			if err := registry.Register(descriptor); err != nil {
 				t.Fatal(err)
 			}
@@ -56,7 +56,7 @@ const chordTestSetPriority operation.OperationID = "test.task.set-priority"
 func chordTestRegistry(t *testing.T) *operation.OperationRegistry {
 	t.Helper()
 	registry := operation.NewOperationRegistry()
-	for _, descriptor := range coreInputOperationDescriptors() {
+	for _, descriptor := range operation.CoreInputOperationDescriptors() {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
@@ -68,7 +68,7 @@ func chordTestRegistry(t *testing.T) *operation.OperationRegistry {
 		TargetSource:         operation.OperationTargetCurrentTask,
 		TargetCardinality:    operation.TargetCardinalityOne,
 		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-		Applicability:        coreOutlinerApplicability,
+		Applicability:        operation.CoreOutlinerApplicability,
 		Risk:                 operation.OperationRiskMutation,
 		ValueProviderID:      operation.ValueProviderPriority,
 	}); err != nil {

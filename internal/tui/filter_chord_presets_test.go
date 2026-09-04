@@ -173,7 +173,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	filter.DueDate = query.DueDateToday
 
 	result := app.executeFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterDue},
 		Value:      "?deferred",
 	})
 	if result.Err != nil {
@@ -187,7 +187,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	}
 
 	result = app.executeFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterDue},
 		Value:      "@overdue",
 	})
 	if result.Err != nil {

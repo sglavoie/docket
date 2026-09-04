@@ -240,7 +240,7 @@ func TestHeaderTargetCoreOperationsRefuseInsteadOfNoOp(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	for id, classification := range headerTargetAudit {
-		if classification != "reject" || !coreInputOperationRequiresTask(id) {
+		if classification != "reject" || !operation.CoreInputOperationRequiresTask(id) {
 			continue
 		}
 		descriptor, ok := registry.Descriptor(id)

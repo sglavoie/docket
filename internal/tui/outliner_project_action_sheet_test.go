@@ -55,9 +55,9 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 
 	ids := ProjectActionSheetOperationIDs(registry, context)
 	wantIDs := []operation.OperationID{
-		operationScopeRenameProject,
-		operationScopeArchiveProject,
-		operationProjectDelete,
+		operation.OperationScopeRenameProject,
+		operation.OperationScopeArchiveProject,
+		operation.OperationProjectDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
 		t.Fatalf("project sheet IDs = %v, want exact three %v", ids, wantIDs)
@@ -77,9 +77,9 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	// Danger holds exactly the two acts that end the project's presence, so the
 	// list a user arrows through looking for Edit never puts one under the cursor.
 	for id, want := range map[operation.OperationID]ListCategoryID{
-		operationScopeRenameProject:  outlinerProjectActionCategoryProject,
-		operationScopeArchiveProject: outlinerProjectActionCategoryDanger,
-		operationProjectDelete:       outlinerProjectActionCategoryDanger,
+		operation.OperationScopeRenameProject:  outlinerProjectActionCategoryProject,
+		operation.OperationScopeArchiveProject: outlinerProjectActionCategoryDanger,
+		operation.OperationProjectDelete:       outlinerProjectActionCategoryDanger,
 	} {
 		descriptor, _ := registry.Descriptor(id)
 		if got := outlinerProjectActionCategory(descriptor); got != want {
@@ -89,12 +89,12 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	// The three direct-only manifest entries carry their own keys — `#`, `*` and
 	// Space itself — so listing any would be the second path one-path forbids.
 	for _, excluded := range []operation.OperationID{
-		operationProjectSetTags,
-		operationProjectActions,
-		operationScopePinProject,
-		operationProjectOpen,
-		operationScopeOpenProjectNote,
-		operationScopeRestoreProject,
+		operation.OperationProjectSetTags,
+		operation.OperationProjectActions,
+		operation.OperationScopePinProject,
+		operation.OperationProjectOpen,
+		operation.OperationScopeOpenProjectNote,
+		operation.OperationScopeRestoreProject,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("project sheet offers %s, which reaches the project another way", excluded)
@@ -111,7 +111,7 @@ func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 	project.Archived = true
 
 	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
-	wantIDs := []operation.OperationID{operationScopeRenameProject, operationProjectDelete}
+	wantIDs := []operation.OperationID{operation.OperationScopeRenameProject, operation.OperationProjectDelete}
 	if !slices.Equal(ids, wantIDs) {
 		t.Fatalf("archived project sheet IDs = %v, want %v", ids, wantIDs)
 	}
@@ -132,13 +132,13 @@ func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {
 	context.CurrentEntity = operation.CommandContextCurrentEntity(context.Entity)
 
 	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
-	if slices.Contains(ids, operationProjectDelete) {
+	if slices.Contains(ids, operation.OperationProjectDelete) {
 		t.Errorf("project sheet offers Delete project for the system Unfiled project: %v", ids)
 	}
-	if slices.Contains(ids, operationScopeArchiveProject) {
+	if slices.Contains(ids, operation.OperationScopeArchiveProject) {
 		t.Errorf("project sheet offers Archive project for the system Unfiled project: %v", ids)
 	}
-	if !slices.Contains(ids, operationScopeRenameProject) {
+	if !slices.Contains(ids, operation.OperationScopeRenameProject) {
 		t.Errorf("project sheet withdrew Edit project from the system Unfiled project: %v", ids)
 	}
 }
@@ -178,7 +178,7 @@ func TestOutlinerProjectOperationManifestIsRegisteredApplicableAndExecutable(t *
 		}
 		// Raising the sheet is the whole of what Space does, so it is the one
 		// entry whose evidence is the overlay rather than a message.
-		if entry.ID == operationProjectActions {
+		if entry.ID == operation.OperationProjectActions {
 			if app.contextActionSheet == nil {
 				t.Errorf("%s executed without raising the project sheet", entry.ID)
 			}

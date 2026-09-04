@@ -12,8 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-const operationTaskDelete operation.OperationID = "tui.task.delete"
-
 // executeTaskDeleteOperation turns the frozen action-sheet targets into the one
 // canonical delete request. The registry never mutates task data: confirmation
 // and the atomic transaction stay in handleTaskDeleteRequested/confirmTaskDelete,

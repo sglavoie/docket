@@ -8,13 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// operationProjectActions is the Outliner's Space on a project group header. It
-// lives in the tui.project.* namespace because it names a project, and apart
-// from the Hub's own sheet operation because the two surfaces offer different
-// rows: the Hub reaches its project keys directly and menus only the lifecycle
-// pair, while here the whole administration set is the menu.
-const operationProjectActions operation.OperationID = "tui.project.actions"
-
 // The Outliner's project sheet groups into two categories only. Project holds
 // the reversible edits and Danger the two acts that end the project's presence
 // in the workspace, so the destructive pair is never mixed into the list a user
@@ -50,12 +43,12 @@ var outlinerProjectActionCategories = []ListCategory{
 // therefore one-way from here — the Hub is where an archived project comes back.
 func outlinerProjectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation},
-		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
-		{ID: operationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operation.OperationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation},
+		{ID: operation.OperationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operation.OperationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 	}
 }
 
@@ -80,7 +73,7 @@ func outlinerProjectOperationManifestEntryFor(id operation.OperationID) (operati
 // is.
 func projectActionSheetOperationDescriptor() operation.OperationDescriptor {
 	return operation.OperationDescriptor{
-		ID:                   operationProjectActions,
+		ID:                   operation.OperationProjectActions,
 		Label:                "Project Actions",
 		Description:          "Open the project action menu",
 		Aliases:              []string{"project action sheet", "project menu"},
@@ -90,7 +83,7 @@ func projectActionSheetOperationDescriptor() operation.OperationDescriptor {
 		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Risk:                 operation.OperationRiskReadOnly,
 		Applicability: func(ctx operation.CommandContext) bool {
-			return coreOutlinerApplicability(ctx) &&
+			return operation.CoreOutlinerApplicability(ctx) &&
 				!ctx.Selection.Visual &&
 				!ctx.Entity.HasChecklistCursor &&
 				ctx.Entity.HasProjectHeaderCursor

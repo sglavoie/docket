@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -418,7 +419,7 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	// The two filter families are cleared separately for the same reason fx and
 	// Fx are two keys: clearing one must never clear the other.
 	m.replaceFilterClauses(query.FilterQueryTaskFields(), nil)
-	m.replaceFilterClauses(filterOperationFields(operationFilterProjectClear), nil)
+	m.replaceFilterClauses(filterOperationFields(operation.OperationFilterProjectClear), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()
 	// Selecting the mode is the last write and owns the rebuild, so the rows are

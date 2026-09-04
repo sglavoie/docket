@@ -39,15 +39,15 @@ func ProjectHubInputStrategy() operation.InputStrategy {
 	return operation.InputStrategy{
 		ID: operation.InputStrategyProjectHub,
 		Bindings: []operation.OperationKeyBinding{
-			{OperationID: operationProjectOpen, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 2, FooterLabel: "open"},
+			{OperationID: operation.OperationProjectOpen, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 2, FooterLabel: "open"},
 			{OperationID: operationProjectHubActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions"},
 			{OperationID: operationScopeCreateProject, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 6, FooterLabel: "new"},
 			{OperationID: operationProjectHubToggleSelection, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 7, FooterLabel: "select"},
-			{OperationID: operationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 9, FooterLabel: "edit"},
+			{OperationID: operation.OperationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 9, FooterLabel: "edit"},
 			{OperationID: operationProjectHubSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 12, FooterLabel: "search"},
-			{OperationID: operationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 14, FooterLabel: "project tags"},
-			{OperationID: operationScopePinProject, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 15, FooterLabel: "pin"},
-			{OperationID: operationScopeOpenProjectNote, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N", FooterRank: 16, FooterLabel: "notes"},
+			{OperationID: operation.OperationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 14, FooterLabel: "project tags"},
+			{OperationID: operation.OperationScopePinProject, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 15, FooterLabel: "pin"},
+			{OperationID: operation.OperationScopeOpenProjectNote, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N", FooterRank: 16, FooterLabel: "notes"},
 			{OperationID: operationProjectHubSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A", FooterRank: 17, FooterLabel: "select all"},
 			{OperationID: operationProjectHubTaskFilter, Keys: []string{"ctrl+t"}, DisplayKey: "Ctrl+T"},
 			// Ctrl+F/B page the preview pane rather than the list: Ctrl+D/U already own
@@ -86,12 +86,12 @@ func ProjectHubInputStrategy() operation.InputStrategy {
 // answering what it answered while they were absent.
 func projectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: operationProjectOpen, Label: "Open project", Aliases: []string{"focus project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationProjectOpen, Label: "Open project", Aliases: []string{"focus project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationScopeCreateProject, Label: "New project", Aliases: []string{"create project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeOpenProjectNote, Label: "Open project notes", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationScopeOpenProjectNote, Label: "Open project notes", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectHubSearch, Label: "Search projects", Aliases: []string{"filter the project list"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectHubToggleSelection, Label: "Select project", Aliases: []string{"toggle project selection"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectHubSelectAll, Label: "Select every matching project", Aliases: []string{"select all projects"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
@@ -103,8 +103,8 @@ func projectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkUnpark, Label: "Unpark projects", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
-		{ID: operationScopeRestoreProject, Label: "Unarchive project", Aliases: []string{"restore archived project"}, Category: projectHubActionCategoryRecovery, Risk: operation.OperationRiskMutation},
-		{ID: operationScopeArchiveProject, Label: "Archive project", Category: projectHubActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operation.OperationScopeRestoreProject, Label: "Unarchive project", Aliases: []string{"restore archived project"}, Category: projectHubActionCategoryRecovery, Risk: operation.OperationRiskMutation},
+		{ID: operation.OperationScopeArchiveProject, Label: "Archive project", Category: projectHubActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 	}
 }
 

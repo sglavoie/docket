@@ -97,7 +97,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	wantIDs := []operation.OperationID{
-		operationTaskDelete,
+		operation.OperationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
 		t.Fatalf("action sheet IDs = %v, want exactly Delete %v", ids, wantIDs)
@@ -117,13 +117,13 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// concatenated, so only the two sheets asking their own manifest keeps a
 	// project row out of the task menu.
 	for _, excluded := range []operation.OperationID{
-		operationProjectActions,
-		operationProjectDelete,
-		operationScopeRenameProject,
-		operationScopePinProject,
-		operationScopeArchiveProject,
-		operationScopeRestoreProject,
-		operationProjectSetTags,
+		operation.OperationProjectActions,
+		operation.OperationProjectDelete,
+		operation.OperationScopeRenameProject,
+		operation.OperationScopePinProject,
+		operation.OperationScopeArchiveProject,
+		operation.OperationScopeRestoreProject,
+		operation.OperationProjectSetTags,
 		operation.OperationCoreActions,
 		operation.OperationCoreCapture,
 		operation.OperationCoreMultiSelect,
@@ -132,7 +132,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operation.OperationTaskSetPriority,
 		operation.OperationTaskSetDueDate,
 		operation.OperationTaskSetTags,
-		operationTaskTogglePin,
+		operation.OperationTaskTogglePin,
 		operation.OperationTaskSetParent,
 		operation.OperationTaskAdoptChildren,
 		operation.OperationTaskIndent,
@@ -141,12 +141,12 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operation.OperationCoreEditDescription,
 		operation.OperationCoreExternalEditor,
 		operation.OperationCorePeek,
-		operationTaskCopyTitle,
-		operationTaskCopyDetails,
-		operationTaskCopyTitleDescription,
-		operationTaskNewChild,
-		operationTaskComments,
-		operationTaskAttachments,
+		operation.OperationTaskCopyTitle,
+		operation.OperationTaskCopyDetails,
+		operation.OperationTaskCopyTitleDescription,
+		operation.OperationTaskNewChild,
+		operation.OperationTaskComments,
+		operation.OperationTaskAttachments,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("action sheet exposed non-contextual %s: %v", excluded, ids)
@@ -184,7 +184,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
 	}
 	matches := sheet.surface.Matches()
-	wantAliasMatches := []ListItemID{ListItemID("task-action:" + string(operationTaskDelete))}
+	wantAliasMatches := []ListItemID{ListItemID("task-action:" + string(operation.OperationTaskDelete))}
 	gotMatches := make([]ListItemID, 0, len(matches))
 	for _, match := range matches {
 		gotMatches = append(gotMatches, match.Item.ID)
@@ -200,7 +200,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 't', Text: "t"})
 	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	matches = sheet.surface.Matches()
-	wantDelete := ListItemID("task-action:" + string(operationTaskDelete))
+	wantDelete := ListItemID("task-action:" + string(operation.OperationTaskDelete))
 	if len(matches) != 1 || matches[0].Item.ID != wantDelete {
 		t.Fatalf("search results = %+v, want only %s", matches, wantDelete)
 	}
@@ -288,7 +288,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Equal(ids, []operation.OperationID{operationTaskDelete}) {
+	if !slices.Equal(ids, []operation.OperationID{operation.OperationTaskDelete}) {
 		t.Fatalf("bulk action sheet IDs = %v, want Delete", ids)
 	}
 	for _, excluded := range []operation.OperationID{
@@ -303,8 +303,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operation.OperationTaskOutdent,
 		operation.OperationCoreEdit,
 		operation.OperationCorePeek,
-		operationTaskCopyTitle,
-		operationTaskNewChild,
+		operation.OperationTaskCopyTitle,
+		operation.OperationTaskNewChild,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("bulk action sheet exposed non-common operation %s: %v", excluded, ids)
@@ -322,7 +322,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	if !sheet.surface.SetCursorToID("task-action:" + ListItemID(operationTaskDelete)) {
+	if !sheet.surface.SetCursorToID("task-action:" + ListItemID(operation.OperationTaskDelete)) {
 		t.Fatal("delete action is missing from the bulk sheet")
 	}
 	_, _, result := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -416,7 +416,7 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 		t.Fatal("bulk action sheet repeats direct-only set-due-date")
 	}
 	if !sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operationTaskDelete)),
+		ListItemID("task-action:" + string(operation.OperationTaskDelete)),
 	) {
 		t.Fatal("bulk action sheet is missing delete")
 	}

@@ -73,8 +73,8 @@ func TestSectionHeaderClaimsNeitherArmOfASharedKey(t *testing.T) {
 	header.CurrentEntity = operation.CommandContextCurrentEntity(header.Entity)
 	header.ScopeProjectIDs = []string{"only-project"}
 	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "*", header)
-	if !ok || binding.OperationID != operationScopePinProject {
-		t.Fatalf("* on a project header = %s available=%t, want %s", binding.OperationID, ok, operationScopePinProject)
+	if !ok || binding.OperationID != operation.OperationScopePinProject {
+		t.Fatalf("* on a project header = %s available=%t, want %s", binding.OperationID, ok, operation.OperationScopePinProject)
 	}
 	if binding.FooterLabel != "project pin" {
 		t.Errorf("project header * footer label = %q, want %q", binding.FooterLabel, "project pin")

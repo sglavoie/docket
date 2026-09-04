@@ -107,7 +107,7 @@ func TestViewMenuCoversEveryOutlinerModeInCatalogOrder(t *testing.T) {
 	modes := make([]chrome.OutlinerModeID, 0, len(chrome.OutlinerModes))
 	checked := make([]chrome.OutlinerModeID, 0, 1)
 	for _, entry := range view.Entries {
-		mode, ok := gotoModeOperations[entry.OperationID]
+		mode, ok := operation.GotoModeOperations[entry.OperationID]
 		if !ok {
 			continue
 		}

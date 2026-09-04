@@ -13,27 +13,15 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// The F chord owns the population facets. They are separate operations from the
-// f chord's row facets because they decide which projects load at all: applying
-// one needs a reload, not a rebuild.
-const (
-	operationFilterProjectTags     operation.OperationID = "tui.filter.project-tags"
-	operationFilterShowParked      operation.OperationID = "tui.filter.show-parked"
-	operationFilterOnlyParked      operation.OperationID = "tui.filter.only-parked"
-	operationFilterIncludeArchived operation.OperationID = "tui.filter.include-archived"
-	operationFilterOnlyArchived    operation.OperationID = "tui.filter.only-archived"
-	operationFilterProjectClear    operation.OperationID = "tui.filter.project-clear"
-)
-
 func projectFilterOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := filterOperationDescriptor
 	return []operation.OperationDescriptor{
-		descriptor(operationFilterProjectTags, "Filter Projects by Tag", operation.ValueProviderFilterProjectTags, "project tag filter"),
-		descriptor(operationFilterShowParked, "Include Parked Projects", "", "parked projects"),
-		descriptor(operationFilterOnlyParked, "Only Parked Projects", "", "isolate parked projects"),
-		descriptor(operationFilterIncludeArchived, "Include Archived Projects", "", "archived projects"),
-		descriptor(operationFilterOnlyArchived, "Only Archived Projects", "", "isolate archived projects"),
-		descriptor(operationFilterProjectClear, "Clear Project Filters", "", "reset project filters"),
+		descriptor(operation.OperationFilterProjectTags, "Filter Projects by Tag", operation.ValueProviderFilterProjectTags, "project tag filter"),
+		descriptor(operation.OperationFilterShowParked, "Include Parked Projects", "", "parked projects"),
+		descriptor(operation.OperationFilterOnlyParked, "Only Parked Projects", "", "isolate parked projects"),
+		descriptor(operation.OperationFilterIncludeArchived, "Include Archived Projects", "", "archived projects"),
+		descriptor(operation.OperationFilterOnlyArchived, "Only Archived Projects", "", "isolate archived projects"),
+		descriptor(operation.OperationFilterProjectClear, "Clear Project Filters", "", "reset project filters"),
 	}
 }
 

@@ -313,7 +313,7 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 
 	appModel := &AppModel{crossOutliner: outliner}
 	result := appModel.executeFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterPriority},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterPriority},
 		Value:      1,
 	})
 	if result.Err != nil {

@@ -8,7 +8,7 @@ import "github.com/sglavoie/tt/internal/tui/operation"
 func taskOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
 		{
-			ID:       operationTaskDelete,
+			ID:       operation.OperationTaskDelete,
 			Label:    "Delete",
 			Aliases:  []string{"remove task", "destroy task", "delete subtree"},
 			Category: taskActionCategoryDanger,
@@ -23,19 +23,19 @@ func taskOperationManifest() []operation.OperationManifestEntry {
 // entry returned by taskOperationManifest.
 func taskDirectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: operationTaskAttachments, Label: "Attachments", Aliases: []string{"add attachment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationTaskComments, Label: "Comments", Aliases: []string{"add comment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskAttachments, Label: "Attachments", Aliases: []string{"add attachment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskComments, Label: "Comments", Aliases: []string{"add comment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: operation.ValueProviderState, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: operation.ValueProviderPriority, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskSetDueDate, Label: "Set Due or Defer", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: operation.ValueProviderDate, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
-		{ID: operationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operation.OperationTaskSetParent, Label: "Set Parent", Aliases: []string{"reparent", "move under", "detach from parent"}, Provider: operation.ValueProviderParent, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationTaskAdoptChildren, Label: "Adopt Children", Aliases: []string{"adopt", "add children", "nest tasks under this one"}, Provider: operation.ValueProviderChild, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Bulk, because the preselection is tri-state rather than a checked list:
@@ -47,7 +47,7 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskMoveToProject, Label: "Move to Project", Aliases: []string{"move project", "change project", "relocate task"}, Provider: operation.ValueProviderProject, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskIndent, Label: "Indent", Aliases: []string{"nest under previous task"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationTaskOutdent, Label: "Outdent", Aliases: []string{"move to parent level"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationTaskNewChild, Label: "New Child Task", Aliases: []string{"create child task", "add child", "new subtask"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskNewChild, Label: "New Child Task", Aliases: []string{"create child task", "add child", "new subtask"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 	}
 }
 

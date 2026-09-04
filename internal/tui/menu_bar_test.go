@@ -204,7 +204,7 @@ func TestResolveMenuEntriesRebuildsOnEveryCall(t *testing.T) {
 		t.Fatalf("view menu changed shape between resolutions: %d then %d", len(inbox.Entries), len(recent.Entries))
 	}
 	for index, entry := range inbox.Entries {
-		mode, ok := gotoModeOperations[entry.OperationID]
+		mode, ok := operation.GotoModeOperations[entry.OperationID]
 		if !ok {
 			continue
 		}

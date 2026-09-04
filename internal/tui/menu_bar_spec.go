@@ -85,19 +85,19 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			Title: "Task",
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreCapture},
-				{OperationID: operationTaskNewChild, Label: "Capture Child"},
+				{OperationID: operation.OperationTaskNewChild, Label: "Capture Child"},
 				{OperationID: operation.OperationCoreEdit, Label: "Edit"},
 				{OperationID: operation.OperationCoreEditDescription, Label: "Description"},
 				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor"},
 				{OperationID: operation.OperationCoreOutlineEditor},
 				menuSeparator(),
-				{OperationID: operationTaskAttachments},
-				{OperationID: operationTaskComments},
+				{OperationID: operation.OperationTaskAttachments},
+				{OperationID: operation.OperationTaskComments},
 				{OperationID: operation.OperationTaskReferences},
 				menuSeparator(),
-				{OperationID: operationTaskCopyTitle},
-				{OperationID: operationTaskCopyDetails},
-				{OperationID: operationTaskCopyTitleDescription},
+				{OperationID: operation.OperationTaskCopyTitle},
+				{OperationID: operation.OperationTaskCopyDetails},
+				{OperationID: operation.OperationTaskCopyTitleDescription},
 			},
 		},
 		{
@@ -129,24 +129,24 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			Title: "Find",
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreScopeSearch, Label: "Search"},
-				{OperationID: operationFilterPriority},
-				{OperationID: operationFilterStates},
-				{OperationID: operationFilterTags},
-				{OperationID: operationFilterContexts},
-				{OperationID: operationFilterReview},
-				{OperationID: operationFilterDue},
-				{OperationID: operationFilterCompletionAge},
-				{OperationID: operationFilterHierarchy},
-				{OperationID: operationFilterDependency},
-				{OperationID: operationFilterStale},
-				{OperationID: operationFilterPinned},
-				{OperationID: operationFilterClear},
-				{OperationID: operationFilterProjectTags},
-				{OperationID: operationFilterShowParked},
-				{OperationID: operationFilterOnlyParked},
-				{OperationID: operationFilterIncludeArchived},
-				{OperationID: operationFilterOnlyArchived},
-				{OperationID: operationFilterProjectClear},
+				{OperationID: operation.OperationFilterPriority},
+				{OperationID: operation.OperationFilterStates},
+				{OperationID: operation.OperationFilterTags},
+				{OperationID: operation.OperationFilterContexts},
+				{OperationID: operation.OperationFilterReview},
+				{OperationID: operation.OperationFilterDue},
+				{OperationID: operation.OperationFilterCompletionAge},
+				{OperationID: operation.OperationFilterHierarchy},
+				{OperationID: operation.OperationFilterDependency},
+				{OperationID: operation.OperationFilterStale},
+				{OperationID: operation.OperationFilterPinned},
+				{OperationID: operation.OperationFilterClear},
+				{OperationID: operation.OperationFilterProjectTags},
+				{OperationID: operation.OperationFilterShowParked},
+				{OperationID: operation.OperationFilterOnlyParked},
+				{OperationID: operation.OperationFilterIncludeArchived},
+				{OperationID: operation.OperationFilterOnlyArchived},
+				{OperationID: operation.OperationFilterProjectClear},
 				menuSeparator(),
 				{OperationID: operation.OperationCoreResetToLaunchView},
 			},
@@ -182,13 +182,13 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 	}
 	return append(entries,
 		menuSeparator(),
-		menuEntrySpec{OperationID: operationSortDueDate},
-		menuEntrySpec{OperationID: operationSortPriority},
-		menuEntrySpec{OperationID: operationSortCreatedAt},
-		menuEntrySpec{OperationID: operationSortUpdatedAt},
-		menuEntrySpec{OperationID: operationSortTitle},
-		menuEntrySpec{OperationID: operationSortClear},
-		menuEntrySpec{OperationID: operationSortRanked},
+		menuEntrySpec{OperationID: operation.OperationSortDueDate},
+		menuEntrySpec{OperationID: operation.OperationSortPriority},
+		menuEntrySpec{OperationID: operation.OperationSortCreatedAt},
+		menuEntrySpec{OperationID: operation.OperationSortUpdatedAt},
+		menuEntrySpec{OperationID: operation.OperationSortTitle},
+		menuEntrySpec{OperationID: operation.OperationSortClear},
+		menuEntrySpec{OperationID: operation.OperationSortRanked},
 		menuSeparator(),
 		// Clear All Folds is the bar's whole justification in one row: it is bound
 		// to nothing, so this menu is the only place it exists. A keyless operation
@@ -218,10 +218,10 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 }
 
 // gotoOperationForMode names the operation that selects one mode. The mode
-// catalog and the jump operations are already paired by gotoModeOperations, so
+// catalog and the jump operations are already paired by operation.GotoModeOperations, so
 // the menu reads that pairing rather than declaring a second one.
 func gotoOperationForMode(mode chrome.OutlinerModeID) operation.OperationID {
-	for id, target := range gotoModeOperations {
+	for id, target := range operation.GotoModeOperations {
 		if target == mode {
 			return id
 		}

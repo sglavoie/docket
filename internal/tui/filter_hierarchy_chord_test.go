@@ -67,7 +67,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 		t.Run(hierarchyFilterLabel(tc.value), func(t *testing.T) {
 			app := newHierarchyFilterTestApp(t)
 			result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-				ID:       operationFilterHierarchy,
+				ID:       operation.OperationFilterHierarchy,
 				Context:  simplifiedOperationContext(),
 				Value:    tc.value,
 				HasValue: true,
@@ -91,7 +91,7 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 	filter := &app.crossOutliner.filter.CommonFilterState
 
 	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterHierarchy,
+		ID:       operation.OperationFilterHierarchy,
 		Context:  simplifiedOperationContext(),
 		Value:    query.HierarchyLeaf,
 		HasValue: true,
@@ -116,7 +116,7 @@ func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
 	for _, value := range []query.HierarchyFilter{query.HierarchyAll, query.HierarchyLeaf + 1} {
 		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-			ID:       operationFilterHierarchy,
+			ID:       operation.OperationFilterHierarchy,
 			Context:  simplifiedOperationContext(),
 			Value:    value,
 			HasValue: true,

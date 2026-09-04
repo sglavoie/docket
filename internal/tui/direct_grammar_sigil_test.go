@@ -204,7 +204,7 @@ func TestReviewHasNoDirectKey(t *testing.T) {
 		if !strings.Contains(string(binding.OperationID), "review") {
 			continue
 		}
-		if binding.OperationID != operationFilterReview {
+		if binding.OperationID != operation.OperationFilterReview {
 			t.Errorf("%s is bound to %v; review has no setter key", binding.OperationID, binding.Paths())
 		}
 	}
@@ -213,8 +213,8 @@ func TestReviewHasNoDirectKey(t *testing.T) {
 		[]string{"f", "="},
 		simplifiedOperationContext(),
 	)
-	if resolution != operation.ChordTerminal || binding.OperationID != operationFilterReview {
-		t.Fatalf("f= = %s (%v), want %s terminal", binding.OperationID, resolution, operationFilterReview)
+	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationFilterReview {
+		t.Fatalf("f= = %s (%v), want %s terminal", binding.OperationID, resolution, operation.OperationFilterReview)
 	}
 }
 
@@ -278,8 +278,8 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 		sequence []string
 		want     operation.OperationID
 	}{
-		{sequence: []string{"f", "c"}, want: operationFilterContexts},
-		{sequence: []string{"f", "a"}, want: operationFilterCompletionAge},
+		{sequence: []string{"f", "c"}, want: operation.OperationFilterContexts},
+		{sequence: []string{"f", "a"}, want: operation.OperationFilterCompletionAge},
 	} {
 		binding, _, resolution := registry.InputBindingForSequence(
 			operation.InputStrategySimplified,

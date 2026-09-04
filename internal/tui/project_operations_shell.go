@@ -54,8 +54,8 @@ func (m *AppModel) registerProjectOperations() error {
 			SingleHandler:         m.executeProjectOperation,
 			DelegateValueProvider: true,
 			DelegateTransaction:   true,
-			DelegateConfirmation: descriptor.ID == operationScopeArchiveProject ||
-				descriptor.ID == operationProjectDelete,
+			DelegateConfirmation: descriptor.ID == operation.OperationScopeArchiveProject ||
+				descriptor.ID == operation.OperationProjectDelete,
 		}); err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func (m *AppModel) executeProjectOperation(
 	if err := m.projectOperationUnavailable(invocation.Descriptor, project); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if invocation.Descriptor.ID == operationProjectSetTags {
+	if invocation.Descriptor.ID == operation.OperationProjectSetTags {
 		return projectTagsOperationResult(invocation, project)
 	}
 	message := m.projectOperationMessage(invocation.Descriptor.ID, project)
@@ -129,19 +129,19 @@ func (m *AppModel) projectRequirementUnmet(
 //nolint:exhaustive // Only project operations are registered with this handler.
 func (m *AppModel) projectOperationMessage(id operation.OperationID, project *models.Project) tea.Msg {
 	switch id {
-	case operationProjectOpen:
+	case operation.OperationProjectOpen:
 		return ApplyProjectScopeMsg{ProjectID: project.ID}
-	case operationScopeRenameProject:
+	case operation.OperationScopeRenameProject:
 		return EditProjectMsg{Project: project}
-	case operationScopePinProject:
+	case operation.OperationScopePinProject:
 		return ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
-	case operationScopeArchiveProject:
+	case operation.OperationScopeArchiveProject:
 		return ProjectArchiveRequestMsg{Project: project, Archive: true}
-	case operationScopeRestoreProject:
+	case operation.OperationScopeRestoreProject:
 		return ProjectArchiveRequestMsg{Project: project, Archive: false}
-	case operationProjectDelete:
+	case operation.OperationProjectDelete:
 		return ProjectDeleteRequestMsg{Project: project}
-	case operationScopeOpenProjectNote:
+	case operation.OperationScopeOpenProjectNote:
 		return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 	default:
 		return nil

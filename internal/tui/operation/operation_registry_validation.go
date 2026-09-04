@@ -45,7 +45,7 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	if !validOperationRisk(descriptor.Risk) {
 		return OperationDescriptor{}, fmt.Errorf("operation %s has invalid risk %q", descriptor.ID, descriptor.Risk)
 	}
-	if err := ValidateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
+	if err := validateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
 		return OperationDescriptor{}, err
 	}
 	descriptor.Aliases = normalizeOperationAliases(descriptor.Label, descriptor.Aliases)
@@ -53,7 +53,7 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	return descriptor, nil
 }
 
-func ValidateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
+func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
 	for capability := range capabilities {
 		if !validCapability(capability) {
 			return fmt.Errorf("operation %s has unknown required capability %q", id, capability)

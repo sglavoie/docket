@@ -8,23 +8,13 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-const (
-	operationTaskComments             operation.OperationID = "tui.task.comments"
-	operationTaskAttachments          operation.OperationID = "tui.task.attachments"
-	operationTaskCopyTitle            operation.OperationID = "tui.task.copy-title"
-	operationTaskCopyDetails          operation.OperationID = "tui.task.copy-details"
-	operationTaskCopyTitleDescription operation.OperationID = "tui.task.copy-title-description"
-	operationTaskTogglePin            operation.OperationID = "tui.task.toggle-pin"
-	operationTaskNewChild             operation.OperationID = "tui.task.new-child"
-)
-
 // taskAuxiliaryAllowsOperation gates the child creator on live task state that
 // the frozen EntityContext does not carry, so a child is never offered under a
 // task that cannot hold one. A target that no longer resolves stays applicable
 // so the handler reports the single authoritative "no longer available" error
 // instead of the row vanishing.
 func (m *AppModel) taskAuxiliaryAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
-	if id != operationTaskNewChild {
+	if id != operation.OperationTaskNewChild {
 		return true
 	}
 	task, _ := m.taskAndProjectForIdentity(taskref.TaskIdentity{
@@ -63,17 +53,17 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 
 	//nolint:exhaustive // Only auxiliary task operations reach this switch.
 	switch invocation.Descriptor.ID {
-	case operationTaskComments:
+	case operation.OperationTaskComments:
 		return message(ShowTaskCommentsMsg{Task: task, Project: project})
-	case operationTaskAttachments:
+	case operation.OperationTaskAttachments:
 		return message(ShowTaskAttachmentsMsg{Task: task, Project: project})
-	case operationTaskCopyTitle:
+	case operation.OperationTaskCopyTitle:
 		return message(CopyTaskTitleMsg{Task: task})
-	case operationTaskCopyDetails:
+	case operation.OperationTaskCopyDetails:
 		return message(CopyTaskDetailsMsg{Task: task})
-	case operationTaskCopyTitleDescription:
+	case operation.OperationTaskCopyTitleDescription:
 		return message(CopyTaskTitleAndDescMsg{Task: task})
-	case operationTaskNewChild:
+	case operation.OperationTaskNewChild:
 		return message(CreateTaskMsg{ParentTask: task, Project: project})
 	default:
 		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}

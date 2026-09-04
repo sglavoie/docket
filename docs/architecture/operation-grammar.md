@@ -64,7 +64,7 @@ it: every key their footer advertises is one their strategy binds, except the
 three modal keys a comment composer owns while its textarea has focus.
 
 `?` help meets the same limit from the other side. Core descriptors carry
-`coreOutlinerApplicability`, so the registry half of a surface's help drops the
+`operation.CoreOutlinerApplicability`, so the registry half of a surface's help drops the
 cursor keys, both ends of the list, `u`, `Ctrl+R`, and `?` itself, and only the
 surface's own keymap can name them. That keymap binds one physical key per row,
 which is why the composed spellings its strategy declares needed a projection of

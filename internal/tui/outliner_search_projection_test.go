@@ -144,7 +144,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 
 	searchRankedList(outliner, "needle")
 	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterPriority},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterPriority},
 		Value:      models.PriorityHigh,
 	})
 	// The facet applies to the live projection rather than refusing, and Esc

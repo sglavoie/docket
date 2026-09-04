@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // This file covers the sub-state a user drives: revealing the band, walking it,
@@ -227,7 +228,7 @@ func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
 
 	pressMenuBarKey(t, driver, "l", "j")
 	entry := menus[1].Entries[outliner.menuBarItemIndex]
-	if got := gotoModeOperations[entry.OperationID]; got != chrome.ModeToday {
+	if got := operation.GotoModeOperations[entry.OperationID]; got != chrome.ModeToday {
 		t.Fatalf("the highlighted entry is %s, want the Today mode row", entry.OperationID)
 	}
 

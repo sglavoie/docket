@@ -161,7 +161,7 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	outliner.pushProjectScope(project.ID)
 	outliner.selectOutlinerMode(chrome.ModeAll)
 	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterStale},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterStale},
 	})
 	if result.Err != nil {
 		t.Fatalf("apply Stale filter in focused project: %v", result.Err)

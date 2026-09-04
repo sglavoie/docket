@@ -17,7 +17,7 @@ import (
 // Focus jumps and Go to Task's Project are deliberately absent: leaving the
 // projection is what they are for, so they exit search onto the result instead.
 func coreInputOperationRefusesSearchProjection(id operation.OperationID) bool {
-	if _, ok := gotoModeOperations[id]; ok {
+	if _, ok := operation.GotoModeOperations[id]; ok {
 		return true
 	}
 	switch id { //nolint:exhaustive // Only outliner navigation operations override applicability.
@@ -46,7 +46,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	for _, descriptor := range coreInputOperationDescriptors() {
+	for _, descriptor := range operation.CoreInputOperationDescriptors() {
 		if coreInputOperationRefusesSearchProjection(descriptor.ID) {
 			inner := descriptor.Applicability
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
@@ -69,31 +69,9 @@ func (m *AppModel) registerCoreInputOperations() error {
 	return nil
 }
 
-// coreInputOperationRequiresTask names the delegated core operations whose
-// handler branch does nothing at all without a task. Delegated bindings bypass
-// registry target resolution, so an unmet requirement reaches the user as a
-// silent no-op unless it is refused here.
-func coreInputOperationRequiresTask(id operation.OperationID) bool {
-	switch id { //nolint:exhaustive // Only the task-consuming core operations are listed.
-	case operation.OperationCoreEdit,
-		operation.OperationCoreEditDescription,
-		operation.OperationCoreExternalEditor,
-		operation.OperationCoreBacklog,
-		operation.OperationCoreToday,
-		operation.OperationCoreNext,
-		operation.OperationCoreFocusSubtree,
-		operation.OperationCoreFocusParent,
-		operation.OperationCoreGotoTaskProject,
-		operation.OperationCorePeek:
-		return true
-	default:
-		return false
-	}
-}
-
 //nolint:gocyclo // The direct-key dispatcher keeps the final key grammar in one auditable switch.
 func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
-	if coreInputOperationRequiresTask(invocation.Descriptor.ID) &&
+	if operation.CoreInputOperationRequiresTask(invocation.Descriptor.ID) &&
 		!invocation.Context.Selection.Visual &&
 		!operation.CurrentTaskIdentity(invocation.Context).Valid() {
 		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
@@ -370,7 +348,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreResetToLaunchView:
 		return m.coreResetToLaunchView()
 	default:
-		if mode, ok := gotoModeOperations[invocation.Descriptor.ID]; ok {
+		if mode, ok := operation.GotoModeOperations[invocation.Descriptor.ID]; ok {
 			if out, outlinerOK := m.outlinerPrimary(); outlinerOK {
 				_, _ = out.selectOutlinerMode(mode)
 			}

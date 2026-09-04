@@ -38,10 +38,10 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 
 	fromHub := executeProjectOperation(
 		app,
-		operationScopeOpenProjectNote,
+		operation.OperationScopeOpenProjectNote,
 		hub.projectHubCommandContext("beta"),
 	)
-	fromOtherHost := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("beta"))
+	fromOtherHost := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("beta"))
 
 	hubMsg, ok := fromHub.Message.(ShowNotesManagerMsg)
 	if !ok || hubMsg.Scope != ProjectNotesScope("beta") {
@@ -91,10 +91,10 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 		id   operation.OperationID
 		proj string
 	}{
-		{"open archived", operationProjectOpen, "archived"},
-		{"archive the system Inbox", operationScopeArchiveProject, "alpha"},
-		{"unarchive an active project", operationScopeRestoreProject, "beta"},
-		{"act on a removed project", operationScopeRenameProject, "ghost"},
+		{"open archived", operation.OperationProjectOpen, "archived"},
+		{"archive the system Inbox", operation.OperationScopeArchiveProject, "alpha"},
+		{"unarchive an active project", operation.OperationScopeRestoreProject, "beta"},
+		{"act on a removed project", operation.OperationScopeRenameProject, "ghost"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -118,11 +118,11 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	hub := openProjectHub(t, app)
 	focusProjectHubItem(t, hub, "project-hub:archived:archived")
 	hub.Update(syntheticKey(' '))
-	if got := projectHubActionIDs(hub); containsOperationID(got, operationScopeOpenProjectNote) {
+	if got := projectHubActionIDs(hub); containsOperationID(got, operation.OperationScopeOpenProjectNote) {
 		t.Fatalf("archived project offered Open project notes: %v", got)
 	}
 
-	result := executeProjectOperation(app, operationScopeOpenProjectNote, projectOperationContext("archived"))
+	result := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("archived"))
 	if result.Err == nil {
 		t.Fatalf("Open project notes emitted %#v for an archived project", result.Message)
 	}
@@ -130,7 +130,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 		t.Fatalf("Open project notes emitted a Notes manager message for an archived project: %#v", result.Message)
 	}
 
-	descriptor, ok := app.operationRegistry.Descriptor(operationScopeOpenProjectNote)
+	descriptor, ok := app.operationRegistry.Descriptor(operation.OperationScopeOpenProjectNote)
 	if !ok {
 		t.Fatal("Open project notes operation is not registered")
 	}
@@ -160,7 +160,7 @@ func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
 
 func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	app := projectHubApp(t)
-	result := executeProjectOperation(app, operationScopeArchiveProject, projectOperationContext("beta"))
+	result := executeProjectOperation(app, operation.OperationScopeArchiveProject, projectOperationContext("beta"))
 	if result.ConfirmationRequired != nil {
 		t.Fatal("project archive raised a second confirmation over the shell prompt")
 	}
@@ -188,7 +188,7 @@ func TestProjectHubActiveProjectOffersOnlyArchive(t *testing.T) {
 	hub.Update(syntheticKey(' '))
 
 	got := projectHubActionIDs(hub)
-	if len(got) != 1 || !containsOperationID(got, operationScopeArchiveProject) {
+	if len(got) != 1 || !containsOperationID(got, operation.OperationScopeArchiveProject) {
 		t.Fatalf("active project actions = %v, want archive alone", got)
 	}
 }

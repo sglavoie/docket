@@ -18,7 +18,7 @@ func (m *OutlinerModel) populationFilterClauseEdit(
 	invocation operation.OperationInvocation,
 ) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
-	case operationFilterProjectTags:
+	case operation.OperationFilterProjectTags:
 		names, ok := invocation.Value.([]string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid project tag filter value")
@@ -28,19 +28,19 @@ func (m *OutlinerModel) populationFilterClauseEdit(
 		clauses := append(query.ProjectTagClauses(&next),
 			query.PopulationClauses(models.QueryFieldParked, next.ParkedMode)...)
 		return filterClauseEdit{clauses: clauses, status: query.ProjectTagFilterStatus(&next)}, nil
-	case operationFilterShowParked:
+	case operation.OperationFilterShowParked:
 		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
 			query.ProjectPopulationInclude, "Parked"), nil
-	case operationFilterOnlyParked:
+	case operation.OperationFilterOnlyParked:
 		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
 			query.ProjectPopulationOnly, "Parked"), nil
-	case operationFilterIncludeArchived:
+	case operation.OperationFilterIncludeArchived:
 		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
 			query.ProjectPopulationInclude, "Archived"), nil
-	case operationFilterOnlyArchived:
+	case operation.OperationFilterOnlyArchived:
 		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
 			query.ProjectPopulationOnly, "Archived"), nil
-	case operationFilterProjectClear:
+	case operation.OperationFilterProjectClear:
 		if !query.HasActiveProjectFilters(&m.projectFilter) {
 			return filterClauseEdit{declined: true, status: "No project filters are active"}, nil
 		}

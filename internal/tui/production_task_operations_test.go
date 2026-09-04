@@ -180,7 +180,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	context.Entity = taskOperationEntity(e.parent, e.alpha)
 
 	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:      operationTaskDelete,
+		ID:      operation.OperationTaskDelete,
 		Context: context,
 	})
 	if result.Err != nil {

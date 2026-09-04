@@ -8,26 +8,16 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-const (
-	operationSortDueDate   operation.OperationID = "tui.sort.due"
-	operationSortPriority  operation.OperationID = "tui.sort.priority"
-	operationSortCreatedAt operation.OperationID = "tui.sort.created"
-	operationSortUpdatedAt operation.OperationID = "tui.sort.updated"
-	operationSortTitle     operation.OperationID = "tui.sort.title"
-	operationSortClear     operation.OperationID = "tui.sort.clear"
-	operationSortRanked    operation.OperationID = "tui.sort.ranked"
-)
-
 // sortFieldOperations maps each order-axis operation to the field it installs.
 // One descriptor per field rather than one preset-valued operation, so the axis
 // needs no value provider and cannot grow a sort picker.
 var sortFieldOperations = map[operation.OperationID]query.SortField{
-	operationSortDueDate:   query.SortByDueDate,
-	operationSortPriority:  query.SortByPriority,
-	operationSortCreatedAt: query.SortByCreatedAt,
-	operationSortUpdatedAt: query.SortByUpdatedAt,
-	operationSortTitle:     query.SortByTitle,
-	operationSortClear:     query.SortByDefault,
+	operation.OperationSortDueDate:   query.SortByDueDate,
+	operation.OperationSortPriority:  query.SortByPriority,
+	operation.OperationSortCreatedAt: query.SortByCreatedAt,
+	operation.OperationSortUpdatedAt: query.SortByUpdatedAt,
+	operation.OperationSortTitle:     query.SortByTitle,
+	operation.OperationSortClear:     query.SortByDefault,
 }
 
 // sortOperationDescriptor is the shape every order-axis key shares: no target,
@@ -40,7 +30,7 @@ func sortOperationDescriptor(id operation.OperationID, label string, aliases ...
 		Category:             operation.OperationCategorySort,
 		TargetCardinality:    operation.TargetCardinalityNone,
 		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-		Applicability:        coreOutlinerApplicability,
+		Applicability:        operation.CoreOutlinerApplicability,
 		Risk:                 operation.OperationRiskReadOnly,
 	}
 }
@@ -48,16 +38,16 @@ func sortOperationDescriptor(id operation.OperationID, label string, aliases ...
 func sortAxisOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := sortOperationDescriptor
 	return []operation.OperationDescriptor{
-		descriptor(operationSortDueDate, "Sort by Due Date", "order by due date"),
-		descriptor(operationSortPriority, "Sort by Priority", "order by priority"),
-		descriptor(operationSortCreatedAt, "Sort by Created", "order by creation date"),
-		descriptor(operationSortUpdatedAt, "Sort by Updated", "order by last touch"),
-		descriptor(operationSortTitle, "Sort by Title", "order alphabetically"),
-		descriptor(operationSortClear, "Clear Sort", "restore the mode's own order"),
+		descriptor(operation.OperationSortDueDate, "Sort by Due Date", "order by due date"),
+		descriptor(operation.OperationSortPriority, "Sort by Priority", "order by priority"),
+		descriptor(operation.OperationSortCreatedAt, "Sort by Created", "order by creation date"),
+		descriptor(operation.OperationSortUpdatedAt, "Sort by Updated", "order by last touch"),
+		descriptor(operation.OperationSortTitle, "Sort by Title", "order alphabetically"),
+		descriptor(operation.OperationSortClear, "Clear Sort", "restore the mode's own order"),
 		// The flat ranked list is one more ordering of the rows the held query
 		// already selected, not a mode and not a second way to search, which is why
 		// it sits on the order axis rather than on a root key of its own.
-		descriptor(operationSortRanked, "Toggle Ranked List", "flat relevance order"),
+		descriptor(operation.OperationSortRanked, "Toggle Ranked List", "flat relevance order"),
 	}
 }
 
@@ -68,9 +58,9 @@ func (m *AppModel) registerSortOperations() error {
 	for _, descriptor := range sortAxisOperationDescriptors() {
 		// Ranking is offered only while a query is held, because with no query
 		// there is nothing to rank; every other order key stands unconditionally.
-		if descriptor.ID == operationSortRanked {
+		if descriptor.ID == operation.OperationSortRanked {
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
-				return coreOutlinerApplicability(ctx) &&
+				return operation.CoreOutlinerApplicability(ctx) &&
 					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()
 			}
 		}
@@ -95,7 +85,7 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 	if out == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	if invocation.Descriptor.ID == operationSortRanked {
+	if invocation.Descriptor.ID == operation.OperationSortRanked {
 		if !out.toggleRankedList() {
 			return operation.OperationHandlerResult{Status: "Search for something first"}
 		}
@@ -110,7 +100,7 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 		return operation.OperationHandlerResult{Err: fmt.Errorf("unknown sort operation %s", invocation.Descriptor.ID)}
 	}
 
-	if invocation.Descriptor.ID == operationSortClear {
+	if invocation.Descriptor.ID == operation.OperationSortClear {
 		out.sort.Reset()
 		out.treeSort.Reset()
 		out.crossForceRebuild = true

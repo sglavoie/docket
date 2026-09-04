@@ -186,12 +186,11 @@ dependency	internal/tui/dependency_detail.go	invalidateDependencyIndex	2
 dependency	internal/tui/dependency_detail.go	lookupDependencyTarget	3
 dependency	internal/tui/dependency_detail.go	outgoingDependencyDetails	1
 dependency	internal/tui/feature_runtime.go	RuntimeDependencies	3
-dependency	internal/tui/filter_operation_ids.go	operationFilterDependency	1
 dependency	internal/tui/filter_operations.go	FilterQueryDependencyFields	1
+dependency	internal/tui/filter_operations.go	OperationFilterDependency	2
 dependency	internal/tui/filter_operations.go	ValueProviderFilterDependency	2
-dependency	internal/tui/filter_operations.go	operationFilterDependency	2
 dependency	internal/tui/filter_operations_outliner.go	DependencyFilterShortcutForToken	1
-dependency	internal/tui/filter_operations_outliner.go	operationFilterDependency	1
+dependency	internal/tui/filter_operations_outliner.go	OperationFilterDependency	1
 dependency	internal/tui/filter_pickers.go	DependencyFilterShortcuts	1
 dependency	internal/tui/filter_pickers.go	ValueProviderFilterDependency	1
 dependency	internal/tui/filter_pickers.go	newFilterDependencyPicker	1
@@ -303,9 +302,10 @@ dependency	internal/tui/inline_preview.go	dependentLabel	2
 dependency	internal/tui/inline_preview.go	dependents	3
 dependency	internal/tui/inline_preview.go	incomingDependencyDetails	1
 dependency	internal/tui/inline_preview.go	outgoingDependencyDetails	1
-dependency	internal/tui/input_strategy_simplified.go	operationFilterDependency	1
 dependency	internal/tui/manage_hub.go	ManageHubDependencies	3
-dependency	internal/tui/menu_bar_spec.go	operationFilterDependency	1
+dependency	internal/tui/menu_bar_spec.go	OperationFilterDependency	1
+dependency	internal/tui/operation/filter_operation_ids.go	OperationFilterDependency	1
+dependency	internal/tui/operation/input_strategy_simplified.go	OperationFilterDependency	1
 dependency	internal/tui/operation/operation_value_payloads.go	DependencyFilterShortcutForToken	1
 dependency	internal/tui/operation/operation_value_payloads.go	ValueProviderFilterDependency	1
 dependency	internal/tui/operation/operation_value_provider_ids.go	ValueProviderFilterDependency	1

@@ -39,7 +39,7 @@ func (m *AppModel) taskActionOperationDescriptors() []operation.OperationDescrip
 }
 
 func (m *AppModel) taskActionOperationApplicable(id operation.OperationID, context operation.CommandContext) bool {
-	if !coreOutlinerApplicability(context) {
+	if !operation.CoreOutlinerApplicability(context) {
 		return false
 	}
 	entry, _ := taskOperationManifestEntryFor(id)
@@ -173,7 +173,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 			DelegateTransaction: true,
 			// The canonical delete request prompts before it mutates, so a generic
 			// executor confirmation in front of it would ask the same question twice.
-			DelegateConfirmation: descriptor.ID == operationTaskDelete,
+			DelegateConfirmation: descriptor.ID == operation.OperationTaskDelete,
 		}); err != nil {
 			return err
 		}

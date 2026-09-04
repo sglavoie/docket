@@ -166,6 +166,37 @@
 # list_surface_types.go keeps the name as an alias, so listsurface's own
 # vocabulary is unchanged and no consumer had to be requalified.
 #
+# Session 2.16 minted three more identifier files and corrected one row, the
+# same two shapes its two predecessors used:
+#   - The seventeen operationTask* OperationID constants left
+#     operation_value_provider.go and task_operations_auxiliary.go for
+#     task_operation_ids.go, the seven operationSort* left sort_operations.go
+#     for sort_operation_ids.go, and the nine project identifiers left
+#     project_operations.go and outliner_project_action_sheet.go for
+#     project_operation_ids.go. Each donor file is pinned to AppModel or to
+#     projecthub, so the identifiers are the only half that could cross; they
+#     are exported as OperationTask*, OperationSort*, OperationScope* and
+#     OperationProject*.
+#   - operation_value_provider.go is gone rather than moved. Session 2.14 took
+#     its four payload structs, this session took its ten identifiers, and the
+#     two messages it had left, OperationValueRequestMsg and
+#     OperationValueCanceledMsg, joined OperationValueSelectedMsg in
+#     operation_executor_types.go. Nothing named after a value provider was
+#     still in it, which is what Session 2.15 flagged.
+#   - task_operation_manifest.go is tui, not operation. Session 1.5 read it as
+#     the manifest projection and put it at L3, but
+#     outlinerOperationDescriptorManifest and validateOutlinerOperationOnePath
+#     both call outlinerProjectOperationManifest, an L8 identifier, and its six
+#     other functions have only shell consumers. Moving it would export twelve
+#     names for zero in-package readers; this is the shape Session 2.8
+#     established for contextual_action_sheet.go, and Session 2.4 before it for
+#     dependency_reference.go.
+#   - input_strategy_simplified_shell.go is the re-export
+#     SimplifiedInputStrategy() reaches the root shell through, so cmd/root.go
+#     and the root retired_product_vocabulary_test.go compile untouched.
+#     surface_operation_gates.go is its production caller, which is what keeps
+#     it off scripts/dead_code.sh's unused list.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -319,6 +350,7 @@ inline_preview.go	outliner	L7	receiver:OutlinerModel
 input_strategy.go	operation	L3	receiver:OperationKeyBinding
 input_strategy_lookup.go	operation	L3	receiver:OperationRegistry
 input_strategy_simplified.go	operation	L3	assigned
+input_strategy_simplified_shell.go	tui	L8	assigned
 input_strategy_trie.go	operation	L3	receiver:inputChordNode
 interactive_view_state.go	listsurface	L5	receiver:InteractiveViewState
 keymap/help.go	keymap	L0	assigned
@@ -393,7 +425,6 @@ operation_value_picker_factory.go	tui	L8	receiver:AppModel
 operation_value_picker_helpers.go	tui	L8	receiver:OperationValuePickerModel
 operation_value_picker_model.go	tui	L8	receiver:OperationValuePickerModel
 operation_value_picker_render.go	tui	L8	receiver:OperationValuePickerModel
-operation_value_provider.go	operation	L3	assigned
 operation_value_provider_ids.go	operation	L3	receiver:ValueProviderID
 operational_title.go	pulse	L0	assigned
 outline_editor.go	tui	L8	receiver:AppModel
@@ -494,6 +525,7 @@ project_hub_surface.go	projecthub	L7	receiver:ProjectHubModel
 project_hub_types.go	projecthub	L7	receiver:projectHubTaskFilter
 project_hub_view.go	projecthub	L7	receiver:ProjectHubModel
 project_note_commands.go	notes	L7	assigned
+project_operation_ids.go	operation	L3	assigned
 project_operations.go	projecthub	L7	assigned
 project_operations_shell.go	tui	L8	receiver:AppModel
 project_service.go	coordinator	L1	assigned
@@ -527,6 +559,7 @@ shared_search.go	query	L2	assigned
 shared_secondary_ops_bulk.go	tui	L8	assigned
 shell.go	tui	L8	receiver:AppModel
 shell_deps.go	tui	L8	assigned
+sort_operation_ids.go	operation	L3	assigned
 sort_operations.go	tui	L8	receiver:AppModel
 sort_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 sorting_common.go	query	L2	assigned
@@ -600,7 +633,8 @@ task_form_view.go	taskform	L7	receiver:TaskFormModel
 task_identity.go	taskref	L0	assigned
 task_operation_commands.go	tui	L8	receiver:AppModel
 task_operation_execute.go	tui	L8	receiver:AppModel
-task_operation_manifest.go	operation	L3	assigned
+task_operation_ids.go	operation	L3	assigned
+task_operation_manifest.go	tui	L8	assigned
 task_operations_auxiliary.go	tui	L8	receiver:AppModel
 task_state_picker.go	tui	L8	assigned
 task_tags_picker.go	tui	L8	assigned

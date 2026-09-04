@@ -62,13 +62,13 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 // destructive operation must fall through to the executor gate; adding a new
 // exemption here is a deliberate claim that the handler prompts before writing.
 var delegatedDestructiveConfirmations = map[operation.OperationID]string{
-	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
-	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
-	operationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
-	operationNoteDelete:          "deleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
-	operationAttachmentDelete:    "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
-	operationAttachmentUnlink:    "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
-	operationCommentDelete:       "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",
+	operation.OperationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
+	operation.OperationScopeArchiveProject: "showProjectArchiveConfirm prompts",
+	operation.OperationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
+	operationNoteDelete:                    "deleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
+	operationAttachmentDelete:              "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
+	operationAttachmentUnlink:              "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
+	operationCommentDelete:                 "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {

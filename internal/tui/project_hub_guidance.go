@@ -117,7 +117,7 @@ func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrom
 	)
 	switch {
 	case state.Profile == ListGuidanceSearchEditing:
-		return m.soleRequiredHint(hints, operationProjectOpen)
+		return m.soleRequiredHint(hints, operation.OperationProjectOpen)
 	case state.Profile == ListGuidanceEmpty && state.Empty.Kind == ListEmptySource:
 		return m.soleRequiredHint(hints, operationScopeCreateProject)
 	}

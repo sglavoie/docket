@@ -16,7 +16,7 @@ import (
 func registeredSimplifiedOperationRegistry(t *testing.T) *operation.OperationRegistry {
 	t.Helper()
 	registry := operation.NewOperationRegistry()
-	descriptors := append(coreInputOperationDescriptors(), simplifiedTaskActionDescriptors()...)
+	descriptors := append(operation.CoreInputOperationDescriptors(), simplifiedTaskActionDescriptors()...)
 	for _, descriptor := range descriptors {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)

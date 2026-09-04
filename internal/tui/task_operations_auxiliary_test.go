@@ -53,32 +53,32 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 	context := taskOperationTestContext(task, project)
 
 	checks := map[operation.OperationID]func(*testing.T, any){
-		operationTaskComments: func(t *testing.T, msg any) {
+		operation.OperationTaskComments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskCommentsMsg).Task, task)
 		},
-		operationTaskAttachments: func(t *testing.T, msg any) {
+		operation.OperationTaskAttachments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskAttachmentsMsg).Task, task)
 		},
-		operationTaskCopyTitle: func(t *testing.T, msg any) {
+		operation.OperationTaskCopyTitle: func(t *testing.T, msg any) {
 			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy title produced no application operation command")
 			}
 		},
-		operationTaskCopyDetails: func(t *testing.T, msg any) {
+		operation.OperationTaskCopyDetails: func(t *testing.T, msg any) {
 			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy description produced no application operation command")
 			}
 		},
-		operationTaskCopyTitleDescription: func(t *testing.T, msg any) {
+		operation.OperationTaskCopyTitleDescription: func(t *testing.T, msg any) {
 			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy title and description produced no application operation command")
 			}
 		},
-		operationTaskNewChild: func(t *testing.T, msg any) {
+		operation.OperationTaskNewChild: func(t *testing.T, msg any) {
 			create := msg.(CreateTaskMsg)
 			assertTaskMessageTarget(t, create.ParentTask, task)
 		},
-		operationTaskTogglePin: func(t *testing.T, msg any) {
+		operation.OperationTaskTogglePin: func(t *testing.T, msg any) {
 			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("toggle pin produced no coordinator command")
 			}
@@ -145,15 +145,15 @@ func TestTaskOperationCatalogIsFullyManifested(t *testing.T) {
 func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 	model, _, _ := auxiliaryTaskTestApp(t)
 	wanted := map[operation.OperationID]string{
-		operationTaskComments:             "add comment",
-		operationTaskAttachments:          "add attachment",
-		operationTaskCopyTitle:            "yank title",
-		operationTaskCopyDetails:          "yank description",
-		operationTaskCopyTitleDescription: "yank title and description",
-		operationTaskTogglePin:            "keep on top",
-		operationTaskNewChild:             "new subtask",
-		operation.OperationCoreEdit:       "rename task",
-		operation.OperationCorePeek:       "task preview",
+		operation.OperationTaskComments:             "add comment",
+		operation.OperationTaskAttachments:          "add attachment",
+		operation.OperationTaskCopyTitle:            "yank title",
+		operation.OperationTaskCopyDetails:          "yank description",
+		operation.OperationTaskCopyTitleDescription: "yank title and description",
+		operation.OperationTaskTogglePin:            "keep on top",
+		operation.OperationTaskNewChild:             "new subtask",
+		operation.OperationCoreEdit:                 "rename task",
+		operation.OperationCorePeek:                 "task preview",
 	}
 	for id, alias := range wanted {
 		descriptor, ok := model.operationRegistry.Descriptor(id)
@@ -196,7 +196,7 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	if got := externalEdit.Message.(EditTaskContentMsg).Task; got != task {
 		t.Errorf("external editor target = %v, want the frozen task %v", got, task)
 	}
-	copied := executeTaskOperationForTest(t, model, operationTaskCopyTitle, context)
+	copied := executeTaskOperationForTest(t, model, operation.OperationTaskCopyTitle, context)
 	if copied.Message.(operation.OperationCommandResultMsg).Cmd == nil {
 		t.Error("copy produced no application operation command")
 	}
@@ -243,10 +243,10 @@ func TestTaskChildActionsFollowHierarchyLeafAndDepthLimits(t *testing.T) {
 		id     operation.OperationID
 		want   bool
 	}{
-		{taskID: "epic", id: operationTaskNewChild, want: true},
-		{taskID: "story-5", id: operationTaskNewChild, want: true},
-		{taskID: "leaf", id: operationTaskNewChild, want: true},
-		{taskID: "story-6", id: operationTaskNewChild, want: true},
+		{taskID: "epic", id: operation.OperationTaskNewChild, want: true},
+		{taskID: "story-5", id: operation.OperationTaskNewChild, want: true},
+		{taskID: "leaf", id: operation.OperationTaskNewChild, want: true},
+		{taskID: "story-6", id: operation.OperationTaskNewChild, want: true},
 	} {
 		task := project.GetTaskByID(testCase.taskID)
 		if task == nil {
@@ -277,7 +277,7 @@ func TestTaskChildActionOnDeletedParentLeavesHierarchyUnchanged(t *testing.T) {
 	before := len(project.Tasks)
 
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:      operationTaskNewChild,
+		ID:      operation.OperationTaskNewChild,
 		Context: context,
 	})
 	if result.Err == nil {
@@ -298,7 +298,7 @@ func TestTaskOperationStaleFrozenTargetReportsUnavailable(t *testing.T) {
 	project.BuildTaskTree()
 
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:      operationTaskComments,
+		ID:      operation.OperationTaskComments,
 		Context: context,
 	})
 	if result.Err == nil {

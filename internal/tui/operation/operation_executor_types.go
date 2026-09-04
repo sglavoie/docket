@@ -196,3 +196,13 @@ func (history *OperationHistory) popRedo() (operationUndoEntry, bool) {
 	history.undo = append(history.undo, entry)
 	return entry, true
 }
+
+// OperationValueSelectedMsg resumes a pending operation with the chosen value.
+type OperationValueSelectedMsg struct {
+	Request OperationExecutionRequest
+	Value   any
+}
+
+// OperationValueCanceledMsg closes the value picker and returns to its action
+// sheet without executing the operation.
+type OperationValueCanceledMsg struct{}

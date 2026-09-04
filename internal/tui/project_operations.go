@@ -5,21 +5,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// Project operation IDs. The tui.scope.* IDs predate this catalog and keep
-// their identity because they already name the same action from the Scope Hub;
-// tui.project.* is reserved for the maintenance actions added alongside them.
-const (
-	operationScopeRenameProject   operation.OperationID = "tui.scope.rename-project"
-	operationScopePinProject      operation.OperationID = "tui.scope.pin-project"
-	operationScopeArchiveProject  operation.OperationID = "tui.scope.archive-project"
-	operationScopeRestoreProject  operation.OperationID = "tui.scope.restore-project"
-	operationScopeOpenProjectNote operation.OperationID = "tui.scope.open-project-notes"
-
-	operationProjectOpen    operation.OperationID = "tui.project.open"
-	operationProjectSetTags operation.OperationID = "tui.project.set-tags"
-	operationProjectDelete  operation.OperationID = "tui.project.delete"
-)
-
 // projectOperationDescriptors is the authoritative catalog of project-targeted
 // operations. Every entry resolves one frozen project identity, so the same
 // descriptor serves the Scope Hub and any other host that names a
@@ -46,15 +31,15 @@ func projectOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		descriptor(operationProjectOpen, "Open project", "Focus the Outliner on this project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "focus project"),
-		descriptor(operationScopeRenameProject, "Edit project", "Edit lean project metadata", operation.OperationCategoryProject, operation.OperationRiskMutation, "project settings"),
-		descriptor(operationScopePinProject, "Toggle project pin", "Pin or unpin the project", operation.OperationCategoryProject, operation.OperationRiskMutation, "pin project", "unpin project"),
-		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", operation.OperationCategoryProject, operation.OperationRiskDestructive),
-		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", operation.OperationCategoryProject, operation.OperationRiskMutation, "restore archived project"),
-		descriptor(operationProjectDelete, "Delete project", "Delete the project and everything it owns", operation.OperationCategoryProject, operation.OperationRiskDestructive, "remove project", "destroy project"),
-		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", operation.OperationCategoryNote, operation.OperationRiskReadOnly),
+		descriptor(operation.OperationProjectOpen, "Open project", "Focus the Outliner on this project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "focus project"),
+		descriptor(operation.OperationScopeRenameProject, "Edit project", "Edit lean project metadata", operation.OperationCategoryProject, operation.OperationRiskMutation, "project settings"),
+		descriptor(operation.OperationScopePinProject, "Toggle project pin", "Pin or unpin the project", operation.OperationCategoryProject, operation.OperationRiskMutation, "pin project", "unpin project"),
+		descriptor(operation.OperationScopeArchiveProject, "Archive project", "Archive the project", operation.OperationCategoryProject, operation.OperationRiskDestructive),
+		descriptor(operation.OperationScopeRestoreProject, "Unarchive project", "Return the project to active", operation.OperationCategoryProject, operation.OperationRiskMutation, "restore archived project"),
+		descriptor(operation.OperationProjectDelete, "Delete project", "Delete the project and everything it owns", operation.OperationCategoryProject, operation.OperationRiskDestructive, "remove project", "destroy project"),
+		descriptor(operation.OperationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", operation.OperationCategoryNote, operation.OperationRiskReadOnly),
 		operation.WithValueProvider(
-			descriptor(operationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
+			descriptor(operation.OperationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
 			operation.ValueProviderProjectTags,
 		),
 	}
@@ -109,14 +94,14 @@ type projectOperationRequirement struct {
 }
 
 var projectOperationRequirements = map[operation.OperationID]projectOperationRequirement{
-	operationProjectOpen:          {requireActive: true},
-	operationScopePinProject:      {requireActive: true},
-	operationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
-	operationScopeRestoreProject:  {requireArchived: true},
-	operationScopeOpenProjectNote: {requireActive: true},
-	operationProjectSetTags:       {requireActive: true},
+	operation.OperationProjectOpen:          {requireActive: true},
+	operation.OperationScopePinProject:      {requireActive: true},
+	operation.OperationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
+	operation.OperationScopeRestoreProject:  {requireArchived: true},
+	operation.OperationScopeOpenProjectNote: {requireActive: true},
+	operation.OperationProjectSetTags:       {requireActive: true},
 	// Deleting carries no lifecycle requirement on purpose: an archived project
 	// stays deletable, so archiving is a step toward removal rather than a state
 	// that traps the project in the catalog.
-	operationProjectDelete: {rejectSystemUnfiled: true},
+	operation.OperationProjectDelete: {rejectSystemUnfiled: true},
 }

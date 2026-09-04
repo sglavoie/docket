@@ -18,7 +18,7 @@ import (
 //nolint:gocyclo // One constructor per facet, kept together so the set is auditable.
 func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvocation) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
-	case operationFilterPriority:
+	case operation.OperationFilterPriority:
 		threshold, ok := invocation.Value.(int)
 		if !ok || threshold < 0 || threshold > models.PriorityMax {
 			return filterClauseEdit{}, fmt.Errorf("invalid priority threshold")
@@ -31,7 +31,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 				models.QueryOperatorAtLeast, strconv.Itoa(threshold)),
 			status: "Filtering " + priorityThresholdLabel(threshold),
 		}, nil
-	case operationFilterDue:
+	case operation.OperationFilterDue:
 		token, ok := invocation.Value.(string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid due-date filter value")
@@ -44,7 +44,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: shortcut.Clauses,
 			status:  "Filtering " + token,
 		}, nil
-	case operationFilterCompletionAge:
+	case operation.OperationFilterCompletionAge:
 		age, ok := invocation.Value.(query.CompletionAgeFilter)
 		if !ok || age < query.CompletionAgeAll || age > query.CompletionAge90Days {
 			return filterClauseEdit{}, fmt.Errorf("invalid completion-age filter value")
@@ -53,7 +53,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: query.CompletionAgeClauses(age),
 			status:  "Filtering completed: " + completionAgeFilterLabel(age),
 		}, nil
-	case operationFilterHierarchy:
+	case operation.OperationFilterHierarchy:
 		hierarchy, ok := invocation.Value.(query.HierarchyFilter)
 		if !ok || hierarchy < query.HierarchyParent || hierarchy > query.HierarchyLeaf {
 			return filterClauseEdit{}, fmt.Errorf("invalid hierarchy filter value")
@@ -62,7 +62,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: query.HierarchyFilterClauses(hierarchy),
 			status:  "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy),
 		}, nil
-	case operationFilterDependency:
+	case operation.OperationFilterDependency:
 		token, ok := invocation.Value.(string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid dependency filter value")
@@ -75,7 +75,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: shortcut.Clauses,
 			status:  "Filtering " + token,
 		}, nil
-	case operationFilterStates:
+	case operation.OperationFilterStates:
 		names, ok := invocation.Value.([]string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid state filter value")
@@ -93,7 +93,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			status = "State filter cleared"
 		}
 		return filterClauseEdit{clauses: clauses, status: status}, nil
-	case operationFilterTags:
+	case operation.OperationFilterTags:
 		names, ok := invocation.Value.([]string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid tag filter value")
@@ -108,7 +108,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			status = "Tag filter cleared"
 		}
 		return filterClauseEdit{clauses: clauses, status: status}, nil
-	case operationFilterContexts:
+	case operation.OperationFilterContexts:
 		names, ok := invocation.Value.([]string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid context filter value")
@@ -119,7 +119,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			status = "Filtering context: " + strings.Join(query.FilterClauseParts(clauses), " ")
 		}
 		return filterClauseEdit{clauses: clauses, status: status}, nil
-	case operationFilterReview:
+	case operation.OperationFilterReview:
 		if m.filter.Review {
 			return filterClauseEdit{status: "Review filter cleared"}, nil
 		}
@@ -127,7 +127,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: query.FilterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""),
 			status:  "Filtering Review",
 		}, nil
-	case operationFilterStale:
+	case operation.OperationFilterStale:
 		if m.filter.Stale {
 			return filterClauseEdit{status: "Stale filter cleared"}, nil
 		}
@@ -135,7 +135,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: query.FilterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""),
 			status:  "Filtering Stale",
 		}, nil
-	case operationFilterPinned:
+	case operation.OperationFilterPinned:
 		if m.filter.Pinned {
 			return filterClauseEdit{status: "Pinned filter cleared"}, nil
 		}
@@ -143,7 +143,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses: query.FilterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""),
 			status:  "Filtering Pinned",
 		}, nil
-	case operationFilterClear:
+	case operation.OperationFilterClear:
 		return filterClauseEdit{status: "Filters cleared"}, nil
 	default:
 		return filterClauseEdit{}, fmt.Errorf("unknown filter operation %s", invocation.Descriptor.ID)

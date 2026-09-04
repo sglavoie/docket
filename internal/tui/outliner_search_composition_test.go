@@ -49,7 +49,7 @@ func TestSearchFacetsGateCandidatesBeforeScoringAndAndWithTheSigils(t *testing.T
 
 	// The tag facet is an AND gate: only the backend-tagged auth match survives,
 	// and the backend-tagged task that does not match the query stays out.
-	applyFilterForComposition(t, outliner, operationFilterTags, []string{"backend"})
+	applyFilterForComposition(t, outliner, operation.OperationFilterTags, []string{"backend"})
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"beta-task"}) {
 		t.Fatalf("search under the tag facet = %v, want the backend-tagged auth match alone", got)
 	}
@@ -73,7 +73,7 @@ func TestSearchFacetsGateCandidatesBeforeScoringAndAndWithTheSigils(t *testing.T
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"beta-task"}) {
 		t.Fatalf("agreeing sigil and facet = %v, want the one task both admit", got)
 	}
-	applyFilterForComposition(t, outliner, operationFilterTags, []string{"urgent"})
+	applyFilterForComposition(t, outliner, operation.OperationFilterTags, []string{"urgent"})
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("disagreeing sigil and facet = %v, want the AND gate to admit nothing", got)
 	}
@@ -95,7 +95,7 @@ func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
 
 	// The facet applies rather than refusing, which is the composition itself.
 	if status := applyFilterForComposition(t, outliner,
-		operationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state(s)" {
+		operation.OperationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state(s)" {
 		t.Fatalf("f$done status under search = %q, want the applied facet's own sentence", status)
 	}
 	if !outliner.admitsTerminalPopulation() {
@@ -105,7 +105,7 @@ func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
 		t.Fatalf("search under f$done = %v, want the completed auth task alone", got)
 	}
 
-	applyFilterForComposition(t, outliner, operationFilterStates, []string{string(models.StateBacklog)})
+	applyFilterForComposition(t, outliner, operation.OperationFilterStates, []string{string(models.StateBacklog)})
 	if outliner.admitsTerminalPopulation() {
 		t.Fatal("f$backlog opened the terminal population")
 	}
@@ -130,7 +130,7 @@ func TestQueryAloneNeverFreezesAnAxis(t *testing.T) {
 		t.Fatal("changing the mode dropped the held query")
 	}
 	if status := applyFilterForComposition(t, outliner,
-		operationFilterStates, []string{string(models.StateBacklog)}); status == "" {
+		operation.OperationFilterStates, []string{string(models.StateBacklog)}); status == "" {
 		t.Fatal("a row facet under a held query produced no status")
 	}
 }
@@ -161,7 +161,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	}
 
 	result := app.executeSortOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationSortPriority},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationSortPriority},
 	})
 	if result.Err != nil {
 		t.Fatalf("sort by priority under search failed: %v", result.Err)
@@ -177,7 +177,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	}
 
 	result = app.executeSortOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationSortClear},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationSortClear},
 	})
 	if result.Status != "Sort cleared" {
 		t.Fatalf("clear sort status = %q, want the cleared sentence", result.Status)
@@ -226,7 +226,7 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 	}
 
 	result := app.executeProjectFilterOperation(operation.OperationInvocation{
-		Descriptor: operation.OperationDescriptor{ID: operationFilterProjectTags},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterProjectTags},
 		Value:      []string{"backend"},
 	})
 	if result.Status != "Exit search before changing filters" {

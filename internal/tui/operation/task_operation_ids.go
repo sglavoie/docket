@@ -1,5 +1,10 @@
 package operation
 
+// The single-task operation IDs. They are `OperationID` vocabulary rather than
+// descriptors or handlers, so they sit beside the registry that owns the type
+// while the surfaces that register and execute them stay above it: the
+// simplified input strategy, the task manifest, and the task action sheet all
+// name them, and only the first of those is inside this package.
 const (
 	OperationTaskSetState    OperationID = "tui.task.set-state"
 	OperationTaskSetPriority OperationID = "tui.task.set-priority"
@@ -26,14 +31,17 @@ const (
 	// population is not one project's tree; and it is soft, so nothing about
 	// readiness, ordering, ranking, or completion may read what it records.
 	OperationTaskReferences OperationID = "tui.task.references"
+
+	OperationTaskComments             OperationID = "tui.task.comments"
+	OperationTaskAttachments          OperationID = "tui.task.attachments"
+	OperationTaskCopyTitle            OperationID = "tui.task.copy-title"
+	OperationTaskCopyDetails          OperationID = "tui.task.copy-details"
+	OperationTaskCopyTitleDescription OperationID = "tui.task.copy-title-description"
+	OperationTaskTogglePin            OperationID = "tui.task.toggle-pin"
+	OperationTaskNewChild             OperationID = "tui.task.new-child"
+
+	// OperationTaskDelete carries no direct key. Delete is the whole task
+	// `Space` menu and confirms first, so the ID is manifest vocabulary the
+	// sheet reads rather than a binding the strategy declares.
+	OperationTaskDelete OperationID = "tui.task.delete"
 )
-
-// OperationValueSelectedMsg resumes a pending operation with the chosen value.
-type OperationValueSelectedMsg struct {
-	Request OperationExecutionRequest
-	Value   any
-}
-
-// OperationValueCanceledMsg closes the value picker and returns to its action
-// sheet without executing the operation.
-type OperationValueCanceledMsg struct{}

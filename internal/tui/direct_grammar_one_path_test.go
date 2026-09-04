@@ -57,7 +57,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("duplicate placement", func(t *testing.T) {
 		candidate := mutableInputStrategy(strategy)
 		candidate.Bindings = append(candidate.Bindings, operation.OperationKeyBinding{
-			OperationID: operationTaskDelete,
+			OperationID: operation.OperationTaskDelete,
 			Keys:        []string{"Z"},
 		})
 		err := validateOutlinerOperationOnePath(candidate)

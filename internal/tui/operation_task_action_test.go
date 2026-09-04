@@ -104,7 +104,7 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	// Every direct and retired operation is absent. The remaining projection is
 	// the single-row task menu, which Delete alone now occupies.
 	want := []operation.OperationID{
-		operationTaskDelete,
+		operation.OperationTaskDelete,
 	}
 	if !reflect.DeepEqual(ordered, want) {
 		t.Fatalf("manifest order = %v, want %v", ordered, want)

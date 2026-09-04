@@ -117,7 +117,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	filter := &app.crossOutliner.filter.CommonFilterState
 
 	both := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterContexts,
+		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{"errand", "deep"},
 		HasValue: true,
@@ -139,7 +139,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	}
 
 	gap := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterContexts,
+		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{query.NoContextFilterKey},
 		HasValue: true,
@@ -162,7 +162,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	}
 
 	cleared := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterContexts,
+		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{},
 		HasValue: true,

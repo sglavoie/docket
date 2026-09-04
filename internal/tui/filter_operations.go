@@ -24,7 +24,7 @@ func filterOperationDescriptor(
 		Category:             operation.OperationCategoryFilter,
 		TargetCardinality:    operation.TargetCardinalityNone,
 		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-		Applicability:        coreOutlinerApplicability,
+		Applicability:        operation.CoreOutlinerApplicability,
 		Risk:                 operation.OperationRiskReadOnly,
 		ValueProviderID:      provider,
 	}
@@ -33,21 +33,21 @@ func filterOperationDescriptor(
 func filterOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := filterOperationDescriptor
 	return []operation.OperationDescriptor{
-		descriptor(operationFilterPriority, "Filter by Priority", operation.ValueProviderFilterPriority, "priority threshold"),
-		descriptor(operationFilterStates, "Filter by State", operation.ValueProviderFilterStates, "state filter"),
-		descriptor(operationFilterTags, "Filter by Tags", operation.ValueProviderFilterTags, "tag filter"),
-		descriptor(operationFilterContexts, "Filter by Context", operation.ValueProviderFilterContexts, "context filter"),
-		descriptor(operationFilterReview, "Filter Review", "", "review flag filter", "flagged for review"),
-		descriptor(operationFilterDue, "Filter by Due or Deferred", operation.ValueProviderFilterDue, "due filter", "deferred", "hidden"),
-		descriptor(operationFilterCompletionAge, "Filter by Completion Age", operation.ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
-		descriptor(operationFilterHierarchy, "Filter by Hierarchy", operation.ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
-		descriptor(operationFilterDependency, "Filter by Dependency", operation.ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
-		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
+		descriptor(operation.OperationFilterPriority, "Filter by Priority", operation.ValueProviderFilterPriority, "priority threshold"),
+		descriptor(operation.OperationFilterStates, "Filter by State", operation.ValueProviderFilterStates, "state filter"),
+		descriptor(operation.OperationFilterTags, "Filter by Tags", operation.ValueProviderFilterTags, "tag filter"),
+		descriptor(operation.OperationFilterContexts, "Filter by Context", operation.ValueProviderFilterContexts, "context filter"),
+		descriptor(operation.OperationFilterReview, "Filter Review", "", "review flag filter", "flagged for review"),
+		descriptor(operation.OperationFilterDue, "Filter by Due or Deferred", operation.ValueProviderFilterDue, "due filter", "deferred", "hidden"),
+		descriptor(operation.OperationFilterCompletionAge, "Filter by Completion Age", operation.ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
+		descriptor(operation.OperationFilterHierarchy, "Filter by Hierarchy", operation.ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
+		descriptor(operation.OperationFilterDependency, "Filter by Dependency", operation.ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
+		descriptor(operation.OperationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
 		// The pinned axis has been in the row cache and in the canonical query all
 		// along; only the key was missing, so this is a binding for an existing
 		// facet rather than a new one.
-		descriptor(operationFilterPinned, "Filter Pinned", "", "pinned work", "pinned tasks"),
-		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
+		descriptor(operation.OperationFilterPinned, "Filter Pinned", "", "pinned work", "pinned tasks"),
+		descriptor(operation.OperationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
 
@@ -90,10 +90,10 @@ func (m *AppModel) registerFilterOperations() error {
 	// accept it.
 	register := func(descriptors []operation.OperationDescriptor, handler operation.OperationHandler) error {
 		for _, descriptor := range descriptors {
-			stale := descriptor.ID == operationFilterStale
+			stale := descriptor.ID == operation.OperationFilterStale
 			refusesSearchProjection := filterOperationRequiresReload(descriptor.ID)
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
-				if !coreOutlinerApplicability(ctx) {
+				if !operation.CoreOutlinerApplicability(ctx) {
 					return false
 				}
 				if refusesSearchProjection &&
@@ -129,46 +129,46 @@ func (m *AppModel) registerFilterOperations() error {
 // value it just replaced nor disturb a facet beside it.
 func filterOperationFields(id operation.OperationID) []models.QueryField {
 	switch id {
-	case operationFilterPriority:
+	case operation.OperationFilterPriority:
 		return []models.QueryField{models.QueryFieldPriority}
-	case operationFilterStates:
+	case operation.OperationFilterStates:
 		return []models.QueryField{models.QueryFieldState}
-	case operationFilterTags:
+	case operation.OperationFilterTags:
 		return []models.QueryField{models.QueryFieldTag}
-	case operationFilterContexts:
+	case operation.OperationFilterContexts:
 		return []models.QueryField{models.QueryFieldContext}
-	case operationFilterDue:
+	case operation.OperationFilterDue:
 		// The due picker's deferred row and its four bucket rows are one facet:
 		// choosing either clears the other, which is only true if both fields
 		// belong to the same operation.
 		return []models.QueryField{models.QueryFieldDue, models.QueryFieldDeferred}
-	case operationFilterCompletionAge:
+	case operation.OperationFilterCompletionAge:
 		// The cleanup facet installs the terminal-state predicate itself, which is
 		// why CommonFilterFacetCount reads the pair as one clearable facet.
 		return []models.QueryField{models.QueryFieldCompleted, models.QueryFieldState}
-	case operationFilterHierarchy:
+	case operation.OperationFilterHierarchy:
 		return query.FilterQueryHierarchyFields
-	case operationFilterDependency:
+	case operation.OperationFilterDependency:
 		// Both directions are one facet: choosing either clears the other, the
 		// same way the due picker's buckets and its deferred row do.
 		return query.FilterQueryDependencyFields
-	case operationFilterStale:
+	case operation.OperationFilterStale:
 		return []models.QueryField{models.QueryFieldStale}
-	case operationFilterPinned:
+	case operation.OperationFilterPinned:
 		return []models.QueryField{models.QueryFieldPinned}
-	case operationFilterReview:
+	case operation.OperationFilterReview:
 		return []models.QueryField{models.QueryFieldReview}
-	case operationFilterClear:
+	case operation.OperationFilterClear:
 		return query.FilterQueryTaskFields()
-	case operationFilterProjectTags:
+	case operation.OperationFilterProjectTags:
 		// The F# picker carries the parked row in the same list of names, so the
 		// tag restriction and the parked axis move together.
 		return []models.QueryField{models.QueryFieldProjectTag, models.QueryFieldParked}
-	case operationFilterShowParked, operationFilterOnlyParked:
+	case operation.OperationFilterShowParked, operation.OperationFilterOnlyParked:
 		return []models.QueryField{models.QueryFieldParked}
-	case operationFilterIncludeArchived, operationFilterOnlyArchived:
+	case operation.OperationFilterIncludeArchived, operation.OperationFilterOnlyArchived:
 		return []models.QueryField{models.QueryFieldArchived}
-	case operationFilterProjectClear:
+	case operation.OperationFilterProjectClear:
 		return query.FilterQueryPopulationFields
 	default:
 		return nil

@@ -115,9 +115,9 @@ the pre-split tree and is consistently pessimistic.
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
-| `operation` | 124 | 116 so far (Sessions 2.14–2.15 of three) | — |
+| `operation` | 124 | 162 | 159 |
 
-Running total against 631: **222**. `grammar` contributes 58, not 154, because
+Running total against 631: **381**. `grammar` contributes 58, not 154, because
 its two counted columns are on a different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
 where the other rows count package-level declarations and name their members in
@@ -308,14 +308,13 @@ alternative to moving `RenderFilterBadge`, `FormatDueDate` and the tag chip
 styling up, which CLAUDE.md forbids: it names one tag-color authority and one
 due-date spelling, and relocating either would have minted a second.
 
-`operation` is the first package the plan splits across three sessions, so its
-row carries a partial middle column and no last column at all: Session 2.14
-lands the registry third, 2.15 the executor and 2.16 the strategies and the
-tests. Nothing it promotes can be withdrawn yet, because no test moved down with
-it — all eight candidates the reference graph offered name `AppModel`, the
-executor, or a list-surface identifier, so `internal/tui/operation` has no test
-files and no `main_test.go` until 2.16. The running total above therefore stays
-at 222 for two more sessions.
+`operation` is the first package the plan splits across three sessions: Session
+2.14 landed the registry third, 2.15 the executor, and 2.16 the strategies, the
+identifier blocks and the tests. Nothing it promoted could be withdrawn before
+the last of the three, because no test moved down ahead of them — the eight
+candidates the reference graph offered Session 2.14 all name `AppModel`, the
+executor, or a list-surface identifier, so `internal/tui/operation` had no test
+files and no `main_test.go` until 2.16.
 
 116 of the projected 124 are package-level declarations, plus six members the
 column does not count: `OperationKeyBinding.Paths`, `OperationRegistry.Register`
@@ -378,6 +377,63 @@ and `scripts/dead_code.sh` would say so, so `bindingFor` selects through it —
 the same fix `NewActivityCoordinator` and `NewAttachmentCoordinator` needed. It
 returns a copy, which costs one slice allocation per `Execute` and matches the
 defensive copies `Register` already makes of `Views` and `RequiredCapabilities`.
+
+Session 2.16 closes the row at 162 → 159, which overspends the projection of
+124 by 38. The overspend is arithmetic, not drift: the projection counted only
+the files the assignment table gave `operation`, and four of this session's
+promoted blocks were declared in files the table gives the shell or
+`projecthub`. Seventeen `operationTask*`, seven `operationSort*` and nine
+project identifiers left `sort_operations.go`, `task_operations_auxiliary.go`,
+`task_delete_transaction.go`, `project_operations.go` and
+`outliner_project_action_sheet.go` for `task_operation_ids.go`,
+`sort_operation_ids.go` and `project_operation_ids.go`, on the same
+`core_operation_ids.go` precedent Session 2.14 set: every donor is pinned by an
+`AppModel` receiver, so the identifiers are the only half that can cross. Expect
+this shape in the projection wherever a package's vocabulary is declared beside
+the surfaces that spend it rather than beside the type that owns it.
+
+`operation_value_provider.go` is gone rather than moved, which answers what
+Session 2.15 flagged about its name. Session 2.14 took its four payload structs
+and 2.16 took its ten identifiers, so what was left was
+`OperationValueSelectedMsg` and `OperationValueCanceledMsg`; both joined
+`OperationValueRequestMsg` in `operation_executor_types.go`, the file that
+already declared the request the pair answers.
+
+One assignment row is corrected, in Session 2.8's direction:
+`task_operation_manifest.go` is `tui`, not `operation`. Both
+`outlinerOperationDescriptorManifest` and `validateOutlinerOperationOnePath`
+call `outlinerProjectOperationManifest`, and the file's six other functions have
+no reader below the shell. Moving it would have exported twelve names — six
+functions, `OperationTaskDelete` and the five `taskActionCategory*` constants —
+for zero in-package consumers, which is exactly what step 3 forbids.
+`ValidateOperationOnePath`, the manifest predicate the file calls, had already
+moved with the registry on Session 2.14 and is what the moved
+`operation_manifest_test.go` exercises.
+
+Three promotions are withdrawn: `ArchivedTaskTargetRejection`,
+`ChecklistCursorRejection` and `ValidateOperationCapabilities`, all three called
+only from `operation_executor.go` and `operation_registry_validation.go` inside
+the package. `CapabilityScopeHub` reads as a fourth candidate and is not one —
+it was already exported before the split, so it is pre-existing vocabulary the
+oracle's intersection step is there to filter out.
+
+`operation_manifest_test.go` is the only test file that moves down, and the
+reason the other candidates stay is one shared dependency rather than eight
+separate ones. Every remaining test of the package's own behaviour reaches its
+`CommandContext` through `PresentationCommandContext`, which `route.go` declares
+at L4 over `presentationScope`. `input_strategy_chord_test.go` is the closest
+call and still stays whole: its two registration-grammar cases are pure
+`operation`, but they share `chordTestRegistry` with the projection case that
+also reads `pendingChordGuidanceSpec` from the shell, and splitting the file
+would have duplicated the helper to move one test.
+
+`SimplifiedInputStrategy()` is one of the five names `cmd/` and the root
+`retired_product_vocabulary_test.go` compile against, so
+`input_strategy_simplified_shell.go` re-exports it. The wrapper is not dead
+code: `surface_operation_gates.go` is the sole production caller of the name and
+was left pointing at the shell rather than requalified past it, which is what
+keeps `scripts/dead_code.sh` quiet — the same trap `OperationExecutor.Bindings`
+hit one session earlier, avoided by not creating it.
 
 Two graph edges the whitelist did not have, both recorded in
 `scripts/tui_package_graph.tsv`. `operation` needs `query`, because

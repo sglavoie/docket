@@ -24,10 +24,10 @@ func (m *AppModel) executeTaskOperation(
 	}
 	// Deletion takes every resolved target at once because one atomic
 	// transaction removes single and multi-root selections alike.
-	if invocation.Descriptor.ID == operationTaskDelete {
+	if invocation.Descriptor.ID == operation.OperationTaskDelete {
 		return m.executeTaskDeleteOperation(invocation)
 	}
-	if invocation.Descriptor.ID == operationTaskTogglePin {
+	if invocation.Descriptor.ID == operation.OperationTaskTogglePin {
 		return m.executeTaskTogglePinOperation(invocation)
 	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
@@ -246,15 +246,15 @@ func applicationTaskOperationRequest(
 		return request, "Set Dependencies",
 			fmt.Sprintf("Set Dependencies · Updated %d task(s)", count), true, nil
 
-	case operationTaskCopyTitle:
+	case operation.OperationTaskCopyTitle:
 		request.Operation = app.TaskOperationCopyTitle
 		return request, "Copy Title", "", true, nil
 
-	case operationTaskCopyDetails:
+	case operation.OperationTaskCopyDetails:
 		request.Operation = app.TaskOperationCopyDescription
 		return request, "Copy Description", "", true, nil
 
-	case operationTaskCopyTitleDescription:
+	case operation.OperationTaskCopyTitleDescription:
 		request.Operation = app.TaskOperationCopyTitleDescription
 		return request, "Copy Title and Description", "", true, nil
 

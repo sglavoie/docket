@@ -212,13 +212,13 @@ func operationTargetRejectionCategory(descriptor OperationDescriptor) OperationC
 	}
 }
 
-// ArchivedTaskTargetRejection refuses any operation that would change a task an
+// archivedTaskTargetRejection refuses any operation that would change a task an
 // archived project owns. The Fa project filter deliberately loads archived
 // projects into the ordinary Outliner, so the read-only lifecycle rule has to
 // hold where every operation passes rather than where the population is built.
 // A visual selection is judged whole: one archived member refuses the whole
 // operation so a mixed selection can never mutate its active subset.
-func ArchivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+func archivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandContext) error {
 	if descriptor.Risk == OperationRiskReadOnly {
 		return nil
 	}
@@ -239,14 +239,14 @@ func ArchivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandCont
 	return nil
 }
 
-// ChecklistCursorRejection refuses every operation that would act on the owner
+// checklistCursorRejection refuses every operation that would act on the owner
 // task while the cursor rests on one of its checklist items. The row carries
 // the owner's pointer, so ordinary target resolution finds a perfectly valid
 // task and the whole task grammar would otherwise mutate one level up from
-// where the user is pointing. It runs beside ArchivedTaskTargetRejection,
+// where the user is pointing. It runs beside archivedTaskTargetRejection,
 // before resolution, because delegated bindings swallow resolver errors and
 // target-free operations resolve no target for a resolver guard to inspect.
-func ChecklistCursorRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+func checklistCursorRejection(descriptor OperationDescriptor, ctx CommandContext) error {
 	if !ctx.Entity.HasChecklistCursor || !operationRefusedOnChecklistRow(descriptor) {
 		return nil
 	}

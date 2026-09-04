@@ -71,7 +71,7 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrOperationNotRegistered, binding.OperationID)
 	}
-	if err := ValidateOperationCapabilities(binding.OperationID, binding.RequiredCapabilities); err != nil {
+	if err := validateOperationCapabilities(binding.OperationID, binding.RequiredCapabilities); err != nil {
 		return err
 	}
 	if descriptor.TargetCardinality == TargetCardinalityNone &&
@@ -109,7 +109,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	// Refused ahead of availability so any route into an operation the checklist
 	// cursor turned off reports the one sentence rather than the generic
 	// unavailable error.
-	if err := ChecklistCursorRejection(descriptor, request.Context); err != nil {
+	if err := checklistCursorRejection(descriptor, request.Context); err != nil {
 		return executor.failure(err)
 	}
 	binding, ok := executor.bindingFor(request.ID, request.Context)
@@ -125,7 +125,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	}
 	// Refused before resolution so delegated bindings, which swallow resolver
 	// errors, cannot reach a handler with an archived task.
-	if err := ArchivedTaskTargetRejection(descriptor, request.Context); err != nil {
+	if err := archivedTaskTargetRejection(descriptor, request.Context); err != nil {
 		return executor.failure(err)
 	}
 

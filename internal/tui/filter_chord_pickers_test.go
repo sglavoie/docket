@@ -69,8 +69,8 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 		[]string{"f", "@"},
 		ctx,
 	)
-	if resolution != operation.ChordTerminal || descriptor.ID != operationFilterDue {
-		t.Fatalf("f@ = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterDue)
+	if resolution != operation.ChordTerminal || descriptor.ID != operation.OperationFilterDue {
+		t.Fatalf("f@ = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operation.OperationFilterDue)
 	}
 	if binding.HasPresetValue || binding.DisplayKey != "f@" {
 		t.Errorf("f@ binding = preset %v display %q, want picker display f@", binding.HasPresetValue, binding.DisplayKey)
@@ -106,8 +106,8 @@ func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
 		[]string{"f", "s"},
 		ctx,
 	)
-	if resolution != operation.ChordTerminal || descriptor.ID != operationFilterStale {
-		t.Fatalf("fs = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterStale)
+	if resolution != operation.ChordTerminal || descriptor.ID != operation.OperationFilterStale {
+		t.Fatalf("fs = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operation.OperationFilterStale)
 	}
 	if binding.HasPresetValue || binding.DisplayKey != "fs" {
 		t.Errorf("fs binding = preset %v display %q, want toggle display fs", binding.HasPresetValue, binding.DisplayKey)
@@ -237,7 +237,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	filter := &app.crossOutliner.filter.CommonFilterState
 
 	states := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterStates,
+		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{"done", "waiting"},
 		HasValue: true,
@@ -253,7 +253,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	}
 
 	cleared := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterStates,
+		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{},
 		HasValue: true,
@@ -269,7 +269,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	}
 
 	invalid := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterStates,
+		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{"not-a-state"},
 		HasValue: true,
@@ -279,7 +279,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	}
 
 	tags := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationFilterTags,
+		ID:       operation.OperationFilterTags,
 		Context:  ctx,
 		Value:    []string{"deep"},
 		HasValue: true,
