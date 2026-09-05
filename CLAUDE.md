@@ -217,7 +217,9 @@ sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
 It costs one list row, subtracted in `ContentHeight` alone; never measure it
 again. The row is exactly `m.width` and drops whole labels from the right, never
 truncating one. An open menu is bar and dropdown alone: list hidden, not shrunk,
-window still.
+window still. `MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `Ctrl+M`
+borrows that row and the close gives it back; `M` alone writes the pinned flag
+the View checkbox reads.
 
 `Q` expands the query readout in that strip, below the conflict line, from a pure
 `QueryReadoutBody` `StatusStripHeight` measures. It names one row per peelable

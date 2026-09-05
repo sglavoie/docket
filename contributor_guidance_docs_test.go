@@ -219,7 +219,19 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// where they already live. It costs 227 bytes and no rule elsewhere was
 	// trimmed to pay for it. A package added or a layer moved rewrites the block
 	// and is a raise of the same kind, argued then.
-	const budget = 29624
+	//
+	// A third raise, of 171 bytes, for the menu bar's two visibility sources.
+	// While `Ctrl+M` revealed a hidden bar by committing the machine-local flag,
+	// there was one source and "`M` toggles the Outliner menu bar" covered every
+	// question a contributor could have: the bar was shown because someone chose
+	// it. The reveal is now the open menu's own, so a frame draws the band for
+	// either of two reasons, and which one the View checkbox and the close read
+	// is exactly the kind of fact that gets guessed wrong once and then copied.
+	// The sentence names the disjunction, its one writer, and the projection the
+	// checkbox takes, and nothing else; the mechanism is in
+	// docs/architecture/presentation-chrome.md, where the rest of the bar's
+	// implementation already lives. No rule elsewhere was trimmed to pay for it.
+	const budget = 29795
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

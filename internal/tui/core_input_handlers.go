@@ -434,23 +434,14 @@ func (m *AppModel) coreToggleMenuBar() error {
 // way to know the band exists, so the key that opens a menu has to be able to
 // put one on screen from nothing.
 //
-// The reveal commits the same machine-local flag `M` writes, so a menu opened
-// out of a hidden bar leaves the bar shown afterwards rather than snapping back
-// — the state a user can see is the state that was saved.
+// The reveal is the open menu's own, not a write to the machine-local flag `M`
+// writes: an open menu draws the band it hangs from, and closing it returns
+// visibility to whatever the user last chose. Showing the bar is still `M`'s
+// alone, so a menu opened out of a hidden bar borrows the row and gives it back.
 func (m *AppModel) coreOpenMenuBar() error {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return fmt.Errorf("the menu bar belongs to the Outliner")
-	}
-	if !out.MenuBarVisible() {
-		if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
-			return fmt.Errorf("machine chrome state is unavailable")
-		}
-		machine := *m.domain.runtime.Machine()
-		machine.MenuBarVisible = true
-		if err := m.domain.runtime.CommitMachine(&machine); err != nil {
-			return fmt.Errorf("save menu bar visibility: %w", err)
-		}
 	}
 	out.OpenMenuBar()
 	return nil

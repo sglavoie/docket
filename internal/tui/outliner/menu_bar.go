@@ -712,11 +712,20 @@ func renderMenuBarRow(menus []ResolvedMenu, width int, openIdx int) string {
 	return b.String()
 }
 
-// menuBarVisible reads the machine-local flag `M` writes. RuntimeState.Machine
+// MenuBarPinned reads the machine-local flag `M` writes. RuntimeState.Machine
 // is nil-safe and returns defaults, so an Outliner built without a runtime — the
 // dimmed preview backgrounds among them — simply draws no bar.
-func (m *OutlinerModel) MenuBarVisible() bool {
+func (m *OutlinerModel) MenuBarPinned() bool {
 	return m.Runtime.Machine().MenuBarVisible
+}
+
+// MenuBarVisible is whether this frame draws the band. An open menu hangs off a
+// bar label, so opening one out of a hidden bar reveals it for exactly as long
+// as the menu is open: the reveal is the sub-state's, not a write to the pinned
+// flag, so closing the menu leaves visibility where the user last put it rather
+// than where a dropdown passed through.
+func (m *OutlinerModel) MenuBarVisible() bool {
+	return m.MenuBarPinned() || m.MenuBar.Open
 }
 
 // menuBarRows is what the bar costs the row budget. It is deliberately a
@@ -746,7 +755,11 @@ func (m *OutlinerModel) resolvedMenuBar() []ResolvedMenu {
 		m.OperationRegistry,
 		strategy,
 		m.OperationCommandContext(),
-		OutlinerMenuSpecs(m.PrimaryMode, m.MenuBarVisible(), !m.AdvisoriesSuppressed()),
+		// The Menu Bar row is checked from the pinned flag its toggle writes, not
+		// from what this frame draws: a bar revealed only for the open menu is not
+		// a bar the user asked to keep, and a tick that said otherwise would make
+		// the next Enter on that row read as "hide" while it shows.
+		OutlinerMenuSpecs(m.PrimaryMode, m.MenuBarPinned(), !m.AdvisoriesSuppressed()),
 	)
 	if err != nil {
 		// Startup already refused a spec naming an operation the registry does not

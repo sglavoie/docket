@@ -22,8 +22,13 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
 	}
-	if !driver.App().domain.runtime.Machine().MenuBarVisible {
+	if !outlinerView.MenuBarVisible() {
 		t.Error("opening a menu did not reveal the hidden bar")
+	}
+	// The reveal is the menu's, not the machine's: `M` is the only key that says
+	// keep the bar, so a borrowed row must not be written down as a choice.
+	if driver.App().domain.runtime.Machine().MenuBarVisible {
+		t.Error("opening a menu committed the machine-local visibility flag")
 	}
 	if !outlinerView.MenuBar.Open {
 		t.Fatal("ctrl+m revealed the bar without opening a menu")
@@ -51,13 +56,48 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	if outlinerView.MenuBar.Open {
 		t.Error("esc left the menu open")
 	}
-	// Esc puts the menu away, not the bar: hiding the band is `M`'s alone, and it
-	// is machine-local state rather than a sub-state.
-	if !driver.App().domain.runtime.Machine().MenuBarVisible {
-		t.Error("closing the menu also hid the bar it revealed")
+	// Esc gives the borrowed band back. Visibility is a machine-local choice `M`
+	// alone writes, so a menu that revealed the bar to hang off it leaves the
+	// Outliner exactly as hidden as it found it.
+	if outlinerView.MenuBarVisible() {
+		t.Error("closing the menu left the bar it borrowed on screen")
+	}
+	if driver.App().domain.runtime.Machine().MenuBarVisible {
+		t.Error("closing the menu committed the machine-local visibility flag")
 	}
 	if closed := driver.Observe(ObserveOptions{}).PlainScreen; strings.Contains(closed, "Capture Child") {
 		t.Errorf("the dropdown survived its close:\n%s", closed)
+	}
+}
+
+// The other half of the same rule: a menu opened out of a bar the machine asked
+// for leaves that bar up. Closing a menu restores the visibility the menu found,
+// which is the one fact both directions share — the dropdown is a sub-state and
+// never a write to the chrome flag underneath it.
+func TestClosingAMenuLeavesAShownBarShown(t *testing.T) {
+	driver, outlinerView := menuBarDriver(t)
+
+	if err := driver.SendKey("M"); err != nil {
+		t.Fatalf("press M: %v", err)
+	}
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
+		t.Fatal("M did not show the bar")
+	}
+
+	pressMenuBarKey(t, driver, "ctrl+m")
+	if !outlinerView.MenuBar.Open {
+		t.Fatal("ctrl+m opened no menu")
+	}
+
+	pressMenuBarKey(t, driver, "esc")
+	if outlinerView.MenuBar.Open {
+		t.Fatal("esc left the menu open")
+	}
+	if !outlinerView.MenuBarVisible() {
+		t.Error("closing the menu hid a bar the machine had asked for")
+	}
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
+		t.Error("closing the menu cleared the machine-local visibility flag")
 	}
 }
 

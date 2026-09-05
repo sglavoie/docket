@@ -19,6 +19,15 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 20 },
+
+    { "type": "wait", "label": "let the toggle's transient status expire so the footer is guidance again", "duration": "10s" },
+    { "type": "key", "label": "Ctrl+M opens a menu out of a bar that was already shown", "key": "ctrl+m" },
+    { "type": "assert", "assert": "contains", "value": "Capture Child" },
+    { "type": "key", "label": "closing the menu leaves a shown bar shown", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
+    { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "M hides it again and the row comes back", "key": "M" },
     { "type": "assert", "assert": "contains", "value": "Menu bar hidden" },
     { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
@@ -26,7 +35,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "wait", "label": "let the toggle's transient status expire so the footer is guidance again", "duration": "10s" },
-    { "type": "key", "label": "Ctrl+M opens a menu, revealing the hidden bar in the same press", "key": "ctrl+m" },
+    { "type": "key", "label": "Ctrl+M opens a menu, borrowing the hidden bar's row in the same press", "key": "ctrl+m" },
     { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
     { "type": "assert", "label": "the leftmost menu drops under its own label", "assert": "contains", "value": "Capture Child" },
     { "type": "assert", "assert": "contains", "value": "External Editor" },
@@ -46,18 +55,19 @@
     { "type": "resize", "label": "given the room, the whole menu is drawn", "width": 100, "height": 35 },
     { "type": "assert", "assert": "contains", "value": "Query Readout" },
     { "type": "assert", "label": "the keyless entry is drawn, and the menu is the only place it exists", "assert": "contains", "value": "Clear All Folds" },
-    { "type": "assert", "label": "the bar's own visibility reads back off the machine flag", "assert": "contains", "value": "✓ Menu Bar" },
+    { "type": "assert", "label": "the bar's own row reads back off the machine flag, not off the borrowed reveal", "assert": "contains", "value": "Menu Bar" },
+    { "type": "assert", "assert": "not_contains", "value": "✓ Menu Bar" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the dropdown stays on screen at the narrowest supported width", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "✓ All" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 20 },
 
-    { "type": "key", "label": "esc puts the menu away and leaves the bar shown", "key": "esc" },
+    { "type": "key", "label": "esc puts the menu away and gives the borrowed bar back", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Query Readout" },
-    { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
-    { "type": "assert", "label": "the title and the same rows come back where they were", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 088" },
+    { "type": "assert", "label": "a bar the menu revealed goes when the menu goes: hiding it stays M's alone", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "the title and the row the bar borrowed come back", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 095" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen it to press a key it does not list", "key": "ctrl+m" },
@@ -68,7 +78,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "abandon the capture the menu handed off", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "and the bar is still hidden, exactly as the machine left it", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

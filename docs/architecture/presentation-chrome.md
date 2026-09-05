@@ -160,7 +160,8 @@ and `queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis
 that fails to clear itself.
 
 The menu bar and its open menu are the same kind of thing one level apart. The
-bar is machine-local chrome: `M` writes `MenuBarVisible`, `menuBarRows` charges
+bar is machine-local chrome: `M` writes `MenuBarVisible`, which `MenuBarPinned`
+reads back, `menuBarRows` charges
 the list exactly one row, and `ContentHeight` is the only subtraction, so a bar
 that resolved to no menus at all still owes its row rather than letting the
 reservation and the paint disagree. `resolvedMenuBar` projects
@@ -182,9 +183,13 @@ overlay, claims no `InputStrategy`, and takes no manifest entry, so
 `surfaceOperationGates()` still lists five strategies; its keymap is gated, so
 it takes no footer rank. `tui.core.open-menu-bar` is a second operation beside
 the toggle rather than a mode of it, because opening has to reveal a hidden bar
-in the same press: the handler commits the visibility through
-`RuntimeState.CommitMachine` and only then calls `OpenMenuBar`, which is why one
-key never means "show" once and "open" the next time.
+in the same press, which is why one key never means "show" once and "open" the
+next time. The reveal is the sub-state's own: `MenuBarVisible` is
+`MenuBarPinned() || MenuBar.Open`, so the handler calls `OpenMenuBar` and
+commits nothing, and `closeMenuBar` returns the row without a second write. The
+View menu's own checkbox reads `MenuBarPinned` rather than `MenuBarVisible`, so
+a tick describes the flag `M` writes rather than the band the open menu is
+hanging from.
 
 It diverges from the readout in exactly one place, deliberately. The readout
 closes on any unlisted key and swallows it; the menu closes and re-emits the key

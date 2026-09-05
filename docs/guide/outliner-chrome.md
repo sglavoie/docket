@@ -22,8 +22,10 @@ the right — Help first, then Find, then Go — rather than cutting a word in h
 because a half-word is a lie about what the bar offers while a dropped menu is
 still reachable by the keys its entries carry.
 
-`Ctrl+M` opens the leftmost menu, showing the bar first if it was hidden, so
-reaching a menu is never two presses. The dropdown falls inline under the label
+`Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
+so reaching a menu is never two presses. The reveal lasts as long as the menu
+does: close the menu and the bar goes back to whatever `M` last left it as, up
+if it was up and away if it was away. The dropdown falls inline under the label
 it belongs to, and while it is open the task list is not drawn at all: the bar
 stays on its row, the menu hangs off its label, and everything below is blank
 until you close it. Nothing shifts down and back up per press, and the view you
@@ -36,7 +38,7 @@ running anything, leaving the bar exactly as it was.
 A menu lists only what the cursor could do right now: an entry that does not
 apply is removed rather than greyed out, so the Task menu is shorter under a
 visual selection than without one. Modes and toggles carry a checkmark — the
-active mode, the bar's own visibility — so a menu reads the state back instead
+active mode, whether the bar is kept — so a menu reads the state back instead
 of only offering to change it, and every row spells the key it is bound to.
 Those keys keep working while the menu is up: pressing one the open menu does
 not list closes the menu and does what the key does, so nothing is trapped
@@ -62,9 +64,10 @@ it.
 Whether the bar is drawn is remembered for this machine, the way the light or
 dark theme is: it survives quitting and reopening `tt`, and it does not follow
 you to another computer that opens the same workspace. Chrome belongs to the
-terminal you are sitting at. The View menu lists the toggle itself, checked
-while the bar is up, because the key that shows the bar is the one thing you
-cannot read off the bar once you have found it by accident.
+terminal you are sitting at. The View menu lists the toggle itself, checked when
+`M` is keeping the bar rather than when a menu is only borrowing its row,
+because the key that shows the bar is the one thing you cannot read off the bar
+once you have found it by accident.
 
 Today mode also compares its open load with the workspace's 30-day completion
 pace in the middle region, for example `today 9 · median 3/day (30d)`. A fresh
