@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -33,10 +34,10 @@ func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
 			return m.crossOutliner.Scope.ProjectID
 		},
 		TaskCounts:         m.projectHubTaskCounts,
-		OperationRegistry:  m.operations.registry,
-		OperationExecutor:  m.operations.executor,
+		OperationRegistry:  m.operations.Registry,
+		OperationExecutor:  m.operations.Executor,
 		DispatchKey:        m.dispatchOperationKey,
-		PreviewTaskPainter: newProjectPreviewPainter,
+		PreviewTaskPainter: projectops.NewProjectPreviewPainter,
 	}
 	if m.manageHub == nil {
 		m.manageHub = projecthub.NewManageHubModel(deps)

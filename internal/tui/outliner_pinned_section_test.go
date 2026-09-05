@@ -24,7 +24,7 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 	}
 
 	appModel := &AppModel{crossOutliner: outlinerView}
-	result := appModel.executeFilterOperation(operation.OperationInvocation{
+	result := appModel.filters.ExecuteFilterOperation(appModel, operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterPriority},
 		Value:      1,
 	})

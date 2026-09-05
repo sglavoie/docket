@@ -4,6 +4,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -45,7 +48,7 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 		return nil
 	}
 	picker, err := lens.NewNamedLensPickerModel(
-		m.operations.executor,
+		m.operations.Executor,
 		m.currentView(),
 		m.namedLensPickerSnapshot(),
 	)
@@ -53,7 +56,7 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 		m.feedback.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	m.lenses.open(picker)
+	m.lenses.Open(picker)
 	return nil
 }
 
@@ -67,23 +70,23 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 // need a record under the cursor stay unreachable from here — Create is the one
 // that names no record, which is why it is the one the readout can ask for.
 func (m *AppModel) saveViewAsLens() tea.Cmd {
-	if m == nil || m.operations.executor == nil {
+	if m == nil || m.operations.Executor == nil {
 		return nil
 	}
 	ctx := route.PresentationCommandContext(m.currentView())
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      lens.OperationLensCreate,
 		Context: ctx,
 	})
 	if result.ValueRequired != nil {
-		return m.openOperationValueStep(*result.ValueRequired)
+		return m.operations.OpenValueStep(m, *result.ValueRequired)
 	}
 	if result.Err != nil {
 		m.feedback.err = result.Err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	return operationResultCmd(result)
+	return operation.ResultCmd(result)
 }
 
 // refreshNamedLensPicker re-reads the population after a mutation. The surface
@@ -91,10 +94,10 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 // contract: rename and replace keep the lens selected through any alphabetical
 // reordering, and delete drops the anchor and lands on the nearest survivor.
 func (m *AppModel) refreshNamedLensPicker() {
-	if m == nil || m.lenses.picker == nil {
+	if m == nil || m.lenses.Picker() == nil {
 		return
 	}
-	if err := m.lenses.picker.Refresh(m.namedLensPickerSnapshot()); err != nil {
+	if err := m.lenses.Picker().Refresh(m.namedLensPickerSnapshot()); err != nil {
 		m.feedback.err = err
 	}
 }
@@ -103,20 +106,20 @@ func (m *AppModel) refreshNamedLensPicker() {
 // stays mounted underneath, which is what makes every cancel path inside the
 // sheet land back on the list rather than on the Outliner.
 func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea.Cmd {
-	if m == nil || m.lenses.picker == nil {
+	if m == nil || m.lenses.Picker() == nil {
 		return nil
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
-		m.operations.registry,
-		m.operations.executor,
-		m.lenses.picker.CommandContext(msg.Entity),
+		m.operations.Registry,
+		m.operations.Executor,
+		m.lenses.Picker().CommandContext(msg.Entity),
 		lens.NamedLensActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
 			Host:         listsurface.ContextActionHostLensPicker,
 			Title:        "Lens actions",
 			Subtitle:     msg.Name,
 			ItemIDPrefix: "lens-action:",
-			SecondaryFor: operationActionSecondaryText,
+			SecondaryFor: operation.ActionSecondaryText,
 			Targets:      1,
 		},
 	)
@@ -124,7 +127,7 @@ func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea
 		m.feedback.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	m.operations.actionSheet = sheet
+	m.operations.ActionSheet = sheet
 	return nil
 }
 
@@ -138,13 +141,13 @@ func (m *AppModel) applyNamedLensPickerResult(msg lens.NamedLensPickerResultMsg)
 	case msg.Result.Err != nil:
 		return nil
 	case msg.Result.ValueRequired != nil:
-		return m.openOperationValueStep(*msg.Result.ValueRequired)
+		return m.operations.OpenValueStep(m, *msg.Result.ValueRequired)
 	case msg.Result.ConfirmationRequired != nil:
-		m.showOperationConfirmation(*msg.Result.ConfirmationRequired)
+		m.operations.ShowConfirmation(*msg.Result.ConfirmationRequired)
 		return nil
 	}
 	m.refreshNamedLensPicker()
-	return operationResultCmd(msg.Result)
+	return operation.ResultCmd(msg.Result)
 }
 
 // closeNamedLensOverlays tears the whole lens stack down at once. Create and Add
@@ -157,9 +160,54 @@ func (m *AppModel) closeNamedLensOverlays() {
 	if m == nil {
 		return
 	}
-	m.lenses.close()
-	m.operations.actionSheet = nil
-	m.clearOperationValueStep()
-	m.operations.confirm.Cancel()
-	m.operations.pendingRequest = operation.OperationExecutionRequest{}
+	m.lenses.Close()
+	m.operations.ClearOverlays()
+}
+
+// The shell side of the conflict browser. The browser itself knows only its
+// rows and its loader; reading the store and mounting the overlay live here, so
+// the AppModel stays the one place overlays are created and torn down.
+//
+// The store is read directly rather than through an internal/app port, for the
+// same reason the status strip's count is: nothing on this path validates,
+// mutates, or commits, so there is no application-layer policy for a port to
+// hold.
+
+// conflictStore is the workspace's bundle directory. It is nil only for a model
+// with no runtime, which is what the Hub's preview painter builds.
+func (m *AppModel) conflictStore() *storage.ConflictStore {
+	if m == nil || m.domain.runtime == nil {
+		return nil
+	}
+	return storage.NewConflictStore(config.ConflictsDir(m.domain.runtime.DataDir()))
+}
+
+// openConflictBrowser lists the recorded bundles and mounts the overlay over the
+// current route. An empty workspace refuses with a status rather than opening an
+// empty box: the count in the strip and the key that reads it then agree about
+// the same directory.
+func (m *AppModel) openConflictBrowser() tea.Msg {
+	store := m.conflictStore()
+	if store == nil {
+		return nil
+	}
+	records, err := store.List()
+	if err != nil {
+		m.feedback.err = err
+		return commandMessage(status.DefaultStatusTimeout())
+	}
+	// The strip and this overlay count the same directory, so one listing settles
+	// both rather than leaving the strip a tick behind what the user just read.
+	m.feedback.outstandingConflicts = len(records)
+	if len(records) == 0 {
+		m.setInfoStatus(conflict.ConflictBrowserEmptyStatus)
+		return commandMessage(status.DefaultStatusTimeout())
+	}
+	browser, err := conflict.NewConflictBrowserModel(records, store.Load)
+	if err != nil {
+		m.feedback.err = err
+		return commandMessage(status.DefaultStatusTimeout())
+	}
+	m.conflictBrowser = browser
+	return nil
 }

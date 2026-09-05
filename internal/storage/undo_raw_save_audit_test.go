@@ -20,8 +20,8 @@ const (
 )
 
 var rawProjectSaveAllowlist = map[string]string{
-	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)":                           rawSaveDoctorRepair,
-	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
+	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)":                             rawSaveDoctorRepair,
+	"internal/tui/domain_controller.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {

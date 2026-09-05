@@ -199,3 +199,42 @@ func (s *DiscardConfirmState) GetConfirmDialog() *ConfirmDialog {
 	}
 	return &s.ConfirmOverlay
 }
+
+// ConfirmAnswer is what a confirmation made of one key press. It separates the
+// key a confirmation swallowed from the key it never saw, so a key chain can
+// keep giving an armed prompt modal priority without re-reading the dialog
+// itself. It lives beside the dialog because every cluster that arms one reads
+// its answer, and the reading is the same reading everywhere.
+type ConfirmAnswer int
+
+const (
+	// ConfirmAnswerUnarmed means no confirmation was pending: the key belongs
+	// to whatever sits underneath.
+	ConfirmAnswerUnarmed ConfirmAnswer = iota
+	// ConfirmAnswerSwallowed means the prompt consumed a key that answered
+	// neither yes nor no, so nothing leaks into the view beneath it.
+	ConfirmAnswerSwallowed
+	ConfirmAnswerConfirmed
+	ConfirmAnswerCanceled
+)
+
+// ResolveConfirmKey reads one key press against one dialog. An inactive dialog
+// and a key the dialog does not handle are the same answer, because both leave
+// the key to the surface below.
+func ResolveConfirmKey(dialog *ConfirmDialog, key string) ConfirmAnswer {
+	if !dialog.IsActive() {
+		return ConfirmAnswerUnarmed
+	}
+	confirmed, handled := dialog.HandleKey(key)
+	if !handled {
+		return ConfirmAnswerUnarmed
+	}
+	if confirmed {
+		return ConfirmAnswerConfirmed
+	}
+	switch key {
+	case "n", "N", "esc":
+		return ConfirmAnswerCanceled
+	}
+	return ConfirmAnswerSwallowed
+}

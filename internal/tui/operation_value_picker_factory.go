@@ -6,10 +6,16 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/entityops"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 func (m *AppModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*models.Task, *models.Project) {
@@ -27,26 +33,26 @@ func (m *AppModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*mo
 func (m *AppModel) newOperationValuePicker(
 	request operation.OperationExecutionRequest,
 	provider operation.ValueProviderID,
-) (*OperationValuePickerModel, error) {
+) (*valuepicker.OperationValuePickerModel, error) {
 	// Filter pickers refine the whole view, so they must open without any task
 	// under the cursor and never resolve task targets.
 	switch provider {
 	case operation.ValueProviderFilterStates:
-		return m.newFilterStatesPicker(request)
+		return m.filters.NewFilterStatesPicker(m, request)
 	case operation.ValueProviderFilterTags:
-		return m.newFilterTagsPicker(request)
+		return m.filters.NewFilterTagsPicker(m, request)
 	case operation.ValueProviderFilterContexts:
-		return m.newFilterContextsPicker(request)
+		return m.filters.NewFilterContextsPicker(m, request)
 	case operation.ValueProviderFilterDue:
-		return m.newFilterDuePicker(request)
+		return m.filters.NewFilterDuePicker(m, request)
 	case operation.ValueProviderFilterCompletionAge:
-		return m.newFilterCompletionAgePicker(request)
+		return m.filters.NewFilterCompletionAgePicker(m, request)
 	case operation.ValueProviderFilterHierarchy:
-		return m.newFilterHierarchyPicker(request)
+		return m.filters.NewFilterHierarchyPicker(m, request)
 	case operation.ValueProviderFilterDependency:
-		return m.newFilterDependencyPicker(request)
+		return m.filters.NewFilterDependencyPicker(m, request)
 	case operation.ValueProviderFilterProjectTags:
-		return m.newFilterProjectTagsPicker(request)
+		return m.filters.NewFilterProjectTagsPicker(m, request)
 	case operation.ValueProviderProjectTagDestination:
 		return m.newProjectTagDestinationPicker(request)
 	case operation.ValueProviderProjectTags:
@@ -75,7 +81,7 @@ func (m *AppModel) newOperationValuePicker(
 		for _, ref := range refs {
 			states = append(states, ref.Task.State())
 		}
-		return NewTaskStatePickerForTargets(request, states, subtitle)
+		return valuepicker.NewTaskStatePickerForTargets(request, states, subtitle)
 	case operation.ValueProviderPriority:
 		priorities := []chrome.PriorityInfo{
 			{Priority: 0, Description: "Unset"},
@@ -84,10 +90,10 @@ func (m *AppModel) newOperationValuePicker(
 			{Priority: 3, Description: "Low"},
 		}
 		selected := []listsurface.ListItemID(nil)
-		if priority, ok := commonTaskPriority(refs); ok {
+		if priority, ok := valuepicker.CommonTaskPriority(refs); ok {
 			selected = []listsurface.ListItemID{listsurface.ListItemID("priority:" + strconv.Itoa(priority))}
 		}
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Priority",
@@ -98,54 +104,54 @@ func (m *AppModel) newOperationValuePicker(
 		)
 	case operation.ValueProviderDate:
 		selected := []listsurface.ListItemID(nil)
-		due, dueShared := commonTaskDate(refs, false)
-		deferred, deferShared := commonTaskDate(refs, true)
+		due, dueShared := valuepicker.CommonTaskDate(refs, false)
+		deferred, deferShared := valuepicker.CommonTaskDate(refs, true)
 		if dueShared && deferShared {
-			selected = operationDateSelectedID(due, deferred)
+			selected = valuepicker.OperationDateSelectedID(due, deferred)
 		}
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Due or Defer",
 			subtitle,
-			operationDateListSource(deferRefusalReason(refs)),
+			valuepicker.OperationDateListSource(deferRefusalReason(refs)),
 			false,
 			selected,
 		)
 	case operation.ValueProviderDueDate:
 		selected := []listsurface.ListItemID(nil)
-		if date, ok := commonTaskDate(refs, false); ok {
-			selected = dueDateSelectedID(date)
+		if date, ok := valuepicker.CommonTaskDate(refs, false); ok {
+			selected = valuepicker.DueDateSelectedID(date)
 		}
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Due Date",
 			subtitle,
-			operationDueDateListSource(),
+			valuepicker.OperationDueDateListSource(),
 			false,
 			selected,
 		)
 	case operation.ValueProviderParent:
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Parent",
 			subtitle,
-			operationParentListSource(refs[0].Task, refs[0].Project),
+			valuepicker.OperationParentListSource(refs[0].Task, refs[0].Project),
 			false,
-			parentSelectedID(refs[0].Task),
+			valuepicker.ParentSelectedID(refs[0].Task),
 		)
 	case operation.ValueProviderChild:
 		// Nothing is preselected: the checked set is the adoption, so a preselected
 		// row would make unchecking it read as a detach the `<child` sigil cannot
 		// express.
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Adopt Children",
 			subtitle+" · adds children, never detaches",
-			operationChildListSource(refs[0].Task, refs[0].Project),
+			valuepicker.OperationChildListSource(refs[0].Task, refs[0].Project),
 			true,
 			nil,
 		)
@@ -162,8 +168,8 @@ func (m *AppModel) newOperationValuePicker(
 		for _, ref := range refs {
 			tasks = append(tasks, ref.Task)
 		}
-		source := operationTaskReferenceListSource(tasks, m.crossOutliner.DependencyDetailProjects())
-		picker, err := newOperationValuePickerModel(
+		source := valuepicker.OperationTaskReferenceListSource(tasks, m.crossOutliner.DependencyDetailProjects())
+		picker, err := valuepicker.NewOperationValuePickerModel(
 			request, provider, "Set Dependencies", subtitle, source, true, nil,
 		)
 		if err != nil {
@@ -176,26 +182,26 @@ func (m *AppModel) newOperationValuePicker(
 		// commit diffs against rather than something merely displayed: the overlay
 		// outlives the snapshot it was built from, and the difference is what
 		// survives that.
-		byID := make(map[listsurface.ListItemID]operationValueMembership, len(source.Items))
+		byID := make(map[listsurface.ListItemID]valuepicker.OperationValueMembership, len(source.Items))
 		for _, item := range source.Items {
-			byID[item.ID] = operationValueNone
+			byID[item.ID] = valuepicker.OperationValueNone
 		}
-		for id, state := range taskReferenceMembership(tasks) {
+		for id, state := range valuepicker.TaskReferenceMembership(tasks) {
 			if _, ok := byID[id]; ok {
 				byID[id] = state
 			}
 		}
-		if err := picker.configureValueMembership(byID); err != nil {
+		if err := picker.ConfigureValueMembership(byID); err != nil {
 			return nil, err
 		}
 		return picker, nil
 	case operation.ValueProviderProject:
-		return newOperationValuePickerModel(
+		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Move to Project",
 			subtitle,
-			operationProjectListSource(m.domain.runtime.AvailableProjects(), commonTaskProjectID(refs)),
+			valuepicker.OperationProjectListSource(m.domain.runtime.AvailableProjects(), valuepicker.CommonTaskProjectID(refs)),
 			false,
 			nil,
 		)
@@ -205,13 +211,13 @@ func (m *AppModel) newOperationValuePicker(
 			projects = append(projects, ref.Project)
 		}
 		tagList := query.BuildProjectsTagList(projects, false)
-		source := taskTagListSource(tagList, true)
+		source := valuepicker.TaskTagListSource(tagList, true)
 		// The context rows lead the CONTEXTS section, ahead of the tag rows the
 		// source recategorized there by context usage.
 		source.Items = append(
-			taskContextListItems(query.CollectContextNamesForProjects(projects)), source.Items...,
+			valuepicker.TaskContextListItems(query.CollectContextNamesForProjects(projects)), source.Items...,
 		)
-		picker, err := newOperationValuePickerModel(
+		picker, err := valuepicker.NewOperationValuePickerModel(
 			request, provider, "Set Tags & Context", subtitle, source, true, nil,
 		)
 		if err != nil {
@@ -220,28 +226,105 @@ func (m *AppModel) newOperationValuePicker(
 		// Membership is configured at every cardinality, so the picker always
 		// emits the patch payload the context field rides on. For one task the
 		// patch and a replacement describe the same edit.
-		byID := make(map[listsurface.ListItemID]operationValueMembership, len(source.Items))
+		byID := make(map[listsurface.ListItemID]valuepicker.OperationValueMembership, len(source.Items))
 		for _, item := range source.Items {
-			byID[item.ID] = operationValueNone
+			byID[item.ID] = valuepicker.OperationValueNone
 		}
-		for tag, state := range taskTagMembership(refs) {
+		for tag, state := range valuepicker.TaskTagMembership(refs) {
 			id := listsurface.ListItemID("tag:" + tag)
 			if _, ok := byID[id]; ok {
 				byID[id] = state
 			}
 		}
-		contextInitial, contextStates := taskContextMembership(refs)
+		contextInitial, contextStates := valuepicker.TaskContextMembership(refs)
 		for id, state := range contextStates {
 			if _, ok := byID[id]; ok {
 				byID[id] = state
 			}
 		}
-		picker.contextInitial = contextInitial
-		if err := picker.configureValueMembership(byID); err != nil {
+		picker.ContextInitial = contextInitial
+		if err := picker.ConfigureValueMembership(byID); err != nil {
 			return nil, err
 		}
 		return picker, nil
 	default:
 		return nil, fmt.Errorf("unknown operation value provider %q", provider)
 	}
+}
+
+// newOperationTextPrompt builds the prompt from the frozen target identity, so a
+// target that already vanished fails here instead of after the user types.
+func (m *AppModel) newOperationTextPrompt(
+	request operation.OperationExecutionRequest,
+	provider operation.ValueProviderID,
+) (*operationhost.OperationTextPromptModel, error) {
+	identity := operation.CurrentEntityIdentity(request.Context)
+	label := string(provider)
+	if descriptor, ok := m.GetOperationRegistry().Descriptor(request.ID); ok {
+		label = descriptor.Label
+	}
+	switch provider {
+	case operation.ValueProviderNoteTitle:
+		note, err := m.resolveNoteTarget(identity)
+		if err != nil {
+			return nil, err
+		}
+		return operationhost.NewOperationTextPromptModel(
+			request, label, note.Note.Title, note.Note.Title, "new note title",
+		), nil
+	case operation.ValueProviderTagName:
+		// A tag name applies across a whole selection, so there is no single
+		// current value to prefill or show.
+		return operationhost.NewOperationTextPromptModel(request, label, "", "", "tag name"), nil
+	case operation.ValueProviderChecklistItem:
+		// Adding appends a new item, so only an edit has a current value; the
+		// request's own operation decides which, not the cursor.
+		current := ""
+		if request.ID == operation.OperationChecklistEditItem {
+			current = m.entities.ChecklistItemTextForContext(m, request.Context)
+		}
+		return operationhost.NewOperationTextPromptModel(request, label, current, current, "checklist item"), nil
+	case operation.ValueProviderLensName:
+		// Saving the current view mints a new record, so only a rename has a
+		// current value. The request's own operation decides which, because the
+		// cursor names a lens in both cases.
+		current := ""
+		if request.ID == lens.OperationLensRename {
+			lens, err := m.resolveLensTarget(identity)
+			if err != nil {
+				return nil, err
+			}
+			current = lens.Name
+		}
+		return operationhost.NewOperationTextPromptModel(request, label, current, current, "lens name"), nil
+	default:
+		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
+	}
+}
+
+// surfaceOperationGates is the inventory of entity surfaces the one-operation
+// grammar governs.
+//
+// It stays in the shell rather than beside ValidateOperationOnePath or inside
+// the operation host, because every entry names a surface strategy and a
+// surface validator and those live above both — validateOutlinerOperationOnePath
+// reads the Outliner manifests the shell declares. The host takes the table as
+// an argument instead of reaching for it.
+func surfaceOperationGates() []operationhost.SurfaceGate {
+	return []operationhost.SurfaceGate{
+		{Strategy: SimplifiedInputStrategy(), Validate: validateOutlinerOperationOnePath},
+		{Strategy: projecthub.ProjectHubInputStrategy(), Validate: projecthub.ValidateProjectOperationOnePath},
+		{Strategy: notes.NotesInputStrategy(), Validate: notes.ValidateNotesOperationOnePath},
+		{Strategy: entityops.AttachmentsInputStrategy(), Validate: entityops.ValidateAttachmentOperationOnePath},
+		{Strategy: entityops.CommentsInputStrategy(), Validate: entityops.ValidateCommentOperationOnePath},
+	}
+}
+
+// SimplifiedInputStrategy re-exports the accepted daily-loop grammar from the
+// operation layer that now declares it. The shell keeps the name because it is
+// one of the five identifiers `internal/tui`'s two external importers compile
+// against, and a package's exported surface is a contract independent of which
+// file inside the subtree happens to hold the declaration.
+func SimplifiedInputStrategy() operation.InputStrategy {
+	return operation.SimplifiedInputStrategy()
 }

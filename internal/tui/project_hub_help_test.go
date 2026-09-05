@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -113,7 +115,7 @@ func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("the Project Hub opened without a live cursor")
 	}
-	if selected, ok := cmd().(ApplyProjectScopeMsg); !ok || selected.ProjectID != "alpha" {
+	if selected, ok := cmd().(outliner.ApplyProjectScopeMsg); !ok || selected.ProjectID != "alpha" {
 		t.Fatalf("Enter on a freshly opened Hub emitted %#v, want the first project", cmd())
 	}
 }
@@ -181,19 +183,19 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	}
 	out.Confirm.Cancel()
 
-	app.operations.textPrompt = newOperationTextPromptModel(
+	app.operations.TextPrompt = operationhost.NewOperationTextPromptModel(
 		operation.OperationExecutionRequest{}, "Name", "", "draft", "Name",
 	)
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.textPrompt == nil {
-		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operations.textPrompt != nil)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.TextPrompt == nil {
+		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operations.TextPrompt != nil)
 	}
-	app.operations.textPrompt = nil
+	app.operations.TextPrompt = nil
 
-	app.operations.valuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.valuePicker == nil {
-		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operations.valuePicker != nil)
+	app.operations.ValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.ValuePicker == nil {
+		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operations.ValuePicker != nil)
 	}
-	app.operations.valuePicker = nil
+	app.operations.ValuePicker = nil
 
 	descriptor := contextActionTestDescriptor("test.ctrl-p-owner", "Owner")
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{descriptor}, nil)
@@ -207,15 +209,15 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	app.operations.actionSheet = sheet
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.actionSheet == nil {
-		t.Fatalf("action sheet did not retain Ctrl+P: handled=%v sheet=%v", handled, app.operations.actionSheet != nil)
+	app.operations.ActionSheet = sheet
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operations.ActionSheet == nil {
+		t.Fatalf("action sheet did not retain Ctrl+P: handled=%v sheet=%v", handled, app.operations.ActionSheet != nil)
 	}
-	app.operations.actionSheet = nil
+	app.operations.ActionSheet = nil
 
-	app.operations.confirm.Show(operationConfirmAction, "Confirm?")
-	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operations.confirm.IsActive() {
-		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operations.confirm.IsActive())
+	app.operations.ArmConfirm(operation.OperationExecutionRequest{ID: "test.confirm"}, "Confirm?")
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operations.Confirm.IsActive() {
+		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operations.Confirm.IsActive())
 	}
 	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while an overlay owned input")

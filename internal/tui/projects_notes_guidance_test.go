@@ -66,7 +66,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	// Delete has no direct key: the Space sheet is its one path, and choosing it
 	// hands the confirmation back to the manager that owns the row.
 	_, _ = view.Update(syntheticKey(' '))
-	if shell.operations.actionSheet == nil {
+	if shell.operations.ActionSheet == nil {
 		t.Fatal("Space did not open the note action sheet")
 	}
 	handled, sheetCmd := shell.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEnter})

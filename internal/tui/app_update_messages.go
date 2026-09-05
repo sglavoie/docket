@@ -4,14 +4,20 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/lens"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notesops"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
@@ -111,7 +117,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.adoptCrossProjectSnapshot(m.crossOutliner.Population.Projects)
 		}
 		return true, cmd
-	case noteSearchIndexLoadedMsg:
+	case notesops.NoteSearchIndexLoadedMsg:
 		m.handleNoteSearchIndexLoaded(msg)
 		return true, nil
 	case outliner.OutlinerOriginRecordedMsg:
@@ -383,4 +389,148 @@ func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState b
 	} else {
 		m.refreshProjectViewInMemory()
 	}
+}
+func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch typed := msg.(type) {
+	case listsurface.ContextActionSheetResultMsg:
+		return true, m.operations.ApplySheetResult(m, typed)
+	case listsurface.ContextActionSheetClosedMsg:
+		m.operations.ActionSheet = nil
+		return true, nil
+	case lens.NamedLensPickerClosedMsg:
+		m.lenses.Close()
+		return true, nil
+	case lens.NamedLensPickerResultMsg:
+		return true, m.applyNamedLensPickerResult(typed)
+	case lens.NamedLensActionsRequestMsg:
+		return true, m.openNamedLensActions(typed)
+	case outliner.SaveViewAsLensRequestMsg:
+		return true, m.saveViewAsLens()
+	case outliner.MenuBarActivateMsg:
+		// The menu named an operation and closed; running it is the shell's because
+		// the executor is.
+		return true, m.operations.ActivateMenuBarEntry(m, typed.OperationID)
+	case outliner.QueryReadoutReloadRequestMsg:
+		// The peel already wrote the population fields; only the reload the facet
+		// owes is left, and it is the shell's because the projects are.
+		return true, m.filters.ProjectFilterReloadCmd(m, typed.Status)
+	case conflict.ConflictBrowserClosedMsg:
+		m.conflictBrowser = nil
+		return true, nil
+	case operation.OperationConfirmationRequestMsg:
+		m.operations.ShowConfirmation(typed)
+		return true, nil
+	case operation.OperationValueRequestMsg:
+		return true, m.operations.OpenValueStep(m, typed)
+	case operation.OperationValueSelectedMsg:
+		m.operations.ClearValueStep()
+		request := typed.Request
+		request.Value = typed.Value
+		request.HasValue = true
+		return true, m.operations.ResumeRequest(m, request)
+	case operation.OperationValueCanceledMsg:
+		m.operations.ClearValueStep()
+		return true, nil
+	case valuepicker.ProjectTagVocabularyActionsMsg:
+		m.operations.ClearValueStep()
+		return true, m.openProjectTagVocabularyActions(typed.Tag)
+	default:
+		return false, nil
+	}
+}
+
+// =============================================================================
+// Outliner Messages (Show/Close Pattern)
+// =============================================================================
+
+// launchOutlinerMsg is emitted exactly once by AppModel.Init.
+type launchOutlinerMsg struct{}
+
+// FooterFlashTickMsg advances the footer divider flash one frame. Seq
+// identifies the flash generation so a tick from a superseded flash is ignored.
+type FooterFlashTickMsg struct{ Seq uint64 }
+
+// footerFlashTick schedules the next frame of the footer divider flash.
+func footerFlashTick(seq uint64) tea.Cmd {
+	return status.TickCmd(footerFlashFrameInterval, func(time.Time) tea.Msg {
+		return FooterFlashTickMsg{Seq: seq}
+	})
+}
+
+// =============================================================================
+// Clipboard Messages
+// =============================================================================
+
+// CopyTaskTitleMsg copies a single task's title to clipboard.
+type CopyTaskTitleMsg struct{ Task *models.Task }
+
+// CopyTaskDetailsMsg copies a single task's full details to clipboard.
+type CopyTaskDetailsMsg struct{ Task *models.Task }
+
+// CopyTaskTitleAndDescMsg copies a single task's title and description to clipboard.
+type CopyTaskTitleAndDescMsg struct{ Task *models.Task }
+
+// TaskCopiedMsg confirms task(s) were copied to clipboard.
+type TaskCopiedMsg struct {
+	Count        int
+	FullDetail   bool
+	TitleAndDesc bool
+}
+
+// =============================================================================
+// External Editor Messages
+// =============================================================================
+
+// EditTaskContentMsg launches external editor for task title/description. An
+// empty Path opens a fresh buffer; a reopened one reuses the file the user just
+// saved so a refused title keeps its description. RejectedTitle is the title the
+// capture/edit grammar refused, which is both the baseline the returned title is
+// compared against and the marker that this open is a retry. Notice is that
+// refusal, rendered into the buffer's instruction comment, and Description is
+// the uncommitted body a retry must carry back into the buffer.
+type EditTaskContentMsg struct {
+	Task          *models.Task
+	Project       *models.Project
+	Path          string
+	RejectedTitle string
+	Notice        string
+	Description   string
+}
+
+// TaskContentEditedMsg returns results from external editor. Path, RejectedTitle
+// and Notice ride back so a second refusal can reopen the same buffer and an
+// abandoned retry can report the refusal that started it.
+type TaskContentEditedMsg struct {
+	Task           *models.Task
+	Project        *models.Project
+	Path           string
+	RejectedTitle  string
+	Notice         string
+	NewTitle       string
+	NewDescription string
+	Err            error
+}
+
+// OpenOutlineEditorMsg dumps one project's task tree to an external editor for
+// bulk restructuring. The Outliner emits it; the shell owns the round trip.
+// Project names which project to outline: the shell reloads it from an
+// application snapshot before dumping, so the cursor's own copy is never what
+// reaches the buffer.
+type OpenOutlineEditorMsg struct {
+	Project *models.Project
+}
+
+// OutlineEditedMsg returns one edited outline buffer. Project and Revision are
+// the snapshot pair the buffer was dumped from, and the revision travels into
+// the apply so a workspace that moved while the editor was open is refused
+// instead of merged. ScopeTaskIDs are the tasks the dump actually printed, which
+// is what makes absence readable as deletion. Path is kept so a refused buffer
+// can be named in the status rather than silently discarded.
+type OutlineEditedMsg struct {
+	Project      *models.Project
+	Revision     string
+	ScopeTaskIDs []string
+	Path         string
+	Buffer       string
+	Err          error
 }

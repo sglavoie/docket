@@ -93,7 +93,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 		t.Errorf("decorated f row %q omits %q", row, "@ @today")
 	}
 
-	app.operations.chord = []string{"F"}
+	app.operations.Chord = []string{"F"}
 	projectFilter := &app.crossOutliner.ProjectFilter
 	projectFilter.Tags = map[string]bool{"client": true}
 	projectFilter.Untagged = true

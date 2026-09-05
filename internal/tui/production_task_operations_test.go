@@ -15,7 +15,7 @@ import (
 func TestOperationDiscoveryExcludesRetiredProductConcepts(t *testing.T) {
 	model := newUITestApp()
 	retired := []string{"dashboard", "planner", "roadmap", "analytics", "actionable", "pinned-tag", "pinned tag"}
-	for _, descriptor := range model.operations.registry.All() {
+	for _, descriptor := range model.operations.Registry.All() {
 		text := strings.ToLower(string(descriptor.ID) + " " + descriptor.Label + " " + strings.Join(descriptor.Aliases, " "))
 		for _, term := range retired {
 			if strings.Contains(text, term) {
@@ -78,7 +78,7 @@ func TestProductionTaskOperationManifestIsRegisteredApplicableAndExecutable(t *t
 	model, project, shapes := productionTaskOperationShapes(t)
 
 	for _, entry := range taskOperationManifest() {
-		descriptor, registered := model.operations.registry.Descriptor(entry.ID)
+		descriptor, registered := model.operations.Registry.Descriptor(entry.ID)
 		if !registered {
 			t.Errorf("manifest operation %s is not registered in the production registry", entry.ID)
 			continue
@@ -91,7 +91,7 @@ func TestProductionTaskOperationManifestIsRegisteredApplicableAndExecutable(t *t
 				continue
 			}
 			applicable = true
-			result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+			result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 				ID:      entry.ID,
 				Context: context,
 			})
@@ -153,7 +153,7 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 			t.Errorf("bulk manifest entry %s has no multi-target value in this test", entry.ID)
 			continue
 		}
-		result := model.operations.executor.Execute(request)
+		result := model.operations.Executor.Execute(request)
 		if result.Err != nil {
 			t.Errorf("bulk %s across %d tasks: %v", entry.ID, len(context.Selection.Tasks), result.Err)
 			continue
@@ -171,8 +171,8 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	m := e.appModel()
-	m.operations.registry = operation.NewOperationRegistry()
-	m.operations.executor = operation.NewOperationExecutor(m.operations.registry)
+	m.operations.Registry = operation.NewOperationRegistry()
+	m.operations.Executor = operation.NewOperationExecutor(m.operations.Registry)
 	if err := m.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = outliner.TaskOperationEntity(e.parent, e.alpha)
 
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskDelete,
 		Context: context,
 	})

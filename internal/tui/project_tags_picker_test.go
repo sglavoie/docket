@@ -10,11 +10,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func TestBehavioralProjectTagRowIsShortButPreviewStaysComplete(t *testing.T) {
-	source := (&AppModel{}).projectTagListSource(&models.Project{})
+	source := (&projectops.Controller{}).TagListSource(&AppModel{}, &models.Project{})
 	if len(source.Items) == 0 {
 		t.Fatal("project tag source has no behavioral row")
 	}
@@ -33,7 +34,7 @@ func TestBehavioralProjectTagRowIsShortButPreviewStaysComplete(t *testing.T) {
 
 // TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor covers the one
 // project-tag surface that builds its own rows instead of sharing
-// projectTagListSource, so parked cannot render in warning at # and plain at F#.
+// TagListSource, so parked cannot render in warning at # and plain at F#.
 // Untagged is exempt by name: it stands for the empty tag set, so there is no
 // tag whose color it could honestly wear.
 func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
@@ -43,7 +44,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 		&models.Project{ID: "platform", Name: "Platform", Slug: "platform", Tags: []string{"infra"}},
 		&models.Project{ID: "bare", Name: "Bare", Slug: "bare"},
 	)
-	picker, err := app.newFilterProjectTagsPicker(
+	picker, err := app.filters.NewFilterProjectTagsPicker(app,
 		operation.OperationExecutionRequest{ID: operation.OperationFilterProjectTags},
 	)
 	if err != nil {
@@ -51,7 +52,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 	}
 
 	colored := 0
-	for _, item := range picker.surface.Items() {
+	for _, item := range picker.Surface().Items() {
 		if item.Data == query.UntaggedProjectFilterKey {
 			if item.PrimaryStyle != nil {
 				t.Fatalf("the untagged row wears %v, want no tag color", item.PrimaryStyle.GetForeground())

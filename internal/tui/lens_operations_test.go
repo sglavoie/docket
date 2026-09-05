@@ -40,7 +40,7 @@ func TestLensOperationsAreReachableOnlyFromTheLensPicker(t *testing.T) {
 	} {
 		ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 		ctx.CurrentEntity = entity
-		result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID:        id,
 			Context:   ctx,
 			Value:     "Anything",
@@ -137,7 +137,7 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	}
 	// Machine-local state rides no workspace transaction, so nothing here may
 	// reach the executor's undo ledger.
-	if undo := model.operations.executor.Undo(); undo.Err == nil {
+	if undo := model.operations.Executor.Undo(); undo.Err == nil {
 		t.Fatal("expected no undo entry for a machine-local lens mutation")
 	}
 }

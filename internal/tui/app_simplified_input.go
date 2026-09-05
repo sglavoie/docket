@@ -2,14 +2,19 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // handleSimplifiedInputKey resolves one root-level key through the selected
@@ -18,27 +23,27 @@ import (
 // so the normal view Update path can process search, quick edit, and confirmation
 // keystrokes.
 func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	if !m.operations.wired() {
+	if !m.operations.Wired() {
 		return false, nil
 	}
 	view := m.currentView()
 	if view != presentation.ViewCrossProjectOutliner {
-		m.operations.chord = nil
+		m.operations.Chord = nil
 		return false, nil
 	}
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil || !m.activeOutlinerRoute() {
-		m.operations.chord = nil
+		m.operations.Chord = nil
 		return false, nil
 	}
 	if out.SimplifiedInlineControlOwnsInput() {
-		m.operations.chord = nil
+		m.operations.Chord = nil
 		return false, nil
 	}
 
 	ctx := m.operationCommandContext()
 	ctx.View = view
-	sequence := append(slices.Clone(m.operations.chord), msg.String())
+	sequence := append(slices.Clone(m.operations.Chord), msg.String())
 	return m.dispatchOperationKey(operation.InputStrategySimplified, sequence, ctx)
 }
 
@@ -56,27 +61,27 @@ func (m *AppModel) dispatchOperationKey(
 	ctx operation.CommandContext,
 ) (bool, tea.Cmd) {
 	if len(sequence) > 1 && operation.NormalizeOperationKey(sequence[len(sequence)-1]) == "esc" {
-		m.operations.chord = nil
+		m.operations.Chord = nil
 		return true, nil
 	}
-	binding, _, resolution := m.operations.registry.InputBindingForSequence(strategyID, sequence, ctx)
+	binding, _, resolution := m.operations.Registry.InputBindingForSequence(strategyID, sequence, ctx)
 	switch resolution {
 	case operation.ChordPending:
-		m.operations.chord = sequence
+		m.operations.Chord = sequence
 		return true, nil
 	case operation.ChordNoMatch:
 		// A complete strategy consumes unknown root keys instead of allowing a
 		// retired legacy key or an abandoned chord to run in the view beneath it.
-		m.operations.chord = nil
+		m.operations.Chord = nil
 		if cmd := m.entityScopedKeyRejection(strategyID, sequence, ctx); cmd != nil {
 			return true, cmd
 		}
 		return true, m.chordMissStatus(strategyID, sequence)
 	case operation.ChordTerminal:
 	}
-	m.operations.chord = nil
+	m.operations.Chord = nil
 
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       binding.OperationID,
 		Context:  ctx,
 		Value:    binding.PresetValue,
@@ -107,7 +112,7 @@ func (m *AppModel) entityScopedKeyRejection(
 	// asks whether the path reaches a refused operation rather than what category
 	// they share, because a shared key's two meanings need not agree.
 	if ctx.Entity.HasChecklistCursor {
-		if !m.operations.registry.InputPrefixRefusedOnChecklistRow(strategyID, sequence) {
+		if !m.operations.Registry.InputPrefixRefusedOnChecklistRow(strategyID, sequence) {
 			return nil
 		}
 		rejection := errors.New(operation.ChecklistRowRejectionMessage)
@@ -116,7 +121,7 @@ func (m *AppModel) entityScopedKeyRejection(
 	if !operation.CommandContextNamesNonTaskEntity(ctx) {
 		return nil
 	}
-	category, ok := m.operations.registry.InputCategoryForPrefix(strategyID, sequence)
+	category, ok := m.operations.Registry.InputCategoryForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}
@@ -128,7 +133,7 @@ func (m *AppModel) entityScopedKeyRejection(
 // left silent because it never promised anything, but a chord that showed a
 // which-key row and then resolved to nothing has to say so.
 func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequence []string) tea.Cmd {
-	label, ok := m.operations.registry.ChordGroupLabelForPrefix(strategyID, sequence)
+	label, ok := m.operations.Registry.ChordGroupLabelForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}
@@ -140,17 +145,17 @@ func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequenc
 // descriptor and executor even when a subordinate route covers the Outliner.
 // Ctrl+C is currently the only such key.
 func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
-	if !m.operations.wired() {
+	if !m.operations.Wired() {
 		return false, nil
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = presentation.ViewCrossProjectOutliner
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	binding, _, ok := m.operations.registry.InputBindingForKey(operation.InputStrategySimplified, key, ctx)
+	binding, _, ok := m.operations.Registry.InputBindingForKey(operation.InputStrategySimplified, key, ctx)
 	if !ok {
 		return false, nil
 	}
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      binding.OperationID,
 		Context: ctx,
 	})
@@ -165,21 +170,21 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
-	if m == nil || m.operations.registry == nil || len(m.operations.chord) == 0 {
+	if m == nil || m.operations.Registry == nil || len(m.operations.Chord) == 0 {
 		return chrome.GuidanceSpec{}, false
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	hints := m.operations.registry.DecoratedChordHintsForPrefix(
+	hints := m.operations.Registry.DecoratedChordHintsForPrefix(
 		operation.InputStrategySimplified,
-		m.operations.chord,
+		m.operations.Chord,
 		ctx,
 		m.crossOutliner.DecoratePendingChordHint,
 	)
 	if len(hints) == 0 {
 		return chrome.GuidanceSpec{}, false
 	}
-	return pendingChordGuidanceSpec(strings.Join(m.operations.chord, ""), hints), true
+	return pendingChordGuidanceSpec(strings.Join(m.operations.Chord, ""), hints), true
 }
 
 func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome.GuidanceSpec {
@@ -200,4 +205,32 @@ func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome
 		Required: true,
 	})
 	return spec
+}
+
+// Persist the canonical mode DTO for the active Outliner scope. Filter facets
+// are run-local and typed navigation continues to own scope and route hierarchy.
+func (m *AppModel) saveOutlinerFilterState() {
+	outlinerView := m.crossOutliner
+	if outlinerView == nil {
+		return
+	}
+	if err := outlinerView.PersistActiveRouteState(); err != nil {
+		logging.Warn("failed to persist Outliner route state: %v", err)
+	}
+}
+
+// applyTagsToTask applies selected tags to a single task as one asynchronous
+// transaction through the task operation path. Setting tags is a value
+// operation, so it commits through TaskItem.ExecuteOperation like every other
+// `#` edit; the shell owns reload and toast via the batch result, and the
+// durable write records through the workspace undo ledger.
+func (m *AppModel) applyTagsToTask(identity taskref.TaskIdentity, task *models.Task, selectedTags []string) tea.Cmd {
+	if task == nil || !identity.Valid() {
+		return nil
+	}
+	return m.secondaryFeatures.TaskItem.ExecuteOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetTags,
+		Targets:   []app.TaskLocator{identity.Locator()},
+		Tags:      selectedTags,
+	}, "Set Tags", fmt.Sprintf("Tagged #%d", task.ShortID))
 }

@@ -22,10 +22,10 @@ import (
 // color assertion names its target without depending on the row's position.
 func lensPickerItemNamed(t *testing.T, model *AppModel, name string) listsurface.ListItem {
 	t.Helper()
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	for _, item := range model.lenses.picker.Surface.Items() {
+	for _, item := range model.lenses.Picker().Surface.Items() {
 		if item.PrimaryText == name {
 			return item
 		}
@@ -69,7 +69,7 @@ func TestLensPickerColorsSavedRowsAndLeavesActionRowsNeutral(t *testing.T) {
 			t.Errorf("row %q embeds styling in its primary text: %q", name, item.PrimaryText)
 		}
 	}
-	for _, item := range model.lenses.picker.Surface.Items() {
+	for _, item := range model.lenses.Picker().Surface.Items() {
 		if item.Data != nil {
 			continue
 		}
@@ -165,7 +165,7 @@ func TestLensPickerColorFollowsTheDefinitionNotTheBuiltinOrigin(t *testing.T) {
 		Query: "$" + string(models.StateWaiting),
 		Sort:  config.LensSort{Field: config.LensSortDefault},
 	}
-	if err := model.lenses.picker.Refresh(lens.NamedLensPickerSnapshot{
+	if err := model.lenses.Picker().Refresh(lens.NamedLensPickerSnapshot{
 		Lenses: config.NamedLensList{neutralBuiltin, custom},
 	}); err != nil {
 		t.Fatalf("refresh: %v", err)
@@ -191,13 +191,13 @@ func TestLensPickerRenderColorsOrdinaryRowsAndYieldsUnderTheCursor(t *testing.T)
 	if _, err := model.crossOutliner.ApplyNamedLens(waiting); err != nil {
 		t.Fatalf("apply lens: %v", err)
 	}
-	if err := model.lenses.picker.Refresh(model.namedLensPickerSnapshot()); err != nil {
+	if err := model.lenses.Picker().Refresh(model.namedLensPickerSnapshot()); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 
 	// The cursor opens on the save row, so the active lens is an ordinary row:
 	// colored, and still carrying its active marker.
-	rendered := model.lenses.picker.Render(80)
+	rendered := model.lenses.Picker().Render(80)
 	if !strings.Contains(rendered, style.Render("Waiting")) {
 		t.Errorf("an ordinary saved row is not colored:\n%q", rendered)
 	}
@@ -207,10 +207,10 @@ func TestLensPickerRenderColorsOrdinaryRowsAndYieldsUnderTheCursor(t *testing.T)
 
 	// Under the cursor SelectedLine owns the whole line, so the accent must be
 	// gone while the text stays exactly where it was.
-	if !model.lenses.picker.SelectLens(waiting.ID) {
+	if !model.lenses.Picker().SelectLens(waiting.ID) {
 		t.Fatal("the active lens is not listed")
 	}
-	cursored := model.lenses.picker.Render(80)
+	cursored := model.lenses.Picker().Render(80)
 	if strings.Contains(cursored, style.Render("Waiting")) {
 		t.Errorf("the cursor row kept its accent:\n%q", cursored)
 	}
@@ -239,7 +239,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		Lenses:         config.NamedLensList{oversized},
 		CurrentSummary: strings.Repeat("summary segment · ", 20),
 	}
-	if err := model.lenses.picker.Refresh(snapshot); err != nil {
+	if err := model.lenses.Picker().Refresh(snapshot); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 	// The row really is colored while it is being truncated, so the width
@@ -248,7 +248,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		t.Fatal("the oversized row carries no accent, so its truncation is untested")
 	}
 	for _, width := range []int{chrome.MinTerminalWidth, 80, 200} {
-		rendered := ansi.Strip(model.lenses.picker.Render(width))
+		rendered := ansi.Strip(model.lenses.Picker().Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		// An accent is styling, never columns: the name survives truncation to the
 		// same visible text a neutral row would have shown.
@@ -258,16 +258,16 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	}
 	// The minimum supported terminal must still show the modal's own chrome,
 	// which is what renderWithin's reservation buys.
-	rendered := ansi.Strip(model.lenses.picker.RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight))
+	rendered := ansi.Strip(model.lenses.Picker().RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight))
 	assertNoLensPickerOverflow(t, rendered, chrome.MinTerminalWidth)
 	if lines := strings.Count(rendered, "\n") + 1; lines > chrome.MinTerminalHeight {
 		t.Errorf("minimum-terminal render is %d lines, taller than %d", lines, chrome.MinTerminalHeight)
 	}
 
-	if err := model.lenses.picker.Refresh(lens.NamedLensPickerSnapshot{}); err != nil {
+	if err := model.lenses.Picker().Refresh(lens.NamedLensPickerSnapshot{}); err != nil {
 		t.Fatalf("refresh empty: %v", err)
 	}
-	empty := ansi.Strip(model.lenses.picker.Render(80))
+	empty := ansi.Strip(model.lenses.Picker().Render(80))
 	if !strings.Contains(empty, "No saved lenses yet") {
 		t.Errorf("empty render names no empty state:\n%s", empty)
 	}
@@ -299,11 +299,11 @@ func TestLensPickerIsClearedByNavigationCollapse(t *testing.T) {
 
 	model.clearTransientNavigationState()
 
-	if model.lenses.picker != nil || model.operations.actionSheet != nil ||
-		model.operations.confirm.IsActive() {
+	if model.lenses.Picker() != nil || model.operations.ActionSheet != nil ||
+		model.operations.Confirm.IsActive() {
 		t.Error("a navigation collapse left a lens overlay mounted")
 	}
-	if model.operations.pendingRequest.ID != "" {
+	if model.operations.TakeRequest().ID != "" {
 		t.Error("a navigation collapse left a pending operation")
 	}
 	if model.Overlays().Active() || model.Overlays().HasActiveTextInput() {
@@ -322,8 +322,8 @@ func TestLensPickerDoesNotSwallowQuit(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatalf("ctrl+c handled=%v cmd=%v, want the quit command", handled, cmd)
 	}
-	if model.lenses.picker.Query != "st" {
-		t.Errorf("ctrl+c was typed into the search query: %q", model.lenses.picker.Query)
+	if model.lenses.Picker().Query != "st" {
+		t.Errorf("ctrl+c was typed into the search query: %q", model.lenses.Picker().Query)
 	}
 }
 
@@ -337,7 +337,7 @@ func TestLensPickerCountsAsAnActiveOverlayAndOwnsTextInput(t *testing.T) {
 		t.Error("a mounted picker does not claim text input, so root keys would leak into it")
 	}
 	model.Overlays().ClearAll()
-	if model.lenses.picker != nil {
+	if model.lenses.Picker() != nil {
 		t.Error("ClearAll left the picker mounted")
 	}
 }

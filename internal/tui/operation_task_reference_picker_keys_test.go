@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // This file covers the `~` key path itself: which cursors it refuses, what it
@@ -28,7 +29,7 @@ import (
 func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 	descriptorFor := func(t *testing.T, model *AppModel) operation.OperationDescriptor {
 		t.Helper()
-		descriptor, ok := model.operations.registry.Descriptor(operation.OperationTaskReferences)
+		descriptor, ok := model.operations.Registry.Descriptor(operation.OperationTaskReferences)
 		if !ok {
 			t.Fatal("tui.task.references is not registered")
 		}
@@ -58,7 +59,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 		if cmd != nil {
 			model.handleOperationOverlayMessage(cmd())
 		}
-		if model.operations.valuePicker != nil {
+		if model.operations.ValuePicker != nil {
 			t.Fatalf("~ opened a picker from a project header row (handled = %v)", handled)
 		}
 	})
@@ -115,37 +116,37 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	if cmd != nil {
 		model.handleOperationOverlayMessage(cmd())
 	}
-	picker := model.operations.valuePicker
-	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
+	picker := model.operations.ValuePicker
+	if picker == nil || picker.Provider() != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker over a selection: %#v", picker)
 	}
 
-	shared := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
-	partial := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
-	if got := picker.membershipInitial[shared]; got != operationValueAll {
+	shared := valuepicker.TaskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
+	partial := valuepicker.TaskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
+	if got := picker.InitialMembership(shared); got != valuepicker.OperationValueAll {
 		t.Errorf("the reference both tasks store opened at %v, want checked", got)
 	}
-	if got := picker.membershipInitial[partial]; got != operationValueSome {
+	if got := picker.InitialMembership(partial); got != valuepicker.OperationValueSome {
 		t.Errorf("the reference one task stores opened at %v, want indeterminate", got)
 	}
-	for _, item := range picker.surface.Items() {
+	for _, item := range picker.Surface().Items() {
 		if item.ID == partial && !item.Indeterminate {
 			t.Error("the row only part of the selection stores is not drawn indeterminate")
 		}
-		if locator, ok := taskReferenceRowLocator(item.ID); ok && locator.TaskID == second.ID {
+		if locator, ok := valuepicker.TaskReferenceRowLocator(item.ID); ok && locator.TaskID == second.ID {
 			t.Errorf("the picker offered %s, a task inside the selection", item.ID)
 		}
 	}
 
 	// Touching nothing but the shared row leaves the row the tasks disagree about
 	// out of both halves, which is what keeps them disagreeing.
-	if !picker.surface.SetCursorToID(shared) {
+	if !picker.Surface().SetCursorToID(shared) {
 		t.Fatalf("the picker has no row for %s", shared)
 	}
-	if err := picker.toggleCurrentMultiValue(); err != nil {
+	if err := picker.ToggleCurrentMultiValue(); err != nil {
 		t.Fatalf("toggling the shared row: %v", err)
 	}
-	value, err := picker.selectedValue()
+	value, err := picker.SelectedValue()
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
@@ -159,7 +160,7 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	if !slices.Equal(selection.Remove, []string{"remote:target"}) {
 		t.Errorf("Remove = %v, want the unchecked shared reference alone", selection.Remove)
 	}
-	patch := taskReferenceBulkPatch(selection)
+	patch := valuepicker.TaskReferenceBulkPatch(selection)
 	if len(patch.Add) != 0 || len(patch.Remove) != 1 || patch.Clear {
 		t.Fatalf("bulk patch = %+v, want one removal and nothing else", patch)
 	}
@@ -179,15 +180,15 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 	if cmd != nil {
 		model.handleOperationOverlayMessage(cmd())
 	}
-	picker := model.operations.valuePicker
-	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
+	picker := model.operations.ValuePicker
+	if picker == nil || picker.Provider() != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker: %#v", picker)
 	}
 
-	storedRow := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
-	candidateRow := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
-	ids := make([]listsurface.ListItemID, 0, len(picker.surface.Items()))
-	for _, item := range picker.surface.Items() {
+	storedRow := valuepicker.TaskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
+	candidateRow := valuepicker.TaskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
+	ids := make([]listsurface.ListItemID, 0, len(picker.Surface().Items()))
+	for _, item := range picker.Surface().Items() {
 		ids = append(ids, item.ID)
 	}
 	if !slices.Contains(ids, storedRow) {
@@ -196,7 +197,7 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 	if !slices.Contains(ids, candidateRow) {
 		t.Fatalf("the picker offers no addition candidate; rows = %v", ids)
 	}
-	if selected := picker.surface.SelectedIDs(); !slices.Equal(selected, []listsurface.ListItemID{storedRow}) {
+	if selected := picker.Surface().SelectedIDs(); !slices.Equal(selected, []listsurface.ListItemID{storedRow}) {
 		t.Errorf("checked rows = %v, want the stored reference alone", selected)
 	}
 }
@@ -209,8 +210,8 @@ func TestReferencePickerCommitsNothingWhenTheCheckedSetIsUnchanged(t *testing.T)
 	model, subject, home, remote := referencePickerFixture(t)
 
 	stored := app.TaskLocator{ProjectID: remote.ID, TaskID: "target"}
-	initial := taskReferenceMembership([]*models.Task{subject})
-	value := taskReferenceSelection(
+	initial := valuepicker.TaskReferenceMembership([]*models.Task{subject})
+	value := valuepicker.TaskReferenceSelection(
 		initial, referenceMembershipAfter(initial, []string{stored.Reference().Locator()}),
 	)
 	if value.Add != nil || value.Remove != nil {

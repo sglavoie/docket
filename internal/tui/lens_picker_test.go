@@ -30,7 +30,7 @@ func TestLensPickerListsBothActionRowsFirstThenLensesAlphabetically(t *testing.T
 	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerCreateLabel {
 		t.Errorf("opening cursor = %q, want the save row", got)
 	}
-	items := model.lenses.picker.Surface.Items()
+	items := model.lenses.Picker().Surface.Items()
 	if got := items[1].ID; got != lens.LensPickerAddTemplateItemID {
 		t.Errorf("second row ID = %q, want %q", got, lens.LensPickerAddTemplateItemID)
 	}
@@ -60,7 +60,7 @@ func TestLensPickerOpensOnTheActiveLensAndMarksIt(t *testing.T) {
 	if got := lensPickerCursorTitle(t, model); got != "Waiting" {
 		t.Fatalf("cursor = %q, want the active lens", got)
 	}
-	item, _ := model.lenses.picker.Surface.CurrentItem()
+	item, _ := model.lenses.Picker().Surface.CurrentItem()
 	if !strings.Contains(ansi.Strip(item.PrimaryMarker), "●") {
 		t.Errorf("the active lens row carries no active marker: %q", ansi.Strip(item.PrimaryMarker))
 	}
@@ -120,7 +120,7 @@ func TestLensPickerSearchNarrowsLensesAndKeepsBothActionRowsAvailable(t *testing
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, actions) {
 		t.Fatalf("no-match rows = %v, want the two action rows alone", got)
 	}
-	if state := model.lenses.picker.StateLine(); !strings.Contains(state, "No matching lenses") {
+	if state := model.lenses.Picker().StateLine(); !strings.Contains(state, "No matching lenses") {
 		t.Errorf("no-match state line = %q", state)
 	}
 
@@ -136,23 +136,23 @@ func TestLensPickerEscapeClearsSearchThenLeavesSearchThenCloses(t *testing.T) {
 	typeLens(t, model, "stale")
 
 	pressLens(t, model, "esc")
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("the first Esc closed the picker instead of clearing the query")
 	}
-	if model.lenses.picker.Query != "" || !model.lenses.picker.Searching {
-		t.Fatalf("first Esc left query=%q searching=%v", model.lenses.picker.Query, model.lenses.picker.Searching)
+	if model.lenses.Picker().Query != "" || !model.lenses.Picker().Searching {
+		t.Fatalf("first Esc left query=%q searching=%v", model.lenses.Picker().Query, model.lenses.Picker().Searching)
 	}
 
 	pressLens(t, model, "esc")
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("the second Esc closed the picker instead of leaving search")
 	}
-	if model.lenses.picker.Searching {
+	if model.lenses.Picker().Searching {
 		t.Error("the second Esc left the picker in search mode")
 	}
 
 	pressLens(t, model, "esc")
-	if model.lenses.picker != nil {
+	if model.lenses.Picker() != nil {
 		t.Error("the third Esc left the picker mounted")
 	}
 }
@@ -165,15 +165,15 @@ func TestLensPickerSearchEnterOnSaveRowStillOpensTheNamePrompt(t *testing.T) {
 	// still in force and the save row is the only survivor — which is the whole
 	// point of exempting it from the filter.
 	pressLens(t, model, "enter")
-	if model.lenses.picker.Searching || model.lenses.picker.Query != "zzz" {
-		t.Fatalf("leaving search dropped the query: %q", model.lenses.picker.Query)
+	if model.lenses.Picker().Searching || model.lenses.Picker().Query != "zzz" {
+		t.Fatalf("leaving search dropped the query: %q", model.lenses.Picker().Query)
 	}
 	pressLens(t, model, "enter")
 
-	if model.operations.textPrompt == nil {
+	if model.operations.TextPrompt == nil {
 		t.Fatal("Enter on the save row raised no name prompt")
 	}
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Error("the picker must stay mounted beneath the name prompt")
 	}
 }
@@ -186,7 +186,7 @@ func TestLensPickerEnterAppliesLensAndClosesThePicker(t *testing.T) {
 
 	pressLens(t, model, "enter")
 
-	if model.lenses.picker != nil {
+	if model.lenses.Picker() != nil {
 		t.Error("applying a lens left the picker mounted")
 	}
 	if !model.crossOutliner.HasActiveLens() {

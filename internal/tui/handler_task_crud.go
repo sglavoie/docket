@@ -2,11 +2,17 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -143,4 +149,283 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 		}
 	}
 	return theme.TaskStateGroupLabel(task)
+}
+
+// handleEditTaskContent launches external editor for task title and description.
+// A reopen carries the refused title, the refusal, and the description the user
+// already typed, so nothing the buffer held is lost to a rejected sigil.
+func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd) {
+	if msg.Task == nil {
+		return true, nil
+	}
+
+	title, description := msg.Task.Title, msg.Task.Description
+	if msg.RejectedTitle != "" {
+		title, description = msg.RejectedTitle, msg.Description
+	}
+	content := fmt.Sprintf("# %s\n\n%s\n\n%s", title, taskContentInstruction(msg.Notice), description)
+
+	tmpPath, err := writeTaskContentBuffer(msg.Path, content)
+	if err != nil {
+		return true, status.ErrorCmd("%s", err)
+	}
+
+	editor, editorErr := external.ResolveEditor("")
+	if editorErr != nil {
+		removeTaskContentBuffer(tmpPath)
+		return true, status.ErrorCmd("%s", editorErr)
+	}
+	c := external.EditorCommand(editor, tmpPath)
+
+	task := msg.Task
+	project := msg.Project
+	rejectedTitle := msg.RejectedTitle
+	notice := msg.Notice
+	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			removeTaskContentBuffer(tmpPath)
+			return TaskContentEditedMsg{Task: task, Project: project, Err: err}
+		}
+		content, readErr := os.ReadFile(tmpPath)
+		if readErr != nil {
+			removeTaskContentBuffer(tmpPath)
+			return TaskContentEditedMsg{Task: task, Project: project, Err: readErr}
+		}
+		newTitle, newDesc := parseTaskContent(string(content), task)
+		return TaskContentEditedMsg{
+			Task:           task,
+			Project:        project,
+			Path:           tmpPath,
+			RejectedTitle:  rejectedTitle,
+			Notice:         notice,
+			NewTitle:       newTitle,
+			NewDescription: newDesc,
+		}
+	})
+}
+
+// taskContentInstruction renders the buffer's single instruction line. It stays
+// one physical line because parseTaskContent consumes only the first comment
+// line and would keep a second one as description text.
+func taskContentInstruction(notice string) string {
+	if notice == "" {
+		return "<!-- Edit the title above and description below. -->"
+	}
+	collapsed := strings.Join(strings.Fields(notice), " ")
+	// A refusal quotes the user's own value, which may itself close the comment.
+	collapsed = strings.ReplaceAll(collapsed, "-->", "->")
+	return fmt.Sprintf("<!-- %s. Fix the title above; description below. -->", collapsed)
+}
+
+func writeTaskContentBuffer(path, content string) (string, error) {
+	if path == "" {
+		return external.CreateTempFileWithContent(content, "tt-edit-", ".md")
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		return "", fmt.Errorf("failed to write to temp file: %w", err)
+	}
+	return path, nil
+}
+
+func removeTaskContentBuffer(path string) {
+	if path != "" {
+		_ = os.Remove(path)
+	}
+}
+
+// handleTaskContentEdited routes the edited title through the same capture/edit
+// grammar the inline row editor speaks, and commits it with the description as
+// one checked transaction. A title the grammar refuses commits nothing and
+// reopens the buffer instead.
+func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.Cmd) {
+	if msg.Err != nil {
+		return true, status.ErrorCmd("editor failed: %w", msg.Err)
+	}
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+
+	// The composer's create-and-open path batches this open beside a reload, so
+	// the captured pointers can be stale by the time the editor returns and the
+	// parser compares task pointers by identity.
+	project := m.projectByID(msg.Project.ID)
+	var task *models.Task
+	if project != nil {
+		task = project.GetTaskByID(msg.Task.ID)
+	}
+	if task == nil {
+		removeTaskContentBuffer(msg.Path)
+		return true, status.ErrorCmd("task edit context is unavailable")
+	}
+
+	baseline := msg.RejectedTitle
+	if baseline == "" {
+		baseline = task.Title
+	}
+
+	if msg.NewTitle == baseline {
+		if msg.RejectedTitle != "" {
+			removeTaskContentBuffer(msg.Path)
+			return true, status.ErrorCmd("%s", msg.Notice)
+		}
+		// An untouched title is never parsed, so a literal `#123` in it cannot be
+		// silently eaten by the tag sigil.
+		return true, m.commitTaskContentEdit(task, project, &grammar.QuickEditResult{
+			Title:      task.Title,
+			ParentMode: grammar.QuickEditParentPreserve,
+		}, msg)
+	}
+
+	result, err := grammar.ParseQuickEdit(msg.NewTitle, task, project, m.availableProjects())
+	if err != nil {
+		reopen := EditTaskContentMsg{
+			Task:          task,
+			Project:       project,
+			Path:          msg.Path,
+			RejectedTitle: msg.NewTitle,
+			Notice:        err.Error(),
+			Description:   msg.NewDescription,
+		}
+		return true, func() tea.Msg { return reopen }
+	}
+	return true, m.commitTaskContentEdit(task, project, result, msg)
+}
+
+func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Project, result *grammar.QuickEditResult, msg TaskContentEditedMsg) tea.Cmd {
+	source := taskref.For(task, project)
+	req := outliner.TaskLineEditRequest(source, result)
+	req.Description = &msg.NewDescription
+	req.PlanningArtifacts = coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager)
+	if req.DestinationProjectID != source.ProjectID {
+		req.PlanningArtifacts = coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager)
+	}
+	var relocation *outliner.OutlinerRelocationCapture
+	if out, ok := m.outlinerPrimary(); ok {
+		relocation = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{source})
+	}
+
+	edited, err := m.domain.service.EditTaskLine(req)
+	removeTaskContentBuffer(msg.Path)
+	if err != nil {
+		return m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{Source: source, Err: err})
+	}
+	return m.handleTaskLineEdited(coordinator.TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
+}
+
+// workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
+// holds a reversible transaction for the applicable action.
+func (m *AppModel) workspaceLedgerRestoreIsNewest(redo bool) bool {
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	_, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
+	return err == nil && ok
+}
+
+// ledgerNewestEntry previews the entry a subsequent undo (redo=false) or redo
+// (redo=true) would restore for the scope, without applying it.
+func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScope, redo bool) (storage.LedgerEntry, bool, error) {
+	if redo {
+		return ledger.SelectNewestRedo(scope)
+	}
+	return ledger.SelectNewestUndo(scope)
+}
+
+// handleLedgerTaskUndoRedo restores the newest application-service workspace-ledger
+// transaction (undo when redo=false, redo when true). It reverses (or replays) the
+// entry, reloads every project the transaction touched, refreshes the runtime
+// snapshot so restored planning and other config artifacts are observed, repairs
+// task→project references, rebuilds the in-memory planning collections, and fans
+// the change out to the open task views — the same refresh the legacy restore
+// completion performs. Because it reads the durable ledger rather than in-memory
+// state, the restore survives a restart.
+//
+// The ledger is one workspace history, so an entry can carry catalog effects a
+// task view never shows: a tag assignment, an archive, a rename. The
+// catalog-reading surfaces are therefore rebuilt from the restored snapshot on
+// the same terms every forward catalog mutation rebuilds them.
+func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	restore := ledger.UndoWithEntry
+	verb, label := "Undid", "undo"
+	if redo {
+		restore = ledger.RedoWithEntry
+		verb, label = "Redo", "redo"
+	}
+	entry, desc, err := restore(storage.GlobalScope())
+	if err != nil {
+		// An exhausted ledger is not an error: leave the key unhandled so the
+		// caller can fall back rather than toast a spurious failure.
+		if strings.Contains(err.Error(), "history available") {
+			return nil
+		}
+		return status.ErrorCmd("%s", status.FormatUndoRedoRestoreError(label, err))
+	}
+	restored := make([]*models.Project, 0, len(entry.ProjectIDs))
+	for _, id := range entry.ProjectIDs {
+		m.reloadProjectByID(id)
+		if p := m.projectByID(id); p != nil {
+			restored = append(restored, p)
+		}
+	}
+	m.refreshRuntime()
+	if err := m.repairTaskProjectRefsAfterRestore(restored); err != nil {
+		return status.ErrorCmd("%s", err)
+	}
+	m.rebuildPlanningFromRuntime()
+	m.refreshLoadedTaskWorkspace()
+	m.clearToggleHistory()
+	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
+	m.refreshProjectHubIfActive()
+	cmds := m.refreshTaskViewsAfterSave()
+	cmds = append(cmds, m.refreshActiveNotesManager(), status.DefaultStatusTimeout())
+	return tea.Batch(cmds...)
+}
+
+func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {
+	runtimeErr := repairRuntimeTaskRefsAfterRestore(m.domain.runtime)(projects)
+	m.rewireTaskProjectRefsAfterRestore(projects)
+	return runtimeErr
+}
+
+func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project) {
+	refs := make(map[taskref.TaskIdentity]TaskProjectRef)
+	refsByTaskID := make(map[string][]TaskProjectRef)
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task != nil && task.ID != "" {
+				ref := TaskProjectRef{Task: task, Project: project}
+				refs[taskref.For(task, project)] = ref
+				refsByTaskID[task.ID] = append(refsByTaskID[task.ID], ref)
+			}
+		}
+	}
+	resolve := func(task *models.Task, project *models.Project) (TaskProjectRef, bool) {
+		if task == nil {
+			return TaskProjectRef{}, false
+		}
+		if project != nil {
+			ref, ok := refs[taskref.For(task, project)]
+			return ref, ok
+		}
+		candidates := refsByTaskID[task.ID]
+		if len(candidates) == 1 {
+			return candidates[0], true
+		}
+		return TaskProjectRef{}, false
+	}
+
+	for i := range m.nextOrder {
+		if ref, ok := resolve(m.nextOrder[i].Task, m.nextOrder[i].Project); ok {
+			m.nextOrder[i].Task = ref.Task
+			m.nextOrder[i].Project = ref.Project
+		}
+	}
+	for i := range m.today {
+		if ref, ok := resolve(m.today[i].Task, m.today[i].Project); ok {
+			m.today[i].Task = ref.Task
+			m.today[i].Project = ref.Project
+		}
+	}
 }

@@ -188,4 +188,11 @@ lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,li
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
 outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
-tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner
+entityops	L7	presentation,theme,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help,taskdetail,outliner
+lensops	L7	lens,operation,listsurface,outliner,valuepicker
+filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outliner,projecthub,valuepicker
+notesops	L7	presentation,operation,route,listsurface,notes,projecthub,outliner
+projectops	L7	presentation,theme,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,filterops
+operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref
+valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub
+tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost

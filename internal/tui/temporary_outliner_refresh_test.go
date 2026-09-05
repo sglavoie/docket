@@ -115,7 +115,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if err := driver.SendKey("$"); err != nil {
 		t.Fatalf("send state prefix: %v", err)
 	}
-	if len(driver.App().operations.chord) == 0 {
+	if len(driver.App().operations.Chord) == 0 {
 		t.Fatal("state prefix did not arm the direct-key chord")
 	}
 	if err := driver.SendKey("d"); err != nil {

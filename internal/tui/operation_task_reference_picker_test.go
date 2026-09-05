@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // This file holds the fixtures and helpers the reference-picker suite shares.
@@ -43,17 +44,18 @@ func referencePickerFixture(t *testing.T) (*AppModel, *models.Task, *models.Proj
 	return model, subject, home, remote
 }
 
-// referenceSuiteWorkspace is the exhaustive population the assembly and diff
-// cases read. Every shape a stored reference can wear is present at once —
-// open, terminal, missing from a loaded project, pointing into a project this
-// view never loaded, and pointing into an archived one — because the picker's
-// first half is defined by what it refuses to filter, and a fixture holding one
-// shape at a time could not show that.
+// referenceSuiteWorkspace is the exhaustive subject the diff cases read. Every
+// shape a stored reference can wear is present at once — open, terminal,
+// missing from a loaded project, pointing into a project this view never
+// loaded, and pointing into an archived one — because the commit difference is
+// defined by what it refuses to drop, and a fixture holding one shape at a time
+// could not show that.
 //
-// The returned population is what a caller passes as `projects`; `gone` is
-// deliberately absent from it, which is what makes the fourth stored reference
-// unreadable rather than merely closed.
-func referenceSuiteWorkspace(t *testing.T) (subject *models.Task, projects []*models.Project) {
+// The surrounding projects are built so the subject is linked exactly as a
+// loaded workspace would carry it; `gone` is deliberately absent from them,
+// which is what makes the fourth stored reference unreadable rather than merely
+// closed.
+func referenceSuiteWorkspace(t *testing.T) (subject *models.Task) {
 	t.Helper()
 	sibling := &models.Task{ID: "sibling", ShortID: 2, Title: "Agree the schema", WorkflowState: models.StateBacklog}
 	closed := &models.Task{ID: "closed", ShortID: 3, Title: "Closed groundwork", WorkflowState: models.StateDone}
@@ -89,27 +91,7 @@ func referenceSuiteWorkspace(t *testing.T) (subject *models.Task, projects []*mo
 	for _, project := range []*models.Project{home, remote, attic} {
 		project.BuildTaskTree()
 	}
-	return subject, []*models.Project{home, remote, attic}
-}
-
-func referenceRowIDs(source listsurface.ListSource) []listsurface.ListItemID {
-	ids := make([]listsurface.ListItemID, 0, len(source.Items))
-	for _, item := range source.Items {
-		ids = append(ids, item.ID)
-	}
-	return ids
-}
-
-func referenceRow(t *testing.T, source listsurface.ListSource, locator string) listsurface.ListItem {
-	t.Helper()
-	want := listsurface.ListItemID("reference:" + locator)
-	for _, item := range source.Items {
-		if item.ID == want {
-			return item
-		}
-	}
-	t.Fatalf("the picker has no row for %s; rows = %v", locator, referenceRowIDs(source))
-	return listsurface.ListItem{}
+	return subject
 }
 
 func referenceIDsFor(locators ...string) []listsurface.ListItemID {
@@ -124,14 +106,14 @@ func referenceIDsFor(locators ...string) []listsurface.ListItemID {
 // left exactly `checked` ticked: every row the tasks opened with, moved to All
 // where it was checked and None where it was not.
 func referenceMembershipAfter(
-	initial map[listsurface.ListItemID]operationValueMembership, checked []string,
-) map[listsurface.ListItemID]operationValueMembership {
-	current := make(map[listsurface.ListItemID]operationValueMembership, len(initial)+len(checked))
+	initial map[listsurface.ListItemID]valuepicker.OperationValueMembership, checked []string,
+) map[listsurface.ListItemID]valuepicker.OperationValueMembership {
+	current := make(map[listsurface.ListItemID]valuepicker.OperationValueMembership, len(initial)+len(checked))
 	for id := range initial {
-		current[id] = operationValueNone
+		current[id] = valuepicker.OperationValueNone
 	}
 	for _, locator := range checked {
-		current[listsurface.ListItemID("reference:"+locator)] = operationValueAll
+		current[listsurface.ListItemID("reference:"+locator)] = valuepicker.OperationValueAll
 	}
 	return current
 }
@@ -148,8 +130,8 @@ func referenceMembershipAfter(
 func referencePickerCommit(opened, current *models.Task, checked ...string) app.DependencyPatch {
 	sorted := append([]string(nil), checked...)
 	sort.Strings(sorted)
-	initial := taskReferenceMembership([]*models.Task{opened})
-	return taskReferencePatch(current, taskReferenceSelection(
+	initial := valuepicker.TaskReferenceMembership([]*models.Task{opened})
+	return valuepicker.TaskReferencePatch(current, valuepicker.TaskReferenceSelection(
 		initial, referenceMembershipAfter(initial, sorted),
 	))
 }
@@ -187,7 +169,7 @@ func republishedReferenceHome(t *testing.T, locators ...string) *models.Project 
 	t.Helper()
 	references := make([]models.TaskReference, 0, len(locators))
 	for _, raw := range locators {
-		locator, ok := taskReferenceLocator(raw)
+		locator, ok := valuepicker.TaskReferenceLocator(raw)
 		if !ok {
 			t.Fatalf("%q is not a locator the picker could ever carry", raw)
 		}

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/lensops"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -23,6 +25,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // lensOperationApp wires the production lens registrations against the richer
@@ -65,7 +68,7 @@ func executeLens(
 		request.Value = value
 		request.HasValue = true
 	}
-	return model.operations.executor.Execute(request)
+	return model.operations.Executor.Execute(request)
 }
 
 func machineLenses(t *testing.T, model *AppModel) config.NamedLensList {
@@ -160,29 +163,29 @@ func applyLensOrFatal(t *testing.T, outlinerView *outliner.OutlinerModel, lens c
 // openLensTemplateGallery opens the gallery through the real path: the executor
 // asks for a value, and the shell's value step builds the overlay. Nothing here
 // names a task, which is the point — the catalog is global.
-func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePickerModel {
+func openLensTemplateGallery(t *testing.T, model *AppModel) *valuepicker.OperationValuePickerModel {
 	t.Helper()
 	result := executeLens(model, lens.OperationLensAddTemplate, operation.EntityIdentity{}, "", false)
 	if result.ValueRequired == nil {
 		t.Fatalf("add template did not ask for a value: %#v", result)
 	}
-	if cmd := model.openOperationValueStep(*result.ValueRequired); cmd != nil {
+	if cmd := model.operations.OpenValueStep(model, *result.ValueRequired); cmd != nil {
 		cmd()
 	}
 	if model.feedback.err != nil {
 		t.Fatalf("opening the gallery failed: %v", model.feedback.err)
 	}
-	if model.operations.valuePicker == nil {
+	if model.operations.ValuePicker == nil {
 		t.Fatal("the gallery did not open")
 	}
-	return model.operations.valuePicker
+	return model.operations.ValuePicker
 }
 
 // setMachineLenses replaces the machine-local saved list in memory, which is the
 // same seam a commit publishes through.
 func setMachineLenses(t *testing.T, model *AppModel, lenses config.NamedLensList) {
 	t.Helper()
-	machine := cloneMachineState(model.domain.runtime.Machine())
+	machine := model.domain.runtime.Machine().Clone()
 	machine.NamedLenses = lenses
 	if err := machine.Validate(); err != nil {
 		t.Fatalf("the test machine state is invalid: %v", err)
@@ -203,10 +206,10 @@ func lensTemplateByName(t *testing.T, name string) config.NamedLens {
 
 // galleryRow finds one template's row by its stable ID rather than by position,
 // so an ordering change fails the ordering test alone.
-func galleryRow(t *testing.T, picker *OperationValuePickerModel, id string) listsurface.ListItem {
+func galleryRow(t *testing.T, picker *valuepicker.OperationValuePickerModel, id string) listsurface.ListItem {
 	t.Helper()
-	for _, item := range picker.surface.Items() {
-		if item.ID == lensTemplateItemID(id) {
+	for _, item := range picker.Surface().Items() {
+		if item.ID == lensops.TemplateItemID(id) {
 			return item
 		}
 	}
@@ -220,7 +223,7 @@ func lensPickerApp(t *testing.T) *AppModel {
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.feedback.err)
 	}
 	return model
@@ -280,10 +283,10 @@ func typeLens(t *testing.T, model *AppModel, text string) {
 
 func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
 	t.Helper()
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	items := model.lenses.picker.Surface.Items()
+	items := model.lenses.Picker().Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)
@@ -293,10 +296,10 @@ func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
 
 func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
 	t.Helper()
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	item, ok := model.lenses.picker.Surface.CurrentItem()
+	item, ok := model.lenses.Picker().Surface.CurrentItem()
 	if !ok {
 		t.Fatal("the lens picker has no current row")
 	}
@@ -305,10 +308,10 @@ func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
 
 func sheetRowTitles(t *testing.T, model *AppModel) []string {
 	t.Helper()
-	if model.operations.actionSheet == nil {
+	if model.operations.ActionSheet == nil {
 		t.Fatal("no action sheet is mounted")
 	}
-	items := model.operations.actionSheet.Surface.Items()
+	items := model.operations.ActionSheet.Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)
@@ -321,7 +324,7 @@ func sheetRowTitles(t *testing.T, model *AppModel) []string {
 func selectLensRow(t *testing.T, model *AppModel, name string) config.NamedLens {
 	t.Helper()
 	lens := lensNamed(t, model, name)
-	if !model.lenses.picker.SelectLens(lens.ID) {
+	if !model.lenses.Picker().SelectLens(lens.ID) {
 		t.Fatalf("lens %q is not listed in the picker", name)
 	}
 	return lens

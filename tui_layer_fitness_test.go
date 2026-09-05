@@ -166,6 +166,74 @@ func TestTUIPackageGraphDescribesEveryPackageThatExists(t *testing.T) {
 	}
 }
 
+// tuiPackageFileCeiling is the most production .go files any package under
+// internal/tui may hold, the root shell included. The ceiling is a shape
+// constraint rather than a style one: a package that needs a forty-first file
+// is a package holding more than one concern, and the split exists so that
+// concern has somewhere else to be.
+const tuiPackageFileCeiling = 40
+
+// TestNoTUIPackageExceedsTheFileCeiling holds every package under internal/tui
+// to that ceiling, the root shell included and exempted from nothing. The root
+// is the residue of the split rather than one of its extractions, which is
+// exactly why it is the package that would drift back: an exemption here would
+// leave the one package with no upper bound at all.
+func TestNoTUIPackageExceedsTheFileCeiling(t *testing.T) {
+	counts := tuiPackageFileCounts(t, repositoryRootDir(t))
+
+	if _, measured := counts[tuiRootPackage]; !measured {
+		t.Fatalf("the root shell was not measured, so this check would pass vacuously")
+	}
+	if len(counts) < 2 {
+		t.Fatalf("measured %d packages under %s, so this check would pass vacuously", len(counts), tuiSubtree)
+	}
+	measured := map[string]bool{}
+	for name := range counts {
+		measured[name] = true
+	}
+	for _, name := range sortedNames(measured) {
+		if counts[name] > tuiPackageFileCeiling {
+			t.Errorf("package %s holds %d production .go files, over the ceiling of %d; move a concern out",
+				name, counts[name], tuiPackageFileCeiling)
+		}
+	}
+}
+
+// tuiPackageFileCounts counts the production .go files each package under
+// internal/tui holds. Test files are excluded: the ceiling is about how much
+// production behavior one package carries, and a package's tests are as many
+// files as its tests need.
+func tuiPackageFileCounts(t *testing.T, root string) map[string]int {
+	t.Helper()
+
+	subtree := filepath.Join(root, filepath.FromSlash(tuiSubtree))
+	counts := map[string]int{}
+	err := filepath.WalkDir(subtree, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if skipsPackageDir(entry.Name()) && path != subtree {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		owner, err := tuiPackageForDir(subtree, filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+		counts[owner]++
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", tuiSubtree, err)
+	}
+	return counts
+}
+
 // tuiPackageDirs names every package under internal/tui that holds at least one
 // Go file, the root shell included. A directory with no Go file is not a
 // package and the table must not carry a row for it.

@@ -174,7 +174,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 		t.Fatalf("population after a scope replacement = %v, want the untouched %v", ids, baseline)
 	}
 
-	handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true})
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
@@ -200,7 +200,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 		t.Fatalf("population after a failed load = %v, want the untouched %v", ids, baseline)
 	}
 
-	if _, cmd = app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); cmd == nil {
+	if _, cmd = app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); cmd == nil {
 		t.Fatal("the retried exit started no load")
 	}
 	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-waiting", models.StateWaiting))}

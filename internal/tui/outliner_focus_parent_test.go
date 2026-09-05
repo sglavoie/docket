@@ -115,7 +115,7 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 		t.Fatal("fixture exposed no root task row")
 	}
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusParent,
 		Context: model.operationCommandContext(),
 	})
@@ -141,7 +141,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	}
 	leafTitle := out.Rows[out.Cursor].Task.Title
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusSubtree,
 		Context: model.operationCommandContext(),
 	})
@@ -154,7 +154,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 
 	t.Run("a leaf result jumps without focusing", func(t *testing.T) {
 		identity := searchProjectionCursorOnTitle(t, out, leafTitle)
-		result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID:      operation.OperationCoreFocusSubtree,
 			Context: model.operationCommandContext(),
 		})
@@ -174,7 +174,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 
 	t.Run("a parent result jumps and focuses", func(t *testing.T) {
 		identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
-		result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID:      operation.OperationCoreFocusSubtree,
 			Context: model.operationCommandContext(),
 		})
@@ -204,7 +204,7 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	}
 	parentID := *task.ParentID
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusParent,
 		Context: model.operationCommandContext(),
 	})
@@ -231,7 +231,7 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	out.SelectOutlinerMode(chrome.ModeToday)
 
 	identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusSubtree,
 		Context: model.operationCommandContext(),
 	})

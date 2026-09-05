@@ -168,7 +168,7 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 
 	invokePeek := func() {
 		t.Helper()
-		result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID: operation.OperationCorePeek, Context: model.operationCommandContext(),
 		})
 		if result.Err != nil {

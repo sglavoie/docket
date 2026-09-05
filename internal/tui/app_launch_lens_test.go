@@ -25,10 +25,10 @@ func launchLensApp(t *testing.T) *AppModel {
 func TestPendingLaunchLensDrainsExactlyOnce(t *testing.T) {
 	app := launchLensApp(t)
 	lens := scopedWaitingLens(lensTestID(1), "Beta Waiting", lensScopeBetaID)
-	app.lenses.pendingLaunch = &lens
+	app.lenses.SetPendingLaunch(&lens)
 
 	app.restorePendingLaunchLens()
-	if app.lenses.pendingLaunch != nil {
+	if _, armed := app.lenses.TakePendingLaunch(); armed {
 		t.Fatal("the launch lens was left armed after being drained")
 	}
 	if app.crossOutliner.Scope.ProjectID != lensScopeBetaID {
@@ -54,12 +54,12 @@ func TestPendingLaunchLensRefusalIsSilent(t *testing.T) {
 	app := launchLensApp(t)
 	missing := scopedWaitingLens(lensTestID(1), "Ghost Desk", lensScopeAlphaID)
 	missing.Scope = "b1c2d3e4-0000-4aaa-8bbb-00000000dead"
-	app.lenses.pendingLaunch = &missing
+	app.lenses.SetPendingLaunch(&missing)
 
 	if cmd := app.restorePendingLaunchLens(); cmd != nil {
 		t.Fatal("a refused launch lens produced a command, so it would surface an error")
 	}
-	if app.lenses.pendingLaunch != nil {
+	if _, armed := app.lenses.TakePendingLaunch(); armed {
 		t.Fatal("a refused launch lens stayed armed for the next population load")
 	}
 	if app.crossOutliner.Lens.Active != nil {
@@ -80,12 +80,12 @@ func TestPendingLaunchLensDrainToleratesAnAbsentLensOrOutliner(t *testing.T) {
 	}
 
 	lens := scopedWaitingLens(lensTestID(1), "Beta Waiting", lensScopeBetaID)
-	app.lenses.pendingLaunch = &lens
+	app.lenses.SetPendingLaunch(&lens)
 	app.crossOutliner = nil
 	if cmd := app.restorePendingLaunchLens(); cmd != nil {
 		t.Fatal("draining without an Outliner produced a command")
 	}
-	if app.lenses.pendingLaunch != nil {
+	if _, armed := app.lenses.TakePendingLaunch(); armed {
 		t.Fatal("the lens survived a drain that had nowhere to install it")
 	}
 }

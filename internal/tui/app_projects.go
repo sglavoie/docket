@@ -247,7 +247,7 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 	// machine-local in-memory state as well: the headless fresh-install harness
 	// intentionally does not persist machine.json, while a real workspace simply
 	// restores the same loaded snapshot.
-	machine := cloneMachineState(m.domain.runtime.Machine())
+	machine := m.domain.runtime.Machine().Clone()
 	artifacts := make([]storage.ArtifactChange, 0, 2)
 	if catalogChanged {
 		catalog := coordinator.CloneWorkspaceCatalog(m.domain.runtime.Catalog())

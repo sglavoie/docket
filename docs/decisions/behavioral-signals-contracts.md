@@ -49,7 +49,7 @@ the row and Peek still show counts at or above the shared threshold.
 ### Facet key
 
 The lowercase row-refinement chord is `fs` ("filter stale"). Inspection of
-`filterOperationDescriptors` in `internal/tui/filter_operations.go` and
+`filterOperationDescriptors` in `internal/tui/filterops/filter_operations.go` and
 `(*HelpViewModel).filterItems` in `internal/tui/help/help_filter.go` confirms that
 filter descriptors and the help view do not maintain a second key table: help
 fuzzy-filters the registry projection. The lowercase `f` keyspace this decision
@@ -77,7 +77,7 @@ completion age to `fa` and leaving `f#` to tags alone.
 registered as a chord in `SimplifiedInputStrategy`, not as a `DirectKey`.
 `(*OperationRegistry).Register` in `internal/tui/operation/operation_registry.go` checks
 unconditional direct-key collisions; like every existing filter descriptor
-created by `filterOperationDescriptor` in `internal/tui/filter_operations.go`,
+created by `filterOperationDescriptor` in `internal/tui/filterops/filter_operations.go`,
 the stale descriptor has an empty `DirectKey` and an applicability predicate,
 so it does not claim a static direct key. Chord ownership is instead rejected by
 `(*inputChordNode).insert` in `internal/tui/operation/input_strategy_trie.go`,

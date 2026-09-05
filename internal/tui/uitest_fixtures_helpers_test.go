@@ -228,7 +228,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	// intentionally in-memory machine fixture. A newly minted fixture identity
 	// gets a canonical default machine file only to prevent legacy-path import;
 	// fixture-specific machine values remain in memory until the app commits one.
-	machine := cloneMachineState(w.Runtime.Machine())
+	machine := w.Runtime.Machine().Clone()
 	if err := w.Runtime.Reload(); err != nil {
 		return nil, fmt.Errorf("failed to reload workspace domains: %w", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // TestUnavailableReferenceWordingIsSharedByEverySurface ties the three places a
@@ -37,7 +38,7 @@ func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
 	}
 
 	item := listsurface.ListItem{}
-	for _, candidate := range operationTaskReferenceListSource([]*models.Task{source}, population).Items {
+	for _, candidate := range valuepicker.OperationTaskReferenceListSource([]*models.Task{source}, population).Items {
 		if candidate.ID == listsurface.ListItemID("reference:"+unreadable.Locator()) {
 			item = candidate
 			break

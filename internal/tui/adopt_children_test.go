@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // TestAdoptChildrenPickerOmitsTheTasksItAlreadyParents is the structural half of
@@ -16,7 +17,7 @@ func TestAdoptChildrenPickerOmitsTheTasksItAlreadyParents(t *testing.T) {
 	parent, project := taskContentFixtureTask(t, m, "User authentication")
 
 	primary := make(map[string]listsurface.ListItem)
-	for _, item := range operationChildListSource(parent, project).Items {
+	for _, item := range valuepicker.OperationChildListSource(parent, project).Items {
 		primary[item.PrimaryText] = item
 	}
 

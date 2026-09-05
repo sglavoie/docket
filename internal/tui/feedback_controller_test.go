@@ -326,7 +326,7 @@ func TestFooterFlashArmingStaysInTheOneDeferredClosure(t *testing.T) {
 		if !strings.Contains(string(source), "armFooterFlashSince") {
 			continue
 		}
-		if name != "app_update.go" && name != "footer_flash.go" {
+		if name != "app_update.go" && name != "app_view_status.go" {
 			t.Errorf("%s names armFooterFlashSince; arming stays in the one deferred closure in AppModel.Update", name)
 		}
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -171,7 +170,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 		app.crossOutliner.PeekMode = false
 		app.viewNav.width = width
 		app.crossOutliner.SetSize(width, 22)
-		result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID:      operation.OperationCorePeek,
 			Context: app.operationCommandContext(),
 		})
@@ -476,9 +475,7 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "one")
-	app.project.pendingArchive = project
-	app.project.archiving = true
-	app.project.archiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, "Archive?")
+	app.project.ArmArchive(project, true)
 	app.taskMutation.pendingDelete = taskDeletePending{
 		roots: []TaskProjectRef{{Task: project.Tasks[0], Project: project}},
 	}
@@ -486,9 +483,8 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 
 	jumpToOutlinerRootForTest(app)
 
-	if app.project.archiveConfirm.IsActive() ||
-		app.project.pendingArchive != nil ||
-		app.project.archiving {
+	pendingArchive, archiving := app.project.PendingArchive()
+	if app.project.ArchiveArmed() || pendingArchive != nil || archiving {
 		t.Fatal("Ctrl+Esc left a project archive confirmation pending")
 	}
 	if app.taskMutation.deleteConfirm.IsActive() || len(app.taskMutation.pendingDelete.roots) != 0 {

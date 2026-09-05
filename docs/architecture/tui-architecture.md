@@ -239,7 +239,7 @@ over every axis just written, and seat the cursor through `restoreSearchCursor`.
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in
-`internal/tui/checklist_row_operations.go` as ordinary descriptors that apply only under a
+`internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that apply only under a
 checklist cursor. Eight of them reuse the key their task-row counterpart holds
 — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `A`, and `Space` — which works
 because resolution takes the first applicable binding and the two are disjoint

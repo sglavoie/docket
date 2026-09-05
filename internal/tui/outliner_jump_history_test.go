@@ -155,8 +155,8 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	after := newBulkPickerTestTask(t, 3, "after")
 	env := newAppBulkPickerEnv(t, []*models.Task{before, target, after})
 	model := env.appModel()
-	model.operations.registry = operation.NewOperationRegistry()
-	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
+	model.operations.Registry = operation.NewOperationRegistry()
+	model.operations.Executor = operation.NewOperationExecutor(model.operations.Registry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task operations: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	outlinerView.Cursor = targetRow
 	originRow := targetRow
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetState,
 		Context:  model.operationCommandContext(),
 		Value:    models.StateDoing,

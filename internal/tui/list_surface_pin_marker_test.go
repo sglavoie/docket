@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // TestPinnedPickerItemMarksTheRowWithoutStylingItsText locks the contract
@@ -20,9 +21,9 @@ func TestPinnedPickerItemMarksTheRowWithoutStylingItsText(t *testing.T) {
 	pinned := &models.Project{ID: "p-pinned", Name: "Alpha", Slug: "alpha", Pinned: true}
 	plain := &models.Project{ID: "p-plain", Name: "Beta", Slug: "beta"}
 
-	source := listsurface.ListSourceFromPickerItems([]moveProjectPickerItem{
-		{project: pinned},
-		{project: plain},
+	source := listsurface.ListSourceFromPickerItems([]valuepicker.MoveProjectPickerItem{
+		{Project: pinned},
+		{Project: plain},
 	}, false)
 	if len(source.Items) != 2 {
 		t.Fatalf("adapted %d rows, want 2", len(source.Items))

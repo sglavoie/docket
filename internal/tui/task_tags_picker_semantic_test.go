@@ -12,30 +12,15 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
-
-func newFilterTagPickerForTest(t *testing.T, tags []query.TagInfo) *OperationValuePickerModel {
-	t.Helper()
-	picker, err := newOperationValuePickerModel(
-		operation.OperationExecutionRequest{},
-		operation.ValueProviderFilterTags,
-		"Filter by Tags",
-		"keep matching tasks",
-		taskTagListSource(tags, false),
-		true,
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("newOperationValuePickerModel: %v", err)
-	}
-	return picker
-}
 
 func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *testing.T) {
 	for _, provider := range []operation.ValueProviderID{operation.ValueProviderTags, operation.ValueProviderFilterTags} {
-		explainer := semanticTaskTagExplainer(provider, 120)
+		explainer := valuepicker.SemanticTaskTagExplainer(provider, 120)
 		plain := ansi.Strip(explainer)
 		if !strings.Contains(plain, "semantic  bug › question › epic › story › feature › idea —") {
 			t.Fatalf("provider %q explainer = %q, want the precedence chain", provider, plain)
@@ -50,16 +35,16 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 		operation.ValueProviderPriority,
 		operation.ValueProviderState,
 	} {
-		if got := semanticTaskTagExplainer(provider, 120); got != "" {
+		if got := valuepicker.SemanticTaskTagExplainer(provider, 120); got != "" {
 			t.Fatalf("provider %q explainer = %q, want none", provider, got)
 		}
 	}
 }
 
 func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
-	want := "semantic bug › question › epic › story › feature › idea " + semanticTaskTagExplainerSummary
+	want := "semantic bug › question › epic › story › feature › idea " + valuepicker.SemanticTaskTagExplainerSummary
 	for _, width := range []int{12, 30, 42, 44, 60} {
-		plain := ansi.Strip(semanticTaskTagExplainer(operation.ValueProviderTags, width))
+		plain := ansi.Strip(valuepicker.SemanticTaskTagExplainer(operation.ValueProviderTags, width))
 		for _, line := range strings.Split(plain, "\n") {
 			if got := lipgloss.Width(line); got > width {
 				t.Fatalf("width %d line %q is %d columns wide", width, line, got)
@@ -88,32 +73,32 @@ func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	}
 }
 
-func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused bool) *OperationValuePickerModel {
+func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused bool) *valuepicker.OperationValuePickerModel {
 	t.Helper()
-	picker, err := newOperationValuePickerModel(
+	picker, err := valuepicker.NewOperationValuePickerModel(
 		operation.OperationExecutionRequest{ID: operation.OperationTaskSetTags},
 		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
-		taskTagListSource(tags, seedUnused),
+		valuepicker.TaskTagListSource(tags, seedUnused),
 		true,
 		nil,
 	)
 	if err != nil {
-		t.Fatalf("newOperationValuePickerModel: %v", err)
+		t.Fatalf("valuepicker.NewOperationValuePickerModel: %v", err)
 	}
 	return picker
 }
 
 func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "alpha", TaskCount: 1}}, false)
-	if err := picker.addOrSelectTag("Bug"); err != nil {
+	if err := picker.AddOrSelectTag("Bug"); err != nil {
 		t.Fatalf("addOrSelectTag: %v", err)
 	}
 
-	items := picker.surface.Items()
-	assertRowIDs(t, taskTagRowIDs(items, taskTagSemanticCategory), []string{"tag:Bug"})
-	assertRowIDs(t, taskTagRowIDs(items, tagDescriptiveCategory), []string{"tag:alpha"})
+	items := picker.Surface().Items()
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TaskTagSemanticCategory), []string{"tag:Bug"})
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TagDescriptiveCategory), []string{"tag:alpha"})
 	entry, ok := models.SemanticTaskTagByName("Bug")
 	if !ok {
 		t.Fatal("bug is not in the semantic registry")
@@ -129,7 +114,7 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 			t.Fatalf("minted row data = %#v, want the typed spelling", item.Data)
 		}
 	}
-	if !picker.surface.IsSelected("tag:Bug") {
+	if !picker.Surface().IsSelected("tag:Bug") {
 		t.Fatal("minted semantic tag is not selected")
 	}
 }
@@ -149,25 +134,25 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 	}{
 		{
 			name: "task tags picker",
-			source: taskTagListSource([]query.TagInfo{
+			source: valuepicker.TaskTagListSource([]query.TagInfo{
 				{Name: "urgent", TaskCount: 3},
 				{Name: "platform", TaskCount: 1, ContextCount: 1},
 				{Name: "triage", TaskCount: 1},
 			}, true),
 			rows: map[listsurface.ListCategoryID]int{
-				taskTagSemanticCategory: len(models.SemanticTaskTags),
-				taskContextCategory:     1,
-				tagDescriptiveCategory:  2,
+				valuepicker.TaskTagSemanticCategory: len(models.SemanticTaskTags),
+				valuepicker.TaskContextCategory:     1,
+				valuepicker.TagDescriptiveCategory:  2,
 			},
 		},
 		{
 			name: "project tags picker",
-			source: (&AppModel{}).projectTagListSource(&models.Project{
+			source: (&projectops.Controller{}).TagListSource(&AppModel{}, &models.Project{
 				Tags: []string{"infra", "ux"},
 			}),
 			rows: map[listsurface.ListCategoryID]int{
-				projectTagBehavioralCategory: len(models.BehavioralProjectTags),
-				tagDescriptiveCategory:       2,
+				valuepicker.ProjectTagBehavioralCategory: len(models.BehavioralProjectTags),
+				valuepicker.TagDescriptiveCategory:       2,
 			},
 		},
 	} {
@@ -201,11 +186,11 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 		picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "alpha", TaskCount: 1}}, false)
 		minted := map[listsurface.ListItemID]bool{"tag:bug": true, "tag:brandnew": true}
 		for _, tag := range []string{"bug", "brandnew"} {
-			if err := picker.addOrSelectTag(tag); err != nil {
+			if err := picker.AddOrSelectTag(tag); err != nil {
 				t.Fatalf("addOrSelectTag(%q): %v", tag, err)
 			}
 		}
-		for _, item := range picker.surface.Items() {
+		for _, item := range picker.Surface().Items() {
 			assertRowWearsTheColorItApplies(t, item)
 			delete(minted, item.ID)
 		}
@@ -224,16 +209,16 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 func tagPickerRowColor(t *testing.T, item listsurface.ListItem) (lipgloss.Style, bool) {
 	t.Helper()
 	switch item.CategoryID {
-	case taskTagSemanticCategory:
+	case valuepicker.TaskTagSemanticCategory:
 		task := &models.Task{Tags: []string{item.PrimaryText}}
 		return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}), true
-	case projectTagBehavioralCategory:
+	case valuepicker.ProjectTagBehavioralCategory:
 		info, ok := models.BehavioralProjectTags[item.PrimaryText]
 		if !ok {
 			t.Fatalf("behavioral row %q names no registry entry", item.ID)
 		}
 		return projecthub.BehavioralProjectTagBadgeStyle(info.BadgeRole), true
-	case taskContextCategory, tagDescriptiveCategory:
+	case valuepicker.TaskContextCategory, valuepicker.TagDescriptiveCategory:
 		// Both hold tag rows: CONTEXTS merely recategorizes a tag also carried as
 		// a context, and that row still toggles the tag.
 		return theme.TagChipStyle(item.PrimaryText), true
@@ -261,27 +246,53 @@ func assertRowWearsTheColorItApplies(t *testing.T, item listsurface.ListItem) {
 
 func TestOperationTagPickerKeepsThePrecedenceOrderAfterAddingATag(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "zeta", TaskCount: 1}}, true)
-	if err := picker.addOrSelectTag("alpha"); err != nil {
+	if err := picker.AddOrSelectTag("alpha"); err != nil {
 		t.Fatalf("addOrSelectTag descriptive: %v", err)
 	}
-	items := picker.surface.Items()
-	assertRowIDs(t, taskTagRowIDs(items, taskTagSemanticCategory), []string{
+	items := picker.Surface().Items()
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TaskTagSemanticCategory), []string{
 		"tag:bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
 	})
-	assertRowIDs(t, taskTagRowIDs(items, tagDescriptiveCategory), []string{"tag:alpha", "tag:zeta"})
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TagDescriptiveCategory), []string{"tag:alpha", "tag:zeta"})
 
-	if err := picker.addOrSelectTag("Bug"); err != nil {
+	if err := picker.AddOrSelectTag("Bug"); err != nil {
 		t.Fatalf("addOrSelectTag semantic: %v", err)
 	}
-	items = picker.surface.Items()
-	assertRowIDs(t, taskTagRowIDs(items, taskTagSemanticCategory), []string{
+	items = picker.Surface().Items()
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TaskTagSemanticCategory), []string{
 		"tag:bug", "tag:Bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
 	})
 	// Every semantic row must precede every descriptive one or the list surface
 	// repeats both headers.
 	for index, item := range items {
-		if item.CategoryID == taskTagSemanticCategory && index >= len(items)-2 {
+		if item.CategoryID == valuepicker.TaskTagSemanticCategory && index >= len(items)-2 {
 			t.Fatalf("semantic row %q sits inside the descriptive section: %+v", item.ID, items)
+		}
+	}
+}
+
+// assertRowIDs and taskTagRowIDs read a tag list source's rows. The picker
+// package keeps the same two beside its own source tests; these are the shell's,
+// for the cases that reach a source through AppModel.
+func taskTagRowIDs(items []listsurface.ListItem, category listsurface.ListCategoryID) []string {
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		if item.CategoryID != category {
+			continue
+		}
+		ids = append(ids, string(item.ID))
+	}
+	return ids
+}
+
+func assertRowIDs(t *testing.T, got []string, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("row ids = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("row ids = %v, want %v", got, want)
 		}
 	}
 }

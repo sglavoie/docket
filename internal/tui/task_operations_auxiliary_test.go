@@ -41,7 +41,7 @@ func executeTaskOperationForTest(
 	context operation.CommandContext,
 ) operation.OperationExecutionResult {
 	t.Helper()
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: context,
 	})
@@ -107,7 +107,7 @@ func assertTaskMessageTarget(t *testing.T, got, want *models.Task) {
 func TestTaskOperationSheetOmitsDirectCoreEditAndDetail(t *testing.T) {
 	model, project, task := auxiliaryTaskTestApp(t)
 	descriptors := TaskActionSheetDescriptors(
-		model.operations.registry,
+		model.operations.Registry,
 		taskOperationTestContext(task, project),
 	)
 
@@ -131,7 +131,7 @@ func TestTaskOperationSheetOmitsDirectCoreEditAndDetail(t *testing.T) {
 func TestTaskOperationCatalogIsFullyManifested(t *testing.T) {
 	model, project, task := auxiliaryTaskTestApp(t)
 	descriptors := TaskActionSheetDescriptors(
-		model.operations.registry,
+		model.operations.Registry,
 		taskOperationTestContext(task, project),
 	)
 	if len(descriptors) == 0 {
@@ -159,7 +159,7 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 		operation.OperationCorePeek:                 "task preview",
 	}
 	for id, alias := range wanted {
-		descriptor, ok := model.operations.registry.Descriptor(id)
+		descriptor, ok := model.operations.Registry.Descriptor(id)
 		if !ok {
 			t.Fatalf("operation %s is not registered", id)
 		}
@@ -279,7 +279,7 @@ func TestTaskChildActionOnDeletedParentLeavesHierarchyUnchanged(t *testing.T) {
 	project.BuildTaskTree()
 	before := len(project.Tasks)
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskNewChild,
 		Context: context,
 	})
@@ -300,7 +300,7 @@ func TestTaskOperationStaleFrozenTargetReportsUnavailable(t *testing.T) {
 	project.Tasks = []*models.Task{project.GetTaskByID("other")}
 	project.BuildTaskTree()
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskComments,
 		Context: context,
 	})

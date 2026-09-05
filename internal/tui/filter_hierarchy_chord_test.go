@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/filterops"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -47,7 +48,7 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
 	filter := &app.crossOutliner.Filter.CommonFilterState
 
-	result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterHierarchy,
 		Context:  simplifiedOperationContext(),
 		Value:    query.HierarchyLeaf,
@@ -75,7 +76,7 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
 
-	descriptors := filterOperationDescriptors()
+	descriptors := filterops.FilterOperationDescriptors()
 	if len(descriptors) != 12 {
 		t.Fatalf("filter family declares %d operations, want 12", len(descriptors))
 	}
@@ -111,7 +112,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 	} {
 		t.Run(outliner.HierarchyFilterLabel(tc.value), func(t *testing.T) {
 			app := newHierarchyFilterTestApp(t)
-			result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+			result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 				ID:       operation.OperationFilterHierarchy,
 				Context:  simplifiedOperationContext(),
 				Value:    tc.value,
@@ -134,7 +135,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
 	for _, value := range []query.HierarchyFilter{query.HierarchyAll, query.HierarchyLeaf + 1} {
-		result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+		result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 			ID:       operation.OperationFilterHierarchy,
 			Context:  simplifiedOperationContext(),
 			Value:    value,

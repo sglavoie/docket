@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -116,12 +117,12 @@ func TestOverlayManagerLifecycle(t *testing.T) {
 	}
 
 	// A text-input overlay drives both Active and HasActiveTextInput.
-	app.operations.textPrompt = &OperationTextPromptModel{}
+	app.operations.TextPrompt = &operationhost.OperationTextPromptModel{}
 	if !o.Active() || !o.HasActiveTextInput() {
 		t.Error("text prompt should make overlays active and text-input")
 	}
 	o.ClearAll()
-	if o.Active() || app.operations.textPrompt != nil {
+	if o.Active() || app.operations.TextPrompt != nil {
 		t.Error("ClearAll should dismiss every overlay")
 	}
 }

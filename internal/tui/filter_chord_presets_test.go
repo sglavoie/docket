@@ -173,7 +173,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	filter := &app.crossOutliner.Filter.CommonFilterState
 	filter.DueDate = query.DueDateToday
 
-	result := app.executeFilterOperation(operation.OperationInvocation{
+	result := app.filters.ExecuteFilterOperation(app, operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterDue},
 		Value:      "?deferred",
 	})
@@ -187,7 +187,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 		t.Fatalf("DueDate = %v, want the due-date facet cleared", filter.DueDate)
 	}
 
-	result = app.executeFilterOperation(operation.OperationInvocation{
+	result = app.filters.ExecuteFilterOperation(app, operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterDue},
 		Value:      "@overdue",
 	})
@@ -215,10 +215,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f@ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterDue {
-			t.Fatalf("f@ did not open the due-date picker: %#v", app.operations.valuePicker)
+		if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterDue {
+			t.Fatalf("f@ did not open the due-date picker: %#v", app.operations.ValuePicker)
 		}
-		items := app.operations.valuePicker.surface.Items()
+		items := app.operations.ValuePicker.Surface().Items()
 		wantIDs := []listsurface.ListItemID{
 			"filter-due:overdue",
 			"filter-due:today",
@@ -234,7 +234,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 				t.Errorf("due-date picker item %d = %s, want %s", index, items[index].ID, wantID)
 			}
 		}
-		if current, ok := app.operations.valuePicker.surface.CurrentItem(); !ok || current.ID != "filter-due:week" {
+		if current, ok := app.operations.ValuePicker.Surface().CurrentItem(); !ok || current.ID != "filter-due:week" {
 			t.Errorf("seeded cursor = %v (%v), want filter-due:week", current.ID, ok)
 		}
 	})
@@ -253,10 +253,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f$ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterStates {
-			t.Fatalf("f$ did not open the states picker: %#v", app.operations.valuePicker)
+		if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterStates {
+			t.Fatalf("f$ did not open the states picker: %#v", app.operations.ValuePicker)
 		}
-		selected := app.operations.valuePicker.surface.SelectedIDs()
+		selected := app.operations.ValuePicker.Surface().SelectedIDs()
 		if len(selected) != 1 || selected[0] != "state:waiting" {
 			t.Errorf("seeded selection = %v, want [state:waiting]", selected)
 		}
@@ -272,10 +272,10 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("fa produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterCompletionAge {
-			t.Fatalf("fa did not open the completion-age picker: %#v", app.operations.valuePicker)
+		if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterCompletionAge {
+			t.Fatalf("fa did not open the completion-age picker: %#v", app.operations.ValuePicker)
 		}
-		items := app.operations.valuePicker.surface.Items()
+		items := app.operations.ValuePicker.Surface().Items()
 		wantIDs := []listsurface.ListItemID{
 			"filter-completion-age:all",
 			"filter-completion-age:7",
@@ -290,7 +290,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 				t.Errorf("completion-age picker item %d = %s, want %s", index, items[index].ID, wantID)
 			}
 		}
-		if current, ok := app.operations.valuePicker.surface.CurrentItem(); !ok || current.ID != "filter-completion-age:30" {
+		if current, ok := app.operations.ValuePicker.Surface().CurrentItem(); !ok || current.ID != "filter-completion-age:30" {
 			t.Errorf("seeded cursor = %v (%v), want filter-completion-age:30", current.ID, ok)
 		}
 	})
@@ -305,18 +305,18 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f# produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterTags {
-			t.Fatalf("f# did not open the tags picker: %#v", app.operations.valuePicker)
+		if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterTags {
+			t.Fatalf("f# did not open the tags picker: %#v", app.operations.ValuePicker)
 		}
-		selected := app.operations.valuePicker.surface.SelectedIDs()
+		selected := app.operations.ValuePicker.Surface().SelectedIDs()
 		if len(selected) != 1 || selected[0] != "tag:deep" {
 			t.Errorf("seeded selection = %v, want [tag:deep]", selected)
 		}
-		// The filter picker builds its rows from taskTagListSource, so it wears
+		// The filter picker builds its rows from valuepicker.TaskTagListSource, so it wears
 		// the same colors as # with no code of its own. This asserts that
 		// inheritance rather than restating it: the fixture carries the review
 		// workflow tag and the deep descriptive one, so both rules are exercised.
-		items := app.operations.valuePicker.surface.Items()
+		items := app.operations.ValuePicker.Surface().Items()
 		if len(items) == 0 {
 			t.Fatal("f# picker has no rows to color")
 		}
@@ -357,12 +357,12 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	outlinerView.Population.Invalidate()
 	outlinerView.RebuildRows()
 
-	picker, err := app.newFilterStatesPicker(operation.OperationExecutionRequest{})
+	picker, err := app.filters.NewFilterStatesPicker(app, operation.OperationExecutionRequest{})
 	if err != nil {
 		t.Fatalf("newFilterStatesPicker() error = %v", err)
 	}
 	items := make(map[listsurface.ListItemID]listsurface.ListItem)
-	for _, item := range picker.surface.Items() {
+	for _, item := range picker.Surface().Items() {
 		items[item.ID] = item
 	}
 

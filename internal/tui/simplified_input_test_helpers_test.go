@@ -9,7 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/filterops"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
@@ -43,11 +46,11 @@ func guidanceHintsText(hints []chrome.GuidanceHint) string {
 // descriptors the simplified strategy binds directly, for tests that assemble a
 // registry without a fully initialized AppModel.
 func simplifiedTaskActionDescriptors() []operation.OperationDescriptor {
-	descriptors := append((&AppModel{}).taskActionOperationDescriptors(), filterOperationDescriptors()...)
-	descriptors = append(descriptors, projectFilterOperationDescriptors()...)
-	descriptors = append(descriptors, sortAxisOperationDescriptors()...)
-	descriptors = append(descriptors, checklistRowOperationDescriptors()...)
-	descriptors = append(descriptors, (&AppModel{}).checklistStartOperationDescriptor())
+	descriptors := append((&AppModel{}).taskActionOperationDescriptors(), filterops.FilterOperationDescriptors()...)
+	descriptors = append(descriptors, filterops.ProjectFilterOperationDescriptors()...)
+	descriptors = append(descriptors, filterops.SortAxisOperationDescriptors()...)
+	descriptors = append(descriptors, entityops.ChecklistRowOperationDescriptors()...)
+	descriptors = append(descriptors, (&entityops.Controller{}).ChecklistStartOperationDescriptor(&AppModel{}))
 	descriptors = append(descriptors, projectActionSheetOperationDescriptor())
 	return append(descriptors, projecthub.ProjectOperationDescriptors()...)
 }

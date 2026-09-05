@@ -80,7 +80,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	}
 	outlinerView.SetSize(chrome.MinTerminalWidth, chrome.MinTerminalHeight-2)
 
-	hints := app.operations.registry.GuidanceHintsForInputStrategy(
+	hints := app.operations.Registry.GuidanceHintsForInputStrategy(
 		operation.InputStrategySimplified, outlinerView.OperationCommandContext(),
 	)
 	pairs := make([]string, 0, len(hints))

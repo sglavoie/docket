@@ -3,17 +3,18 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // adoptChildrenCmd routes the picker's checked set through the same task-line
@@ -71,7 +72,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value ope
 			return coordinator.TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
 		}
 	}
-	patch := taskReferencePatch(task, value)
+	patch := valuepicker.TaskReferencePatch(task, value)
 	if patch.IsZero() {
 		return func() tea.Msg { return status.InfoStatusMsg("Dependencies unchanged") }
 	}
@@ -212,14 +213,14 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
 		}
 		if value.Deferred {
-			return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
+			return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, taskref.CloneOperationDate(value.Date)))
 		}
 		if value.Date == nil {
 			return cmdResult(m.secondaryFeatures.Bulk.ClearDueDateLocators(locators))
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetDueDateLocators(
 			locators,
-			*cloneOperationDate(value.Date),
+			*taskref.CloneOperationDate(value.Date),
 		))
 	case operation.OperationTaskMoveToProject:
 		projectID, ok := invocation.Value.(string)
@@ -238,10 +239,76 @@ func (m *AppModel) executeBulkTaskValueOperation(
 	}
 }
 
-func cloneOperationDate(date *time.Time) *time.Time {
-	if date == nil {
-		return nil
+// taskAuxiliaryAllowsOperation gates the child creator on live task state that
+// the frozen EntityContext does not carry, so a child is never offered under a
+// task that cannot hold one. A target that no longer resolves stays applicable
+// so the handler reports the single authoritative "no longer available" error
+// instead of the row vanishing.
+func (m *AppModel) taskAuxiliaryAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
+	if id != operation.OperationTaskNewChild {
+		return true
 	}
-	cloned := *date
-	return &cloned
+	task, _ := m.taskAndProjectForIdentity(taskref.TaskIdentity{
+		ProjectID: entity.ProjectID,
+		TaskID:    entity.TaskID,
+	})
+	if task == nil {
+		return true
+	}
+	return taskAcceptsDeeperChild(task)
+}
+
+// taskAcceptsDeeperChild reports whether a child nested under the task would
+// stay within the nesting cap. Beyond it, BuildTaskTree detaches the child back
+// to the root instead of honoring the relationship the user asked for.
+func taskAcceptsDeeperChild(task *models.Task) bool {
+	return task.Level+1 <= models.MaxNestingDepth
+}
+
+// executeAuxiliaryTaskOperation reloads live domain state from the frozen
+// identity and hands off to the coordinator or message that already owns the
+// behavior. No auxiliary handler mutates a task itself.
+//
+//nolint:gocyclo // One auditable switch keeps the auxiliary catalog in a single place.
+func (m *AppModel) executeAuxiliaryTaskOperation(
+	invocation operation.OperationInvocation,
+	identity taskref.TaskIdentity,
+) operation.OperationHandlerResult {
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil || project == nil {
+		return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+	}
+	message := func(msg any) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: msg}
+	}
+
+	//nolint:exhaustive // Only auxiliary task operations reach this switch.
+	switch invocation.Descriptor.ID {
+	case operation.OperationTaskComments:
+		return message(taskdetail.ShowTaskCommentsMsg{Task: task, Project: project})
+	case operation.OperationTaskAttachments:
+		return message(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
+	case operation.OperationTaskCopyTitle:
+		return message(CopyTaskTitleMsg{Task: task})
+	case operation.OperationTaskCopyDetails:
+		return message(CopyTaskDetailsMsg{Task: task})
+	case operation.OperationTaskCopyTitleDescription:
+		return message(CopyTaskTitleAndDescMsg{Task: task})
+	case operation.OperationTaskNewChild:
+		return message(taskform.CreateTaskMsg{ParentTask: task, Project: project})
+	default:
+		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
+	}
+}
+
+// taskAndProjectForTargets reloads the live task named by the first resolved
+// target, so core task operations act on the frozen identity rather than
+// whatever row the cursor has since moved to.
+func (m *AppModel) taskAndProjectForTargets(
+	targets operation.ResolvedOperationTargets,
+) (*models.Task, *models.Project) {
+	if len(targets.Targets) == 0 {
+		return nil, nil
+	}
+	return m.taskAndProjectForIdentity(targets.Targets[0].Task)
 }

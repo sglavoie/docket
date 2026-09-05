@@ -19,8 +19,8 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	second := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
-	model.operations.registry = operation.NewOperationRegistry()
-	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
+	model.operations.Registry = operation.NewOperationRegistry()
+	model.operations.Executor = operation.NewOperationExecutor(model.operations.Registry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 
 	context := model.operationCommandContext()
 	outlinerView.Cursor = 1
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetTags,
 		Context:  context,
 		Value:    operation.OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
@@ -67,13 +67,13 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 
 func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	model := newUITestApp()
-	model.operations.registry = operation.NewOperationRegistry()
-	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
+	model.operations.Registry = operation.NewOperationRegistry()
+	model.operations.Executor = operation.NewOperationExecutor(model.operations.Registry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
 	context := taskActionTestContext()
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskSetState,
 		Context: context,
 	})
@@ -97,8 +97,8 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	taskB.Priority = models.PriorityLow
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	model := env.appModel()
-	model.operations.registry = operation.NewOperationRegistry()
-	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
+	model.operations.Registry = operation.NewOperationRegistry()
+	model.operations.Executor = operation.NewOperationExecutor(model.operations.Registry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	}
 	context.Entity = context.Selection.Entities[0]
 
-	result := model.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := model.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetPriority,
 		Context:  context,
 		Value:    1,

@@ -83,7 +83,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
 	story := project.GetTaskByID("story")
 	context := taskOperationTestContext(story, project)
-	registry := model.operations.registry
+	registry := model.operations.Registry
 	registerTaskActionTestDescriptor(t, registry, operation.OperationDescriptor{
 		ID:                   operation.OperationID("test.task.unlisted"),
 		Label:                "Unlisted Task Tool",
@@ -279,7 +279,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	model := newUITestApp()
 	project := newTaskStructureTestProject()
 	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
-	registry := model.operations.registry
+	registry := model.operations.Registry
 
 	story := project.GetTaskByID("story")
 	loose := project.GetTaskByID("loose")
@@ -356,13 +356,13 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("Space = handled %v, cmd %T; want handled with no command", handled, cmd)
 	}
-	if app.operations.actionSheet == nil {
+	if app.operations.ActionSheet == nil {
 		t.Fatal("Space did not open the selected-task action sheet")
 	}
-	if app.operations.valuePicker != nil {
+	if app.operations.ValuePicker != nil {
 		t.Fatal("Space skipped the action sheet and opened a value picker")
 	}
-	if got := len(app.operations.actionSheet.Surface.Items()); got == 0 {
+	if got := len(app.operations.ActionSheet.Surface.Items()); got == 0 {
 		t.Fatal("opened action sheet contains no applicable task actions")
 	}
 }
@@ -403,7 +403,7 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 	send(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"}) // toggle the second row into the selection
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
-	sheet := app.operations.actionSheet
+	sheet := app.operations.ActionSheet
 	if sheet == nil || !sheet.Config.Bulk || sheet.Config.Targets != 2 {
 		t.Fatalf("Space did not open a two-target bulk action sheet: %#v", sheet)
 	}
@@ -440,14 +440,14 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app.crossOutliner.ToggleCursorSelection()
 	app.crossOutliner.Cursor = 1
 
-	result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCorePeek,
 		Context: app.operationCommandContext(),
 	})
 	if !errors.Is(result.Err, operation.ErrOperationUnavailable) {
 		t.Fatalf("visual-selection Peek error = %v, want unavailable", result.Err)
 	}
-	if result.Message != nil || app.operations.actionSheet != nil {
+	if result.Message != nil || app.operations.ActionSheet != nil {
 		t.Fatal("visual-selection Peek fell back to the cursor or action sheet")
 	}
 }

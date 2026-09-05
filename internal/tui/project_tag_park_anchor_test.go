@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 )
 
 func newSession4TaggedProject(t *testing.T, name string, tags ...string) *models.Project {
@@ -29,7 +30,7 @@ func parkTagMembersThroughProjectTagVocabulary(
 ) tea.Cmd {
 	t.Helper()
 	app := fixture.app
-	members := app.projectTagMembers(tag)
+	members := app.project.TagMembers(app, tag)
 	if len(members) == 0 {
 		t.Fatalf("no available project carries #%s", tag)
 	}
@@ -37,9 +38,10 @@ func parkTagMembersThroughProjectTagVocabulary(
 	for _, member := range members {
 		targets = append(targets, operation.OperationTargetFor(operation.ProjectEntity(member.ID)))
 	}
-	app.project.tagActionSubject = tag
-	result := app.executeProjectTagVocabulary(
-		operation.OperationInvocation{Descriptor: operation.OperationDescriptor{ID: operationProjectTagParkAll}},
+	app.project.SetTagActionSubject(tag)
+	result := app.project.ExecuteProjectTagVocabulary(
+		app,
+		operation.OperationInvocation{Descriptor: operation.OperationDescriptor{ID: projectops.OperationProjectTagParkAll}},
 		targets,
 	)
 	if result.Err != nil {

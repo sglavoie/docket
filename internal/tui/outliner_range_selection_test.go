@@ -126,8 +126,8 @@ func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing
 	if err := app.openTaskActionSheet(context); err != nil {
 		t.Fatalf("open bulk action sheet: %v", err)
 	}
-	if app.operations.actionSheet == nil || !strings.Contains(app.operations.actionSheet.Config.Subtitle, "2 tasks · 1 visible · 1 hidden") {
-		t.Fatalf("bulk subtitle = %q, want total/visible/hidden counts", app.operations.actionSheet.Config.Subtitle)
+	if app.operations.ActionSheet == nil || !strings.Contains(app.operations.ActionSheet.Config.Subtitle, "2 tasks · 1 visible · 1 hidden") {
+		t.Fatalf("bulk subtitle = %q, want total/visible/hidden counts", app.operations.ActionSheet.Config.Subtitle)
 	}
 
 	// Delete confirmation must be calculated from the complete selection, not

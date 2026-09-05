@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -197,9 +198,9 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
 		today:          []outliner.PlanningTask{},
 		todayIDs:       make(map[taskref.TaskIdentity]bool),
-		operations:     newOperationController(),
+		operations:     operationhost.NewController(),
 	}
-	appModel.operations.bindExecutor()
+	appModel.operations.BindExecutor()
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MoveCursorToTask(taskID)
@@ -210,10 +211,10 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task action operations: %v", err)
 	}
-	if err := appModel.registerFilterOperations(); err != nil {
+	if err := appModel.filters.RegisterFilterOperations(appModel); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := appModel.registerSortOperations(); err != nil {
+	if err := appModel.filters.RegisterSortOperations(appModel); err != nil {
 		t.Fatalf("register sort operations: %v", err)
 	}
 	if err := appModel.registerProjectOperations(); err != nil {
@@ -225,7 +226,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := appModel.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := appModel.operations.Registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
 	appModel.wireOutlinerOperationExecutor(outlinerView)

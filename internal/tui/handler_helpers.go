@@ -1,16 +1,20 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -299,3 +303,113 @@ func (m *AppModel) refreshRuntime() bool {
 	m.syncProjectCache()
 	return true
 }
+
+// handleTagMessages handles tag-related messages.
+// Returns true if the message was handled.
+func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
+	switch msg := msg.(type) {
+	case listsurface.ShowTagSelectorMsg:
+		selector := listsurface.NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
+		m.showView(presentation.ViewTagSelector, selector)
+		return true, nil
+
+	case listsurface.TagSelectorDoneMsg:
+		m.popView()
+		if msg.Canceled {
+			return true, nil
+		}
+		// Check if we came from project tree, outliner, or cross-project outliner - apply tags directly
+		if m.currentView() == presentation.ViewCrossProjectOutliner && msg.Task != nil {
+			return true, m.applyTagsToTask(msg.Identity, msg.Task, msg.SelectedTags)
+		}
+		// Otherwise forward to the current view.
+		cmd := m.viewNav.views.Update(m.currentView(), msg)
+		return true, cmd
+
+	}
+	return false, nil
+}
+
+// handleClipboardMessages handles clipboard-related messages (copy task title/details).
+// Returns true if the message was handled.
+func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
+	case coordinator.TaskClipboardProjectedMsg:
+		if err := external.CopyText(msg.Projection.Text); err != nil {
+			return true, status.ErrorCmd("copy failed: %w", err)
+		}
+		switch msg.Projection.Operation {
+		case app.TaskOperationCopyTitle:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1} }
+		case app.TaskOperationCopyDescription:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, FullDetail: true} }
+		case app.TaskOperationCopyTitleDescription:
+			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, TitleAndDesc: true} }
+		default:
+			return true, status.ErrorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
+		}
+
+	case CopyTaskTitleMsg:
+		if msg.Task == nil {
+			return true, nil
+		}
+		_, err := external.CopyTaskTitle(msg.Task)
+		if err != nil {
+			return true, status.ErrorCmd("copy failed: %w", err)
+		}
+		return true, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, FullDetail: false}
+		}
+
+	case CopyTaskDetailsMsg:
+		if msg.Task == nil {
+			return true, nil
+		}
+		if msg.Task.Description == "" {
+			m.setInfoStatus("No description to copy")
+			return true, status.DefaultStatusTimeout()
+		}
+		_, err := external.CopyTaskDetails(msg.Task)
+		if err != nil {
+			return true, status.ErrorCmd("copy failed: %w", err)
+		}
+		return true, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, FullDetail: true}
+		}
+
+	case CopyTaskTitleAndDescMsg:
+		if msg.Task == nil {
+			return true, nil
+		}
+		_, err := external.CopyTaskTitleAndDescription(msg.Task)
+		if err != nil {
+			return true, status.ErrorCmd("copy failed: %w", err)
+		}
+		return true, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, TitleAndDesc: true}
+		}
+
+	case TaskCopiedMsg:
+		var what string
+		if msg.TitleAndDesc {
+			what = "title and description"
+		} else if msg.FullDetail {
+			what = "description"
+		} else {
+			what = "title"
+		}
+		if msg.Count == 1 {
+			m.setSuccessStatus(fmt.Sprintf("Copied %s to clipboard", what))
+		} else {
+			m.setSuccessStatus(fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count))
+		}
+		return true, status.DefaultStatusTimeout()
+	}
+	return false, nil
+}
+
+// TaskProjectRef is the shell's spelling of a qualified task. The type itself
+// lives in taskref so the packages below the shell can name one.
+type TaskProjectRef = taskref.TaskProjectRef
+
+// finishTaskBulkSelection clears task multi-select state after a successful bulk action.

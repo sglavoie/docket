@@ -169,7 +169,7 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 	app := newUITestApp()
 
 	commands := NewUITestDriver(app, 100, 30).availableCommands()
-	strategy, _ := app.operations.registry.InputStrategy(operation.InputStrategySimplified)
+	strategy, _ := app.operations.Registry.InputStrategy(operation.InputStrategySimplified)
 	bound := make(map[operation.OperationID]struct{}, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
 		bound[binding.OperationID] = struct{}{}

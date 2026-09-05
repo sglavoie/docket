@@ -41,7 +41,7 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 		if !ok || registered.Label != descriptor.Label {
 			t.Errorf("note operation %s registry descriptor = %#v, want label %q", descriptor.ID, registered, descriptor.Label)
 		}
-		if len(app.operations.executor.Bindings(descriptor.ID)) == 0 {
+		if len(app.operations.Executor.Bindings(descriptor.ID)) == 0 {
 			t.Errorf("note operation %s has no executable binding", descriptor.ID)
 		}
 	}
@@ -50,7 +50,7 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	executor := app.operations.executor
+	executor := app.operations.Executor
 
 	sheetContext := taskActionParityContext(t, app)
 	descriptors := TaskActionSheetDescriptors(registry, sheetContext)

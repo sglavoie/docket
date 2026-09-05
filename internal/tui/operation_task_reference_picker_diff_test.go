@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // This file covers what a commit spells: the difference between the membership
@@ -61,7 +62,7 @@ func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			subject, _ := referenceSuiteWorkspace(t)
+			subject := referenceSuiteWorkspace(t)
 			patch := referencePickerCommit(subject, subject, testCase.checked...)
 			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, testCase.wantAdd) {
 				t.Errorf("add = %v, want %v", got, testCase.wantAdd)
@@ -85,7 +86,7 @@ func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 // else without touching it — so it has to fall out as no intent at all, never as
 // an addition the resolver would then have to judge against the addition rules.
 func TestReferencePickerRecheckingAStoredTargetIsANoOp(t *testing.T) {
-	subject, _ := referenceSuiteWorkspace(t)
+	subject := referenceSuiteWorkspace(t)
 	for _, locator := range []string{"home:closed", "gone:gone-1", "attic:relic"} {
 		t.Run(locator, func(t *testing.T) {
 			patch := referencePickerCommit(
@@ -151,8 +152,8 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			if cmd != nil {
 				model.handleOperationOverlayMessage(cmd())
 			}
-			picker := model.operations.valuePicker
-			if picker == nil || picker.provider != operation.ValueProviderTaskReference {
+			picker := model.operations.ValuePicker
+			if picker == nil || picker.Provider() != operation.ValueProviderTaskReference {
 				t.Fatalf("~ did not open the reference picker: %#v", picker)
 			}
 
@@ -161,10 +162,10 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			// go through the toggle the keyboard uses, because membership rather than
 			// the checked set is what the commit is a difference against.
 			for _, id := range referenceIDsFor("remote:other", "remote:legacy") {
-				if !picker.surface.SetCursorToID(id) {
+				if !picker.Surface().SetCursorToID(id) {
 					t.Fatalf("the picker has no row for %s", id)
 				}
-				if err := picker.toggleCurrentMultiValue(); err != nil {
+				if err := picker.ToggleCurrentMultiValue(); err != nil {
 					t.Fatalf("toggling %s: %v", id, err)
 				}
 			}
@@ -203,7 +204,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 				t.Errorf("emitted remove = %v, want the one row the user unchecked", value.Remove)
 			}
 
-			patch := taskReferencePatch(fresh, value)
+			patch := valuepicker.TaskReferencePatch(fresh, value)
 			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, testCase.wantAdd) {
 				t.Errorf("add = %v, want %v", got, testCase.wantAdd)
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 func TestFormatDeferDateLadder(t *testing.T) {
@@ -204,7 +205,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		arm  func(*AppModel)
 	}{
 		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
-		{"value picker", func(app *AppModel) { app.operations.valuePicker = &OperationValuePickerModel{} }},
+		{"value picker", func(app *AppModel) { app.operations.ValuePicker = &valuepicker.OperationValuePickerModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
 			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)

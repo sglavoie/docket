@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -52,7 +53,7 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("search Enter emitted no selection")
 	}
-	selected, ok := cmd().(ApplyProjectScopeMsg)
+	selected, ok := cmd().(outliner.ApplyProjectScopeMsg)
 	if !ok || selected.ProjectID != "beta" {
 		t.Fatalf("search Enter emitted %#v, want beta", cmd())
 	}

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/lensops"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -13,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // lensTemplateForeignID is a UUID outside the frozen `6f1a0c4e-…` catalog
@@ -20,16 +23,16 @@ import (
 // sharing its stable identity.
 const lensTemplateForeignID = "11111111-2222-4333-8444-555555555501"
 
-func typeIntoGallery(picker *OperationValuePickerModel, query string) {
+func typeIntoGallery(picker *valuepicker.OperationValuePickerModel, query string) {
 	picker.HandleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
 	for _, r := range query {
 		picker.HandleKey(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 }
 
-func galleryMatchNames(picker *OperationValuePickerModel) []string {
-	names := make([]string, 0, len(picker.surface.Matches()))
-	for _, match := range picker.surface.Matches() {
+func galleryMatchNames(picker *valuepicker.OperationValuePickerModel) []string {
+	names := make([]string, 0, len(picker.Surface().Matches()))
+	for _, match := range picker.Surface().Matches() {
 		names = append(names, match.Item.PrimaryText)
 	}
 	return names
@@ -41,19 +44,19 @@ func TestLensTemplateGalleryOpensWithoutAnyTaskContext(t *testing.T) {
 	// resolved task refs would fail here instead of rendering the catalog.
 	picker := openLensTemplateGallery(t, model)
 
-	if picker.provider != operation.ValueProviderLensTemplate {
-		t.Fatalf("gallery provider = %q, want %q", picker.provider, operation.ValueProviderLensTemplate)
+	if picker.Provider() != operation.ValueProviderLensTemplate {
+		t.Fatalf("gallery provider = %q, want %q", picker.Provider(), operation.ValueProviderLensTemplate)
 	}
-	if picker.multi {
+	if picker.Multi() {
 		t.Fatal("the gallery is a single-select picker")
 	}
-	if picker.title != "Add Built-in View" {
-		t.Fatalf("gallery title = %q, want Add Built-in View", picker.title)
+	if picker.Title() != "Add Built-in View" {
+		t.Fatalf("gallery title = %q, want Add Built-in View", picker.Title())
 	}
-	if picker.subtitle != "Choose a lens template" {
-		t.Fatalf("gallery subtitle = %q, want Choose a lens template", picker.subtitle)
+	if picker.Subtitle() != "Choose a lens template" {
+		t.Fatalf("gallery subtitle = %q, want Choose a lens template", picker.Subtitle())
 	}
-	if picker.provider.TextEntry() || picker.provider.TagEntry() || picker.provider.DateEntry() {
+	if picker.Provider().TextEntry() || picker.Provider().TagEntry() || picker.Provider().DateEntry() {
 		t.Fatal("the gallery provider must be a plain list, not a text, tag, or date entry")
 	}
 }
@@ -62,7 +65,7 @@ func TestLensTemplateGalleryListsEveryTemplateAlphabetically(t *testing.T) {
 	model := lensOperationApp(t)
 	picker := openLensTemplateGallery(t, model)
 
-	items := picker.surface.Items()
+	items := picker.Surface().Items()
 	want := []string{
 		"Active Work",
 		"Cleanup 90d",
@@ -110,8 +113,8 @@ func TestLensTemplateGalleryDisablesTheSeededStartersAndOffersTheRest(t *testing
 
 	// Every row stays visible: the gallery says why a template is unavailable
 	// rather than hiding the fact that it exists.
-	if len(picker.surface.Items()) != 9 {
-		t.Fatalf("the gallery hid rows: %d visible, want 9", len(picker.surface.Items()))
+	if len(picker.Surface().Items()) != 9 {
+		t.Fatalf("the gallery hid rows: %d visible, want 9", len(picker.Surface().Items()))
 	}
 	for _, saved := range seeded {
 		row := galleryRow(t, picker, saved.ID)
@@ -248,7 +251,7 @@ func TestLensTemplateGalleryRefusesADisabledRowAndStaysOpen(t *testing.T) {
 	model := lensOperationApp(t)
 	waiting := lensTemplateByName(t, "Waiting")
 	picker := openLensTemplateGallery(t, model)
-	if !picker.surface.SetCursorToID(lensTemplateItemID(waiting.ID)) {
+	if !picker.Surface().SetCursorToID(lensops.TemplateItemID(waiting.ID)) {
 		t.Fatal("the cursor could not reach the seeded Waiting row")
 	}
 
@@ -263,7 +266,7 @@ func TestLensTemplateGalleryRefusesADisabledRowAndStaysOpen(t *testing.T) {
 	if want := `Already added as "Waiting"`; !strings.Contains(string(status), want) {
 		t.Fatalf("refusal status = %q, want it to name %q", string(status), want)
 	}
-	if _, err := picker.selectedValue(); !errors.Is(err, listsurface.ErrListItemDisabled) {
+	if _, err := picker.SelectedValue(); !errors.Is(err, listsurface.ErrListItemDisabled) {
 		t.Fatalf("selectedValue error = %v, want ErrListItemDisabled", err)
 	}
 }
@@ -272,7 +275,7 @@ func TestLensTemplateGallerySelectsTheStableTemplateID(t *testing.T) {
 	model := lensOperationApp(t)
 	overdue := lensTemplateByName(t, "Overdue")
 	picker := openLensTemplateGallery(t, model)
-	if !picker.surface.SetCursorToID(lensTemplateItemID(overdue.ID)) {
+	if !picker.Surface().SetCursorToID(lensops.TemplateItemID(overdue.ID)) {
 		t.Fatal("the cursor could not reach the Overdue row")
 	}
 

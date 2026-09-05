@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // newContextFilterTestApp builds a scope whose context vocabulary is uneven and
@@ -51,14 +52,14 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 		t.Fatal("fc produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterContexts {
-		t.Fatalf("fc did not open the context picker: %#v", app.operations.valuePicker)
+	if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterContexts {
+		t.Fatalf("fc did not open the context picker: %#v", app.operations.ValuePicker)
 	}
-	if title := app.operations.valuePicker.title; title != "Filter by Context" {
+	if title := app.operations.ValuePicker.Title(); title != "Filter by Context" {
 		t.Errorf("picker title = %q, want %q", title, "Filter by Context")
 	}
 
-	items := app.operations.valuePicker.surface.Items()
+	items := app.operations.ValuePicker.Surface().Items()
 	wantIDs := []listsurface.ListItemID{
 		"filter-context:" + query.NoContextFilterKey,
 		"filter-context:deep",
@@ -101,7 +102,7 @@ func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.
 	}
 	app.handleOperationOverlayMessage(cmd())
 
-	selected := app.operations.valuePicker.surface.SelectedIDs()
+	selected := app.operations.ValuePicker.Surface().SelectedIDs()
 	slices.Sort(selected)
 	want := []listsurface.ListItemID{"filter-context:errand", "filter-context:" + query.NoContextFilterKey}
 	slices.Sort(want)
@@ -117,7 +118,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	ctx := simplifiedOperationContext()
 	filter := &app.crossOutliner.Filter.CommonFilterState
 
-	both := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	both := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{"errand", "deep"},
@@ -139,7 +140,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("a task carrying neither context should be hidden: %v", visible)
 	}
 
-	gap := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	gap := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{query.NoContextFilterKey},
@@ -162,7 +163,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("the gap should exclude tasks carrying a context: %v", visible)
 	}
 
-	cleared := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	cleared := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,
 		Context:  ctx,
 		Value:    []string{},
@@ -183,7 +184,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 // census, so a value carried only as a context is not a row here, a value
 // carried as both is one tag row rather than two, and the CONTEXTS section and
 // its c jump hint drop out with the counts that produced them. Asserting this
-// at the picker rather than at taskTagListSource is the point: the source still
+// at the picker rather than at valuepicker.TaskTagListSource is the point: the source still
 // builds a CONTEXTS section when handed context counts, and the contract is
 // that f# never hands it any.
 func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
@@ -194,26 +195,26 @@ func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
 		t.Fatal("f# produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operations.valuePicker == nil || app.operations.valuePicker.provider != operation.ValueProviderFilterTags {
-		t.Fatalf("f# did not open the tags picker: %#v", app.operations.valuePicker)
+	if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterTags {
+		t.Fatalf("f# did not open the tags picker: %#v", app.operations.ValuePicker)
 	}
 
-	items := app.operations.valuePicker.surface.Items()
+	items := app.operations.ValuePicker.Surface().Items()
 	for _, item := range items {
-		if item.CategoryID == taskContextCategory {
+		if item.CategoryID == valuepicker.TaskContextCategory {
 			t.Errorf("f# offered a CONTEXTS row: %s", item.ID)
 		}
 	}
 	// "deep" is carried once as a tag and once as a context; only the tag half
 	// may reach this picker, and "errand" is a context alone so it has no row.
-	assertRowIDs(t, taskTagRowIDs(items, tagDescriptiveCategory), []string{"tag:deep"})
+	assertRowIDs(t, taskTagRowIDs(items, valuepicker.TagDescriptiveCategory), []string{"tag:deep"})
 	for _, item := range items {
 		if item.ID == "tag:errand" {
 			t.Error("a value used only as a context became an f# tag row")
 		}
 	}
 
-	hint := ansi.Strip(taskTagCategoryJumpHint(operation.ValueProviderFilterTags, items, 120))
+	hint := ansi.Strip(valuepicker.TaskTagCategoryJumpHint(operation.ValueProviderFilterTags, items, 120))
 	if got := strings.Join(strings.Fields(hint), " "); got != "jump t tags" {
 		t.Fatalf("f# jump hint = %q, want the tag section alone", got)
 	}

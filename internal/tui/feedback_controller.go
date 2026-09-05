@@ -16,7 +16,7 @@ import (
 //
 // The field is named feedback, not status, because status is an imported
 // package name inside the shell: the same shadowing reason the notes cluster is
-// noteIndex and the operation-wiring cluster is operations.
+// notes and the operation-wiring cluster is operations.
 //
 // Naming it as a cluster is also what keeps the shell's status line
 // distinguishable from a view's. InteractiveViewState and BaseView declare

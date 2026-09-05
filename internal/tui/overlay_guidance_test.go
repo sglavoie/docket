@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -80,27 +81,27 @@ func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.
 func TestOperationValuePickerGuidanceUsesListSurfaceStates(t *testing.T) {
 	picker := newOperationTagPickerForTest(t, "alpha", "beta")
 
-	spec, ok := picker.guidanceSpec()
+	spec, ok := picker.GuidanceSpec()
 	assertSession8Guidance(t, "browse", spec, ok, "Space toggle", "a add tag", "Enter apply", "Esc back")
 
-	picker.searching = true
-	picker.surface.SetQuery("alp")
-	spec, ok = picker.guidanceSpec()
+	picker.SetSearching(true)
+	picker.Surface().SetQuery("alp")
+	spec, ok = picker.GuidanceSpec()
 	assertSession8Guidance(t, "search", spec, ok, "Enter apply search", "Esc clear search")
 	if spec.Rows != 2 {
 		t.Fatalf("search rows = %d, want 2", spec.Rows)
 	}
 
-	picker.searching = false
-	picker.surface.SetQuery("missing")
-	spec, ok = picker.guidanceSpec()
+	picker.SetSearching(false)
+	picker.Surface().SetQuery("missing")
+	spec, ok = picker.GuidanceSpec()
 	assertSession8Guidance(t, "no matches", spec, ok, "/ search", "a add tag", "Esc back")
 	if strings.Contains(session8GuidanceText(spec), "Enter apply") {
 		t.Fatalf("empty value picker advertises apply: %s", session8GuidanceText(spec))
 	}
 
-	picker.tagAdder.AddTagMode = true
-	spec, ok = picker.guidanceSpec()
+	picker.TagAdder().AddTagMode = true
+	spec, ok = picker.GuidanceSpec()
 	assertSession8Guidance(t, "add tag", spec, ok, "Enter add tag", "Esc cancel")
 	for _, hint := range spec.Hints {
 		if !hint.Required {
@@ -110,7 +111,7 @@ func TestOperationValuePickerGuidanceUsesListSurfaceStates(t *testing.T) {
 }
 
 func TestOperationOverlaysRenderLocalGuidanceWithoutWorkspacePulse(t *testing.T) {
-	prompt := newOperationTextPromptModel(
+	prompt := operationhost.NewOperationTextPromptModel(
 		operation.OperationExecutionRequest{}, "Rename", "Current", "Current", "new name",
 	)
 	picker := newOperationTagPickerForTest(t, "alpha")

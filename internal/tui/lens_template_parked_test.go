@@ -201,7 +201,7 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 		t.Fatalf("scoped rows = %v, want the scope's own [alpha]", ids)
 	}
 
-	handled, cmd := model.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	handled, cmd := model.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true})
 	if !handled || cmd == nil {
 		t.Fatal("clearing the scope under Parked Work started no population load")
 	}

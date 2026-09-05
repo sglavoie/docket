@@ -194,12 +194,12 @@ func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 		},
 	}
 
-	picker, err := shell.newFilterTagsPicker(operation.OperationExecutionRequest{})
+	picker, err := shell.filters.NewFilterTagsPicker(shell, operation.OperationExecutionRequest{})
 	if err != nil {
 		t.Fatalf("newFilterTagsPicker: %v", err)
 	}
 	var names []string
-	for _, item := range picker.surface.Items() {
+	for _, item := range picker.Surface().Items() {
 		names = append(names, item.PrimaryText)
 	}
 	for _, name := range names {
@@ -221,7 +221,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 		},
 		viewNav: viewNavigationController{views: route.NewViewRegistry()},
 	}
-	assertIDs(t, shell.operationScopeProjectIDs(nil), active.ID)
+	assertIDs(t, shell.operationCommandContext().ScopeProjectIDs, active.ID)
 
 	repo := testutil.NewMockRepository()
 	repo.Projects[active.ID] = active

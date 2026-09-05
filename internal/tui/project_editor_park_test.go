@@ -78,7 +78,7 @@ func pressProjectEditorSave(t *testing.T, editor *projecthub.ProjectEditorModel)
 // shell overlay.
 func answerProjectParkConfirm(t *testing.T, app *AppModel, key rune) tea.Msg {
 	t.Helper()
-	if !app.project.parkConfirm.IsActive() {
+	if !app.project.ParkArmed() {
 		t.Fatal("no park confirmation is active")
 	}
 	_, cmd := app.Update(syntheticKey(key))
@@ -98,8 +98,8 @@ func TestProjectEditorParkAsksTheSharedConfirmationBeforeWriting(t *testing.T) {
 	if cmd := fixture.app.requestProjectTags(live, []string{models.ParkedProjectTag}); cmd != nil {
 		t.Fatalf("picker park committed without confirmation: %#v", cmd())
 	}
-	pickerPrompt := fixture.app.project.parkConfirm.Prompt()
-	fixture.app.project.clearPark()
+	pickerPrompt := fixture.app.project.ParkPrompt()
+	fixture.app.project.ClearPark()
 
 	editor := openProjectEditor(t, fixture, live, false)
 	fillProjectEditor(t, editor, "", "", models.ParkedProjectTag)
@@ -111,10 +111,10 @@ func TestProjectEditorParkAsksTheSharedConfirmationBeforeWriting(t *testing.T) {
 		t.Fatalf("park request committed without confirmation: %#v", cmd())
 	}
 
-	if !fixture.app.project.parkConfirm.IsActive() {
+	if !fixture.app.project.ParkArmed() {
 		t.Fatal("parking editor save raised no confirmation")
 	}
-	if got := fixture.app.project.parkConfirm.Prompt(); got != pickerPrompt {
+	if got := fixture.app.project.ParkPrompt(); got != pickerPrompt {
 		t.Fatalf("editor prompt = %q, want the picker prompt %q", got, pickerPrompt)
 	}
 	if slices.Contains(live.Tags, models.ParkedProjectTag) {
@@ -138,10 +138,10 @@ func TestProjectEditorParkCancelLeavesEveryFieldUnchanged(t *testing.T) {
 	if msg := answerProjectParkConfirm(t, fixture.app, 'n'); msg != nil {
 		t.Fatalf("canceling the park emitted %#v", msg)
 	}
-	if fixture.app.project.parkConfirm.IsActive() {
+	if fixture.app.project.ParkArmed() {
 		t.Fatal("canceled park left the confirmation open")
 	}
-	if fixture.app.project.pendingPark.editorSave != nil {
+	if fixture.app.project.PendingPark().EditorSave != nil {
 		t.Fatal("canceled park left the editor save pending")
 	}
 	if fixture.app.currentView() != presentation.ViewProjectEditor {
@@ -217,7 +217,7 @@ func TestProjectEditorDescriptiveTagsSaveWithoutAPrompt(t *testing.T) {
 	if _, ok := msg.(projecthub.ProjectUpdatedMsg); !ok {
 		t.Fatalf("descriptive tag save emitted %#v, want a committed update", msg)
 	}
-	if fixture.app.project.parkConfirm.IsActive() {
+	if fixture.app.project.ParkArmed() {
 		t.Fatal("descriptive tag save raised a confirmation")
 	}
 	disk := session4DiskProject(t, fixture.dataDir, project.ID)
@@ -238,7 +238,7 @@ func TestProjectEditorRefusesToParkTheSystemUnfiledProject(t *testing.T) {
 	if !ok || !strings.Contains(errMsg.Err.Error(), "cannot park the system Unfiled project") {
 		t.Fatalf("protected park emitted %#v", msg)
 	}
-	if fixture.app.project.parkConfirm.IsActive() {
+	if fixture.app.project.ParkArmed() {
 		t.Fatal("protected park raised a confirmation it would then refuse")
 	}
 	if disk := session4DiskProject(t, fixture.dataDir, project.ID); len(disk.Tags) != 0 {

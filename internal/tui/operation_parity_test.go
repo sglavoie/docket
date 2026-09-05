@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
@@ -11,7 +13,7 @@ import (
 func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
-	executor := app.operations.executor
+	executor := app.operations.Executor
 
 	for _, descriptor := range registry.All() {
 		bindings := executor.Bindings(descriptor.ID)
@@ -54,14 +56,14 @@ var delegatedDestructiveConfirmations = map[operation.OperationID]string{
 	operation.OperationScopeArchiveProject: "showProjectArchiveConfirm prompts",
 	operation.OperationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
 	notes.OperationNoteDelete:              "DeleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
-	operationAttachmentDelete:              "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
-	operationAttachmentUnlink:              "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
-	operationCommentDelete:                 "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",
+	entityops.OperationAttachmentDelete:    "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
+	entityops.OperationAttachmentUnlink:    "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
+	entityops.OperationCommentDelete:       "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 	app := parityAuditApp(t)
-	executor := app.operations.executor
+	executor := app.operations.Executor
 
 	destructive := 0
 	for _, descriptor := range app.GetOperationRegistry().All() {

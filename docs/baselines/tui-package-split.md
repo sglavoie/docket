@@ -1416,11 +1416,14 @@ declare `outliner` (73), `taskform` (47), `grammar` (44) and `chrome` (37 —
 under, but only just) a different kind of problem than the one the target names.
 By total files the four are over and the other nineteen are under.
 
-The root shell is not under 40 by either reading, and it is not meant to be: it
-is the residue, not an extraction, and it is what Phase 2 spent its sessions
-shrinking. Recording its number rather than excluding it is the honest form —
-206 production files at the Phase 1 boundary, 132 now, a 36% reduction that came
-almost entirely from `outliner`.
+The root shell is not under 40 by either reading at this boundary. Recording its
+number rather than excluding it is the honest form — 206 production files at the
+Phase 1 boundary, 132 here, a 36% reduction that came almost entirely from
+`outliner`. What was written beside that number, that the shell is the residue
+rather than an extraction and so is not meant to be under 40, was a standing
+exemption dressed as a description, and it is withdrawn: see "The ceiling now
+includes the root shell (Session 6.2)" below, where the shell is measured at 36
+and the ceiling is enforced with nothing exempted.
 
 Against `context.md`'s 800-file baseline (410 production / 72,275 lines; 390
 test / 78,702 lines), the subtree is now 913 files: production up 11 to 421 and
@@ -1558,3 +1561,124 @@ and went green when the file was deleted. Note the choice of pair: most upward
 imports are caught by the Go compiler as an import cycle before the test runs,
 which proves the compiler and not the test. The pair that is not a cycle is the
 one that shows the test is load-bearing.
+
+## The ceiling now includes the root shell (Session 6.2)
+
+The 40-production-file target had been enforced by reading rather than by a
+test, and the one package it was never applied to was the one package that could
+not be extracted out of existence: the shell. Session 6.2 closes both halves —
+the shell is brought under the ceiling, and the ceiling is made a test that
+measures every package under `internal/tui` including the root.
+
+### The last cluster extraction: `operationhost`
+
+`operationhost` (L7) is the eighth and final shell-port extraction, following
+`filterops`, `lensops`, `entityops`, `projectops` and `notesops`. It holds the
+descriptor authority and the invocation pipeline, the two-level overlay flow one
+invocation can open (contextual action sheet, then a value picker or a typed
+prompt), the confirmation with its frozen request, the chord prefix, the command
+context every invocation resolves its targets against, and the two startup
+checks that hold the registered catalog to the one-path rule and to the menu bar.
+
+What did not move is deliberate and is the same boundary the earlier clusters
+drew. Every descriptor is still declared by one of the fifteen registrars on the
+shell and every handler is still a bound `AppModel` method traveling as an
+`OperationBinding`, because the runtime domains and the application service they
+commit against are the shell's. The registrar table stays in `app_init.go` for
+the same reason, and `surfaceOperationGates()` stays in the shell because the
+one-path validators read shell-declared manifests — `RegisterCatalog` takes the
+table and the gates as parameters rather than reaching for either. Both value
+factories stay in the shell too: each dispatches across the other clusters, so a
+factory inside `operationhost` would have put the whole shell behind one port.
+
+### Consolidating the residue by concern
+
+Extraction alone could not reach the ceiling. What was left in the shell after
+eight clusters left is genuinely shell-owned — the route and overlay stacks, the
+domain commits, the key routing, the handler families that register operations —
+and it was spread across many small files, several of them under 40 lines, split
+by mechanics rather than by concern: `app_messages_views.go` (8 lines),
+`app_messages_footer_flash.go` (19), `handler_view_actions.go` (14),
+`handler_view_capture_bulk.go` (17). Those files were merged into the file that
+owns their concern: the four `app_messages_*` files into `app_update_messages.go`,
+seven `handler_view_*` files into `handler_view.go`, the navigation trio into
+`app_navigation.go`, the status strip, footer flash, advisories and conflict
+indicator into `app_view_status.go`, and so on. No behavior moved and no symbol
+was renamed; 60 files became their concerns' files.
+
+Naming is now by concern rather than by mechanism, and the largest shell file is
+`app_view_status.go` at 706 lines — under `outliner`'s largest and under several
+in `grammar`.
+
+### Per-package file counts after Session 6.2
+
+Twenty-nine packages plus the shell. Same recipe as the Session 5.1 table.
+
+| package | production files | test files | production lines | test lines |
+| --- | --- | --- | --- | --- |
+| `chrome` | 24 | 13 | 2563 | 1500 |
+| `conflict` | 1 | 2 | 496 | 283 |
+| `coordinator` | 10 | 2 | 1513 | 269 |
+| `entityops` | 4 | 0 | 915 | 0 |
+| `filterops` | 5 | 0 | 952 | 0 |
+| `grammar` | 25 | 19 | 4935 | 2478 |
+| `help` | 7 | 5 | 997 | 350 |
+| `keymap` | 2 | 2 | 187 | 63 |
+| `lens` | 7 | 5 | 1174 | 805 |
+| `lensops` | 4 | 2 | 792 | 127 |
+| `listsurface` | 21 | 11 | 4500 | 1386 |
+| `notes` | 15 | 9 | 2932 | 2629 |
+| `notesops` | 5 | 4 | 673 | 494 |
+| `operation` | 25 | 2 | 4071 | 54 |
+| `operationhost` | 7 | 2 | 771 | 316 |
+| `outliner` | 31 | 42 | 17169 | 8328 |
+| `presentation` | 3 | 2 | 68 | 75 |
+| `projecthub` | 16 | 13 | 3033 | 1880 |
+| `projectops` | 8 | 2 | 1193 | 320 |
+| `pulse` | 3 | 3 | 345 | 348 |
+| `query` | 13 | 8 | 2467 | 1003 |
+| `route` | 11 | 4 | 1113 | 365 |
+| `status` | 5 | 2 | 281 | 76 |
+| `taskdetail` | 13 | 8 | 2184 | 1196 |
+| `taskform` | 28 | 19 | 4136 | 2690 |
+| `taskref` | 4 | 2 | 103 | 163 |
+| `textfit` | 5 | 5 | 261 | 461 |
+| `theme` | 23 | 10 | 1959 | 1227 |
+| `valuepicker` | 10 | 5 | 2025 | 854 |
+| sub-package subtotal | 335 | 203 | 63808 | 29740 |
+| tui (root shell) | 36 | 300 | 12804 | 56749 |
+| **total** | **371** | **503** | **76612** | **86489** |
+
+Every package is under 40 production files, the shell included, and `outliner`
+at 31 is still the largest. The shell went 132 → 36: eight clusters carried
+behavior out with its state, and the residue was gathered into the files that
+own it.
+
+### The guard
+
+`TestNoTUIPackageExceedsTheFileCeiling` in `tui_layer_fitness_test.go` walks
+`internal/tui`, counts production `.go` files per package, and fails any package
+over 40. Two vacuity guards sit in front of the assertion: the root shell must
+appear in the measured set, and at least two packages must be measured, so a
+walk that silently matched nothing — or that skipped the root the way the prose
+target used to — fails instead of passing.
+
+Test files are excluded from the count deliberately, which is the same reading
+`docs/baselines` has used since the Session 3.1 table: the ceiling is about how
+much production behavior one package carries, and the shell alone holds 300 test
+files against 36 production ones.
+
+Verified non-vacuous twice. Lowering the ceiling to 30 failed naming exactly the
+two packages that sit between 30 and 40:
+
+```text
+package outliner holds 31 production .go files, over the ceiling of 30; move a concern out
+package tui holds 36 production .go files, over the ceiling of 30; move a concern out
+```
+
+Skipping the root while counting — the shape the old prose target had — failed on
+the guard rather than passing:
+
+```text
+the root shell was not measured, so this check would pass vacuously
+```

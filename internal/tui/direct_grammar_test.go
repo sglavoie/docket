@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
@@ -32,13 +34,13 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // spells it.
 func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]operation.OperationID{
-		"enter":  operationCommentExpand,
-		"a":      operationCommentAdd,
-		"e":      operationCommentEdit,
-		"E":      operationCommentEditExternal,
-		"space":  operationCommentActions,
-		"y":      operationCommentCopy,
-		"Y":      operationCommentCopyAll,
+		"enter":  entityops.OperationCommentExpand,
+		"a":      entityops.OperationCommentAdd,
+		"e":      entityops.OperationCommentEdit,
+		"E":      entityops.OperationCommentEditExternal,
+		"space":  entityops.OperationCommentActions,
+		"y":      entityops.OperationCommentCopy,
+		"Y":      entityops.OperationCommentCopyAll,
 		"u":      operation.OperationCoreUndo,
 		"ctrl+r": operation.OperationCoreRedo,
 		"j":      operation.OperationCoreCursorDown,
@@ -52,7 +54,7 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"?":      operation.OperationCoreHelp,
 		"esc":    operation.OperationCoreBack,
 	}
-	assertStrategyOwnsEveryKeyOnce(t, CommentsInputStrategy(), direct)
+	assertStrategyOwnsEveryKeyOnce(t, entityops.CommentsInputStrategy(), direct)
 }
 
 // assertAttachmentsOwnsEveryDocumentedKeyOnce spells the whole Attachments
@@ -65,14 +67,14 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // are workspace-ledger transactions.
 func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]operation.OperationID{
-		"enter":  operationAttachmentOpen,
-		"a":      operationAttachmentAdd,
-		"E":      operationAttachmentOpenInEditor,
-		"y":      operationAttachmentCopyPath,
-		"Y":      operationAttachmentCopyPathWithLine,
-		"J":      operationAttachmentReorderDown,
-		"K":      operationAttachmentReorderUp,
-		"space":  operationAttachmentActions,
+		"enter":  entityops.OperationAttachmentOpen,
+		"a":      entityops.OperationAttachmentAdd,
+		"E":      entityops.OperationAttachmentOpenInEditor,
+		"y":      entityops.OperationAttachmentCopyPath,
+		"Y":      entityops.OperationAttachmentCopyPathWithLine,
+		"J":      entityops.OperationAttachmentReorderDown,
+		"K":      entityops.OperationAttachmentReorderUp,
+		"space":  entityops.OperationAttachmentActions,
 		"u":      operation.OperationCoreUndo,
 		"ctrl+r": operation.OperationCoreRedo,
 		"j":      operation.OperationCoreCursorDown,
@@ -87,7 +89,7 @@ func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc":    operation.OperationCoreBack,
 	}
 
-	owners := assertStrategyOwnsEveryKeyOnce(t, AttachmentsInputStrategy(), direct)
+	owners := assertStrategyOwnsEveryKeyOnce(t, entityops.AttachmentsInputStrategy(), direct)
 
 	// The external editor is E, the slot it holds on every other surface, so the
 	// e that used to open it resolves to nothing here alongside the six

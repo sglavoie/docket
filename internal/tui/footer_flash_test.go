@@ -315,9 +315,9 @@ func TestStatusBarDividerCarriesFlashAppearanceOnEveryPath(t *testing.T) {
 	app.feedback.message = "task saved"
 	assertDivider("status message")
 
-	app.operations.chord = []string{"$"}
+	app.operations.Chord = []string{"$"}
 	assertDivider("pending chord")
-	app.operations.chord = nil
+	app.operations.Chord = nil
 
 	app.feedback.message = ""
 	assertDivider("contextual guidance")

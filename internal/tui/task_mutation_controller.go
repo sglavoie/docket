@@ -61,23 +61,6 @@ const (
 	outlineDeleteConfirmAction = "outline-delete"
 )
 
-// confirmAnswer is what a task-mutation confirmation made of one key press.
-// It separates the key a confirmation swallowed from the key it never saw, so
-// the shell's key chain can keep giving an armed prompt modal priority without
-// re-reading the dialog itself.
-type confirmAnswer int
-
-const (
-	// confirmAnswerUnarmed means no confirmation was pending: the key belongs
-	// to whatever sits underneath.
-	confirmAnswerUnarmed confirmAnswer = iota
-	// confirmAnswerSwallowed means the prompt consumed a key that answered
-	// neither yes nor no, so nothing leaks into the view beneath it.
-	confirmAnswerSwallowed
-	confirmAnswerConfirmed
-	confirmAnswerCanceled
-)
-
 // armDelete records the effective roots and the selection they came from, then
 // opens the prompt describing the impact already calculated for them.
 func (c *taskMutationController) armDelete(roots, selected []TaskProjectRef, impact taskDeleteImpact) {
@@ -106,9 +89,9 @@ func (c *taskMutationController) clearDelete() {
 }
 
 // resolveDeleteKey answers one key press against the delete confirmation.
-func (c *taskMutationController) resolveDeleteKey(key string) confirmAnswer {
-	answer := resolveConfirmKey(&c.deleteConfirm, key)
-	if answer == confirmAnswerCanceled {
+func (c *taskMutationController) resolveDeleteKey(key string) chrome.ConfirmAnswer {
+	answer := chrome.ResolveConfirmKey(&c.deleteConfirm, key)
+	if answer == chrome.ConfirmAnswerCanceled {
 		c.clearDelete()
 	}
 	return answer
@@ -142,8 +125,8 @@ func (c *taskMutationController) clearOutlineApply() {
 // resolveOutlineKey answers one key press against the outline confirmation. It
 // does not clear on cancellation: declining still owes the user the buffer
 // path, so that route takes the pending value instead.
-func (c *taskMutationController) resolveOutlineKey(key string) confirmAnswer {
-	return resolveConfirmKey(&c.outlineConfirm, key)
+func (c *taskMutationController) resolveOutlineKey(key string) chrome.ConfirmAnswer {
+	return chrome.ResolveConfirmKey(&c.outlineConfirm, key)
 }
 
 // confirmOverlay renders whichever task-mutation confirmation is armed, delete
@@ -156,25 +139,4 @@ func (c *taskMutationController) confirmOverlay(width int) (string, bool) {
 		return c.outlineConfirm.RenderOverlay(width), true
 	}
 	return "", false
-}
-
-// resolveConfirmKey is the shared modal reading both prompts get: an armed
-// dialog consumes every key — confirm on y/Y, cancel on n/N/Esc, swallow the
-// rest — and an unarmed one consumes none.
-func resolveConfirmKey(dialog *chrome.ConfirmDialog, key string) confirmAnswer {
-	if !dialog.IsActive() {
-		return confirmAnswerUnarmed
-	}
-	confirmed, handled := dialog.HandleKey(key)
-	if !handled {
-		return confirmAnswerUnarmed
-	}
-	if confirmed {
-		return confirmAnswerConfirmed
-	}
-	switch key {
-	case "n", "N", "esc":
-		return confirmAnswerCanceled
-	}
-	return confirmAnswerSwallowed
 }

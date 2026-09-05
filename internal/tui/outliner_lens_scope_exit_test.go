@@ -68,7 +68,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 		t.Fatalf("population under scope = %v, want the untouched %v", ids, baseline)
 	}
 
-	handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true})
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
@@ -91,7 +91,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
 	}
 
-	if _, cmd = app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); cmd == nil {
+	if _, cmd = app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); cmd == nil {
 		t.Fatal("the retried exit started no load")
 	}
 	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-waiting", models.StateWaiting))}
@@ -196,7 +196,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 		t.Fatal("the switch cleared a population debt against a stale fingerprint")
 	}
 
-	handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true})
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
@@ -219,7 +219,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 		t.Fatalf("population after a failed load = %v, want the untouched parked-admitting one", ids)
 	}
 
-	if _, cmd = app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); cmd == nil {
+	if _, cmd = app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); cmd == nil {
 		t.Fatal("the retried exit started no load")
 	}
 	if _, published := outlinerView.HandleLensProjectsLoaded(outliner.LensProjectsLoadedMsg{
@@ -341,7 +341,7 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 				t.Fatal("the scoped application recorded no owed population load")
 			}
 
-			if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+			if handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
 				t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
 			}
 			if outlinerView.Lens.Pending == nil {
@@ -392,7 +392,7 @@ func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
 	lens := lensWithFacet(waitingLens(lensTestID(2), "Untagged", ""), "+#0")
 	applyLensOrFatal(t, outlinerView, lens)
 
-	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+	if handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
 		t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
 	}
 	app.Update(outliner.LensProjectsLoadedMsg{
@@ -440,7 +440,7 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 		t.Fatalf("pending parked focus = %q, want the requested %q", outlinerView.Scope.PendingParkedID, interloper.ID)
 	}
 
-	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+	if handled, cmd := app.applyProjectScope(outliner.ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
 		t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
 	}
 	pending := outlinerView.Lens.Pending

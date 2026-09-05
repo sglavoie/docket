@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -21,7 +22,7 @@ func projectOperationContext(projectID string) operation.CommandContext {
 }
 
 func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) operation.OperationExecutionResult {
-	return app.operations.executor.Execute(operation.OperationExecutionRequest{
+	return app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	})
@@ -98,7 +99,7 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := executeProjectOperation(app, tc.id, projectOperationContext(tc.proj))
 			if result.ConfirmationRequired != nil {
-				result = app.operations.executor.Execute(result.ConfirmationRequired.Request)
+				result = app.operations.Executor.Execute(result.ConfirmationRequired.Request)
 			}
 			if result.Err == nil {
 				t.Fatalf("%s succeeded with %#v, want an unavailable result", tc.name, result.Message)
@@ -125,11 +126,12 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 		t.Fatalf("Open project notes emitted a Notes manager message for an archived project: %#v", result.Message)
 	}
 
-	descriptor, ok := app.operations.registry.Descriptor(operation.OperationScopeOpenProjectNote)
+	descriptor, ok := app.operations.Registry.Descriptor(operation.OperationScopeOpenProjectNote)
 	if !ok {
 		t.Fatal("Open project notes operation is not registered")
 	}
-	handlerResult := app.executeProjectOperation(
+	handlerResult := app.project.ExecuteProjectOperation(
+		app,
 		operation.OperationInvocation{Descriptor: descriptor},
 		operation.OperationTargetFor(operation.ProjectEntity("archived")),
 	)
@@ -168,7 +170,7 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("archive request produced cmd %v instead of arming the confirmation", cmd)
 	}
-	if !app.project.archiveConfirm.IsActive() {
+	if !app.project.ArchiveArmed() {
 		t.Fatal("project archive did not arm the shell confirmation")
 	}
 }
@@ -186,7 +188,7 @@ func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("Enter emitted no focus request")
 	}
-	focus, ok := cmd().(ApplyProjectScopeMsg)
+	focus, ok := cmd().(outliner.ApplyProjectScopeMsg)
 	if !ok || focus.ProjectID != "beta" {
 		t.Fatalf("Enter emitted %#v, want a beta focus request", cmd())
 	}

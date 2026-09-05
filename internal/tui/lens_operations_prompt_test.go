@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/lens"
@@ -161,8 +162,12 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 	if err != nil {
 		t.Fatalf("rename prompt: %v", err)
 	}
-	if prompt.input.Value() != starter.Name {
-		t.Fatalf("rename prompt prefilled %q, want %q", prompt.input.Value(), starter.Name)
+	// The buffer is read the way the user leaves it: Enter emits whatever it
+	// holds, so a prefilled prompt answers with the target's current name.
+	_, _, msg := prompt.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	selected, isSelected := msg.(operation.OperationValueSelectedMsg)
+	if !isSelected || selected.Value != starter.Name {
+		t.Fatalf("rename prompt emitted %#v, want the prefilled %q", msg, starter.Name)
 	}
 
 	create, err := model.newOperationTextPrompt(operation.OperationExecutionRequest{
@@ -172,8 +177,9 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 	if err != nil {
 		t.Fatalf("create prompt: %v", err)
 	}
-	if create.input.Value() != "" {
-		t.Fatalf("create prompt prefilled %q, want an empty buffer", create.input.Value())
+	// An empty buffer has nothing to emit, so Enter stays on the prompt.
+	if _, dismissed, msg := create.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter}); dismissed || msg != nil {
+		t.Fatalf("create prompt emitted %#v, want an empty buffer that stays open", msg)
 	}
 
 	if _, err := model.newOperationTextPrompt(operation.OperationExecutionRequest{

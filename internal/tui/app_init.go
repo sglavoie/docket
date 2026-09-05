@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -31,7 +32,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	app := &AppModel{
 		domain:       newDomainController(runtime, manager),
 		viewNav:      newViewNavigationController(),
-		operations:   newOperationController(),
+		operations:   operationhost.NewController(),
 		nextOrder:    []outliner.PlanningTask{},
 		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
 		today:        []outliner.PlanningTask{},
@@ -50,7 +51,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	for _, opt := range opts {
 		opt(app)
 	}
-	app.operations.bindExecutor()
+	app.operations.BindExecutor()
 
 	// Bind the primary feature coordinators to the application service. The
 	// service is built once per session over the storage-backed repository so a
@@ -101,7 +102,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// because the reset itself clears it — reading it now and draining it after
 	// the population lands is what makes the order race-free without teaching the
 	// reset about a case it should not know.
-	app.lenses.pendingLaunch = runtime.Machine().ActiveNamedLens()
+	app.lenses.SetPendingLaunch(runtime.Machine().ActiveNamedLens())
 	app.lifecycle.startup = launchOutlinerMsg{}
 	if changed, reconcileErr := app.domain.service.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
@@ -141,23 +142,23 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 // the registries they fill. The order is load-bearing and the table is the whole
 // of it: a family is added here or it is not registered at all.
 func (app *AppModel) registerOperationCatalog() error {
-	return app.operations.registerCatalog([]namedOperationRegistrar{
-		{"core input", app.registerCoreInputOperations},
-		{"task action", app.registerTaskActionOperations},
-		{"filter", app.registerFilterOperations},
-		{"sort", app.registerSortOperations},
-		{"project hub", app.registerProjectHubOperations},
-		{"project", app.registerProjectOperations},
-		{"project action sheet", app.registerProjectActionSheetOperation},
-		{"project bulk", app.registerProjectBulkOperations},
-		{"project tag vocabulary", app.registerProjectTagVocabularyOperations},
-		{"note", app.registerNoteOperations},
-		{"notes surface", app.registerNotesSurfaceOperations},
-		{"attachment", app.registerAttachmentOperations},
-		{"comment", app.registerCommentOperations},
-		{"checklist row", app.registerChecklistRowOperations},
-		{"lens", app.registerLensOperations},
-	})
+	return app.operations.RegisterCatalog([]operationhost.NamedRegistrar{
+		{Name: "core input", Register: app.registerCoreInputOperations},
+		{Name: "task action", Register: app.registerTaskActionOperations},
+		{Name: "filter", Register: app.registerFilterOperations},
+		{Name: "sort", Register: app.registerSortOperations},
+		{Name: "project hub", Register: app.registerProjectHubOperations},
+		{Name: "project", Register: app.registerProjectOperations},
+		{Name: "project action sheet", Register: app.registerProjectActionSheetOperation},
+		{Name: "project bulk", Register: app.registerProjectBulkOperations},
+		{Name: "project tag vocabulary", Register: app.registerProjectTagVocabularyOperations},
+		{Name: "note", Register: app.registerNoteOperations},
+		{Name: "notes surface", Register: app.registerNotesSurfaceOperations},
+		{Name: "attachment", Register: app.registerAttachmentOperations},
+		{Name: "comment", Register: app.registerCommentOperations},
+		{Name: "checklist row", Register: app.registerChecklistRowOperations},
+		{Name: "lens", Register: app.registerLensOperations},
+	}, surfaceOperationGates())
 }
 
 // recoverTUIWorkspace runs before domain consumption or project load.

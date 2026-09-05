@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
@@ -25,14 +26,14 @@ func TestTaskMutationControllerDeleteKeyIsModalWhileArmed(t *testing.T) {
 	cases := []struct {
 		name          string
 		key           string
-		want          confirmAnswer
+		want          chrome.ConfirmAnswer
 		stillArmed    bool
 		rootsRetained bool
 	}{
-		{"confirm", "y", confirmAnswerConfirmed, false, true},
-		{"cancel", "n", confirmAnswerCanceled, false, false},
-		{"escape", "esc", confirmAnswerCanceled, false, false},
-		{"unrelated key is swallowed", "j", confirmAnswerSwallowed, true, true},
+		{"confirm", "y", chrome.ConfirmAnswerConfirmed, false, true},
+		{"cancel", "n", chrome.ConfirmAnswerCanceled, false, false},
+		{"escape", "esc", chrome.ConfirmAnswerCanceled, false, false},
+		{"unrelated key is swallowed", "j", chrome.ConfirmAnswerSwallowed, true, true},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -60,11 +61,11 @@ func TestTaskMutationControllerUnarmedDeleteConsumesNothing(t *testing.T) {
 	t.Parallel()
 
 	var controller taskMutationController
-	if got := controller.resolveDeleteKey("y"); got != confirmAnswerUnarmed {
-		t.Fatalf("resolveDeleteKey on an unarmed prompt = %d, want %d", got, confirmAnswerUnarmed)
+	if got := controller.resolveDeleteKey("y"); got != chrome.ConfirmAnswerUnarmed {
+		t.Fatalf("resolveDeleteKey on an unarmed prompt = %d, want %d", got, chrome.ConfirmAnswerUnarmed)
 	}
-	if got := controller.resolveOutlineKey("y"); got != confirmAnswerUnarmed {
-		t.Fatalf("resolveOutlineKey on an unarmed prompt = %d, want %d", got, confirmAnswerUnarmed)
+	if got := controller.resolveOutlineKey("y"); got != chrome.ConfirmAnswerUnarmed {
+		t.Fatalf("resolveOutlineKey on an unarmed prompt = %d, want %d", got, chrome.ConfirmAnswerUnarmed)
 	}
 }
 
@@ -106,8 +107,8 @@ func TestTaskMutationControllerDeclinedOutlineStillNamesItsBuffer(t *testing.T) 
 		t.Fatalf("prompt = %q, want %q", got, want)
 	}
 
-	if got := controller.resolveOutlineKey("esc"); got != confirmAnswerCanceled {
-		t.Fatalf("resolveOutlineKey(esc) = %d, want %d", got, confirmAnswerCanceled)
+	if got := controller.resolveOutlineKey("esc"); got != chrome.ConfirmAnswerCanceled {
+		t.Fatalf("resolveOutlineKey(esc) = %d, want %d", got, chrome.ConfirmAnswerCanceled)
 	}
 	pending := controller.takeOutlineApply()
 	if pending.path != "/tmp/outline-1234.md" {

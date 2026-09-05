@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 )
 
 // The pane's own scroll arithmetic moved into internal/tui/projecthub with the
@@ -180,7 +181,7 @@ func TestProjectPreviewTaskRowsListsAnOrphanExactlyOnce(t *testing.T) {
 	missing := "gone"
 	orphan.ParentID = &missing
 
-	rows := projectPreviewTaskRows("proj", []*models.Task{root, orphan})
+	rows := projectops.PreviewTaskRows("proj", []*models.Task{root, orphan})
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d, want one per task", len(rows))
 	}

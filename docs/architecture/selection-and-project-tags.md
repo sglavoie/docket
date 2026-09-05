@@ -203,7 +203,7 @@ Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
 empty the projection. The retained `internal/tui/listsurface/tag_selector.go` path reached
-from `internal/tui/handler_tag.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
+from `internal/tui/handler_helpers.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
 no semantic tier, because it never reads `taskTagListSource`; the obsolete
 bulk-selector message path has been removed.
 Those explaining surfaces wrap complete summaries inline; focusable picker

@@ -216,7 +216,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 
 func TestContextActionSheetSheetOnlyCompletionLeavesHostOpen(t *testing.T) {
 	app := newUITestApp()
-	if cmd := app.applyContextActionSheetResult(listsurface.ContextActionSheetResultMsg{}); cmd != nil {
+	if cmd := app.operations.ApplySheetResult(app, listsurface.ContextActionSheetResultMsg{}); cmd != nil {
 		t.Fatalf("close-sheet completion asked the host to close: %T", cmd())
 	}
 }
@@ -226,10 +226,10 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	executed := false
 	descriptor := contextActionTestDescriptor("test.destroy", "Destroy")
 	descriptor.Risk = operation.OperationRiskDestructive
-	if err := app.operations.registry.Register(descriptor); err != nil {
+	if err := app.operations.Registry.Register(descriptor); err != nil {
 		t.Fatalf("register: %v", err)
 	}
-	if err := app.operations.executor.Register(operation.OperationBinding{
+	if err := app.operations.Executor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
 		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
 			executed = true
@@ -240,8 +240,8 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	}
 
 	sheet, err := listsurface.NewContextActionSheetModel(
-		app.operations.registry,
-		app.operations.executor,
+		app.operations.Registry,
+		app.operations.Executor,
 		contextActionTestContext(),
 		[]operation.OperationID{descriptor.ID},
 		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
@@ -249,7 +249,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	app.operations.actionSheet = sheet
+	app.operations.ActionSheet = sheet
 
 	_, dismissed, raw := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if dismissed {
@@ -258,7 +258,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	if handled, cmd := app.handleOperationOverlayMessage(raw); !handled || cmd != nil {
 		t.Fatalf("confirmation request = handled %v cmd %T", handled, cmd)
 	}
-	if !app.operations.confirm.IsActive() {
+	if !app.operations.Confirm.IsActive() {
 		t.Fatal("destructive action did not prompt for confirmation")
 	}
 	if executed {
@@ -269,13 +269,13 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("confirmation Esc = handled %v cmd %T", handled, cmd)
 	}
-	if app.operations.confirm.IsActive() {
+	if app.operations.Confirm.IsActive() {
 		t.Fatal("Esc did not cancel the confirmation")
 	}
 	if executed {
 		t.Fatal("canceled confirmation still executed the action")
 	}
-	if app.operations.actionSheet != sheet {
+	if app.operations.ActionSheet != sheet {
 		t.Fatal("canceled confirmation did not return to the same sheet")
 	}
 
@@ -290,7 +290,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	if !executed {
 		t.Fatal("confirmed destructive action never executed")
 	}
-	if app.operations.actionSheet != nil {
+	if app.operations.ActionSheet != nil {
 		t.Fatal("confirmed action did not close the sheet")
 	}
 }

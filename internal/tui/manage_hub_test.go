@@ -238,7 +238,7 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	}}
 	// Notes has no multi-select, so Space is one note's action sheet.
 	_, spaceCmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	sheet := app.operations.actionSheet
+	sheet := app.operations.ActionSheet
 	if spaceCmd != nil || len(manager.VisibleRows) != 1 || sheet == nil ||
 		sheet.Config.Bulk || sheet.Config.Targets != 1 {
 		t.Fatalf("Space did not open a single-note action sheet: %#v", sheet)
@@ -247,7 +247,7 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 		!sheet.Surface.SetCursorToID(listsurface.ListItemID("note-action:"+string(notes.OperationNoteDelete))) {
 		t.Fatalf("note action sheet holds %d rows, want Delete alone", got)
 	}
-	app.operations.actionSheet = nil
+	app.operations.ActionSheet = nil
 	_, _ = app.manageHub.Update(syntheticKey('a'))
 	if manager.LocationPicker == nil || manager.LocationPicker.Purpose != notes.NotesLocationPickerCreation {
 		t.Fatal("Notes a did not open the destination picker")
@@ -324,7 +324,7 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			}}
 
 			_, cmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-			if cmd != nil || app.operations.actionSheet == nil {
+			if cmd != nil || app.operations.ActionSheet == nil {
 				t.Fatalf("Space did not open the note action sheet: cmd=%v", cmd)
 			}
 			handled, sheetCmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -334,7 +334,7 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			if handled, _ := app.handleOperationOverlayMessage(sheetCmd()); !handled {
 				t.Fatal("the sheet's Delete row was not executed")
 			}
-			if app.operations.actionSheet != nil || !manager.Confirm.IsActive() {
+			if app.operations.ActionSheet != nil || !manager.Confirm.IsActive() {
 				t.Fatalf("sheet Delete did not hand the confirmation back: active=%t", manager.Confirm.IsActive())
 			}
 			if overlay := app.renderConfirmDialogOverlay(); !strings.Contains(overlay, note.Title) {

@@ -23,7 +23,7 @@ func templateRowReason(t *testing.T, model *AppModel, id string) string {
 	t.Helper()
 	picker := openLensTemplateGallery(t, model)
 	reason := galleryRow(t, picker, id).DisabledReason
-	model.operations.valuePicker = nil
+	model.operations.ValuePicker = nil
 	return reason
 }
 
@@ -122,7 +122,7 @@ func lensPickerAppInMode(t *testing.T, mode chrome.OutlinerModeID) *AppModel {
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.feedback.err)
 	}
 	return model
@@ -191,13 +191,13 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 
 			pressLens(t, model, "enter")
 
-			if model.operations.valuePicker != nil {
+			if model.operations.ValuePicker != nil {
 				t.Error("a refused add left the gallery mounted")
 			}
-			if model.lenses.picker == nil {
+			if model.lenses.Picker() == nil {
 				t.Fatal("a refused add closed the main picker")
 			}
-			if notice := model.lenses.picker.Notice(); !strings.Contains(notice, phase.want) {
+			if notice := model.lenses.Picker().Notice(); !strings.Contains(notice, phase.want) {
 				t.Errorf("picker notice = %q, want it to name %q", notice, phase.want)
 			}
 			if got := lensNames(machineLenses(t, model)); !slices.Equal(got, before) {
@@ -218,10 +218,10 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 			// The reason is retained on the surface that raised it, and the gallery
 			// the same row reopens now reports the state the commit refused against.
 			pressLens(t, model, "enter")
-			if model.operations.valuePicker == nil {
+			if model.operations.ValuePicker == nil {
 				t.Fatal("retrying the add raised no gallery")
 			}
-			if got := galleryRow(t, model.operations.valuePicker, template.ID).DisabledReason; got != phase.rowReason {
+			if got := galleryRow(t, model.operations.ValuePicker, template.ID).DisabledReason; got != phase.rowReason {
 				t.Errorf("revisited row reason = %q, want %q", got, phase.rowReason)
 			}
 		})
@@ -255,13 +255,13 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	if model.domain.runtime.Machine() != before {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
-	if model.operations.valuePicker != nil {
+	if model.operations.ValuePicker != nil {
 		t.Error("a failed commit left the gallery mounted")
 	}
-	if model.lenses.picker == nil {
+	if model.lenses.Picker() == nil {
 		t.Fatal("a failed commit closed the main picker")
 	}
-	if model.lenses.picker.Notice() == "" {
+	if model.lenses.Picker().Notice() == "" {
 		t.Error("a failed commit reported nothing on the picker")
 	}
 	if before.NamedLensByID(template.ID) != nil {

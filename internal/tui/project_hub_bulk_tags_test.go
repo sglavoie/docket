@@ -45,7 +45,7 @@ func TestProjectBulkAddingTheReservedTagConfirmsBeforeCommitting(t *testing.T) {
 	}); cmd != nil {
 		t.Fatalf("parking bulk edit committed without confirmation: %#v", cmd())
 	}
-	if !app.project.parkConfirm.IsActive() {
+	if !app.project.ParkArmed() {
 		t.Fatal("parking bulk edit raised no confirmation")
 	}
 	if slices.Contains(app.projectByID("alpha").Tags, models.ParkedProjectTag) {
@@ -61,7 +61,7 @@ func TestProjectBulkAddingTheReservedTagConfirmsBeforeCommitting(t *testing.T) {
 			t.Fatalf("project %s was not parked after confirmation", projectID)
 		}
 	}
-	if app.project.pendingPark.bulk != nil {
+	if app.project.PendingPark().Bulk != nil {
 		t.Fatal("confirmed bulk edit stayed pending")
 	}
 	if !strings.Contains(app.feedback.message, "Parked 2 projects") {

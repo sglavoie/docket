@@ -20,7 +20,7 @@ func TestCloneMachineStateDeepCopiesNamedLenses(t *testing.T) {
 		t.Fatalf("expected the Waiting starter to carry a query: %+v", original)
 	}
 
-	clone := cloneMachineState(snapshot)
+	clone := snapshot.Clone()
 	if &clone.NamedLenses[0] == &snapshot.NamedLenses[0] {
 		t.Fatal("clone shares the lens backing array with the snapshot")
 	}

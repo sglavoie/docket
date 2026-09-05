@@ -169,7 +169,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			// The saved definitions are left alone: what is being staged is a
 			// pointer that outlived its record, which is what the next launch has
 			// to fail closed on.
-			if err := m.commitNamedLensMutation(func(machine *config.MachineState) error {
+			if err := m.lenses.CommitNamedLensMutation(m, func(machine *config.MachineState) error {
 				machine.ActiveLensID = harnessDanglingLensID
 				return nil
 			}); err != nil {

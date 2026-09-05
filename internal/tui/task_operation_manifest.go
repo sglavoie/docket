@@ -1,6 +1,16 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/taskref"
+)
 
 // taskOperationManifest is the authoritative ordered single-task action list.
 // Descriptor metadata, action-sheet grouping and ordering, and bulk eligibility
@@ -100,4 +110,412 @@ func outlinerOperationDescriptorManifest() []operation.OperationManifestEntry {
 // marked DirectOnly or listed in one of its menus, never both.
 func validateOutlinerOperationOnePath(strategy operation.InputStrategy) error {
 	return operation.ValidateOperationOnePath(outlinerOperationDescriptorManifest(), strategy)
+}
+
+func (m *AppModel) taskActionOperationDescriptors() []operation.OperationDescriptor {
+	manifest := taskOperationDescriptorManifest()
+	descriptors := make([]operation.OperationDescriptor, 0, len(manifest))
+	for _, entry := range manifest {
+		if entry.Core {
+			continue
+		}
+		source, cardinality := operation.OperationTargetCurrentTask, operation.TargetCardinalityOne
+		if entry.Bulk {
+			source, cardinality = operation.OperationTargetSelectedTasks, operation.TargetCardinalityOneOrMore
+		}
+		id := entry.ID
+		descriptors = append(descriptors, operation.OperationDescriptor{
+			ID:                   id,
+			Label:                entry.Label,
+			Aliases:              entry.Aliases,
+			Category:             operation.OperationCategoryTask,
+			TargetSource:         source,
+			TargetCardinality:    cardinality,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
+			Applicability: func(context operation.CommandContext) bool {
+				return m.taskActionOperationApplicable(id, context)
+			},
+			Risk:            entry.Risk,
+			ValueProviderID: entry.Provider,
+		})
+	}
+	return descriptors
+}
+
+func (m *AppModel) taskActionOperationApplicable(id operation.OperationID, context operation.CommandContext) bool {
+	if !operation.CoreOutlinerApplicability(context) {
+		return false
+	}
+	entry, _ := taskOperationManifestEntryFor(id)
+	// Direct operations describe a stable grammar, not a menu projection. They
+	// stay resolvable over a cursor that names nothing so the executor can report
+	// the canonical missing-target error, but a cursor that positively names a
+	// non-task entity belongs to that entity's grammar and must not bind a task
+	// key. A visual selection still suppresses single-target operations instead
+	// of silently falling back to the cursor.
+	if entry.DirectOnly {
+		if context.Selection.Visual {
+			return entry.Bulk
+		}
+		return !operation.CommandContextNamesNonTaskEntity(context)
+	}
+	entities := []operation.EntityContext{context.Entity}
+	if context.Selection.Visual {
+		selected := operation.NormalizedTaskIdentities(context.Selection.Tasks)
+		if len(selected) == 0 || len(context.Selection.Entities) != len(selected) {
+			return false
+		}
+		if !entry.Bulk {
+			return false
+		}
+		entities = context.Selection.Entities
+	}
+	for _, entity := range entities {
+		if entity.TaskID == "" || entity.ProjectID == "" {
+			return false
+		}
+		if entity.Archived && entry.Risk != operation.OperationRiskReadOnly {
+			return false
+		}
+		if !m.taskStructureAllowsOperation(id, entity) {
+			return false
+		}
+		if !m.taskAuxiliaryAllowsOperation(id, entity) {
+			return false
+		}
+	}
+	return true
+}
+
+// deferRefusalReason disables the whole defer section when any resolved task
+// cannot be deferred. One reason covers the single terminal task and the bulk
+// selection alike, and it leaves the due section reachable on the same rows the
+// old defer-specific applicability check used to hide outright. It reads
+// app.DeferralRefusesState so the picker refuses in the same words the mutation
+// would, rather than enumerating the deferrable states a second time.
+func deferRefusalReason(refs []TaskProjectRef) string {
+	for _, ref := range refs {
+		if ref.Task == nil {
+			continue
+		}
+		if refusal := app.DeferralRefusesState(ref.Task.State()); refusal != "" {
+			return refusal
+		}
+	}
+	return ""
+}
+
+// taskStructureAllowsOperation hides destination-dependent actions that the
+// domain would reject: an indent with no legal parent above or an outdent at root. A target
+// that no longer resolves stays applicable so the handler reports the single
+// authoritative "no longer available" error instead of the row vanishing.
+func (m *AppModel) taskStructureAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
+	switch id {
+	case operation.OperationTaskIndent, operation.OperationTaskOutdent:
+	default:
+		return true
+	}
+	task, project := m.taskAndProjectForIdentity(taskref.TaskIdentity{
+		ProjectID: entity.ProjectID,
+		TaskID:    entity.TaskID,
+	})
+	if task == nil || project == nil {
+		return true
+	}
+	switch id {
+	case operation.OperationTaskIndent:
+		above := project.GetTaskAbove(task)
+		if above == nil {
+			return false
+		}
+		allowed, _ := task.CanIndent(above)
+		return allowed
+	case operation.OperationTaskOutdent:
+		allowed, _ := task.CanOutdent()
+		return allowed
+	default:
+		return true
+	}
+}
+
+func (m *AppModel) registerTaskActionOperations() error {
+	if m.operations.Registry == nil || m.operations.Executor == nil {
+		return fmt.Errorf("operation registry and executor are required")
+	}
+	executor := m.operations.Executor
+	for _, provider := range []operation.ValueProviderID{
+		operation.ValueProviderState,
+		operation.ValueProviderPriority,
+		operation.ValueProviderDate,
+		operation.ValueProviderDueDate,
+		operation.ValueProviderTags,
+		operation.ValueProviderParent,
+		operation.ValueProviderChild,
+		operation.ValueProviderProject,
+		operation.ValueProviderTaskReference,
+	} {
+		if err := executor.RegisterValueProvider(provider, operation.PendingPickedValueProvider); err != nil {
+			return err
+		}
+	}
+	for _, descriptor := range m.taskActionOperationDescriptors() {
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
+			Applicability:        descriptor.Applicability,
+			Handler:              m.executeTaskOperation,
+			// Every handler below dispatches to an application-layer coordinator
+			// or the existing atomic move message, which already owns commit and
+			// rollback policy.
+			DelegateTransaction: true,
+			// The canonical delete request prompts before it mutates, so a generic
+			// executor confirmation in front of it would ask the same question twice.
+			DelegateConfirmation: descriptor.ID == operation.OperationTaskDelete,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const (
+	taskActionCategoryPlan          listsurface.ListCategoryID = "task-actions:plan"
+	taskActionCategoryOrganize      listsurface.ListCategoryID = "task-actions:organize"
+	taskActionCategoryContent       listsurface.ListCategoryID = "task-actions:content"
+	taskActionCategoryRelationships listsurface.ListCategoryID = "task-actions:relationships"
+	taskActionCategoryDanger        listsurface.ListCategoryID = "task-actions:danger"
+)
+
+var taskActionCategories = []listsurface.ListCategory{
+	{ID: taskActionCategoryContent, Label: "Content"},
+	{ID: taskActionCategoryDanger, Label: "Danger"},
+}
+
+// NewTaskActionSheetModel builds the Outliner task sheet on the shared
+// contextual engine. The CommandContext carries stable task and scope
+// identities, so cursor changes beneath the modal cannot retarget the eventual
+// operation.
+func NewTaskActionSheetModel(
+	registry *operation.OperationRegistry,
+	executor *operation.OperationExecutor,
+	context operation.CommandContext,
+	taskTitle string,
+) (*listsurface.ContextActionSheetModel, error) {
+	descriptors := TaskActionSheetDescriptors(registry, context)
+	ids := make([]operation.OperationID, 0, len(descriptors))
+	for _, descriptor := range descriptors {
+		ids = append(ids, descriptor.ID)
+	}
+	title := "Task Actions"
+	if context.Selection.Visual {
+		title = "Bulk Actions"
+	}
+	return listsurface.NewContextActionSheetModel(registry, executor, context, ids, listsurface.ContextActionSheetConfig{
+		Host:         listsurface.ContextActionHostOutliner,
+		Completion:   listsurface.ContextActionCompleteCloseSheet,
+		Title:        title,
+		Subtitle:     strings.TrimSpace(taskTitle),
+		ItemIDPrefix: "task-action:",
+		Categories:   taskActionCategories,
+		CategoryFor:  taskActionCategory,
+		SecondaryFor: operation.ActionSecondaryText,
+		DisabledFor: func(descriptor operation.OperationDescriptor) string {
+			return taskActionDisabledReason(descriptor, context)
+		},
+		ImmediateFilter: true,
+		Targets:         taskActionTargetCount(context),
+		Bulk:            context.Selection.Visual,
+		EmptyState: listsurface.ListEmptyState{
+			Title:  "No task actions available.",
+			Detail: "Select a task that can be acted on.",
+		},
+		NoMatchState: listsurface.ListEmptyState{
+			Title:  "No matching actions.",
+			Detail: "Clear or change the search.",
+		},
+	})
+}
+
+// TaskActionSheetDescriptors returns the deterministic selected-task operation
+// projection used by the sheet and its tests.
+func TaskActionSheetDescriptors(
+	registry *operation.OperationRegistry,
+	context operation.CommandContext,
+) []operation.OperationDescriptor {
+	if registry == nil || taskActionTargetCount(context) == 0 {
+		return []operation.OperationDescriptor{}
+	}
+	descriptors := make([]operation.OperationDescriptor, 0)
+	for _, descriptor := range registry.All() {
+		if !taskActionSheetEligible(descriptor) ||
+			!taskActionDescriptorApplicableToEveryTarget(descriptor, context) {
+			continue
+		}
+		// The manifest Bulk flag is the single bulk-eligibility rule: an action
+		// reaches a multi-target sheet only when a multi-task coordinator or the
+		// canonical delete transaction can carry every frozen selected task.
+		if context.Selection.Visual && !taskOperationSupportsBulk(descriptor.ID) {
+			continue
+		}
+		if _, err := (operation.OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
+			continue
+		}
+		descriptors = append(descriptors, descriptor)
+	}
+	sortTaskActionDescriptors(descriptors)
+	return descriptors
+}
+
+func taskActionTargetCount(context operation.CommandContext) int {
+	if context.Selection.Visual {
+		return len(operation.NormalizedTaskIdentities(context.Selection.Tasks))
+	}
+	if operation.CurrentTaskIdentity(context).Valid() {
+		return 1
+	}
+	return 0
+}
+
+func taskActionDescriptorApplicableToEveryTarget(
+	descriptor operation.OperationDescriptor,
+	context operation.CommandContext,
+) bool {
+	if !descriptor.Applicable(context) {
+		return false
+	}
+	if !context.Selection.Visual {
+		return true
+	}
+	selected := operation.NormalizedTaskIdentities(context.Selection.Tasks)
+	if len(selected) == 0 || len(context.Selection.Entities) != len(selected) {
+		return false
+	}
+	for _, entity := range context.Selection.Entities {
+		targetContext := operation.CloneCommandContext(context)
+		targetContext.Entity = entity
+		if !descriptor.Applicable(targetContext) {
+			return false
+		}
+	}
+	return true
+}
+
+func taskActionSheetEligible(descriptor operation.OperationDescriptor) bool {
+	// The task manifest is an allowlist, not merely an ordering hint. Keeping
+	// eligibility closed over its one menu entry prevents newly registered task
+	// operations from silently expanding the Space menu.
+	entry, manifested := taskOperationManifestEntryFor(descriptor.ID)
+	return manifested && !entry.DirectOnly
+}
+
+func taskActionCategory(descriptor operation.OperationDescriptor) listsurface.ListCategoryID {
+	if descriptor.Risk == operation.OperationRiskDestructive {
+		return taskActionCategoryDanger
+	}
+	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
+		return entry.Category
+	}
+	return taskActionCategoryContent
+}
+
+func taskActionDisabledReason(
+	descriptor operation.OperationDescriptor,
+	context operation.CommandContext,
+) string {
+	if descriptor.Risk == operation.OperationRiskMutation && context.Entity.Archived {
+		return "project is archived"
+	}
+	return ""
+}
+
+// sortTaskActionDescriptors groups by action-sheet category, then puts manifest
+// operations in their authoritative order ahead of any other action in the same
+// category.
+func sortTaskActionDescriptors(descriptors []operation.OperationDescriptor) {
+	categoryRank := func(id listsurface.ListCategoryID) int {
+		for index, category := range taskActionCategories {
+			if category.ID == id {
+				return index
+			}
+		}
+		return len(taskActionCategories)
+	}
+	sort.SliceStable(descriptors, func(i, j int) bool {
+		left, right := descriptors[i], descriptors[j]
+		leftCategory := categoryRank(taskActionCategory(left))
+		rightCategory := categoryRank(taskActionCategory(right))
+		if leftCategory != rightCategory {
+			return leftCategory < rightCategory
+		}
+		leftManifest := taskOperationManifestRank(left.ID)
+		rightManifest := taskOperationManifestRank(right.ID)
+		if leftManifest != rightManifest {
+			return leftManifest < rightManifest
+		}
+		leftLabel, rightLabel := strings.ToLower(left.Label), strings.ToLower(right.Label)
+		if leftLabel != rightLabel {
+			return leftLabel < rightLabel
+		}
+		return left.ID < right.ID
+	})
+}
+
+func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
+	if context.Selection.Visual {
+		refs, err := m.operationTaskRefs(context)
+		if err != nil {
+			return err
+		}
+		if len(refs) == 0 {
+			return fmt.Errorf("select at least one task to open bulk actions")
+		}
+		context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(refs))
+		context.Selection.Entities = make([]operation.EntityContext, 0, len(refs))
+		for _, ref := range refs {
+			context.Selection.Tasks = append(context.Selection.Tasks, ref.Identity())
+			context.Selection.Entities = append(
+				context.Selection.Entities,
+				outliner.TaskOperationEntity(ref.Task, ref.Project),
+			)
+		}
+		// operationTaskRefs can drop rows the selection still names, so the typed
+		// identities are rederived rather than inherited; otherwise the frozen
+		// sheet would act on a wider set than it lists.
+		context.Selection.EntityIdentities = operation.TaskEntityIdentities(context.Selection.Tasks)
+		context.Entity = context.Selection.Entities[0]
+		subtitle := fmt.Sprintf("%d tasks", len(refs))
+		if context.Selection.VisibleCount+context.Selection.HiddenCount == len(refs) {
+			subtitle = fmt.Sprintf(
+				"%d tasks · %d visible · %d hidden",
+				len(refs),
+				context.Selection.VisibleCount,
+				context.Selection.HiddenCount,
+			)
+		}
+		sheet, err := NewTaskActionSheetModel(
+			m.GetOperationRegistry(),
+			m.operations.Executor,
+			context,
+			subtitle,
+		)
+		if err != nil {
+			return err
+		}
+		m.operations.ActionSheet = sheet
+		return nil
+	}
+	task, _ := m.getCurrentCursorTaskAndProject()
+	if task == nil {
+		return fmt.Errorf("select a task to open actions")
+	}
+	sheet, err := NewTaskActionSheetModel(
+		m.GetOperationRegistry(),
+		m.operations.Executor,
+		context,
+		task.Title,
+	)
+	if err != nil {
+		return err
+	}
+	m.operations.ActionSheet = sheet
+	return nil
 }

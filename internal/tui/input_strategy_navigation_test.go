@@ -14,10 +14,10 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	if app.operations.registry == nil || app.operations.executor == nil {
+	if app.operations.Registry == nil || app.operations.Executor == nil {
 		t.Fatal("default operation system is not initialized")
 	}
-	if app.crossOutliner == nil || app.crossOutliner.OperationRegistry != app.operations.registry {
+	if app.crossOutliner == nil || app.crossOutliner.OperationRegistry != app.operations.Registry {
 		t.Fatal("root Outliner is not wired to the operation registry")
 	}
 
@@ -26,7 +26,7 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 		t.Fatalf("removed Finder key = handled %v cmd %v; want consumed no-op", handled, cmd)
 	}
 
-	binding, _, resolution := app.operations.registry.InputBindingForSequence(
+	binding, _, resolution := app.operations.Registry.InputBindingForSequence(
 		operation.InputStrategySimplified,
 		[]string{"g", "g"},
 		app.operationCommandContext(),

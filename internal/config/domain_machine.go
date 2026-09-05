@@ -113,3 +113,13 @@ func (m *MachineState) RemoveNamedLens(id string) bool {
 	}
 	return true
 }
+
+// Clone returns a deep copy of the machine snapshot. The lens definitions carry
+// nested state, tag, and project-tag slices, so a shallow copy would let an edit
+// to the clone rewrite the snapshot before the commit that is supposed to
+// publish it.
+func (m *MachineState) Clone() *MachineState {
+	cp := *m
+	cp.NamedLenses = m.NamedLenses.Clone()
+	return &cp
+}

@@ -161,7 +161,7 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	// project to All, where fs is available.
 	outlinerView.PushProjectScope(project.ID)
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
-	result := (&AppModel{crossOutliner: outlinerView}).executeFilterOperation(operation.OperationInvocation{
+	result := applyOutlinerFilterOperation(outlinerView, operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterStale},
 	})
 	if result.Err != nil {

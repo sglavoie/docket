@@ -23,8 +23,8 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.features = coordinator.NewFeatureCoordinators(service)
 	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
 	model.domain.ledger = nil
-	model.operations.registry = operation.NewOperationRegistry()
-	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
+	model.operations.Registry = operation.NewOperationRegistry()
+	model.operations.Executor = operation.NewOperationExecutor(model.operations.Registry)
 
 	model.crossOutliner = outliner.NewOutlinerModel(nil, model.domain.manager, model.domain.runtime)
 	model.crossOutliner.Population.Projects = []*models.Project{project}
@@ -37,10 +37,10 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task action operations: %v", err)
 	}
-	if err := model.registerFilterOperations(); err != nil {
+	if err := model.filters.RegisterFilterOperations(model); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := model.registerSortOperations(); err != nil {
+	if err := model.filters.RegisterSortOperations(model); err != nil {
 		t.Fatalf("register sort operations: %v", err)
 	}
 	if err := model.registerProjectHubOperations(); err != nil {
@@ -70,7 +70,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := model.operations.registerSurfaceInputStrategies(); err != nil {
+	if err := model.operations.RegisterCatalog(nil, surfaceOperationGates()); err != nil {
 		t.Fatalf("register surface input strategies: %v", err)
 	}
 	model.wireOutlinerOperationExecutor(model.crossOutliner)
@@ -241,4 +241,15 @@ func renderFixtureTask(
 	task.WorkflowState = legacyStateForStatusSection(status, string(section))
 	task.Priority = priority
 	return task
+}
+
+// applyOutlinerFilterOperation runs one facet against a bare Outliner. The
+// facet cluster takes its shell per call, so a test that only exercises the
+// query needs nothing else on the shell but the view itself.
+func applyOutlinerFilterOperation(
+	view *outliner.OutlinerModel,
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	shell := &AppModel{crossOutliner: view}
+	return shell.filters.ExecuteFilterOperation(shell, invocation)
 }

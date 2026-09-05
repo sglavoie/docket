@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -264,8 +265,8 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 
 func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
-	app.operations.registry = operation.NewOperationRegistry()
-	app.operations.bindExecutor()
+	app.operations.Registry = operation.NewOperationRegistry()
+	app.operations.BindExecutor()
 	app.crossOutliner = outlinerView
 	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := app.registerCoreInputOperations(); err != nil {
@@ -274,10 +275,10 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *
 	if err := app.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task action operations: %v", err)
 	}
-	if err := app.registerFilterOperations(); err != nil {
+	if err := app.filters.RegisterFilterOperations(app); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := app.registerSortOperations(); err != nil {
+	if err := app.filters.RegisterSortOperations(app); err != nil {
 		t.Fatalf("register sort operations: %v", err)
 	}
 	if err := app.registerProjectOperations(); err != nil {
@@ -289,7 +290,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *
 	if err := app.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := app.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := app.operations.Registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
 	app.wireOutlinerOperationExecutor(outlinerView)
@@ -402,9 +403,9 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
 		today:          []outliner.PlanningTask{},
 		todayIDs:       make(map[taskref.TaskIdentity]bool),
-		operations:     newOperationController(),
+		operations:     operationhost.NewController(),
 	}
-	appModel.operations.bindExecutor()
+	appModel.operations.BindExecutor()
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MoveCursorToTask(task.ID)
@@ -416,10 +417,10 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	if err := appModel.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task action operations: %v", err)
 	}
-	if err := appModel.registerFilterOperations(); err != nil {
+	if err := appModel.filters.RegisterFilterOperations(appModel); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := appModel.registerSortOperations(); err != nil {
+	if err := appModel.filters.RegisterSortOperations(appModel); err != nil {
 		t.Fatalf("register sort operations: %v", err)
 	}
 	if err := appModel.registerProjectOperations(); err != nil {
@@ -431,7 +432,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := appModel.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := appModel.operations.Registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)
 	}
 	appModel.wireOutlinerOperationExecutor(outlinerView)

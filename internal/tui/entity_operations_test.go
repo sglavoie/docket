@@ -53,7 +53,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 func executeEntityOperation(app *AppModel, id operation.OperationID, entity operation.EntityIdentity) operation.OperationExecutionResult {
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = entity
-	return app.operations.executor.Execute(operation.OperationExecutionRequest{
+	return app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	})
@@ -164,7 +164,7 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 		t.Fatalf("note delete ran without confirmation: %#v", result)
 	}
 
-	confirmed := model.operations.executor.Execute(result.ConfirmationRequired.Request)
+	confirmed := model.operations.Executor.Execute(result.ConfirmationRequired.Request)
 	command, ok := confirmed.Message.(operation.OperationCommandResultMsg)
 	if !ok || command.Cmd == nil {
 		t.Fatalf("confirmed note delete emitted %#v, want a mutation command", confirmed.Message)

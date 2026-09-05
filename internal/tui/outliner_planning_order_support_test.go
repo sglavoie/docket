@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -87,9 +88,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
 		today:          []outliner.PlanningTask{},
 		todayIDs:       make(map[taskref.TaskIdentity]bool),
-		operations:     newOperationController(),
+		operations:     operationhost.NewController(),
 	}
-	m.operations.bindExecutor()
+	m.operations.BindExecutor()
 	m.rebuildPlanningFromRuntime()
 
 	cross := outliner.NewOutlinerModel(nil, manager, runtime)
@@ -106,10 +107,10 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	if err := m.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task action operations: %v", err)
 	}
-	if err := m.registerFilterOperations(); err != nil {
+	if err := m.filters.RegisterFilterOperations(m); err != nil {
 		t.Fatalf("register filter operations: %v", err)
 	}
-	if err := m.registerSortOperations(); err != nil {
+	if err := m.filters.RegisterSortOperations(m); err != nil {
 		t.Fatalf("register sort operations: %v", err)
 	}
 	if err := m.registerProjectOperations(); err != nil {
@@ -121,7 +122,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	if err := m.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := m.operations.registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+	if err := m.operations.Registry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)
 	}
 	m.wireOutlinerOperationExecutor(cross)

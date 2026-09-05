@@ -107,14 +107,14 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, m.requestProjectEditorPark(msg.Save)
 
 	case projecthub.ProjectParkConfirmedMsg:
-		pending := m.project.takePark()
-		if save := pending.editorSave; save != nil {
+		pending := m.project.TakePark()
+		if save := pending.EditorSave; save != nil {
 			return true, save.Commit
 		}
-		if edit := pending.bulk; edit != nil {
+		if edit := pending.Bulk; edit != nil {
 			return true, m.commitProjectBulkTags(*edit)
 		}
-		return true, m.commitProjectTags(pending.project, pending.tags)
+		return true, m.commitProjectTags(pending.Project, pending.Tags)
 
 	case projecthub.ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
@@ -171,20 +171,20 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bool) tea.Cmd {
 	if project == nil {
-		m.project.clearArchive()
+		m.project.ClearArchive()
 		return nil
 	}
 	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
-		m.project.clearArchive()
+		m.project.ClearArchive()
 		return status.ErrorCmd("cannot archive the system Unfiled project")
 	}
 
-	m.project.armArchive(project, archive)
+	m.project.ArmArchive(project, archive)
 	return nil
 }
 
 func (m *AppModel) confirmProjectArchive() tea.Cmd {
-	project, archive := m.project.takeArchive()
+	project, archive := m.project.TakeArchive()
 
 	if project == nil {
 		return nil
@@ -277,23 +277,23 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 // refused or abandoned confirmation leaves the live project pointer untouched.
 func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
 	if project == nil {
-		m.project.clearDelete()
+		m.project.ClearDelete()
 		return nil
 	}
 	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
-		m.project.clearDelete()
+		m.project.ClearDelete()
 		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 
 	loaded := *project
 	if loaded.Tasks == nil && m.domain.persister != nil {
 		if err := m.domain.persister.Load(&loaded); err != nil {
-			m.project.clearDelete()
+			m.project.ClearDelete()
 			return status.ErrorCmd("cannot delete project: %v", err)
 		}
 	}
 
-	m.project.armDelete(
+	m.project.ArmDelete(
 		&loaded,
 		fmt.Sprintf("Delete %s and everything it owns?", loaded.Name),
 		&chrome.ConfirmDetail{
@@ -342,7 +342,7 @@ func joinWithAnd(parts []string) string {
 }
 
 func (m *AppModel) confirmProjectDelete() tea.Cmd {
-	project := m.project.takeDelete()
+	project := m.project.TakeDelete()
 
 	if project == nil {
 		return nil

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -90,7 +92,7 @@ func mountAttachmentsPanel(t *testing.T) (*UITestDriver, *taskdetail.TaskAttachm
 	project.Tasks = []*models.Task{task}
 
 	driver.dispatch(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
-	panel := driver.App().activeAttachmentsPanel()
+	panel := driver.App().entities.ActiveAttachmentsPanel(driver.App())
 	if panel == nil {
 		t.Fatal("ShowTaskAttachmentsMsg did not mount the Attachments panel")
 	}
@@ -115,11 +117,11 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
 	press("space")
-	if driver.App().operations.actionSheet == nil {
+	if driver.App().operations.ActionSheet == nil {
 		t.Fatal("Space did not reach tui.attachment.actions")
 	}
 	press("esc")
-	if driver.App().operations.actionSheet != nil {
+	if driver.App().operations.ActionSheet != nil {
 		t.Fatal("Esc left the attachment action sheet open")
 	}
 
@@ -172,7 +174,7 @@ func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
-		if driver.App().operations.actionSheet != nil {
+		if driver.App().operations.ActionSheet != nil {
 			t.Fatalf("retired key %q opened the action sheet", key)
 		}
 		if driver.pendingCmd != nil {
@@ -235,16 +237,16 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
 	press("space")
-	sheet := driver.App().operations.actionSheet
+	sheet := driver.App().operations.ActionSheet
 	if sheet == nil {
 		t.Fatal("Space did not open the attachment action sheet")
 	}
 	want := []operation.OperationID{
-		operationAttachmentRevealOriginal,
-		operationAttachmentOpenOriginalDirectory,
-		operationAttachmentOpenFolder,
-		operationAttachmentUnlink,
-		operationAttachmentDelete,
+		entityops.OperationAttachmentRevealOriginal,
+		entityops.OperationAttachmentOpenOriginalDirectory,
+		entityops.OperationAttachmentOpenFolder,
+		entityops.OperationAttachmentUnlink,
+		entityops.OperationAttachmentDelete,
 	}
 	if got := sheet.OperationIDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("attachment sheet lists %v, want exactly %v", got, want)
@@ -255,7 +257,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	}
 	press("enter")
 
-	if driver.App().operations.actionSheet != nil {
+	if driver.App().operations.ActionSheet != nil {
 		t.Fatal("choosing Unlink left the sheet open over the confirmation")
 	}
 	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "unlink" {

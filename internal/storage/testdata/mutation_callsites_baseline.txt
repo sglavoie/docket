@@ -3,4 +3,4 @@
 #   UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline
 # Total callsites: 2
 cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)
-internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)
+internal/tui/domain_controller.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)

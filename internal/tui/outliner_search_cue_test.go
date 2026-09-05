@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 )
 
 // TestSearchCueStaysOutOfPeekAndProjectPreview keeps the annotation on the row
@@ -33,7 +34,7 @@ func TestSearchCueStaysOutOfPeekAndProjectPreview(t *testing.T) {
 		}
 	}
 
-	for _, previewRow := range projectPreviewTaskRows(project.ID, []*models.Task{task}) {
+	for _, previewRow := range projectops.PreviewTaskRows(project.ID, []*models.Task{task}) {
 		if previewRow.MatchSource != outliner.MatchSourceNone {
 			t.Fatalf("preview row carried source %d, want none", previewRow.MatchSource)
 		}

@@ -7,9 +7,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/entityops"
+	"github.com/sglavoie/tt/internal/tui/filterops"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/lensops"
+	"github.com/sglavoie/tt/internal/tui/notesops"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/projectops"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -60,19 +66,31 @@ type AppModel struct {
 	// retains state. See lifecycle_controller.go.
 	lifecycle lifecycleController
 
-	// noteIndex is the notes cluster: the workspace-wide note snapshot the
+	// notes is the notes cluster: the workspace-wide note snapshot the
 	// Outliner's search tier ranks, the generation that discards a superseded
-	// read, and the owner-catalog fingerprint that decides whether an
-	// availability change owes a reload at all. The surface handlers and the
-	// note commands stay AppModel methods. See note_index_controller.go.
-	noteIndex noteIndexController
+	// read, the owner-catalog fingerprint that decides whether an availability
+	// change owes a reload at all, and the note operations that surface is
+	// driven by. See notesops/controller.go.
+	notes notesops.Controller
 
 	// operations is the operation-wiring cluster: the descriptor registry, the
 	// invocation executor, the contextual action sheet and the value or
 	// confirmation step one invocation can open above it, and the chord prefix a
-	// key path has accumulated so far. The fifteen registrars and every handler
-	// stay AppModel methods. See operation_controller.go.
-	operations operationController
+	// key path has accumulated so far. The behavior lives in operationhost; the
+	// fifteen registrars and every handler stay AppModel methods, because the
+	// domains they commit against are the shell's. See operationhost/controller.go.
+	operations operationhost.Controller
+
+	// entities is the task-owned entity cluster: attachments, comments, and
+	// checklist rows. Each family's descriptors, action sheet, and coordinator
+	// calls live in entityops beside the panels they act on; the shell holds the
+	// controller and satisfies its narrow port. See shell_ports.go.
+	entities entityops.Controller
+
+	// filters is the facet and sort cluster. The behavior lives in filterops
+	// beside the Outliner query it edits; the shell only holds the controller and
+	// satisfies its narrow port. See shell_ports.go.
+	filters filterops.Controller
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	helpView      *help.HelpViewModel
@@ -130,8 +148,8 @@ type AppModel struct {
 	// project is the project cluster: the archive lifecycle, the delete cascade,
 	// the one park confirmation the tag picker, the bulk tag actions and the
 	// project editor all raise, and the tag the vocabulary sheet edits. Every
-	// commit stays an AppModel method. See project_controller.go.
-	project projectController
+	// commit stays an AppModel method. See projectops/project_controller.go.
+	project projectops.Controller
 
 	// taskMutation is the task-mutation cluster: the shell-owned task deletion
 	// and outline-apply confirmations, each holding the pending value its
@@ -144,8 +162,8 @@ type AppModel struct {
 	// action sheet is opened *from*; the lens the machine-local pointer asked
 	// this session to reopen with; and the injection of the machine-local write
 	// that remembers which lens is live. The write itself stays an AppModel
-	// method. See lens_controller.go.
-	lenses lensController
+	// method. See lensops/controller.go.
+	lenses lensops.Controller
 
 	// The conflict browser sits beside the picker rather than inside that flow:
 	// it registers no operations, so nothing ever nests above it, and Esc is the

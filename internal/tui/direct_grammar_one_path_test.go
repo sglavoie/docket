@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -102,15 +104,15 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 		{"outliner", SimplifiedInputStrategy(), outlinerOperationDescriptorManifest()},
 		{"project hub", projecthub.ProjectHubInputStrategy(), projecthub.ProjectOperationManifest()},
 		{"notes", notes.NotesInputStrategy(), notes.NotesOperationManifest()},
-		{"attachments", AttachmentsInputStrategy(), attachmentOperationManifest()},
-		{"comments", CommentsInputStrategy(), commentOperationManifest()},
+		{"attachments", entityops.AttachmentsInputStrategy(), entityops.AttachmentOperationManifest()},
+		{"comments", entityops.CommentsInputStrategy(), entityops.CommentOperationManifest()},
 	}
 
 	gated := make([]string, 0, len(surfaceOperationGates()))
 	for _, gate := range surfaceOperationGates() {
-		gated = append(gated, string(gate.strategy.ID))
-		if err := gate.validate(gate.strategy); err != nil {
-			t.Errorf("production grammar for %s: %v", gate.strategy.ID, err)
+		gated = append(gated, string(gate.Strategy.ID))
+		if err := gate.Validate(gate.Strategy); err != nil {
+			t.Errorf("production grammar for %s: %v", gate.Strategy.ID, err)
 		}
 	}
 	tabled := make([]string, 0, len(surfaces))
@@ -179,10 +181,10 @@ func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 		modal    []string
 	}{
 		{"notes", notes.NotesInputStrategy(), (&notes.NotesViewModel{}).BuildKeyMap(), nil},
-		{"attachments", AttachmentsInputStrategy(), (&taskdetail.TaskAttachmentsModel{}).BuildKeyMap(), nil},
+		{"attachments", entityops.AttachmentsInputStrategy(), (&taskdetail.TaskAttachmentsModel{}).BuildKeyMap(), nil},
 		{
 			name:     "comments",
-			strategy: CommentsInputStrategy(),
+			strategy: entityops.CommentsInputStrategy(),
 			keys:     (&taskdetail.TaskCommentsModel{}).BuildKeyMap(),
 			modal:    []string{"ctrl+s", "ctrl+e", "shift+enter"},
 		},

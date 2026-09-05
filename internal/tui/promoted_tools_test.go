@@ -84,8 +84,8 @@ func TestPromotedToolNotesScope(t *testing.T) {
 			setTestAppProjects(app, workA, workB, home)
 			app.crossOutliner.Population.Projects = []*models.Project{workA, workB, home}
 			test.configure(app)
-			app.operations.registry = operation.NewOperationRegistry()
-			app.operations.executor = operation.NewOperationExecutor(app.operations.registry)
+			app.operations.Registry = operation.NewOperationRegistry()
+			app.operations.Executor = operation.NewOperationExecutor(app.operations.Registry)
 			if err := app.registerCoreInputOperations(); err != nil {
 				t.Fatalf("register core operations: %v", err)
 			}
@@ -152,7 +152,7 @@ func executePromotedTool(
 	context operation.CommandContext,
 ) any {
 	t.Helper()
-	result := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: context,
 	})

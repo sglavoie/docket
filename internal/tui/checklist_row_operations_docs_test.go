@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -101,7 +103,7 @@ func checklistDocumentationCatalogFromRegistry(t *testing.T) checklistDocumentat
 		}
 	}
 	catalog := checklistDocumentationCatalog{byID: make(map[operation.OperationID]checklistDocumentedOperation)}
-	for _, descriptor := range checklistRowOperationDescriptors() {
+	for _, descriptor := range entityops.ChecklistRowOperationDescriptors() {
 		operation := checklistDocumentedOperation{
 			ID:    descriptor.ID,
 			Label: descriptor.Label,

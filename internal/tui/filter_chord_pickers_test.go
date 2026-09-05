@@ -36,13 +36,13 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 			if handled, overlayCmd := app.handleOperationOverlayMessage(cmd()); !handled || overlayCmd != nil {
 				t.Fatalf("f@ request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
 			}
-			picker := app.operations.valuePicker
-			if picker == nil || !picker.surface.SetCursorToID(test.itemID) {
+			picker := app.operations.ValuePicker
+			if picker == nil || !picker.Surface().SetCursorToID(test.itemID) {
 				t.Fatalf("due-date picker cannot select %s", test.itemID)
 			}
 			// The row is a shortcut for a token, so what it carries is the canonical
 			// spelling of the narrowing and not a private enum.
-			current, ok := picker.surface.CurrentItem()
+			current, ok := picker.Surface().CurrentItem()
 			if !ok || current.Data != test.token {
 				t.Fatalf("row %s carries %#v, want the token %q", test.itemID, current.Data, test.token)
 			}
@@ -130,14 +130,14 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	app.crossOutliner.SelectOutlinerMode(chrome.ModeRecent)
 	ctx := app.operationCommandContext()
 
-	if _, _, resolution := app.operations.registry.InputBindingForSequence(
+	if _, _, resolution := app.operations.Registry.InputBindingForSequence(
 		operation.InputStrategySimplified,
 		[]string{"f", "s"},
 		ctx,
 	); resolution != operation.ChordNoMatch {
 		t.Fatalf("fs resolution = %v, want no match in Recent", resolution)
 	}
-	for _, item := range app.operations.registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
+	for _, item := range app.operations.Registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == "fs" || item.Description == "Filter Stale" {
 			t.Fatalf("Recent help retained Stale item: %+v", item)
 		}
@@ -199,8 +199,8 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if handled, overlayCmd := app.handleOperationOverlayMessage(cmd()); !handled || overlayCmd != nil {
 		t.Fatalf("fa request = handled %v cmd %T; want picker opened synchronously", handled, overlayCmd)
 	}
-	picker := app.operations.valuePicker
-	if picker == nil || !picker.surface.SetCursorToID("filter-completion-age:90") {
+	picker := app.operations.ValuePicker
+	if picker == nil || !picker.Surface().SetCursorToID("filter-completion-age:90") {
 		t.Fatal("completion-age picker cannot select 90 days")
 	}
 	_, dismissed, selected := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -237,7 +237,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	ctx := simplifiedOperationContext()
 	filter := &app.crossOutliner.Filter.CommonFilterState
 
-	states := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	states := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{"done", "waiting"},
@@ -253,7 +253,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Errorf("state filter = %v, want done+waiting", filter.States.Values())
 	}
 
-	cleared := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	cleared := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{},
@@ -269,7 +269,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Error("state filter should be inactive after selecting no states")
 	}
 
-	invalid := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	invalid := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterStates,
 		Context:  ctx,
 		Value:    []string{"not-a-state"},
@@ -279,7 +279,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Error("an unknown workflow state should be rejected")
 	}
 
-	tags := app.operations.executor.Execute(operation.OperationExecutionRequest{
+	tags := app.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterTags,
 		Context:  ctx,
 		Value:    []string{"deep"},

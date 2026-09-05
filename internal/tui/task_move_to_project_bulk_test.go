@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // bulkMoveSelection installs a frozen visual selection over the named fixture
@@ -39,7 +40,7 @@ func bulkMoveSelection(t *testing.T, m *AppModel, titles ...string) []TaskProjec
 // the move instead of refusing it.
 func executeBulkMoveToProject(t *testing.T, m *AppModel, destinationID string) tea.Msg {
 	t.Helper()
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskMoveToProject,
 		Context:  m.operationCommandContext(),
 		Value:    destinationID,
@@ -230,19 +231,19 @@ func TestMoveToProjectPickerWithholdsOnlyASingleSourceSelectionsOwnProject(t *te
 	errand, errandProject := taskContentFixtureTask(t, m, "Renew passport")
 
 	sameProject := []TaskProjectRef{{Task: alpha, Project: alphaProject}}
-	if got := commonTaskProjectID(sameProject); got != alphaProject.ID {
+	if got := valuepicker.CommonTaskProjectID(sameProject); got != alphaProject.ID {
 		t.Errorf("single-source selection withholds %q, want %q", got, alphaProject.ID)
 	}
 	spanning := []TaskProjectRef{
 		{Task: alpha, Project: alphaProject},
 		{Task: errand, Project: errandProject},
 	}
-	if got := commonTaskProjectID(spanning); got != "" {
+	if got := valuepicker.CommonTaskProjectID(spanning); got != "" {
 		t.Errorf("multi-source selection withholds %q, want nothing withheld", got)
 	}
 
 	offered := make(map[string]bool)
-	for _, item := range operationProjectListSource(m.domain.runtime.AvailableProjects(), commonTaskProjectID(spanning)).Items {
+	for _, item := range valuepicker.OperationProjectListSource(m.domain.runtime.AvailableProjects(), valuepicker.CommonTaskProjectID(spanning)).Items {
 		offered[item.PrimaryText] = true
 	}
 	for _, name := range []string{alphaProject.Name, errandProject.Name} {
@@ -266,7 +267,7 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 
 	context := m.operationCommandContext()
 	context.Entity = outliner.TaskOperationEntity(source, sourceProject)
-	result := m.operations.executor.Execute(operation.OperationExecutionRequest{
+	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskMoveToProject,
 		Context:  context,
 		Value:    destination.ID,

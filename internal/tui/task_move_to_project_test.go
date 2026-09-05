@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // TestMoveToProjectListsEveryAvailableProjectButTheCurrentOne pins the picker's
@@ -19,7 +20,7 @@ func TestMoveToProjectListsEveryAvailableProjectButTheCurrentOne(t *testing.T) {
 	_, project := taskContentFixtureTask(t, m, "Ship the delivery checklist")
 
 	primary := make(map[string]listsurface.ListItem)
-	for _, item := range operationProjectListSource(m.domain.runtime.AvailableProjects(), project.ID).Items {
+	for _, item := range valuepicker.OperationProjectListSource(m.domain.runtime.AvailableProjects(), project.ID).Items {
 		primary[item.PrimaryText] = item
 	}
 

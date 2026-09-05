@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/entityops"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -22,7 +24,7 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 	driver, press, typeText := mountLiveCommentsPanel(t)
 	comments := func() []string {
 		t.Helper()
-		panel := driver.App().activeCommentsPanel()
+		panel := driver.App().entities.ActiveCommentsPanel(driver.App())
 		if panel == nil {
 			t.Fatal("the Comments panel left the route")
 		}
@@ -104,7 +106,7 @@ func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(str
 	press("j")
 	press("j")
 	press(";")
-	if driver.App().activeCommentsPanel() == nil {
+	if driver.App().entities.ActiveCommentsPanel(driver.App()) == nil {
 		t.Fatalf("the comment sigil key did not open the Comments panel; view = %s", driver.App().currentView())
 	}
 	return driver, press, typeText
@@ -118,17 +120,17 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	driver, panel, press := mountCommentsPanel(t)
 
 	press("space")
-	sheet := driver.App().operations.actionSheet
+	sheet := driver.App().operations.ActionSheet
 	if sheet == nil {
 		t.Fatal("Space did not open the comment action sheet")
 	}
-	want := []operation.OperationID{operationCommentDelete}
+	want := []operation.OperationID{entityops.OperationCommentDelete}
 	if got := sheet.OperationIDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("comment sheet lists %v, want exactly %v", got, want)
 	}
 
 	press("enter")
-	if driver.App().operations.actionSheet != nil {
+	if driver.App().operations.ActionSheet != nil {
 		t.Fatal("choosing Delete left the sheet open over the confirmation")
 	}
 	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "delete" {
@@ -261,7 +263,7 @@ func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 		if panel.AddMode || panel.EditMode || panel.ExpandedView {
 			t.Fatalf("unbound key %q changed the panel mode", key)
 		}
-		if driver.App().operations.actionSheet != nil {
+		if driver.App().operations.ActionSheet != nil {
 			t.Fatalf("unbound key %q opened an action sheet", key)
 		}
 		if got := driver.App().currentView(); got != presentation.ViewTaskComments {

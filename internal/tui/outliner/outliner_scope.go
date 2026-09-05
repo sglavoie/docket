@@ -668,3 +668,12 @@ func (m *OutlinerModel) ActivateGroupAtCursor() bool {
 	m.PushProjectScope(row.ProjectID)
 	return true
 }
+
+// ApplyProjectScopeMsg applies a Project Hub or project-header selection to the
+// sole Outliner scope stack. It is declared here rather than on the shell
+// because every surface that can name a project raises it, and the scope it
+// names is this package's.
+type ApplyProjectScopeMsg struct {
+	ProjectID string
+	Clear     bool
+}

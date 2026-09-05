@@ -35,7 +35,7 @@ func mountCommentsPanel(t *testing.T) (*UITestDriver, *taskdetail.TaskCommentsMo
 	project.Tasks = []*models.Task{task}
 
 	driver.dispatch(taskdetail.ShowTaskCommentsMsg{Task: task, Project: project})
-	panel := driver.App().activeCommentsPanel()
+	panel := driver.App().entities.ActiveCommentsPanel(driver.App())
 	if panel == nil {
 		t.Fatal("ShowTaskCommentsMsg did not mount the Comments panel")
 	}
@@ -66,11 +66,11 @@ func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
 	press("esc")
 
 	press("space")
-	if driver.App().operations.actionSheet == nil {
+	if driver.App().operations.ActionSheet == nil {
 		t.Fatal("Space did not reach tui.comment.actions")
 	}
 	press("esc")
-	if driver.App().operations.actionSheet != nil {
+	if driver.App().operations.ActionSheet != nil {
 		t.Fatal("Esc left the comment action sheet open")
 	}
 
@@ -111,7 +111,7 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
-		if driver.App().operations.actionSheet != nil {
+		if driver.App().operations.ActionSheet != nil {
 			t.Fatalf("retired key %q opened the action sheet", key)
 		}
 	}
