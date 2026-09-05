@@ -71,6 +71,15 @@ func cycleTab(current *int, count, delta int) {
 	*current = ((*current+delta)%count + count) % count
 }
 
+// cycleCategoryTab moves the active tab by delta and refreshes the filtered
+// content beneath it.
+func (m *HelpViewModel) cycleCategoryTab(delta int) {
+	cycleTab(&m.activeTab, len(m.categories)+1, delta)
+	m.filterItems()
+	m.viewport.SetContent(m.renderContent())
+	m.viewport.GotoTop()
+}
+
 func (m *HelpViewModel) innerWidth() int {
 	return max(m.width-2, 0)
 }
@@ -176,17 +185,11 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.GotoTop()
 				return m, nil
 			}
-		case "shift+left":
-			cycleTab(&m.activeTab, len(m.categories)+1, -1)
-			m.filterItems()
-			m.viewport.SetContent(m.renderContent())
-			m.viewport.GotoTop()
+		case "left", "h":
+			m.cycleCategoryTab(-1)
 			return m, nil
-		case "shift+right":
-			cycleTab(&m.activeTab, len(m.categories)+1, 1)
-			m.filterItems()
-			m.viewport.SetContent(m.renderContent())
-			m.viewport.GotoTop()
+		case "right", "l":
+			m.cycleCategoryTab(1)
 			return m, nil
 		case "up", "k":
 			m.viewport.ScrollUp(1)
@@ -228,16 +231,10 @@ func (m *HelpViewModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.tabSearchInput.Focus()
 		return m, textinput.Blink
 	case "shift+left":
-		cycleTab(&m.activeTab, len(m.categories)+1, -1)
-		m.filterItems()
-		m.viewport.SetContent(m.renderContent())
-		m.viewport.GotoTop()
+		m.cycleCategoryTab(-1)
 		return m, nil
 	case "shift+right":
-		cycleTab(&m.activeTab, len(m.categories)+1, 1)
-		m.filterItems()
-		m.viewport.SetContent(m.renderContent())
-		m.viewport.GotoTop()
+		m.cycleCategoryTab(1)
 		return m, nil
 	default:
 		var cmd tea.Cmd
