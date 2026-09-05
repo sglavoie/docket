@@ -406,7 +406,7 @@ func TaskLineEditRequest(source taskref.TaskIdentity, result *grammar.QuickEditR
 	return req
 }
 
-// taskLineEditRequest binds every live inline edit to an explicit planning
+// TaskLineEditRequest binds every live inline edit to an explicit planning
 // builder instead of inheriting whichever default a prior service call left
 // installed. Cross-project edits carry a complete planning-move delta, so they
 // use the structural builder that reconciles against the newest on-disk state.

@@ -263,7 +263,7 @@ work survives a round trip the workspace cannot resolve.
 
 `Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
 heading is a title line, so `handleTaskContentEdited` routes it through the same
-`grammar.ParseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
+`grammar.ParseQuickEdit` and `outliner.TaskLineEditRequest` the inline editor uses, then rides the
 edited body on that request's `Description` field. One `Service.EditTaskLine`
 call therefore commits title, sigils, structure, and body as one transaction and
 one undo entry; a second call would record two. The title is compared against the

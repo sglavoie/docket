@@ -29,11 +29,14 @@ const (
 	tuiRootPackage = "tui"
 )
 
-// tuiPackageFloor is the number of real packages under internal/tui today: the
-// shell, keymap, and presentation. The split only adds packages, so finding
-// fewer means the walk stopped reaching them and the fitness check has gone
-// vacuous rather than clean.
-const tuiPackageFloor = 3
+// The Phase 0 vacuity guard was a floor of three, the number of real packages
+// that existed when Session 1.6 wrote it. Twenty-three exist now, so a floor of
+// three guards nothing, and it never closed the hole that matters: a package
+// spelling no sibling import appears in no edge and so was invisible to the
+// whole check. TestTUIPackageGraphDescribesEveryPackageThatExists replaces it
+// with an exact population match against the graph table, which is both a
+// tighter vacuity guard and the thing that makes a new package declare its
+// layer before it can declare an import.
 
 // tuiPackageNode is one row of the intended graph.
 type tuiPackageNode struct {
@@ -110,12 +113,8 @@ func TestTUIPackageGraphTableIsWellFormed(t *testing.T) {
 func TestTUIPackageImportsFollowTheIntendedGraph(t *testing.T) {
 	graph := readTUIPackageGraph(t)
 	root := repositoryRootDir(t)
-	edges, packagesWalked := readTUIImportEdges(t, root)
+	edges := readTUIImportEdges(t, root)
 
-	if packagesWalked < tuiPackageFloor {
-		t.Fatalf("walked %d packages under %s, want at least %d; the fitness check is not reaching them",
-			packagesWalked, tuiSubtree, tuiPackageFloor)
-	}
 	if len(edges) == 0 {
 		t.Fatalf("found no import between packages under %s; the fitness check would pass vacuously", tuiSubtree)
 	}
@@ -135,6 +134,73 @@ func TestTUIPackageImportsFollowTheIntendedGraph(t *testing.T) {
 				edge.file, edge.from, node.layer, edge.to, graph[edge.to].layer, tuiPackageGraphPath)
 		}
 	}
+}
+
+// TestTUIPackageGraphDescribesEveryPackageThatExists holds the table to the
+// tree in both directions. TestTUIPackageImportsFollowTheIntendedGraph can only
+// judge a package that appears in an edge, so a new package importing nothing
+// under internal/tui, or imported by nothing there, slipped past the whole
+// fitness check while it decided where its files lived. Requiring the table to
+// name exactly the packages on disk is what makes declaring a layer the first
+// step of adding a package rather than an afterthought, and it is the vacuity
+// guard as well: a walk that stops reaching the subtree reports every described
+// package missing instead of passing.
+func TestTUIPackageGraphDescribesEveryPackageThatExists(t *testing.T) {
+	graph := readTUIPackageGraph(t)
+	onDisk := tuiPackageDirs(t, repositoryRootDir(t))
+
+	for _, name := range sortedNames(onDisk) {
+		if _, ok := graph[name]; !ok {
+			t.Errorf("%s/%s exists but %s does not describe it; give it a layer and a depends_on row",
+				tuiSubtree, name, tuiPackageGraphPath)
+		}
+	}
+	for _, node := range sortedNodes(graph) {
+		if node.name == tuiRootPackage {
+			continue
+		}
+		if !onDisk[node.name] {
+			t.Errorf("%s describes package %q, which holds no Go file under %s; delete the row",
+				tuiPackageGraphPath, node.name, tuiSubtree)
+		}
+	}
+}
+
+// tuiPackageDirs names every package under internal/tui that holds at least one
+// Go file, the root shell included. A directory with no Go file is not a
+// package and the table must not carry a row for it.
+func tuiPackageDirs(t *testing.T, root string) map[string]bool {
+	t.Helper()
+
+	subtree := filepath.Join(root, filepath.FromSlash(tuiSubtree))
+	found := map[string]bool{}
+	err := filepath.WalkDir(subtree, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if skipsPackageDir(entry.Name()) && path != subtree {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".go" {
+			return nil
+		}
+		owner, err := tuiPackageForDir(subtree, filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+		found[owner] = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", tuiSubtree, err)
+	}
+	if len(found) == 0 {
+		t.Fatalf("found no Go file under %s; the population check would pass vacuously", tuiSubtree)
+	}
+	return found
 }
 
 func readTUIPackageGraph(t *testing.T) map[string]tuiPackageNode {
@@ -223,11 +289,10 @@ func parseLayer(t *testing.T, relative string, number int, field string) int {
 
 // readTUIImportEdges parses every Go file under internal/tui, test files
 // included, and returns the imports that stay inside the subtree.
-func readTUIImportEdges(t *testing.T, root string) ([]tuiImportEdge, int) {
+func readTUIImportEdges(t *testing.T, root string) []tuiImportEdge {
 	t.Helper()
 
 	subtree := filepath.Join(root, filepath.FromSlash(tuiSubtree))
-	seen := map[string]bool{}
 	var edges []tuiImportEdge
 	fileSet := token.NewFileSet()
 
@@ -248,7 +313,6 @@ func readTUIImportEdges(t *testing.T, root string) ([]tuiImportEdge, int) {
 		if err != nil {
 			return err
 		}
-		seen[owner] = true
 
 		parsed, parseErr := parser.ParseFile(fileSet, path, nil, parser.ImportsOnly)
 		if parseErr != nil {
@@ -277,7 +341,7 @@ func readTUIImportEdges(t *testing.T, root string) ([]tuiImportEdge, int) {
 		}
 		return strings.Compare(left.to, right.to)
 	})
-	return edges, len(seen)
+	return edges
 }
 
 // tuiPackageForDir names the package owning one directory. The subtree root is

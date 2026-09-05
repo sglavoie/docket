@@ -37,16 +37,14 @@ Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` schema-15 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
-itself layered and acyclic: L0 `internal/tui/presentation`, `theme`, `textfit`,
-`taskref`, `status`, `pulse`, `keymap`; L1 `chrome`, `coordinator`; L2
-`grammar`, `query`; L3 `internal/tui/operation`; L4 `route`; L5 `listsurface`;
-L6 `help`; L7 the surfaces `notes`, `taskdetail`, `taskform`, `lens`,
-`conflict`, `projecthub`; L8 the root shell alone, which owns `AppModel`, the
-Outliner root, the concrete registrars, and the uitest harness.
-`scripts/tui_package_graph.tsv` is the whitelist of permitted edges, not a
-floor, and `tui_layer_fitness_test.go` enforces it against the real import
-graph: add the edge and its reason there in the change that writes the import.
-Keep a concern in its layer.
+itself layered and acyclic, and `scripts/tui_package_graph.tsv` is that layering
+rather than a description of it: one row per package, naming its layer and the
+complete whitelist of sibling imports it may spell, which is a whitelist and not
+a floor. `tui_layer_fitness_test.go` enforces that table against the real import
+graph and against the packages that exist, so a new package declares its layer
+before it can declare an import and an unlisted edge is a red test rather than
+prose. Add the edge and its reason to the table in the change that writes the
+import. Keep a concern in its layer.
 
 A mutation resolves targets from one immutable workspace snapshot, validates in
 the application layer, and submits every project, domain, note, and attachment

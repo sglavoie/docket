@@ -240,12 +240,12 @@ type OutlinerViewSnapshot struct {
 	lensQuery string
 
 	// Subordinate tools.
-	PeekMode  bool
+	peekMode  bool
 	selection listsurface.SelectionSnapshot
 
 	// Recent's frozen ordering, so returning to a Recent baseline reads the list
 	// the user was triaging rather than a reshuffled one.
-	Recency recencySnapshot
+	recency recencySnapshot
 }
 
 // captureOutlinerViewSnapshot takes the full restoration point, one cluster at a
@@ -262,9 +262,9 @@ func (m *OutlinerModel) CaptureOutlinerViewSnapshot() OutlinerViewSnapshot {
 		search:        m.Search.capture(),
 		searchInput:   m.CaptureSearchInput(),
 		lensQuery:     m.Lens.Query,
-		PeekMode:      m.PeekMode,
+		peekMode:      m.PeekMode,
 		selection:     m.CaptureSelection(),
-		Recency:       m.Recency.capture(),
+		recency:       m.Recency.capture(),
 	}
 }
 
@@ -285,9 +285,9 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot OutlinerViewSnapsho
 	m.Search.restore(snapshot.search)
 	m.RestoreSearchInput(snapshot.searchInput)
 	m.SetLensQuery(snapshot.lensQuery)
-	m.PeekMode = snapshot.PeekMode
+	m.PeekMode = snapshot.peekMode
 	m.RestoreSelection(snapshot.selection)
-	m.Recency.restore(snapshot.Recency)
+	m.Recency.restore(snapshot.recency)
 
 	m.Population.Invalidate()
 	m.RebuildRows()

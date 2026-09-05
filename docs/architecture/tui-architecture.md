@@ -27,18 +27,26 @@ and the chord trie. L4 is `route`, the `View` interface with `Route`,
 `ViewRegistry` and the navigation and overlay stacks. L5 is `listsurface`, the
 shared base views, multi-select state, and cursor and preview geometry. L6 is
 `help`. L7 is the surfaces: `notes`, `taskdetail`, `taskform`, `lens`,
-`conflict`, and `projecthub`, whose only edge among themselves is
-`projecthub → notes`. L8 is the root shell, which still owns `AppModel`, the
-Outliner, the fifteen concrete registrars `registerOperationCatalog` drives,
-and the uitest harness.
+`conflict`, `projecthub`, and `outliner`. Their edges among themselves run one
+way only — `projecthub → notes`, and `outliner →` each of `notes`, `taskform`,
+`taskdetail`, `lens`, `projecthub` — and `conflict` is a sibling of `outliner`
+rather than a dependency of it, because `gc` browses bundles as a shell-owned
+overlay. L8 is the root shell, which owns `AppModel`, the Outliner root it
+mounts, the concrete registrars `registerOperationCatalog` drives, and the
+uitest harness.
 
-That graph is a table rather than a convention. `scripts/tui_package_graph.tsv`
-carries one row per package naming the complete set of siblings it may import,
-and it is a whitelist rather than a floor: an import absent from the row is a
-violation even when the target sits lower, which is what keeps a sideways edge
-inside one layer as reviewable as an upward one. `tui_layer_fitness_test.go`
-reads that table and fails on the real import graph, so an edge is added to the
-table, with the reason it exists, in the same change that writes the import.
+That graph is a table rather than a convention, and the table is the layering
+rather than a record of it. `scripts/tui_package_graph.tsv` carries one row per
+package naming its layer and the complete set of siblings it may import, and it
+is a whitelist rather than a floor: an import absent from the row is a violation
+even when the target sits lower, which is what keeps a sideways edge inside one
+layer as reviewable as an upward one. `tui_layer_fitness_test.go` reads that
+table and fails on the real import graph, so an edge is added to the table, with
+the reason it exists, in the same change that writes the import. It also matches
+the table's population against the packages that hold a Go file in both
+directions, so a package that spells no sibling import cannot slip past the edge
+check unnamed: a new package declares its layer before it can declare an import,
+and a deleted one takes its row with it.
 
 The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
 `Tab`/`Shift+Tab` cycle only that ordered catalog, and the `g` chord jumps

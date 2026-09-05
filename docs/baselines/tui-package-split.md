@@ -1372,3 +1372,189 @@ that now declares it, moved back above the declaration it describes, or was
 deleted where the symbol was. Expect this residue from any extraction that
 leaves a doc block behind, and expect `deadcode` not to catch it — a comment is
 not a declaration.
+
+## Per-package file counts at the Phase 3 boundary (Session 5.1)
+
+Twenty-three packages: the twenty-two Phase 1 extractions plus `outliner`, which
+Session 4.10 lifted out of the shell. Same recipe as the Session 3.1 table.
+
+| package | production files | test files | production lines | test lines |
+| --- | --- | --- | --- | --- |
+| `chrome` | 24 | 13 | 2524 | 1500 |
+| `conflict` | 1 | 2 | 496 | 283 |
+| `coordinator` | 10 | 2 | 1513 | 269 |
+| `grammar` | 25 | 19 | 4935 | 2478 |
+| `help` | 7 | 5 | 997 | 350 |
+| `keymap` | 2 | 2 | 187 | 63 |
+| `lens` | 7 | 5 | 1174 | 805 |
+| `listsurface` | 21 | 11 | 4500 | 1386 |
+| `notes` | 15 | 9 | 2932 | 2629 |
+| `operation` | 24 | 2 | 3993 | 54 |
+| `outliner` | 31 | 42 | 17160 | 8328 |
+| `presentation` | 3 | 2 | 68 | 75 |
+| `projecthub` | 16 | 13 | 3033 | 1880 |
+| `pulse` | 3 | 3 | 345 | 348 |
+| `query` | 13 | 8 | 2467 | 1003 |
+| `route` | 11 | 4 | 1113 | 365 |
+| `status` | 5 | 2 | 281 | 76 |
+| `taskdetail` | 13 | 8 | 2184 | 1196 |
+| `taskform` | 28 | 19 | 4136 | 2690 |
+| `taskref` | 2 | 2 | 53 | 163 |
+| `textfit` | 5 | 5 | 261 | 461 |
+| `theme` | 23 | 10 | 1959 | 1227 |
+| sub-package subtotal | 289 | 188 | 56311 | 27629 |
+| tui (root shell) | 132 | 304 | 19705 | 58423 |
+| **total** | **421** | **492** | **76016** | **86052** |
+
+Every one of the twenty-three is under the 40-file production target, and
+`outliner` at 31 is now the largest — it replaced `taskform` at 28, which is
+what a 132-production-file shell looks like after the Outliner leaves it. That
+target is the production column by construction: `docs/baselines` has read it
+that way since the Session 3.1 table, and `internal/tui`'s test files outnumber
+its production files 492 to 421 across the subtree, so a total-file reading would
+declare `outliner` (73), `taskform` (47), `grammar` (44) and `chrome` (37 —
+under, but only just) a different kind of problem than the one the target names.
+By total files the four are over and the other nineteen are under.
+
+The root shell is not under 40 by either reading, and it is not meant to be: it
+is the residue, not an extraction, and it is what Phase 2 spent its sessions
+shrinking. Recording its number rather than excluding it is the honest form —
+206 production files at the Phase 1 boundary, 132 now, a 36% reduction that came
+almost entirely from `outliner`.
+
+Against `context.md`'s 800-file baseline (410 production / 72,275 lines; 390
+test / 78,702 lines), the subtree is now 913 files: production up 11 to 421 and
+lines up 3,741, test up 102 to 492 and lines up 7,350. Neither rise is the split
+duplicating code. Each test-bearing package carries a `main_test.go` for its own
+`TestMain`, a package boundary splits files that used to be one, and Phases 2
+and 3 added tests for behaviour that had none — the layer-fitness test and its
+graph table among them.
+
+## Third forced-export sweep (Session 5.1)
+
+The Session 3.2 oracle rebuilt and rerun against the current tree, with the same
+three-part definition of forced by the split and the same archived baseline at
+`3d3e7d2d`. The sweep is over both declarations and members this time; Session
+3.2 named members as one of its two blind spots, and closing it is what makes
+this the third sweep rather than a repeat of the second.
+
+| population | exported | withdrawal candidates | forced by the split |
+| --- | --- | --- | --- |
+| declarations | 1488 | 198 | 0 |
+| members (fields and methods) | 1722 | 181 | 0 |
+
+A withdrawal candidate is an export with no consumer outside its declaring
+package, not named by that package's own exported signature surface, and not a
+live enum member. The zeros are the deliverable: every export the split forced
+that nothing outside its package reads has been withdrawn. Three were, and they
+are the whole of this session's code change:
+
+| withdrawn | to | why it was forced |
+| --- | --- | --- |
+| `notes.CompareNoteLocations` | `compareNoteLocations` | `notes_view_rows.go`; three in-package callers and a doc mention, no consumer anywhere |
+| `OutlinerViewSnapshot.PeekMode` | `peekMode` | `outliner_state.go`; the other seven non-`Presentation` fields were already unexported, so the snapshot was inconsistent with itself |
+| `OutlinerViewSnapshot.Recency` | `recency` | same struct, same reason |
+
+`OutlinerViewSnapshot.Presentation` stays exported: shell tests read
+`origin.Presentation.Mode`. The 198 and 181 that remain are pre-existing public
+vocabulary the split never touched — `theme`'s style variables are most of the
+declaration column — which Session 2.2 already ruled is not an exit condition.
+
+`just dead` was clean before this sweep and is clean after it, with the
+two-entry allow-list in `scripts/dead_code.sh` untouched. Widening it would have
+made the sweep meaningless.
+
+### Every export with exactly one consumer package
+
+Declarations only, so the row is comparable with Session 3.2's. A consumer here
+is any other package that names the export, test files included.
+
+| single consumer | exports | forced by the split | Session 3.2 |
+| --- | --- | --- | --- |
+| the root shell | 494 | 246 | 683 / 351 |
+| a sibling sub-package | 191 | 92 | 77 / 32 |
+| **total** | **685** | **338** | **760 / 383** |
+
+The 189 exports that left the shell column did not become more private; they
+changed consumer. `outliner` is now the sole consumer of 114 of them, which is
+the extraction showing up in the export graph exactly where it should. The
+remaining shell-only 494 stay for Session 3.2's reason unchanged: the shell is
+still the only place an `AppModel` lives, so moving them back is undoing the
+extraction.
+
+### Three blind spots in the name-based oracle
+
+Session 3.2 recorded two blind spots — renames, and members. Members are now
+covered, and rebuilding the go/packages half of the tool surfaced three further
+ways a consumer scan reports a live export as unused. All three are false
+positives that would have driven a wrong withdrawal, and all three are cheap to
+re-hit, so they are recorded rather than the tool:
+
+- **Anonymous interfaces.** `internal/tui/app_update_messages.go` asserts
+  `view.(interface{ RefreshAfterReload() bool })`. An `interface{ ... }` literal
+  never reaches a package scope, so a scan over package scopes credits the use to
+  nobody and `TaskAttachmentsModel.RefreshAfterReload` reads as dead. The shell
+  wires several coordinators through exactly those literals. Scan
+  `TypesInfo.Types` for interface types too.
+- **Generic instantiation.** `TypesInfo.Uses` yields the *instantiated* object
+  for a call through `Picker[T]`, not the generic declaration, so every method
+  and field reached that way reads as unconsumed —
+  `AlwaysSearchSinglePicker.FuzzyFilter` has a caller at
+  `internal/tui/notes/notes_view.go:255` and still looked dead. Resolve through
+  `(*types.Func).Origin()` and `(*types.Var).Origin()`. This is the same hazard
+  the `tuiqualify` sessions recorded.
+- **Method and function sharing a name.** `internal/tui/outliner` declares both a
+  package-level `taskLineEditRequest` and a method
+  `(*OutlinerModel).TaskLineEditRequest`. Looking every use up in the package
+  scope credits the method's uses to the function, and the method reads as
+  unconsumed even though `state_changing_tui_planning_test.go:108` calls it.
+  Consult the package scope only for objects whose `Parent()` *is* that scope.
+
+Under the first two, the declaration-level forced-candidate count read 1 and the
+member count 3; after all three fixes they read 0 and 2. Two of the three
+apparent findings were tool bugs, which is the reason to state the oracle's
+failure modes beside its results.
+
+## Layer fitness promoted to the enforced contract (Session 5.1)
+
+`tui_layer_fitness_test.go` already failed the build on an import
+`scripts/tui_package_graph.tsv` does not allow, so the promotion was not about
+making a passing test fail. Two things made it advisory in practice, and both
+are closed:
+
+- `tuiPackageFloor = 3` was a vacuity guard written when three real packages
+  existed. Twenty-three exist now, so it guarded nothing.
+- More seriously, the edge check could only see a package that appears in an
+  edge. A package that spells no sibling import at all — and `presentation`,
+  `theme`, `taskref` and `keymap` legitimately spell none — was invisible to the
+  whole check, table row or no table row.
+
+`TestTUIPackageGraphDescribesEveryPackageThatExists` replaces the floor with an
+exact population match in both directions: every directory under `internal/tui`
+holding a Go file must have a row, and every row but the shell's must have a
+directory. That is a tighter vacuity guard than a count, and it is what makes a
+new package declare its layer before it can declare an import.
+
+The prose that used to carry this rule is gone from `CLAUDE.md`. It enumerated
+L0 through L8 by hand and had already drifted — it omitted `outliner` from L7 and
+still said L8 owned the Outliner root — which is the argument for the table being
+the layering rather than a description of it. `docs/architecture/tui-architecture.md`
+keeps a reader's tour of the layers, corrected, and points at the table for the
+rule.
+
+Verified by adding one upward import and taking it away again: a scratch
+`internal/tui/coordinator` file importing `internal/tui/notes` — L1 reaching L7,
+and one of the few upward pairs that does not also close a compile cycle, since
+`notes` lost its `coordinator` edge in Session 2.22. `go build ./internal/tui/...`
+succeeded; the fitness test failed with
+
+```text
+internal/tui/coordinator/zz_scratch_upward_import.go: coordinator (L1) imports
+notes (L7), which scripts/tui_package_graph.tsv does not allow; move the code
+down or add the edge deliberately
+```
+
+and went green when the file was deleted. Note the choice of pair: most upward
+imports are caught by the Go compiler as an import cycle before the test runs,
+which proves the compiler and not the test. The pair that is not a cycle is the
+one that shows the test is load-bearing.

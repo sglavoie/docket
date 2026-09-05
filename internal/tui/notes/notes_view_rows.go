@@ -163,7 +163,7 @@ func (m *NotesViewModel) visibleRowLess(left, right LocatedNoteRow, query string
 		return order < 0
 	}
 	if query == "" {
-		if order := CompareNoteLocations(left.Location, right.Location); order != 0 {
+		if order := compareNoteLocations(left.Location, right.Location); order != 0 {
 			return order < 0
 		}
 		if order := strings.Compare(strings.ToLower(left.Note.Title), strings.ToLower(right.Note.Title)); order != 0 {
@@ -186,7 +186,7 @@ func (m *NotesViewModel) visibleRowLess(left, right LocatedNoteRow, query string
 	if order := strings.Compare(left.Note.Filename, right.Note.Filename); order != 0 {
 		return order < 0
 	}
-	return CompareNoteLocations(left.Location, right.Location) < 0
+	return compareNoteLocations(left.Location, right.Location) < 0
 }
 
 func (m *NotesViewModel) restoreVisibleSelection(identity NoteRowIdentity, preserve bool) {
@@ -249,7 +249,7 @@ func notesScopeMatches(scope route.NotesScope, location app.NoteLocation) bool {
 	}
 }
 
-func CompareNoteLocations(left, right app.NoteLocation) int {
+func compareNoteLocations(left, right app.NoteLocation) int {
 	if left.Scope != right.Scope {
 		return strings.Compare(string(left.Scope), string(right.Scope))
 	}
@@ -258,11 +258,11 @@ func CompareNoteLocations(left, right app.NoteLocation) int {
 
 // SortLocatedNoteRows gives a note collection one deterministic order —
 // location, then filename — so a ranking tie resolves the same way on every
-// rebuild. It lives beside CompareNoteLocations because the order is the row
+// rebuild. It lives beside compareNoteLocations because the order is the row
 // type's own, not a property of whichever surface happens to be listing it.
 func SortLocatedNoteRows(rows []LocatedNoteRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
-		if order := CompareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
+		if order := compareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
 			return order < 0
 		}
 		return rows[i].Note.Filename < rows[j].Note.Filename
