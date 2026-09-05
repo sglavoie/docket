@@ -23,11 +23,11 @@ the view's scope exactly as it found it, which is deliberately not a way to forc
 the global population. `capturedLensScope` decides what a save records — never
 the single-project Outliner, which is a scope no lens installs, and never a
 parked focus, which is an exception to the base workspace rather than a scope the
-base Outliner can be asked for. `captureLensState` reads the query axis through
+base Outliner can be asked for. `CaptureLensState` reads the query axis through
 `capturedLensQuery`, which is `m.lens.query` under a lens and the accepted
 `SearchQuery()` when an ordinary search query is narrowing the visible rows and
 its input is closed. Only that axis crosses over: the search carrier itself
-cannot survive underneath a lens, so `publishLens` calls
+cannot survive underneath a lens, so `PublishLens` calls
 `clearSearchProjectionWithoutRestore` and the baseline hands the search back on
 the way out. The definitions travel with the workspace but no lens
 is a workspace entity, which decides the rest of the design: a lens mutation
@@ -47,11 +47,11 @@ refusal is indistinguishable from never having asked. `lensScopeRefusal` tests
 membership in `TaskWorkspaceProjects()` alone, which is already non-archived and
 unparked, so one test answers all three cases; `GetProject` is read only to word
 the message as archived, parked, or no longer existing, never to widen
-admission. Parked therefore fails closed, with `scopeState.parkedProjectID` and
+admission. Parked therefore fails closed, with `scopeState.ParkedProjectID` and
 `settleParkedFocusException` the named seam a later revision would reopen it
 through. When the lens changes which projects load, `beginLensProjectLoad`
 carries the candidate filter with the load instead of writing it to the model and
-bumps a generation counter; `handleLensProjectsLoaded` publishes only when its
+bumps a generation counter; `HandleLensProjectsLoaded` publishes only when its
 own generation comes back, so a superseded load installs nothing. That start is
 also where the restoration point is frozen: the pending application carries the
 baseline captured before the read, so navigating, searching, or filtering while
@@ -66,14 +66,14 @@ nothing to publish into and leaves no half-armed chrome behind. Under a
 single-project scope no load is required at all: the scope already fixed the
 population, and the lens's project facets stay recorded but inert until it is
 left. A lens that owns a scope therefore installs it *before* the load decision,
-through `pushProjectScope` rather than by assigning the field, which is what
+through `PushProjectScope` rather than by assigning the field, which is what
 keeps the whole inert-facet mechanism untouched: `lensProjectLoadRequired` is
 false under a scope, so a scoped lens reads no population at all and the other
 order would start a load the scope immediately invalidates. Project facets are
 population
 selectors rather than row predicates, so `activeLensFrame` remembers that a
 publication left them owed a load, and the explicit clear-scope route pays it:
-`beginLensScopeExit` arms an application that carries no definition, and
+`BeginLensScopeExit` arms an application that carries no definition, and
 `finishLensScopeExit` installs the population and drops the scope together. The
 scope stands while that read runs, so replacing one project scope with another
 keeps the facets inert and a wholly failed read leaves scope, population, and
@@ -88,16 +88,16 @@ the whole of what a comparison needs, so the frame keeps no second copy of the
 record: the definition itself lives in the lens domain. That fingerprint is taken
 from the definition with its scope axis replaced by the scope the view is
 actually in, because an unowned axis cannot be diverged from — which is also
-what makes a later scope push or pop a real divergence. `lensModified` carves
+what makes a later scope push or pop a real divergence. `LensModified` carves
 scope out of "navigating" for exactly that reason: moving the cursor, folding,
 selecting, and opening Peek all leave an unmodified lens unmodified, while
 entering or leaving a project scope marks it, and `Replace from current view` is
-what adopts the scope the user moved to. `lensRestorationPoint`
+what adopts the scope the user moved to. `LensRestorationPoint`
 reuses the original capture whenever a lens is already live, so switching lenses
 replaces the definition while keeping the baseline: one `Esc` lands on the view
 the user actually left rather than on an intermediate lens. The Esc cascade
 unwinds the lens after search and before the focus stack, and
-`classifyEmptyCause` orders the empty state the same way — a lens owns the mode,
+`ClassifyEmptyCause` orders the empty state the same way — a lens owns the mode,
 the whole narrowing, the sort, and the scope at once, so naming any
 one of them would send the user to a key that cannot widen the list.
 
@@ -108,7 +108,7 @@ reads the lens compilation rather than the search one for its badges, because
 those are the rows on screen. `renderTaskTitle` reads the same compilation for
 the same reason: `titleHighlightQuery` returns the search remainder and its case
 mode when a search owns the projection and the lens remainder and
-`lensCaseSensitive()` when a lens does, so a marked title always names the query
+`LensCaseSensitive()` when a lens does, so a marked title always names the query
 the visible rows were actually narrowed by.
 
 `\` reaches the picker through the ordinary core operation
@@ -117,10 +117,10 @@ the visible rows were actually narrowed by.
 today. It is admitted from browse and from accepted ordinary-search results, and
 it never fires while a text control owns input — `handleGlobalKeyPress` routes
 the text prompt, value picker, action sheet, and lens picker first, and
-`handleSimplifiedInputKey` declines under `simplifiedInlineControlOwnsInput`, so
+`handleSimplifiedInputKey` declines under `SimplifiedInlineControlOwnsInput`, so
 `\` stays a literal character everywhere text is being typed. Help's own `\` is
-surface-local and unaffected. `resetToGlobalAll` calls
-`clearActiveLensWithoutRestore`, so no lens frame survives the launch reset and
+surface-local and unaffected. `ResetToGlobalAll` calls
+`ClearActiveLensWithoutRestore`, so no lens frame survives the launch reset and
 none survives an `Esc` to the root either.
 
 A launch nonetheless reopens the lens the pointer named, and the order is what
@@ -128,7 +128,7 @@ makes that safe. `NewAppModel` reads `Machine().ActiveNamedLens()` into
 `lenses.pendingLaunch` before any message is dispatched, precisely because the
 launch reset it is about to run clears that pointer; holding the value is what
 lets the reset stay ignorant of a case it should not know. The lens is drained in
-the `crossProjectsLoadedMsg` arm of `handleGlobalLifecycleMessage`, after the
+the `CrossProjectsLoadedMsg` arm of `handleGlobalLifecycleMessage`, after the
 population has been adopted, because a lens names a project scope and project
 facets that cannot be validated against a population that has not landed yet; a
 superseded generation adopts nothing and so drains nothing. `restorePendingLaunchLens`
@@ -136,18 +136,19 @@ takes the value exactly once and forgets it either way, then applies it through
 the ordinary `ApplyNamedLens`, so every refusal already documented above decides
 a launch too. A refusal is silent: the pointer is a hint the user last expressed
 on this machine, not a record they are owed an error about. Because the reset
-completed first, `lensRestorationPoint` captures the canonical Active Projects /
+completed first, `LensRestorationPoint` captures the canonical Active Projects /
 All view, and the first `Esc` lands exactly where a lens-free launch would have
-started — with no new baseline machinery, since `outlinerViewSnapshot` already
-carries `scopedProjectID` and `scopeStack`.
+started — with no new baseline machinery, since `OutlinerViewSnapshot` already
+carries the whole `scopeSnapshot`: the scoped project, the frame stack, and the
+parked exception together.
 
 `MachineState.ActiveLensID` is the machine-local pointer at whichever lens is
-live. `publishLens` writes it and `restoreLensBaseline` and
-`clearActiveLensWithoutRestore` clear it, all three through the nil-safe
-`lens.persist` seam the shell injects through `setPersistActiveLens` in
+live. `PublishLens` writes it and `RestoreLensBaseline` and
+`ClearActiveLensWithoutRestore` clear it, all three through the nil-safe
+`lens.persist` seam the shell injects through `SetPersistActiveLens` in
 `wireOutlinerOperationExecutor`; `commitActiveLensPointer` is the `AppModel`
 side, built on `commitNamedLensMutation` so it inherits the same
-clone→validate→commit path and the `DataDir() == ""` in-memory fallback. Writing it from `publishLens` rather
+clone→validate→commit path and the `DataDir() == ""` in-memory fallback. Writing it from `PublishLens` rather
 than from `ApplyNamedLens` is what keeps it honest: an asynchronous application
 superseded by a later generation publishes nothing, and persisting at the ask
 would have named a lens the user never saw. It is also the one lens write not

@@ -41,8 +41,8 @@ content against the bar's measured height, so the strip sits directly above the
 footer with no blank padding, at any guidance height, and is never the line
 `clipContentHeight` eats. The Outliner is the one provider. The
 outstanding-conflict indicator, its focus notice, and its own status message are
-the strip's three lines, `statusStripHeight` reserves the divider plus their
-wrapped height from `computeOutlinerViewport`'s row budget, and
+the strip's three lines, `StatusStripHeight` reserves the divider plus their
+wrapped height from `ComputeOutlinerViewport`'s row budget, and
 `ViewStatusStrip` consumes the one-shot focus notice — safe because
 `AppModel.View` renders the view before the status bar, so the reservation and
 the strip see one frame's inputs.
@@ -71,7 +71,7 @@ which embeds `pulse.WorkspacePulseState`, so the promoted `SetWorkspacePulse`
 and `CurrentWorkspacePulse` already were the pair every other full-screen
 presentation uses. The Outliner nevertheless declared its own `workspacePulse`
 field and its own `SetWorkspacePulse` beside them, shadowing both: the shell's
-injection wrote the shadow, `buildOutlinerTitleLine` read the shadow, and the
+injection wrote the shadow, `BuildOutlinerTitleLine` read the shadow, and the
 promoted `CurrentWorkspacePulse()` read an embedded copy nothing ever wrote. It
 was invisible only because no Outliner code path took the promoted route — the
 shadow was one accidental caller away from reading a zero pulse, and the two
@@ -79,20 +79,20 @@ spellings could not be told apart at a call site. Removing the field and the
 method makes the injected value and the read value the same storage by
 construction, which is why the title still renders identically. The one
 mechanical consequence is that `OperationalTitleSpec.Pulse` is a pointer and an
-accessor has no address, so `buildOutlinerTitleLine` names the value in a local
+accessor has no address, so `BuildOutlinerTitleLine` names the value in a local
 first; that local is the whole cost of not being able to shadow it again.
 
-`internal/tui/advisories.go` is the opt-out that count answers to, and it is
+`internal/tui/outliner/advisories.go` is the opt-out that count answers to, and it is
 deliberately a category rather than a switch on one line. An advisory is ambient
 workspace state — on screen because of what the workspace holds, not because of a
 key just pressed — and today the category has exactly two members: the conflict
 indicator and the `N projects failed to load` notice both loads emit. Each routes
-through `advisoryLine` (a strip row) or `advisoryStatus` (a status message), and
+through `AdvisoryLine` (a strip row) or `AdvisoryStatus` (a status message), and
 that is the whole rule: a later ambient row inherits `--no-advisories` and the
 View menu's toggle by using those helpers, with nothing to edit in the gate
-itself. `advisoryLine` returning the empty string is what makes the row's height
-reservation follow for free, since `statusStripHeight` measures the same body
-`statusStripBody` paints. Suppression is session state on the shell
+itself. `AdvisoryLine` returning the empty string is what makes the row's height
+reservation follow for free, since `StatusStripHeight` measures the same body
+`StatusStripBody` paints. Suppression is session state on the shell
 (`AppModel.feedback.hideAdvisories`, injected as `advisoriesHiddenAccessor` by
 `wireOutlinerOperationExecutor`) rather than a per-render read of the machine
 file, because two inputs decide it: `MachineState.AdvisoriesHidden`, read once in
@@ -109,7 +109,7 @@ is worse than a line a flag cannot reach.
 
 `ConflictBrowserModel` is that count's read-only companion, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
-`renderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
+`RenderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
 one in `dimmedOverlayRenderers`, and one `ConflictBrowserClosedMsg` case in
 `handleOperationOverlayMessage`. It declares no `PresentationID`, no
 `InputStrategy`, and no manifest entry, so `surfaceOperationGates()` still lists
@@ -127,27 +127,27 @@ mutating store method: resolution stays in `tt conflict resolve`.
 The query readout is the strip's fourth line and the expansion of the
 operational title rather than a rival to it. Collapsed it renders nothing, since
 the title already carries the lens, the scope, the query, and the chips;
-`Q` sets the `queryReadout` sub-state and `queryReadoutBody` then lists one row per
+`Q` sets the `QueryReadout` sub-state and `QueryReadoutBody` then lists one row per
 independently peelable narrowing, rebuilt from live state every frame so nothing
-is remembered or inferred. It is pure, which is what lets `statusStripHeight`
-measure exactly the string `statusStripBody` paints, and it sits under the
-conflict indicator, which keeps the lead. `queryReadoutRows` reads the axes in
+is remembered or inferred. It is pure, which is what lets `StatusStripHeight`
+measure exactly the string `StatusStripBody` paints, and it sits under the
+conflict indicator, which keeps the lead. `QueryReadoutRows` reads the axes in
 the order the title reads them — lens, scope, mode, query, then
 `commonFilterReadoutRows` and `projectFilterReadoutRows` — and a facet row's
 value is `query.FilterClauseParts` output, so a row, a chip, and a typed query spell
 one narrowing with one set of characters. A mode declares no clauses, so its row
 names the mode instead of spelling a gate the catalog never held.
 
-`commonFilterFacetCount`'s split is promoted from a count into the peel unit, so
+`CommonFilterFacetCount`'s split is promoted from a count into the peel unit, so
 the readout cannot invent a facet boundary the facet writes do not have.
 `peelQueryReadoutAxis` is the single write and routes each axis through the call
-its own key uses — `restoreLensBaseline`, `clearProjectScope`,
+its own key uses — `RestoreLensBaseline`, `ClearProjectScope`,
 `selectOutlinerMode(ModeAll)`, `ClearSearch`, `setLensQuery("")`, or
 `replaceFilterClauses(row.fields, nil)` — so a peel cannot reach a state the
 grammar cannot. It reports whether the peel owes a population reload, which this
 model cannot perform: `queryReadoutRowRequiresReload` asks
 `models.QueryFieldRequiresReload` over the row's own fields, the peel refuses
-under `showsRankedList()` in the same words the `F` chord refuses in, and
+under `ShowsRankedList()` in the same words the `F` chord refuses in, and
 otherwise raises `QueryReadoutReloadRequestMsg` for the shell's
 `projectFilterReloadCmd`. `SaveViewAsLensRequestMsg` is the same delegation for
 `s`, because the name prompt and the lens transaction both live above the
@@ -161,20 +161,20 @@ that fails to clear itself.
 
 The menu bar and its open menu are the same kind of thing one level apart. The
 bar is machine-local chrome: `M` writes `MenuBarVisible`, `menuBarRows` charges
-the list exactly one row, and `contentHeight` is the only subtraction, so a bar
+the list exactly one row, and `ContentHeight` is the only subtraction, so a bar
 that resolved to no menus at all still owes its row rather than letting the
 reservation and the paint disagree. `resolvedMenuBar` projects
-`outlinerMenuSpecs` against the live catalog every frame and caches nothing,
+`OutlinerMenuSpecs` against the live catalog every frame and caches nothing,
 which is what lets a menu whose every entry fell away leave the bar entirely,
 and `menuBarLayout` reports where each label landed rather than only what the
 row reads, because a dropdown is padded to a column and `RenderTabBar` returns
 a string alone.
 
 The open menu is the `Q` readout's template applied a second time: the gate and
-two indices named together as the model's `menuBar` field, whose own
+two indices named together as the model's `MenuBar` field, whose own
 `menuBarState` owns every write to them, `closeMenuBar` in every projection-replacing
-reset, a first branch in `handleKeyMsg` delegating to `handleMenuBarKey`, a
-claim in `simplifiedInlineControlOwnsInput`, and `menuBarGuidance` as the first
+reset, a first branch in `HandleKeyMsg` delegating to `handleMenuBarKey`, a
+claim in `SimplifiedInlineControlOwnsInput`, and `menuBarGuidance` as the first
 case of `ContextualGuidance` — which reads its own close key back through
 `InputShortcutForOperation` instead of spelling it, so a rebinding moves the
 footer hint and the close arm together. It mints no `PresentationID`, opens no
@@ -183,7 +183,7 @@ overlay, claims no `InputStrategy`, and takes no manifest entry, so
 it takes no footer rank. `tui.core.open-menu-bar` is a second operation beside
 the toggle rather than a mode of it, because opening has to reveal a hidden bar
 in the same press: the handler commits the visibility through
-`RuntimeState.CommitMachine` and only then calls `openMenuBar`, which is why one
+`RuntimeState.CommitMachine` and only then calls `OpenMenuBar`, which is why one
 key never means "show" once and "open" the next time.
 
 It diverges from the readout in exactly one place, deliberately. The readout
@@ -209,7 +209,7 @@ governing the entity action sheets alone; the bar is a projection of the registr
 in the same class as `HelpItemsForInputStrategy` and `GuidanceHintsForInputStrategy`,
 so it names directly-bound operations freely and adds a route rather than a second
 path to arbitrate. `tui.core.clear-folds` inhabits the category: it clears
-`expandedNodes` and the whole `collapsedSections` map in one act, which is what
+`ExpandedNodes` and the whole `CollapsedSections` map in one act, which is what
 the three reversing toggles `s`, `p`, and `t` cannot spell between them, and it is
 the one core operation that reports success as well as refusal — a menu row closes
 its dropdown over the rows it changed, so silence would read as a swallowed press
@@ -218,20 +218,20 @@ rather than as a change already on screen.
 The dropdown is drawn inline rather than composited. It is written into the
 content stream immediately under the bar row, left-padded to the open label's
 `StartCol` and clamped by `overlayPopup`'s own arithmetic so the right edge
-stays on screen — and it is the entire frame. `renderOutlinerTreeContent` branches
+stays on screen — and it is the entire frame. `RenderOutlinerTreeContent` branches
 to `renderOutlinerMenuFrame` before it consults the row count, so an open menu
 draws the bar row and the block alone: no operational title, no suggestion pane,
-no rows, and no `computeOutlinerViewport` call at all. The list is not shrunk to
+no rows, and no `ComputeOutlinerViewport` call at all. The list is not shrunk to
 make room for a menu, which is what stops every row on screen from stepping down
 and back up once per press; skipping the window authority is what leaves
-`ViewScrollOffset` and `lastViewport` holding the window the last list frame drew,
+`ViewScrollOffset` and `LastViewport` holding the window the last list frame drew,
 which is both the window the close redraws and the one a key re-emitted through
 the non-modal arm pages against. The branch is keyed on the drawn block rather
-than on the `menuBar` gate, since a dropdown that resolved to nothing must fall back
+than on the `MenuBar` gate, since a dropdown that resolved to nothing must fall back
 to an ordinary frame rather than blank the view. `menuBarDropdownRowBudget` then
-spends what the hidden list freed: `contentHeight` plus the undrawn title row,
-less `statusStripHeight`, because the shell pins that strip and a box claiming
-its rows would be clipped rather than scrolled. It reuses `renderOverlayBox` and `RenderCompactListSurface`
+spends what the hidden list freed: `ContentHeight` plus the undrawn title row,
+less `StatusStripHeight`, because the shell pins that strip and a box claiming
+its rows would be clipped rather than scrolled. It reuses `RenderOverlayBox` and `RenderCompactListSurface`
 over a surface rebuilt each frame, sized to its longest entry rather than to a
 fraction of the screen, since a box anchored under one label that claimed three
 fifths of the terminal would read as a modal. The two stored indices are the
@@ -275,7 +275,7 @@ colored titles and badges already out-shout.
 
 `outlinerCursorRow` truncates the content to the columns the gutter leaves, then
 pads the remainder with `cursorPaint.trail()`, so a marked row is exactly
-`rowWidth` columns at every width — the contract `attachScrollbarAtWidth` depends
+`rowWidth` columns at every width — the contract `AttachScrollbarAtWidth` depends
 on — and degrades to a truncated gutter when `rowWidth` is no wider than the
 gutter itself. The seam is a concatenation only: it joins the same pieces at the
 same widths the row already had, so `titleWidth` remains the single title-budget

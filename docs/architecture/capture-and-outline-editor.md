@@ -105,7 +105,7 @@ order and `guideOrder` is teach order, projected by `Definitions` and
 mint an attachment the user never wrote. Peeling `&` first leaves it glued to
 the tag, where it stays literal title text. Parse order is not a curriculum,
 though, so `guideOrder` teaches attachments last, beside their own group, and
-`syntaxGuideGroups` is the one consumer reading that projection.
+`SyntaxGuideGroups` is the one consumer reading that projection.
 `validateGuideOrder` runs at `init()` and asserts the two lists hold identical
 sets, which is what makes the split safe: a field added to one and forgotten in
 the other would otherwise vanish from the guide or gain an unreachable entry.
@@ -119,16 +119,16 @@ name refuse by name instead of overwriting each other. `applyCapturedAttachments
 then records the metadata and returns the `storage.AttachmentCopy` ops, which
 ride the capturing task's own `ChangeSet` through
 `commitProjectWithSideEffects`. Metadata precedes staging exactly as in
-`attachFile`, so a rejected attachment aborts the capture without writing a byte,
+`AttachFile`, so a rejected attachment aborts the capture without writing a byte,
 and one undo entry takes back the task and its attachments together. In
 `CaptureMany` the ops are grouped per project onto each `projectCommit`, and they
 are built after the hierarchy guards run so a rejected batch has staged nothing.
 The sigil is capture-only: `parseOutlineBodies` rejects it beside `%project`,
 `>parent`, `<child`, and `@@defer`, and search names it in `refusedSearchFields`,
 which re-validates the captured value on `SurfaceCapture` first so only a
-genuinely attachable value blocks a query. `expandSingle` no longer refuses it:
+genuinely attachable value blocks a query. `ExpandSingle` no longer refuses it:
 the expanded form's Extras tab is the attachment channel it was missing, so
-`expandRequest` seeds `taskFormDraft.attachments` from `CaptureRequest.Attachments`
+`ExpandRequest` seeds `taskFormDraft.attachments` from `CaptureRequest.Attachments`
 and the two halves of that rule — a refusal only while the value has nowhere to
 land — moved together.
 
@@ -178,9 +178,9 @@ document content, so it commits with the task write itself and needs no
 `AttachmentOp`, and the single ChangeSet that creates the task already covers it.
 Its refusals mirror the attachment's exactly — `parseOutlineBodies` and
 `refusedSearchFields` — with wording that names the Comments panel, and so does
-the one refusal that lifted: `expandSingle` carries a comment span into the
-expanded form now that `expandRequest` seeds `taskFormDraft.comments` from
-`CaptureRequest.Comments`. With that pair moved together, `expandSingle` is back
+the one refusal that lifted: `ExpandSingle` carries a comment span into the
+expanded form now that `ExpandRequest` seeds `taskFormDraft.comments` from
+`CaptureRequest.Comments`. With that pair moved together, `ExpandSingle` is back
 to exactly the three refusals it had before this grammar landed — `ChildIDs`,
 `Pinned`, and `Context` — each still a value the form has no channel for.
 
@@ -189,7 +189,7 @@ to exactly the three refusals it had before this grammar landed — `ChildIDs`,
 `CardinalityRepeatable`; that declaration is the entire mechanism, since
 `duplicateSingletonDiagnostics` already skips a non-singleton field. Both sigils
 name a task by exact short ID or unique case-insensitive title prefix through the
-one `resolveStructuralReference` matcher, which differs between them only in the
+one `ResolveStructuralReference` matcher, which differs between them only in the
 relationship word its ambiguity message carries. A task named as both `>parent`
 and `<child` on one line is refused, and across a multiline capture two lines
 claiming the same child are refused before any mutation, with the message naming

@@ -4,11 +4,11 @@
 
 A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
 renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>`
-for `deferWakeWindow` (72h, defined in
+for `DeferWakeWindow` (72h, defined in
 `internal/tui/query/primary_view_shared.go`), then nothing.
-The age reuses `formatRecencyChip` so a lapsed deferral is not formatted a
+The age reuses `FormatRecencyChip` so a lapsed deferral is not formatted a
 second way. `taskWokeRecently` is the one lapsed-deferral predicate and
-`formatRecencyAge` is the one age token; the Peek dates line reads both rather
+`FormatRecencyAge` is the one age token; the Peek dates line reads both rather
 than re-deriving either, so the row and the line beneath it can never disagree.
 The workspace pulse deliberately carries no `woke` component: lapsed deferrals
 name work that requires navigation before action. Its fourth component is instead
@@ -30,13 +30,13 @@ every other token.
 
 A deferral that lapses while the Outliner is open has to bring its row back
 without a key press, and it does so on the existing 60-second `status.PeriodicSaveMsg`
-tick rather than a second scheduler. Each row rebuild stores `nextDeferWake`,
+tick rather than a second scheduler. Each row rebuild stores `NextDeferWake`,
 the `earliestDeferWake` min-scan over the flat `project.Tasks` of the scoped
 projects, which already contains every nested child, so no tree walk is needed.
 `wakeDeferredRows` compares that clock against the tick and, once it is past,
 clears it and calls `m.population.invalidate()` and nothing else, leaving the render pass
 Bubble Tea runs next as the single rebuild authority and
-`computeOutlinerViewport` as sole owner of `ViewScrollOffset`.
+`ComputeOutlinerViewport` as sole owner of `ViewScrollOffset`.
 `safeToRebuildForWake` refuses while an overlay, picker, inline row editor,
 visual selection, or the flat ranked list is live, because rebuilding underneath
 one of those moves ground the user is standing on. A query that is merely
@@ -55,10 +55,10 @@ while those three counters wait for the rebuild that makes their rows visible.
 
 Waiting age reads the state clock, never the touch time.
 `formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
-formats `StateChangedAt` through `formatRecencyChip`, so a comment, a tag, or a
+formats `StateChangedAt` through `FormatRecencyChip`, so a comment, a tag, or a
 reparent on a blocked task cannot reset how long it has been blocked. A waiting
 task's due date is its check-back date, so `formatCheckBackIndicator` replaces
-the plain `formatDueDate` segment rather than sitting beside it: rendering both
+the plain `FormatDueDate` segment rather than sitting beside it: rendering both
 would state one fact twice. It compares calendar days through `util.StartOfDay`,
 like `ClassifyDueDate`, because a check-back reads at day granularity even though
 a due date may now carry a time; it is
@@ -83,7 +83,7 @@ like any other segment growth.
 
 Doing age follows the same state-clock contract.
 `formatDoingAgeIndicator` is gated on `IsInState(models.StateDoing)` and formats
-`StateChangedAt` through `formatRecencyChip`, so edits to active work do not
+`StateChangedAt` through `FormatRecencyChip`, so edits to active work do not
 reset how long it has remained in Doing. It stays neutral and renders alongside
 a due date rather than competing with the row's one hero attribute.
 
@@ -101,10 +101,10 @@ retired hard-dependency panels owned, and the count is not a fact a user hides.
 terminal, deleted, or unloaded work counts exactly like a reference to open
 work, and the same number is what the edit grammar round-trips.
 
-`S` and the color are the reading of the targets, and `dependencyCensusFor`
+`S` and the color are the reading of the targets, and `DependencyCensusFor`
 computes both in one pass so they can never disagree. It sorts every stored
 locator into `settled`, `blocked`, and `unreadable` over `app.DependencyIndex`,
-whose population is what `dependencyDetailProjects` returns — the same one Peek
+whose population is what `DependencyDetailProjects` returns — the same one Peek
 resolves its detail lines against, so the row and Peek report the same
 arithmetic. The census is strictly one hop: a target's own references are never
 walked, because a transitive reading would assert reachability through projects
@@ -121,12 +121,12 @@ carries under `--no-color` the one thing the muted tier used to say alone.
 | --- | --- | --- |
 | `dependencyOutlookBlocked` | at least one resolvable target is nonterminal | `DependencyIndicatorBlockedStyle` |
 | `dependencyOutlookSettled` | every reference resolves to a terminal task, or to a task absent from a project this view did load | `DependencyIndicatorSettledStyle` |
-| `dependencyOutlookUnreadable` | nothing readable is blocked, but a locator points into a project this view did not load | `MutedStyle` |
+| `DependencyOutlookUnreadable` | nothing readable is blocked, but a locator points into a project this view did not load | `MutedStyle` |
 
 Precedence runs blocked over unreadable over settled: a row with something
 left to wait on says so rather than hiding behind what it could not resolve. The
 unreadable tier stays muted rather than green for the same reason
-`dependencyDetailUnavailable` says `unavailable` and not `missing` — painting an
+`DependencyDetailUnavailable` says `unavailable` and not `missing` — painting an
 unloaded project's task as finished would assert a fact the view cannot read.
 The two named styles exist so retuning a due-date or status color never silently
 repaints a reference count, and both are rebuilt in `rebuildTaskStyles`. Neither
@@ -136,7 +136,7 @@ cannot mistake either for the Waiting lifecycle state.
 
 The index is built once per row-rebuild pass, not once per reference per row per
 frame, which is strictly cheaper than the linear scan it replaced.
-`OutlinerModel.dependencyIndex` builds it lazily over `dependencyDetailProjects`
+`OutlinerModel.dependencyIndex` builds it lazily over `DependencyDetailProjects`
 and holds it until `invalidateDependencyIndex` drops it, which `setLoadedProjects`
 and the `m.population.invalidate()` path both do. Invalidation is by replacement,
 never by patching. The older note here argued a memo would risk a stale color when
@@ -180,7 +180,7 @@ detached parent.
 
 Upward, a promoted section root carries `  ‹`: this row has a parent the outline
 above it does not show. Which parent is Peek's line to name. Downward, a row
-carries `  ›N` when `hasVisibleChildren` is false and the task has N open
+carries `  ›N` when `HasVisibleChildren` is false and the task has N open
 children — the parent that entered Doing while its children stayed in Backlog,
 whose row otherwise has no connector beneath it, no fold indicator, and reads
 exactly like a leaf. It is counted because `›` alone leaves open the question it
@@ -216,7 +216,7 @@ honest. Like `PrimaryStyle` it is presentation metadata the behavior model never
 inspects — query and ranking read the plain `PrimaryText` — which is what keeps
 a pinned row findable by its own name. An archived project keeps the marker,
 because the pin is real state that survives archiving, but
-`projectOperationRequirements` keeps `requireActive` on the operation, so the
+`ProjectOperationRequirements` keeps `RequireActive` on the operation, so the
 `* project pin` footer hint and the `?` help row correctly disappear there: the
 marker shows the state, the key hides because the act is unavailable.
 Select Project's preview pane keeps its `· pinned` line — prose for one project,

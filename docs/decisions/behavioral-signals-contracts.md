@@ -8,7 +8,7 @@ different keys, thresholds, precedence, wording, or drop positions.
 
 `indicatorDropLadder` is the narrow-row pressure order: position 1 disappears
 first and position 10 disappears last. The final order declared as
-`indicatorDropLadder` in `internal/tui/outliner_render_indicators.go` is:
+`indicatorDropLadder` in `internal/tui/outliner/outliner_render_task_row.go` is:
 
 | Position | Segment | Reason |
 | ---: | --- | --- |
@@ -24,7 +24,7 @@ first and position 10 disappears last. The final order declared as
 | 10 | `check` | It names work already quiet on someone else's desk and remains the last survivor. |
 
 This preserves the existing rationale documented with `indicatorDropLadder` in
-`internal/tui/outliner_render_indicators.go`: counts leave early while the most
+`internal/tui/outliner/outliner_render_task_row.go`: counts leave early while the most
 operational quiet-work signal leaves last. The draw order may group related
 segments, but pressure must follow the table above.
 
@@ -92,7 +92,7 @@ days old. The threshold is hardcoded as `90`, and the boundary is inclusive:
 age 89 is not stale; age 90 is stale. Compare calendar days, not elapsed
 24-hour durations. This follows Recent's hardcoded local-day precedent at
 `recentModeCutoffDays` and `BuildRecentModeSections` in
-`internal/tui/outliner_computed_rows.go` while intentionally using `UpdatedAt`,
+`internal/tui/outliner/outliner_rows.go` while intentionally using `UpdatedAt`,
 not `StateChangedAt`.
 
 The base stale predicate excludes terminal and currently deferred tasks. It may
@@ -105,11 +105,11 @@ loses to every existing stronger claim: Pinned, Today, Next, Review, and Doing.
 A task satisfying any of those remains in that section and never duplicates in
 Stale. This extends the Review rule at
 `(*OutlinerModel).buildReviewSection` in
-`internal/tui/outliner_review_section.go`: a deliberate planning claim or
+`internal/tui/outliner/outliner_sections.go`: a deliberate planning claim or
 active-work state outranks a derived age claim. Existing relative precedence
 among those five sections is unchanged. The insertion point binds
 `(*OutlinerModel).buildAllPrimaryRows` in
-`internal/tui/outliner_primary_rows.go`.
+`internal/tui/outliner/outliner_projection.go`.
 
 ## Today pace readout
 

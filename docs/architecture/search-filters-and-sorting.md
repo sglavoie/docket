@@ -23,7 +23,7 @@ together rather than each field its caller happened to remember.
 relevance-ordered list over the whole project scope, with no lanes, no headers,
 and no folds, ranking title matches before description, tag, and project metadata
 matches, then by fuzzy score and stable project/task order; `project#shortID` is
-an exact qualifier. `showsRankedList()` is the one predicate that gates what that
+an exact qualifier. `ShowsRankedList()` is the one predicate that gates what that
 presentation takes away — the population filters, the `F` family, which need a
 reload rather than a rebuild — and what it alone offers: the notes tier, the relevance
 ordering a sort reorders within, an order a fixed-order mode would otherwise keep
@@ -31,14 +31,14 @@ for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result. It is reached
 by toggling it, never by typing, and it dies with the query that gave it rows.
 
 Terminal and deferred admission has one rule in both presentations: the query
-says so. `admitsTerminalPopulation` and `admitsDeferredPopulation` read the
+says so. `AdmitsTerminalPopulation` and `admitsDeferredPopulation` read the
 canonical query and the compiled gate together, and nothing else opens either
 population.
 
 The query is not a single fuzzy string. `compileSearchQuery` parses it against
 `textgrammar.SurfaceSearch` — the fourth surface of the same registry, beside
 capture, edit, and the outline buffer — and splits it into a
-compiled `searchPredicates` gate and a free-text remainder. The gate is applied
+compiled `SearchPredicates` gate and a free-text remainder. The gate is applied
 before scoring, as a hard AND filter over candidate projects and tasks; the
 remainder is the only string the matcher ever sees. Every consumer reads it
 through `searchTextQuery()`, so a sigil is never scored, never smart-cased, and
@@ -121,7 +121,7 @@ position, Stale, and deferred-only and remain session-only. The deferred-only fa
 rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the
 due bucket and choosing a due bucket clears the deferred flag. Those five rows
-are `dueFilterShortcuts`, and a shortcut is the canonical token it writes:
+are `DueFilterShortcuts`, and a shortcut is the canonical token it writes:
 `query.FilterShortcut.Token()` is `query.FilterClauseParts` over the clauses the row
 installs, so the row label, the which-key hint, the operation's preset value, and
 the status all read `@overdue`, `@today`, `@week`, `@0`, or `?deferred`. The
@@ -136,10 +136,10 @@ their own axis on `fc`, whose `CommonFilterState.Contexts` names compose with OR
 because a task carries at most one, and whose `NoContext` bool admits the tasks
 carrying none; the two share one picker and therefore one entry in the clear
 count, the way the project picker's tags and its `Untagged` row do. That bool is
-state while `noContextFilterKey` is only the token the picker's value channel
+state while `NoContextFilterKey` is only the token the picker's value channel
 carries. `BuildTagFacetList` stays as the one context census both pickers read:
 it stamps `TagInfo.ContextCount` on the values the context axis contributed,
-which feeds the `fc` counts and, through `collectContextNamesForProjects`, the
+which feeds the `fc` counts and, through `CollectContextNamesForProjects`, the
 `##name` radio rows the `#` editor lists under `CONTEXTS`. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
@@ -155,9 +155,9 @@ name this one, which no reading of this task can establish. Both are therefore
 lifted out of the row predicate and answered by `passesDependencyFilter` beside
 `passesHierarchyFilter`, against the loaded population's `app.DependencyIndex` —
 the same carve-out and the same reason. `models.QueryFieldRequiresCensus` marks
-both families, and `filterQueryCensusFields` derives the lifted set from that
+both families, and `FilterQueryCensusFields` derives the lifted set from that
 mark rather than listing it, so a field added to the family cannot silently stay
-in the `Admits` half. The two rows are `dependencyFilterShortcuts`, canonical
+in the `Admits` half. The two rows are `DependencyFilterShortcuts`, canonical
 tokens exactly as the `f@` five are, and the facet is single-select: choosing one
 direction clears the other. Neither reading is transitive and neither is a
 readiness verdict. `doctor` reports malformed lifecycle timestamps.
@@ -167,7 +167,7 @@ The lowercase `f` facets refine the rows a projection already holds and rebuild
 in place; the uppercase `F` facets — `F#` project tags, `Fp`/`FP` parked,
 `Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at
 all, so each one reloads. `ProjectFilterState` carries the tag restriction, an
-`Untagged` entry for the legal empty tag set, and one `projectPopulationMode`
+`Untagged` entry for the legal empty tag set, and one `ProjectPopulationMode`
 per lifecycle axis, and `filteredProjectPopulation` applies it between the
 runtime population and the scope. Each axis is exclude, include, or only, the
 lowercase key owns include and the uppercase key owns only, and pressing the key
@@ -191,12 +191,12 @@ Outliner rows omit short task IDs.
 `zt`, `zz`, and `zb` move the window under the cursor and leave the cursor
 alone, the one scroll family beside the list-relative `gg`/`G` and the half-page
 `Ctrl+U`/`Ctrl+D` that move the cursor instead. They read the window the last
-render drew, cached on `lastViewport` by `computeOutlinerViewport`, which is the
+render drew, cached on `LastViewport` by `ComputeOutlinerViewport`, which is the
 single window authority and the one place a render moves `ViewScrollOffset`: a
 key handler that recomputed the window would re-derive it from a different
 footer state and scroll. `zz` reads `windowMiddleIndex` for its notion of
 "middle". The
-chord is the one key press outside `computeOutlinerViewport` that writes
+chord is the one key press outside `ComputeOutlinerViewport` that writes
 `ViewScrollOffset`, and that is safe because the offset it writes still contains
 the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
 offset only when the cursor falls outside the window, so the next render leaves
@@ -208,7 +208,7 @@ for a change already fully on screen.
 
 The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`,
 described with its two siblings under project grouping above, and writes
-`expandedNodes` rather than `ViewScrollOffset`, so the one-writer rule stands
+`ExpandedNodes` rather than `ViewScrollOffset`, so the one-writer rule stands
 without qualification. After a fold the cursor rides up its `ParentID` chain to
 the nearest ancestor that still renders, since the row it sat on may now be
 under a fold.
@@ -222,15 +222,15 @@ On a section header the same key is `tui.core.zoom-section`, a third `Enter`
 descriptor rather than a branch inside the focus one: `EntityContext.HasSectionHeaderCursor`
 is what makes the three applicabilities disjoint, and it is filled by both
 command-context builders so the key that dispatches and the footer that
-advertises it can never disagree. `enterSectionZoom` snapshots the pre-zoom
+advertises it can never disagree. `EnterSectionZoom` snapshots the pre-zoom
 cursor and `ViewScrollOffset` into one `sectionZoom` value and `sectionZoomAdmits`
 then lets exactly one section emit rows. The zoom overrides that section's fold
 rather than writing one, which is what lets a collapsed section zoom open and
 stay collapsed after `Esc`, and is why `h` and `s` refuse on the zoomed header
 instead of persisting a fold with no visible effect. A zoom is a single
-snapshotted value, not a stack: `pushProjectScope` clears it exactly as it
-clears `focus.crossStack`, and the scope frame carries it back on the pop — one
-`focus.restore` writes both stacks and the zoom together, because unwinding one
+snapshotted value, not a stack: `PushProjectScope` clears it exactly as it
+clears `Focus.CrossStack`, and the scope frame carries it back on the pop — one
+`Focus.Restore` writes both stacks and the zoom together, because unwinding one
 without the others would leave the view narrowed by a remnant of the frame it
 thought it had left. An
 emptied zoom is left standing, because auto-unwinding would move the world under
@@ -238,7 +238,7 @@ a user who has just completed the last task they were looking at.
 
 Pressed on a flat ranked list result, `Enter` and `Shift+Enter` exit that
 presentation first rather than refusing it, which makes search the fastest way to
-reach an arbitrary task. `exitSearchOntoCursorTask` reads the result's identity,
+reach an arbitrary task. `ExitSearchOntoCursorTask` reads the result's identity,
 runs the ordinary `ClearSearch` restoration, and lands the restored projection on
 it through `NavigateToTask` or `NavigateToTaskInProject`. The restored projection
 need not list the result — a Backlog task searched out of Today, say — so a
@@ -288,7 +288,7 @@ row's progress badge covers the folded case. Entering visual selection disables
 Peek.
 
 The five-line cap is a hard budget for the additive lines, because
-`computeOutlinerViewport` subtracts the Peek height plus a guard row from an
+`ComputeOutlinerViewport` subtracts the Peek height plus a guard row from an
 already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
 description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
 actually truncates, `inlinePeekDatesLine` is appended directly after it, then
@@ -309,7 +309,7 @@ its count so a set the two-entry cap elided still reports its size; the outgoing
 label takes no trailing `?`, because every entry below names its own state in
 full. Neither line is new and the cap is unchanged. Both arrive resolved:
 `dependencyDetailFor` names a loaded target as project, `#ShortID`, title, and
-state, and `dependencyDetailUnresolved` falls back to the stored
+state, and `DependencyDetailUnresolved` falls back to the stored
 `project-id:task-id` locator marked `(unavailable)`, so a reference into an
 unloaded or archived project is degraded rather than dropped. The line names the
 first two entries and ends `+N more`. Both are read-only: they carry no key, no
@@ -339,8 +339,8 @@ additional details`.
 Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
 `taskRowSegments.titleWidth`, because the measurement path cannot have the real
 `ColumnLayout`: `ComputeOutlinerColumnLayout` reads the row window
-`computeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
-substitutes `worstCaseColumnLayout` and passes the row's real indent. Padding only
+`ComputeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
+substitutes `WorstCaseColumnLayout` and passes the row's real indent. Padding only
 ever widens a badge and every status/priority glyph is single-width, so the
 substitution over-reserves by at most two columns of title budget instead of
 under-reserving the Peek height; the guard row covers the residue. A measurement

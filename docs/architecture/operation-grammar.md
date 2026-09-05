@@ -163,10 +163,10 @@ enforced by the chord trie, which is also what keeps a bare digit clear of the
 `tui.core.reset-to-launch-view`, because it names no mode and so cannot be a
 spelling on one of the seven. Its handler composes the axis calls the individual
 keys already use — the lens frame, `ClearSearch`, the focus pops,
-`exitSectionZoom`, `clearProjectScope`, the two filter families, the two sort
+`ExitSectionZoom`, `ClearProjectScope`, the two filter families, the two sort
 axes, and finally `selectOutlinerMode(ModeAll)`, which owns the single rebuild —
 the way `peelQueryReadoutAxis` does, so the reset can only reach a view the
-ordinary grammar can. It does not reuse `resetToGlobalAll`, for two reasons.
+ordinary grammar can. It does not reuse `ResetToGlobalAll`, for two reasons.
 That reset clears the machine-local active-lens pointer, and `0` must not: the
 lens is put down for this session and opens again at the next launch, which is
 why the pointer write is split out and `forgetActiveLensFrame` drops the frame
@@ -189,8 +189,8 @@ with new acts rather than aliases for the ones they used to name.
 
 Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
 built by `operationParentListSource` from the cursor task's own
-`structuralCandidates`, above one `No parent (project root)` row carrying the nil
-parent `>0` names. Each candidate row carries `invalidQuickEditParent` as its
+`StructuralCandidates`, above one `No parent (project root)` row carrying the nil
+parent `>0` names. Each candidate row carries `InvalidQuickEditParent` as its
 `DisabledReason`, so a self-reference, a task inside the edited subtree, and a
 parent that would breach `models.MaxNestingDepth` are visible refusals in the
 list rather than errors behind `Enter` — the same three sentences the `>parent`
@@ -235,7 +235,7 @@ report every destination as empty. `EditTaskLine` sees a destination that
 differs from the source and takes `editTaskLineAcrossProjects`, so the subtree
 lands through `moveTaskSubtreeBetweenProjects` with destination-minted ShortIDs
 and both projects commit in one checked transaction. The command therefore
-builds `shellStructuralPlanningArtifactBuilder` rather than the reconcile
+builds `coordinator.StructuralPlanningArtifacts` rather than the reconcile
 builder Adopt Children uses, because planning references have to be requalified
 to the new owner rather than merely reconciled, and it sets `Action` to `Move to
 Project` for the ledger. `P` keeps Select Project: that operation changes the
@@ -262,11 +262,11 @@ The population is two halves and the stored half is never filtered. Every stored
 reference gets an enabled row, terminal and unreadable targets included, because
 a set editable only by hand is how a reference gets silently stranded; a target
 the picker cannot read keeps its locator as its `PrimaryText` and carries
-`dependencyDetailUnavailable`, the same word Peek uses. The second half is
+`DependencyDetailUnavailable`, the same word Peek uses. The second half is
 `grammar.DependencyAdditionCandidates` — every open task in every loaded non-archived
 project, minus the source and minus the stored half — which is exactly the
 population an addition may name, so the picker needs no inline add-by-locator
-mode. Rows group into one category per project in `dependencyDetailProjects()`
+mode. Rows group into one category per project in `DependencyDetailProjects()`
 order, because a reference crosses project boundaries and a filtered list has to
 stay qualified.
 

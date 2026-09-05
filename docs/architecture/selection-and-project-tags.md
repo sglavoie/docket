@@ -64,8 +64,8 @@ the whitespace-collapsed description when it has one, and every normalized
 project tag twice — bare and `#`-prefixed, because the chip the row draws is
 written `#parked` and a query that copies what it reads must match. A blank
 description is skipped rather than joined in, which would leave a stray
-separator in the haystack `ListItemScore` scores against. Because
-`ListItemScore` already folds `Aliases` into that haystack beside `PrimaryText`
+separator in the haystack `listItemScore` scores against. Because
+`listItemScore` already folds `Aliases` into that haystack beside `PrimaryText`
 and `SecondaryText`, widening the vocabulary needed no ranking change:
 `sortListMatches` still orders by score with `sourceIndex` as the stable
 tie-break, so pinned-first listing order survives a search.
@@ -101,7 +101,7 @@ The footer hint and the two empty-list lines all read through
 than the one the axis holds: with three states a single press no longer returns
 to the whole list, so copy describing the current narrowing would leave the way
 back unsaid. The axis is session state on a Hub that
-`ManageHubModel.prepareActive` rebuilds on every `P`, so it resets on every open.
+`ManageHubModel.prepareActiveView` rebuilds on every `P`, so it resets on every open.
 
 The preview pane carries two blocks with different owners. The header is
 `ListPreview`, the renderer-neutral text snapshot taken when the item is built:
@@ -123,7 +123,7 @@ styled per segment, sized to its column budget, and thinned by
 `indicatorDropLadder` at the width it is drawn at — none of which an item built
 before layout knows. So the hook lets the pane paint during the render instead
 of letting the item carry a string it could not have sized. What it paints is
-`renderOutlinerTaskRow` on an unmounted `OutlinerModel` over the previewed
+`RenderOutlinerTaskRow` on an unmounted `OutlinerModel` over the previewed
 project: the pane shows the product's own task row rather than a second row
 grammar that would drift from it, and it has no cursor, so no row opens Peek.
 
@@ -141,8 +141,8 @@ rendering as an empty one.
 
 Paging is `Ctrl+F`/`Ctrl+B` because `Ctrl+D`/`Ctrl+U` already move the list
 cursor, and the cursor is the surface's subject while the pane merely follows
-it. `pageProjectPreview` applies the lower bound alone: the pane's row capacity
-belongs to the render pass that computes the height, so `projectPreviewWindow`
+it. `PageProjectPreview` applies the lower bound alone: the pane's row capacity
+belongs to the render pass that computes the height, so `listsurface.ListPreviewScrollWindow`
 clamps the tail there, converging on a slice that pays for the continuation rows
 it turns out to need. A page is `height-2`, both continuations always
 subtracted, so a page down and a page up land on the same offset whether or not
@@ -254,7 +254,7 @@ deliberately: the `##name` context radio rows, which write a field rather than
 name a tag and whose "No context" clear row would read as disabled in
 `MutedStyle`, and `F#`'s `Untagged` sentinel row, which names the empty tag set
 rather than a tag. The Project Hub is outside the split entirely:
-`projectTagChips` joins names into `ListItem.SecondaryText`, which has no
+`ProjectTagChips` joins names into `ListItem.SecondaryText`, which has no
 per-tag style hook, so those tags render in the row's one secondary color.
 
 `OrderedTaskTags` (`internal/tui/listsurface/shared_render_helpers.go`) is the matching
@@ -278,7 +278,7 @@ resolves the first *applicable* one in declaration order, which lets the cursor
 decide the meaning while `?` help and contextual guidance keep two honest labels. A key
 declared twice without `SharedKey` is still a hard registration error.
 
-Both pairs are disjoint because `projectOperationApplicable` refuses a section
+Both pairs are disjoint because `ProjectOperationApplicable` refuses a section
 header outright. Without that gate the pair would not be disjoint at all: the
 project arm falls back to `currentProjectID`, which degrades to the sole scoped
 project, so in a single-project scope a lane header — which names no project —
@@ -305,8 +305,8 @@ one undo entry.
 
 Setting the reserved tag is the one project tag edit that confirms first. The
 prompt names the task count leaving the base workspace, the committed status
-names both recovery routes, the population's `reloadHeaderProjectID` lands the
-cursor on a surviving project header instead of letting `clampCursor` choose,
+names both recovery routes, the population's `ReloadHeaderProjectID` lands the
+cursor on a surviving project header instead of letting `ClampCursor` choose,
 and the base scope anchor reads `Active Projects · N parked` for as long as
 anything is parked. Descriptive tags apply with no prompt.
 

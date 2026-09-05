@@ -37,10 +37,24 @@ Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` schema-15 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
-itself layered and acyclic, and `scripts/tui_package_graph.tsv` is that layering
-rather than a description of it: one row per package, naming its layer and the
-complete whitelist of sibling imports it may spell, which is a whitelist and not
-a floor. `tui_layer_fitness_test.go` enforces that table against the real import
+itself nine layers, acyclic, and every concern belongs to exactly one:
+
+```text
+L0 presentation theme textfit taskref status pulse keymap
+L1 chrome coordinator
+L2 grammar query
+L3 operation
+L4 route
+L5 listsurface
+L6 help
+L7 notes taskdetail taskform lens conflict projecthub outliner
+L8 tui — the shell: AppModel, RunApp, the registrars, the uitest harness
+```
+
+`scripts/tui_package_graph.tsv` is that layering rather than a description of
+it: one row per package, naming its layer and the complete whitelist of sibling
+imports it may spell, which is a whitelist and not a floor.
+`tui_layer_fitness_test.go` enforces that table against the real import
 graph and against the packages that exist, so a new package declares its layer
 before it can declare an import and an unlisted edge is a red test rather than
 prose. Add the edge and its reason to the table in the change that writes the
@@ -156,7 +170,7 @@ Checklist rules:
   field so an unconditional descriptor stays unconditional to `Register`.
 
 Emit project group headers through the shared `appendProjectGroupHeader` kernel,
-never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
+never a per-mode copy. Each grouping surface owns a disjoint `CollapsedSections`
 namespace, since it is never cleared on a mode change; grouping never reorders a
 mode's primary sort.
 
@@ -165,7 +179,7 @@ admits open, undeferred work untouched for at least 90 days. `fs` is
 unavailable in Recent; entry clears only Stale: `Stale filter cleared: Recent
 only includes the last 30 days`.
 
-`computeOutlinerViewport` is the single window authority and the only place a
+`ComputeOutlinerViewport` is the single window authority and the only place a
 render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
@@ -175,7 +189,7 @@ the tail clamp; `Ctrl+F`/`Ctrl+B` page it, never `Ctrl+D`/`Ctrl+U`, which stay
 the list cursor's, and they are claimed ahead of a search input and advertised
 only where a body can page. Select Project's header is a name, one meta line,
 and a description capped at `listSurfacePreviewBodyLines`, declares no `Fields`,
-and paints the project's tasks with `renderOutlinerTaskRow` from the
+and paints the project's tasks with `RenderOutlinerTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.
 
 Manual order is never touched by the sort axis, and that holds by construction
@@ -183,7 +197,7 @@ rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.
 
 Notice and status render only in the shell-pinned strip, whose height
-`statusStripHeight` reserves from `computeOutlinerViewport`. A view status is
+`StatusStripHeight` reserves from `ComputeOutlinerViewport`. A view status is
 transient except the multi-select summary. An outstanding-conflict count leads
 that strip, refreshed at launch and on the 60s tick, read straight from
 `ConflictStore` with no `internal/app` port; the pulse ladder stays closed to it
@@ -192,25 +206,25 @@ overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
 That count is an advisory: ambient workspace state, not an answer to a
 keystroke. The load-failure notice is the only other one. Every advisory routes
-through `advisoryLine` or `advisoryStatus`, which is what makes
+through `AdvisoryLine` or `AdvisoryStatus`, which is what makes
 `--no-advisories` and the keyless `Advisories` menu entry general; suppression
-returns an empty line, so the height falls out of the one `statusStripHeight`
+returns an empty line, so the height falls out of the one `StatusStripHeight`
 measurement. Never gate a row at its render site. Operation feedback, the query
 readout, and the every-project-failed refusal are not advisories.
 
 `M` toggles the Outliner menu bar on the same terms: a view-local gated
 sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
-It costs one list row, subtracted in `contentHeight` alone; never measure it
+It costs one list row, subtracted in `ContentHeight` alone; never measure it
 again. The row is exactly `m.width` and drops whole labels from the right, never
 truncating one. An open menu is bar and dropdown alone: list hidden, not shrunk,
 window still.
 
 `Q` expands the query readout in that strip, below the conflict line, from a pure
-`queryReadoutBody` `statusStripHeight` measures. It names one row per peelable
+`QueryReadoutBody` `StatusStripHeight` measures. It names one row per peelable
 axis and nothing it cannot prove: a mode declares no clauses, so it names the
 mode. Facet rows spell `FilterClauseParts`. `peelQueryReadoutAxis` is the one
 write and routes each axis through the call its own key uses; a peel needing a
-population reload refuses under `showsRankedList()` and otherwise hands the
+population reload refuses under `ShowsRankedList()` and otherwise hands the
 shell `QueryReadoutReloadRequestMsg`, as `s` hands it `SaveViewAsLensRequestMsg`.
 Peel is idempotent at zero, `queryReadoutRowLimit` is the digit set and names its
 overflow, and the open readout is a gated keymap taking no footer rank.

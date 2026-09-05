@@ -56,12 +56,12 @@ never a second root.
 Inbox alone advances the cursor when a mutation removes the row under it. The
 mode catalog carries that as `AdvancesOnDeparture`, read through
 `SupportsCursorAdvance()`, so the gate is a catalog fact rather than an inline
-mode test. The successor is the one `captureOutlinerRelocation` already recorded
+mode test. The successor is the one `CaptureOutlinerRelocation` already recorded
 as the origin's `Following` — the first task row after the cursor that is not
 itself a mutation target — so the advance reads the projection the user is
 looking at, crosses a project group header instead of stopping on it, and lands
 on a child promoted into its departing parent's place. `advanceAfterDeparture`
-writes `m.cursor` and nothing else: `computeOutlinerViewport` remains the single
+writes `m.cursor` and nothing else: `ComputeOutlinerViewport` remains the single
 window authority and no flash is emitted, since the user's own keypress caused
 the move. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
 and the undo path arms no capture at all, so restoring a task never moves the
@@ -71,7 +71,7 @@ Project grouping is universal, not per-mode: whenever the Outliner shows more
 than one project, every mode emits a foldable `IsProjectHeader` row per project,
 and project groups put pinned projects first and then sort alphabetically. All
 of them emit those headers through the shared `appendProjectGroupHeader`
-kernel, and each grouping surface owns a disjoint `collapsedSections` key
+kernel, and each grouping surface owns a disjoint `CollapsedSections` key
 namespace, because that map is never cleared on a mode change.
 
 That kernel takes the group's tasks rather than a count, because it computes the
@@ -93,7 +93,7 @@ appear in Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a
 second bare count.
 
 `n`/`N` step the cursor between grouping headers, and their stop set is
-`isHeaderRow()` — section headers and project headers both — because the header
+`IsHeaderRow()` — section headers and project headers both — because the header
 kind is not uniform across modes: All, Due, and Recent emit section headers
 while Inbox, Backlog, Today, and Next group by project only, so a section-only
 stop set would leave the keys dead in four of the seven modes. That predicate is
@@ -107,18 +107,18 @@ headers, `p` for project group headers, `t` for task subtrees. Each is one
 toggle rather than a collapse/expand pair, and all three take the same
 direction rule — if any member of the set is folded the press expands them all,
 otherwise it folds them all — so the key never advertises a direction it does
-not always go. `s` and `p` share `collapsedSections`, since a fold is a fold
+not always go. `s` and `p` share `CollapsedSections`, since a fold is a fold
 whichever header kind declares it, and they separate by scanning row kind,
 `IsSectionHeader` against `IsProjectHeader`, rather than by matching a key
 prefix: the ~13 collapse-key constructors are disjoint by construction but not
 by spelling, so one scan over the rendered rows is what lets `p` reach all five
 project-header namespaces without enumerating any of them. `t` owns
-`expandedNodes` alone, and its walk covers every loaded project rather than the
+`ExpandedNodes` alone, and its walk covers every loaded project rather than the
 active projection, matching `markAllExpanded`, because folds are
 project-qualified and outlive a mode change; folding only what a filter happens
 to show would leave the modes beside it disagreeing about the same task.
 Unfolding clears that map instead of writing `true` over every node, since
-`isExpanded` reads an absent key as expanded and the empty map is the canonical
+`IsExpanded` reads an absent key as expanded and the empty map is the canonical
 all-expanded state.
 
 `s` refuses under a section zoom and `p` does not, which is the one place the
@@ -131,7 +131,7 @@ rendered.
 
 Checklist items are a fourth row kind, emitted by one `expandChecklistRows`
 post-pass rather than by each mode strategy. `IsChecklistItem` takes a row out of
-`isTaskRow()` but leaves it navigable, so the cursor can reach an item while
+`IsTaskRow()` but leaves it navigable, so the cursor can reach an item while
 every task operation refuses there rather than acting on the owner task whose
 pointer the row carries for rendering. `h`/`l` therefore form one ladder with no
 new key — children before checklist on the way out, checklist first on the way
@@ -139,23 +139,23 @@ back — and `h` on an item returns to its owner. The ladder's last rung is the
 focus root: from a direct child of it `h` pops that one Focus frame, since the
 root is the one parent that renders no row.
 
-Their fold state is `expandedChecklists`, a third map that is not merged into
-either of the other two: `expandedNodes` defaults expanded, `collapsedSections`
-is string-keyed and shared with grouping headers, and `expandedChecklists`
+Their fold state is `ExpandedChecklists`, a third map that is not merged into
+either of the other two: `ExpandedNodes` defaults expanded, `CollapsedSections`
+is string-keyed and shared with grouping headers, and `ExpandedChecklists`
 defaults collapsed so an absent key hides the items. It is cleared wherever
-`expandedNodes` is and joins `jumpProjectionFingerprint()`, because a fold
+`ExpandedNodes` is and joins `JumpProjectionFingerprint()`, because a fold
 change clears relocation jump history. Visual selection names task rows only, so
 a checklist cursor refuses `v`, `V`, and `Ctrl+A`, and entering selection from a
 task row suppresses any open checklist rows while leaving the map untouched,
 which is what lets `Esc` restore the same rows.
 
 Those three maps and the `sectionToggleRestoreAnchor` an s-driven collapse
-leaves behind are the model's `folds` field, whose `foldState` owns every write
+leaves behind are the model's `Folds` field, whose `foldState` owns every write
 to them. Three maps rather than one is the point of naming them together rather
 than an accident the type inherited: their polarities disagree deliberately and
 their key spaces disagree too — two are project-qualified task identities and
 one is a string namespaced per grouping surface — so merging them would need a
-polarity per key. What the type buys is that `clearAllFolds` and the global
+polarity per key. What the type buys is that `ClearAllFolds` and the global
 reset are one act over three axes, and that `clearSections` drops the anchor
 with the folds it names, since an anchor pointing at a section key cannot
 outlive the collapse that made it necessary. Reads stay direct; the zero value
@@ -163,7 +163,7 @@ is inert, and every map allocates on first write, so a struct-literal test model
 still opens all-open with no constructor.
 
 The two focus stacks, the section zoom, and the one-shot recovery notice are the
-model's `focus` field on the same terms. `Esc` is the argument for one owner:
+model's `Focus` field on the same terms. `Esc` is the argument for one owner:
 the unwind ladder walks task focus and then the zoom before it reaches project
 scope, and every wholesale reset takes all of them down together, so a caller
 that put one away and forgot another would leave the view narrowed by something
@@ -185,7 +185,7 @@ pops the scope. Splitting them would put "may this scope exist" in one type and
 "does it exist" in another. The frame is a slice holding at most the base frame,
 since a second push replaces the focus in place; it stays a slice because that is
 what the presentation snapshot captures and what a defensive repair of older
-nested state truncates. `resetToGlobalAll`, `resetToLaunchView` and the
+nested state truncates. `ResetToGlobalAll`, `ResetToLaunchView` and the
 `captureScopeFrame`/`restoreScopeFrame` pair stay orchestrators that name this
 state alongside the folds, the focus and the population rather than being
 distributed into any of them: a method that names six sub-states is honest, and
@@ -200,14 +200,14 @@ remembers which lens to reopen with, and the input mode that retypes the query.
 `forgetActiveLensFrame` is the argument for one owner — putting a lens down
 drops the frame, the pending application, the edit mode and the query in one act,
 and has to, or a narrowing outlives the lens that installed it. That type is
-deliberately not `lensState`, which is one saved definition's six axes: one
+deliberately not `LensState`, which is one saved definition's six axes: one
 describes a lens and the other the Outliner holding one. It is deliberately not
 `searchState` either. At most one of the two narrowing queries is ever live,
 which is what lets `activeNarrowingGate` answer for both, and
 `compileActiveNarrowing` writes each carrier's remainder, gate, and case reading
 through that carrier's own sub-state rather than merging them into one. The
 dependency between the two runs one way: `ActivateSearch` asks
-`hasActiveLens()` and delegates to `beginLensQueryEdit`, because `publishLens`
+`HasActiveLens()` and delegates to `beginLensQueryEdit`, because `PublishLens`
 already reaches into the search projection, the population, the scope, and the
 cursor, and reversing it would put the lens above the search it has to put down.
 
@@ -218,7 +218,7 @@ fingerprint without dropping the keys hanging off it. Freezing is first-write-wi
 and thawing is the `gr` re-read, which is the whole of the mode's ordering
 contract stated once.
 
-`outlinerViewSnapshot` is where that ladder is measured. The restoration point a
+`OutlinerViewSnapshot` is where that ladder is measured. The restoration point a
 lens application captures is one field per cluster — presentation, the population
 facet carrier and the population itself, scope, search's frame beside the input
 that produced it, the lens query, Peek and the selection, and the frozen recency
@@ -291,7 +291,7 @@ reports the 30-day window and moves nothing.
 
 `gp` is the task-row counterpart to `Enter` on a project header: it reaches
 the project from a task instead of the task list from a project. The scope push
-precedes the All switch, because `pushProjectScope` captures the frame `Esc`
+precedes the All switch, because `PushProjectScope` captures the frame `Esc`
 restores and the reverse order would name All as the origin mode. All is forced
 rather than inherited, so the destination lists the project's whole tree instead
 of the origin mode's narrowing; when All does not admit the task — a terminal

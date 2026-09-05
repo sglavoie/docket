@@ -72,7 +72,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// placement and authority that no other document can hold. The readout is a
 	// fourth line in a strip whose height is reserved from the viewport, so it has
 	// to be pure or the reservation and the paint disagree — a rule about
-	// `statusStripHeight`, not about a readout. It may name only what it can
+	// `StatusStripHeight`, not about a readout. It may name only what it can
 	// prove, which is why a mode row names the mode rather than clauses the
 	// catalog never declared, and it is the standing ban on inferred chrome that
 	// makes that a contract rather than a design note. Peeling routes every axis
@@ -173,7 +173,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// silently claims to cover it. So the rule names the category, names the two
 	// members, and forbids gating at the render site, because the plausible local
 	// fix (an `if hidden` beside the paint) is exactly what breaks the single
-	// `statusStripHeight` measurement the strip's whole height contract rests on.
+	// `StatusStripHeight` measurement the strip's whole height contract rests on.
 	// The second is conflict-bundle decay: `.tt/conflicts/` is portable and
 	// unmigrated, so a bundle outlives its schema, and the default instinct — a
 	// document that will not parse is a fatal error — is what stranded a real
@@ -205,7 +205,21 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// enumeration takes, and no rule elsewhere was trimmed to pay for it. Phase 2
 	// folds `outliner` out of the shell and rewrites this list once more; that is
 	// the same kind of raise and is argued then rather than pre-approved here.
-	const budget = 29397
+	//
+	// That is this raise, and it is the one the sentence above pre-declared.
+	// Phase 2 landed `outliner` as its own L7 package and decomposed the shell,
+	// so the enumeration written for twenty-two packages named a graph that no
+	// longer existed. It was replaced twice over: once by prose forwarding to
+	// `scripts/tui_package_graph.tsv`, which was accurate but nameless — a
+	// contributor holding a new concern learned that a table decides, not which
+	// row their concern belongs in — and now by the nine-layer block that names
+	// all twenty-three packages and the shell. The block is the cheapest form
+	// the rule has: one line per layer, package names and nothing else, with the
+	// whitelist, the fitness test, and every edge's reason left in the table
+	// where they already live. It costs 227 bytes and no rule elsewhere was
+	// trimmed to pay for it. A package added or a layer moved rewrites the block
+	// and is a raise of the same kind, argued then.
+	const budget = 29624
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -248,7 +262,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"never branch one descriptor's target source on runtime context",
 		"Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability` field",
 		"Emit project group headers through the shared `appendProjectGroupHeader` kernel, never a per-mode copy",
-		"`computeOutlinerViewport` is the single window authority",
+		"`ComputeOutlinerViewport` is the single window authority",
 		"Never recompute the window in a key handler",
 		"Manual order is never touched by the sort axis, and that holds by construction rather than by a guard " +
 			"— do not add one. Group order never changes",
