@@ -1,0 +1,59 @@
+{
+  "name": "goto-relation-walk",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture the referring task", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "one cross-project reference, spelled as a slug-qualified alias", "text": "Wire the importer %client-alpha ~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "assert", "label": "the row stores one reference", "assert": "contains", "value": "~0/1" },
+
+    { "type": "key", "label": "open the relationship picker", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "assert", "label": "the overlay names its subject", "assert": "contains", "value": "Relationships" },
+    { "type": "assert", "assert": "contains", "value": "DEPENDENCIES" },
+    { "type": "assert", "label": "the row reads as project, short ID, title, and state", "assert": "contains", "value": "Client Beta #1 Beta rollout checklist" },
+    { "type": "assert", "label": "a task pointing at nobody lists no computed half", "assert": "not_contains", "value": "DEPENDENTS" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the picker survives the app's own minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Relationships" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "cancelling puts the picker down and moves nothing", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Relationships" },
+    { "type": "assert", "assert": "contains", "value": "~0/1" },
+
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "key", "label": "hop to the referenced task", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the destination is the target's project, in All", "assert": "contains", "value": "Client Beta" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "label": "the project the hop left is out of scope", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the other direction is computed, and says what it can see", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "assert", "assert": "contains", "value": "DEPENDENTS (LOADED PROJECTS ONLY)" },
+    { "type": "assert", "assert": "contains", "value": "Client Alpha #2 Wire the importer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "one Esc walks the hop back", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the view the hop was taken from is back whole", "assert": "contains", "value": "Wire the importer" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+    { "type": "assert", "label": "the return does not reopen the picker", "assert": "not_contains", "value": "Relationships" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

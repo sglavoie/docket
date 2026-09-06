@@ -321,3 +321,25 @@ task reached from Recent — the origin mode is reselected and the status says
 why. A held query is dismissed from the handler before either step, whichever
 presentation it was being read in, so the jump works from a search result and the
 frame `Esc` restores is the pre-search one.
+
+`g~` takes the same revelation path and adds a trail. The picker is an
+Outliner-local gated sub-state rather than a shared overlay, because `outliner`
+sits above `listsurface` and below nothing that owns a picker: it builds its rows
+from `DependencyIndex` over the loaded population Peek reads, keeps the
+project-qualified locator beside the display text, and carries the direction in
+each row's identity so a reciprocal pair cannot collide on one ID. It filters its
+own items, so the empty and no-match copy is chosen by the picker from its query
+and handed to both of the surface's empty slots — the surface only ever sees the
+already-filtered list and could not tell the two apart.
+
+The hop revalidates its target through the index before moving; a stale or
+unavailable one is refused in place, leaving the picker, the view, and the trail
+as they were. Revelation is `gp`'s, plus at most two predicates added only when
+the target is terminal or deferred, and the return frame is published only after
+it succeeds — a failed reveal restores the presentation checkpoint it captured.
+That frame holds the presentation checkpoint, the suspended `activeLensFrame`,
+and the identity hopped from, and nothing else: no task pointers, and never the
+trail itself. Suspension is `forgetActiveLensFrame`, which is run-local and never
+calls the persistence callback, so a hop neither rewrites nor forgets the
+machine-local pointer. The trail is one step of the Esc cascade, after Peek and
+selection handling, and `ResetToLaunchView` discards it whole.

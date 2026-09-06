@@ -25,6 +25,13 @@ import (
 func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// The relationship picker is read before everything else: it is a modal
+	// overlay drawn over the whole frame, so every key below it would act on rows
+	// that are not on screen.
+	if m.RelationPickerOpen() {
+		return m.handleRelationPickerKey(msg)
+	}
+
 	// An open menu is read first: its navigation keys are a gated keymap the
 	// footer is advertising, and h/j/k/l mean something else entirely to the
 	// cascade below. Unlike the readout it is non-modal — an unrecognized key
@@ -434,6 +441,14 @@ func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 		{Active: func() bool { return m.MultiSelectMode }, Clear: func() {
 			m.ToggleMultiSelectMode()
 		}},
+		// One relationship hop unwinds after the selection and before the search,
+		// because a hop replaced the whole projection: the query, lens, focus, zoom,
+		// and scope steps below it are all axes the return frame is about to restore
+		// wholesale, and stepping through them first would unwind the destination's
+		// state on the way back to the origin's.
+		{Active: func() bool { return m.HasRelationTrail() }, Clear: func() {
+			m.PopRelationReturn()
+		}},
 		{Active: func() bool { return m.HasSearchProjection() }, Clear: func() {
 			m.ClearSearch()
 		}},
@@ -470,6 +485,9 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.MultiSelectMode ||
 		m.QuickEdit.IsActive() ||
 		m.QueryReadout.Expanded ||
+		// The picker is drawn over the whole frame, so it is the innermost thing Esc
+		// can put down and claims the key ahead of the menu below it.
+		m.RelationPickerOpen() ||
 		// An open menu is the innermost thing Esc can put down, so it has to claim
 		// the key before the shell's back cascade spends it unwinding a scope the
 		// user cannot even see the rows of.
@@ -516,6 +534,10 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 	switch {
+	case m.RelationPickerOpen():
+		// First because the picker is drawn over the whole frame: every profile below
+		// describes keys the rows it hid would have answered.
+		return m.relationPickerGuidance(), true
 	case m.MenuBar.Open:
 		// First for the same reason the readout is first below it: while a menu is
 		// open its own keymap is what the four navigation keys mean, and every

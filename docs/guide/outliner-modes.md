@@ -61,6 +61,26 @@ unwinds it and returns to the mode, row and scroll position you left. A task All
 would not list — a Done task you reached from Recent, say — keeps the mode you
 were in and says so.
 
+`g~` walks the reference graph the same way. It opens a picker over the cursor
+task listing Dependencies — what this task stores, in the order it stores it —
+and then Dependents — the tasks pointing back at it from the projects currently
+loaded, which is why that section is labelled as such. Each row reads as its
+project, short ID, title, and state, `/` searches the two sections, and a
+reference whose project is not loaded stays on the list as a disabled row you
+cannot hop to. `Enter` opens the chosen task's project in All and puts the cursor
+on it, opening a collapsed section, project group, or folded parent only when the
+target would otherwise be hidden and admitting a terminal or deferred target
+only for that reason. A target that went away between the listing and the press
+leaves the picker open and says why, moving nothing.
+
+Every hop stacks a return, so `Esc` walks them back one at a time: A → B → C
+comes back to B and then to A, landing on the task you pressed `g~` from with the
+mode, query, filters, sort, scope and cursor you left. It comes after Peek and a
+selection in the same unwind, and it never reopens the picker. A lens in force
+when you hop is put aside for the trip and restored on the way back, without
+being rewritten. `0` is the way out of a long walk: it drops the whole trail
+along with the rest of the view.
+
 The seven modes answer to the digits `1`–`7` as well, in the order `Tab` cycles
 them: `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent.
 A digit is the same act as the `g` chord naming the same mode rather than a

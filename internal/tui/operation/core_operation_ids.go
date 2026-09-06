@@ -27,6 +27,7 @@ const (
 	OperationCoreJumpForward        OperationID = "tui.core.jump-forward"
 	OperationCoreFocusLatest        OperationID = "tui.core.focus-latest"
 	OperationCoreGotoTaskProject    OperationID = "tui.core.goto-task-project"
+	OperationCoreGotoRelation       OperationID = "tui.core.goto-relation"
 	OperationCoreSelectPinned       OperationID = "tui.core.select-pinned-project"
 	OperationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
 	OperationCoreExpand             OperationID = "tui.core.expand"

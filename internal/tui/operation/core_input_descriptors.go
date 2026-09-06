@@ -23,6 +23,7 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 		OperationCoreFocusSubtree,
 		OperationCoreFocusParent,
 		OperationCoreGotoTaskProject,
+		OperationCoreGotoRelation,
 		OperationCorePeek:
 		return true
 	default:
@@ -114,6 +115,20 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Entity.HasChecklistCursor &&
 			CurrentTaskIdentity(ctx).Valid()
 	}
+	// The relationship picker takes the same gates as the jump above it: one task,
+	// no visual selection, and not a checklist row. It is read-only in the same
+	// sense too — a hop moves the view and writes no reference.
+	gotoRelation := withTaskTarget(core(
+		OperationCoreGotoRelation,
+		"Go to Related Task",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"related tasks",
+		"dependencies and dependents",
+		"walk references",
+	))
+	gotoRelation.Applicability = gotoTaskProject.Applicability
 	zoomSection := core(
 		OperationCoreZoomSection,
 		"Zoom to Section",
@@ -227,6 +242,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		focusSubtree,
 		focusParent,
 		gotoTaskProject,
+		gotoRelation,
 		zoomSection,
 		activateGroup,
 		openNote,

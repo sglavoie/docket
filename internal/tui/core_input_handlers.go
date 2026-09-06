@@ -300,6 +300,25 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 	}
 }
 
+// coreGotoRelation opens the relationship picker over the cursor task. The hop
+// itself belongs to the Outliner, since it is a presentation move the return
+// trail has to be able to undo; the shell only names the subject and surfaces a
+// refusal the picker cannot open under.
+func (m *AppModel) coreGotoRelation(targets operation.ResolvedOperationTargets) operation.OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return operation.OperationHandlerResult{}
+	}
+	task, project := m.taskAndProjectForTargets(targets)
+	if task == nil || project == nil {
+		return operation.OperationHandlerResult{}
+	}
+	if err := out.OpenRelationPicker(task, project); err != nil {
+		return operation.OperationHandlerResult{Status: err.Error()}
+	}
+	return operation.OperationHandlerResult{}
+}
+
 func (m *AppModel) coreReorder(delta int) tea.Cmd {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil || !out.SimplifiedReorderEligible() {

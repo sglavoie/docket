@@ -510,6 +510,9 @@ func (m *OutlinerModel) RenderOutlinerTreeContent(width int) string {
 	// dropdown returns
 	// nothing for a width or a resolution it cannot draw, and blanking the view
 	// over a menu nobody can see would be the worse failure.
+	if picker := m.renderRelationPicker(width); picker != "" {
+		return picker
+	}
 	if menu := m.renderOutlinerMenuDropdown(width); menu != "" {
 		return m.renderOutlinerMenuFrame(width, menu)
 	}

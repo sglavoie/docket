@@ -60,6 +60,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.goto-inbox":             "target-free",
 	"tui.core.goto-next":              "target-free",
 	"tui.core.goto-recent":            "target-free",
+	"tui.core.goto-relation":          "reject",
 	"tui.core.goto-task-project":      "reject",
 	"tui.core.goto-today":             "target-free",
 	"tui.core.help":                   "target-free",

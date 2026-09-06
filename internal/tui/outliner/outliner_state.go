@@ -136,6 +136,10 @@ func (m *OutlinerModel) SimplifiedInlineControlOwnsInput() bool {
 		m.QuickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
 		m.QueryReadout.Expanded ||
+		// The relationship picker owns input outright: it is drawn over the whole
+		// frame, so a key it has not learned is a key with nothing on screen to act
+		// on and is swallowed rather than re-emitted.
+		m.RelationPickerOpen() ||
 		// An open menu claims the key first even though most keys end up running
 		// their root operation anyway: it has to close before the accelerator
 		// fires, or the act would run under a dropdown still covering the rows it

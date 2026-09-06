@@ -148,6 +148,14 @@ type OutlinerModel struct {
 	// reset that replaces the whole projection reaches it through closeMenuBar.
 	MenuBar menuBarState
 
+	// relationPicker is `g~`'s list of the cursor task's dependencies and
+	// dependents, and relationTrail the return frames the hops it takes leave
+	// behind. They are one cluster: only the picker pushes a frame, and only Esc
+	// or a global reset takes one back. relation_picker.go and
+	// relation_navigation.go own them.
+	RelationPicker relationPickerState
+	relationTrail  []relationReturnFrame
+
 	// OpenAtTask, when set, positions the cursor on the given task the first
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task

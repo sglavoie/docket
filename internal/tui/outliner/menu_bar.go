@@ -120,6 +120,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationCoreSelectProject},
 				{OperationID: operation.OperationCoreSelectPinned},
 				{OperationID: operation.OperationCoreGotoTaskProject, Label: "Project of Task"},
+				{OperationID: operation.OperationCoreGotoRelation, Label: "Related Task"},
 				menuSeparator(),
 				{OperationID: operation.OperationCoreNotes},
 				{OperationID: operation.OperationCoreNamedLenses},

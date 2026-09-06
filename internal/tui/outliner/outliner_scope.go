@@ -352,10 +352,17 @@ func (m *OutlinerModel) ResetToLaunchView() ([]string, bool) {
 	reload := note(query.ProjectFilterFacetCount(&m.ProjectFilter) > 0, "project filters")
 	note(m.Sort.Field != query.SortByDefault || m.TreeSort.Field != query.SortByDefault, "sort")
 	note(m.PrimaryMode != chrome.ModeAll, "mode")
+	// The relationship trail is an axis of its own for exactly this reason: a hop
+	// can land somewhere the launch view already describes, and every note above
+	// would then report nothing to clear while an Esc still had a return to make.
+	note(m.HasRelationTrail(), "relationship trail")
 	if len(cleared) == 0 {
 		return cleared, false
 	}
 
+	// The trail goes first and is discarded rather than walked: this key restores
+	// the launch view, and returning through a hop would restore a view instead.
+	m.ClearRelationTrail()
 	// The lens goes first and goes without its baseline: restoring it would
 	// reinstate the narrowing this key exists to clear.
 	m.forgetActiveLensFrame()
