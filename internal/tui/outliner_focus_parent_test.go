@@ -73,7 +73,7 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 			if test.promoteTag {
 				grandchild.Tags = []string{"promote"}
 				out.Filter.Tags = map[string]bool{"promote": true}
-				out.AdoptFilterCarriers()
+				adoptFilterCarriers(out)
 				out.RebuildRows()
 			}
 			if !out.MoveCursorToIdentity(identity("grandchild")) {

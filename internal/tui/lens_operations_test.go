@@ -154,11 +154,11 @@ func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Narrowed", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
-	if out.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
+	if out.Lens.Active.Origin.Presentation.Projection.Mode != origin.Presentation.Projection.Mode {
 		t.Fatalf(
 			"baseline mode = %v, want the pre-lens %v",
-			out.Lens.Active.Origin.Presentation.Mode,
-			origin.Presentation.Mode,
+			out.Lens.Active.Origin.Presentation.Projection.Mode,
+			origin.Presentation.Projection.Mode,
 		)
 	}
 	out.RestoreLensBaseline()

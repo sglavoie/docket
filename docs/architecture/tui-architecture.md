@@ -218,23 +218,45 @@ fingerprint without dropping the keys hanging off it. Freezing is first-write-wi
 and thawing is the `gr` re-read, which is the whole of the mode's ordering
 contract stated once.
 
-`OutlinerViewSnapshot` is where that ladder is measured. The restoration point a
-lens application captures is one field per cluster — presentation, the population
-facet carrier and the population itself, scope, search's frame beside the input
-that produced it, the lens query, Peek and the selection, and the frozen recency
-— and each of those fields is the cluster's own snapshot type. A cluster decides
-for itself which of its members describes a view worth restoring and which
-describes work in flight that must not be restarted: `scopeState` withholds its
-pending parked reload, `searchState` reinstates its frame and then resets the
-compilation that frame no longer explains, and `restorePopulation` routes through
-`setLoadedProjects` because reinstating a population owes the dependency index
-the same drop a load does. That is what keeps the snapshot a ledger rather than a
-second, competing model — nothing in it knows the shape of any cluster it names,
-so a member added to a sub-state is carried without the snapshot learning about
-it, and a member that must not be carried is refused where it lives rather than
-by an omission nobody would notice. What the snapshot keeps for itself is the
-rebuild no cluster can own: invalidate the population guard, build the rows once
-over every axis just written, and seat the cursor through `restoreSearchCursor`.
+`OutlinerPresentationCheckpoint` is where that ladder is measured. It is how a
+view was presenting and nothing about what it was presenting over: one field per
+cluster — the projection frame, scope, search's frame beside the input that
+produced it, the lens query, Peek and the selection, and the frozen recency — and
+each of those fields is the cluster's own snapshot type. Every member is a mode,
+a predicate, an ordering, an identity or a flag, so the whole checkpoint restores
+over whatever data the Outliner is holding when it comes back; no task pointer
+and no project pointer is in it. A cluster decides for itself which of its
+members describes a view worth restoring and which describes work in flight that
+must not be restarted: `scopeState` withholds its pending parked reload, and
+`searchState` reinstates its frame and then resets the compilation that frame no
+longer explains. That is what keeps the checkpoint a ledger rather than a second,
+competing model — nothing in it knows the shape of any cluster it names, so a
+member added to a sub-state is carried without the checkpoint learning about it,
+and a member that must not be carried is refused where it lives rather than by an
+omission nobody would notice. What the checkpoint keeps for itself is the rebuild
+no cluster can own: invalidate the population guard, build the rows once over
+every axis just written, and seat the cursor through `restoreSearchCursor`.
+
+The projection frame holds the narrowing as the canonical `models.Query` itself
+and never as the carrier caches derived from it, for the same reason a saved lens
+does: the lift back out of a carrier cannot spell a clause's polarity or hold
+both dependency directions at once, so a frame restored through it would return
+`-#legacy` as `#legacy` and drop one half of `?blocked ?blocking`. Because
+`setFilterQuery` is the only production writer of either carrier, capturing the
+query and restoring through it is lossless by construction and leaves the chips
+and pickers agreeing with the predicate rather than deriving a second answer.
+
+That predicate has two halves with different owners, which is why restoration is
+two writes. `restoreNarrowingPredicate` reinstates the captured projection
+clauses over whichever population the live view is standing in, since putting
+back clauses that name projects nobody went and read would leave the query
+claiming a population that is not loaded — this is what makes a checkpoint
+restorable over current data. `adoptPopulationNarrowing` is its counterpart and
+has exactly one caller: `OutlinerViewSnapshot`, the full restoration point a lens
+application captures, which is the checkpoint plus the loaded population and
+writes that population half beside the projects it selected, through
+`restorePopulation` and so through `setLoadedProjects`, because reinstating a
+population owes the dependency index the same drop a load does.
 
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,

@@ -60,7 +60,7 @@ func TestQueryReadoutNamesEveryActiveAxisAndNothingElse(t *testing.T) {
 	out.Filter.Priority = models.PriorityHigh
 	out.Filter.Tags = map[string]bool{"deep": true}
 	out.Filter.Pinned = true
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	if _, _ = out.SelectOutlinerMode(chrome.ModeBacklog); out.ActiveOutlinerModeEntry().ID != chrome.ModeBacklog {
 		t.Fatal("the test could not reach a non-All mode")
 	}
@@ -95,7 +95,7 @@ func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 	out := app.crossOutliner
 	out.Filter.Priority = models.PriorityHigh
 	out.Filter.Stale = true
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.ToggleQueryReadout()
 
 	before := out.QueryReadoutRows()
@@ -147,7 +147,7 @@ func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 	out := app.crossOutliner
 	out.Filter.Priority = models.PriorityHigh
 	out.Filter.Tags = map[string]bool{"deep": true}
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.SelectOutlinerMode(chrome.ModeBacklog)
 	out.SetSearchQuery("one")
 	out.ToggleQueryReadout()
@@ -177,7 +177,7 @@ func TestQueryReadoutOwnsInputWhileOpen(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
 	out.Filter.Stale = true
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.ToggleQueryReadout()
 
 	guidance, ok := out.ContextualGuidance()
@@ -248,7 +248,7 @@ func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
 	out.Filter.Stale = true
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.SetOutstandingConflicts(func() int { return 2 })
 
 	collapsedHeight := out.StatusStripHeight(width)
@@ -280,7 +280,7 @@ func TestQueryReadoutPeelReloadsThePopulationThroughTheShell(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
 	out.ProjectFilter.ArchivedMode = query.ProjectPopulationInclude
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.ToggleQueryReadout()
 
 	rows := out.QueryReadoutRows()

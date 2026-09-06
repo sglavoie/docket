@@ -110,6 +110,21 @@ func ClausesForField(query models.Query, field models.QueryField) []models.Query
 	return clauses
 }
 
+// ClausesOfFields returns every clause naming one of the given fields, in
+// canonical order. It is WithoutFields' complement: what one call drops is
+// exactly what the other keeps, so a query split by field and put back together
+// leaves no clause in both halves and none in neither.
+func ClausesOfFields(query models.Query, fields ...models.QueryField) []models.QueryClause {
+	canonical := query.Canonical()
+	kept := make([]models.QueryClause, 0, len(canonical.Clauses))
+	for _, clause := range canonical.Clauses {
+		if slices.Contains(fields, clause.Field) {
+			kept = append(kept, clause)
+		}
+	}
+	return kept
+}
+
 // WithoutFields drops every clause naming one of the given fields.
 func WithoutFields(query models.Query, fields ...models.QueryField) models.Query {
 	kept := make([]models.QueryClause, 0, len(query.Clauses))
@@ -171,11 +186,12 @@ func AppendFilterClause(
 }
 
 // CommonFilterClauses lifts the row cache back into clauses. It is the inverse
-// of CommonFilterStateFromQuery and exists for the one input that is still
-// carrier-shaped: a captured view snapshot, which restores the carriers it froze
-// and must put the predicate back beside them. A persisted lens no longer needs
-// it — that definition holds the canonical query itself — and this direction
-// goes away with the snapshot's carriers rather than gaining a second caller.
+// of CommonFilterStateFromQuery and has exactly one production reader left,
+// CommonFilterParts, which renders the live cache as chips. Nothing authors a
+// predicate through it any more: a persisted lens holds the canonical query, and
+// so does a captured restoration point, precisely because this direction cannot
+// spell a clause's polarity or hold both dependency directions at once. Keep it
+// a rendering, not a second way in.
 func CommonFilterClauses(f *CommonFilterState) []models.QueryClause {
 	if f == nil {
 		return nil

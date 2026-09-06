@@ -155,14 +155,18 @@ func (m *OutlinerModel) SimplifiedInlineControlOwnsInput() bool {
 // of what "the view I was in" means.
 
 // capturePresentationSnapshot reads the projection axes every narrowing
-// replaces: the mode, its facets and ordering, the folds, both focus stacks, the
-// section zoom, and the cursor. Scope is deliberately absent — it names the
-// candidate population rather than the projection over it, so the callers that
-// own scope capture it beside this rather than inside it.
+// replaces: the mode, the canonical narrowing predicate, the ordering, the
+// folds, both focus stacks, the section zoom, and the cursor. Scope is
+// deliberately absent — it names the candidate population rather than the
+// projection over it, so the callers that own scope capture it beside this
+// rather than inside it.
+//
+// The predicate is taken canonical, which also copies its clauses out, so a
+// frame can never alias the query a later facet rewrites.
 func (m *OutlinerModel) capturePresentationSnapshot() outlinerSearchSnapshot {
 	return outlinerSearchSnapshot{
 		Mode:               m.PrimaryMode,
-		filter:             CopyFilterState(m.Filter),
+		filterQuery:        m.FilterQuery.Canonical(),
 		Sort:               m.Sort,
 		treeSort:           m.TreeSort,
 		ExpandedNodes:      copyBoolMap(m.Folds.ExpandedNodes),
@@ -180,9 +184,14 @@ func (m *OutlinerModel) capturePresentationSnapshot() outlinerSearchSnapshot {
 // It rebuilds nothing and moves no cursor: each caller owns a different rebuild
 // and a different cursor fallback, and computeOutlinerViewport stays the sole
 // window authority.
+//
+// The predicate goes back through restoreNarrowingPredicate, which reinstates
+// the captured projection clauses verbatim over whichever population the view is
+// currently standing in. That is the whole of this function's contract with the
+// population: it never claims one, so a caller that has projects to reinstate
+// installs them and their facets itself, before calling.
 func (m *OutlinerModel) restorePresentationSnapshot(snapshot outlinerSearchSnapshot) {
 	m.PrimaryMode = snapshot.Mode
-	m.Filter = CopyFilterState(snapshot.filter)
 	m.Sort = snapshot.Sort
 	m.TreeSort = snapshot.treeSort
 	m.Folds.setNodes(copyBoolMap(snapshot.ExpandedNodes))
@@ -193,39 +202,35 @@ func (m *OutlinerModel) restorePresentationSnapshot(snapshot outlinerSearchSnaps
 		slices.Clone(snapshot.crossFocusStack),
 		snapshot.zoom,
 	)
-	// A captured frame is still carrier-shaped, so the restored facets enter
-	// through the one inverse lift and the narrowing predicate is rebuilt from
-	// them rather than left holding the frame that was replaced.
-	m.AdoptFilterCarriers()
+	m.restoreNarrowingPredicate(snapshot.filterQuery)
 }
 
-// outlinerViewSnapshot is the complete restoration point one lens application
-// captures. It is the presentation snapshot plus everything a lens may reach
-// that ordinary search never does: the project population and the facets that
-// selected it, the scope frame the user is standing in, the ordinary search
-// projection a lens replaces outright, the subordinate tools (Peek, selection),
-// and Recent's frozen ordering keys.
+// OutlinerPresentationCheckpoint is how a view was presenting, and nothing about
+// what it was presenting over. That split is the type's reason to exist: every
+// member below is a mode, a predicate, an ordering, an identity or a flag, so
+// the whole checkpoint can be restored over whatever data the Outliner is
+// holding when it comes back. No task pointer and no project pointer is in here,
+// and none may be added — the loaded population is the one cluster a frame can
+// carry by value, and outlinerViewSnapshot below is where it goes.
 //
 // It is one field per cluster, and each of those fields is the cluster's own
-// answer to what a frame owes it — populationState, scopeState, searchState,
-// MultiSelectState and recencyState each name their own snapshot type, and each
-// decides for itself which of its members describes a view worth restoring and
-// which describes work in flight that must not be restarted. That is what keeps
-// this type a ledger rather than a second, competing model: nothing here knows
-// the shape of any cluster it names.
+// answer to what a frame owes it — scopeState, searchState, MultiSelectState and
+// recencyState each name their own snapshot type, and each decides for itself
+// which of its members describes a view worth restoring and which describes work
+// in flight that must not be restarted. That is what keeps this type a ledger
+// rather than a second, competing model: nothing here knows the shape of any
+// cluster it names.
 //
 // Two members are single values rather than groups because their clusters
-// contribute one apiece. lensQuery is captured for symmetry — a baseline taken
+// contribute one apiece. lensQuery is captured for symmetry — a checkpoint taken
 // outside a lens holds the empty query, and restoring it is what guarantees no
 // narrowing survives. peekMode is Peek entire, and it sits beside the selection
 // it is mutually exclusive with rather than inside it, because Peek is the
 // Outliner's and the selection is every list surface's.
-type OutlinerViewSnapshot struct {
-	Presentation outlinerSearchSnapshot
-
-	// Population: the facets that chose it and the snapshot they chose.
-	projectFilter query.ProjectFilterState
-	population    populationSnapshot
+type OutlinerPresentationCheckpoint struct {
+	// Projection: mode, the canonical predicate, ordering, folds, focus, zoom
+	// and the cursor anchor.
+	Projection outlinerSearchSnapshot
 
 	// Scope: the single project focus, the base frame behind it, and the parked
 	// exception that may be why the focus exists.
@@ -243,55 +248,92 @@ type OutlinerViewSnapshot struct {
 	peekMode  bool
 	selection listsurface.SelectionSnapshot
 
-	// Recent's frozen ordering, so returning to a Recent baseline reads the list
-	// the user was triaging rather than a reshuffled one.
+	// Recent's frozen ordering, so returning to a Recent checkpoint reads the
+	// list the user was triaging rather than a reshuffled one.
 	recency recencySnapshot
 }
 
-// captureOutlinerViewSnapshot takes the full restoration point, one cluster at a
+// CaptureOutlinerPresentationCheckpoint takes that checkpoint, one cluster at a
 // time. Every line here is a whole cluster asked what it holds, which is the
-// point: a member added to any of those sub-states is carried by the frame
-// without this function learning about it, and a member that must not be carried
-// is refused where it lives rather than by an omission here nobody would notice.
-func (m *OutlinerModel) CaptureOutlinerViewSnapshot() OutlinerViewSnapshot {
-	return OutlinerViewSnapshot{
-		Presentation:  m.capturePresentationSnapshot(),
-		projectFilter: m.ProjectFilter.Clone(),
-		population:    m.Population.capture(),
-		scope:         m.Scope.capture(),
-		search:        m.Search.capture(),
-		searchInput:   m.CaptureSearchInput(),
-		lensQuery:     m.Lens.Query,
-		peekMode:      m.PeekMode,
-		selection:     m.CaptureSelection(),
-		recency:       m.Recency.capture(),
+// point: a member added to any of those sub-states is carried without this
+// function learning about it, and a member that must not be carried is refused
+// where it lives rather than by an omission here nobody would notice.
+func (m *OutlinerModel) CaptureOutlinerPresentationCheckpoint() OutlinerPresentationCheckpoint {
+	return OutlinerPresentationCheckpoint{
+		Projection:  m.capturePresentationSnapshot(),
+		scope:       m.Scope.capture(),
+		search:      m.Search.capture(),
+		searchInput: m.CaptureSearchInput(),
+		lensQuery:   m.Lens.Query,
+		peekMode:    m.PeekMode,
+		selection:   m.CaptureSelection(),
+		recency:     m.Recency.capture(),
 	}
 }
 
-// restoreOutlinerViewSnapshot puts the captured view back and rebuilds once. It
-// is capture read backwards, cluster by cluster, and it holds no deep copy, no
-// nil repair and no paired write of its own: each of those is an invariant of the
-// cluster it belongs to and is stated there. What is left here is the rebuild,
-// which is the one thing no cluster can own — the population guard is
-// invalidated, the rows are built once over every axis just written, and the
-// cursor lands through restoreSearchCursor, which seats the exact surviving
-// identity and otherwise falls back to the nearest surviving task row, the same
-// fallback ordinary search already uses when data moved underneath it.
-func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot OutlinerViewSnapshot) {
-	m.restorePresentationSnapshot(snapshot.Presentation)
-	m.restoreFilterCarriers(snapshot.projectFilter)
-	m.restorePopulation(snapshot.population)
-	m.Scope.restore(snapshot.scope)
-	m.Search.restore(snapshot.search)
-	m.RestoreSearchInput(snapshot.searchInput)
-	m.SetLensQuery(snapshot.lensQuery)
-	m.PeekMode = snapshot.peekMode
-	m.RestoreSelection(snapshot.selection)
-	m.Recency.restore(snapshot.recency)
+// RestoreOutlinerPresentationCheckpoint puts that checkpoint back over the data
+// the Outliner is holding now and rebuilds once. It is capture read backwards,
+// cluster by cluster, and it holds no deep copy, no nil repair and no paired
+// write of its own: each of those is an invariant of the cluster it belongs to
+// and is stated there. What is left here is the rebuild, which is the one thing
+// no cluster can own — the population guard is invalidated, the rows are built
+// once over every axis just written, and the cursor lands through
+// restoreSearchCursor, which seats the exact surviving identity and otherwise
+// falls back to the nearest surviving task row, the same fallback ordinary
+// search already uses when data moved underneath it.
+//
+// Nothing here reads the projects the checkpoint was taken over, so a task
+// deleted, moved or renamed in between costs the cursor at most, never the view.
+func (m *OutlinerModel) RestoreOutlinerPresentationCheckpoint(checkpoint OutlinerPresentationCheckpoint) {
+	m.restorePresentationSnapshot(checkpoint.Projection)
+	m.Scope.restore(checkpoint.scope)
+	m.Search.restore(checkpoint.search)
+	m.RestoreSearchInput(checkpoint.searchInput)
+	m.SetLensQuery(checkpoint.lensQuery)
+	m.PeekMode = checkpoint.peekMode
+	m.RestoreSelection(checkpoint.selection)
+	m.Recency.restore(checkpoint.recency)
 
 	m.Population.Invalidate()
 	m.RebuildRows()
-	m.restoreSearchCursor(snapshot.Presentation.cursor)
+	m.restoreSearchCursor(checkpoint.Projection.cursor)
+}
+
+// outlinerViewSnapshot is the complete restoration point one lens application
+// captures: the presentation checkpoint plus the one thing ordinary search never
+// touches and a lens may replace outright, the loaded project population.
+//
+// Those are the only two members, and they are the two halves of the same split
+// the checkpoint is named for. Everything that describes the view is in the
+// checkpoint and restores over current data; the projects are what "current
+// data" means, and a lens is the one caller that has to put a different set of
+// them back. The facets that chose that set are not a third member — they are
+// the population half of the checkpoint's own canonical predicate, which is why
+// they cannot drift out of agreement with it.
+type OutlinerViewSnapshot struct {
+	Presentation OutlinerPresentationCheckpoint
+	population   populationSnapshot
+}
+
+// captureOutlinerViewSnapshot takes the full restoration point: the checkpoint,
+// and the population it was taken over.
+func (m *OutlinerModel) CaptureOutlinerViewSnapshot() OutlinerViewSnapshot {
+	return OutlinerViewSnapshot{
+		Presentation: m.CaptureOutlinerPresentationCheckpoint(),
+		population:   m.Population.capture(),
+	}
+}
+
+// restoreOutlinerViewSnapshot puts back the projects a lens application replaced
+// and then the view that was standing over them.
+func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot OutlinerViewSnapshot) {
+	// The projects and the facets that selected them go back together, and go
+	// first: the checkpoint restore deliberately keeps whichever population half
+	// of the predicate the live view holds, and this pair is what makes that half
+	// the frame's own again before it does.
+	m.adoptPopulationNarrowing(snapshot.Presentation.Projection.filterQuery)
+	m.restorePopulation(snapshot.population)
+	m.RestoreOutlinerPresentationCheckpoint(snapshot.Presentation)
 }
 
 // recencyState is Recent mode's frozen ordering, held against the projection it

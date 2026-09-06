@@ -36,7 +36,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())
 
 	out.Filter.Tags = map[string]bool{"missing": true}
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.Population.Invalidate()
 	out.RebuildRows()
 	out.ClampCursor()
@@ -117,7 +117,7 @@ func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 	app := zoomChromeApp(t)
 	out := app.crossOutliner
 	out.Filter.Priority = models.PriorityHigh
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.Population.Invalidate()
 	out.RebuildRows()
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())

@@ -202,7 +202,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 			origin = out.Lens.Active.Origin
 			continue
 		}
-		if out.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
+		if out.Lens.Active.Origin.Presentation.Projection.Mode != origin.Presentation.Projection.Mode {
 			t.Fatalf("adding %q replaced the original restoration point", name)
 		}
 	}
@@ -239,12 +239,12 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 	// A saved user lens first, so the template is added from inside an active one.
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Held", "needle"))
 	origin := out.Lens.Active.Origin
-	if origin.Presentation.Mode != chrome.ModeInbox {
-		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.Presentation.Mode, chrome.ModeInbox)
+	if origin.Presentation.Projection.Mode != chrome.ModeInbox {
+		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.Presentation.Projection.Mode, chrome.ModeInbox)
 	}
 
 	addTemplateAndSettle(t, model, lensTemplateByName(t, "Parked Work"))
-	if out.Lens.Active.Origin.Presentation.Mode != chrome.ModeInbox {
+	if out.Lens.Active.Origin.Presentation.Projection.Mode != chrome.ModeInbox {
 		t.Fatal("adding a template from inside a lens rebased the restoration point onto that lens")
 	}
 	if out.Lens.Query != "" {

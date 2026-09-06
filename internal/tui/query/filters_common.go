@@ -1,7 +1,6 @@
 package query
 
 import (
-	"maps"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -50,33 +49,10 @@ type CommonFilterState struct {
 	completionAgeSet bool
 }
 
-// CopyCommonFilterState returns a deep copy of a CommonFilterState.
-func CopyCommonFilterState(src *CommonFilterState) *CommonFilterState {
-	dst := &CommonFilterState{
-		States:           cloneCommonWorkflowStateSet(src.States),
-		Priority:         src.Priority,
-		DueDate:          src.DueDate,
-		CompletionAge:    src.CompletionAge,
-		NoContext:        src.NoContext,
-		Hierarchy:        src.Hierarchy,
-		Dependency:       src.Dependency,
-		Stale:            src.Stale,
-		Deferred:         src.Deferred,
-		Pinned:           src.Pinned,
-		Review:           src.Review,
-		statesSet:        src.statesSet,
-		completionAgeSet: src.completionAgeSet,
-	}
-	if len(src.Tags) > 0 {
-		dst.Tags = make(map[string]bool, len(src.Tags))
-		maps.Copy(dst.Tags, src.Tags)
-	}
-	if len(src.Contexts) > 0 {
-		dst.Contexts = make(map[string]bool, len(src.Contexts))
-		maps.Copy(dst.Contexts, src.Contexts)
-	}
-	return dst
-}
+// Nothing copies this carrier. It is derived from the canonical query by
+// setFilterQuery and by nothing else, so the way to hold onto a narrowing is to
+// hold the query — which is what a restoration point does, and the only form
+// that can carry a clause's polarity and both dependency directions back.
 
 func cloneCommonWorkflowStateSet(states models.WorkflowStateSet) models.WorkflowStateSet {
 	cloned, err := models.NewWorkflowStateSet(states.Values()...)

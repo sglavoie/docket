@@ -293,7 +293,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
 	outliner.Filter.SetStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled))
-	outliner.AdoptFilterCarriers()
+	adoptFilterCarriers(outliner)
 	outliner.RebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"done", "canceled"}) {
 		t.Fatalf("terminal-filter rows = %v, want done/canceled", got)
@@ -310,7 +310,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 
 	clearCommonFilters(&outliner.Filter.CommonFilterState)
 	outliner.Filter.Deferred = true
-	outliner.AdoptFilterCarriers()
+	adoptFilterCarriers(outliner)
 	outliner.RebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"deferred"}) {
 		t.Fatalf("deferred-filter rows = %v, want explicit deferred Today task", got)

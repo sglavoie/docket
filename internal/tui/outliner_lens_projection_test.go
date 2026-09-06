@@ -260,7 +260,7 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	outlinerView := lensProjectionOutliner()
 	outlinerView.ApplyOpenOptions(outliner.OutlinerOpenOptions{Mode: chrome.ModeInbox, SetMode: true})
 	outlinerView.Filter.Pinned = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outlinerView); len(got) != 0 {
@@ -277,7 +277,7 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	// The facet is an AND gate over the query too, so it is cleared before the
 	// mode is widened to one that holds the matches.
 	outlinerView.Filter.Pinned = false
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 	got := searchVisibleTaskIDs(outlinerView)
 	for _, id := range []string{"child", "described", "beta-task"} {
@@ -303,14 +303,14 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	// Re-arming the facet while the flat list stands gates the same result set:
 	// no fixture task is pinned, so the AND leaves nothing.
 	outlinerView.Filter.Pinned = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outlinerView); len(got) != 0 {
 		t.Fatalf("ranked list under the pinned facet = %v, want the facet to gate it", got)
 	}
 	outlinerView.Filter.Pinned = false
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 
 	// Leaving the frame drops the flat presentation with the query that fed it.
 	outlinerView.ClearSearch()

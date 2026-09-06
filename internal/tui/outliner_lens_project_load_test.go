@@ -166,7 +166,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if cmd := applyLensOrFatal(t, outlinerView, lens); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
-	if got := outlinerView.Lens.Pending.Origin.Presentation.Mode; got != chrome.ModeInbox {
+	if got := outlinerView.Lens.Pending.Origin.Presentation.Projection.Mode; got != chrome.ModeInbox {
 		t.Fatalf("frozen baseline mode = %v, want %v", got, chrome.ModeInbox)
 	}
 

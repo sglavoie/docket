@@ -121,13 +121,6 @@ func populationModeFromClause(clause models.QueryClause) ProjectPopulationMode {
 	return ProjectPopulationInclude
 }
 
-// FilterQueryFromCarriers is the one lift from carrier-shaped input into the
-// canonical query.
-func FilterQueryFromCarriers(f *CommonFilterState, p *ProjectFilterState) models.Query {
-	query := models.Query{Clauses: append(CommonFilterClauses(f), projectFilterClauses(p)...)}
-	return query.Canonical()
-}
-
 // FilterClauseParts renders clauses as the chips chrome shows. The sigil text is
 // the canonical spelling, so a chip, a saved lens, and a typed query name the
 // same narrowing with the same characters.

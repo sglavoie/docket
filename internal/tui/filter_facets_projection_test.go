@@ -58,7 +58,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	outlinerView.Filter.Tags = map[string]bool{"alpha": true, "beta": true}
 	outlinerView.Filter.DueDate = query.DueDateToday
 	outlinerView.Filter.Deferred = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outlinerView)
@@ -102,7 +102,7 @@ func TestTagFacetDropsNonmatchingAncestorAcrossWorkflowSections(t *testing.T) {
 	project := primaryRowsProject("life-trail", parent, child)
 	outlinerView := scopeTestOutliner(project)
 	outlinerView.Filter.Tags = map[string]bool{"bug": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{child.ID}) {
@@ -140,7 +140,7 @@ func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
 			outlinerView := scopeTestOutliner(project)
 			outlinerView.SelectOutlinerMode(tc.mode)
 			outlinerView.Filter.Tags = map[string]bool{"bug": true}
-			outlinerView.AdoptFilterCarriers()
+			adoptFilterCarriers(outlinerView)
 			outlinerView.RebuildRows()
 
 			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{child.ID}) {
@@ -167,7 +167,7 @@ func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
 	outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
 	outlinerView.Focus.CrossStack = []outliner.CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
 	outlinerView.Filter.Tags = map[string]bool{"bug": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{match.ID}) {
@@ -198,7 +198,7 @@ func TestBacklogContextRowsMustSatisfyEveryActiveFacet(t *testing.T) {
 			outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
 			outlinerView.Filter.Tags = map[string]bool{"bug": true}
 			outlinerView.Filter.Priority = 1
-			outlinerView.AdoptFilterCarriers()
+			adoptFilterCarriers(outlinerView)
 			outlinerView.RebuildRows()
 
 			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tc.want) {
@@ -232,7 +232,7 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	outlinerView.Filter.SetStateFilter(states)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outlinerView)
@@ -301,13 +301,12 @@ func TestStaleFacetUsesUpdatedLocalCalendarAgeAndBaseVisibility(t *testing.T) {
 		t.Fatal("Stale facet admitted terminal or currently deferred work")
 	}
 
-	copy := query.CopyCommonFilterState(&filter)
-	if !copy.Stale || !query.HasActiveCommonFilters(copy) || query.CommonFilterFacetCount(copy) != 1 {
-		t.Fatalf("copied Stale facet lost active state: %+v", copy)
+	if !query.HasActiveCommonFilters(&filter) || query.CommonFilterFacetCount(&filter) != 1 {
+		t.Fatalf("Stale is not the one active facet: %+v", filter)
 	}
-	clearCommonFilters(copy)
-	if copy.Stale || query.HasActiveCommonFilters(copy) {
-		t.Fatalf("clearCommonFilters left Stale active: %+v", copy)
+	clearCommonFilters(&filter)
+	if filter.Stale || query.HasActiveCommonFilters(&filter) {
+		t.Fatalf("clearCommonFilters left Stale active: %+v", filter)
 	}
 	if fresh := query.NewCommonFilterState(); fresh.Stale {
 		t.Fatal("NewCommonFilterState starts with Stale active")
@@ -333,7 +332,7 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	project := primaryRowsProject("cleanup", doneOld, doneRecent, canceledOld, invalidDone, ready)
 	outlinerView := scopeTestOutliner(project)
 	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outlinerView)
@@ -345,7 +344,7 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 		t.Fatal(err)
 	}
 	outlinerView.Filter.SetStateFilter(doneOnly)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 	visible = visibleOutlinerTaskIDs(outlinerView)
 	if !visible[doneOld.ID] || len(visible) != 1 {
@@ -356,7 +355,7 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 		t.Fatal(err)
 	}
 	outlinerView.Filter.SetStateFilter(both)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.RebuildRows()
 	visible = visibleOutlinerTaskIDs(outlinerView)
 	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
@@ -379,7 +378,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outlinerView.Filter.DueDate = query.DueDateNone
 	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
 	outlinerView.Filter.Deferred = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 
 	outlinerView.SelectOutlinerMode(chrome.ModeDue)
 	if outlinerView.Filter.Priority != 2 || !outlinerView.Filter.Deferred {
@@ -402,7 +401,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	// pop back to the base scope.
 	outlinerView.Filter.Priority = models.PriorityMedium
 	outlinerView.Filter.Tags = map[string]bool{"beta": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.PushProjectScope(beta.ID)
 	if outlinerView.Filter.Priority != models.PriorityMedium || !outlinerView.Filter.Tags["beta"] {
 		t.Fatalf("project focus replacement reset facets: %+v", outlinerView.Filter.CommonFilterState)
@@ -426,7 +425,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	outlinerView.Filter.Priority = 2
 	outlinerView.Filter.Tags = map[string]bool{"live": true}
 	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge7Days)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 
 	legacyStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {

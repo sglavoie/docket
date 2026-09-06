@@ -223,9 +223,15 @@ func (s *searchState) takeNoteCursor() notes.NoteRowIdentity {
 // therefore re-answers that query in the new frame instead of editing it, while
 // mode, facets, folds, zoom, ordering, and viewport are the frame's own axes and
 // are restored when the query is dropped.
+//
+// The narrowing is held as the canonical query itself and never as the carrier
+// caches derived from it, because those caches cannot spell a clause's polarity
+// or hold both dependency directions at once: a frame captured under -#tag or
+// under ?blocked and ?blocking would come back narrowed by something else. The
+// query is the authority everywhere else, and it is the authority here.
 type outlinerSearchSnapshot struct {
 	Mode               chrome.OutlinerModeID
-	filter             query.FilterState
+	filterQuery        models.Query
 	Sort               query.SortState
 	treeSort           query.SortState
 	ExpandedNodes      map[taskref.TaskIdentity]bool
@@ -319,10 +325,6 @@ func (m *OutlinerModel) ToggleRankedList() bool {
 	m.Population.Invalidate()
 	RebuildOutlinerPreservingCursor(m)
 	return true
-}
-
-func CopyFilterState(src query.FilterState) query.FilterState {
-	return query.FilterState{CommonFilterState: *query.CopyCommonFilterState(&src.CommonFilterState)}
 }
 
 func (m *OutlinerModel) BeginSearchProjection() {

@@ -104,7 +104,7 @@ func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
 
 	// Diverging the live view must not move the installed fingerprint.
 	outlinerView.Filter.Priority = int(models.PriorityHigh)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 
 	if outlinerView.Lens.Active.LensID != saved.ID || outlinerView.Lens.Active.Name != saved.Name {
 		t.Fatalf("frame identity = %q/%q, want %q/%q",

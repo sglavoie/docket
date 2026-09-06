@@ -127,7 +127,7 @@ func TestInboxAdvanceFollowsTheFilteredRows(t *testing.T) {
 	alpha := primaryRowsProject("alpha", keep, hidden, survivor)
 	outliner := inboxAdvanceOutliner(t, alpha)
 	outliner.Filter.Tags = map[string]bool{"triage": true}
-	outliner.AdoptFilterCarriers()
+	adoptFilterCarriers(outliner)
 	inboxAdvanceRebuild(outliner)
 
 	if got := countTaskRows(outliner, hidden.ID); got != 0 {

@@ -105,7 +105,7 @@ func TestFilteredEmptyStateAdvertisesWorkingClearChord(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
 	out.Filter.Tags = map[string]bool{"missing": true}
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.Population.Invalidate()
 	out.RebuildRows()
 
@@ -208,7 +208,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f@ due date", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.Filter.DueDate = query.DueDateThisWeek
-		app.crossOutliner.AdoptFilterCarriers()
+		adoptFilterCarriers(app.crossOutliner)
 
 		cmd := pressFilterChord(t, app, "f@")
 		if cmd == nil {
@@ -246,7 +246,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal(err)
 		}
 		app.crossOutliner.Filter.SetStateFilter(set)
-		app.crossOutliner.AdoptFilterCarriers()
+		adoptFilterCarriers(app.crossOutliner)
 
 		cmd := pressFilterChord(t, app, "f$")
 		if cmd == nil {
@@ -265,7 +265,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("fa completion age", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
-		app.crossOutliner.AdoptFilterCarriers()
+		adoptFilterCarriers(app.crossOutliner)
 
 		cmd := pressFilterChord(t, app, "fa")
 		if cmd == nil {
@@ -298,7 +298,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f# tags", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.Filter.Tags = map[string]bool{"deep": true}
-		app.crossOutliner.AdoptFilterCarriers()
+		adoptFilterCarriers(app.crossOutliner)
 
 		cmd := pressFilterChord(t, app, "f#")
 		if cmd == nil {
@@ -347,13 +347,13 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	outlinerView.Population.Projects = []*models.Project{project}
 	outlinerView.Filter.Priority = 2
 	outlinerView.Filter.Tags = map[string]bool{"focus": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	selectedStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
 	outlinerView.Filter.SetStateFilter(selectedStates)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Population.Invalidate()
 	outlinerView.RebuildRows()
 

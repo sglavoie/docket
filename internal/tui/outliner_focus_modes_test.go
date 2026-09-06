@@ -155,14 +155,14 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	insideNested.Tags = []string{"focus-match"}
 	outsideBacklog.Tags = []string{"focus-match"}
 	out.Filter.Tags = map[string]bool{"focus-match": true}
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.RebuildRows()
 	if got := visibleOutlinerTaskIDs(out); len(got) != 1 || !got[insideNested.ID] {
 		t.Fatalf("focused tag facet rows = %v, want only %s", got, insideNested.ID)
 	}
 
 	out.Filter = query.NewFilterState()
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	out.Sort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	out.TreeSort = out.Sort
 	out.RebuildRows()

@@ -119,7 +119,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 			outlinerView.Filter.Stale = true
 			outlinerView.ProjectFilter.Tags = map[string]bool{"client": true}
 			outlinerView.ProjectFilter.ParkedMode = query.ProjectPopulationInclude
-			outlinerView.AdoptFilterCarriers()
+			adoptFilterCarriers(outlinerView)
 
 			test.enter(outlinerView)
 

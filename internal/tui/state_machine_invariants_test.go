@@ -319,7 +319,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		}
 
 		outlinerView.Filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
-		outlinerView.AdoptFilterCarriers()
+		adoptFilterCarriers(outlinerView)
 		outlinerView.RebuildRows()
 
 		if !outlinerView.MultiSelectMode || outlinerView.SelectedCount() != 2 {
@@ -341,7 +341,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		}
 
 		outlinerView.Filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
-		outlinerView.AdoptFilterCarriers()
+		adoptFilterCarriers(outlinerView)
 		outlinerView.Population.Invalidate()
 		outlinerView.CrossProjectRebuildRows()
 

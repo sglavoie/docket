@@ -114,7 +114,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.Population.Projects = []*models.Project{project}
 				out.PrimaryMode = chrome.ModeAll
 				out.Filter.Priority = models.PriorityHigh
-				out.AdoptFilterCarriers()
+				adoptFilterCarriers(out)
 				out.Rows = nil
 			},
 			wantMessage: listsurface.EmptyStateFiltered,

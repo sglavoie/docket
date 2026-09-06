@@ -71,7 +71,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	// list without disturbing its order. Only the low-priority task clears the
 	// threshold: an unset priority is effectively below Low.
 	outliner.Filter.Priority = models.PriorityLow
-	outliner.AdoptFilterCarriers()
+	adoptFilterCarriers(outliner)
 	outliner.Population.Invalidate()
 	outliner.CrossProjectRebuildRows()
 	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,

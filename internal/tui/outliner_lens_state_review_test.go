@@ -162,7 +162,7 @@ func reviewFacetCapturedFromLiveView(t *testing.T) {
 	outlinerView.Filter.Review = true
 	outlinerView.Filter.Pinned = true
 	outlinerView.Filter.Tags = map[string]bool{"review": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 
 	captured := outlinerView.CaptureLensState()
 	if !lensStateHoldsReview(captured) {
@@ -202,7 +202,7 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	applyLensOrFatal(t, out, starter)
 
 	out.Filter.Review = true
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	if !out.LensModified() {
 		t.Fatal("adding the review facet must mark the lens modified")
 	}
@@ -219,7 +219,7 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	}
 
 	out.Filter.Review = false
-	out.AdoptFilterCarriers()
+	adoptFilterCarriers(out)
 	if !out.LensModified() {
 		t.Fatal("dropping the review facet must mark the lens modified")
 	}
@@ -240,7 +240,7 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	outlinerView.SetLensQuery("  ship it  ")
 	outlinerView.Filter.Tags = map[string]bool{"api": true}
 	outlinerView.ProjectFilter.Tags = map[string]bool{"client": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	// Due owns its order, so the active sort is default while the user's manual
 	// choice survives in treeSort. The lens owns the remembered one.
 	outlinerView.Sort = query.NewSortState()
@@ -260,7 +260,7 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	before := captured.Facets.String()
 	outlinerView.Filter.Tags["late"] = true
 	outlinerView.ProjectFilter.Tags["late"] = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	if captured.Facets.String() != before {
 		t.Fatalf("a later facet edit reached into the captured definition: %q", captured.Facets.String())
 	}
@@ -323,7 +323,7 @@ func TestApplyLensStateDetachesFilterCollectionsFromTheDefinition(t *testing.T) 
 	before := state.Facets.String()
 	outlinerView.Filter.Tags["live"] = true
 	outlinerView.ProjectFilter.Tags["live"] = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	if state.Facets.String() != before {
 		t.Fatalf("a live facet edit mutated the applied definition: %q", state.Facets.String())
 	}

@@ -33,7 +33,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outlinerView.Scope.Stack = []outliner.OutlinerScopeFrame{{}}
 	outlinerView.Filter.Priority = 3
 	outlinerView.Filter.Tags = map[string]bool{"stale": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Cursor = 7
 	outlinerView.Folds.CollapsedSections["stale"] = true
 	outlinerView.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true

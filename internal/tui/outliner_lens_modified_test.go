@@ -25,7 +25,7 @@ func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	if outlinerView.Lens.Active.Name != "Held" {
 		t.Fatalf("active lens = %q, want Held", outlinerView.Lens.Active.Name)
 	}
-	if outlinerView.Lens.Active.Origin.Presentation.Mode != first.Presentation.Mode {
+	if outlinerView.Lens.Active.Origin.Presentation.Projection.Mode != first.Presentation.Projection.Mode {
 		t.Fatal("a switch replaced the original restoration point")
 	}
 	if outlinerView.Lens.Query != "" {
@@ -99,7 +99,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	}
 
 	outlinerView.Filter.Priority = int(models.PriorityHigh)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	if !outlinerView.LensModified() {
 		t.Fatal("a facet change must mark the lens modified")
 	}
@@ -108,7 +108,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	}
 
 	outlinerView.Filter.Priority = 0
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	if outlinerView.LensModified() {
 		t.Fatal("reverting the facet must clear the marker")
 	}
@@ -126,7 +126,7 @@ func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 		}},
 		{"project facets", func(o *outliner.OutlinerModel) {
 			o.ProjectFilter.Untagged = true
-			o.AdoptFilterCarriers()
+			adoptFilterCarriers(o)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -145,7 +145,7 @@ func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
 	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
 
 	outlinerView.Filter.Priority = int(models.PriorityHigh)
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outlinerView.Sort = outlinerView.TreeSort
 	outlinerView.Population.Invalidate()

@@ -89,7 +89,7 @@ func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 		models.StateInbox,
 		models.StateWaiting,
 	))
-	ol.AdoptFilterCarriers()
+	adoptFilterCarriers(ol)
 
 	first := statePartsFromParts(ol.ActiveFilterParts())
 	want := []string{"$backlog", "$canceled", "$inbox", "$waiting"}

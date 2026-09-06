@@ -2,6 +2,7 @@ package tui
 
 import (
 	"maps"
+	"slices"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -27,7 +29,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outlinerView := scopeTestOutliner(project)
 	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
 	outlinerView.Filter.Tags = map[string]bool{"saved": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Folds.CollapsedSections = map[string]bool{"saved-section": true}
 	outlinerView.Folds.ExpandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
 	outlinerView.Population.Invalidate()
@@ -36,7 +38,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 		t.Fatal("failed to seed cursor")
 	}
 	outlinerView.ViewScrollOffset = 4
-	wantFilter := outliner.CopyFilterState(outlinerView.Filter)
+	wantQuery := query.FilterClauseParts(outlinerView.FilterQuery.Clauses)
 	wantCollapsed := maps.Clone(outlinerView.Folds.CollapsedSections)
 	wantExpanded := maps.Clone(outlinerView.Folds.ExpandedNodes)
 
@@ -53,7 +55,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 			filterResult, outlinerView.Filter.Priority)
 	}
 	outlinerView.Filter.Tags = map[string]bool{"changed": true}
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Folds.CollapsedSections["changed-section"] = true
 	outlinerView.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
 	// The mode is a live axis under a held query, and it is also part of the
@@ -67,14 +69,14 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	_, _ = outlinerView.HandleKeyMsg(syntheticSpecialKey(tea.KeyEsc))
 
 	if outlinerView.PrimaryMode != chrome.ModeInbox ||
-		outlinerView.Filter.Priority != wantFilter.Priority ||
-		!maps.Equal(outlinerView.Filter.Tags, wantFilter.Tags) ||
+		!slices.Equal(query.FilterClauseParts(outlinerView.FilterQuery.Clauses), wantQuery) ||
 		!maps.Equal(outlinerView.Folds.CollapsedSections, wantCollapsed) ||
 		!maps.Equal(outlinerView.Folds.ExpandedNodes, wantExpanded) ||
 		outlinerView.ViewScrollOffset != 4 {
-		t.Fatalf("restored state differs: mode=%s filter=%v collapsed=%v expanded=%v scroll=%d",
-			outlinerView.PrimaryMode, outlinerView.Filter.Tags, outlinerView.Folds.CollapsedSections,
-			outlinerView.Folds.ExpandedNodes, outlinerView.ViewScrollOffset)
+		t.Fatalf("restored state differs: mode=%s query=%v collapsed=%v expanded=%v scroll=%d",
+			outlinerView.PrimaryMode, query.FilterClauseParts(outlinerView.FilterQuery.Clauses),
+			outlinerView.Folds.CollapsedSections, outlinerView.Folds.ExpandedNodes,
+			outlinerView.ViewScrollOffset)
 	}
 	if outlinerView.HasSearchProjection() || outlinerView.HasActiveSearch() || outlinerView.SearchQuery() != "" {
 		t.Fatalf("Esc left search active: projection=%v input=%v query=%q",

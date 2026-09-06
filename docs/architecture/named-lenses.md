@@ -138,9 +138,9 @@ a launch too. A refusal is silent: the pointer is a hint the user last expressed
 on this machine, not a record they are owed an error about. Because the reset
 completed first, `LensRestorationPoint` captures the canonical Active Projects /
 All view, and the first `Esc` lands exactly where a lens-free launch would have
-started — with no new baseline machinery, since `OutlinerViewSnapshot` already
-carries the whole `scopeSnapshot`: the scoped project, the frame stack, and the
-parked exception together.
+started — with no new baseline machinery, since the `OutlinerPresentationCheckpoint`
+inside `OutlinerViewSnapshot` already carries the whole `scopeSnapshot`: the
+scoped project, the frame stack, and the parked exception together.
 
 `MachineState.ActiveLensID` is the machine-local pointer at whichever lens is
 live. `PublishLens` writes it and `RestoreLensBaseline` and

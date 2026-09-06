@@ -74,7 +74,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			tasks[index].Tags = []string{"keep"}
 		}
 		cross.Filter.Tags = map[string]bool{"keep": true}
-		cross.AdoptFilterCarriers()
+		adoptFilterCarriers(cross)
 		cross.Population.Invalidate()
 		cross.CrossProjectRebuildRows()
 		if got := visibleTaskIDs(cross); len(got) != 3 {

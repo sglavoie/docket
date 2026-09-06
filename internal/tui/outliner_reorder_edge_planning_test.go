@@ -60,7 +60,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 			tasks[index].Tags = []string{"keep"}
 		}
 		cross.Filter.Tags = map[string]bool{"keep": true}
-		cross.AdoptFilterCarriers()
+		adoptFilterCarriers(cross)
 		enterCrossMode(cross, chrome.ModeNext)
 		if got := visibleTaskIDs(cross); len(got) != 3 {
 			t.Fatalf("filtered Next rows = %v, want 3", got)
@@ -86,7 +86,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		)
 		tasks[0].Tags = []string{"keep"}
 		cross.Filter.Tags = map[string]bool{"keep": true}
-		cross.AdoptFilterCarriers()
+		adoptFilterCarriers(cross)
 		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")

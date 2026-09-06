@@ -216,7 +216,7 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	// Give the live view a facet the saved definition does not carry, so the
 	// replacement is observable.
 	model.crossOutliner.Filter.Pinned = true
-	model.crossOutliner.AdoptFilterCarriers()
+	adoptFilterCarriers(model.crossOutliner)
 	pressLens(t, model, "space")
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter")

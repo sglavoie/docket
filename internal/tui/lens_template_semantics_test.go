@@ -131,7 +131,7 @@ func TestReviewQueueTemplateIntersectsItsOtherFacets(t *testing.T) {
 
 	// A tag intersects with the flag rather than joining it.
 	outlinerView.Filter.Tags["urgent"] = true
-	outlinerView.AdoptFilterCarriers()
+	adoptFilterCarriers(outlinerView)
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	if got := sortedVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"review-urgent"}) {

@@ -61,7 +61,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	if !outlinerView.Lens.Active.ProjectFacetsAwaitingLoad {
 		t.Fatal("an equivalent lens switch under scope discarded the owed population load")
 	}
-	if outlinerView.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
+	if outlinerView.Lens.Active.Origin.Presentation.Projection.Mode != origin.Presentation.Projection.Mode {
 		t.Fatal("the switch replaced the original pre-lens restoration frame")
 	}
 	if ids := loadedProjectIDs(outlinerView); !slices.Equal(ids, baseline) {
@@ -237,7 +237,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	if ids := loadedProjectIDs(outlinerView); !slices.Equal(ids, baseline) {
 		t.Fatalf("unscoped population = %v, want the %v the live lens selects", ids, baseline)
 	}
-	if outlinerView.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
+	if outlinerView.Lens.Active.Origin.Presentation.Projection.Mode != origin.Presentation.Projection.Mode {
 		t.Fatal("the repaired provenance replaced the original pre-lens restoration frame")
 	}
 

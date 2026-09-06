@@ -356,32 +356,43 @@ func (m *OutlinerModel) ReplaceFilterClauses(
 	m.SetFilterQuery(query.WithFields(m.FilterQuery, fields, clauses))
 }
 
-// adoptFilterCarriers lifts carrier-shaped state that entered from outside the
-// facet keys into the query, then re-derives so the caches and the predicate
-// agree again. Snapshot restoration is its only caller, on both halves: a
-// captured frame is still carrier-shaped, so whichever carrier a restore just
-// wrote, the predicate is rebuilt from the pair rather than left holding the one
-// that was replaced. A lens does not come through here, because a lens definition
-// carries the canonical query and enters through setFilterQuery directly.
-func (m *OutlinerModel) AdoptFilterCarriers() {
+// A restoration point carries the predicate itself rather than the carrier
+// caches derived from it, so the two writes below are how a captured predicate
+// gets back in. Both go through setFilterQuery, which re-derives both caches, so
+// a restore can never leave a picker, a chip, and the row predicate reading
+// different answers.
+//
+// They are two writes rather than one because the predicate has two halves with
+// different owners. The row and census clauses describe the projection and are
+// answered against whatever is loaded; the population clauses name which
+// projects were read at all, and putting those back without the projects they
+// selected would leave the query claiming a population nothing went and fetched.
+// So the presentation half restores on its own, over the population in hand, and
+// the population half restores only beside the projects it chose.
+
+// restoreNarrowingPredicate installs a captured predicate's projection half and
+// keeps the population half the live view is standing in. It is what a
+// presentation restored over current data owes: the mode, facets, and ordering
+// come back exactly as captured — polarity, dependency direction and all — while
+// the loaded projects stay whatever the view last read.
+func (m *OutlinerModel) restoreNarrowingPredicate(captured models.Query) {
 	if m == nil {
 		return
 	}
-	m.SetFilterQuery(query.FilterQueryFromCarriers(&m.Filter.CommonFilterState, &m.ProjectFilter))
+	m.SetFilterQuery(query.WithFields(captured, query.FilterQueryPopulationFields,
+		query.ClausesOfFields(m.FilterQuery, query.FilterQueryPopulationFields...)))
 }
 
-// restoreFilterCarriers reinstalls the population facet cache a frame froze and
-// re-derives the predicate from it. The two are one act: the cache is what the F
-// chord authored and the predicate is what every reader downstream asks, so a
-// restore that wrote one without the other would show a population selected by
-// facets the query has never heard of. It is the row carrier's counterpart —
-// restorePresentationSnapshot writes that one and re-derives on the same terms.
-func (m *OutlinerModel) restoreFilterCarriers(projectFilter query.ProjectFilterState) {
+// adoptPopulationNarrowing writes a captured predicate's population half over
+// the live one and leaves every projection clause alone. Its one caller restores
+// the projects those clauses selected in the same breath, which is what makes
+// the pair honest: the facets and the population they chose are one fact.
+func (m *OutlinerModel) adoptPopulationNarrowing(captured models.Query) {
 	if m == nil {
 		return
 	}
-	m.ProjectFilter = projectFilter.Clone()
-	m.AdoptFilterCarriers()
+	m.SetFilterQuery(query.WithFields(m.FilterQuery, query.FilterQueryPopulationFields,
+		query.ClausesOfFields(captured, query.FilterQueryPopulationFields...)))
 }
 
 // rowPredicateQuery is the half of the filter query models.Query.Admits answers.

@@ -124,6 +124,85 @@ func TestApplyNamedLensFallsBackToTheNearestSurvivorWhenTheCursorTaskLeaves(t *t
 	}
 }
 
+// lensBaselineParts spells the live narrowing the way a chip does, which is the
+// one reading that can tell a negation from its twin and both dependency
+// directions from each other.
+func lensBaselineParts(outlinerView *outliner.OutlinerModel) []string {
+	return query.FilterClauseParts(outlinerView.FilterQuery.Canonical().Clauses)
+}
+
+func lensBaselineQuery(t *testing.T, spelling string) models.Query {
+	t.Helper()
+	parsed, err := models.ParseQuery(spelling)
+	if err != nil {
+		t.Fatalf("ParseQuery(%q): %v", spelling, err)
+	}
+	return parsed
+}
+
+// TestLensDismissalRestoresANegatedScopedBaselineExactly is the lens half of the
+// lossless restoration point. The baseline here holds the two shapes the derived
+// carriers cannot express — a negation and both dependency directions at once —
+// beside a project scope, and Esc owes all of it back verbatim: a baseline that
+// came back as its positive twin would silently re-narrow the view onto tasks
+// the user had excluded.
+func TestLensDismissalRestoresANegatedScopedBaselineExactly(t *testing.T) {
+	outlinerView := lensLifecycleOutliner()
+	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
+	outlinerView.PushProjectScope("alpha")
+	outlinerView.SetFilterQuery(lensBaselineQuery(t, "#keep -#legacy ?blocked ?blocking"))
+	want := lensBaselineParts(outlinerView)
+
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
+	if got := lensBaselineParts(outlinerView); slices.Equal(got, want) {
+		t.Fatal("the lens did not replace the baseline narrowing")
+	}
+
+	if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
+		t.Fatal("expected the Esc cascade to consume the active lens")
+	}
+	if got := lensBaselineParts(outlinerView); !slices.Equal(got, want) {
+		t.Fatalf("restored baseline = %v, want %v", got, want)
+	}
+	if outlinerView.Scope.ProjectID != "alpha" {
+		t.Fatalf("restored scope = %q, want alpha", outlinerView.Scope.ProjectID)
+	}
+	if outlinerView.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want %v", outlinerView.PrimaryMode, chrome.ModeInbox)
+	}
+}
+
+// TestSearchInsideANegatedLensLeavesItUnmodified is the same losslessness read
+// through the modified marker. A search opened under a live lens captures the
+// frame it was typed in and Esc puts that frame back, so a restoration that
+// could not spell the lens's own negation would hand the view a different
+// predicate and report a lens the user never edited as modified.
+func TestSearchInsideANegatedLensLeavesItUnmodified(t *testing.T) {
+	outlinerView := lensLifecycleOutliner()
+	lens := lensWithFacet(waitingLens(lensTestID(1), "Waiting", ""), "-#legacy")
+	applyLensOrFatal(t, outlinerView, lens)
+	want := lensBaselineParts(outlinerView)
+	if !slices.Contains(want, "-#legacy") {
+		t.Fatalf("the lens narrowing lost its negation on application: %v", want)
+	}
+	if outlinerView.LensModified() {
+		t.Fatal("a freshly applied lens is already modified")
+	}
+
+	outlinerView.SetSearchQuery("needle")
+	if !outlinerView.HasSearchProjection() {
+		t.Fatal("expected an ordinary search projection under the lens")
+	}
+	outlinerView.ClearSearch()
+
+	if got := lensBaselineParts(outlinerView); !slices.Equal(got, want) {
+		t.Fatalf("restored lens narrowing = %v, want %v", got, want)
+	}
+	if outlinerView.LensModified() {
+		t.Fatal("leaving a search marked the untouched lens modified")
+	}
+}
+
 func TestApplyNamedLensUnderScopeRecordsProjectFacetsInert(t *testing.T) {
 	outlinerView := lensLifecycleOutliner()
 	outlinerView.PushProjectScope("alpha")
