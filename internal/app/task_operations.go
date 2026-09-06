@@ -28,6 +28,7 @@ const (
 	TaskOperationSetTags              TaskOperation = "set_tags"
 	TaskOperationToggleTag            TaskOperation = "toggle_tag"
 	TaskOperationSetPinned            TaskOperation = "set_pinned"
+	TaskOperationToggleReview         TaskOperation = "toggle_review"
 	TaskOperationSetDependencies      TaskOperation = "set_dependencies"
 )
 
@@ -182,6 +183,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 
 	case TaskOperationSetPinned:
 		result, err := s.BulkSetPinned(req.Targets, req.Pinned)
+		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationToggleReview:
+		result, err := s.bulkToggleReview(req.Targets)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetDependencies:

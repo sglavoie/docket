@@ -336,3 +336,29 @@ func (s *Service) BulkSetPinned(locators []TaskLocator, pinned bool) (BulkResult
 		t.UpdatedAt = now
 	})
 }
+
+// bulkToggleReview flips the review flag over the whole selection as ONE
+// decision: every target is flagged unless all of them already are, in which
+// case every target is cleared. The direction is computed here, in the
+// application layer, from the very snapshot the commit writes — never from a
+// presentation's cursor and never from a second read — so a selection can never
+// flag half of itself, and one target and many take the identical path.
+//
+// Review coexists with every other axis, so no target is refusable: the flag
+// rides ApplyReview, which no-ops on an already-correct member and therefore
+// leaves that task's touch time, lifecycle state and clock, dates, planning
+// membership, and pin exactly where they were. Only the explicitly targeted
+// tasks are touched; a parent's review flag says nothing about its children.
+func (s *Service) bulkToggleReview(locators []TaskLocator) (BulkResult, error) {
+	return s.bulkAttributeOverSnapshot(locators, "Toggle Review", "review", func(_ Snapshot, refs []TaskRef) (func(TaskRef), error) {
+		review := false
+		for _, ref := range refs {
+			if !ref.Task.Review {
+				review = true
+				break
+			}
+		}
+		now := s.clock.Now()
+		return func(ref TaskRef) { ref.Task.ApplyReview(review, now) }, nil
+	})
+}
