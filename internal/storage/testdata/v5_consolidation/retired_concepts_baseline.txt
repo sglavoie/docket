@@ -363,7 +363,7 @@ dependency	internal/tui/query/filter_query_state.go	DependencyFilterBlocked	1
 dependency	internal/tui/query/filter_query_state.go	DependencyFilterBlocking	1
 dependency	internal/tui/query/filter_shortcuts.go	DependencyFilterShortcutForToken	1
 dependency	internal/tui/query/filter_shortcuts.go	DependencyFilterShortcuts	2
-dependency	internal/tui/query/filters_common.go	Dependency	5
+dependency	internal/tui/query/filters_common.go	Dependency	3
 dependency	internal/tui/query/filters_common.go	DependencyFilter	1
 dependency	internal/tui/query/filters_common.go	DependencyFilterAll	2
 dependency	internal/tui/query/outliner_search_predicate_admits.go	Dependencies	2
