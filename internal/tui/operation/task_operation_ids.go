@@ -40,6 +40,12 @@ const (
 	OperationTaskTogglePin            OperationID = "tui.task.toggle-pin"
 	OperationTaskNewChild             OperationID = "tui.task.new-child"
 
+	// OperationTaskToggleReview is the `=review` sigil's key. Review is a stored
+	// boolean axis beside Pinned rather than a lifecycle state, so it toggles the
+	// way pinning does instead of joining the `$` destinations, and `f=` keeps
+	// narrowing by the same flag this writes.
+	OperationTaskToggleReview OperationID = "tui.task.toggle-review"
+
 	// OperationTaskDelete carries no direct key. Delete is the whole task
 	// `Space` menu and confirms first, so the ID is manifest vocabulary the
 	// sheet reads rather than a binding the strategy declares.

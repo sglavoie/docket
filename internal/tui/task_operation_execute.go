@@ -32,6 +32,9 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operation.OperationTaskTogglePin {
 		return m.executeTaskTogglePinOperation(invocation)
 	}
+	if invocation.Descriptor.ID == operation.OperationTaskToggleReview {
+		return m.executeTaskToggleReviewOperation(invocation)
+	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
@@ -141,6 +144,40 @@ func (m *AppModel) executeTaskTogglePinOperation(
 			},
 			action,
 			fmt.Sprintf("%s %d task(s)", verb, len(locators)),
+		), capture),
+	}}
+}
+
+// executeTaskToggleReviewOperation hands the whole frozen target set to the one
+// application operation and lets it decide the direction. Unlike the pin toggle
+// above, nothing here reads the flag: `bulkToggleReview` computes flag-all
+// versus clear-all from the same snapshot it commits, so a second read in the
+// presentation layer could only disagree with the mutation it is describing.
+// The success line is left empty for the same reason — the coordinator builds it
+// from the committed result, whose task count is the deduplicated one the
+// transaction actually wrote.
+func (m *AppModel) executeTaskToggleReviewOperation(
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
+				"operation %s resolved an invalid task",
+				invocation.Descriptor.ID,
+			)}
+		}
+		locators = append(locators, target.Task.Locator())
+	}
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
+		Cmd: withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(
+			app.TaskOperationRequest{
+				Operation: app.TaskOperationToggleReview,
+				Targets:   locators,
+			},
+			"Toggle Review",
+			"",
 		), capture),
 	}}
 }

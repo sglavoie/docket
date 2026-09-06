@@ -253,6 +253,9 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, "ctrl+c": operation.OperationCoreQuit,
 		"tab": operation.OperationCoreNextWorkMode, "shift+tab": operation.OperationCorePreviousWorkMode,
 		"@": operation.OperationTaskSetDueDate,
+		// = is not shared: there is no project review flag for the cursor to
+		// disambiguate, so the key names a task and only a task.
+		"=": operation.OperationTaskToggleReview,
 		"y": operation.OperationTaskCopyTitle, "Y": operation.OperationTaskCopyDetails,
 		"ctrl+y": operation.OperationTaskCopyTitleDescription,
 		// The digit row: 0 returns to the launch view and 1-7 are the seven modes

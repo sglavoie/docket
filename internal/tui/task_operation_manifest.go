@@ -40,6 +40,7 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskSetDueDate, Label: "Set Due or Defer", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: operation.ValueProviderDate, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskToggleReview, Label: "Toggle Review", Aliases: []string{"flag for review", "clear review", "needs a second look"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},

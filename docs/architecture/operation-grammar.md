@@ -332,18 +332,18 @@ menu, not whether an attribute is also expressible in the text grammar: `!`, `@`
 `#`, and the `$` chord are the sigils that say the same things.
 
 Every keyed capture sigil binds the character it is written with: `!` and `$` as
-chord prefixes, `#`, `@`, `*`, `%`, `>`, `<`, `~`, `&`, and `;` as root keys. The
-last two are the only pair that opens a panel rather than a picker, because the
+chord prefixes, `#`, `@`, `*`, `=`, `%`, `>`, `<`, `~`, `&`, and `;` as root keys.
+`&` and `;` are the only pair that opens a panel rather than a picker, because the
 panel already owns add, reorder, unlink, and delete.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
 the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
-than silently splitting the two vocabularies. Five triggers deliberately have no
-key of their own. `=` is the one whose absence is the point: no key sets the
-review flag and `$review` is a refused destination, so its only keyboard route
-is the `f=` facet, which narrows by the flag rather than writing it. The parity
-test spells that as its own route kind, `sigilFacetOnly`, and asserts the facet
-chord rather than a root key, so a sigil claiming no setter still has to prove
-it is reachable. `##` and `@@` cannot be chords under `#` and `@`, because the
+than silently splitting the two vocabularies. Four triggers deliberately have no
+key of their own. `=` is not one of them: review is a stored flag beside the pin,
+so the character that writes it in a capture line is the key that toggles it on a
+row, and the `f=` chord narrows by the same flag without competing for the root
+key. `$review` stays a refused destination all the same, because a destination is
+a singleton and review coexists with a lifecycle state.
+`##` and `@@` cannot be chords under `#` and `@`, because the
 chord trie is prefix-free and both first characters already resolve; each is
 instead a mode inside the picker its first character opens — `##` the context
 radio group inside Set Tags & Context, `@@` the defer section of the one date

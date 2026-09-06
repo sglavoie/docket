@@ -22,7 +22,7 @@ newest-first and `J`/`K` reorder them manually; a pinned subtree ranks by its
 own root's pin. `Ctrl+J`/`Ctrl+K` take the same route
 in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
 manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
-you have flagged with `=review`. That list is draw order, not claim order: a pinned task or one
+you have flagged with `=review` or the `=` key. That list is draw order, not claim order: a pinned task or one
 you have planned into Today or Next claims its row there and never also appears
 under Review. Stale follows Review and collects open, undeferred work whose
 `UpdatedAt` touch time is at least 90 local-calendar days old. Pinned, Today,

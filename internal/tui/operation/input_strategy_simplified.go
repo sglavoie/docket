@@ -136,6 +136,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			// labels rather than one that branches on runtime context.
 			{OperationID: OperationTaskTogglePin, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 24, FooterLabel: "pin", SharedKey: true},
 			{OperationID: OperationScopePinProject, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 24, FooterLabel: "project pin", SharedKey: true},
+			// = writes the review flag the =review sigil writes and f= narrows by,
+			// so the axis answers to one character on all three surfaces. Unlike *
+			// and # it names only a task: there is no project review flag, so the key
+			// is not shared and never branches on what the cursor holds. It sits at
+			// the tail of the ladder because flagging work for a later pass is a
+			// deliberate, occasional act rather than a daily-loop one.
+			{OperationID: OperationTaskToggleReview, Keys: []string{"="}, DisplayKey: "=", FooterRank: 28, FooterLabel: "review"},
 			{OperationID: OperationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: OperationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: OperationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},

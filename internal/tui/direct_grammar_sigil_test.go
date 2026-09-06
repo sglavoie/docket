@@ -21,12 +21,6 @@ const (
 	// input, where root keys do not resolve. ? is exactly that — it asks for help
 	// on a row and names a computed property in a query.
 	sigilSearchOnly
-	// sigilFacetOnly is a trigger that writes a field on every mutation surface
-	// but takes no root key. Review is the one: $review is a refused destination
-	// and no key sets the flag, so the only keyboard route the sigil has is the
-	// filter facet spelled with the same character, which narrows rather than
-	// writes.
-	sigilFacetOnly
 )
 
 // grammarSigilRoutes pairs every advertised text-grammar trigger with the route
@@ -73,8 +67,11 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	"-$":  sigilSearchOnly,
 	"-*":  sigilSearchOnly,
 	"-=":  sigilSearchOnly,
-	// The review sigil has no setter key at all; f= is its whole keyboard route.
-	"=":  sigilFacetOnly,
+	// Review is a stored flag like the pin, so the character that writes it in a
+	// capture line is the key that toggles it on a row. The f= facet spelled with
+	// the same character narrows by what this writes; the two are not in tension,
+	// because one is a chord under f and the other a root key.
+	"=":  sigilRootKey,
 	"-%": sigilSearchOnly,
 	// A derived property is computed from the task rather than stored on it, so
 	// there is nothing for a key to write and both spellings stay in the query.
@@ -142,21 +139,6 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 						definition.Field,
 					)
 				}
-			case sigilFacetOnly:
-				if isRoot || isPrefix {
-					t.Errorf(
-						"sigil %q (%s) is documented as facet-only but the keymap binds it",
-						trigger,
-						definition.Field,
-					)
-				}
-				if _, _, resolution := registeredSimplifiedOperationRegistry(t).InputBindingForSequence(
-					operation.InputStrategySimplified,
-					[]string{"f", trigger},
-					simplifiedOperationContext(),
-				); resolution != operation.ChordTerminal {
-					t.Errorf("facet-only sigil %q has no f%s chord", trigger, trigger)
-				}
 			case sigilSearchOnly:
 				if definition.Surfaces&^textgrammar.SurfaceSearch != 0 {
 					t.Errorf(
@@ -183,38 +165,75 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 	}
 }
 
-// TestReviewHasNoDirectKey holds the one destination the grammar explicitly
-// rejects. $review is refused because a destination is a singleton and review
-// must coexist with a lifecycle state on one line, so binding a review setter to
-// a root key would teach a route the parser refuses to honor. Review is written
-// through the =review sigil on all four surfaces and narrowed through the f=
-// facet; neither is a root key.
-func TestReviewHasNoDirectKey(t *testing.T) {
+// TestReviewKeyWritesTheFlagAndKeepsItsFacet holds the whole keyboard surface of
+// the review axis. `=` toggles the stored flag on the frozen task target the way
+// `*` toggles the pin, `f=` still narrows by it, and the two are exactly two
+// operations: a setter that writes and a facet that reads. The destination the
+// grammar rejects stays rejected — $review is refused because a destination is a
+// singleton and review must coexist with a lifecycle state on one line — so
+// review is still not reachable through the `$` chord.
+func TestReviewKeyWritesTheFlagAndKeepsItsFacet(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	if _, exists := registry.Descriptor(operation.OperationID("tui.task.toggle-review")); exists {
-		t.Error("the retired review setter is registered again")
+	if _, exists := registry.Descriptor(operation.OperationTaskToggleReview); !exists {
+		t.Fatalf("%s is not registered", operation.OperationTaskToggleReview)
 	}
+	manifested := false
 	for _, entry := range taskOperationDescriptorManifest() {
-		if strings.Contains(string(entry.ID), "review") {
-			t.Errorf("task operation manifest lists review setter %s", entry.ID)
+		if !strings.Contains(string(entry.ID), "review") {
+			continue
+		}
+		if entry.ID != operation.OperationTaskToggleReview {
+			t.Errorf("task operation manifest lists an unexpected review operation %s", entry.ID)
+			continue
+		}
+		manifested = true
+		if !entry.Bulk {
+			t.Error("the review setter must carry every selected task, not just the cursor")
+		}
+		if !entry.DirectOnly {
+			t.Error("the review setter has a direct key, so it must stay out of the task Space sheet")
 		}
 	}
+	if !manifested {
+		t.Fatal("the task operation manifest does not list the review setter")
+	}
+
 	strategy := SimplifiedInputStrategy()
+	setters := 0
 	for _, binding := range strategy.Bindings {
 		if !strings.Contains(string(binding.OperationID), "review") {
 			continue
 		}
-		if binding.OperationID != operation.OperationFilterReview {
-			t.Errorf("%s is bound to %v; review has no setter key", binding.OperationID, binding.Paths())
+		switch binding.OperationID {
+		case operation.OperationTaskToggleReview:
+			setters++
+			if len(binding.Keys) != 1 || binding.Keys[0] != "=" {
+				t.Errorf("the review setter is bound to %v, want the = root key", binding.Paths())
+			}
+		case operation.OperationFilterReview:
+		default:
+			t.Errorf("%s is bound to %v; review is one setter and one facet", binding.OperationID, binding.Paths())
 		}
 	}
+	if setters != 1 {
+		t.Fatalf("the review setter has %d bindings, want exactly one", setters)
+	}
+
+	ctx := simplifiedOperationContext()
 	binding, _, resolution := registry.InputBindingForSequence(
 		operation.InputStrategySimplified,
 		[]string{"f", "="},
-		simplifiedOperationContext(),
+		ctx,
 	)
 	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationFilterReview {
 		t.Fatalf("f= = %s (%v), want %s terminal", binding.OperationID, resolution, operation.OperationFilterReview)
+	}
+	if _, _, resolution := registry.InputBindingForSequence(
+		operation.InputStrategySimplified,
+		[]string{"$", "="},
+		ctx,
+	); resolution != operation.ChordNoMatch {
+		t.Fatalf("$= resolves to %v; $review stays a refused destination", resolution)
 	}
 }
 

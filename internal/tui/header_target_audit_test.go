@@ -146,6 +146,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.task.set-state":              "reject",
 	"tui.task.set-tags":               "reject",
 	"tui.task.toggle-pin":             "reject",
+	"tui.task.toggle-review":          "reject",
 }
 
 func TestHeaderTargetResolutionIsClassified(t *testing.T) {

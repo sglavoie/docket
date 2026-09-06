@@ -231,7 +231,17 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// checkbox takes, and nothing else; the mechanism is in
 	// docs/architecture/presentation-chrome.md, where the rest of the bar's
 	// implementation already lives. No rule elsewhere was trimmed to pay for it.
-	const budget = 29795
+	//
+	// A fourth raise, of 54 bytes, for the review key. Both edits correct a
+	// standing enumeration rather than add a rule: the review sentence named the
+	// axis's whole keyboard surface and would otherwise still name it as the
+	// sigil and the facet alone, and the one-key-one-act table is an inventory of
+	// the keys that rule governs, so a key it omits is a key nobody is holding to
+	// it. Fourteen of those bytes are the table cell; the rest is the clause that
+	// says the row key is the sigil's own character rather than a new one, which
+	// is the fact a contributor would otherwise have to infer from the absence of
+	// a second spelling. No rule elsewhere was trimmed to pay for it.
+	const budget = 29849
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -39,8 +39,8 @@ validated before one atomic transaction is committed.
 - `=review` flags the task for the Review lane. It is the same shape as the pin:
   only `review` and `unreview` are recognized, so `a=b` stays prose, and
   `=unreview` clears the flag on the edit and search surfaces alone — a new task
-  starts unflagged, so capture refuses it by name. Review has no key of its own;
-  the sigil and the `f=` filter facet are its whole keyboard surface.
+  starts unflagged, so capture refuses it by name. The `=` key toggles the same
+  flag on an existing row, and the `f=` filter facet narrows by it.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`

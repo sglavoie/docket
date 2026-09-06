@@ -342,7 +342,8 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 			"what it means everywhere else",
 		"Comments retired the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet",
 		"a comment may not stay one press from deletion while a task cannot be deleted that way",
-		"Review has no key of its own",
+		"Review answers to `=` on every surface",
+		"`$review` stays a rejected destination",
 	})
 }
 

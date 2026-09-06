@@ -101,6 +101,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationTaskAttachments},
 				{OperationID: operation.OperationTaskComments},
 				{OperationID: operation.OperationTaskReferences},
+				{OperationID: operation.OperationTaskToggleReview},
 				menuSeparator(),
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},

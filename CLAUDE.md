@@ -80,8 +80,8 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
 Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
-written by the sigil `=` and narrowed by the facet `f=`, and it promotes an
-All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
+written by the sigil `=` and narrowed by the facet `f=`, toggled on a row by
+that same root key, and it promotes an All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
 15 uses generic `Task` headings, project-local ShortID, retained fields, the
 stored `review` flag, optional single-valued task `Context`, and an optional
 `depends` list of outgoing soft task references. `DueDate` is a calendar date with
@@ -147,7 +147,7 @@ One key is one act on every entity surface:
 | --- | --- |
 | `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · open note · create · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
-| `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
+| `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
 | `&` `;` `~` | attachments · comments · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `Space` | menu: destructive and rare operations only |

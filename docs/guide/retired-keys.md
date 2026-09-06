@@ -37,8 +37,8 @@ while a task cannot be deleted that way. One rule covers that whole inventory.
 Pressing an unfinished chord and then a key it does not offer names the path you
 left, as `$q is not a workflow action`; pressing a key that was never bound does
 nothing and says nothing, because it never promised anything.
-Review has no key of its own: it is a stored flag written by the `=review`
-sigil and narrowed by the `f=` facet, and the letter `fr` that facet once
-answered to is retired. `$review` is a rejected destination, so no `$` terminal
-could honor it either: a destination is singular, and a task flagged for review
-still has a lifecycle state.
+Review answers to `=` on every surface: the sigil `=review` writes the flag in a
+capture line, the `=` key toggles it on a row, and the `f=` facet narrows by it.
+The letter `fr` that facet once answered to is retired. `$review` stays a
+rejected destination, so no `$` terminal could honor it: a destination is
+singular, and a task flagged for review still has a lifecycle state.
