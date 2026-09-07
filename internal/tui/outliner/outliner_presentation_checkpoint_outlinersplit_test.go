@@ -97,7 +97,7 @@ func TestOutlinerViewSnapshotRestoresThePopulationHalfBesideItsProjects(t *testi
 	parked := primaryRowsProject("parked", primaryRowsTask("parked-task", models.StateBacklog))
 	outlinerView := checkpointOutliner()
 	outlinerView.SetFilterQuery(checkpointQuery(t, "#keep +parked:only"))
-	baselineProjects := slices.Clone(outlinerView.Population.Projects)
+	baselineProjects := loadedProjectIDs(outlinerView)
 
 	snapshot := outlinerView.CaptureOutlinerViewSnapshot()
 	outlinerView.SetFilterQuery(checkpointQuery(t, "$done +archived"))
@@ -107,8 +107,12 @@ func TestOutlinerViewSnapshotRestoresThePopulationHalfBesideItsProjects(t *testi
 	if got := queryParts(outlinerView.FilterQuery); !slices.Equal(got, []string{"#keep", "+parked:only"}) {
 		t.Fatalf("restored query = %v, want the captured predicate whole", got)
 	}
-	if !slices.Equal(outlinerView.Population.Projects, baselineProjects) {
-		t.Fatalf("restored population = %v, want the captured projects", outlinerView.Population.Projects)
+	// Membership is what a baseline speaks for, so this is an identity comparison
+	// by project and not by pointer: a member the live population no longer holds
+	// comes back as the frame retained it under the catalog's current description
+	// of the project, which is a different object from the one captured.
+	if got := loadedProjectIDs(outlinerView); !slices.Equal(got, baselineProjects) {
+		t.Fatalf("restored population = %v, want the captured projects %v", got, baselineProjects)
 	}
 }
 

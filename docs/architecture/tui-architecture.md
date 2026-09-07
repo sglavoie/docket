@@ -258,6 +258,24 @@ writes that population half beside the projects it selected, through
 `restorePopulation` and so through `setLoadedProjects`, because reinstating a
 population owes the dependency index the same drop a load does.
 
+The projects a frame carries are a membership and never a reading.
+`refreshCapturedProjects` re-resolves that membership by ID: a member the live
+population still holds comes back as the object standing now, so a reload that
+landed while the frame was retained is what the dismissal shows. A member the
+live population no longer holds is the case worth naming, because "excluded" and
+"withdrawn" are indistinguishable from the population alone and only one of them
+entitles the frame to speak. A lens that narrowed the population merely excluded
+its member, and `availableProjectCatalog` — the catalog read under the frame's
+own lifecycle axes and the parked exception its scope names, never the
+descriptive facets, which are criteria rather than availability — still lists it:
+it returns with the tasks the frame captured under the catalog's current
+description of the project, since nothing here read it again and only the
+metadata is current for free. A member the catalog no longer offers, because it
+was deleted, archived, or parked while the frame was away, leaves the set
+outright; putting its captured object back would open task data the workspace has
+withdrawn in a view with no route to it. A restoration is therefore the captured
+membership intersected with what is still there.
+
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in

@@ -50,6 +50,29 @@ func loadedTaskTitle(t *testing.T, outlinerView *OutlinerModel, projectID, taskI
 	return ""
 }
 
+// loadedProject returns one member of the live population, or nil when the
+// population no longer holds it. Membership is the question a baseline restore
+// answers, so an assertion about it must be able to see an absence.
+func loadedProject(outlinerView *OutlinerModel, projectID string) *models.Project {
+	for _, project := range outlinerView.Population.Projects {
+		if project != nil && project.ID == projectID {
+			return project
+		}
+	}
+	return nil
+}
+
+// loadedProjectIDs names the live population in order.
+func loadedProjectIDs(outlinerView *OutlinerModel) []string {
+	ids := make([]string, 0, len(outlinerView.Population.Projects))
+	for _, project := range outlinerView.Population.Projects {
+		if project != nil {
+			ids = append(ids, project.ID)
+		}
+	}
+	return ids
+}
+
 // landCrossProjects delivers a completed read at one generation.
 func landCrossProjects(
 	outlinerView *OutlinerModel, generation int, projects ...*models.Project,
@@ -296,6 +319,110 @@ func TestABaselineKeepsTheProjectsALensExcluded(t *testing.T) {
 	}
 	if got := loadedTaskTitle(t, outlinerView, "proj-b", "remote"); got != "Publish the contract (edited)" {
 		t.Fatalf("the baseline preferred its own reading of a live project: remote = %q", got)
+	}
+}
+
+// TestABaselineDropsAMemberTheWorkspaceWithdrew is the case the rule above must
+// not swallow. Excluded by a lens and withdrawn by the workspace look identical
+// from the population alone — both are simply absent from the live set — and
+// only one of them entitles a baseline to hand its captured object back. The
+// project is archived, parked, or deleted while a relationship visit is away, so
+// the dismissal that comes later is the last place its tasks could reappear in a
+// view that now has no route to them at all.
+func TestABaselineDropsAMemberTheWorkspaceWithdrew(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		withdraw func(beta *models.Project) []*models.Project
+	}{
+		{
+			name: "archived",
+			withdraw: func(beta *models.Project) []*models.Project {
+				beta.Archived = true
+				return []*models.Project{beta}
+			},
+		},
+		{
+			name: "parked",
+			withdraw: func(beta *models.Project) []*models.Project {
+				beta.Tags = []string{models.ParkedProjectTag}
+				return []*models.Project{beta}
+			},
+		},
+		{
+			name:     "deleted",
+			withdraw: func(*models.Project) []*models.Project { return nil },
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			alpha, beta := relationFixture(t)
+			outlinerView := scopeTestOutliner(alpha, beta)
+			outlinerView.SetPersistActiveLens(func(string) error { return nil })
+
+			state := LensState{Mode: chrome.ModeAll, Sort: query.NewSortState()}
+			outlinerView.PublishLens(state.NamedLens("lens-1", "Trail"), state, nil,
+				outlinerView.CaptureOutlinerViewSnapshot())
+
+			hopToRelation(t, outlinerView, "proj-a", "source", "out:proj-b:remote")
+
+			// The workspace withdraws beta while the visit is standing in it, and the
+			// read that follows is the base workspace it now names: alpha alone.
+			reloadedAlpha, reloadedBeta := reloadedRelationFixture(t)
+			setTestProjects(outlinerView.Runtime,
+				append([]*models.Project{reloadedAlpha}, testCase.withdraw(reloadedBeta)...))
+			landCrossProjects(outlinerView, outlinerView.Population.LoadGen, reloadedAlpha)
+
+			if !outlinerView.PopRelationReturn() {
+				t.Fatal("the return refused")
+			}
+			if loadedProject(outlinerView, "proj-b") != nil {
+				t.Fatal("the return itself put the withdrawn project back")
+			}
+
+			outlinerView.RestoreLensBaseline()
+			if loadedProject(outlinerView, "proj-b") != nil {
+				t.Fatalf("dismissing the restored lens resurrected the withdrawn project: %v",
+					loadedProjectIDs(outlinerView))
+			}
+			// The baseline's other member is untouched by the rule, and is still the
+			// newest reading of itself rather than the captured one.
+			if got := loadedTaskTitle(t, outlinerView, "proj-a", "sibling"); got != "Agree the schema (edited)" {
+				t.Fatalf("the baseline lost a member the workspace still holds: sibling = %q", got)
+			}
+		})
+	}
+}
+
+// TestARetainedBaselineMemberWearsTheCatalogsCurrentMetadata is the seam between
+// those two rules. A member the live population does not hold comes back with
+// the tasks the frame captured, because nothing here read it again — but the
+// project itself is described by the catalog, which is current, so the name a
+// group header draws is the one the workspace holds now and not the one that
+// stood when the lens was applied.
+func TestARetainedBaselineMemberWearsTheCatalogsCurrentMetadata(t *testing.T) {
+	alpha, beta := relationFixture(t)
+	outlinerView := scopeTestOutliner(alpha, beta)
+	outlinerView.SetPersistActiveLens(func(string) error { return nil })
+	baseline := outlinerView.CaptureOutlinerViewSnapshot()
+
+	state := LensState{Mode: chrome.ModeAll, Sort: query.NewSortState()}
+	_, narrowedBeta := reloadedRelationFixture(t)
+	outlinerView.PublishLens(state.NamedLens("lens-1", "Beta only"), state,
+		[]*models.Project{narrowedBeta}, baseline)
+
+	renamedAlpha, _ := reloadedRelationFixture(t)
+	renamedAlpha.Name = "Alpha (renamed)"
+	setTestProjects(outlinerView.Runtime, []*models.Project{renamedAlpha, narrowedBeta})
+
+	outlinerView.RestoreLensBaseline()
+	restored := loadedProject(outlinerView, "proj-a")
+	if restored == nil {
+		t.Fatalf("the baseline dropped a project the lens excluded: %v", loadedProjectIDs(outlinerView))
+	}
+	if restored.Name != "Alpha (renamed)" {
+		t.Fatalf("the retained member kept a superseded description: name = %q", restored.Name)
+	}
+	if got := loadedTaskTitle(t, outlinerView, "proj-a", "sibling"); got != "Agree the schema" {
+		t.Fatalf("the retained member claimed a reading nothing took: sibling = %q", got)
 	}
 }
 

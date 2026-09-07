@@ -336,7 +336,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot OutlinerViewSnapsho
 	// of the predicate the live view holds, and this pair is what makes that half
 	// the frame's own again before it does.
 	m.adoptPopulationNarrowing(snapshot.Presentation.Projection.filterQuery)
-	m.restorePopulation(snapshot.population)
+	m.restorePopulation(snapshot.population, snapshot.Presentation.scope.ParkedProjectID)
 	m.RestoreOutlinerPresentationCheckpoint(snapshot.Presentation)
 }
 

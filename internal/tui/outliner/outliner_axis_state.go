@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -918,11 +919,16 @@ func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
 // what refreshCapturedProjects below is for: a frame retained across a reload
 // names the same projects, and reinstating the objects it captured with them
 // would put the task data that stood before the reload back on screen.
-func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot) {
+//
+// focusProjectID is the parked exception the restored view will stand in, which
+// the frame's own scope names. It travels with the population because it is half
+// of the rule that decides which projects the workspace still admits, and the
+// scope it comes from is not restored until after this write.
+func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot, focusProjectID string) {
 	if m == nil {
 		return
 	}
-	m.setLoadedProjects(m.refreshCapturedProjects(snapshot.Projects))
+	m.setLoadedProjects(m.refreshCapturedProjects(snapshot.Projects, focusProjectID))
 	m.Population.setSnapshotReady(snapshot.SnapshotReady)
 }
 
@@ -933,12 +939,18 @@ func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot) {
 // objects whose tasks, titles, and states are a reading the workspace has since
 // superseded.
 //
-// A captured project the live set no longer holds keeps its own object, because
-// there is no newer reading of it here to prefer — a lens that narrowed the
-// population is exactly that case, and its baseline is entitled to the projects
-// the lens excluded. Nil entries travel unchanged so the restored set is the
-// captured one member for member.
-func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project) []*models.Project {
+// A captured project the live set no longer holds is one of two different
+// things, and telling them apart is the whole of this function. A lens that
+// narrowed the population merely excluded it: the workspace still holds the
+// project, no newer reading of it is here to prefer, and the baseline is
+// entitled to hand it back with the tasks it captured, under the description the
+// catalog holds now. A project the workspace no longer offers this view —
+// deleted, archived, or parked while the frame was away — is not a reading the
+// frame may speak for at all: putting its captured object back would open, in a
+// view with no route to it, task data the workspace has already withdrawn. It
+// leaves the set, so a restoration is the captured membership intersected with
+// what is still there.
+func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focusProjectID string) []*models.Project {
 	if len(captured) == 0 {
 		return slices.Clone(captured)
 	}
@@ -948,17 +960,76 @@ func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project) []*m
 			live[project.ID] = project
 		}
 	}
-	refreshed := make([]*models.Project, len(captured))
-	for index, project := range captured {
-		refreshed[index] = project
+	available, judged := m.availableProjectCatalog(focusProjectID)
+	refreshed := make([]*models.Project, 0, len(captured))
+	for _, project := range captured {
 		if project == nil {
 			continue
 		}
 		if current, loaded := live[project.ID]; loaded {
-			refreshed[index] = current
+			refreshed = append(refreshed, current)
+			continue
 		}
+		current, stillAvailable := available[project.ID]
+		if judged && !stillAvailable {
+			continue
+		}
+		refreshed = append(refreshed, retainedProjectWithCurrentMetadata(project, current))
 	}
 	return refreshed
+}
+
+// availableProjectCatalog answers which of the catalog's projects the view being
+// restored could still read, mapped by ID to the object carrying their current
+// metadata. It asks the lifecycle axes alone — a project is gone when the
+// catalog no longer holds it, archived under a frame that does not admit
+// archived projects, or parked under a frame that neither admits parked ones nor
+// names this one as its focus exception. The descriptive facets are deliberately
+// not consulted: a tag restriction is lens criteria, and a project a criterion
+// merely excluded is exactly the one a baseline is entitled to bring back.
+//
+// The frame's own axes are what it reads, which is why the population is
+// restored after adoptPopulationNarrowing and is handed the focus its scope
+// names: the scope itself is not written back until later.
+//
+// The second return is false for a nil runtime alone — a model with no catalog
+// to ask cannot call a project gone, so it judges nothing and keeps every
+// captured member as it always did.
+func (m *OutlinerModel) availableProjectCatalog(focusProjectID string) (map[string]*models.Project, bool) {
+	if m == nil || m.Runtime == nil {
+		return nil, false
+	}
+	catalog := m.Runtime.AllProjects()
+	available := make(map[string]*models.Project, len(catalog))
+	for _, project := range catalog {
+		if project == nil || project.ID == "" {
+			continue
+		}
+		if project.Archived && m.ProjectFilter.ArchivedMode == query.ProjectPopulationExclude {
+			continue
+		}
+		if models.ProjectTagsParked(project.Tags) &&
+			!m.ProjectFilter.ShowsParked() && project.ID != focusProjectID {
+			continue
+		}
+		available[project.ID] = project
+	}
+	return available, true
+}
+
+// retainedProjectWithCurrentMetadata keeps the captured reading of a project's
+// tasks under the catalog's current description of the project itself. The two
+// halves have different owners: only a disk read can refresh the tasks and none
+// happened here, while the name, tags, pin, and path are the catalog's and are
+// current for free. The copy is what keeps it honest — the captured object is
+// the frame's and is left exactly as it was retained.
+func retainedProjectWithCurrentMetadata(retained, current *models.Project) *models.Project {
+	if retained == nil || current == nil {
+		return retained
+	}
+	refreshed := *retained
+	coordinator.CopyCatalogMetadata(&refreshed, current)
+	return &refreshed
 }
 
 // queryReadoutState is the expanded readout's whole sub-state. One flag is all
