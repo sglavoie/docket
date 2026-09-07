@@ -251,6 +251,8 @@ The committed suite exercises the product contracts directly:
 | A visit that changes the workspace: the destination completed and undone while standing on it, and the return resolving the origin's row against the data as it now stands rather than repainting the frame | `goto-relation-return-after-mutation.json` |
 | The Esc order around a relationship trail: an open menu and Peek claimed ahead of it, a range costing its own press before the frozen selection it leaves, and the trail spent before the search and the launch view below it | `goto-relation-esc-order.json` |
 | Navigation leaving lens state alone: a lens suspended by the hop, handed back whole by the return, dismissed only by its own press, and its definition unchanged by browsing, following, returning, and a relaunch | `goto-relation-lens-round-trip.json` |
+| A locator the picker cannot read staying a listed row that says only `unavailable`, the footer naming why it cannot be taken, `Enter` refusing it in place, and the overlay holding at both the widest and the minimum size in either theme | `goto-relation-disabled-row-layout.json` |
+| The `=` key writing the same flag as the `=review` sigil, the lane it promotes, and one `u` taking it back, at the minimum and widest sizes in either theme | `review-key-layout-matrix.json`, `review-lane-planning-precedence.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
 | `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |

@@ -50,6 +50,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"goto-relation-return-after-mutation.json",
 		"goto-relation-esc-order.json",
 		"goto-relation-lens-round-trip.json",
+		"goto-relation-disabled-row-layout.json",
+		"review-key-layout-matrix.json",
 		"capture-pin.json",
 		"capture-project-header-destination.json",
 		"form-extras-attachments-narrow.json",

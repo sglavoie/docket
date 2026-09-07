@@ -241,7 +241,20 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// says the row key is the sigil's own character rather than a new one, which
 	// is the fact a contributor would otherwise have to infer from the absence of
 	// a second spelling. No rule elsewhere was trimmed to pay for it.
-	const budget = 29849
+	//
+	// A fifth raise, of 367 bytes, for `g~`'s return trail. It extends the
+	// standing session-only sentence rather than opening a section: the trail is
+	// the second thing in the Outliner that survives no relaunch, and the four
+	// facts a contributor cannot get from the code without reading three files
+	// are exactly the ones a later change would break silently — what a frame may
+	// hold (no task or project pointer, which is what lets a return resolve
+	// against current data), where `Esc` spends it in a cascade whose order is
+	// otherwise only implicit in a handler, that `0` drops it whole, and that a
+	// hop suspends a live lens through the one seam that touches no persistence.
+	// The mechanism is in docs/architecture/tui-architecture.md, where the rest
+	// of the revelation path already lives. No rule elsewhere was trimmed to pay
+	// for it.
+	const budget = 30216
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

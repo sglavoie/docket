@@ -282,7 +282,12 @@ the edits beside it.
 Entering visual selection closes Peek; while one exists, structural, edit, Peek,
 relation, and clipboard operations must reject rather than fall back to the
 cursor. Focus and `gp` exit search onto the result. Jump history is
-session-only, scoped to the current projection.
+session-only, scoped to the current projection. So is `g~`'s return trail: a hop
+pushes one frame of presentation checkpoint, suspended lens, and source identity
+and never a task or project pointer, `Esc` spends it after Peek and selection and
+before query, lens, focus, and scope, and `0` drops it whole. Suspension is
+`forgetActiveLensFrame`, so navigating writes no lens definition and no
+machine-local pointer.
 
 Notes stay location-qualified, exclude archived projects, and do not regain
 tags, task links, pins, or bulk actions. Its preview is read-only and its offset
