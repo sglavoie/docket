@@ -1,0 +1,61 @@
+{
+  "name": "goto-relation-esc-order",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "capture the referring task", "key": "a" },
+    { "type": "text", "text": "Wire the importer %client-alpha ~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "follow the reference", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "an open menu is the innermost thing there is", "key": "ctrl+m" },
+    { "type": "assert", "assert": "contains", "value": "View" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "label": "closing the menu spends no axis", "assert": "not_contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "Peek is the narrowest axis in the cascade", "key": "ctrl+enter" },
+    { "type": "assert", "assert": "contains", "value": "Dependents" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Dependents" },
+    { "type": "assert", "label": "closing Peek does not spend the way back", "assert": "not_contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "a range selection costs two presses, not one", "key": "V" },
+    { "type": "assert", "assert": "contains", "value": "Visual selection" },
+    { "type": "key", "label": "the first puts the live range down", "key": "esc" },
+    { "type": "assert", "label": "and leaves the frozen selection standing", "assert": "contains", "value": "Visual selection" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "key", "label": "the second clears the selection", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Visual selection" },
+    { "type": "assert", "label": "the trail is still the next thing to spend", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "now the trail", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Wire the importer" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "a search over the returned view", "key": "/" },
+    { "type": "text", "text": "importer" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "key", "label": "which the cascade spends before the launch view", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

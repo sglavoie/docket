@@ -387,6 +387,10 @@ func (m *OutlinerModel) ResetToLaunchView() ([]string, bool) {
 	// Selecting the mode is the last write and owns the rebuild, so the rows are
 	// built once, over every axis this reset has already put down.
 	m.SelectOutlinerMode(chrome.ModeAll)
+	// A read already in flight is carrying the position this reset has just
+	// discarded. It keeps running — its projects are still the newest reading —
+	// but it is re-aimed at the launch view, so landing cannot undo the key.
+	m.rebaseReloadTargetAfterRelocation()
 	return cleared, reload
 }
 

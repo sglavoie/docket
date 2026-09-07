@@ -822,6 +822,15 @@ func (p *populationState) takeReloadTarget() (projectID, taskID, headerProjectID
 	return projectID, taskID, headerProjectID
 }
 
+// rebaseReloadCursor re-aims the read already in flight at one task, dropping
+// the header anchor the projection it was captured in had asked for. The
+// from-top flag is deliberately left standing: it is an intent for the next
+// read, not a description of the one running.
+func (p *populationState) rebaseReloadCursor(projectID, taskID string) {
+	p.captureReloadCursor(projectID, taskID)
+	p.ReloadHeaderProjectID = ""
+}
+
 // clearReloadTarget forgets every reload intent, including the from-top flag.
 // An abandoned read leaves no successor to honor them.
 func (p *populationState) clearReloadTarget() {
@@ -904,12 +913,52 @@ func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
 // drop a load does and there is one place that pairing is stated. The flag
 // travels beside the set for the same reason it is captured beside it: returning
 // to a baseline taken before any load landed must not claim one did.
+//
+// The membership is the frame's and the objects are the workspace's, which is
+// what refreshCapturedProjects below is for: a frame retained across a reload
+// names the same projects, and reinstating the objects it captured with them
+// would put the task data that stood before the reload back on screen.
 func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot) {
 	if m == nil {
 		return
 	}
-	m.setLoadedProjects(slices.Clone(snapshot.Projects))
+	m.setLoadedProjects(m.refreshCapturedProjects(snapshot.Projects))
 	m.Population.setSnapshotReady(snapshot.SnapshotReady)
+}
+
+// refreshCapturedProjects re-resolves a retained set against the projects
+// standing now, by ID. A restoration point is a description of a view, and the
+// only part of a population it may speak for is which projects were in it: a
+// reload replaces every object it read, so a frame captured before one holds
+// objects whose tasks, titles, and states are a reading the workspace has since
+// superseded.
+//
+// A captured project the live set no longer holds keeps its own object, because
+// there is no newer reading of it here to prefer — a lens that narrowed the
+// population is exactly that case, and its baseline is entitled to the projects
+// the lens excluded. Nil entries travel unchanged so the restored set is the
+// captured one member for member.
+func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project) []*models.Project {
+	if len(captured) == 0 {
+		return slices.Clone(captured)
+	}
+	live := make(map[string]*models.Project, len(m.Population.Projects))
+	for _, project := range m.Population.Projects {
+		if project != nil && project.ID != "" {
+			live[project.ID] = project
+		}
+	}
+	refreshed := make([]*models.Project, len(captured))
+	for index, project := range captured {
+		refreshed[index] = project
+		if project == nil {
+			continue
+		}
+		if current, loaded := live[project.ID]; loaded {
+			refreshed[index] = current
+		}
+	}
+	return refreshed
 }
 
 // queryReadoutState is the expanded readout's whole sub-state. One flag is all

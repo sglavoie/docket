@@ -1,0 +1,48 @@
+{
+  "name": "goto-relation-return-after-mutation",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "capture the referring task", "key": "a" },
+    { "type": "text", "text": "Wire the importer %client-alpha ~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "assert", "label": "one stored locator, none of it settled", "assert": "contains", "value": "~0/1" },
+
+    { "type": "key", "label": "follow the reference", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "label": "the project the hop left is out of scope", "assert": "not_contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "complete the task the visit landed on", "key": "$" },
+    { "type": "key", "key": "d" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Done" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one Esc walks the hop back", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Wire the importer" },
+    { "type": "assert", "label": "the origin's whole view is back", "assert": "contains", "value": "Renew passport" },
+    { "type": "assert", "label": "the count is re-read rather than repainted from the frame, and a wholly settled set collapses to its total", "assert": "contains", "value": "~1" },
+    { "type": "assert", "assert": "not_contains", "value": "~0/1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the reference reads the same from the picker", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta #1 Beta rollout checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "undo puts the completion back", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "label": "and the origin row reads the undone state", "assert": "contains", "value": "~0/1" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

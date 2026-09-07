@@ -67,9 +67,22 @@ func (m *OutlinerModel) PopRelationReturn() bool {
 	// empty query over the lens that was just put back.
 	m.Lens.setActive(frame.lens)
 	m.RestoreOutlinerPresentationCheckpoint(frame.presentation)
+	// The scope the frame names may have been archived, parked, or deleted while
+	// the user was away. Reinstating it as written would leave the return standing
+	// in a project the workspace no longer holds, with no rows and no cursor, so
+	// the repair the reload path already owns is run over the restored axes. The
+	// notice is transient because a return raises no Cmd of its own: the Esc
+	// cascade that drove it has no channel to publish one on.
+	if notice, repaired := m.reconcileProjectScope(); repaired {
+		m.SetTransientStatus(notice)
+	}
 	if !m.MoveCursorToIdentity(frame.from) {
+		// The checkpoint restore already seated the nearest surviving row, which is
+		// the fallback a vanished source is owed; the clamp only keeps that landing
+		// inside a list a rebuild may have shortened.
 		m.ClampCursor()
 	}
+	m.rebaseReloadTargetAfterRelocation()
 	return true
 }
 
@@ -101,6 +114,11 @@ func (m *OutlinerModel) jumpToRelation(task *models.Task, project *models.Projec
 		return "That task is not reachable in " + project.Name
 	}
 	m.relationTrail = append(m.relationTrail, frame)
+	// A read started before the hop is carrying the origin's cursor. It stays in
+	// flight, because the hop resolved inside the population it is about to
+	// refresh, but it is re-aimed at the target: a result honoring the old capture
+	// would land the user back where they pressed the key.
+	m.rebaseReloadTargetAfterRelocation()
 	return ""
 }
 

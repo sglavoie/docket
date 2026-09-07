@@ -188,6 +188,19 @@ func (m *OutlinerModel) HandleCrossProjectsLoaded(msg CrossProjectsLoadedMsg) te
 		return nil // Stale result from a superseded load; discard.
 	}
 	if msg.FocusProjectID != "" {
+		if msg.FocusProjectID != m.Scope.PendingParkedID {
+			// The request was abandoned while its read ran — a scope push, a lens, or
+			// a relationship hop replaced the projection it was for. This population
+			// was read with the focused project appended as an exception the live view
+			// no longer holds, so publishing it would open a parked project's tasks in
+			// a view nobody asked for and push a scope over wherever the user now is.
+			// Nothing is published; the read is put down, and the capture it was
+			// carrying goes with it, because a read that replaced no rows must not move
+			// a cursor later.
+			m.Population.settleLoad()
+			m.Population.clearReloadCursor()
+			return nil
+		}
 		m.Scope.clearPendingParked()
 		if detail, failed := parkedFocusFailureDetail(msg, msg.FocusProjectID); failed {
 			// The base snapshot stays exactly as it was: a focus that could not be
@@ -637,6 +650,25 @@ func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
 		return
 	}
 	m.Population.captureReloadCursor(row.ProjectID, row.Task.ID)
+}
+
+// rebaseReloadTargetAfterRelocation re-aims a read already in flight at the row
+// the view is standing on now. It belongs to the acts that replace the whole
+// projection rather than move within it — a relationship hop, its return, and
+// the reset — because the capture a running read is carrying describes the view
+// those acts have just left, and honoring it when the result lands would drag
+// the cursor back out of the destination the user asked for.
+//
+// The read itself is left alone. Its projects are the newest reading there is
+// and are still wanted; only where to stand in them has changed. With the cursor
+// on no task at all the capture is dropped instead, which lets the read fall
+// back to the numeric position the relocation established.
+func (m *OutlinerModel) rebaseReloadTargetAfterRelocation() {
+	if m == nil || m.Project != nil || !m.Population.Loading {
+		return
+	}
+	identity := m.CurrentTaskIdentity()
+	m.Population.rebaseReloadCursor(identity.ProjectID, identity.TaskID)
 }
 
 // restoreCrossOutlinerCursorAfterReload consumes the captured cursor identity

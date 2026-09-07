@@ -247,6 +247,10 @@ The committed suite exercises the product contracts directly:
 | The row-level `~` picker: the stored set preselected, per-project categories qualifying a row without repeating the name, the source task owning no row, and one commit carrying an addition and a removal together | `outliner-task-reference-picker.json` |
 | A stored reference the view cannot read staying an enabled checked row that says only `unavailable`, droppable from the picker, and `~` refusing a visual selection rather than falling back to the cursor | `outliner-task-reference-unavailable-row.json` |
 | One `u` taking back both halves of a reference edit, proving the picker commits one ledger entry | `outliner-task-reference-undo.json` |
+| The `g~` walk: both halves listed and named, the computed half omitted when nobody points back, cancelling moving nothing, the hop landing in the target's own project, and one Esc handing the departed view back | `goto-relation-walk.json` |
+| A visit that changes the workspace: the destination completed and undone while standing on it, and the return resolving the origin's row against the data as it now stands rather than repainting the frame | `goto-relation-return-after-mutation.json` |
+| The Esc order around a relationship trail: an open menu and Peek claimed ahead of it, a range costing its own press before the frozen selection it leaves, and the trail spent before the search and the launch view below it | `goto-relation-esc-order.json` |
+| Navigation leaving lens state alone: a lens suspended by the hop, handed back whole by the return, dismissed only by its own press, and its definition unchanged by browsing, following, returning, and a relaunch | `goto-relation-lens-round-trip.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
 | `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |

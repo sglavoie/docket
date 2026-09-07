@@ -1,0 +1,56 @@
+{
+  "name": "goto-relation-lens-round-trip",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "capture the referring task", "key": "a" },
+    { "type": "text", "text": "Wire the importer %client-alpha ~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "an explicit lens edit, which is the one thing here that persists", "key": "\\" },
+    { "type": "key", "label": "Enter on the Save row asks for a name", "key": "enter" },
+    { "type": "text", "text": "Trail" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Trail" },
+
+    { "type": "key", "label": "browsing the gallery is navigation, not an edit", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Trail" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Trail" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "follow the reference", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "label": "the hop suspends the lens rather than carrying it", "assert": "not_contains", "value": "Lens: Trail" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the trail hands the suspended lens back whole", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Trail" },
+    { "type": "assert", "assert": "contains", "value": "Wire the importer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "dismissing it is a separate press", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "none of that touched the definition", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Trail" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "restart", "label": "and a relaunch reads the same portable definitions" },
+    { "type": "wait" },
+    { "type": "key", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Trail" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" }
+  ]
+}
