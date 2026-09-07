@@ -535,6 +535,15 @@ func (m *OutlinerModel) HandleLensProjectsLoaded(msg LensProjectsLoadedMsg) (tea
 	} else {
 		m.PublishLens(pending.lens, pending.State, msg.Projects, pending.Origin)
 	}
+	// Both routes above install this read's population, so this read's failures
+	// are the ones that now describe it: a project it asked for and could not open
+	// is one no later restoration may hand its captured tasks back for. The guard
+	// is the pairing itself — an application that published a projection over the
+	// population already standing changes nothing about which projects were
+	// readable, and leaves that answer with the read that produced it.
+	if msg.Projects != nil {
+		m.Population.recordLoadFailures(msg.FailedLoads)
+	}
 	// A partial load is publishable: the lens holds the projects that read, and
 	// the ones that did not are reported the way every other load reports them.
 	return m.LoadFailureAdvisory(msg.FailedLoads), true

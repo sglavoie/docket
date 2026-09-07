@@ -715,6 +715,12 @@ type populationState struct {
 	ReloadHeaderProjectID string
 	reloadFromTop         bool
 
+	// unreadable names the projects the read that installed this set asked for and
+	// could not read. It is the other half of that answer: a project absent from
+	// projects because the workspace failed to read it is not a project the
+	// workspace stopped offering, and nothing else here records the difference.
+	unreadable map[string]bool
+
 	// fingerprint, focusDepth and taskCount are the inputs the last
 	// crossProjectRebuildRows pass ran under; forceRebuild is the one-shot flag
 	// that bypasses them.
@@ -734,6 +740,38 @@ func (p *populationState) setProjects(projects []*models.Project) { p.Projects =
 // baseline restore passes back the value it captured, because returning to a
 // baseline taken before any load landed must not claim one did.
 func (p *populationState) setSnapshotReady(ready bool) { p.SnapshotReady = ready }
+
+// recordLoadFailures pairs the projects a read could not open with the set it
+// installed beside them. It is written by the accepted publishes alone and is
+// replaced whole every time, because the answer is one read's and a later read
+// that opened a project is the newer answer about it. A read that publishes no
+// population — superseded, abandoned, or refused — records nothing here either,
+// so the failures standing are always the ones belonging to the set standing.
+func (p *populationState) recordLoadFailures(failures []ProjectLoadFailure) {
+	if p == nil {
+		return
+	}
+	if len(failures) == 0 {
+		p.unreadable = nil
+		return
+	}
+	unreadable := make(map[string]bool, len(failures))
+	for _, failure := range failures {
+		if failure.ProjectID != "" {
+			unreadable[failure.ProjectID] = true
+		}
+	}
+	p.unreadable = unreadable
+}
+
+// isUnreadable reports whether the read that installed the live set asked for
+// this project and failed to open it.
+func (p *populationState) isUnreadable(projectID string) bool {
+	if p == nil || projectID == "" {
+		return false
+	}
+	return p.unreadable[projectID]
+}
 
 // beginLoad opens a read and returns the generation it owns. The bump is what
 // makes every earlier read safe to abandon: a result whose generation is no
@@ -939,7 +977,7 @@ func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot, focusProj
 // objects whose tasks, titles, and states are a reading the workspace has since
 // superseded.
 //
-// A captured project the live set no longer holds is one of two different
+// A captured project the live set no longer holds is one of three different
 // things, and telling them apart is the whole of this function. A lens that
 // narrowed the population merely excluded it: the workspace still holds the
 // project, no newer reading of it is here to prefer, and the baseline is
@@ -947,9 +985,14 @@ func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot, focusProj
 // catalog holds now. A project the workspace no longer offers this view —
 // deleted, archived, or parked while the frame was away — is not a reading the
 // frame may speak for at all: putting its captured object back would open, in a
-// view with no route to it, task data the workspace has already withdrawn. It
-// leaves the set, so a restoration is the captured membership intersected with
-// what is still there.
+// view with no route to it, task data the workspace has already withdrawn. The
+// third is the project the live read did go and ask for and could not open: the
+// catalog still lists it, so availability alone calls it excluded, but the
+// workspace has already answered about it and the answer was that its tasks
+// cannot be read. Handing the captured ones back would publish a reading the
+// workspace has just refused to confirm, so it leaves the set too, and a
+// restoration is the captured membership intersected with what is still there
+// and still readable.
 func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focusProjectID string) []*models.Project {
 	if len(captured) == 0 {
 		return slices.Clone(captured)
@@ -968,6 +1011,14 @@ func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focu
 		}
 		if current, loaded := live[project.ID]; loaded {
 			refreshed = append(refreshed, current)
+			continue
+		}
+		// The read failure is asked before the catalog and independently of it: it
+		// is an observation about this project's tasks, which no lifecycle axis and
+		// no missing runtime can speak for, and it outranks even the focus the
+		// catalog admits by name — an exception says the view may read that project,
+		// never that the read succeeded.
+		if m.Population.isUnreadable(project.ID) {
 			continue
 		}
 		current, stillAvailable := available[project.ID]

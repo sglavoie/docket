@@ -275,8 +275,23 @@ never consulted, because a tag restriction is criteria rather than availability.
 A member those axes no longer admit — deleted, archived, parked, or unarchived
 out of a frame that isolated the archived population — leaves the set outright;
 putting its captured object back would open task data the workspace has withdrawn
-in a view with no route to it. A restoration is therefore the captured membership
-intersected with what is still there.
+in a view with no route to it.
+
+A third absence the catalog cannot answer for is the project the live read did go
+and ask for and could not open. It is still listed, still active, and
+availability alone would hand its captured tasks back as though the workspace had
+confirmed them, so the read's own failures are recorded beside the population it
+installs — `populationState.recordLoadFailures`, written by the accepted publishes
+in `handleCrossProjectsLoaded` and `handleLensProjectsLoaded` and replaced whole
+each time, so the answer standing always belongs to the set standing and a
+superseded read can withdraw nothing. `refreshCapturedProjects` asks that before
+the catalog and independently of it, because a read failure is an observation
+about one project's tasks that no lifecycle axis, no missing runtime, and not
+even the parked exception admitted by name can speak for: an exception says the
+view may read that project, never that the read succeeded. The next read that
+does open it is the newer answer and its member is restorable again. A
+restoration is therefore the captured membership intersected with what is still
+there and still readable.
 
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
