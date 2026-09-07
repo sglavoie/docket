@@ -99,6 +99,20 @@ func lensNames(list config.NamedLensList) []string {
 	return names
 }
 
+// loadedProjectIDs names the live population in order. Membership is what a
+// restoration point speaks for, so an assertion about one reads the names rather
+// than comparing pointers: a member the live population no longer holds comes
+// back as a fresh object carrying the catalog's current description of it.
+func loadedProjectIDs(outlinerView *outliner.OutlinerModel) []string {
+	ids := make([]string, 0, len(outlinerView.Population.Projects))
+	for _, project := range outlinerView.Population.Projects {
+		if project != nil {
+			ids = append(ids, project.ID)
+		}
+	}
+	return ids
+}
+
 // lensLifecycleOutliner builds one two-project cross-project scope whose tasks
 // span the states, priorities, and titles the lifecycle assertions narrow on.
 func lensLifecycleOutliner() *outliner.OutlinerModel {

@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -389,6 +390,36 @@ func TestABaselineDropsAMemberTheWorkspaceWithdrew(t *testing.T) {
 				t.Fatalf("the baseline lost a member the workspace still holds: sibling = %q", got)
 			}
 		})
+	}
+}
+
+// TestAnIsolatingAxisStillHandsBackTheMembershipItCaptured is the limit of that
+// rule. An axis narrows this read in one direction only: a project that stopped
+// being archived is not a project the workspace withdrew, and a frame whose own
+// axes and population disagree — which is every frame captured while an axis
+// change is still loading — keeps the membership it holds rather than being
+// audited against a population nothing read.
+func TestAnIsolatingAxisStillHandsBackTheMembershipItCaptured(t *testing.T) {
+	alpha, beta := relationFixture(t)
+	alpha.Archived = true
+	beta.Archived = true
+	outlinerView := scopeTestOutliner(alpha, beta)
+	outlinerView.SetPersistActiveLens(func(string) error { return nil })
+	outlinerView.SetFilterQuery(checkpointQuery(t, "+archived:only"))
+	baseline := outlinerView.CaptureOutlinerViewSnapshot()
+
+	state := LensState{Mode: chrome.ModeAll, Sort: query.NewSortState()}
+	outlinerView.PublishLens(state.NamedLens("lens-1", "Alpha only"), state,
+		[]*models.Project{alpha}, baseline)
+
+	// Beta is restored to the live workspace while the lens stands.
+	reloadedAlpha, reloadedBeta := reloadedRelationFixture(t)
+	reloadedAlpha.Archived = true
+	setTestProjects(outlinerView.Runtime, []*models.Project{reloadedAlpha, reloadedBeta})
+
+	outlinerView.RestoreLensBaseline()
+	if got := loadedProjectIDs(outlinerView); !slices.Equal(got, []string{"proj-a", "proj-b"}) {
+		t.Fatalf("restored population = %v, want the captured membership whole", got)
 	}
 }
 

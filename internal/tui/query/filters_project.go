@@ -124,17 +124,27 @@ func ProjectFilterFacetCount(f *ProjectFilterState) int {
 	return count
 }
 
-// ProjectFilterAdmits applies the facets to one candidate project. Both
-// lifecycle axes are enforced here, so the candidate populations only decide
-// presentation order and how much is loaded, never what is admitted.
-func ProjectFilterAdmits(project *models.Project, f ProjectFilterState) bool {
+// ProjectLifecycleAdmits applies the two lifecycle axes alone. It is the half of
+// the population rule that answers whether the workspace still offers a project
+// to this view at all, as opposed to whether a descriptive criterion selected
+// it: parked and archived are populations, while a tag restriction is criteria a
+// view may narrow by and widen out of again. A caller restoring a retained
+// membership wants exactly this half, so the axes live in one function and
+// ProjectFilterAdmits is that answer plus the tag restriction.
+func ProjectLifecycleAdmits(project *models.Project, f ProjectFilterState) bool {
 	if project == nil {
 		return false
 	}
-	if !projectPopulationAdmits(f.ParkedMode, models.ProjectTagsParked(project.Tags)) {
-		return false
-	}
-	if !projectPopulationAdmits(f.ArchivedMode, project.Archived) {
+	return projectPopulationAdmits(f.ParkedMode, models.ProjectTagsParked(project.Tags)) &&
+		projectPopulationAdmits(f.ArchivedMode, project.Archived)
+}
+
+// ProjectFilterAdmits applies the facets to one candidate project. Both
+// lifecycle axes are enforced through ProjectLifecycleAdmits above, so the
+// candidate populations only decide presentation order and how much is loaded,
+// never what is admitted.
+func ProjectFilterAdmits(project *models.Project, f ProjectFilterState) bool {
+	if !ProjectLifecycleAdmits(project, f) {
 		return false
 	}
 	restriction := f.restrictionTags()

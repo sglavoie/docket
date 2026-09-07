@@ -981,16 +981,20 @@ func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focu
 
 // availableProjectCatalog answers which of the catalog's projects the view being
 // restored could still read, mapped by ID to the object carrying their current
-// metadata. It asks the lifecycle axes alone — a project is gone when the
-// catalog no longer holds it, archived under a frame that does not admit
-// archived projects, or parked under a frame that neither admits parked ones nor
-// names this one as its focus exception. The descriptive facets are deliberately
-// not consulted: a tag restriction is lens criteria, and a project a criterion
-// merely excluded is exactly the one a baseline is entitled to bring back.
+// metadata. It asks query.ProjectLifecycleAdmits, the population half of the
+// facets and the one authority on it, over the withdrawal reading of the frame's
+// own axes: a project is gone when the catalog no longer holds it, or when it
+// has since become the thing that frame's parked or archived axis excludes. The
+// descriptive facets are deliberately not consulted: a tag restriction is lens
+// criteria, and a project a criterion merely excluded is exactly the one a
+// baseline is entitled to bring back.
 //
 // The frame's own axes are what it reads, which is why the population is
 // restored after adoptPopulationNarrowing and is handed the focus its scope
-// names: the scope itself is not written back until later.
+// names: the scope itself is not written back until later. That focus is the
+// parked exception the restored view stands in, and it is admitted by name,
+// because a view standing in a parked project reads it whatever its parked axis
+// says.
 //
 // The second return is false for a nil runtime alone — a model with no catalog
 // to ask cannot call a project gone, so it judges nothing and keeps every
@@ -1001,20 +1005,42 @@ func (m *OutlinerModel) availableProjectCatalog(focusProjectID string) (map[stri
 	}
 	catalog := m.Runtime.AllProjects()
 	available := make(map[string]*models.Project, len(catalog))
+	axes := withdrawalAxes(m.ProjectFilter)
 	for _, project := range catalog {
 		if project == nil || project.ID == "" {
 			continue
 		}
-		if project.Archived && m.ProjectFilter.ArchivedMode == query.ProjectPopulationExclude {
-			continue
+		admitting := axes
+		if project.ID == focusProjectID {
+			admitting.ParkedMode = query.ProjectPopulationInclude
 		}
-		if models.ProjectTagsParked(project.Tags) &&
-			!m.ProjectFilter.ShowsParked() && project.ID != focusProjectID {
+		if !query.ProjectLifecycleAdmits(project, admitting) {
 			continue
 		}
 		available[project.ID] = project
 	}
 	return available, true
+}
+
+// withdrawalAxes reads a frame's population axes in the one direction a
+// restoration cares about. An axis is asked whether the workspace has taken a
+// project out of this view's reach, not whether the view would load it from
+// scratch: a member that stopped being parked or archived is still the member
+// the frame captured, and a frame is entitled to the membership it holds even
+// when its own axes and its population disagree, which they do for as long as an
+// axis change is still loading. So an isolating axis widens to Include here and
+// only an excluding one refuses.
+func withdrawalAxes(filter query.ProjectFilterState) query.ProjectFilterState {
+	filter.ParkedMode = withdrawalMode(filter.ParkedMode)
+	filter.ArchivedMode = withdrawalMode(filter.ArchivedMode)
+	return filter
+}
+
+func withdrawalMode(mode query.ProjectPopulationMode) query.ProjectPopulationMode {
+	if mode == query.ProjectPopulationOnly {
+		return query.ProjectPopulationInclude
+	}
+	return mode
 }
 
 // retainedProjectWithCurrentMetadata keeps the captured reading of a project's

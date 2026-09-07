@@ -159,7 +159,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	outlinerView := lensLifecycleOutliner()
 	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
 	outlinerView.Folds.CollapsedSections["baseline-fold"] = true
-	baselineProjects := slices.Clone(outlinerView.Population.Projects)
+	baselineProjects := loadedProjectIDs(outlinerView)
 
 	lens := waitingLens(lensTestID(1), "Parked", "")
 	lens = lensWithFacet(lens, "+parked:only")
@@ -200,8 +200,12 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if outlinerView.HasSearchProjection() {
 		t.Fatal("restoration installed a search projection the frozen baseline never held")
 	}
-	if !slices.Equal(outlinerView.Population.Projects, baselineProjects) {
-		t.Fatal("restoration did not return the pre-load population")
+	// Membership is what the baseline speaks for, so this names the projects
+	// rather than comparing pointers: a member the lens population no longer
+	// holds comes back as the frame retained it under the catalog's current
+	// description, which is a different object from the one captured.
+	if got := loadedProjectIDs(outlinerView); !slices.Equal(got, baselineProjects) {
+		t.Fatalf("restored population = %v, want the pre-load %v", got, baselineProjects)
 	}
 }
 

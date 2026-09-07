@@ -126,13 +126,3 @@ func typeLensQuery(t *testing.T, outlinerView *outliner.OutlinerModel, query str
 		outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 }
-
-func loadedProjectIDs(outlinerView *outliner.OutlinerModel) []string {
-	ids := make([]string, 0, len(outlinerView.Population.Projects))
-	for _, project := range outlinerView.Population.Projects {
-		if project != nil {
-			ids = append(ids, project.ID)
-		}
-	}
-	return ids
-}

@@ -192,7 +192,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	out := model.crossOutliner
 	out.SelectOutlinerMode(chrome.ModeBacklog)
 	out.Folds.CollapsedSections["pre-lens-fold"] = true
-	baselineProjects := slices.Clone(out.Population.Projects)
+	baselineProjects := loadedProjectIDs(out)
 
 	chain := []string{"Overdue", "Active Work", "Parked Work"}
 	var origin outliner.OutlinerViewSnapshot
@@ -222,8 +222,11 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	if !out.Folds.CollapsedSections["pre-lens-fold"] {
 		t.Fatal("restoration lost the fold the pre-lens view held")
 	}
-	if !slices.Equal(out.Population.Projects, baselineProjects) {
-		t.Fatal("restoration did not return the pre-lens population")
+	// The pre-lens membership, named rather than compared by pointer: a member
+	// the lens population dropped is handed back as a fresh object carrying the
+	// catalog's current description of it.
+	if got := loadedProjectIDs(out); !slices.Equal(got, baselineProjects) {
+		t.Fatalf("restored population = %v, want the pre-lens %v", got, baselineProjects)
 	}
 }
 

@@ -265,16 +265,18 @@ landed while the frame was retained is what the dismissal shows. A member the
 live population no longer holds is the case worth naming, because "excluded" and
 "withdrawn" are indistinguishable from the population alone and only one of them
 entitles the frame to speak. A lens that narrowed the population merely excluded
-its member, and `availableProjectCatalog` — the catalog read under the frame's
-own lifecycle axes and the parked exception its scope names, never the
-descriptive facets, which are criteria rather than availability — still lists it:
-it returns with the tasks the frame captured under the catalog's current
-description of the project, since nothing here read it again and only the
-metadata is current for free. A member the catalog no longer offers, because it
-was deleted, archived, or parked while the frame was away, leaves the set
-outright; putting its captured object back would open task data the workspace has
-withdrawn in a view with no route to it. A restoration is therefore the captured
-membership intersected with what is still there.
+its member, and `availableProjectCatalog` — the catalog read through
+`query.ProjectLifecycleAdmits`, which is the population half of the facets and
+the one authority on it, with the parked exception the frame's scope names
+admitted by name — still lists it: it returns with the tasks the frame captured
+under the catalog's current description of the project, since nothing here read
+it again and only the metadata is current for free. The descriptive facets are
+never consulted, because a tag restriction is criteria rather than availability.
+A member those axes no longer admit — deleted, archived, parked, or unarchived
+out of a frame that isolated the archived population — leaves the set outright;
+putting its captured object back would open task data the workspace has withdrawn
+in a view with no route to it. A restoration is therefore the captured membership
+intersected with what is still there.
 
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
