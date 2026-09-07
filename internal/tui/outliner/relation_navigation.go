@@ -151,7 +151,13 @@ func (m *OutlinerModel) revealRelationTarget(task *models.Task, project *models.
 			models.QueryOperatorPresent, "")
 	}
 	m.ReplaceFilterClauses(query.FilterQueryTaskFields(), clauses)
-	m.PushProjectScope(project.ID)
+	// The scope the hop is leaving may be an explicitly focused parked project,
+	// which is in the snapshot only because the user named it. A hop retains that
+	// exception rather than shedding it: the trail owes a return to this view, and
+	// a project unloaded on the way out is one reconcileProjectScope would read as
+	// gone on the way back. It is still shed by every ordinary way of leaving a
+	// focus, this hop's own return included.
+	m.pushProjectScopeRetainingParkedFocus(project.ID)
 	m.SelectOutlinerMode(chrome.ModeAll)
 	m.RebuildRows()
 	if index, found := m.RowIndexForTask(identity); found {

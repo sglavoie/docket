@@ -205,13 +205,38 @@ func (m *OutlinerModel) dropParkedProjectFocus() {
 // captures the base state; later project choices replace the focus in place
 // without stacking, so one Esc always returns to that base context.
 func (m *OutlinerModel) PushProjectScope(projectID string) {
+	m.pushProjectScope(projectID, false)
+}
+
+// pushProjectScopeRetainingParkedFocus is the same push for a scope change that
+// has already promised a way back to the one it is leaving. Shedding the parked
+// exception is what leaving a focus means, and a visit is not leaving: the
+// project would have to be reacquired to return to it, and the return the
+// promise is made on cannot raise the Cmd a reacquisition needs. Retaining it
+// instead leaves the origin in the snapshot the whole time, still re-requested
+// by every later read, so the return restores a view over the current reading
+// rather than over a project the hop unloaded.
+func (m *OutlinerModel) pushProjectScopeRetainingParkedFocus(projectID string) {
+	m.pushProjectScope(projectID, true)
+}
+
+// pushProjectScope is the one implementation both spellings share. retainParked
+// decides only the fate of the parked exception; every other axis moves the same
+// way either way.
+func (m *OutlinerModel) pushProjectScope(projectID string, retainParked bool) {
 	if projectID == "" || m.Project != nil {
 		return
 	}
 	if projectID == m.Scope.ProjectID {
 		return
 	}
-	if projectID != m.Scope.ParkedProjectID {
+	switch {
+	case retainParked:
+		// A request still in flight is abandoned even here: it has adopted nothing to
+		// retain, and honoring it would push a scope of its own over the destination
+		// this push is entering. Only the settled exception survives.
+		m.Scope.clearPendingParked()
+	case projectID != m.Scope.ParkedProjectID:
 		// Focusing elsewhere ends the exception that admitted the parked project.
 		m.dropParkedProjectFocus()
 	}

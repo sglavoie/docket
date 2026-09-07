@@ -343,3 +343,16 @@ trail itself. Suspension is `forgetActiveLensFrame`, which is run-local and neve
 calls the persistence callback, so a hop neither rewrites nor forgets the
 machine-local pointer. The trail is one step of the Esc cascade, after Peek and
 selection handling, and `ResetToLaunchView` discards it whole.
+
+The scope push is `gp`'s in every respect but one: an explicitly focused parked
+origin keeps its exception across a hop rather than being shed the way leaving a
+focus sheds it, which is the whole of `pushProjectScopeRetainingParkedFocus`. A
+parked project is in the snapshot only because the user named it, and unloading
+it on the way out would make `reconcileProjectScope` read it as gone on the way
+back — a return frame cannot reacquire it, because the Esc cascade that drives
+the return raises no Cmd. Retained, it is still the project every later read
+re-requests, so the return restores a view over the current reading of it. A
+focus request still in flight is abandoned even so: it has adopted nothing to
+retain and would push a scope of its own over the destination. Every ordinary way
+of leaving a focus still sheds it, the return's own scope pop included, and an
+origin that really did vanish still unwinds to the base scope and says so.
