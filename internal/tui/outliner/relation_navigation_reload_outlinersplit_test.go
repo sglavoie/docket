@@ -393,6 +393,103 @@ func TestABaselineDropsAMemberTheWorkspaceWithdrew(t *testing.T) {
 	}
 }
 
+// TestABaselineDropsAMemberTheDestinationStillLoads is the same withdrawal
+// reached the other way round. The workspace withdrew the project from the frame
+// being restored, but the view the user is standing in was reading under axes of
+// its own — a lens that included archived or parked projects — so the withdrawn
+// project is still in the live population when the dismissal comes. Membership
+// is the restored frame's question, so being loaded by some other view's axes
+// buys nothing: the baseline excludes it either way, and a rule that asked only
+// about absent members would catch this one only when the destination happened
+// to stop loading it too.
+func TestABaselineDropsAMemberTheDestinationStillLoads(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		lens     string
+		withdraw func(beta *models.Project)
+	}{
+		{
+			name:     "archived",
+			lens:     "+archived",
+			withdraw: func(beta *models.Project) { beta.Archived = true },
+		},
+		{
+			name:     "parked",
+			lens:     "+parked",
+			withdraw: func(beta *models.Project) { beta.Tags = []string{models.ParkedProjectTag} },
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			alpha, beta := relationFixture(t)
+			outlinerView := scopeTestOutliner(alpha, beta)
+			outlinerView.SetPersistActiveLens(func(string) error { return nil })
+
+			// The baseline is the ordinary active-projects view; the lens standing
+			// over it widens the population axis, which is what lets the destination
+			// legitimately hold the project the baseline will not.
+			state := LensState{
+				Mode:   chrome.ModeAll,
+				Facets: checkpointQuery(t, testCase.lens),
+				Sort:   query.NewSortState(),
+			}
+			outlinerView.PublishLens(state.NamedLens("lens-1", "Trail"), state, nil,
+				outlinerView.CaptureOutlinerViewSnapshot())
+
+			hopToRelation(t, outlinerView, "proj-a", "source", "out:proj-b:remote")
+
+			// Beta is withdrawn while the visit is standing in it, and the read that
+			// lands still carries it because the lens's axes admit it.
+			reloadedAlpha, reloadedBeta := reloadedRelationFixture(t)
+			testCase.withdraw(reloadedBeta)
+			setTestProjects(outlinerView.Runtime, []*models.Project{reloadedAlpha, reloadedBeta})
+			landCrossProjects(outlinerView, outlinerView.Population.LoadGen, reloadedAlpha, reloadedBeta)
+			if loadedProject(outlinerView, "proj-b") == nil {
+				t.Fatal("the lens population dropped the project this test is about")
+			}
+
+			if !outlinerView.PopRelationReturn() {
+				t.Fatal("the return refused")
+			}
+
+			outlinerView.RestoreLensBaseline()
+			if loadedProject(outlinerView, "proj-b") != nil {
+				t.Fatalf("dismissing the restored lens kept a project the baseline withdraws: %v",
+					loadedProjectIDs(outlinerView))
+			}
+			for _, row := range outlinerView.Rows {
+				if row.IsTaskRow() && row.ProjectID == "proj-b" {
+					t.Fatal("the withdrawn project's tasks are still on screen")
+				}
+			}
+			if got := loadedTaskTitle(t, outlinerView, "proj-a", "sibling"); got != "Agree the schema (edited)" {
+				t.Fatalf("the baseline lost a member the workspace still holds: sibling = %q", got)
+			}
+		})
+	}
+}
+
+// TestARestoredBaselineKeepsTheParkedOriginItNamed is that rule's exception, and
+// the reason the eligibility asked of a live member is the frame's own rather
+// than the base workspace's. A view standing in an explicitly focused parked
+// project reads it whatever the parked axis says, so the frame naming it is
+// entitled to hand it back — the axis withdrew nothing here, the user did the
+// opposite and named it.
+func TestARestoredBaselineKeepsTheParkedOriginItNamed(t *testing.T) {
+	alpha, beta := relationFixture(t)
+	outlinerView := parkedOriginOutliner(t, alpha, beta)
+	outlinerView.SetPersistActiveLens(func(string) error { return nil })
+
+	state := LensState{Mode: chrome.ModeAll, Sort: query.NewSortState()}
+	outlinerView.PublishLens(state.NamedLens("lens-1", "Trail"), state, nil,
+		outlinerView.CaptureOutlinerViewSnapshot())
+
+	outlinerView.RestoreLensBaseline()
+	if loadedProject(outlinerView, "proj-a") == nil {
+		t.Fatalf("the baseline dropped the parked project its own scope names: %v",
+			loadedProjectIDs(outlinerView))
+	}
+}
+
 // TestABaselineDropsAMemberTheLatestReadCouldNotOpen is the third reading of an
 // absent member, and the one the catalog cannot answer. The project was neither
 // excluded by a lens nor withdrawn by the workspace: it is still cataloged, still

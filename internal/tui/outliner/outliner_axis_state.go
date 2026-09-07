@@ -977,21 +977,30 @@ func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot, focusProj
 // objects whose tasks, titles, and states are a reading the workspace has since
 // superseded.
 //
-// A captured project the live set no longer holds is one of three different
-// things, and telling them apart is the whole of this function. A lens that
-// narrowed the population merely excluded it: the workspace still holds the
-// project, no newer reading of it is here to prefer, and the baseline is
-// entitled to hand it back with the tasks it captured, under the description the
-// catalog holds now. A project the workspace no longer offers this view —
-// deleted, archived, or parked while the frame was away — is not a reading the
-// frame may speak for at all: putting its captured object back would open, in a
-// view with no route to it, task data the workspace has already withdrawn. The
-// third is the project the live read did go and ask for and could not open: the
-// catalog still lists it, so availability alone calls it excluded, but the
+// Membership and object are two separate questions here, and asking them in
+// that order is the whole of this function. Membership is the restored frame's
+// own: a project the workspace no longer offers this view — deleted, archived,
+// or parked while the frame was away — is not a reading the frame may speak for
+// at all, and whether the destination happened to load it decides nothing. A
+// lens that widened the population, or a destination reached under axes of its
+// own, can perfectly well be holding a project the frame being restored excludes
+// by lifecycle, so the eligibility the catalog answers is asked of every
+// captured candidate rather than of absent ones alone. Otherwise a withdrawal is
+// caught only when the destination also stopped loading it, which makes the rule
+// depend on the other view's axes instead of on this frame's.
+//
+// Only once a candidate is a member does its object get chosen, and there the
+// live set is preferred, since it is the reading that superseded the captured
+// one. An absent member is then one of two remaining things. A lens that
+// narrowed the population merely excluded it: no newer reading of it is here to
+// prefer, and the baseline is entitled to hand it back with the tasks it
+// captured, under the description the catalog holds now. Or it is the project
+// the live read did go and ask for and could not open:
+// the catalog still lists it, so availability alone calls it eligible, but the
 // workspace has already answered about it and the answer was that its tasks
 // cannot be read. Handing the captured ones back would publish a reading the
 // workspace has just refused to confirm, so it leaves the set too, and a
-// restoration is the captured membership intersected with what is still there
+// restoration is the captured membership intersected with what is still offered
 // and still readable.
 func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focusProjectID string) []*models.Project {
 	if len(captured) == 0 {
@@ -1009,20 +1018,21 @@ func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focu
 		if project == nil {
 			continue
 		}
-		if current, loaded := live[project.ID]; loaded {
-			refreshed = append(refreshed, current)
-			continue
-		}
-		// The read failure is asked before the catalog and independently of it: it
-		// is an observation about this project's tasks, which no lifecycle axis and
-		// no missing runtime can speak for, and it outranks even the focus the
-		// catalog admits by name — an exception says the view may read that project,
-		// never that the read succeeded.
-		if m.Population.isUnreadable(project.ID) {
-			continue
-		}
 		current, stillAvailable := available[project.ID]
 		if judged && !stillAvailable {
+			continue
+		}
+		if loadedNow, loaded := live[project.ID]; loaded {
+			refreshed = append(refreshed, loadedNow)
+			continue
+		}
+		// The read failure is an observation about this project's tasks, which no
+		// lifecycle axis and no missing runtime can speak for, and it outranks even
+		// the focus the catalog admits by name — an exception says the view may read
+		// that project, never that the read succeeded. It is asked of retained
+		// candidates alone: a project the accepted read installed is a read that
+		// succeeded, and the object standing in the population is that reading.
+		if m.Population.isUnreadable(project.ID) {
 			continue
 		}
 		refreshed = append(refreshed, retainedProjectWithCurrentMetadata(project, current))

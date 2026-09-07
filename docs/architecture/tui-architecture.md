@@ -259,39 +259,50 @@ writes that population half beside the projects it selected, through
 population owes the dependency index the same drop a load does.
 
 The projects a frame carries are a membership and never a reading.
-`refreshCapturedProjects` re-resolves that membership by ID: a member the live
-population still holds comes back as the object standing now, so a reload that
-landed while the frame was retained is what the dismissal shows. A member the
-live population no longer holds is the case worth naming, because "excluded" and
-"withdrawn" are indistinguishable from the population alone and only one of them
-entitles the frame to speak. A lens that narrowed the population merely excluded
-its member, and `availableProjectCatalog` — the catalog read through
+`refreshCapturedProjects` re-resolves that membership by ID, and it asks two
+questions in that order: whether the candidate is still a member, and only then
+which object stands for it. Membership is the restored frame's own question, so
+`availableProjectCatalog` — the catalog read through
 `query.ProjectLifecycleAdmits`, which is the population half of the facets and
 the one authority on it, with the parked exception the frame's scope names
-admitted by name — still lists it: it returns with the tasks the frame captured
-under the catalog's current description of the project, since nothing here read
-it again and only the metadata is current for free. The descriptive facets are
-never consulted, because a tag restriction is criteria rather than availability.
-A member those axes no longer admit — deleted, archived, parked, or unarchived
-out of a frame that isolated the archived population — leaves the set outright;
-putting its captured object back would open task data the workspace has withdrawn
-in a view with no route to it.
+admitted by name — is asked of every captured candidate rather than of the absent
+ones alone. The descriptive facets are never consulted, because a tag restriction
+is criteria rather than availability. A member those axes no longer admit —
+deleted, archived, parked, or unarchived out of a frame that isolated the
+archived population — leaves the set outright, whether or not the view being
+dismissed happens to be holding it; putting its captured object back would open
+task data the workspace has withdrawn in a view with no route to it. A lens that
+widened the population, or a destination reached under axes of its own, can
+perfectly well be holding a project the frame being restored excludes by
+lifecycle, and asking only about absent members would make the rule depend on
+that other view's axes rather than on this frame's.
 
-A third absence the catalog cannot answer for is the project the live read did go
-and ask for and could not open. It is still listed, still active, and
+Only a member reaches the second question, and there the live population is
+preferred: a member it still holds comes back as the object standing now, so a
+reload that landed while the frame was retained is what the dismissal shows. An
+absent member is the case worth naming, because a lens that narrowed the
+population merely excluded it — the catalog still lists it, no newer reading of
+it is here to prefer, and it returns with the tasks the frame captured under the
+catalog's current description of the project, since nothing here read it again
+and only the metadata is current for free.
+
+The other absence the catalog cannot answer for is the project the live read did
+go and ask for and could not open. It is still listed, still active, and
 availability alone would hand its captured tasks back as though the workspace had
 confirmed them, so the read's own failures are recorded beside the population it
 installs — `populationState.recordLoadFailures`, written by the accepted publishes
 in `handleCrossProjectsLoaded` and `handleLensProjectsLoaded` and replaced whole
 each time, so the answer standing always belongs to the set standing and a
-superseded read can withdraw nothing. `refreshCapturedProjects` asks that before
-the catalog and independently of it, because a read failure is an observation
-about one project's tasks that no lifecycle axis, no missing runtime, and not
-even the parked exception admitted by name can speak for: an exception says the
-view may read that project, never that the read succeeded. The next read that
-does open it is the newer answer and its member is restorable again. A
-restoration is therefore the captured membership intersected with what is still
-there and still readable.
+superseded read can withdraw nothing. `refreshCapturedProjects` asks that of a
+retained candidate independently of the catalog, because a read failure is an
+observation about one project's tasks that no lifecycle axis, no missing runtime,
+and not even the parked exception admitted by name can speak for: an exception
+says the view may read that project, never that the read succeeded. It is asked
+of retained candidates alone, since a project the accepted read installed is a
+read that succeeded and the object standing in the population is that reading.
+The next read that does open it is the newer answer and its member is restorable
+again. A restoration is therefore the captured membership intersected with what
+is still offered and still readable.
 
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
