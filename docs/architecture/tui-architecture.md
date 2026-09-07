@@ -267,12 +267,20 @@ which object stands for it. Membership is the restored frame's own question, so
 the one authority on it, with the parked exception the frame's scope names
 admitted by name — is asked of every captured candidate rather than of the absent
 ones alone. The descriptive facets are never consulted, because a tag restriction
-is criteria rather than availability. A member those axes no longer admit —
-deleted, archived, parked, or unarchived out of a frame that isolated the
-archived population — leaves the set outright, whether or not the view being
-dismissed happens to be holding it; putting its captured object back would open
-task data the workspace has withdrawn in a view with no route to it. A lens that
-widened the population, or a destination reached under axes of its own, can
+is criteria rather than availability. Those axes are read in one direction only,
+which is what `withdrawalAxes` spells: an axis is asked whether the workspace has
+taken a project out of this frame's reach, never whether the frame would load it
+from scratch, so an isolating axis widens to Include there and only an excluding
+one refuses. A member those axes no longer admit — deleted, or since archived or
+parked under a frame that excludes archived or parked projects — leaves the set
+outright, whether or not the view being dismissed happens to be holding it;
+putting its captured object back would open task data the workspace has withdrawn
+in a view with no route to it. A member that merely stopped being archived or
+parked is the other direction and is handed back whole, because a frame is
+entitled to the membership it holds even while its own axes and its population
+disagree, which they do for as long as an axis change is still loading;
+`TestAnIsolatingAxisStillHandsBackTheMembershipItCaptured` is that limit. A lens
+that widened the population, or a destination reached under axes of its own, can
 perfectly well be holding a project the frame being restored excludes by
 lifecycle, and asking only about absent members would make the rule depend on
 that other view's axes rather than on this frame's.
