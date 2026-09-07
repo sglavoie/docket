@@ -619,6 +619,101 @@ func TestAReadThatOpensAProjectAgainRestoresItsBaselineMembership(t *testing.T) 
 	}
 }
 
+// TestAnUnrelatedReadCannotExpireAnotherProjectsReadFailure is the other half of
+// that expiry, and the half a whole-record replacement got wrong. Only a read
+// that opened the project is a newer answer about it; a read that never asked
+// for it is no answer at all. Here the workspace fails Beta, and the read that
+// lands next selects Alpha alone — once as a project-tag lens, once as an
+// ordinary reload under the same facet — so nothing between the failure and the
+// dismissal ever tried Beta again. The baseline holds Beta's captured tasks the
+// whole time, and the dismissal is where they would go back on screen.
+func TestAnUnrelatedReadCannotExpireAnotherProjectsReadFailure(t *testing.T) {
+	for _, route := range []string{"lens", "cross"} {
+		t.Run(route, func(t *testing.T) {
+			alpha, beta := relationFixture(t)
+			// One project tag is what lets the narrower read select Alpha by itself
+			// while Beta stays cataloged, active, and simply unasked for.
+			alpha.Tags = []string{"keep"}
+			outlinerView := scopeTestOutliner(alpha, beta)
+			outlinerView.SetPersistActiveLens(func(string) error { return nil })
+
+			state := LensState{Mode: chrome.ModeAll, Sort: query.NewSortState()}
+			outlinerView.PublishLens(state.NamedLens("lens-1", "Trail"), state, nil,
+				outlinerView.CaptureOutlinerViewSnapshot())
+
+			hopToRelation(t, outlinerView, "proj-a", "source", "out:proj-b:remote")
+
+			reloadedAlpha, _ := reloadedRelationFixture(t)
+			reloadedAlpha.Tags = []string{"keep"}
+			outlinerView.HandleCrossProjectsLoaded(CrossProjectsLoadedMsg{
+				Projects:   []*models.Project{reloadedAlpha},
+				Generation: outlinerView.Population.LoadGen,
+				FailedLoads: []ProjectLoadFailure{{
+					ProjectID: "proj-b",
+					Detail:    "failed to load project Beta: unreadable",
+				}},
+			})
+			if !outlinerView.PopRelationReturn() {
+				t.Fatal("the return refused")
+			}
+			if loadedProject(outlinerView, "proj-b") != nil {
+				t.Fatal("the unreadable project was already back before the narrower read")
+			}
+
+			narrowed := LensState{
+				Mode:   chrome.ModeAll,
+				Sort:   query.NewSortState(),
+				Facets: checkpointQuery(t, "+#keep"),
+			}
+			filter := narrowed.ProjectFilterState()
+			// The premise the whole test rests on: this population is Alpha's alone,
+			// so no route below asks the workspace about Beta a second time.
+			selected := SelectCrossScopeProjects(outlinerView.Runtime,
+				CrossScopeOpts{ActiveOnly: true, ProjectFilter: filter})
+			if len(selected) != 1 || selected[0].ID != "proj-a" {
+				t.Fatalf("the narrowed read asks for %d projects, want proj-a alone", len(selected))
+			}
+
+			if route == "lens" {
+				lens := narrowed.NamedLens("6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6d02", "Alpha only")
+				if _, err := outlinerView.ApplyNamedLens(lens); err != nil {
+					t.Fatalf("ApplyNamedLens: %v", err)
+				}
+				if !outlinerView.Lens.hasPending() {
+					t.Fatal("the narrowed lens published without reading a population")
+				}
+				if _, published := outlinerView.HandleLensProjectsLoaded(LensProjectsLoadedMsg{
+					Projects:   []*models.Project{reloadedAlpha},
+					Generation: outlinerView.Lens.Pending.Generation,
+				}); !published {
+					t.Fatal("the Alpha-only lens read did not publish")
+				}
+			} else {
+				outlinerView.SetFilterQuery(narrowed.Facets)
+				outlinerView.HandleCrossProjectsLoaded(CrossProjectsLoadedMsg{
+					Projects:            []*models.Project{reloadedAlpha},
+					Generation:          outlinerView.Population.LoadGen,
+					LoadedProjectFilter: query.ProjectFilterFingerprint(&filter),
+				})
+			}
+
+			outlinerView.RestoreLensBaseline()
+			if restored := loadedProject(outlinerView, "proj-b"); restored != nil {
+				t.Fatalf("an unrelated %s read expired the failure and handed back %d captured tasks: %v",
+					route, len(restored.Tasks), loadedProjectIDs(outlinerView))
+			}
+			for _, row := range outlinerView.Rows {
+				if row.IsTaskRow() && row.ProjectID == "proj-b" {
+					t.Fatalf("a task of the still-unreadable project rendered after the %s read", route)
+				}
+			}
+			if got := loadedTaskTitle(t, outlinerView, "proj-a", "sibling"); got != "Agree the schema (edited)" {
+				t.Fatalf("the baseline lost the member the reads did open: sibling = %q", got)
+			}
+		})
+	}
+}
+
 // TestAnIsolatingAxisStillHandsBackTheMembershipItCaptured is the limit of that
 // rule. An axis narrows this read in one direction only: a project that stopped
 // being archived is not a project the workspace withdrew, and a frame whose own

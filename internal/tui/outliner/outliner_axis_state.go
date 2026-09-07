@@ -715,10 +715,11 @@ type populationState struct {
 	ReloadHeaderProjectID string
 	reloadFromTop         bool
 
-	// unreadable names the projects the read that installed this set asked for and
-	// could not read. It is the other half of that answer: a project absent from
-	// projects because the workspace failed to read it is not a project the
-	// workspace stopped offering, and nothing else here records the difference.
+	// unreadable names the projects an accepted read asked for and could not
+	// read, each entry standing until a later accepted read opens that project.
+	// It is the other half of that answer: a project absent from projects because
+	// the workspace failed to read it is not a project the workspace stopped
+	// offering, and nothing else here records the difference.
 	unreadable map[string]bool
 
 	// fingerprint, focusDepth and taskCount are the inputs the last
@@ -741,31 +742,44 @@ func (p *populationState) setProjects(projects []*models.Project) { p.Projects =
 // baseline taken before any load landed must not claim one did.
 func (p *populationState) setSnapshotReady(ready bool) { p.SnapshotReady = ready }
 
-// recordLoadFailures pairs the projects a read could not open with the set it
-// installed beside them. It is written by the accepted publishes alone and is
-// replaced whole every time, because the answer is one read's and a later read
-// that opened a project is the newer answer about it. A read that publishes no
+// recordLoadFailures folds one accepted read's answers into the record, project
+// by project. A read speaks for the projects it attempted and for no others, so
+// the two halves it publishes are the whole of what it may write: a project in
+// the population it installed is one it opened, and its failure is cleared, while
+// a project in its failures is one it could not open, and that is recorded. A
+// project the read never asked for is untouched, which is what makes a narrower
+// read — one project's lens, a filtered reload — no evidence at all about the
+// projects outside it. Replacing the record whole was the defect: it made an
+// unrelated success stand in for a recovery nothing observed.
+//
+// It is written by the accepted publishes alone. A read that publishes no
 // population — superseded, abandoned, or refused — records nothing here either,
-// so the failures standing are always the ones belonging to the set standing.
-func (p *populationState) recordLoadFailures(failures []ProjectLoadFailure) {
+// so every answer standing belongs to an accepted read of the project it names.
+func (p *populationState) recordLoadFailures(loaded []*models.Project, failures []ProjectLoadFailure) {
 	if p == nil {
 		return
 	}
-	if len(failures) == 0 {
-		p.unreadable = nil
-		return
-	}
-	unreadable := make(map[string]bool, len(failures))
-	for _, failure := range failures {
-		if failure.ProjectID != "" {
-			unreadable[failure.ProjectID] = true
+	for _, project := range loaded {
+		if project != nil && project.ID != "" {
+			delete(p.unreadable, project.ID)
 		}
 	}
-	p.unreadable = unreadable
+	for _, failure := range failures {
+		if failure.ProjectID == "" {
+			continue
+		}
+		if p.unreadable == nil {
+			p.unreadable = make(map[string]bool, len(failures))
+		}
+		p.unreadable[failure.ProjectID] = true
+	}
+	if len(p.unreadable) == 0 {
+		p.unreadable = nil
+	}
 }
 
-// isUnreadable reports whether the read that installed the live set asked for
-// this project and failed to open it.
+// isUnreadable reports whether the last accepted read that asked for this
+// project failed to open it.
 func (p *populationState) isUnreadable(projectID string) bool {
 	if p == nil || projectID == "" {
 		return false
@@ -994,14 +1008,14 @@ func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot, focusProj
 // one. An absent member is then one of two remaining things. A lens that
 // narrowed the population merely excluded it: no newer reading of it is here to
 // prefer, and the baseline is entitled to hand it back with the tasks it
-// captured, under the description the catalog holds now. Or it is the project
-// the live read did go and ask for and could not open:
-// the catalog still lists it, so availability alone calls it eligible, but the
-// workspace has already answered about it and the answer was that its tasks
-// cannot be read. Handing the captured ones back would publish a reading the
-// workspace has just refused to confirm, so it leaves the set too, and a
-// restoration is the captured membership intersected with what is still offered
-// and still readable.
+// captured, under the description the catalog holds now. Or it is the project an
+// accepted read did go and ask for and could not open, with nothing having
+// opened it since: the catalog still lists it, so availability alone calls it
+// eligible, but the workspace has already answered about it and the answer was
+// that its tasks cannot be read. Handing the captured ones back would publish a
+// reading the workspace has just refused to confirm, so it leaves the set too,
+// and a restoration is the captured membership intersected with what is still
+// offered and still readable.
 func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focusProjectID string) []*models.Project {
 	if len(captured) == 0 {
 		return slices.Clone(captured)
@@ -1029,9 +1043,11 @@ func (m *OutlinerModel) refreshCapturedProjects(captured []*models.Project, focu
 		// The read failure is an observation about this project's tasks, which no
 		// lifecycle axis and no missing runtime can speak for, and it outranks even
 		// the focus the catalog admits by name — an exception says the view may read
-		// that project, never that the read succeeded. It is asked of retained
-		// candidates alone: a project the accepted read installed is a read that
-		// succeeded, and the object standing in the population is that reading.
+		// that project, never that the read succeeded. It survives every later read
+		// that did not ask for this project, so a narrower one cannot expire it, and
+		// only a read that opened the project can. It is asked of retained candidates
+		// alone: a project the live population holds was opened by the read that
+		// installed it, and the object standing there is that reading.
 		if m.Population.isUnreadable(project.ID) {
 			continue
 		}

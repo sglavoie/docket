@@ -215,10 +215,13 @@ func (m *OutlinerModel) HandleCrossProjectsLoaded(msg CrossProjectsLoadedMsg) te
 	m.DiscardDisplacedRelocationCapture()
 	m.Population.settleLoad()
 	m.setLoadedProjects(msg.Projects)
-	// The failures land with the set they belong to. The generation check above is
-	// what makes that pairing honest: a superseded read publishes neither half, so
-	// a failure it reported can never withdraw a project the accepted read opened.
-	m.Population.recordLoadFailures(msg.FailedLoads)
+	// Both halves of this read's answer are recorded together: the projects it
+	// opened and the projects it could not. The generation check above is what
+	// makes them honest — a superseded read publishes neither half, so a failure it
+	// reported can never withdraw a project an accepted read opened — and the
+	// pairing is what keeps the record per project, since a read that asked for
+	// neither half of a project says nothing about it.
+	m.Population.recordLoadFailures(msg.Projects, msg.FailedLoads)
 	m.Population.setSnapshotReady(true)
 	m.recordLoadedPopulation(msg.LoadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()

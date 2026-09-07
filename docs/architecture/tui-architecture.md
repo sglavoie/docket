@@ -294,23 +294,27 @@ it is here to prefer, and it returns with the tasks the frame captured under the
 catalog's current description of the project, since nothing here read it again
 and only the metadata is current for free.
 
-The other absence the catalog cannot answer for is the project the live read did
-go and ask for and could not open. It is still listed, still active, and
+The other absence the catalog cannot answer for is the project an accepted read
+did go and ask for and could not open. It is still listed, still active, and
 availability alone would hand its captured tasks back as though the workspace had
-confirmed them, so the read's own failures are recorded beside the population it
-installs — `populationState.recordLoadFailures`, written by the accepted publishes
-in `handleCrossProjectsLoaded` and `handleLensProjectsLoaded` and replaced whole
-each time, so the answer standing always belongs to the set standing and a
-superseded read can withdraw nothing. `refreshCapturedProjects` asks that of a
-retained candidate independently of the catalog, because a read failure is an
-observation about one project's tasks that no lifecycle axis, no missing runtime,
-and not even the parked exception admitted by name can speak for: an exception
-says the view may read that project, never that the read succeeded. It is asked
-of retained candidates alone, since a project the accepted read installed is a
-read that succeeded and the object standing in the population is that reading.
-The next read that does open it is the newer answer and its member is restorable
-again. A restoration is therefore the captured membership intersected with what
-is still offered and still readable.
+confirmed them, so read failures are recorded alongside the population —
+`populationState.recordLoadFailures`, written by the accepted publishes in
+`handleCrossProjectsLoaded` and `handleLensProjectsLoaded` alone, so a
+superseded, abandoned, or refused read can withdraw nothing. The record is kept
+per project rather than replaced whole, because a read answers only about the
+projects it attempted: each publish clears the entries for the projects in the
+population it installed, records the ones in its failures, and leaves every other
+entry standing. An Alpha-only lens or a narrowed reload therefore observes
+nothing about Beta, and a failure expires only when a read actually opens that
+project again. `refreshCapturedProjects` asks the record of a retained candidate
+independently of the catalog, because a read failure is an observation about one
+project's tasks that no lifecycle axis, no missing runtime, and not even the
+parked exception admitted by name can speak for: an exception says the view may
+read that project, never that the read succeeded. It is asked of retained
+candidates alone, since a project the live population holds was opened by the
+read that installed it and the object standing there is that reading. A
+restoration is therefore the captured membership intersected with what is still
+offered and still readable.
 
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
