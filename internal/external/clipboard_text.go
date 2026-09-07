@@ -17,12 +17,10 @@ var ErrClipboardUnsupported = errors.New("clipboard not supported on this OS")
 // platform tool. It is a package var so tests can inject clipboard success,
 // unsupported, and error paths without running that tool.
 //
-// It sits beside CopyTaskTitle rather than sharing its implementation: those
-// three helpers project a task through the atotto/clipboard library and report
-// no unsupported-platform sentinel, while every text copy in the TUI is written
-// against this one. Merging them would change what a caller on an unsupported
-// platform sees, so they stay two spellings of the same intent until something
-// decides which one wins.
+// It is the only clipboard write in the product. Task text is projected by the
+// application layer and arrives here already assembled, which is what lets one
+// call carry a whole selection: nothing else may write the clipboard, so no
+// caller can put half a selection on it.
 var CopyText = func(text string) error {
 	var clipCmd *exec.Cmd
 	switch runtime.GOOS {

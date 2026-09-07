@@ -14,7 +14,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
-| Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
+| Clipboard | `y` title, `Y` description, `Ctrl+Y` both; each copies the whole visual selection, in displayed order, as one write |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 

@@ -335,59 +335,23 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case coordinator.TaskClipboardProjectedMsg:
+		// One write for the whole projection: the application layer has already
+		// assembled every task's text, so there is no state in which part of a
+		// selection reached the clipboard and part of it did not.
 		if err := external.CopyText(msg.Projection.Text); err != nil {
 			return true, status.ErrorCmd("copy failed: %w", err)
 		}
+		copied := TaskCopiedMsg{Count: msg.Projection.TaskCount, Hidden: msg.Hidden}
 		switch msg.Projection.Operation {
 		case app.TaskOperationCopyTitle:
-			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1} }
 		case app.TaskOperationCopyDescription:
-			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, FullDetail: true} }
+			copied.FullDetail = true
 		case app.TaskOperationCopyTitleDescription:
-			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, TitleAndDesc: true} }
+			copied.TitleAndDesc = true
 		default:
 			return true, status.ErrorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
 		}
-
-	case CopyTaskTitleMsg:
-		if msg.Task == nil {
-			return true, nil
-		}
-		_, err := external.CopyTaskTitle(msg.Task)
-		if err != nil {
-			return true, status.ErrorCmd("copy failed: %w", err)
-		}
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: 1, FullDetail: false}
-		}
-
-	case CopyTaskDetailsMsg:
-		if msg.Task == nil {
-			return true, nil
-		}
-		if msg.Task.Description == "" {
-			m.setInfoStatus("No description to copy")
-			return true, status.DefaultStatusTimeout()
-		}
-		_, err := external.CopyTaskDetails(msg.Task)
-		if err != nil {
-			return true, status.ErrorCmd("copy failed: %w", err)
-		}
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: 1, FullDetail: true}
-		}
-
-	case CopyTaskTitleAndDescMsg:
-		if msg.Task == nil {
-			return true, nil
-		}
-		_, err := external.CopyTaskTitleAndDescription(msg.Task)
-		if err != nil {
-			return true, status.ErrorCmd("copy failed: %w", err)
-		}
-		return true, func() tea.Msg {
-			return TaskCopiedMsg{Count: 1, TitleAndDesc: true}
-		}
+		return true, func() tea.Msg { return copied }
 
 	case TaskCopiedMsg:
 		var what string
@@ -398,11 +362,14 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		} else {
 			what = "title"
 		}
-		if msg.Count == 1 {
-			m.setSuccessStatus(fmt.Sprintf("Copied %s to clipboard", what))
-		} else {
-			m.setSuccessStatus(fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count))
+		summary := fmt.Sprintf("Copied %s to clipboard", what)
+		if msg.Count > 1 {
+			summary = fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count)
 		}
+		if msg.Hidden > 0 {
+			summary = fmt.Sprintf("%s · %d hidden", summary, msg.Hidden)
+		}
+		m.setSuccessStatus(summary)
 		return true, status.DefaultStatusTimeout()
 	}
 	return false, nil

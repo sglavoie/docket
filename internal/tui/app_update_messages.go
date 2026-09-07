@@ -461,18 +461,11 @@ func footerFlashTick(seq uint64) tea.Cmd {
 // Clipboard Messages
 // =============================================================================
 
-// CopyTaskTitleMsg copies a single task's title to clipboard.
-type CopyTaskTitleMsg struct{ Task *models.Task }
-
-// CopyTaskDetailsMsg copies a single task's full details to clipboard.
-type CopyTaskDetailsMsg struct{ Task *models.Task }
-
-// CopyTaskTitleAndDescMsg copies a single task's title and description to clipboard.
-type CopyTaskTitleAndDescMsg struct{ Task *models.Task }
-
-// TaskCopiedMsg confirms task(s) were copied to clipboard.
+// TaskCopiedMsg confirms task(s) were copied to clipboard. Hidden is the part
+// of Count that had no visible row when the selection was frozen.
 type TaskCopiedMsg struct {
 	Count        int
+	Hidden       int
 	FullDetail   bool
 	TitleAndDesc bool
 }

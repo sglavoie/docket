@@ -203,14 +203,21 @@ it. `Esc` closes Peek before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, defer, pin, and Move to Project actions
 apply atomically to the complete project-qualified selection, including hidden
-members. `v`
+members. `y`, `Y`, and `Ctrl+Y` copy that same complete selection in one
+clipboard write: the text reads in the order the rows are drawn, with the
+members the view is not showing after them, ordered by project and then by each
+project's own task order. Only what you selected is copied, so a selected parent
+brings no unselected child along, and the status line names the total and how
+many of them were hidden. A missing task or a clipboard that refuses the write
+copies nothing rather than part of the selection. `v`
 toggles the cursor task in or out of the selection, so a selection can name rows
 that are not adjacent; movement never changes what `v` picked. `V` starts a
 fresh inclusive range at the cursor; movement recalculates it over task rows
 only, and `V` or `Esc` freezes it. `v` during a live range freezes it and drops
 the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
 selection survives at zero members until `Esc` leaves the mode. Entering
-multi-select closes Peek. Structural, edit, Peek,
-relation, and clipboard operations do not fall back silently to the cursor
-while a selection exists. Successful Delete clears selection; other successes,
+multi-select closes Peek. Structural, edit, Peek, and
+relation operations do not fall back silently to the cursor while a selection
+exists, and neither do the clipboard keys: they copy the selection, and an empty
+one copies nothing. Successful Delete clears selection; other successes,
 cancellations, and failures preserve it.

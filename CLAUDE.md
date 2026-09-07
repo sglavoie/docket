@@ -280,9 +280,14 @@ is deleted, under one confirmation, in the same transaction and undo entry as
 the edits beside it.
 
 Entering visual selection closes Peek; while one exists, structural, edit, Peek,
-relation, and clipboard operations must reject rather than fall back to the
-cursor. Focus and `gp` exit search onto the result. Jump history is
-session-only, scoped to the current projection. So is `g~`'s return trail: a hop
+and relation operations must reject rather than fall back to the cursor. The
+three clipboard projections instead copy that whole explicit selection, hidden
+members included, assembled from one snapshot into one `external.CopyText`
+call, so a missing target or a failed write copies nothing.
+`ClipboardSelectionOrder` is their order — displayed rows, then hidden members
+by project slug and tree position — and is theirs alone; every other operation
+keeps `NormalizedTaskIdentities`. Focus and `gp` exit search onto the result.
+Jump history is session-only, scoped to the current projection. So is `g~`'s return trail: a hop
 pushes one frame of presentation checkpoint, suspended lens, and source identity
 and never a task or project pointer, `Esc` spends it after Peek and selection and
 before query, lens, focus, and scope, and `0` drops it whole. Suspension is

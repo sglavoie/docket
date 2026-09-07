@@ -35,6 +35,9 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operation.OperationTaskToggleReview {
 		return m.executeTaskToggleReviewOperation(invocation)
 	}
+	if operationProjectsClipboard(invocation.Descriptor.ID) {
+		return m.executeTaskCopyOperation(invocation)
+	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
@@ -180,6 +183,97 @@ func (m *AppModel) executeTaskToggleReviewOperation(
 			"",
 		), capture),
 	}}
+}
+
+// operationProjectsClipboard names the three read-only projections. They branch
+// off the mutation path before it because two things are true of them and of
+// nothing else: the order of their targets is the order the copied text reads
+// in, and they commit nothing, so there is no transaction for a relocation
+// capture or a check-back step to follow.
+func operationProjectsClipboard(id operation.OperationID) bool {
+	switch id {
+	case operation.OperationTaskCopyTitle,
+		operation.OperationTaskCopyDetails,
+		operation.OperationTaskCopyTitleDescription:
+		return true
+	default:
+		return false
+	}
+}
+
+// executeTaskCopyOperation copies the whole resolved selection, hidden members
+// included, as one clipboard write. An empty visual selection never reaches it:
+// the descriptors are one-or-more over the selected tasks, so the resolver
+// refuses instead of falling back to the cursor.
+func (m *AppModel) executeTaskCopyOperation(
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	invocation.Targets = m.clipboardTargetOrder(invocation.Targets)
+	request, action, summary, handled, err := applicationTaskOperationRequest(invocation)
+	if err != nil {
+		return operation.OperationHandlerResult{Err: err}
+	}
+	if !handled {
+		return operation.OperationHandlerResult{Err: fmt.Errorf(
+			"operation %s is not a clipboard projection",
+			invocation.Descriptor.ID,
+		)}
+	}
+	counts := operationSelectionCounts(invocation.Context, len(request.Targets))
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
+		Cmd: withClipboardHiddenCount(
+			m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
+			counts.Hidden,
+		),
+	}}
+}
+
+// clipboardTargetOrder replaces the resolver's identity ordering with the order
+// the copied text reads in. The resolver stays sorted by identity for every
+// other operation, because only copied text makes its target order visible.
+func (m *AppModel) clipboardTargetOrder(
+	targets operation.ResolvedOperationTargets,
+) operation.ResolvedOperationTargets {
+	if len(targets.Targets) < 2 {
+		return targets
+	}
+	byIdentity := make(map[taskref.TaskIdentity]operation.OperationTarget, len(targets.Targets))
+	identities := make([]taskref.TaskIdentity, 0, len(targets.Targets))
+	for _, target := range targets.Targets {
+		if !target.Task.Valid() {
+			// A malformed set is the request builder's error to report, not this
+			// reordering's to hide.
+			return targets
+		}
+		identities = append(identities, target.Task)
+		byIdentity[target.Task] = target
+	}
+	ordered := m.Outliner().ClipboardSelectionOrder(identities)
+	reordered := make([]operation.OperationTarget, 0, len(ordered))
+	for _, identity := range ordered {
+		reordered = append(reordered, byIdentity[identity])
+	}
+	targets.Targets = reordered
+	return targets
+}
+
+// withClipboardHiddenCount stamps the projection with the part of the selection
+// the view was not showing. The application layer cannot supply it: a hidden
+// member is a fact about the projection the selection was frozen against, not
+// about the workspace the text was read from.
+func withClipboardHiddenCount(cmd tea.Cmd, hidden int) tea.Cmd {
+	if cmd == nil || hidden <= 0 {
+		return cmd
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		projected, ok := msg.(coordinator.TaskClipboardProjectedMsg)
+		if !ok {
+			return msg
+		}
+		projected.Hidden = hidden
+		return projected
+	}
 }
 
 func applicationTaskOperationRequest(
@@ -402,11 +496,17 @@ func (m *AppModel) executeTaskDeleteOperation(
 	}
 	return operation.OperationHandlerResult{Message: TaskDeleteRequestedMsg{
 		Refs:      refs,
-		Selection: deleteSelectionCounts(invocation.Context, len(refs)),
+		Selection: operationSelectionCounts(invocation.Context, len(refs)),
 	}}
 }
 
-func deleteSelectionCounts(context operation.CommandContext, targetCount int) listsurface.SelectionCounts {
+// operationSelectionCounts describes the targets an operation resolved against
+// the projection the selection was frozen in. The frozen classification is
+// trusted only when it still accounts for exactly the resolved targets;
+// otherwise the operation reports what it actually has, all of it visible.
+// Delete puts the split in its confirmation and copy puts it in its status line,
+// so both read one classification rather than two.
+func operationSelectionCounts(context operation.CommandContext, targetCount int) listsurface.SelectionCounts {
 	counts := listsurface.SelectionCounts{Total: targetCount, Visible: targetCount}
 	if context.Selection.VisibleCount+context.Selection.HiddenCount == targetCount {
 		counts.Visible = context.Selection.VisibleCount

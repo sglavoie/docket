@@ -70,10 +70,13 @@ type TaskOperationRequest struct {
 
 // TaskClipboardProjection is application-owned clipboard text. The application
 // layer deliberately does not write to the system clipboard; adapters retain
-// ownership of that platform side effect.
+// ownership of that platform side effect. TaskCount is how many tasks the text
+// describes after deduplication, so an adapter reports the size of what it
+// wrote rather than the size of what it asked for.
 type TaskClipboardProjection struct {
 	Operation TaskOperation
 	Text      string
+	TaskCount int
 }
 
 // TaskOperationResult is the common outcome for single-task and bulk daily
@@ -111,11 +114,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		return singleTaskOperationResult(result, err)
 
 	case TaskOperationCopyTitle, TaskOperationCopyDescription, TaskOperationCopyTitleDescription:
-		locator, err := singleOperationTarget(req)
-		if err != nil {
+		if err := validateOperationTargets(req.Targets); err != nil {
 			return TaskOperationResult{}, err
 		}
-		projection, err := s.projectTaskClipboard(locator, req.Operation)
+		projection, err := s.projectTaskClipboard(req.Targets, req.Operation)
 		if err != nil {
 			return TaskOperationResult{}, err
 		}
@@ -242,21 +244,56 @@ func bulkTaskOperationResult(result BulkResult, err error) (TaskOperationResult,
 	}, nil
 }
 
-func (s *Service) projectTaskClipboard(locator TaskLocator, operation TaskOperation) (TaskClipboardProjection, error) {
-	ref, _, _, err := s.loadTaskSelection("", locator)
+// projectTaskClipboard renders one or many tasks as a single clipboard value.
+// Every target resolves against one snapshot, so the text describes one
+// consistent workspace state, and the whole text is assembled before it is
+// returned: a target the snapshot cannot resolve fails the entire projection
+// rather than handing the adapter the part that did resolve. Order is the
+// caller's — the presentation owns what the copied text reads like — and a task
+// named twice is copied once, because resolveRequestedTasks deduplicates by
+// project-qualified locator while preserving first-seen order.
+func (s *Service) projectTaskClipboard(locators []TaskLocator, operation TaskOperation) (TaskClipboardProjection, error) {
+	block, separator, err := taskClipboardFormat(operation)
 	if err != nil {
 		return TaskClipboardProjection{}, err
 	}
-	var text string
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return TaskClipboardProjection{}, err
+	}
+	refs, err := resolveRequestedTasks(snap, nil, locators)
+	if err != nil {
+		return TaskClipboardProjection{}, err
+	}
+	blocks := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		blocks = append(blocks, block(ref.Task))
+	}
+	return TaskClipboardProjection{
+		Operation: operation,
+		// Cloned because strings.Join returns its one element unchanged, which
+		// would otherwise alias the snapshot's task field.
+		Text:      strings.Clone(strings.Join(blocks, separator)),
+		TaskCount: len(refs),
+	}, nil
+}
+
+// taskClipboardFormat pairs each projection's per-task block with the separator
+// that joins a selection of them. One switch owns both halves so a projection
+// cannot declare what one task looks like and leave how several read undecided.
+// Every block is exactly what a single task copied on its own has always
+// produced, the title-and-description separator included.
+func taskClipboardFormat(operation TaskOperation) (func(*models.Task) string, string, error) {
 	switch operation {
 	case TaskOperationCopyTitle:
-		text = ref.Task.Title
+		return func(task *models.Task) string { return task.Title }, "\n", nil
 	case TaskOperationCopyDescription:
-		text = ref.Task.Description
+		return func(task *models.Task) string { return task.Description }, "\n\n", nil
 	case TaskOperationCopyTitleDescription:
-		text = ref.Task.Title + "\n\n" + ref.Task.Description
+		return func(task *models.Task) string {
+			return task.Title + "\n\n" + task.Description
+		}, "\n\n", nil
 	default:
-		return TaskClipboardProjection{}, invalidInput("operation", fmt.Sprintf("%q is not a clipboard projection", operation))
+		return nil, "", invalidInput("operation", fmt.Sprintf("%q is not a clipboard projection", operation))
 	}
-	return TaskClipboardProjection{Operation: operation, Text: strings.Clone(text)}, nil
 }

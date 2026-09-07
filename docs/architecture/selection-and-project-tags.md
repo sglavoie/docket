@@ -10,9 +10,18 @@ movement recalculates it while skipping headers; `V` or `Esc` freezes the
 result, and `v` freezes it while dropping the cursor row. `Ctrl+A` replaces the
 selection with every visible task row. Bulk lifecycle, planning, priority, due,
 tags, defer, and pin requests validate the complete selection before one
-transaction. Structural and relation operations, edits, inspection, and
-clipboard actions reject visual selection rather than falling back to the
-cursor. Only a committed Delete clears selection.
+transaction. The three clipboard projections are the read-only member of that
+set: the application layer resolves the whole selection from one snapshot,
+deduplicates the project-qualified identities, and assembles every block before
+the single adapter-owned clipboard write, so an unresolvable target or a failed
+write leaves the clipboard untouched rather than holding part of a selection.
+`OutlinerModel.ClipboardSelectionOrder` supplies the order that text reads in —
+displayed rows first, then the hidden members by project slug and project-tree
+position — and it stays local to those operations, because copied text is the
+one case where target order is the result; every other operation keeps the
+resolver's identity ordering. Structural and relation operations, edits, and
+inspection reject visual selection rather than falling back to the cursor. Only
+a committed Delete clears selection.
 
 The Outliner opens on Active Projects. Applying scope clears navigation and
 selection but preserves the active mode, search, and filters. `Ctrl+P` opens

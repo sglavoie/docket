@@ -3,7 +3,7 @@ module github.com/sglavoie/tt
 go 1.25.13
 
 require (
-	github.com/atotto/clipboard v0.1.4
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/google/uuid v1.6.0
 	github.com/jedib0t/go-pretty/v6 v6.6.8

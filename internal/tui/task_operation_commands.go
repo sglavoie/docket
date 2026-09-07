@@ -288,12 +288,6 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 		return message(taskdetail.ShowTaskCommentsMsg{Task: task, Project: project})
 	case operation.OperationTaskAttachments:
 		return message(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
-	case operation.OperationTaskCopyTitle:
-		return message(CopyTaskTitleMsg{Task: task})
-	case operation.OperationTaskCopyDetails:
-		return message(CopyTaskDetailsMsg{Task: task})
-	case operation.OperationTaskCopyTitleDescription:
-		return message(CopyTaskTitleAndDescMsg{Task: task})
 	case operation.OperationTaskNewChild:
 		return message(taskform.CreateTaskMsg{ParentTask: task, Project: project})
 	default:

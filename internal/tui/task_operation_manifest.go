@@ -44,9 +44,14 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
-		{ID: operation.OperationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operation.OperationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operation.OperationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		// Bulk, because one clipboard write carries a whole selection: the
+		// application layer assembles every selected task's text before the adapter
+		// writes it once. The flag is what makes these three resolve the selection
+		// rather than the cursor, so an empty visual selection refuses here exactly
+		// as a mutation does instead of quietly copying the row underneath it.
+		{ID: operation.OperationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskSetParent, Label: "Set Parent", Aliases: []string{"reparent", "move under", "detach from parent"}, Provider: operation.ValueProviderParent, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationTaskAdoptChildren, Label: "Adopt Children", Aliases: []string{"adopt", "add children", "nest tasks under this one"}, Provider: operation.ValueProviderChild, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Bulk, because the preselection is tri-state rather than a checked list:

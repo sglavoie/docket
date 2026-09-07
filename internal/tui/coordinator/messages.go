@@ -29,9 +29,13 @@ type TaskCreatedMsg struct {
 }
 
 // TaskClipboardProjectedMsg carries application-owned clipboard text back to
-// the TUI adapter, which performs the platform clipboard write.
+// the TUI adapter, which performs the platform clipboard write. Hidden is how
+// many of the projected tasks had no row in the projection the selection was
+// frozen against; the application layer leaves it at zero because a hidden
+// member is a fact about the view, not about the workspace the text came from.
 type TaskClipboardProjectedMsg struct {
 	Projection app.TaskClipboardProjection
+	Hidden     int
 }
 
 // TaskLineEditedMsg returns one successful atomic inline edit to the shell.

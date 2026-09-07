@@ -254,7 +254,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// The mechanism is in docs/architecture/tui-architecture.md, where the rest
 	// of the revelation path already lives. No rule elsewhere was trimmed to pay
 	// for it.
-	const budget = 30216
+	//
+	// A sixth raise, of 403 bytes, for selection-aware copy. It corrects a
+	// standing enumeration and adds the one rule that correction creates. The
+	// clause listing clipboard beside structural, edit, Peek, and relation
+	// operations became false the moment the three projections started taking a
+	// selection, and a false refusal is the worst kind of rule here: a
+	// contributor reads it and adds the guard back. What replaces it is the
+	// contract that made the refusal unnecessary — one snapshot, one
+	// `external.CopyText` call, so partial success has nowhere to live — plus
+	// the ordering seam, which is the fact no code path advertises: copied text
+	// is the one place target order is the result, so `ClipboardSelectionOrder`
+	// exists beside `NormalizedTaskIdentities` rather than replacing it, and a
+	// later change that folds the two together would silently reorder every
+	// copy. The mechanism is in docs/architecture/selection-and-project-tags.md,
+	// where the rest of the selection contract already lives. No rule elsewhere
+	// was trimmed to pay for it.
+	const budget = 30619
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
