@@ -26,6 +26,12 @@ const (
 	// item under the cursor rather than a note's own name.
 	ValueProviderChecklistItem ValueProviderID = "checklist-item"
 
+	// ValueProviderResumeNote is the typed resume note of one task. It is its own
+	// provider because it is the only text prompt that accepts the empty value:
+	// clearing the note is what an emptied buffer means, where a name prompt has
+	// nothing to express with one.
+	ValueProviderResumeNote ValueProviderID = "resume-note"
+
 	// ValueProviderLensName is the typed name of one saved lens. It is separate
 	// from the note title because it prefills the lens under the cursor on a
 	// rename and stays blank when the current view is being saved as a new lens.
@@ -99,7 +105,8 @@ func (id ValueProviderID) TextEntry() bool {
 	return id == ValueProviderNoteTitle ||
 		id == ValueProviderTagName ||
 		id == ValueProviderChecklistItem ||
-		id == ValueProviderLensName
+		id == ValueProviderLensName ||
+		id == ValueProviderResumeNote
 }
 
 // TagEntry reports whether the picker offers "a" to mint a tag the vocabulary

@@ -655,6 +655,11 @@ const (
 	inlinePeekMaxLines        = 5
 	inlinePeekDescriptionRows = 3
 	inlinePeekTitleRows       = 3
+	// inlinePeekResumeRows is the resume note's share of the same additive cap,
+	// not an extension of it: models.MaxResumeNoteLength already bounds the note
+	// to something a narrow pane wraps into about two rows, and a note that still
+	// overflows two is one that stopped being orientation.
+	inlinePeekResumeRows = 2
 )
 
 type inlinePeekOptions struct {
@@ -722,6 +727,12 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	if parentLine != "" {
 		lines = append(lines, opts.Indent+parentLine)
 	}
+	// Resume leads the body because it answers the question Peek is opened to
+	// ask — where was this left — and the description answers a different, older
+	// one. It sits inside the additive cap rather than raising it: the note is
+	// content the row never showed, not content the row had to clip, so it
+	// competes with the description below it the way every other detail does.
+	lines = append(lines, inlinePeekResumeLines(opts.Task.ResumeNote, opts.Indent, available)...)
 	lines = append(lines, inlinePeekDescriptionLines(opts.Task.Description, opts.Indent, available)...)
 
 	if dates := inlinePeekDatesLine(opts.Task, time.Now(), available); dates != "" {
@@ -925,19 +936,37 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 }
 
 func inlinePeekDescriptionLines(description, indent string, width int) []string {
-	description = strings.TrimSpace(strings.ReplaceAll(description, "\r\n", "\n"))
-	if description == "" || width <= 0 {
+	return inlinePeekWrappedBodyLines(
+		"Description: ", description, indent, width, inlinePeekDescriptionRows,
+	)
+}
+
+// inlinePeekResumeLines renders the resume note above the description. It is
+// the shorter of the two on purpose: the note is one line of orientation the
+// model already bounds, so two wrapped rows are its whole allowance and the
+// description keeps the three it has always had.
+func inlinePeekResumeLines(note, indent string, width int) []string {
+	return inlinePeekWrappedBodyLines("Resume: ", note, indent, width, inlinePeekResumeRows)
+}
+
+// inlinePeekWrappedBodyLines is the one renderer behind every labeled, wrapped
+// Peek body. The resume note and the description differ only in their label and
+// their row allowance, so they share this rather than each owning a copy of the
+// hanging-indent and truncation rules — an ellipsis added in one and not the
+// other is exactly the divergence Peek's measurement cannot survive.
+func inlinePeekWrappedBodyLines(label, body, indent string, width, maxRows int) []string {
+	body = strings.TrimSpace(strings.ReplaceAll(body, "\r\n", "\n"))
+	if body == "" || width <= 0 {
 		return nil
 	}
 
-	label := "Description: "
 	bodyWidth := max(width-lipgloss.Width(label), 1)
-	wrapped := textfit.WrapText(description, bodyWidth)
+	wrapped := textfit.WrapText(body, bodyWidth)
 	if len(wrapped) == 0 {
 		return nil
 	}
-	if len(wrapped) > inlinePeekDescriptionRows {
-		wrapped = wrapped[:inlinePeekDescriptionRows]
+	if len(wrapped) > maxRows {
+		wrapped = wrapped[:maxRows]
 		wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", bodyWidth, "…")
 	}
 

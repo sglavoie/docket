@@ -431,6 +431,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case operation.OperationValueCanceledMsg:
 		m.operations.ClearValueStep()
 		return true, nil
+	case ResumeNoteRejectedMsg:
+		return true, m.reopenResumeNotePrompt(typed)
 	case valuepicker.ProjectTagVocabularyActionsMsg:
 		m.operations.ClearValueStep()
 		return true, m.openProjectTagVocabularyActions(typed.Tag)

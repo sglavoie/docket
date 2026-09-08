@@ -271,11 +271,14 @@ func (m *AppModel) newOperationTextPrompt(
 		}
 		return operationhost.NewOperationTextPromptModel(
 			request, label, note.Note.Title, note.Note.Title, "new note title",
+			operationhost.NameTextPromptOptions(),
 		), nil
 	case operation.ValueProviderTagName:
 		// A tag name applies across a whole selection, so there is no single
 		// current value to prefill or show.
-		return operationhost.NewOperationTextPromptModel(request, label, "", "", "tag name"), nil
+		return operationhost.NewOperationTextPromptModel(
+			request, label, "", "", "tag name", operationhost.NameTextPromptOptions(),
+		), nil
 	case operation.ValueProviderChecklistItem:
 		// Adding appends a new item, so only an edit has a current value; the
 		// request's own operation decides which, not the cursor.
@@ -283,7 +286,22 @@ func (m *AppModel) newOperationTextPrompt(
 		if request.ID == operation.OperationChecklistEditItem {
 			current = m.entities.ChecklistItemTextForContext(m, request.Context)
 		}
-		return operationhost.NewOperationTextPromptModel(request, label, current, current, "checklist item"), nil
+		return operationhost.NewOperationTextPromptModel(
+			request, label, current, current, "checklist item", operationhost.NameTextPromptOptions(),
+		), nil
+	case operation.ValueProviderResumeNote:
+		refs, err := m.operationTaskRefs(request.Context)
+		if err != nil {
+			return nil, err
+		}
+		task := refs[0].Task
+		// The task title is the subtitle rather than the stored note: the note is
+		// already prefilled into the buffer, so echoing it above would show the
+		// same sentence twice and leave the row it belongs to unnamed.
+		return operationhost.NewOperationTextPromptModel(
+			request, label, task.Title, task.ResumeNote, "where you left off (blank clears)",
+			operationhost.ResumeNoteTextPromptOptions(),
+		), nil
 	case operation.ValueProviderLensName:
 		// Saving the current view mints a new record, so only a rename has a
 		// current value. The request's own operation decides which, because the
@@ -296,7 +314,9 @@ func (m *AppModel) newOperationTextPrompt(
 			}
 			current = lens.Name
 		}
-		return operationhost.NewOperationTextPromptModel(request, label, current, current, "lens name"), nil
+		return operationhost.NewOperationTextPromptModel(
+			request, label, current, current, "lens name", operationhost.NameTextPromptOptions(),
+		), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
 	}

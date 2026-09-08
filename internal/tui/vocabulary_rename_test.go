@@ -63,13 +63,13 @@ func TestVocabularyRenameHeadingNamesTheSameActTheLedgerDoes(t *testing.T) {
 
 func TestVocabularyRenameRefusalKeepsTheReasonAndDropsTheLayer(t *testing.T) {
 	invalid := &app.InvalidInputError{Field: "tag", Reason: `"backend" already is the destination name`}
-	if got := vocabularyRenameRefusal(invalid); got != `"backend" already is the destination name` {
+	if got := operationRefusalReason(invalid); got != `"backend" already is the destination name` {
 		t.Fatalf("refusal = %q, want the reason alone", got)
 	}
-	if got := vocabularyRenameRefusal(fmt.Errorf("wrapped: %w", invalid)); got != invalid.Reason {
+	if got := operationRefusalReason(fmt.Errorf("wrapped: %w", invalid)); got != invalid.Reason {
 		t.Fatalf("wrapped refusal = %q, want the reason alone", got)
 	}
-	if got := vocabularyRenameRefusal(errors.New("the workspace is read-only")); got != "the workspace is read-only" {
+	if got := operationRefusalReason(errors.New("the workspace is read-only")); got != "the workspace is read-only" {
 		t.Fatalf("plain refusal = %q, want the error itself", got)
 	}
 }

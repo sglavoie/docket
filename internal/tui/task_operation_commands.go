@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/app"
@@ -86,6 +87,53 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value ope
 		PlanningArtifacts:    coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager),
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, nil)
+}
+
+// ResumeNoteRejectedMsg carries a refused resume-note save back to the shell so
+// the prompt can reopen on the text the user already typed. It exists because
+// the failure can only be known after the overlay closed — the commit resolves
+// the task again and may find a newer revision — and asking someone to retype a
+// sentence they already wrote is the wrong answer to that.
+type ResumeNoteRejectedMsg struct {
+	Request operation.OperationExecutionRequest
+	Note    string
+	Err     error
+}
+
+// setResumeNoteCmd runs the resume-note write and turns only its rejection into
+// the retry message. Success, the unchanged notice, and every other message the
+// coordinator produces pass through untouched, so the ordinary paths keep the
+// one transaction-result contract every other task mutation has.
+func (m *AppModel) setResumeNoteCmd(
+	request operation.OperationExecutionRequest,
+	identity taskref.TaskIdentity,
+	note string,
+) tea.Cmd {
+	cmd := m.secondaryFeatures.TaskItem.SetResumeNote(identity, note)
+	return func() tea.Msg {
+		msg := cmd()
+		if failure, ok := msg.(coordinator.TransactionErrorMsg); ok {
+			return ResumeNoteRejectedMsg{Request: request, Note: note, Err: failure.Err}
+		}
+		return msg
+	}
+}
+
+// reopenResumeNotePrompt puts the refused note back in front of the user, on
+// the same buffer they typed it in, with the reason the save was refused.
+//
+// A prompt that cannot be rebuilt means the target itself is gone rather than
+// the note being wrong, and there is nothing to retry into, so that degrades to
+// the ordinary error notice every other failed mutation gets.
+func (m *AppModel) reopenResumeNotePrompt(msg ResumeNoteRejectedMsg) tea.Cmd {
+	prompt, err := m.newOperationTextPrompt(msg.Request, operation.ValueProviderResumeNote)
+	if err != nil {
+		m.feedback.err = msg.Err
+		return status.StatusTimeout(5 * time.Second)
+	}
+	prompt.Restore(msg.Note, operationRefusalReason(msg.Err))
+	m.operations.TextPrompt = prompt
+	return prompt.InitCmd()
 }
 
 // moveTaskToProjectCmd relocates one or many selected subtrees into the picked

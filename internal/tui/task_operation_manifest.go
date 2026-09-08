@@ -41,6 +41,11 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskToggleReview, Label: "Toggle Review", Aliases: []string{"flag for review", "clear review", "needs a second look"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		// Not Bulk: one resume note is one task's own sentence about where it was
+		// left, so there is nothing a selection of them could mean. Leaving the flag
+		// off is also what refuses the operation under a visual selection outright
+		// rather than letting it fall back to the cursor row.
+		{ID: operation.OperationTaskSetResumeNote, Label: "Set Resume Note", Aliases: []string{"resume note", "where was I", "clear resume note"}, Provider: operation.ValueProviderResumeNote, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
@@ -259,6 +264,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		operation.ValueProviderChild,
 		operation.ValueProviderProject,
 		operation.ValueProviderTaskReference,
+		operation.ValueProviderResumeNote,
 	} {
 		if err := executor.RegisterValueProvider(provider, operation.PendingPickedValueProvider); err != nil {
 			return err

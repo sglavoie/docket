@@ -46,6 +46,12 @@ const (
 	// narrowing by the same flag this writes.
 	OperationTaskToggleReview OperationID = "tui.task.toggle-review"
 
+	// OperationTaskSetResumeNote writes, replaces, or clears the one-line resume
+	// note. It is a content edit rather than a workflow act: every lifecycle state
+	// may carry a note, and pausing, starting, or completing a task neither
+	// prompts for one nor clears the one already stored.
+	OperationTaskSetResumeNote OperationID = "tui.task.set-resume-note"
+
 	// OperationTaskDelete carries no direct key. Delete is the whole task
 	// `Space` menu and confirms first, so the ID is manifest vocabulary the
 	// sheet reads rather than a binding the strategy declares.

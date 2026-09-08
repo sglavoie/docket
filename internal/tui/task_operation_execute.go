@@ -430,6 +430,20 @@ func (m *AppModel) executeSingleTaskOperation(
 			return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, taskref.CloneOperationDate(value.Date)))
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, taskref.CloneOperationDate(value.Date)))
+	case operation.OperationTaskSetResumeNote:
+		// The empty string is a real value here, not a missing one: it is how the
+		// note is cleared. So the type assertion is the whole check.
+		note, ok := invocation.Value.(string)
+		if !ok {
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid resume note value")}
+		}
+		// The retry request is rebuilt from the invocation rather than carried
+		// through the mutation: ID and context are all the prompt factory reads,
+		// and the value it would carry is exactly the one being retried.
+		return cmdResult(m.setResumeNoteCmd(operation.OperationExecutionRequest{
+			ID:      invocation.Descriptor.ID,
+			Context: invocation.Context,
+		}, identity, note))
 	case operation.OperationTaskSetParent:
 		value, ok := invocation.Value.(operation.OperationParentValue)
 		if !ok {

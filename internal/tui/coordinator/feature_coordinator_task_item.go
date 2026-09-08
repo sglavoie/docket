@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -288,6 +289,30 @@ func (c TaskItemCoordinator) SetPinned(task taskref.TaskIdentity, pinned bool) t
 	return runTask("Toggle Pin", func() (app.TaskResult, error) {
 		return c.task.SetPinned(task.Locator(), pinned)
 	})
+}
+
+// SetResumeNote writes, replaces, or clears one task's resume note as one
+// transaction. The empty note is the clear, so this is one seam rather than a
+// set/clear pair.
+//
+// A note equal to the stored one issues no transaction at all and says so: an
+// empty commit would still write a ledger entry `u` could take back, and a
+// prompt closed on unchanged text is not something to undo.
+func (c TaskItemCoordinator) SetResumeNote(task taskref.TaskIdentity, note string) tea.Cmd {
+	return func() tea.Msg {
+		res, err := c.task.SetResumeNote(task.Locator(), note)
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		if !res.Changed {
+			return status.InfoStatusMsg("Resume note unchanged")
+		}
+		action := "Set Resume Note"
+		if note == "" {
+			action = "Clear Resume Note"
+		}
+		return TransactionResultMsg{Action: action, Result: res.Task}
+	}
 }
 
 // Reparent changes one task's parent within its owning project as one transaction.

@@ -107,7 +107,7 @@ func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRen
 		To:        msg.To,
 	})
 	if err != nil {
-		picker.RefuseVocabularyRename(vocabularyRenameRefusal(err))
+		picker.RefuseVocabularyRename(operationRefusalReason(err))
 		return
 	}
 	if len(preview.Tasks) == 0 {
@@ -177,14 +177,14 @@ func vocabularyRenameApplyRefusal(err error) string {
 	if errors.Is(err, storage.ErrStaleRevision) || errors.Is(err, storage.ErrStaleArtifact) {
 		return "The workspace changed while this was open; press Enter to review the rename again"
 	}
-	return vocabularyRenameRefusal(err)
+	return operationRefusalReason(err)
 }
 
-// vocabularyRenameRefusal is what a rejected name is told. A validation refusal
-// already names the field it rejected, and the picker is that field, so only the
-// reason is retained: the step says which name it is refusing, not which layer
-// refused it.
-func vocabularyRenameRefusal(err error) string {
+// operationRefusalReason is what a rejected value is told, on any overlay that
+// stays open holding the value it refused. A validation refusal already names
+// the field it rejected, and the open step is that field, so only the reason is
+// retained: the step says what it is refusing, not which layer refused it.
+func operationRefusalReason(err error) string {
 	var invalid *app.InvalidInputError
 	if errors.As(err, &invalid) {
 		return invalid.Reason

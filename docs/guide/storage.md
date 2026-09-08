@@ -102,7 +102,10 @@ the dependents you see are computed at read time and never written down.
 A task may also hold one resume note, a single line of at most 240 characters
 kept in its own `RESUME` block above the description. It is the note you leave
 yourself about where you stopped, so a task without one writes no block at all
-and an empty note and an absent note are the same thing.
+and an empty note and an absent note are the same thing. `r` on the row is where
+you write it and Peek is where you read it back; it is yours to clear, so
+pausing, starting, or finishing a task never prompts for one and never throws
+one away.
 
 `lenses.json` contains your saved named-lens definitions — the three seeded
 starters, anything you saved yourself, and anything you added from the built-in

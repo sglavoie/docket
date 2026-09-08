@@ -181,7 +181,8 @@ root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
 `Ctrl+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
-follows navigation and shows at most five lines of additive detail: up to three
+follows navigation and shows at most five lines of additive detail: up to two
+lines of resume note, up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
 attachment names, comment counts, a `Dependencies 1/3:` line, a `Dependents 2:`
@@ -199,7 +200,9 @@ because they are already rows of their own beneath the task. A promoted row's
 ancestor chain is named there in full, root-first, as
 `Parent: Launch platform › User authentication`; it and a clipped title's
 continuation are the two blocks that raise the five-line cap rather than spend
-it. `Esc` closes Peek before unwinding Outliner navigation.
+it. The `Resume:` line spends it like every other detail, and leads because it
+answers the question Peek is opened to ask. `Esc` closes Peek before unwinding
+Outliner navigation.
 
 State, Today/Next, priority, due, tags, defer, pin, and Move to Project actions
 apply atomically to the complete project-qualified selection, including hidden

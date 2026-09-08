@@ -113,6 +113,7 @@ func TestOperationValuePickerGuidanceUsesListSurfaceStates(t *testing.T) {
 func TestOperationOverlaysRenderLocalGuidanceWithoutWorkspacePulse(t *testing.T) {
 	prompt := operationhost.NewOperationTextPromptModel(
 		operation.OperationExecutionRequest{}, "Rename", "Current", "Current", "new name",
+		operationhost.NameTextPromptOptions(),
 	)
 	picker := newOperationTagPickerForTest(t, "alpha")
 

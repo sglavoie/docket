@@ -143,6 +143,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// the tail of the ladder because flagging work for a later pass is a
 			// deliberate, occasional act rather than a daily-loop one.
 			{OperationID: OperationTaskToggleReview, Keys: []string{"="}, DisplayKey: "=", FooterRank: 28, FooterLabel: "review"},
+			// r carries no FooterRank. The note is written when a task is put down
+			// and read from Peek when it is picked back up, so it is an occasional
+			// deliberate act like Named Lenses rather than a daily-loop one; `?` and
+			// the menu bar teach it and the compact footer stays as quiet as it is.
+			{OperationID: OperationTaskSetResumeNote, Keys: []string{"r"}, DisplayKey: "r"},
 			{OperationID: OperationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: OperationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: OperationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},

@@ -114,6 +114,9 @@ type TaskItemMutator interface {
 	// ReorderPinnedTasksOrder rewrites a whole pinned chain's PinnedAt ordering
 	// into the given top-to-bottom order as one transaction.
 	ReorderPinnedTasksOrder(moved app.TaskLocator, order []app.TaskLocator) (app.PinnedReorderResult, error)
+	// SetResumeNote writes, replaces, or clears (empty note) one task's resume
+	// note, reporting whether anything actually changed.
+	SetResumeNote(locator app.TaskLocator, note string) (app.ResumeNoteResult, error)
 	// Reparent changes one task's parent within its owning project.
 	Reparent(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
 	// Delete permanently removes one task's subtree, folding any caller-supplied
