@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 433
+# Total rows: 438
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -303,6 +303,20 @@ dependency	internal/tui/outliner/dependency_detail.go	outgoingDependencyDetails	
 dependency	internal/tui/outliner/filter_operations_outliner.go	DependencyFilterShortcutForToken	1
 dependency	internal/tui/outliner/filter_operations_outliner.go	FilterQueryDependencyFields	1
 dependency	internal/tui/outliner/filter_operations_outliner.go	OperationFilterDependency	2
+dependency	internal/tui/outliner/inline_peek_document.go	Dependencies	3
+dependency	internal/tui/outliner/inline_peek_document.go	DependencyCensus	2
+dependency	internal/tui/outliner/inline_peek_document.go	DependencyDetail	4
+dependency	internal/tui/outliner/inline_peek_document.go	Dependents	4
+dependency	internal/tui/outliner/inline_peek_document.go	dependencyCensus	1
+dependency	internal/tui/outliner/inline_peek_document.go	dependencyLabel	2
+dependency	internal/tui/outliner/inline_peek_document.go	dependentLabel	2
+dependency	internal/tui/outliner/inline_peek_paging.go	Dependencies	1
+dependency	internal/tui/outliner/inline_peek_paging.go	DependencyCensus	1
+dependency	internal/tui/outliner/inline_peek_paging.go	DependencyCensusFor	1
+dependency	internal/tui/outliner/inline_peek_paging.go	Dependents	1
+dependency	internal/tui/outliner/inline_peek_paging.go	dependencyIndex	1
+dependency	internal/tui/outliner/inline_peek_paging.go	incomingDependencyDetails	1
+dependency	internal/tui/outliner/inline_peek_paging.go	outgoingDependencyDetails	1
 dependency	internal/tui/outliner/menu_bar.go	OperationFilterDependency	1
 dependency	internal/tui/outliner/outliner.go	DependencyIndex	1
 dependency	internal/tui/outliner/outliner.go	dependencyIndexCache	1
@@ -320,20 +334,11 @@ dependency	internal/tui/outliner/outliner_mode_wiring.go	dependencyIndex	1
 dependency	internal/tui/outliner/outliner_mode_wiring.go	passesDependencyFilter	2
 dependency	internal/tui/outliner/outliner_projection.go	CloneTaskDetachingDependencies	3
 dependency	internal/tui/outliner/outliner_quick_edit_view.go	Dependencies	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	Dependencies	4
-dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyCensus	3
-dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyCensusFor	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyDetail	3
+dependency	internal/tui/outliner/outliner_render_task_row.go	Dependencies	1
+dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyCensusFor	1
 dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyIndex	1
-dependency	internal/tui/outliner/outliner_render_task_row.go	Dependents	4
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependencies	7
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependencyCensus	1
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependencyIndex	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependencyLabel	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependentLabel	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	dependents	3
-dependency	internal/tui/outliner/outliner_render_task_row.go	incomingDependencyDetails	1
-dependency	internal/tui/outliner/outliner_render_task_row.go	outgoingDependencyDetails	1
+dependency	internal/tui/outliner/outliner_render_task_row.go	dependencies	4
+dependency	internal/tui/outliner/outliner_render_task_row.go	dependencyIndex	1
 dependency	internal/tui/outliner/outliner_render_task_row.go	renderDependencyIndicator	2
 dependency	internal/tui/outliner/outliner_rows.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/outliner/outliner_rows.go	invalidateDependencyIndex	1

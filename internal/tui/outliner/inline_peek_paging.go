@@ -22,6 +22,19 @@ type inlinePeekPageKey struct {
 	height      int
 }
 
+// sameAs answers whether a remembered page still belongs to what is on screen.
+// It names each axis rather than comparing the two structs with `==`, because a
+// field nobody spells here is a field the reset does not consult: the
+// declaration audit reports an unread key field, so forgetting to extend this
+// comparison is a red gate rather than a page that silently outlives its
+// document.
+func (key inlinePeekPageKey) sameAs(other inlinePeekPageKey) bool {
+	return key.identity == other.identity &&
+		key.fingerprint == other.fingerprint &&
+		key.width == other.width &&
+		key.height == other.height
+}
+
 // peekPageState is the one page Peek remembers. There is exactly one slot
 // because Peek shows exactly one row's detail; every other task reads as a key
 // mismatch and therefore as the first page.
@@ -81,7 +94,7 @@ func (m *OutlinerModel) inlinePeekPageKey(row OutlinerRow, doc inlinePeekDocumen
 // than the caller's width, which differs by the scrollbar column between the
 // measuring pass and the drawing one.
 func (m *OutlinerModel) peekPageForRow(row OutlinerRow, doc inlinePeekDocument) int {
-	if m == nil || m.peek.key != m.inlinePeekPageKey(row, doc) {
+	if m == nil || !m.peek.key.sameAs(m.inlinePeekPageKey(row, doc)) {
 		return 0
 	}
 	return doc.ClampPage(m.peek.page)
