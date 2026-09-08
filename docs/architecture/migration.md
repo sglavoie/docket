@@ -13,8 +13,9 @@ workspace crosses the schema-11 defer-instant path, a schema-11 workspace
 crosses the schema-12 task-context path, a schema-12 workspace crosses the
 schema-13 defer-count path, a schema-13 workspace crosses the schema-14
 due-time path, a schema-14 workspace crosses the schema-15 soft-dependency
-path, a schema-15 workspace crosses the schema-16 portable-lens path, and a
-schema-16 workspace finishes on the schema-17 stored-review path:
+path, a schema-15 workspace crosses the schema-16 portable-lens path, a
+schema-16 workspace crosses the schema-17 stored-review path, and a schema-17
+workspace finishes on the schema-18 resume-note path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -136,6 +137,17 @@ schema-16 workspace finishes on the schema-17 stored-review path:
    archived projects, rewrite the portable `.tt/lenses.json` collection onto the
    canonical query shape, and clear undo/redo history whose retained bytes carry
    the schema-14 task-document marker.
+30. Validate every schema-15 project document, then lift it to schema 16 by
+   admitting the optional `RESUME` block that carries one resume note. No
+   retired field carries a note across this boundary, so every migrated task
+   arrives without one, and a task without one writes no block: each document
+   comes out byte-identical to its schema-15 source apart from the marker line.
+31. Publish `pre-resume-note-v18-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 18 and task Markdown schema 16 across active and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   schema-15 task-document marker. The portable lens collection is deliberately
+   not restaged: a resume note is prose on one task rather than a value a query
+   narrows by, so no saved lens changes what it selects.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
 than cleanup after it. Schema 15 removes the review tag from every task as it
@@ -153,7 +165,7 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-17 startup neither reconverts data
+Each boundary is idempotent: repeated schema-18 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

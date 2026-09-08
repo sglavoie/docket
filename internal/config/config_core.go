@@ -10,4 +10,4 @@ const (
 // CurrentConfigVersion is the payload schema version shared by the split
 // domain files. WorkspaceCatalog.SchemaVersion is the authoritative bundle
 // marker; the other payloads deliberately do not duplicate it.
-const CurrentConfigVersion = V17ConfigSchemaVersion
+const CurrentConfigVersion = V18ConfigSchemaVersion

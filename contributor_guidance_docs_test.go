@@ -270,7 +270,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// copy. The mechanism is in docs/architecture/selection-and-project-tags.md,
 	// where the rest of the selection contract already lives. No rule elsewhere
 	// was trimmed to pay for it.
-	const budget = 30619
+	//
+	// A seventh raise, of 341 bytes, for the resume note. Two of the three edits
+	// are digit swaps a schema boundary always forces; the cost is the rule the
+	// new field creates. `ResumeNote` is the first task field with a shape a
+	// caller can get wrong — trimmed, single-line, bounded in runes — and the
+	// only thing standing between a bad value and unrepresentable bytes is that
+	// every surface routes through one validator. A second gate written beside a
+	// future editing surface would pass what the canonical writer refuses, and
+	// the refusal would surface as a failed save rather than a rejected edit, so
+	// naming `models.ValidateResumeNote` as the single gate is the rule. The
+	// v18 clause pays for itself by keeping the pairing paragraph honest: it is
+	// the boundary that rewrites every `tasks.md` and changes nothing in it, and
+	// a contributor who assumes otherwise looks for the lens restage that is
+	// deliberately absent. The mechanism is in docs/architecture/migration.md.
+	// No rule elsewhere was trimmed to pay for it.
+	const budget = 30960
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

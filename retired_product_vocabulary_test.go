@@ -266,14 +266,14 @@ func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
 // Cobra `Long` and `Short` strings, which are the first product text a new user
 // reads and the one body of user-facing prose no documentation test covered.
 // The rule is mechanical: a hyphenated schema version named in help output must
-// be a live one — schema-16 catalogs or the schema-14 task Markdown they hold.
+// be a live one — schema-18 catalogs or the schema-16 task Markdown they hold.
 // Retired versions still belong in diagnostic output such as doctor's pre-v6
 // snapshot note, which describes a historical boundary rather than the current
 // format, so the scan is deliberately narrowed to help fields.
 func TestCurrentProductDocsExcludeRetiredSchemaVocabularyInCLIHelp(t *testing.T) {
-	// The pair is not contiguous: schema 16 deliberately left task Markdown at
-	// schema 14, so no live help string may name schema 15.
-	liveSchemaVersions := map[string]bool{"14": true, "16": true}
+	// The pair is not contiguous: catalog schema 18 holds task Markdown at schema
+	// 16, so no live help string may name schema 17.
+	liveSchemaVersions := map[string]bool{"16": true, "18": true}
 	schemaVersionPattern := regexp.MustCompile(`(?i)schema[- ]([0-9]+)`)
 	helpFields := map[string]bool{"Long": true, "Short": true, "Example": true}
 

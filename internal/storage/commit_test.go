@@ -157,7 +157,7 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 		t.Fatalf("read first commit: %v", err)
 	}
 	firstContent := string(firstBytes)
-	if !strings.Contains(firstContent, schemaMarkerV15) {
+	if !strings.Contains(firstContent, schemaMarkerV16) {
 		t.Fatalf("committed content missing schema marker:\n%s", firstContent)
 	}
 	if strings.Contains(firstContent, "<!-- future-feature: keep-exactly -->") {

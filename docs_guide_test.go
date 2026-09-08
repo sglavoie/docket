@@ -285,7 +285,8 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-15 Markdown and generic `Task` headings",
+		"schema-16 Markdown and generic `Task` headings",
+		"A task may also hold one resume note, a single line of at most 240 characters",
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"`lenses.json` contains your saved named-lens definitions",
@@ -308,6 +309,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"pre-due-time-v14-<UTC>.tar.gz",
 		"pre-dependencies-v15-<UTC>.tar.gz",
 		"pre-portable-lenses-v16-<UTC>.tar.gz",
+		"pre-resume-note-v18-<UTC>.tar.gz",
 		"Schema 13 upgrades task Markdown to schema 12",
 		"Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time`",
 		"Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends`",

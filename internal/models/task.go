@@ -55,7 +55,12 @@ type Task struct {
 	// Review is the stored review flag. Review is not a lifecycle state and never
 	// competes with one: a task carries its state and, independently, whether it
 	// is waiting on a look. It is its own boolean axis exactly as Pinned is.
-	Review        bool            `json:"review,omitempty"`
+	Review bool `json:"review,omitempty"`
+	// ResumeNote is the task's single dedicated "where was I" line, retained
+	// until it is explicitly cleared. It is one line by contract, bounded by
+	// MaxResumeNoteLength, and validated by ValidateResumeNote; the empty string
+	// is the only spelling of "no resume note".
+	ResumeNote    string          `json:"resume_note,omitempty"`
 	Comments      []*Comment      `json:"comments,omitempty"` // Timestamped comments/notes
 	Attachments   []Attachment    `json:"attachments,omitempty"`
 	DeferredUntil *time.Time      `json:"deferred_until,omitempty"` // Task hidden until this date

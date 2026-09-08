@@ -34,7 +34,7 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-15 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-16 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
 itself nine layers, acyclic, and every concern belongs to exactly one:
@@ -82,11 +82,14 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
 written by the sigil `=` and narrowed by the facet `f=`, toggled on a row by
 that same root key, and it promotes an All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-15 uses generic `Task` headings, project-local ShortID, retained fields, the
+16 uses generic `Task` headings, project-local ShortID, retained fields, the
 stored `review` flag, optional single-valued task `Context`, and an optional
 `depends` list of outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
-later the same day.
+later the same day. Optional `ResumeNote` is one trimmed line of at most 240
+runes, empty meaning absent, in an escaped `RESUME` block above DESCRIPTION;
+`models.ValidateResumeNote` is its one gate, so no surface may accept a note the
+canonical writer would refuse.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -498,11 +501,12 @@ never takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-17 catalogs hold schema-15 task Markdown. That pairing is descriptive,
-never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, while
-v17 lifts `review` off the tag list onto the stored flag and so rewrites all of
-them.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17 validates each candidate first,
+Schema-18 catalogs hold schema-16 task Markdown. That pairing is descriptive,
+never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, v17
+lifts `review` off the tag list onto the stored flag, and v18 admits the
+`RESUME` block no existing task fills, so its rewrite is the marker line alone
+and it restages no lens.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code

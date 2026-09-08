@@ -83,7 +83,7 @@ Run tt without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
-Startup validates schema-16 catalogs and schema-14 task Markdown before loading,
+Startup validates schema-18 catalogs and schema-16 task Markdown before loading,
 and migrates any supported older workspace forward through the whole chain of
 immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
 your workspace before a version jump. Run 'tt doctor' for read-only integrity

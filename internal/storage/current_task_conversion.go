@@ -57,8 +57,9 @@ func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location
 		UpdatedAt: record.UpdatedAt, StateChangedAt: record.StateChangedAt,
 		CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 		Pinned:      record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
-		Review:   record.Review,
-		Children: []*models.Task{},
+		Review:     record.Review,
+		ResumeNote: record.ResumeNote,
+		Children:   []*models.Task{},
 	}
 	if record.ParentID != "" {
 		parentID := record.ParentID
@@ -154,20 +155,23 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 	base, dueTime := currentTaskBaseFieldsFromModel(task)
 	appendCurrentTaskRecordCollectionsFromModel(&base, task)
 
-	record := format.V15TaskRecord{
-		V14TaskRecord: format.V14TaskRecord{
-			V13TaskRecord: format.V13TaskRecord{
-				V12TaskRecord: format.V12TaskRecord{
-					V11TaskRecord: format.V11TaskRecord{
-						V10TaskRecord: format.V10TaskRecord{V6TaskRecord: base, StateChangedAt: task.StateChangedAt},
-						Context:       task.Context,
+	record := format.V16TaskRecord{
+		V15TaskRecord: format.V15TaskRecord{
+			V14TaskRecord: format.V14TaskRecord{
+				V13TaskRecord: format.V13TaskRecord{
+					V12TaskRecord: format.V12TaskRecord{
+						V11TaskRecord: format.V11TaskRecord{
+							V10TaskRecord: format.V10TaskRecord{V6TaskRecord: base, StateChangedAt: task.StateChangedAt},
+							Context:       task.Context,
+						},
+						DeferCount: task.DeferCount,
 					},
-					DeferCount: task.DeferCount,
+					DueTime: dueTime,
 				},
-				DueTime: dueTime,
 			},
+			Review: task.Review,
 		},
-		Review: task.Review,
+		ResumeNote: task.ResumeNote,
 	}
 	for _, dependency := range task.Dependencies {
 		record.Dependencies = append(record.Dependencies, format.V14TaskDependency{
@@ -193,6 +197,9 @@ func validateModelForCurrentTaskSchema(task *models.Task) error {
 	}
 	if err := models.ValidatePriority(task.Priority, true); err != nil {
 		return fmt.Errorf("live task writer refuses task %q priority: %w", task.ID, err)
+	}
+	if err := models.ValidateResumeNote(task.ResumeNote); err != nil {
+		return fmt.Errorf("live task writer refuses task %q resume note: %w", task.ID, err)
 	}
 	if task.StateChangedAt.IsZero() {
 		return fmt.Errorf("live task writer refuses task %q without a state clock", task.ID)

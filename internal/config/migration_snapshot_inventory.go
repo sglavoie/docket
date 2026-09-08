@@ -30,6 +30,7 @@ const (
 	preDependenciesV15SnapshotPrefix   = "pre-dependencies-v15-"
 	prePortableLensesV16SnapshotPrefix = "pre-portable-lenses-v16-"
 	preStoredReviewV17SnapshotPrefix   = "pre-stored-review-v17-"
+	preResumeNoteV18SnapshotPrefix     = "pre-resume-note-v18-"
 )
 
 // MigrationSnapshotBoundary is one schema boundary that publishes an immutable
@@ -56,6 +57,7 @@ func MigrationSnapshotBoundaries() []MigrationSnapshotBoundary {
 		{Schema: 15, Prefix: preDependenciesV15SnapshotPrefix},
 		{Schema: 16, Prefix: prePortableLensesV16SnapshotPrefix},
 		{Schema: 17, Prefix: preStoredReviewV17SnapshotPrefix},
+		{Schema: 18, Prefix: preResumeNoteV18SnapshotPrefix},
 	}
 }
 

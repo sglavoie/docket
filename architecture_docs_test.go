@@ -53,7 +53,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	required := []string{
 		"## Contents",
 		"## Runtime layers",
-		"strict schema-14 Markdown",
+		"strict schema-16 Markdown",
 		"## Task model",
 		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
 		"deferral count (`defer_count`)",
