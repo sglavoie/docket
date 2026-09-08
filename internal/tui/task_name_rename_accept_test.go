@@ -282,6 +282,151 @@ func TestTaskNameRenameExpiresAgainstARealConcurrentWrite(t *testing.T) {
 	}
 }
 
+// replaceProjectOnDisk plays the other process: it reloads a project from its
+// own bytes, adds a resume note to one task and a whole new task beside it, and
+// saves that as the next version of tasks.md. Both additions are things a rename
+// has no reason to touch and every reason to preserve, so either of them missing
+// afterwards is a lost update rather than a cosmetic difference.
+func (e *renameAcceptEnv) replaceProjectOnDisk(t *testing.T, projectID, noteTaskID, note string, added *models.Task) {
+	t.Helper()
+	for _, seeded := range e.projects {
+		if seeded.ID != projectID {
+			continue
+		}
+		reloaded := &models.Project{ID: seeded.ID, Name: seeded.Name, Slug: seeded.Slug, Path: seeded.Path}
+		if err := storage.LoadProject(reloaded); err != nil {
+			t.Fatalf("LoadProject(%q) for the concurrent write: %v", projectID, err)
+		}
+		found := false
+		for _, task := range reloaded.Tasks {
+			if task.ID == noteTaskID {
+				task.ResumeNote = note
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("project %s has no task %s to annotate", projectID, noteTaskID)
+		}
+		reloaded.Tasks = append(reloaded.Tasks, added)
+		reloaded.NextShortID = added.ShortID + 1
+		for _, task := range reloaded.Tasks {
+			task.Project = reloaded
+		}
+		reloaded.BuildTaskTree()
+		if err := storage.SaveProject(reloaded); err != nil {
+			t.Fatalf("concurrent SaveProject(%q): %v", projectID, err)
+		}
+		return
+	}
+	t.Fatalf("no seeded project %s", projectID)
+}
+
+// installCensusReadWindowWrite arms the storage read-window seam to fire exactly
+// once, when the census reaches the named project and holds its bytes. It is the
+// deterministic stand-in for another process saving inside that window.
+func installCensusReadWindowWrite(t *testing.T, whenReading string, write func()) {
+	t.Helper()
+	fired := false
+	storage.ProjectReadWindowProbe = func(project *models.Project) {
+		if fired || project == nil || project.Name != whenReading {
+			return
+		}
+		fired = true
+		write()
+	}
+	t.Cleanup(func() {
+		storage.ProjectReadWindowProbe = nil
+		if !fired {
+			t.Errorf("the concurrent write never fired: the census never read %q", whenReading)
+		}
+	})
+}
+
+// TestTaskNameRenameCensusUsesOneDocumentVersion pins the census read to one
+// version of each tasks.md. A concurrent save is either wholly inside the census
+// or wholly outside it; it is never half of each. Two independent reads used to
+// allow that split — version A's tasks under version B's revision — and a commit
+// carrying that pair matches disk, skips the merge, and silently overwrites B.
+//
+// Both halves of the property are exercised through the same seam, moved either
+// side of the target project's read.
+func TestTaskNameRenameCensusUsesOneDocumentVersion(t *testing.T) {
+	const resumeNote = "picked this back up on the other machine"
+
+	// The write lands before the census reads Alpha, so the census sees version B
+	// whole: the preview describes it, and the apply commits against the revision
+	// that same read produced.
+	t.Run("write before the read is wholly visible", func(t *testing.T) {
+		guard := renameAcceptProject(t, "guard-id", "Guard", renameAcceptTask(t, "g1", 1, "read first", "ops"))
+		alpha := renameAcceptProject(t, "alpha-id", "Alpha", renameAcceptTask(t, "a1", 1, "source", "work"))
+		env := newRenameAcceptEnv(t, guard, alpha)
+		installCensusReadWindowWrite(t, "Guard", func() {
+			env.replaceProjectOnDisk(t, "alpha-id", "a1", resumeNote, renameAcceptTask(t, "a2", 2, "added by someone else", "work"))
+		})
+
+		preview, err := env.service.PreviewTaskNameRename(app.RenameTaskNameRequest{
+			Namespace: app.TaskTagNamespace,
+			From:      "work",
+			To:        "effort",
+		})
+		if err != nil {
+			t.Fatalf("PreviewTaskNameRename: %v", err)
+		}
+		if len(preview.Tasks) != 2 {
+			t.Fatalf("preview covers %d tasks, want the two version-B tasks carrying the source name", len(preview.Tasks))
+		}
+
+		if _, err := env.service.ApplyTaskNameRename(preview); err != nil {
+			t.Fatalf("ApplyTaskNameRename over a consistent census: %v", err)
+		}
+		if got := env.diskTask(t, "alpha-id", "a1").ResumeNote; got != resumeNote {
+			t.Fatalf("resume note after the rename = %q, want the concurrently written note", got)
+		}
+		if got := env.diskTags(t, "alpha-id", "a2"); !slices.Equal(got, []string{"effort"}) {
+			t.Fatalf("concurrently added task tags = %v, want it kept and renamed", got)
+		}
+	})
+
+	// The write lands inside Alpha's read window, exactly where the two reads used
+	// to straddle it. The census must hold version A whole — tasks and revision
+	// alike — so the apply expires instead of overwriting version B.
+	t.Run("write inside the read window expires the preview", func(t *testing.T) {
+		alpha := renameAcceptProject(t, "alpha-id", "Alpha", renameAcceptTask(t, "a1", 1, "source", "work"))
+		env := newRenameAcceptEnv(t, alpha)
+		installCensusReadWindowWrite(t, "Alpha", func() {
+			env.replaceProjectOnDisk(t, "alpha-id", "a1", resumeNote, renameAcceptTask(t, "a2", 2, "added by someone else", "work"))
+		})
+
+		preview, err := env.service.PreviewTaskNameRename(app.RenameTaskNameRequest{
+			Namespace: app.TaskTagNamespace,
+			From:      "work",
+			To:        "effort",
+		})
+		if err != nil {
+			t.Fatalf("PreviewTaskNameRename: %v", err)
+		}
+		if len(preview.Tasks) != 1 {
+			t.Fatalf("preview covers %d tasks, want only the one version-A task the census read", len(preview.Tasks))
+		}
+
+		if _, err := env.service.ApplyTaskNameRename(preview); !errors.Is(err, storage.ErrStaleRevision) {
+			t.Fatalf("ApplyTaskNameRename error = %v, want ErrStaleRevision rather than an unmerged overwrite", err)
+		}
+		if got := env.diskTask(t, "alpha-id", "a1").ResumeNote; got != resumeNote {
+			t.Fatalf("resume note after the expired apply = %q, want the concurrently written note", got)
+		}
+		if got := env.diskTags(t, "alpha-id", "a2"); !slices.Equal(got, []string{"work"}) {
+			t.Fatalf("concurrently added task tags = %v, want it present and untouched", got)
+		}
+		if got := env.diskTags(t, "alpha-id", "a1"); !slices.Equal(got, []string{"work"}) {
+			t.Fatalf("alpha a1 tags after the expired apply = %v, want them untouched", got)
+		}
+		if _, ok, err := env.ledger.SelectNewestUndo(storage.GlobalScope()); err != nil || ok {
+			t.Fatalf("expired apply recorded an undo entry: ok=%v err=%v", ok, err)
+		}
+	})
+}
+
 // TestFallbackCommitRefusesReadOnlyGuards keeps the non-filesystem fallback
 // honest: it cannot validate a guard, so it refuses the commit rather than
 // reporting success for a mutation whose read set was never proven.

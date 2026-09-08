@@ -33,6 +33,63 @@ func LoadProject(project *models.Project) error {
 	return loadProjectContent(project, content)
 }
 
+// ProjectReadWindowProbe is the optional observation seam a consistency test
+// installs to rewrite tasks.md at the exact instant LoadProjectWithDocument
+// holds its bytes and has derived nothing from them yet. Normal execution
+// leaves it nil and nothing in production ever writes it. It exists because the
+// property this file owes its callers — that the model, the base document, and
+// the guarded revision all describe one version of the file — is only
+// observable by replacing that file inside the window and proving the answer
+// did not move.
+var ProjectReadWindowProbe func(project *models.Project)
+
+// LoadProjectWithDocument loads a project's tasks and returns the exact lossless
+// on-disk document whose revision guards them, both derived from a single read
+// of tasks.md.
+//
+// Loading the model and then reading the document back through a second file
+// read is what this replaces: another process saving version B between the two
+// reads would pair version A's tasks with version B's revision, and a commit
+// carrying that pair matches the revision on disk, skips the three-way merge,
+// and writes A plus the caller's edit over B. One read cannot straddle a save,
+// so the worst a concurrent write can now do is make the whole answer stale —
+// which the revision guard catches at the commit boundary.
+//
+// The bytes are parsed twice on purpose. The project's task pointers are the
+// ones a mutation edits in place; the document's are the immutable base a merge
+// is measured against, so they may not be the same objects.
+func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) {
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		// Test doubles keep projects in memory with no tasks.md, so there is no
+		// read window to close: the canonical in-memory document is the only
+		// answer available and is derived from the same load.
+		if err := LoadProject(project); err != nil {
+			return nil, err
+		}
+		return CanonicalProjectDocument(project, nil)
+	}
+
+	content, err := os.ReadFile(tasksFilePath(project.Path))
+	if os.IsNotExist(err) {
+		if loadErr := loadMissingProject(project); loadErr != nil {
+			return nil, loadErr
+		}
+		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: CurrentTaskSchemaVersion}
+		doc.Revision = doc.ComputeRevision()
+		return doc, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read tasks file: %w", err)
+	}
+	if ProjectReadWindowProbe != nil {
+		ProjectReadWindowProbe(project)
+	}
+	if err := loadProjectContent(project, content); err != nil {
+		return nil, err
+	}
+	return ParseProjectDocument(string(content))
+}
+
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to
 // render as a full-file replacement and returns their raw optimistic-concurrency
 // revision. A missing file is represented by a non-nil pointer to the empty

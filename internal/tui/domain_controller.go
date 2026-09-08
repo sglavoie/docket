@@ -344,6 +344,13 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 // a rename covers and then commit that partial answer. Taking the catalog
 // through one checked load is what pairs the enumerated project set with the
 // revision the commit boundary guards it against.
+//
+// Each project's tasks, base document, and guarded revision come from one read
+// through storage.LoadProjectWithDocument rather than from a load followed by an
+// independent document read. Two reads could straddle another process's save and
+// hand the preview version A's tasks under version B's revision, which commits
+// as an unmerged overwrite of B. One read makes a concurrent save either wholly
+// visible or wholly absent, and an absent one expires the preview at the guard.
 func (r *tuiAppRepository) WorkspaceCensus() (app.WorkspaceCensus, error) {
 	catalog, revision, err := config.NewDomainFileStore(r.dataDir).LoadCatalogChecked()
 	if err != nil {
@@ -358,12 +365,9 @@ func (r *tuiAppRepository) WorkspaceCensus() (app.WorkspaceCensus, error) {
 			continue
 		}
 		project := cataloged.ToModel(r.dataDir)
-		if err := storage.LoadProject(project); err != nil {
-			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s for census: %w", project.Name, err)
-		}
-		doc, err := tuiProjectDiskDocument(project)
+		doc, err := storage.LoadProjectWithDocument(project)
 		if err != nil {
-			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s document for census: %w", project.Name, err)
+			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s for census: %w", project.Name, err)
 		}
 		census.Projects = append(census.Projects, app.CensusProject{
 			Project:  project,
