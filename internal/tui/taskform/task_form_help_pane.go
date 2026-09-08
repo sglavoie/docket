@@ -49,7 +49,7 @@ func (m *TaskFormModel) renderFormHelpPane(width int) string {
 func (m *TaskFormModel) helpPaneHeader() string {
 	switch m.activeTab {
 	case formTabBasics:
-		names := []string{"Title", "Description", "Priority", "Parent", "State", "Flags", "Tags"}
+		names := []string{"Title", "Description", "Priority", "Parent", "State", "Flags", "Tags", "Context"}
 		if m.focusIndex < len(names) {
 			return names[m.focusIndex]
 		}
@@ -109,6 +109,11 @@ func (m *TaskFormModel) basicsHelpEntries() []helpEntry {
 	case 6: // Tags
 		return []helpEntry{
 			{key: "Enter", desc: "manage tags"},
+		}
+	case formBasicsContextField:
+		return []helpEntry{
+			{key: "Enter", desc: "confirm"},
+			{key: "empty", desc: "no context"},
 		}
 	}
 	return nil

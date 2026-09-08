@@ -1,10 +1,12 @@
 package taskform
 
 import (
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
@@ -22,6 +24,7 @@ func (m *TaskFormModel) initTitleInput(value string) {
 // Call this after any navigation change (tab switch, focus move).
 func (m *TaskFormModel) syncInputFocus() {
 	m.focusTitleInput()
+	m.focusContextInput()
 	m.focusDueInput()
 }
 
@@ -32,6 +35,38 @@ func (m *TaskFormModel) focusTitleInput() {
 	} else {
 		m.titleInput.Blur()
 	}
+}
+
+// initContextInput creates and configures the context textinput with an
+// optional initial value. An empty value is the field's cleared state, and the
+// bound is the durable tag length the context shares rather than a second
+// literal that could truncate a value the canonical writer would have accepted.
+func (m *TaskFormModel) initContextInput(value string) {
+	m.contextInput = textinput.New()
+	m.contextInput.Placeholder = "client-acme (empty clears)"
+	m.contextInput.CharLimit = models.MaxTagLength
+	m.contextInput.SetWidth(40)
+	theme.ApplyThemedTextInput(&m.contextInput)
+	if value != "" {
+		m.contextInput.SetValue(value)
+	}
+}
+
+// focusContextInput focuses the context textinput when the expanded Basics tab
+// has field 7 active. The collapsed Basics tab does not render the row, so it
+// never focuses the input.
+func (m *TaskFormModel) focusContextInput() {
+	if m.activeTab == formTabBasics && !m.collapsedBasics && m.focusIndex == formBasicsContextField {
+		m.contextInput.Focus()
+	} else {
+		m.contextInput.Blur()
+	}
+}
+
+// commitContextInput syncs the contextInput value back into the draft.
+func (m *TaskFormModel) commitContextInput() {
+	m.draft.context = strings.TrimSpace(m.contextInput.Value())
+	m.contextInput.Blur()
 }
 
 // initDueInput creates and configures the due date textinput with an optional initial value.

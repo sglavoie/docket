@@ -70,7 +70,7 @@ func TestContextAutocompleteUsesProjectVocabulary(t *testing.T) {
 	}
 }
 
-func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
+func TestTaskComposerCarriesContextIntoExpandedMode(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
 		Kind:        taskform.ComposerProject,
@@ -83,10 +83,16 @@ func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
 	if !ok || len(reqs) != 1 || reqs[0].Context != "client-acme" {
 		t.Fatalf("context requests = %+v ok=%v", reqs, ok)
 	}
-	if cmd := composer.ExpandSingle(); cmd != nil {
-		t.Fatal("expand accepted a line carrying a context")
+	composer.ExpandSingle()
+	if len(composer.Errors) != 0 {
+		t.Fatalf("expand refused a line carrying a context: %+v", composer.Errors)
 	}
-	if len(composer.Errors) != 1 || !strings.Contains(composer.Errors[0].Message, "expanded mode cannot set context") {
-		t.Fatalf("expand errors = %+v", composer.Errors)
+	if composer.Expanded == nil {
+		t.Fatal("expand did not open the form")
+	}
+	// The seeded draft value itself is asserted inside the taskform package,
+	// which can read the unexported draft directly.
+	if !strings.Contains(composer.View().Content, "client-acme") {
+		t.Fatalf("expanded form did not show the captured context:\n%s", composer.View().Content)
 	}
 }

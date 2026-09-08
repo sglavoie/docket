@@ -43,6 +43,8 @@ func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 		m.titleInput, cmd = m.titleInput.Update(msg)
 		markDirty()
 		return m, cmd
+	case m.activeTab == formTabBasics && !m.collapsedBasics && m.focusIndex == formBasicsContextField:
+		return m, m.pasteIntoInput(msg, &m.contextInput, markDirty)
 	case m.activeTab == formTabSchedule && m.focusIndex == 0:
 		var cmd tea.Cmd
 		m.dueTextInput, cmd = m.dueTextInput.Update(msg)
@@ -70,7 +72,7 @@ func (m *TaskFormModel) pasteIntoInput(
 }
 
 // handleTextInputKey consolidates the common key handling for textinput fields
-// (due date). It calls commit before navigation/save/esc, and forwards
+// (context, due date). It calls commit before navigation/save/esc, and forwards
 // unrecognized keys to the textinput. Returns (cmd, true) if the key was consumed.
 func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), input *textinput.Model) tea.Cmd {
 	switch msg.String() {

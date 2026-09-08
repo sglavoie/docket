@@ -28,6 +28,7 @@ func NewTaskFormModelCreate(
 		height:     24,
 	}
 	m.initTitleInput("")
+	m.initContextInput("")
 	m.initDueInput("")
 	m.initChecklistItemInput("")
 	m.initSubtaskItemInput("")

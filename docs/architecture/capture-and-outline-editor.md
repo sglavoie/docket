@@ -32,6 +32,22 @@ the outline buffer clears context by omitting the token. That permanently
 reserves `"0"` as a context name even though `!0`, `@0`, and `>0` retain their
 ordinary meanings.
 
+The expanded form carries the context too. `AddTaskRequest.Context` is the
+optional field `normalizeAddTaskRequest` runs through
+`models.NormalizeTaskContext` only when it is non-empty, mirroring the branch
+`prepareCapturedTask` uses, so an empty value is the unset field rather than a
+refusal and `buildNormalizedAddTask` writes it beside the priority. On the form
+side it is the eighth Basics row, an inline `textinput` like Schedule's Due
+rather than a picker, because a context is a free value with the tag spelling
+contract and not a closed set. `commitAllTextInputs` flushes it into
+`taskFormDraft.context`, `normalizeDraftContext` canonicalizes it before the
+request is built — an empty field clearing it, an unspellable one landing the
+error back on that row with the draft still open — and `saveCreate` passes the
+result on the same `AddTaskRequest` the checklist rides, so a context and its
+checklist commit in one `ChangeSet` under one undo entry. The field is bounded
+at `models.MaxTagLength` so it cannot truncate a value the canonical writer
+would have accepted.
+
 `@@defer` is the deferral sigil, and it lives one character away from `@date`.
 Go's RE2 engine has no lookahead, so the separation is structural instead: the
 due pattern's last alternative is `[^\s@]\S*`, which refuses a leading `@` and
@@ -180,9 +196,12 @@ Its refusals mirror the attachment's exactly — `parseOutlineBodies` and
 `refusedSearchFields` — with wording that names the Comments panel, and so does
 the one refusal that lifted: `ExpandSingle` carries a comment span into the
 expanded form now that `ExpandRequest` seeds `taskFormDraft.comments` from
-`CaptureRequest.Comments`. With that pair moved together, `ExpandSingle` is back
-to exactly the three refusals it had before this grammar landed — `ChildIDs`,
-`Pinned`, and `Context` — each still a value the form has no channel for.
+`CaptureRequest.Comments`. `Context` then followed the same pair rule once the
+Basics tab grew its row: `ExpandRequest` seeds both `taskFormDraft.context` and
+`contextInput` — the input as well as the draft, since `commitAllTextInputs`
+reads the live input and an unseeded one would erase the value at save time —
+and the refusal went with it. `ExpandSingle` is left with exactly two, `ChildIDs`
+and `Pinned`, each still a value the form has no channel for.
 
 `<child` is the one repeatable structural sigil. `>parent` stays
 `CardinalitySingleton` because a task has one parent, while `FieldChild` is

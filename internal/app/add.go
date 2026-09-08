@@ -25,6 +25,10 @@ type AddTaskRequest struct {
 	Priority int
 	// Tags are normalized and validated; a malformed tag aborts the add.
 	Tags []string
+	// Context is the optional single-valued task context. Empty leaves the field
+	// unset; a non-empty value is normalized and validated with
+	// models.NormalizeTaskContext, and a malformed one aborts the add.
+	Context string
 	// Description is optional free-form body text.
 	Description string
 	// State is the task's initial canonical workflow state. Empty defaults to
@@ -131,6 +135,7 @@ type normalizedAddTaskRequest struct {
 	title       string
 	priority    int
 	tags        []string
+	context     string
 	state       models.WorkflowState
 	destination CaptureDestination
 }
@@ -170,7 +175,16 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 	if err != nil {
 		return normalizedAddTaskRequest{}, err
 	}
-	return normalizedAddTaskRequest{title: title, priority: priority, tags: tags, state: state, destination: destination}, nil
+	// The context is optional, so only a non-empty value is normalized; an empty
+	// one leaves the field unset, exactly as prepareCapturedTask treats it.
+	context := ""
+	if req.Context != "" {
+		context, err = models.NormalizeTaskContext(req.Context)
+		if err != nil {
+			return normalizedAddTaskRequest{}, invalidInput("context", err.Error())
+		}
+	}
+	return normalizedAddTaskRequest{title: title, priority: priority, tags: tags, context: context, state: state, destination: destination}, nil
 }
 
 type addTaskBuild struct {
@@ -263,6 +277,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		return TaskRef{}, "", invalidInput("title", err.Error())
 	}
 	task.Priority = normalized.priority
+	task.Context = normalized.context
 	task.Description = req.Description
 	for _, tag := range normalized.tags {
 		task.AddTag(tag)

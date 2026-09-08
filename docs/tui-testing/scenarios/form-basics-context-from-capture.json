@@ -1,0 +1,44 @@
+{
+  "name": "form-basics-context-from-capture",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "a compact line carrying a context", "text": "Ship the launch ##Acme" },
+    { "type": "key", "label": "expand into the full task form", "key": "ctrl+f" },
+    { "type": "assert", "label": "expanding no longer refuses a line carrying a context", "assert": "contains", "value": "Task Composer · Expanded" },
+    { "type": "assert", "label": "the Basics tab grew the row the refusal used to stand in for", "assert": "contains", "value": "Context:" },
+    { "type": "assert", "label": "the captured value arrived normalized", "assert": "contains", "value": "acme" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "tab past Description", "key": "tab" },
+    { "type": "key", "label": "tab past Priority", "key": "tab" },
+    { "type": "key", "label": "tab past Parent", "key": "tab" },
+    { "type": "key", "label": "tab past State", "key": "tab" },
+    { "type": "key", "label": "tab past Flags", "key": "tab" },
+    { "type": "key", "label": "tab past Tags", "key": "tab" },
+    { "type": "key", "label": "onto Context, the last Basics row", "key": "tab" },
+    { "type": "assert", "label": "the row names itself in the help pane once focused", "assert": "contains", "value": "Context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "label": "edit the carried value in place", "text": "-eu" },
+    { "type": "key", "label": "commit the field and move on", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "acme-eu" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "save the task and its context as one transaction", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the launch" },
+    { "type": "assert", "label": "the edited context persisted onto the row badge", "assert": "contains", "value": "[acme-eu]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one undo takes back the task and its context together", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Ship the launch" },
+    { "type": "assert", "assert": "not_contains", "value": "[acme-eu]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -94,12 +94,6 @@ func (m *TaskComposerModel) ExpandSingle() tea.Cmd {
 		m.Errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot pin; submit the line with Enter instead"}}
 		return nil
 	}
-	// The expanded form has no context control, so expanding would drop the value
-	// silently rather than carry it.
-	if reqs[0].Context != "" {
-		m.Errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot set context; submit the line with Enter instead"}}
-		return nil
-	}
 	return m.ExpandRequest(reqs[0])
 }
 
@@ -113,6 +107,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.title = req.Title
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
+	form.draft.context = req.Context
 	destination := req.Destination
 	if destination == "" {
 		destination = m.Preset.defaultDestination(req.ParentID)
@@ -133,6 +128,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	}
 	form.commentsExpanded = len(form.draft.comments) > 0
 	form.titleInput.SetValue(req.Title)
+	form.contextInput.SetValue(req.Context)
 	form.dueTextInput.SetValue(form.draft.dueInput)
 	form.presetDestination = destination
 	form.hostTitle = "Task Composer · Expanded"

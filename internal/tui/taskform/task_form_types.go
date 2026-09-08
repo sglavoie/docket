@@ -44,6 +44,7 @@ type taskFormDraft struct {
 	pinned   bool
 	review   bool
 	tags     []string
+	context  string
 	dueDate  *time.Time
 	dueInput string
 	desc     string
@@ -68,6 +69,11 @@ type TaskFormModel struct {
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model
+
+	// Context input (Basics tab, field 7). The context is a free single value
+	// with the tag spelling contract, not a closed set, so it is typed inline
+	// like the due field rather than picked from a list.
+	contextInput textinput.Model
 
 	// Due date input (Schedule tab, field 0)
 	dueTextInput textinput.Model

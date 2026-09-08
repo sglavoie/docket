@@ -30,6 +30,19 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 		return nil
 	}
 
+	// Normalize the context (Basics tab, field 7). The application layer applies
+	// the same rule; mirroring it here is what keeps a rejected value on the
+	// offending row with the draft still open instead of reporting it after the
+	// fact.
+	if err := m.normalizeDraftContext(); err != nil {
+		m.err = err
+		m.activeTab = formTabBasics
+		m.collapsedBasics = false
+		m.focusIndex = formBasicsContextField
+		m.syncInputFocus()
+		return nil
+	}
+
 	// Parse due date from text input (Schedule tab, field 0).
 	if err := m.parseDraftDueDate(); err != nil {
 		m.err = err
@@ -50,7 +63,27 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 // draft regardless of which field is focused. Safe to call multiple times.
 func (m *TaskFormModel) commitAllTextInputs() {
 	m.draft.title = strings.TrimSpace(strings.ReplaceAll(m.titleInput.Value(), "\n", " "))
+	m.draft.context = strings.TrimSpace(m.contextInput.Value())
 	m.draft.dueInput = m.dueTextInput.Value()
+}
+
+// normalizeDraftContext rewrites draft.context into its canonical spelling.
+// An empty field is the cleared state, so it normalizes to the unset value
+// rather than an error; a non-empty one must satisfy the stored contract.
+func (m *TaskFormModel) normalizeDraftContext() error {
+	value := strings.TrimSpace(m.draft.context)
+	if value == "" {
+		m.draft.context = ""
+		m.contextInput.SetValue("")
+		return nil
+	}
+	normalized, err := models.NormalizeTaskContext(value)
+	if err != nil {
+		return err
+	}
+	m.draft.context = normalized
+	m.contextInput.SetValue(normalized)
+	return nil
 }
 
 // parseDraftDueDate parses draft.dueInput and stores the result in draft.dueDate.
@@ -141,6 +174,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		Title:          m.draft.title,
 		Priority:       m.draft.priority,
 		Tags:           append([]string{}, m.draft.tags...),
+		Context:        m.draft.context,
 		Description:    strings.TrimSpace(m.draft.desc),
 		Destination:    destination,
 		ParentID:       m.draft.parentID,

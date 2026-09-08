@@ -138,6 +138,11 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ── Context textinput (field 7 on the expanded Basics tab) ─────────────
+		if m.activeTab == formTabBasics && !m.collapsedBasics && m.focusIndex == formBasicsContextField {
+			return m, m.handleTextInputKey(msg, m.commitContextInput, &m.contextInput)
+		}
+
 		// ── Due textinput (field 0 on Schedule tab) ────────────────────────────
 		if m.activeTab == formTabSchedule && m.focusIndex == 0 {
 			if msg.String() == "ctrl+d" {

@@ -248,6 +248,15 @@ func (e *scenarioEnv) undo(t *testing.T) {
 	}
 }
 
+// redo replays the most recently undone transaction, so a test can assert the
+// forward mutation and its take-back are the same single ledger entry.
+func (e *scenarioEnv) redo(t *testing.T) {
+	t.Helper()
+	if _, err := e.ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger redo: %v", err)
+	}
+}
+
 // stubMutator is a hand-rolled FeatureMutator recording the last call and
 // returning a canned result/error, so the form's save plumbing can be tested
 // without the storage stack.

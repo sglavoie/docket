@@ -161,6 +161,20 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	}
 	b.WriteString("\n")
 
+	// 7: Context — inline textinput when focused, plain text otherwise, exactly
+	// as the Schedule tab's Due row behaves.
+	focused := m.focusIndex == formBasicsContextField
+	b.WriteString(chrome.RenderFormLabelWithWidth("Context:", lw, focused))
+	if focused {
+		theme.ApplyThemedTextInput(&m.contextInput)
+		b.WriteString(m.contextInput.View())
+	} else if m.draft.context == "" {
+		b.WriteString(theme.MutedStyle.Render("(none)"))
+	} else {
+		b.WriteString(m.draft.context)
+	}
+	b.WriteString("\n")
+
 	return b.String()
 }
 

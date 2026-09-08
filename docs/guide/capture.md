@@ -21,7 +21,10 @@ validated before one atomic transaction is committed.
   as a tag. It is distinct from the retired v4 project-level context. `##0`
   clears the value on the edit surfaces only; outline editing clears it by
   omission. Therefore `"0"` is permanently reserved as a context name, unlike
-  the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`.
+  the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`. Expanding
+  the line into the full form carries the value onto the Basics tab's Context
+  row, where you can keep it, change it, or empty the field to create the task
+  without one.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `@@defer` hides the task until an instant rather than a day, so it also

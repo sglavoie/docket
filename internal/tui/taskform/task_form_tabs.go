@@ -13,9 +13,14 @@ var formTabNames = []string{"Basics", "Schedule", "Children", "Extras"}
 
 // Static field counts per tab (dynamic items like checklist are added on top).
 const (
-	formBasicsFieldCount   = 7 // Title, Description, Priority, Parent, State, Flags, Tags
+	formBasicsFieldCount   = 8 // Title, Description, Priority, Parent, State, Flags, Tags, Context
 	formScheduleFieldCount = 1 // Due
 )
+
+// formBasicsContextField is the expanded Basics-tab focus index of the Context
+// row. It is named because focus routing, rendering, help, and save-time error
+// placement all have to agree on it.
+const formBasicsContextField = 7
 
 // formStaticFieldCount returns the number of static focusable fields in a tab.
 // The Children and Extras tabs return 0 here; both counts are computed
