@@ -39,7 +39,7 @@ func TestSetResumeNoteWritesEditsAndClears(t *testing.T) {
 		t.Fatal("create committed no transaction")
 	}
 
-	if _, err := svc.SetResumeNote(repo.loc("t1"), "waiting on the vendor schema"); err != nil {
+	if _, err = svc.SetResumeNote(repo.loc("t1"), "waiting on the vendor schema"); err != nil {
 		t.Fatalf("replace: %v", err)
 	}
 	if task.ResumeNote != "waiting on the vendor schema" {
