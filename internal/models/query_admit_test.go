@@ -62,6 +62,9 @@ func TestQueryAdmitsFreeTextOverTheWholeTaskSideCorpus(t *testing.T) {
 	}{
 		{"title", "LOGIN", queryTestTask(), true},
 		{"description", "oauth", build(func(task *Task) { task.Description = "Uses OAuth" }), true},
+		{"resume note", "callback", build(func(task *Task) {
+			task.ResumeNote = "stopped inside the callback handler"
+		}), true},
 		{"context", "erra", build(func(task *Task) { task.Context = "errand" }), true},
 		{"tag", "spike", build(func(task *Task) { task.Tags = []string{"spike"} }), true},
 		{"project name", "alph", queryTestTask(), true},

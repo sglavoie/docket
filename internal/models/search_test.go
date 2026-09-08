@@ -63,6 +63,44 @@ func TestMatchesSearchQuery_DescriptionMatch(t *testing.T) {
 	}
 }
 
+// TestMatchesSearchQuery_ResumeNoteMatch holds the resume note inside the
+// model-level matcher: it is prose the task carries, so a query naming only what
+// the note says still finds the task, and a query naming nothing any of the
+// three fields says still misses it.
+func TestMatchesSearchQuery_ResumeNoteMatch(t *testing.T) {
+	task := &Task{
+		Title:       "Fix bug in API",
+		Description: "The authentication token is not being validated correctly",
+		ResumeNote:  "stopped at the failing refresh case",
+	}
+
+	tests := []struct {
+		query    string
+		expected bool
+	}{
+		{"refresh case", true},
+		{"STOPPED", true},
+		{"failing", true},
+		{"bug", true},            // matches title
+		{"authentication", true}, // matches description
+		{"database", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			if result := task.MatchesSearchQuery(strings.ToLower(tt.query)); result != tt.expected {
+				t.Errorf("MatchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
+			}
+		})
+	}
+
+	// A task carrying no note behaves exactly as it did before the field existed.
+	bare := &Task{Title: task.Title, Description: task.Description}
+	if bare.MatchesSearchQuery("failing") {
+		t.Error("a task with no resume note matched the note-only query")
+	}
+}
+
 func TestMatchesSearchQuery_EmptyQuery(t *testing.T) {
 	task := &Task{
 		Title:       "Some task",

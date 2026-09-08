@@ -203,3 +203,34 @@ func TestClipboardProjectionCommitsNothing(t *testing.T) {
 		t.Errorf("UpdatedAt = %v, want the untouched %v", first.UpdatedAt, updatedAt)
 	}
 }
+
+// TestClipboardProjectionsNameOnlyTheFieldsTheyPromise holds the three copy keys
+// to their names now that a task carries a third piece of prose. `y` is the
+// title, `yd` the description, and `yD` both; none of them is "everything the
+// task says", so a resume note the task happens to hold never rides along.
+func TestClipboardProjectionsNameOnlyTheFieldsTheyPromise(t *testing.T) {
+	const note = "stopped at the failing merge case"
+	task := newTask("noted", 1, "Titled")
+	task.Description = "Described"
+	task.ResumeNote = note
+	project := newProject("project", "Project", task)
+	svc := newTestService(newFakeRepo(project))
+	targets := []app.TaskLocator{operationTarget(project.ID, task.ID)}
+
+	for _, testCase := range []struct {
+		operation app.TaskOperation
+		want      string
+	}{
+		{app.TaskOperationCopyTitle, "Titled"},
+		{app.TaskOperationCopyDescription, "Described"},
+		{app.TaskOperationCopyTitleDescription, "Titled\n\nDescribed"},
+	} {
+		got := projectClipboard(t, svc, testCase.operation, targets).Text
+		if got != testCase.want {
+			t.Fatalf("%s copied %q, want %q", testCase.operation, got, testCase.want)
+		}
+		if strings.Contains(got, note) {
+			t.Fatalf("%s carried the resume note: %q", testCase.operation, got)
+		}
+	}
+}

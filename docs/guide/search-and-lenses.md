@@ -54,7 +54,7 @@ name; nothing else does, in either presentation.
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `f*` | Toggle the pinned facet, the same `*pin` a typed query spells |
 | `fx` | Clear every facet |
-| `/` | Narrow the mode by title, description, checklist, comment, tag, context, attachment, and project, gated by any capture sigils the query carries; `or` reads the same query as one flat ranked list |
+| `/` | Narrow the mode by title, description, resume note, checklist, comment, tag, context, attachment, and project, gated by any capture sigils the query carries; `or` reads the same query as one flat ranked list |
 
 A chord and a typed query are two ways of writing the same narrowing, so the
 title row shows what you narrowed by in the sigil spelling you would have typed:
@@ -75,7 +75,7 @@ intersecting, so `#a #b` still means both.
 
 Results rank title matches first, then each other field in turn, and a result
 whose title does not carry the match says where it came from with a muted
-`· description`, `· checklist`, `· comment`, `· tag`, `· context`,
+`· description`, `· resume`, `· checklist`, `· comment`, `· tag`, `· context`,
 `· attachment`, `· project`, or `· details` note. That note is the first thing a
 narrow row drops, so the title stays readable.
 

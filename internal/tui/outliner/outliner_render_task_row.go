@@ -102,6 +102,7 @@ func (m *OutlinerModel) taskPinnedMarker(row OutlinerRow) string {
 // matchSourceNone, which every ordinary row carries.
 var matchSourceLabels = map[MatchSource]string{
 	MatchSourceDescription: "description",
+	MatchSourceResume:      "resume",
 	MatchSourceChecklist:   "checklist",
 	MatchSourceComment:     "comment",
 	MatchSourceTag:         "tag",

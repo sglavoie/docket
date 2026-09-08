@@ -30,6 +30,7 @@ func TestSearchCueNamesEveryNonTitleSource(t *testing.T) {
 		MatchSourceNone:        "",
 		MatchSourceTitle:       "",
 		MatchSourceDescription: "· description",
+		MatchSourceResume:      "· resume",
 		MatchSourceChecklist:   "· checklist",
 		MatchSourceComment:     "· comment",
 		MatchSourceTag:         "· tag",

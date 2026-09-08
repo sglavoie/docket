@@ -257,3 +257,93 @@ func TestWriteProjectMarkdownClean_Description(t *testing.T) {
 		t.Errorf("expected verbatim description in output: %q", out)
 	}
 }
+
+// TestWriteProjectMarkdownClean_ResumeNote covers the labeled paragraph itself:
+// it is present exactly when the task holds a note, it leads the description,
+// and a task holding none contributes no label at all.
+func TestWriteProjectMarkdownClean_ResumeNote(t *testing.T) {
+	noted := mustTask("t1", 1, "Noted")
+	noted.Priority = 0
+	noted.ResumeNote = "stopped at the failing merge case"
+	noted.Description = "The body prose."
+	bare := mustTask("t2", 2, "Bare")
+	bare.Priority = 0
+	bare.Description = "Body without a note."
+	p := newProject("Resume", noted, bare)
+	out := WriteProjectMarkdownClean(p)
+
+	label := "**Resume:** stopped at the failing merge case"
+	if !strings.Contains(out, label) {
+		t.Fatalf("expected the labeled resume paragraph in output: %q", out)
+	}
+	if strings.Count(out, "**Resume:**") != 1 {
+		t.Fatalf("a task with no resume note emitted a label: %q", out)
+	}
+	resumeAt := strings.Index(out, label)
+	bodyAt := strings.Index(out, "The body prose.")
+	if bodyAt < 0 || resumeAt > bodyAt {
+		t.Fatalf("resume paragraph at %d, description at %d: want resume first in %q", resumeAt, bodyAt, out)
+	}
+	// The label is its own paragraph, so the description below it is never
+	// swallowed into the same block.
+	if !strings.Contains(out, label+"\n\nThe body prose.\n") {
+		t.Fatalf("resume paragraph did not stand alone above the description: %q", out)
+	}
+}
+
+// TestWriteProjectMarkdownClean_ResumeNoteEscapesInlineMarkdown holds the one
+// asymmetry with the description beside it: the note is spliced after a bold
+// label, so punctuation that would reformat that paragraph is escaped, while the
+// description keeps being emitted verbatim.
+func TestWriteProjectMarkdownClean_ResumeNoteEscapesInlineMarkdown(t *testing.T) {
+	task := mustTask("t1", 1, "Escapes")
+	task.Priority = 0
+	task.ResumeNote = `use *ptr not &ref; see _x_ in ` + "`main`" + ` [1] <!-- keep --> a\b ~c~`
+	task.Description = `Verbatim *emphasis* and <b>markup</b>.`
+	p := newProject("Escaped", task)
+	out := WriteProjectMarkdownClean(p)
+
+	want := "**Resume:** use \\*ptr not \\&ref; see \\_x\\_ in \\`main\\` " +
+		"\\[1\\] \\<!-- keep --\\> a\\\\b \\~c\\~"
+	if !strings.Contains(out, want) {
+		t.Fatalf("escaped resume paragraph missing.\n got: %q\nwant: %q", out, want)
+	}
+	// Stated once more as the rule rather than as one expected string: nothing on
+	// the resume line carries inline Markdown meaning any more, so a note that
+	// looks like an HTML comment renders as the words the author typed.
+	resumeLine := ""
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "**Resume:** ") {
+			resumeLine = strings.TrimPrefix(line, "**Resume:** ")
+		}
+	}
+	escaped := false
+	for _, r := range resumeLine {
+		switch {
+		case escaped:
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case strings.ContainsRune(exportInlineMarkdownSpecials, r):
+			t.Fatalf("%q reached the export unescaped: %q", r, resumeLine)
+		}
+	}
+	if !strings.Contains(out, task.Description) {
+		t.Fatalf("the description was escaped alongside the note: %q", out)
+	}
+}
+
+// TestEscapeExportInlineTextLeavesOrdinaryProseAlone keeps the escape narrow: a
+// note with no inline-markup punctuation exports exactly as it was written.
+func TestEscapeExportInlineTextLeavesOrdinaryProseAlone(t *testing.T) {
+	for _, text := range []string{
+		"",
+		"stopped at the failing merge case",
+		"paused before step 3 (needs review), then retry",
+		"重建采石场的排水系统",
+	} {
+		if got := escapeExportInlineText(text); got != text {
+			t.Fatalf("escapeExportInlineText(%q) = %q, want it unchanged", text, got)
+		}
+	}
+}

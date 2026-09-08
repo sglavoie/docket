@@ -158,7 +158,7 @@ indicator gets a position in that list, not an append.
 
 The search match cue sits above that ladder rather than in it. A projected row
 whose hit came from a field the title cannot show carries one muted
-`· description`, `· checklist`, `· comment`, `· tag`, `· context`,
+`· description`, `· resume`, `· checklist`, `· comment`, `· tag`, `· context`,
 `· attachment`, `· project`, or `· details` segment, mapped from
 `outlinerRow.MatchSource` by `matchSourceLabels`; a title hit and every ordinary
 row carry none. It is a `taskRowSegments` field, so `titleWidth` charges it once

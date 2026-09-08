@@ -50,6 +50,13 @@ func TestSearchScoresEveryApprovedFieldAtItsDeclaredTier(t *testing.T) {
 			source: MatchSourceDescription,
 		},
 		{
+			name:   "resume note",
+			seed:   func(task *models.Task, _ *models.Project) { task.ResumeNote = "paused at the marmalade step" },
+			query:  "marmalade",
+			rank:   searchFieldRankResume,
+			source: MatchSourceResume,
+		},
+		{
 			name: "checklist text of an open item",
 			seed: func(task *models.Task, _ *models.Project) {
 				task.Checklist = []models.ChecklistItem{{Text: "Ship kubernetes config"}}
@@ -165,6 +172,71 @@ func TestSearchScoresEveryApprovedFieldAtItsDeclaredTier(t *testing.T) {
 					tt.query, match.fieldRank, match.source, tt.rank, tt.source)
 			}
 		})
+	}
+}
+
+// TestSearchResumeNoteRanksBetweenDescriptionAndChecklist pins the tier the
+// resume note earned. The four tasks are seeded in reverse of the order they
+// must come out in, and the note is the longest of the four texts, so neither
+// source order nor fuzzy score can be what places it: only the rank can.
+func TestSearchResumeNoteRanksBetweenDescriptionAndChecklist(t *testing.T) {
+	titled := primaryRowsTask("titled", models.StateBacklog)
+	titled.Title = "Marmalade drive"
+	described := primaryRowsTask("described", models.StateBacklog)
+	described.Title = "Untitled row"
+	described.Description = "marmalade"
+	resumed := primaryRowsTask("resumed", models.StateBacklog)
+	resumed.Title = "Untitled row"
+	resumed.ResumeNote = "paused halfway through the marmalade reduction"
+	checklisted := primaryRowsTask("checklisted", models.StateBacklog)
+	checklisted.Title = "Untitled row"
+	checklisted.Checklist = []models.ChecklistItem{{Text: "marmalade"}}
+	project := primaryRowsProject("holdings", checklisted, resumed, described, titled)
+
+	matches := searchProjectionMatchesWithin(
+		[]*models.Project{project}, "marmalade", nil, fuzzy.Matcher{}, nil)
+	want := []string{titled.ID, described.ID, resumed.ID, checklisted.ID}
+	if got := searchMatchTaskIDs(matches); !slices.Equal(got, want) {
+		t.Fatalf("ranking = %v, want %v", got, want)
+	}
+	if matches[2].source != MatchSourceResume {
+		t.Fatalf("resume-only match reported source %d, want %d", matches[2].source, MatchSourceResume)
+	}
+}
+
+// TestSearchResumeNoteYieldsToTitleAndDescriptionOnOneTask holds the precedence
+// half of the same rule: the note is probed after both prose fields, so a task
+// whose title or description also carries the term is attributed to that field.
+func TestSearchResumeNoteYieldsToTitleAndDescriptionOnOneTask(t *testing.T) {
+	task := tierTask()
+	task.ResumeNote = "marmalade reduction, halfway"
+
+	task.Description = "the marmalade batch"
+	project := primaryRowsProject("holdings", task)
+	if match := singleTierMatch(t, task, project, "marmalade"); match.source != MatchSourceDescription {
+		t.Fatalf("source with a matching description = %d, want description", match.source)
+	}
+
+	task.Title = "Marmalade drive"
+	project = primaryRowsProject("holdings", task)
+	if match := singleTierMatch(t, task, project, "marmalade"); match.source != MatchSourceTitle {
+		t.Fatalf("source with a matching title = %d, want title", match.source)
+	}
+}
+
+// TestSearchResumeNoteJoinsTheDetailsFallback proves the note is in the
+// concatenated tier as well as in one of its own, so a multi-term query
+// satisfied across the title and the note still finds the task.
+func TestSearchResumeNoteJoinsTheDetailsFallback(t *testing.T) {
+	spanning := primaryRowsTask("spanning", models.StateBacklog)
+	spanning.Title = "Quantum drive"
+	spanning.ResumeNote = "waiting on the zeppelin refit"
+	project := primaryRowsProject("holdings", spanning)
+
+	match := singleTierMatch(t, spanning, project, "quantum zeppelin")
+	if match.fieldRank != searchFieldRankDetails || match.source != MatchSourceDetails {
+		t.Fatalf("title-plus-resume query ranked %d/source %d, want the details tier",
+			match.fieldRank, match.source)
 	}
 }
 

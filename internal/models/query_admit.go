@@ -302,7 +302,7 @@ func queryOpenChildCount(task *Task) int {
 // take.
 func queryTextMatches(task *Task, project *Project, value string) bool {
 	needle := strings.ToLower(value)
-	fields := []string{task.Title, task.Description, task.Context, project.Name, project.Slug}
+	fields := []string{task.Title, task.Description, task.ResumeNote, task.Context, project.Name, project.Slug}
 	fields = append(fields, task.Tags...)
 	for _, item := range task.Checklist {
 		fields = append(fields, item.Text)

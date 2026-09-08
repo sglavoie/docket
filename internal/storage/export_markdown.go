@@ -160,6 +160,31 @@ func writeNotesSectionClean(notes []*models.Note) string {
 	return b.String()
 }
 
+// exportInlineMarkdownSpecials are the characters that carry inline Markdown
+// meaning wherever they appear in a paragraph. Line-leading constructs — `#`,
+// `-`, `>` at column zero — are absent deliberately: the text this escapes is
+// spliced after a bold label, so it never starts a line.
+const exportInlineMarkdownSpecials = "\\`*_[]<>&~"
+
+// escapeExportInlineText backslash-escapes text that the clean export splices
+// into a labeled paragraph, so a note reading `use *ptr not &ref` exports as
+// those words rather than as emphasis and an entity. It is deliberately not
+// applied to the description: a description is multi-line prose the author wrote
+// as Markdown and the export emits it verbatim, while a resume note is one line
+// collected through a prompt that never offered markup, so leaving it raw would
+// let punctuation reformat a paragraph the author did not write.
+func escapeExportInlineText(text string) string {
+	var escaped strings.Builder
+	escaped.Grow(len(text))
+	for _, r := range text {
+		if strings.ContainsRune(exportInlineMarkdownSpecials, r) {
+			escaped.WriteByte('\\')
+		}
+		escaped.WriteRune(r)
+	}
+	return escaped.String()
+}
+
 func writeTaskClean(builder *strings.Builder, task *models.Task, children map[string][]*models.Task, level int, visited map[string]bool, labels exportReferenceLabeller) {
 	if visited[task.ID] {
 		return
@@ -183,6 +208,10 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 
 	if len(task.Tags) > 0 {
 		fmt.Fprintf(builder, "tags: %s\n", strings.Join(task.Tags, ", "))
+	}
+
+	if task.ResumeNote != "" {
+		fmt.Fprintf(builder, "\n**Resume:** %s\n", escapeExportInlineText(task.ResumeNote))
 	}
 
 	if task.Description != "" {

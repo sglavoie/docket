@@ -713,6 +713,9 @@ func scoreSearchProjectionTask(
 	if score := matcher.ScoreTerms(task.Description, query); score > 0 {
 		return searchFieldRankDescription, score, MatchSourceDescription, true
 	}
+	if score := matcher.ScoreTerms(task.ResumeNote, query); score > 0 {
+		return searchFieldRankResume, score, MatchSourceResume, true
+	}
 	if score := matcher.ScoreTerms(checklistText, query); score > 0 {
 		return searchFieldRankChecklist, score, MatchSourceChecklist, true
 	}
@@ -739,6 +742,7 @@ func scoreSearchProjectionTask(
 	details := strings.Join([]string{
 		task.Title,
 		task.Description,
+		task.ResumeNote,
 		checklistText,
 		commentText,
 		tagText,

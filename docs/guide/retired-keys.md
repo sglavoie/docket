@@ -24,7 +24,9 @@ its own. Select Project holds the same line: `n` no longer creates a project,
 cursor-top, so all three are silent there. All Notes retired `s`, `r`, `m`, `n`,
 and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, and freed `v` rather than
 reassigning it, because Notes has no selection for it to toggle; all six are
-silent there. Attachments retired `d` and `x` for its `Space` sheet, `o`
+silent there. `r` is the one of the six spent since: it writes the cursor task's
+resume note in the Outliner. A retirement is scoped to the surface that made it,
+so the letter follows the act nowhere and stays silent in Notes. Attachments retired `d` and `x` for its `Space` sheet, `o`
 for `Enter`, `e` for `E`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet;
 all seven are silent there. `u` was retired with them and has since come back:
 once unlink moved to that sheet the key was free, so it now means here what it

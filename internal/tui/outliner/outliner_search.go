@@ -253,6 +253,7 @@ const (
 	MatchSourceNone MatchSource = iota
 	MatchSourceTitle
 	MatchSourceDescription
+	MatchSourceResume
 	MatchSourceChecklist
 	MatchSourceComment
 	MatchSourceTag
@@ -271,6 +272,11 @@ const (
 const (
 	searchFieldRankTitle = iota
 	searchFieldRankDescription
+	// The resume note sits immediately under the description because it is the
+	// task's other body prose: it says where the work stopped, so a note the
+	// query names is nearly as strong an answer as the description is, and
+	// stronger than any of the collections below it.
+	searchFieldRankResume
 	searchFieldRankChecklist
 	searchFieldRankComment
 	// Tags and context share one rank; the source retains which axis won.

@@ -40,7 +40,12 @@ The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
 prints each ring of soft references as `reference cycle: a -> b -> a`. It is
 never an issue and never a fix target, because a ring deadlocks nothing a soft
 reference could gate; it is reported only because one hop is all a row shows.
-`project export` writes a task's outgoing references as a `**Dependencies:**`
+`project export` carries the resume note as a labelled `**Resume:**` paragraph
+above the description, escaped through `escapeExportInlineText`: a note is one
+line collected through a prompt that never offered markup, so leaving its
+punctuation raw would let it reformat a paragraph its author did not write,
+while the description stays verbatim because it is Markdown its author did
+write. It also writes a task's outgoing references as a `**Dependencies:**`
 list, labelled through `exportReferenceLabeller`: a resolvable target reads as
 project, `(#ShortID)`, title, and `(state)` — the same parenthesized form Peek
 uses, so the two never have to be reconciled — and anything else keeps its

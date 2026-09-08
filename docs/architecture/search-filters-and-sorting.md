@@ -21,8 +21,8 @@ together rather than each field its caller happened to remember.
 
 `or` toggles `search.rankedList`, the other presentation of that same query: one flat
 relevance-ordered list over the whole project scope, with no lanes, no headers,
-and no folds, ranking title matches before description, tag, and project metadata
-matches, then by fuzzy score and stable project/task order; `project#shortID` is
+and no folds, ranking title matches before description, resume note, tag, and
+project metadata matches, then by fuzzy score and stable project/task order; `project#shortID` is
 an exact qualifier. `ShowsRankedList()` is the one predicate that gates what that
 presentation takes away — the population filters, the `F` family, which need a
 reload rather than a rebuild — and what it alone offers: the notes tier, the relevance

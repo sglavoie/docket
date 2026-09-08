@@ -105,7 +105,8 @@ yourself about where you stopped, so a task without one writes no block at all
 and an empty note and an absent note are the same thing. `r` on the row is where
 you write it and Peek is where you read it back; it is yours to clear, so
 pausing, starting, or finishing a task never prompts for one and never throws
-one away.
+one away. `/` searches it beside titles and descriptions, and `project export`
+prints it as a labelled `Resume:` paragraph above the description.
 
 `lenses.json` contains your saved named-lens definitions — the three seeded
 starters, anything you saved yourself, and anything you added from the built-in
