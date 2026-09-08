@@ -136,6 +136,9 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 
 // buildStaleFixture isolates old touch times so the Stale lane and fs facet can
 // be exercised without shifting cursor-sensitive scenarios on other fixtures.
+// Both stale tasks carry one shared tag, which is what lets a vocabulary rename
+// reach exactly the untouched population: the rename must leave every timestamp
+// alone, so the lane it is run from has to be the lane it is measured against.
 func buildStaleFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Dormant Delivery", func(p *models.Project) {
 		old := time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
@@ -145,6 +148,7 @@ func buildStaleFixture(w *uitestWorkspace) error {
 		} {
 			task := newFixtureTask(p, title)
 			task.ApplyWorkflowState(models.StateBacklog)
+			task.Tags = []string{"dormant"}
 			task.CreatedAt = old
 			task.UpdatedAt = old
 			task.StateChangedAt = old

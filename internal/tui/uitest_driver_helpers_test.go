@@ -57,6 +57,12 @@ type UITestDriver struct {
 	now      time.Time
 	timers   []uitestTimer
 	timerSeq uint64
+
+	// clipboard is the last text the app copied while a scenario held the
+	// clipboard seam open, which the clipboard_contains assertion reads. It is
+	// empty both before the first copy and outside a scenario run, since nothing
+	// else installs the seam.
+	clipboard string
 }
 
 // SetDrainTimeout sets the per-command drain budget. A non-positive value

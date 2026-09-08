@@ -343,6 +343,7 @@ func (c *Controller) NewFilterTagsPicker(shell Shell,
 			selected = append(selected, listsurface.ListItemID("tag:"+tag))
 		}
 	}
+	selected = source.RetainKnownIDs(selected)
 	return valuepicker.NewOperationValuePickerModel(
 		request,
 		operation.ValueProviderFilterTags,
@@ -408,13 +409,14 @@ func (c *Controller) NewFilterContextsPicker(shell Shell,
 			selected = append(selected, listsurface.ListItemID("filter-context:"+name))
 		}
 	}
+	source := listsurface.ListSource{Items: items}
 	return valuepicker.NewOperationValuePickerModel(
 		request,
 		operation.ValueProviderFilterContexts,
 		"Filter by Context",
 		"keep matching tasks",
-		listsurface.ListSource{Items: items},
+		source,
 		true,
-		selected,
+		source.RetainKnownIDs(selected),
 	)
 }

@@ -211,10 +211,19 @@ The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
 | `view` | view name | `current_view` equals the value. |
 | `status_contains` | substring | The informational/status line contains the value. |
 | `no_layout_issues` | none | Rendering has no overflow, UTF-8, or height audit issue. |
+| `clipboard_contains` | substring | The text the last copy wrote contains the value. |
 
 Use semantic labels and view names instead of exact full-screen snapshots or
 color escape sequences. Add `no_layout_issues` at every important narrow or
 resized state.
+
+A scenario run replaces the process-wide clipboard write for its duration, so
+`y`, `Y`, and `Ctrl+Y` land in a buffer `clipboard_contains` reads instead of the
+system clipboard. The buffer holds the most recent copy only, and it is empty
+until one lands, so an assertion placed before the copy fails rather than
+passing vacuously. It is the only way to check *which* tasks a selection copied
+and in what order: the status line names the count and the hidden tally, never
+the text.
 
 ## Final-product coverage
 

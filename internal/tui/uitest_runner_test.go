@@ -80,6 +80,7 @@ func (e *UITestActionError) Error() string {
 // step. It stops at the first failing action and returns the observations
 // gathered so far alongside a *UITestActionError describing the failure.
 func (d *UITestDriver) RunScenario(sc UITestScenario, opts ObserveOptions) ([]UITestObservation, error) {
+	defer d.captureClipboard()()
 	observations := make([]UITestObservation, 0, len(sc.Actions))
 	for i, action := range sc.Actions {
 		if err := d.runAction(action); err != nil {
@@ -244,6 +245,13 @@ func (d *UITestDriver) runAssert(a UITestAction) error {
 	case "status_contains":
 		if !strings.Contains(obs.Status, a.Value) {
 			return fmt.Errorf("status %q does not contain %q", obs.Status, a.Value)
+		}
+	case "clipboard_contains":
+		// The clipboard is the one thing a copy operation says that the screen
+		// cannot: the status line names how many tasks and how many hidden, but
+		// only the copied text carries which ones and in what order.
+		if !strings.Contains(d.clipboard, a.Value) {
+			return fmt.Errorf("clipboard %q does not contain %q", d.clipboard, a.Value)
 		}
 	case "":
 		return fmt.Errorf("assert action missing an assertion kind")

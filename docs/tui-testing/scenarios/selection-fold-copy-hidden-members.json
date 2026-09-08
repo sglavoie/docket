@@ -1,0 +1,29 @@
+{
+  "name": "selection-fold-copy-hidden-members",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "anchor a range on the doing task", "key": "V" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 5 selected" },
+    { "type": "key", "label": "freeze it", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Visual selection: 5 total · 5 visible · 0 hidden" },
+
+    { "type": "key", "label": "fold the task axis under the selection", "key": "t" },
+    { "type": "assert", "label": "the summary counts the rows that are there now, not the ones it was built from", "assert": "contains", "value": "Visual selection: 5 total · 3 visible · 2 hidden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "a copy takes the whole selection, hidden members included", "key": "y" },
+    { "type": "assert", "assert": "status_contains", "value": "Copied title for 5 tasks to clipboard · 2 hidden" },
+    { "type": "assert", "label": "displayed rows first, then the hidden members by project slug and tree position", "assert": "clipboard_contains", "value": "Build login form\nTriage support inbox\nLaunch platform\nUser authentication\nAdd password validation" }
+  ]
+}

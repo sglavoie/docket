@@ -1,0 +1,52 @@
+{
+  "name": "stale-rename-versus-resume-activity",
+  "fixture": "stale",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Stale  (2)" },
+
+    { "type": "key", "label": "rename the tag both untouched tasks carry", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "key", "key": "e" },
+    { "type": "key", "key": "ctrl+u" },
+    { "type": "text", "text": "mothballed" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "#dormant → #mothballed" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "2 tasks rewritten in 1 project" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a vocabulary rename is not activity, so the lane is unmoved", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
+    { "type": "assert", "assert": "contains", "value": "Renew untouched vendor briefing" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "record where the first of them was left", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "r" },
+    { "type": "text", "text": "picked this back up after the vendor call" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Resume Note" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a resume note is activity, so that one task leaves the lane", "assert": "contains", "value": "Stale  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Backlog  (2)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and it is admitted by Recent, which the untouched one still is not", "key": "g" },
+    { "type": "key", "key": "r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew untouched vendor briefing" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo restores the touch time with the note", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "key", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

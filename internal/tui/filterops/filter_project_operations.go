@@ -132,7 +132,7 @@ func (c *Controller) NewFilterProjectTagsPicker(shell Shell,
 		"choose which projects load",
 		source,
 		true,
-		selected,
+		source.RetainKnownIDs(selected),
 	)
 }
 

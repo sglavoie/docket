@@ -119,6 +119,17 @@ func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
 // rebuildRows flattens the current task tree into the rows slice, applying the
 // active mode and filters, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) RebuildRows() {
+	// The multi-select summary counts visible against hidden members, so it is a
+	// projection of the rows and not of the selection alone: a fold, a filter, or
+	// a mode change moves members across that line without touching the selection,
+	// and the summary is the one view status that is not transient, so a stale one
+	// stays on screen contradicting what a bulk action then reports. This is the
+	// one seam every mutation-driven projection change passes through, and
+	// updateVisualSelectionStatus is the only writer of this status, so refreshing
+	// here can overwrite nothing else. The render path calls
+	// crossProjectRebuildRows directly and is deliberately not covered: a View
+	// must not write status.
+	defer m.UpdateVisualSelectionStatus()
 	m.SyncJumpProjection()
 	if m.Project == nil {
 		// Mark as a mutation-driven rebuild so the memoization guard in

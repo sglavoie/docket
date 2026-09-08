@@ -134,6 +134,10 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"filter-tag-rename-lens-report.json",
 		"filter-tag-rename-stale-plan.json",
 		"filter-context-rename-refusals.json",
+		"filter-tag-rename-reopens-facet.json",
+		"lens-rename-resume-undo-order.json",
+		"selection-fold-copy-hidden-members.json",
+		"stale-rename-versus-resume-activity.json",
 	}
 	scenariosDir := exampleScenariosDir(t)
 	for _, name := range required {

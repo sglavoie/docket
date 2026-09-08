@@ -1,0 +1,39 @@
+{
+  "name": "filter-tag-rename-reopens-facet",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "narrow the view on the tag that is about to be renamed", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Filters: #security" },
+
+    { "type": "key", "label": "rename that same tag from the facet it is filtering on", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "e" },
+    { "type": "key", "key": "ctrl+u" },
+    { "type": "text", "text": "platform-api" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "#security → #platform-api" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "Rename Tag · done" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the report onto the rebuilt list", "key": "esc" },
+    { "type": "assert", "label": "which carries the pending choice onto the new spelling", "assert": "contains", "value": "[x] platform-api" },
+    { "type": "key", "label": "and then leave the picker", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the facet still names the spelling it was applied with", "assert": "contains", "value": "Filters: #security" },
+
+    { "type": "key", "label": "the facet whose value the rename retired still opens", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags: keep matching tasks" },
+    { "type": "assert", "assert": "contains", "value": "[ ] platform-api" },
+    { "type": "assert", "label": "a seed the vocabulary no longer holds is dropped, never refused", "assert": "not_contains", "value": "list item was not found" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

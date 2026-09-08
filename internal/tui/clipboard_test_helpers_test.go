@@ -20,3 +20,19 @@ func withFakeClipboard(t *testing.T, err error, captured *string) {
 		return err
 	}
 }
+
+// captureClipboard points external.CopyText at the driver for the duration of a
+// scenario and returns the restore. The seam is what lets a scenario press y at
+// all: external.CopyText is the product's one clipboard write and it shells out
+// to pbcopy/xclip, so without this a committed scenario would either fail on a
+// machine with no clipboard tool or quietly overwrite the author's own
+// clipboard. Installing it per run rather than per driver keeps every other
+// caller — the interactive ApplyAction path included — on the real seam.
+func (d *UITestDriver) captureClipboard() func() {
+	orig := external.CopyText
+	external.CopyText = func(text string) error {
+		d.clipboard = text
+		return nil
+	}
+	return func() { external.CopyText = orig }
+}

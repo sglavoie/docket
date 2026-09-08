@@ -17,6 +17,35 @@ func (source ListSource) NewModel(config ListSurfaceConfig) (*ListSurfaceModel, 
 	return NewListSurfaceModel(source.Items, source.Categories, config)
 }
 
+// RetainKnownIDs keeps the given IDs this source actually offers, in the order
+// they were given. It is the seed step for a picker whose preselection is read
+// from somewhere other than the rows: a filter facet seeds from the narrowing
+// already in force, and that narrowing can legitimately name a value the current
+// vocabulary does not hold — a tag the scope you are standing in does not use,
+// or one a rename has just moved to another spelling. Such a facet must still
+// open on the vocabulary it has, so the seed is an intersection rather than an
+// assertion. SetSelectedIDs stays strict for every caller whose seed is drawn
+// from the same population as the rows, where a missing ID is a real defect.
+func (source ListSource) RetainKnownIDs(ids []ListItemID) []ListItemID {
+	if len(ids) == 0 {
+		return nil
+	}
+	known := make(map[ListItemID]struct{}, len(source.Items))
+	for _, item := range source.Items {
+		known[item.ID] = struct{}{}
+	}
+	retained := make([]ListItemID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := known[id]; ok {
+			retained = append(retained, id)
+		}
+	}
+	if len(retained) == 0 {
+		return nil
+	}
+	return retained
+}
+
 // ListSurfaceDisabledPickerItem optionally exposes why a legacy picker item is
 // visible but unavailable.
 type ListSurfaceDisabledPickerItem interface {
