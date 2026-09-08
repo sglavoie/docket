@@ -17,6 +17,17 @@ func (model *OperationValuePickerModel) Provider() operation.ValueProviderID {
 	return model.provider
 }
 
+// ExecutionRequest is the operation this picker is supplying a value for. It is
+// what lets the shell rebuild an equivalent picker over refreshed data — the
+// rows a vocabulary rename rewrote — without re-entering the executor and
+// asking for the value step a second time.
+func (model *OperationValuePickerModel) ExecutionRequest() operation.OperationExecutionRequest {
+	if model == nil {
+		return operation.OperationExecutionRequest{}
+	}
+	return model.request
+}
+
 // Title is the picker's header line.
 func (model *OperationValuePickerModel) Title() string {
 	if model == nil {

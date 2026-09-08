@@ -30,7 +30,9 @@ all seven are silent there. `u` was retired with them and has since come back:
 once unlink moved to that sheet the key was free, so it now means here what it
 means everywhere else. `e` is the one that had to move
 rather than retire outright: it means edit or rename on every other surface, and
-a panel with nothing to rename may not spend it on the editor. Comments retired
+a panel with nothing to rename may not spend it on the editor. The `f#` and `fc`
+filter pickers are the same rule read the other way: their rows are stored names,
+so `e` renames one there and means exactly what it means elsewhere. Comments retired
 the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet; all
 three are silent there, because a comment may not stay one press from deletion
 while a task cannot be deleted that way. One rule covers that whole inventory.

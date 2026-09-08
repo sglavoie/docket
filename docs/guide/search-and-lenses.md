@@ -45,8 +45,8 @@ name; nothing else does, in either presentation.
 | `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `f$` | Pick workflow states with OR semantics, including terminal states |
 | `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
-| `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc` |
-| `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none |
+| `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`; `e` renames or merges the tag under the cursor |
+| `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none; `e` renames or merges the context under the cursor |
 | `f=` | Toggle the review facet, the same `=review` a typed query spells |
 | `f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
@@ -213,6 +213,49 @@ should land first.
 Pressing a chord prefix shows its valid continuations in the guidance region. `Esc`
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
+
+### Renaming a tag or a context
+
+`f#` and `fc` list every spelling in use, which makes them the place a
+misspelling is visible and therefore the place it is fixed. `e` on a row opens a
+rename prefilled with the name under the cursor, so the ordinary correction is a
+suffix and the ordinary merge is a retype. `Enter` reviews it rather than
+applying it: the confirmation names the destination in the spelling it will be
+stored under, how many tasks in how many projects it would rewrite, and — when
+the destination is already in use — that the two names become one. `y` applies
+it, `n` steps back to the name, and `Esc` leaves with nothing written. While the
+name step is open every printable key is text, `e` included.
+
+The rename is not scoped by the view. The picker lists the vocabulary of the
+scope you are standing in, but the change rewrites every unarchived project, and
+the confirmation says so rather than leaving you to assume otherwise. It is one
+transaction and one undo entry, so `u` takes the whole rename back however many
+projects it touched. If the workspace changes under a confirmation you left
+open, applying it writes nothing and says so; `Enter` reviews the same rename
+against the workspace as it now is.
+
+`fc`'s leading `No context` row is a facet over the tasks the vocabulary does
+not cover rather than a context anything stores, so `e` refuses it by name. A
+semantic tag is an ordinary stored membership: renaming your usage of `bug`
+moves the tasks carrying it and does not redefine the built-in vocabulary, so a
+task that no longer carries `bug` no longer reads as one.
+
+Saved lenses are left exactly as they were written. A saved query is a durable
+string you wrote, and a rename is not an edit to it — so both the confirmation
+and the report instead name the lenses whose predicates may now select
+differently, whether they spell the name in full, by prefix, or negated, and say
+so plainly when none do. A lens that named the old spelling keeps naming it, and
+will simply match less.
+
+What you were in the middle of survives all three steps. The query you typed
+into the picker, the cursor, and the values you had already checked are still
+there when a step closes, and a committed rename rebuilds the list from the
+renamed workspace carrying those pending choices across: the source row becomes
+the destination row, a merge that had both checked keeps one, and the cursor
+lands on the row the rename produced. Only the picker's own search is given up,
+and only when it would hide that row. The report stays on that refreshed list
+until you dismiss it, scrolling with `j` and `k` when it is longer than the box,
+and `Enter` afterwards still applies the filter it always did.
 
 ### Reading and peeling the narrowing
 

@@ -47,6 +47,9 @@ type OperationValuePickerModel struct {
 	// ContextInitial is the context row every target already agreed on. An empty
 	// ID means the targets disagreed, so any chosen row is a change.
 	ContextInitial listsurface.ListItemID
+	// rename is the nested rename/merge workflow the two filter vocabularies
+	// offer. Its zero value is the browse grammar. See vocabulary_rename.go.
+	rename vocabularyRenameState
 }
 
 func NewOperationValuePickerModel(
@@ -145,6 +148,12 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		}
 		return cmd, false, nil
 	}
+	if model.rename.stage != vocabularyRenameOff {
+		// The nested rename runs above the browse grammar for the same reason the
+		// add modes do: its name step is text entry, so every key it does not name
+		// itself is a character rather than a command.
+		return model.handleVocabularyRenameKey(msg)
+	}
 	key := msg.String()
 	if model.searching {
 		switch key {
@@ -201,6 +210,13 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 				model.dateAdder = chrome.NewDateAdder()
 			}
 			return model.dateAdder.EnterAddMode(), false, nil
+		}
+	case "e":
+		// `e` means edit or rename everywhere else, and a vocabulary row is the one
+		// thing on a picker that has a name of its own to rename.
+		if vocabularyRenameProvider(model.provider) {
+			cmd, result := model.beginVocabularyRename()
+			return cmd, false, result
 		}
 	case "up", "k", "ctrl+p":
 		model.surface.MoveCursor(-1)

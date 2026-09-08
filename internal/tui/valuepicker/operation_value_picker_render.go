@@ -45,6 +45,9 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 			Rows:  2,
 		}, true
 	}
+	if spec, ok := model.vocabularyRenameGuidanceSpec(); ok {
+		return spec, true
+	}
 	count := len(model.surface.Matches())
 	searching := model.searching
 	enterLabel := "choose"
@@ -103,6 +106,11 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 	if model.provider.DateEntry() {
 		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
 	}
+	if vocabularyRenameProvider(model.provider) {
+		add("e", "Rename or merge this "+model.vocabularyRenameNoun(), "rename", 5, func() bool {
+			return !searching && count > 0
+		})
+	}
 	return listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
 }
 
@@ -155,6 +163,9 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 			chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
 			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
+	}
+	if rendered, ok := model.renderVocabularyRename(innerWidth); ok {
+		return rendered
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)
 	explainers := make([]string, 0, 3)

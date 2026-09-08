@@ -1,0 +1,56 @@
+{
+  "name": "filter-context-rename-refusals",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "open the context facet", "key": "f" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Context" },
+    { "type": "assert", "assert": "contains", "value": "e rename" },
+
+    { "type": "key", "label": "the gap row is a facet, so it cannot be renamed", "key": "e" },
+    { "type": "assert", "assert": "status_contains", "value": "No context is a facet, not a context" },
+    { "type": "assert", "assert": "not_contains", "value": "Rename Context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "move onto a stored name", "key": "down" },
+    { "type": "key", "label": "open the picker's own search", "key": "/" },
+    { "type": "text", "label": "e is literal input while a text field is taking keys", "text": "e" },
+    { "type": "assert", "label": "the key reached the query, not the rename", "assert": "contains", "value": "Search: e" },
+    { "type": "assert", "assert": "not_contains", "value": "Rename Context" },
+    { "type": "key", "label": "clear the query, then leave the search", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+
+    { "type": "key", "label": "move onto the stored name again", "key": "down" },
+    { "type": "key", "label": "now e names the highlighted context", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "Rename Context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "an empty destination is refused, not committed", "key": "ctrl+u" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Enter a destination name" },
+
+    { "type": "text", "label": "the clearing spelling is permanently reserved", "text": "0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "reserved" },
+
+    { "type": "key", "label": "renaming a name onto itself changes nothing", "key": "ctrl+u" },
+    { "type": "text", "text": "platform" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "already is the destination name" },
+
+    { "type": "key", "label": "a refusal is one correction away from a plan", "key": "ctrl+u" },
+    { "type": "text", "text": "runtime" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "##platform → ##runtime" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "walking out of the workflow writes nothing", "key": "n" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Context" },
+    { "type": "assert", "assert": "contains", "value": "##platform" },
+    { "type": "assert", "assert": "not_contains", "value": "##runtime" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

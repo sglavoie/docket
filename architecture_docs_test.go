@@ -131,6 +131,15 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"which is why `instantEntry()` cannot be a `ValueProviderID` method",
 		"`deferRefusalReason` on its defer rows only",
 		"That request names `ValueProviderDueDate` rather than the combined list `@` opens",
+		// The vocabulary rename is a third nested grammar on the value picker and
+		// the one place a picker's key commits a workspace transaction, so the
+		// split that keeps it safe — steps on the picker, effects on the shell —
+		// is the mechanism a contributor has to be able to read.
+		"`vocabularyRenameProvider` is the whole set",
+		"The picker owns the steps and none of the effects",
+		"`vocabularyRenameAxis` is the one place a provider is bound to the application namespace",
+		"releases it on every exit from the confirmation, accepted or not",
+		"reports a clause when it would admit exactly one of the two names",
 		"### Capture and inline-edit grammar",
 		"`##context` is the singleton task-context sigil",
 		"`*pin`'s value set is closed to `pin` and `unpin`",

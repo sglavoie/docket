@@ -140,6 +140,19 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"Each population axis has three states — excluded, included, isolated",
 		"`Fp`, `FP`, and selecting `parked` inside `F#` are the same switch",
 		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
+		// The vocabulary rename `f#` and `fc` offer. The four facts a reader
+		// cannot get from the screen are pinned: the change is not scoped by the
+		// view it was started from, the pseudo-row is a facet rather than a name,
+		// saved lenses are reported and never rewritten, and the browse state the
+		// steps ran over is still there afterwards.
+		"`e` renames or merges the tag under the cursor",
+		"`e` renames or merges the context under the cursor",
+		"### Renaming a tag or a context",
+		"the change rewrites every unarchived project, and\nthe confirmation says so",
+		"It is one\ntransaction and one undo entry",
+		"is a facet over the tasks the vocabulary does\nnot cover rather than a context anything stores, so `e` refuses it by name",
+		"Saved lenses are left exactly as they were written",
+		"the source row becomes\nthe destination row, a merge that had both checked keeps one, and the cursor\nlands on the row the rename produced",
 	})
 }
 

@@ -1,0 +1,54 @@
+{
+  "name": "filter-tag-rename",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the tag facet", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "the browse grammar advertises the rename", "assert": "contains", "value": "e rename" },
+
+    { "type": "key", "label": "rename the highlighted tag", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "Rename Tag" },
+    { "type": "assert", "label": "the name is prefilled, so an edit is a suffix", "assert": "contains", "value": "backend" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "label": "extend the name rather than retype it", "text": "-api" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the confirmation names the normalized destination", "assert": "contains", "value": "#backend → #backend-api" },
+    { "type": "assert", "label": "and the affected counts", "assert": "contains", "value": "1 task in 1 project" },
+    { "type": "assert", "label": "and that the rename is not scoped by the view", "assert": "contains", "value": "Scope: every unarchived project, not the filtered view" },
+    { "type": "assert", "label": "a rename onto an unused name is not a merge", "assert": "not_contains", "value": "so the two become one" },
+    { "type": "assert", "assert": "contains", "value": "No saved lens names it." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "accept the frozen plan", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "Rename Tag · done" },
+    { "type": "assert", "assert": "contains", "value": "1 task rewritten in 1 project" },
+    { "type": "assert", "label": "the commit joins the ordinary recovery grammar", "assert": "status_contains", "value": "Rename Tag: backend → backend-api" },
+    { "type": "assert", "assert": "status_contains", "value": "u undo" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the report holds at the app's own minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "1 task rewritten in 1 project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "and at the widest committed size", "width": 160, "height": 55 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "dismiss the report onto the refreshed list", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "the destination row is what the rename produced", "assert": "contains", "value": "backend-api" },
+    { "type": "assert", "label": "and the source spelling is gone", "assert": "not_contains", "value": "[ ] backend  " },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the cursor is left on the row the rename produced", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "[x] backend-api" },
+    { "type": "key", "label": "the ordinary accept still applies the filter", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering 1 tag(s)" },
+    { "type": "assert", "label": "the renamed spelling is what the view filters on", "assert": "contains", "value": "Filters: #backend-api" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

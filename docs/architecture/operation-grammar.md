@@ -104,6 +104,45 @@ value type the provider's preset rows carry, so the executor and the single and
 bulk handlers stay untouched. A value the presets cannot express belongs in an
 inline mode on the one picker, never in a standalone form.
 
+The vocabulary rename `e` opens on `ValueProviderFilterTags` and
+`ValueProviderFilterContexts` is a third nested grammar on that same model
+(`internal/tui/valuepicker/vocabulary_rename.go`), and `vocabularyRenameProvider`
+is the whole set: those two facets are the only lists whose rows are stored task
+names. Its three stages paint as the picker's body rather than as overlays above
+it, which is why the browse state underneath is preserved by construction — the
+list is neither drawn nor rebuilt while a stage is open, so the query, cursor,
+and pending multi-select are simply never touched. The nested grammar runs after
+the inline add modes and before the browse switch, so an open name step takes
+every printable key as literal input exactly as a search does.
+
+The picker owns the steps and none of the effects: it holds no service, no
+workspace, and no frozen preview. Every sentence it shows is computed by
+`internal/tui/vocabulary_rename_host.go` and handed back through
+`ShowVocabularyRenamePlan`, `RefuseVocabularyRename`, and
+`AdoptVocabularyRenameOutcome`, over the three messages the picker emits.
+`vocabularyRenameAxis` is the one place a provider is bound to the application
+namespace it renames in, the `models.QueryField` a saved lens spells it with, and
+the row-ID prefix, sigil, and noun its wording is written in. The shell holds one
+`vocabularyRenameSession` — a frozen `app.RenameTaskNamePreview` plus the lens
+impacts computed from the same census — and releases it on every exit from the
+confirmation, accepted or not, because a preview pins a whole workspace census.
+An expired preview surfaces as `storage.ErrStaleRevision`/`ErrStaleArtifact` and
+is named as recoverable; every other refusal is unwrapped to
+`app.InvalidInputError.Reason`, since the picker is the field the refusal names.
+`vocabularyRenameHeading` repeats the four titles the undo ledger writes rather
+than importing them, because the ledger's are unexported and a drift would be
+visible in the status line the commit hands back through `setRecoveryFeedback`.
+
+Nothing rewrites a lens. `vocabularyRenameAffectedClauses` partitions each saved
+query through the read path a lens already has and reports a clause when it would
+admit exactly one of the two names, which is what makes a full name and a prefix
+equally answerable; polarity never enters that test, because a negation owns no
+vocabulary and `QueryClause.String` already renders the leading `-`. After a
+commit the shell rebuilds the picker from the renamed workspace and carries the
+browse state across, remapping the pending source row onto the destination and
+deduplicating what a merge collapsed; only the picker-local search is given up,
+and only when it would hide the row the rename produced.
+
 `ValueProviderDate` is the one date picker a task operation reaches. It sections
 due presets above defer presets so a single key answers both fields, and the
 committed row carries `OperationDateValue.Deferred`, which is what tells the

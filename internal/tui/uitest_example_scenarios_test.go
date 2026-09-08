@@ -129,6 +129,11 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"conflict-browser-narrow-layout.json",
 		"outliner-menu-bar.json",
 		"outliner-menu-bar-persist.json",
+		"filter-tag-rename.json",
+		"filter-tag-merge-undo.json",
+		"filter-tag-rename-lens-report.json",
+		"filter-tag-rename-stale-plan.json",
+		"filter-context-rename-refusals.json",
 	}
 	scenariosDir := exampleScenariosDir(t)
 	for _, name := range required {

@@ -434,6 +434,15 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case valuepicker.ProjectTagVocabularyActionsMsg:
 		m.operations.ClearValueStep()
 		return true, m.openProjectTagVocabularyActions(typed.Tag)
+	case valuepicker.VocabularyRenameRequestedMsg:
+		// The three rename messages deliberately leave the value step mounted: the
+		// workflow is a stage of that picker, and its query, cursor, and pending
+		// choices are preserved by never being torn down in the first place.
+		return true, m.handleVocabularyRenameRequested(typed)
+	case valuepicker.VocabularyRenameConfirmedMsg:
+		return true, m.handleVocabularyRenameConfirmed(typed)
+	case valuepicker.VocabularyRenameAbandonedMsg:
+		return true, m.handleVocabularyRenameAbandoned()
 	default:
 		return false, nil
 	}

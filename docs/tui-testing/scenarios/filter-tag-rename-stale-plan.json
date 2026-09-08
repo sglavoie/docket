@@ -1,0 +1,33 @@
+{
+  "name": "filter-tag-rename-stale-plan",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the tag facet and name a rename", "key": "f" },
+    { "type": "key", "key": "#" },
+    { "type": "key", "key": "e" },
+    { "type": "key", "key": "ctrl+u" },
+    { "type": "text", "text": "platform-api" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "#backend → #platform-api" },
+
+    { "type": "command", "label": "another process edits the workspace the plan was frozen from", "command": "change a project underneath" },
+    { "type": "key", "label": "accepting an expired plan writes nothing", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "The workspace changed while this was open" },
+    { "type": "assert", "label": "the typed name is still there to review again", "assert": "contains", "value": "Rename Tag" },
+    { "type": "assert", "assert": "not_contains", "value": "Rename Tag · done" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and reviewing it again is one keystroke", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "#backend → #platform-api" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "contains", "value": "Rename Tag · done" },
+    { "type": "assert", "assert": "contains", "value": "1 task rewritten in 1 project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "platform-api" },
+    { "type": "assert", "assert": "not_contains", "value": "] backend" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

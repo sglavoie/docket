@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -49,6 +50,7 @@ const (
 	operationHarnessRecordConflict  operation.OperationID = "tui.harness.record-conflict"
 	operationHarnessConflictOffTick operation.OperationID = "tui.harness.record-conflict-off-tick"
 	operationHarnessForeignTxn      operation.OperationID = "tui.harness.foreign-live-transaction"
+	operationHarnessChangeProject   operation.OperationID = "tui.harness.change-project-underneath"
 )
 
 // The canned conflict bundle. A conflict is recorded only when a project changes
@@ -203,6 +205,12 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return nil
 		}},
+		{operationHarnessChangeProject, "change a project underneath", operation.OperationCategorySystem, func() tea.Msg {
+			if err := m.harnessChangeProjectUnderneath(); err != nil {
+				return status.ErrorMsg{Err: err}
+			}
+			return nil
+		}},
 	}
 
 	for _, spec := range specs {
@@ -279,6 +287,35 @@ func (m *AppModel) harnessStageForeignTransaction() error {
 		return fmt.Errorf("encoding manifest: %w", err)
 	}
 	return os.WriteFile(filepath.Join(dir, id+".json"), data, util.FilePermissions)
+}
+
+// harnessChangeProjectUnderneath rewrites one project's tasks.md out of band,
+// which is what another process editing the workspace looks like from here. No
+// public key can stage it: every in-app mutation goes through the repository the
+// app itself reads, so the revision it lands on is never a surprise to it.
+//
+// One frozen plan expires the moment any project it was computed from changes,
+// so a single retitled task is the whole of what a scenario needs to reach that
+// refusal.
+func (m *AppModel) harnessChangeProjectUnderneath() error {
+	if m == nil || m.domain.runtime == nil {
+		return fmt.Errorf("changing a project needs a workspace")
+	}
+	available := m.domain.runtime.AvailableProjects()
+	if len(available) == 0 {
+		return fmt.Errorf("the workspace holds no project to change")
+	}
+	project := *available[0]
+	if err := storage.LoadProject(&project); err != nil {
+		return err
+	}
+	if len(project.Tasks) == 0 {
+		return fmt.Errorf("project %q holds no task to change", project.Name)
+	}
+	changed := *project.Tasks[0]
+	changed.Title += " (changed elsewhere)"
+	project.Tasks = append([]*models.Task{&changed}, project.Tasks[1:]...)
+	return storage.SaveProject(&project)
 }
 
 // harnessRecordConflict writes one conflict bundle into the workspace's store.

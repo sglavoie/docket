@@ -157,6 +157,12 @@ type AppModel struct {
 	// themselves stay on AppModel. See task_mutation_controller.go.
 	taskMutation taskMutationController
 
+	// vocabularyRename holds the frozen plan the two filter pickers' rename step
+	// is showing. It lives here rather than on the picker because a preview pins
+	// a whole workspace census, which is the shell's to hold and to release. See
+	// vocabulary_rename_host.go.
+	vocabularyRename vocabularyRenameSession
+
 	// lenses is the named-lens cluster: the picker, which sits below the
 	// contextual action flow rather than inside it because it is the surface an
 	// action sheet is opened *from*; the lens the machine-local pointer asked
