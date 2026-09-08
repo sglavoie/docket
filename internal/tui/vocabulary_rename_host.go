@@ -215,12 +215,14 @@ func (m *AppModel) refreshVocabularyRenamePicker(
 	source := listsurface.ListItemID(axis.rowPrefix + session.preview.From)
 	destination := listsurface.ListItemID(axis.rowPrefix + session.preview.To)
 	surface := rebuilt.Surface()
-	if pending := vocabularyRenamePendingSelection(
+	// The rebuilt picker is constructed seeded from the still-active facet, so the
+	// remapped pending set is written unconditionally: an empty one is the reader
+	// having cleared every choice, and skipping the write would hand that seed
+	// back as if the clearing never happened.
+	if err := surface.SetSelectedIDs(vocabularyRenamePendingSelection(
 		picker.Surface(), surface, source, destination,
-	); len(pending) > 0 {
-		if err := surface.SetSelectedIDs(pending); err != nil {
-			logging.Warn("failed to restore pending filter values after a rename: %v", err)
-		}
+	)); err != nil {
+		logging.Warn("failed to restore pending filter values after a rename: %v", err)
 	}
 	surface.SetQuery(picker.Surface().Query().Raw)
 	if !surface.SetCursorToID(destination) {
