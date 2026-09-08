@@ -275,6 +275,14 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if out, ok := m.outlinerPrimary(); ok {
 			out.TogglePeek()
 		}
+	case operation.OperationCorePeekPageDown:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.PagePeek(1)
+		}
+	case operation.OperationCorePeekPageUp:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.PagePeek(-1)
+		}
 	case operation.OperationCoreScopeSearch:
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())

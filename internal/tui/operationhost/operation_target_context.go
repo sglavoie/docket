@@ -59,6 +59,10 @@ func (c *Controller) CommandContext(shell Shell) operation.CommandContext {
 	ctx.Entity.HasSectionHeaderCursor = shell.CursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
 	_, ctx.Entity.HasNoteCursor = shell.CursorNoteIdentity()
+	// Peek hangs under an Outliner row, so only an Outliner has one to page.
+	if out := shell.ActiveOutliner(); out != nil {
+		ctx.Peek = out.PeekCommandContext()
+	}
 
 	if selected, ok := shell.ActiveView().(operationSelectionProvider); ok {
 		ctx.Selection.Tasks = selected.SelectedTaskIdentities()

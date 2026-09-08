@@ -280,39 +280,61 @@ section zoom, then the existing project/base escape behavior. The zoom narrows
 one mode, so it unwinds after the Focus stacks and before the project scope that
 owns the mode.
 
-`Ctrl+Enter` toggles a session-only, project-qualified Peek below the cursor
+`b` toggles a session-only, project-qualified Peek below the cursor
 task. Peek follows cursor, mode, and scope navigation. It carries no checklist
 line, because checklist items are rows and restating them would spend the
 tightest budget in the Outliner on content already on screen, while the task
 row's progress badge covers the folded case. Entering visual selection disables
 Peek.
 
-The five-line cap is a hard budget for the additive lines, because
-`ComputeOutlinerViewport` subtracts the Peek height plus a guard row from an
-already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
-description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
-actually truncates, `inlinePeekDatesLine` is appended directly after it, then
-attachment names, comment counts, the two reference lines, and tags, and the
-tail cut sheds from the end.
-A new Peek line takes a deliberate position in that order, or the cap silently
-starts eating something else.
+The five-line budget is a bound on what is visible, not on what Peek holds,
+because `ComputeOutlinerViewport` subtracts the Peek height plus a guard row from
+an already-tight one. `inlinePeekDocument` is that split: `Body` is every detail
+row the task has, wrapped to the pane and complete, and `inlinePeekBodyRows` (5)
+decides only how many of them are on screen at a time. `Lines(page)` is the one
+way to either, so the height the viewport reserves and the height the renderer
+draws are the same number by construction rather than by two agreeing
+calculations.
 
-The reference lines sit above tags because Peek is the only surface that names a
+Body order is resume, description, dates, attachment names, comment count, the
+two reference lists, context, and tags. Order is the whole of what
+`inlinePeekBodySections` decides: nothing competes for room any more, because
+room is the page's problem. A new section still takes a deliberate position, but
+what it costs is a page turn rather than the line beneath it.
+
+Paging is `Ctrl+F` and `Ctrl+B`, the same pair every other pageable body on the
+product answers to, with `inlinePeekPageOverlap` (1) content row carried across
+each boundary so a wrapped sentence is never split between two keystrokes with
+nothing in common. A paged document reserves one of its five rows for the
+counter, which names how many body rows sit above and below the page rather than
+a page ordinal; an unpaged one spends the whole budget on content. The last page
+is pinned to the end of the body, so it is full rather than short.
+
+The page itself is session-only and lives in `peekPageState`, keyed by task
+identity, the width-independent `Fingerprint` of the document, and the terminal
+size. `peekPageForRow` is pure: a key mismatch reads as the first page, so
+changing task, editing the detail, gaining or losing a reference, and resizing
+each reset paging without any writer having to notice, and a redraw preserves a
+manual turn. `PagePeek` is the only writer. `PeekCommandContext` is the single
+fact behind the descriptors' applicability and the footer hints, so a page turn
+that cannot move is neither offered nor accepted.
+
+The reference lists sit above tags because Peek is the only surface that names a
 reference at all — the row carries `~S/N`, and there is no panel behind it the
-way `;` and `&` stand behind comments and attachments — while tag chips are
-already on the row and are therefore the cheaper line to lose.
-`inlinePeekReferenceLine` renders `Dependencies S/N` from the task's stored list
+way `;` and `&` stand behind comments and attachments.
+`inlinePeekReferenceLines` renders `Dependencies S/N` from the task's stored list
 in stored order, carrying the row's own census through `inlinePeekOptions` rather
 than recounting it, and `Dependents N` from `incomingDependencyDetails`, which
 reads the same index's reverse map for tasks referring back. Each label carries
-its count so a set the two-entry cap elided still reports its size; the outgoing
+its count so a reader sees the size of the set before reading it; the outgoing
 label takes no trailing `?`, because every entry below names its own state in
-full. Neither line is new and the cap is unchanged. Both arrive resolved:
+full. Both arrive resolved:
 `dependencyDetailFor` names a loaded target as project, `#ShortID`, title, and
 state, and `DependencyDetailUnresolved` falls back to the stored
 `project-id:task-id` locator marked `(unavailable)`, so a reference into an
-unloaded or archived project is degraded rather than dropped. The line names the
-first two entries and ends `+N more`. Both are read-only: they carry no key, no
+unloaded or archived project is degraded rather than dropped. Each entry takes a
+row of its own and none is elided or counted in place of being named. Both are
+read-only: they carry no key, no
 selection, and no mutation, and the expanded task form is create-only, so no
 surface edits a reference except the grammar.
 

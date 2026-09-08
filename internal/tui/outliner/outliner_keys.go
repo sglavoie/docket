@@ -581,14 +581,16 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	case m.MultiSelectMode:
 		return m.multiSelectGuidance(), true
 	case m.PeekMode:
-		peekKey := "Ctrl+Enter"
-		if m.OperationRegistry != nil {
-			if key := m.OperationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, operation.OperationCorePeek); key != "" {
-				peekKey = key
-			}
+		peekKey := m.peekOperationKey(operation.OperationCorePeek, peekDisplayKey)
+		hints := chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek")
+		// The paging keys are offered only in the direction the document can
+		// actually move, which is the same fact their descriptors are applicable
+		// under: a detail that fits its budget advertises no page turn at all.
+		if paging := m.peekPagingHintLabels(); len(paging) > 0 {
+			hints = append(hints, chrome.OptionalGuidanceHints(9, paging...)...)
 		}
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek"),
+			Hints: append(hints,
 				chrome.OptionalGuidanceHints(10, "Space actions", "e edit", "? help")...),
 			Rows: 2,
 		}, true
@@ -703,7 +705,7 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 			operation.InputStrategySimplified,
 			m.OperationCommandContext(),
 		) {
-			if (hint.Key == "Enter" && !zoomed) || hint.Key == "Ctrl+Enter" {
+			if (hint.Key == "Enter" && !zoomed) || hint.Key == peekDisplayKey {
 				hint.Priority = 1
 				hints = append(hints, hint)
 			}

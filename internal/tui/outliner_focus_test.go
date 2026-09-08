@@ -24,7 +24,7 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	}{
 		{key: "enter", want: operation.OperationCoreFocusSubtree},
 		{key: "shift+enter", want: operation.OperationCoreFocusParent},
-		{key: "ctrl+enter", want: operation.OperationCorePeek},
+		{key: "b", want: operation.OperationCorePeek},
 	} {
 		binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, test.key, ctx)
 		if !ok || binding.OperationID != test.want {
@@ -37,7 +37,7 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	for key, description := range map[string]string{
 		"Enter":       "Focus Subtree",
 		"Shift+Enter": "Focus Parent",
-		"Ctrl+Enter":  "Toggle Task Peek",
+		"b":           "Toggle Task Peek",
 	} {
 		found := false
 		for _, item := range help {
@@ -50,7 +50,7 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 			t.Errorf("generated help omits %s %s", key, description)
 		}
 	}
-	for _, want := range []string{"Enter focus", "Ctrl+Enter peek"} {
+	for _, want := range []string{"Enter focus", "b peek"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("generated footer %q omits %q", footer, want)
 		}

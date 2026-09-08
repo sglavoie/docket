@@ -24,7 +24,9 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 		OperationCoreFocusParent,
 		OperationCoreGotoTaskProject,
 		OperationCoreGotoRelation,
-		OperationCorePeek:
+		OperationCorePeek,
+		OperationCorePeekPageDown,
+		OperationCorePeekPageUp:
 		return true
 	default:
 		return false
@@ -74,6 +76,36 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Selection.Visual &&
 			!ctx.Entity.HasChecklistCursor &&
 			CurrentTaskIdentity(ctx).Valid()
+	}
+	// The two paging keys are Peek's own, not the list's: Ctrl+D and Ctrl+U keep
+	// the cursor, and a pane that scrolls beside a list has to say which of the
+	// two a key moves. They name a task target for the same reason Peek does —
+	// the document belongs to the row under the cursor — and they are applicable
+	// only while that document is on screen with somewhere to go, so the footer
+	// never offers a page turn that does nothing.
+	peekPageDown := withTaskTarget(core(
+		OperationCorePeekPageDown,
+		"Page Peek Down",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"scroll peek down",
+		"more task detail",
+	))
+	peekPageDown.Applicability = func(ctx CommandContext) bool {
+		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible && ctx.Peek.CanPageDown
+	}
+	peekPageUp := withTaskTarget(core(
+		OperationCorePeekPageUp,
+		"Page Peek Up",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"scroll peek up",
+		"previous task detail",
+	))
+	peekPageUp.Applicability = func(ctx CommandContext) bool {
+		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible && ctx.Peek.CanPageUp
 	}
 	focusSubtree := withTaskTarget(core(
 		OperationCoreFocusSubtree,
@@ -247,6 +279,8 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		activateGroup,
 		openNote,
 		peek,
+		peekPageDown,
+		peekPageUp,
 		core(OperationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
 		core(OperationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
 		core(OperationCoreSelectPinned, "Select Pinned Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "pinned projects", "switch pinned project"),

@@ -173,6 +173,19 @@ type EntityContext struct {
 	HasNoteCursor bool
 }
 
+// PeekContext reports the inline preview a surface is drawing beneath its
+// cursor. The zero value is the honest answer everywhere else: a surface with
+// no Peek offers no paging, so the two keys stay unbound outside the Outliner
+// without any surface having to say so.
+type PeekContext struct {
+	// Visible reports that Peek is open on a row that has a detail document.
+	Visible bool
+	// CanPageDown and CanPageUp report that the document has another page in
+	// that direction. Both are false for a document that fits its budget.
+	CanPageDown bool
+	CanPageUp   bool
+}
+
 // CommandContext is the complete input to capability-based command
 // availability. Existing commands continue to use Views and Available; new or
 // migrated commands may additionally declare RequiredCapabilities and
@@ -182,6 +195,10 @@ type CommandContext struct {
 	Capabilities CapabilitySet
 	Selection    SelectionContext
 	Entity       EntityContext
+	// Peek is the inline preview's own state, which no other field can stand in
+	// for: the pane is additive chrome over the cursor row rather than an entity,
+	// and its paging keys must be offered only where a body can actually move.
+	Peek PeekContext
 	// CurrentEntity is the typed identity of the focused row. Surfaces whose
 	// rows are not tasks or projects set it directly; task and project surfaces
 	// may leave it empty and let resolution derive it from Entity.

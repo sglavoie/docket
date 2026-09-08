@@ -604,7 +604,7 @@ func TestResumeNotePeekSurvivesNarrowAndResizedDimensions(t *testing.T) {
 	env := newResumeNoteEnv(t)
 	env.setResumeNote(t, env.doingID, "stopped at the CSV mapping")
 	env.focusTask(t, env.doingID)
-	env.press(t, "ctrl+enter")
+	env.press(t, "b")
 	if !env.driver.App().crossOutliner.PeekMode {
 		t.Fatal("Peek did not open")
 	}

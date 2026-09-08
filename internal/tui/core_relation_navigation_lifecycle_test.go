@@ -517,9 +517,9 @@ func TestEscSpendsPeekAndTheSelectionPairBeforeTheTrail(t *testing.T) {
 	env := newRelationLifecycleEnv(t)
 	env.hop(t)
 
-	env.press(t, "ctrl+enter")
+	env.press(t, "b")
 	if !env.outliner().PeekMode {
-		t.Fatal("Ctrl+Enter did not open Peek")
+		t.Fatal("b did not open Peek")
 	}
 	env.press(t, "esc")
 	if env.outliner().PeekMode {

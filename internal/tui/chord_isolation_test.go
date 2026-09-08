@@ -147,12 +147,13 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 // key has to be as silent as an unknown one: a shim that answered w or m would
 // keep two vocabularies alive. t, P, c and C are deliberately absent — the fold
 // family took t back for task subtrees, P went back to Select Project, c went
-// to Add Checklist Item, and C went to quick Add Comment.
+// to Add Checklist Item, and C went to quick Add Comment. b left the table for
+// the same reason: Peek took it off Ctrl+Enter, so it is a live root key.
 func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	app := headerTargetAuditApp(t)
 	for _, name := range []string{
-		"w", "d", "b", "m", ":", "R", ",", "q",
+		"w", "d", "m", ":", "R", ",", "q",
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, binding := range strategy.Bindings {

@@ -161,16 +161,21 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture produced no row for the referring task")
 	}
-	lines := strings.Join(outliner.InlinePeekLinesForRow(row, "  ", 200, nil), "\n")
-	if !strings.Contains(ansi.Strip(lines), "Dependencies 0/2: Alpha #2 Agree the schema (backlog) · Beta #1 Publish the contract (waiting)") {
-		t.Fatalf("Peek did not name the outgoing references:\n%s", ansi.Strip(lines))
+	// The document rather than the page: both entries are in Peek whatever page
+	// the pane happens to be showing, which is the whole of what paging bought.
+	lines := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 200), "\n"))
+	if !strings.Contains(lines, "Dependencies 0/2: Alpha #2 Agree the schema (backlog)") {
+		t.Fatalf("Peek did not name the first outgoing reference:\n%s", lines)
+	}
+	if !strings.Contains(lines, "Beta #1 Publish the contract (waiting)") {
+		t.Fatalf("Peek did not name the second outgoing reference:\n%s", lines)
 	}
 
 	target, ok := findPlanningTaskRow(outliner, "remote")
 	if !ok {
 		t.Fatal("fixture produced no row for the referenced task")
 	}
-	targetLines := ansi.Strip(strings.Join(outliner.InlinePeekLinesForRow(target, "  ", 200, nil), "\n"))
+	targetLines := ansi.Strip(strings.Join(peekDocumentBody(outliner, target, 200), "\n"))
 	if !strings.Contains(targetLines, "Dependents 1: Alpha #1 Wire the importer (doing)") {
 		t.Fatalf("Peek did not name the incoming references:\n%s", targetLines)
 	}
@@ -181,19 +186,30 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 	}
 }
 
-func TestInlinePeekReferenceLineCountsTheOverflow(t *testing.T) {
+// TestInlinePeekReferenceLinesNameEveryEntry is the claim that replaced the
+// old overflow count: a reference list is complete in the document, one entry
+// per row, and the page is what bounds what is on screen. An unavailable entry
+// keeps its stored locator, because a reference whose target cannot be read is
+// exactly the one worth seeing.
+func TestInlinePeekReferenceLinesNameEveryEntry(t *testing.T) {
 	details := []DependencyDetail{
 		{Label: "Alpha #1 One", State: "doing"},
 		{Label: "Alpha #2 Two", State: "backlog"},
 		{Label: "Alpha #3 Three", State: "backlog"},
-		{Label: "Alpha #4 Four", State: "backlog"},
+		{Label: "proj-b:remote", State: DependencyDetailUnavailable},
 	}
-	got := ansi.Strip(inlinePeekReferenceLine("Dependencies", details, 200))
-	want := "Dependencies: Alpha #1 One (doing) · Alpha #2 Two (backlog) · +2 more"
-	if got != want {
-		t.Fatalf("line = %q, want %q", got, want)
+	lines := inlinePeekReferenceLines("Dependencies: ", details, "", 200)
+	if len(lines) != len(details) {
+		t.Fatalf("reference list drew %d rows for %d entries:\n%s",
+			len(lines), len(details), ansi.Strip(strings.Join(lines, "\n")))
 	}
-	if inlinePeekReferenceLine("Dependencies", nil, 200) != "" {
+	if got := ansi.Strip(lines[0]); got != "Dependencies: Alpha #1 One (doing)" {
+		t.Fatalf("first row = %q", got)
+	}
+	if got := ansi.Strip(lines[3]); got != "              proj-b:remote (unavailable)" {
+		t.Fatalf("unavailable row = %q", got)
+	}
+	if inlinePeekReferenceLines("Dependencies: ", nil, "", 200) != nil {
 		t.Fatal("an empty reference list produced a line")
 	}
 }

@@ -254,9 +254,14 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// never asks what the cursor names.
 		"r":           operation.OperationTaskSetResumeNote,
 		"shift+enter": operation.OperationCoreFocusParent,
-		"ctrl+enter":  operation.OperationCorePeek,
-		"/":           operation.OperationCoreScopeSearch,
-		"v":           operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
+		// Peek reads as a root letter now rather than a modified Enter, and its two
+		// page turns spell the same pair every other pageable body on the product
+		// answers to.
+		"b":      operation.OperationCorePeek,
+		"ctrl+f": operation.OperationCorePeekPageDown,
+		"ctrl+b": operation.OperationCorePeekPageUp,
+		"/":      operation.OperationCoreScopeSearch,
+		"v":      operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
 		"ctrl+a": operation.OperationCoreSelectAll,
 		"P":      operation.OperationCoreSelectProject,
 		"\\":     operation.OperationCoreNamedLenses,
@@ -334,9 +339,11 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// has since been spent on the menu bar and is asserted in direct above, so
 	// only its two neighbors are still owed silence: either one alone would
 	// advertise half of a jump the z chord already owns. C is likewise absent
-	// now: quick Add Comment took it, and direct above is where it is asserted.
+	// now: quick Add Comment took it, and direct above is where it is asserted. b
+	// has likewise left this list: Peek took it off Ctrl+Enter, and direct above
+	// is where it is asserted.
 	for _, removed := range []string{
-		"b", "d", "g", "z", ",", "m", ":", "R", "ctrl+esc",
+		"d", "g", "z", ",", "m", ":", "R", "ctrl+esc",
 		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {

@@ -18,7 +18,11 @@ act. `H` and `L` stay silent, and they are the pair that is not free to return,
 since either one alone would advertise half of a jump the `z` chord already
 owns.
 `C` is a fourth name back with a new act: it appends a comment to the cursor
-task without leaving the list, the write beside the read `;` already opens.
+task without leaving the list, the write beside the read `;` already opens. `b`
+is a fifth: it toggles Peek, and it is the one return that retired a key in
+exchange, since `Ctrl+Enter` gave Peek up to it and is now silent with no alias
+back. A letter earns a place beside `Enter` and `Shift+Enter`, which zoom and
+widen, better than a modifier does.
 `d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is
 the scroll chord prefix. `$` joins them as a chord prefix rather than a key of
 its own. Select Project holds the same line: `n` no longer creates a project,

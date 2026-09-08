@@ -89,7 +89,7 @@ a due date rather than competing with the row's one hero attribute.
 
 Repeated deferral starts at `DeferCount >= 3`. The row renders the supporting
 segment as `deferred ×N`; Peek appends the identical token to
-`inlinePeekDatesLine`, so it consumes no new line in the five-line drop order.
+`inlinePeekDatesLine`, so it opens no section of its own in the Peek body.
 The row segment is the first `indicatorDropLadder` entry and therefore yields
 before every operational date or age signal under width pressure.
 

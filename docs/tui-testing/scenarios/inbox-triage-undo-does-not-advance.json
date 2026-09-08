@@ -10,7 +10,7 @@
     { "type": "key", "label": "open workflow actions", "key": "$" },
     { "type": "key", "label": "triage the first task to Backlog", "key": "b" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Backlog: Alpha intake ready for triage · u undo" },
-    { "type": "key", "label": "peek at the row the advance landed on", "key": "ctrl+enter" },
+    { "type": "key", "label": "peek at the row the advance landed on", "key": "b" },
     { "type": "assert", "label": "the triage advanced onto the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
     { "type": "key", "label": "undo the triage", "key": "u" },
     { "type": "wait" },

@@ -45,6 +45,8 @@ const (
 	OperationCoreZoomSection        OperationID = "tui.core.zoom-section"
 	OperationCoreOpenNote           OperationID = "tui.core.open-note"
 	OperationCorePeek               OperationID = "tui.core.peek"
+	OperationCorePeekPageDown       OperationID = "tui.core.peek-page-down"
+	OperationCorePeekPageUp         OperationID = "tui.core.peek-page-up"
 	OperationCoreScopeSearch        OperationID = "tui.core.scope-search"
 	OperationCoreSelectProject      OperationID = "tui.core.select-project"
 	OperationCoreMultiSelect        OperationID = "tui.core.multi-select"

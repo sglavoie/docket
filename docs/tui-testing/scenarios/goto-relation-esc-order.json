@@ -23,7 +23,7 @@
     { "type": "key", "key": "esc" },
     { "type": "assert", "label": "closing the menu spends no axis", "assert": "not_contains", "value": "Renew passport" },
 
-    { "type": "key", "label": "Peek is the narrowest axis in the cascade", "key": "ctrl+enter" },
+    { "type": "key", "label": "Peek is the narrowest axis in the cascade", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Dependents" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },

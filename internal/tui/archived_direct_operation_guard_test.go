@@ -213,7 +213,7 @@ func TestArchivedTaskKeepsReadOnlyDirectKeys(t *testing.T) {
 	env := newArchivedGuardEnv(t)
 	env.focusTask(t, env.taskID(t, env.archived, archivedGuardArchivedTaskTitle))
 
-	env.act(t, "ctrl+enter")
+	env.act(t, "b")
 
 	if err := env.driver.App().feedback.err; err != nil {
 		t.Fatalf("peek on an archived task failed: %v", err)

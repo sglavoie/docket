@@ -7,7 +7,7 @@
     { "type": "assert", "label": "a promoted child wears the bare ancestor marker", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "key", "label": "step onto the promoted Doing child", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "Peek names the chain the row reduced to a marker", "key": "ctrl+enter" },
+    { "type": "key", "label": "Peek names the chain the row reduced to a marker", "key": "b" },
     { "type": "assert", "label": "User authentication starts under Launch platform", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close Peek", "key": "esc" },
@@ -30,7 +30,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "Peek on the deepest adopted descendant", "key": "ctrl+enter" },
+    { "type": "key", "label": "Peek on the deepest adopted descendant", "key": "b" },
     { "type": "assert", "label": "the adopted task kept its own subtree", "assert": "contains", "value": "Parent: Consolidate follow-ups › User authentication" },
     { "type": "assert", "label": "the previous parent no longer owns it", "assert": "not_contains", "value": "Parent: Launch platform" },
     { "type": "key", "label": "Peek follows the cursor to the second adopted task", "key": "end" },
@@ -48,7 +48,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "ctrl+enter" },
+    { "type": "key", "key": "b" },
     { "type": "assert", "label": "the original chain is back", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "key", "key": "esc" },
 
@@ -58,7 +58,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "ctrl+enter" },
+    { "type": "key", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Parent: Consolidate follow-ups › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

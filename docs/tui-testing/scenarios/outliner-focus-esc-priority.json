@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
     { "type": "key", "label": "pop only the nested Focus level", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
-    { "type": "key", "label": "open Peek before starting temporary search", "key": "ctrl+enter" },
+    { "type": "key", "label": "open Peek before starting temporary search", "key": "b" },
     { "type": "key", "label": "search only inside the focused branch", "key": "/" },
     { "type": "text", "text": "login" },
     { "type": "key", "label": "accept the temporary search projection", "key": "enter" },

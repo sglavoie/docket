@@ -135,7 +135,6 @@ tab shift+tab enter space esc
 up down left right home end pgup pgdown
 ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+p ctrl+y ctrl+c
 ctrl+f ctrl+b
-ctrl+enter
 leftshift rightshift leftctrl rightctrl leftalt rightalt
 leftsuper rightsuper leftmeta rightmeta lefthyper righthyper
 capslock numlock scrolllock
@@ -169,7 +168,8 @@ $i $b $n $t $g $w $p $m $d $c    workflow chord
 & ;                              attachments and comments panels
 y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
-Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
+Enter Shift+Enter b              Focus, widen focus, and Peek
+Ctrl+F/Ctrl+B                    page the open Peek
 x                                tick the checklist item under the cursor
 P Q \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
 f!0-3 f$ fc f# fr f@ fh fs f* fx filters

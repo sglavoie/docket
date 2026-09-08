@@ -25,7 +25,7 @@ func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
 		t.Fatalf("fixture tags share one chip color; pick two that differ")
 	}
 	row := listsurface.RenderTruncatedTags(task.Tags, 2, 8)
-	peek := inlinePeekTagsLine(task, 80)
+	peek := strings.Join(inlinePeekTagsLines(task, "", 80), "\n")
 
 	for _, tag := range task.Tags {
 		chip := theme.TagChipStyle(tag).Render("#" + tag)
@@ -197,7 +197,7 @@ func TestRowAndPeekAgreeOnTagOrder(t *testing.T) {
 	// line's first two — a row is a prefix of Peek, never a different selection.
 	task := &models.Task{ID: "task", Tags: []string{"bug", "ux", "billing"}}
 	row := ansi.Strip(listsurface.RenderTruncatedTags(task.Tags, 2, 8))
-	peek := ansi.Strip(inlinePeekTagsLine(task, 120))
+	peek := ansi.Strip(strings.Join(inlinePeekTagsLines(task, "", 120), "\n"))
 
 	if want := "Tags: #billing #ux #bug"; peek != want {
 		t.Fatalf("Peek tags = %q, want %q", peek, want)

@@ -154,7 +154,7 @@ and the rare.
 | `/` `f` `F` `o` | search · row facets · which projects load · sort |
 | `P` `Ctrl+P` `\` | project scope · pinned projects · named lenses |
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
-| `&` `;` `Ctrl+Enter` `O` | attachments · comments · Peek · outline-edit the project |
+| `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |
 | `y`/`Y` `u`/`Ctrl+R` `Ctrl+N` `T` | copy · undo and redo · Notes · theme |
 | `Space` `?` | menu · the generated key reference for this surface |
 

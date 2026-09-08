@@ -92,7 +92,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// ahead of it, so the bar's rank buys its place without costing a required one.
 	wantWorkflow := []string{
 		"$ workflow", "! priority", "@ date", "# tags/context", "Space actions",
-		"M menu", "v select", "a capture", "Enter focus", "Ctrl+Enter peek", "/ search", "? help",
+		"M menu", "v select", "a capture", "Enter focus", "b peek", "/ search", "? help",
 	}
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
 		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)

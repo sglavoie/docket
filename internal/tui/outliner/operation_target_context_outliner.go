@@ -42,6 +42,7 @@ func (m *OutlinerModel) OperationCommandContext() operation.CommandContext {
 	ctx.Entity.HasSectionHeaderCursor = m.CursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
 	_, ctx.Entity.HasNoteCursor = m.CursorNoteIdentity()
+	ctx.Peek = m.PeekCommandContext()
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
 	counts := m.SelectionCounts()

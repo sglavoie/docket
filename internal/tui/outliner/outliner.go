@@ -137,6 +137,12 @@ type OutlinerModel struct {
 	// Peek mode follows the cursor and shows additive task detail inline.
 	PeekMode bool
 
+	// peek is the one page of that detail Peek is showing. It is session-only
+	// and self-invalidating: inline_peek_paging.go owns the cluster, and the key
+	// beside the page is what makes a different task, a changed detail, or a
+	// resize read as the first page without any writer resetting it.
+	peek peekPageState
+
 	// queryReadout opens the narrowing stack in the status strip. Its own file
 	// carries the whole of that sub-state; nothing here can go stale, because the
 	// rows are read off the live axes each frame.

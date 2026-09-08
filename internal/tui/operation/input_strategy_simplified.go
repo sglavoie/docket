@@ -96,7 +96,15 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open", SharedKey: true},
 			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open note", SharedKey: true},
 			{OperationID: OperationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
-			{OperationID: OperationCorePeek, Keys: []string{"ctrl+enter"}, DisplayKey: "Ctrl+Enter", FooterRank: 10, FooterLabel: "peek"},
+			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 10, FooterLabel: "peek"},
+			// Ctrl+F/B page the detail document rather than the list, exactly as
+			// they do beside the Hub's preview: Ctrl+D/U own the list cursor here,
+			// and the pane scrolls independently of the rows it hangs under. Neither
+			// carries a FooterRank — the Peek guidance advertises them where a body
+			// can actually move, and a rank would spend a column on a key that is
+			// inert on every other row.
+			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
+			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
 			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 10, FooterLabel: "search"},
 			{OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 7, FooterLabel: "select"},
 			{OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},

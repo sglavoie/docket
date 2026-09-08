@@ -9,16 +9,31 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+// peekDocumentBody is the complete detail document for a row, independent of
+// whichever page a render happens to be showing. A test asking whether Peek
+// *holds* something reads this; a test asking what is on screen reads a page.
+func peekDocumentBody(m *OutlinerModel, row OutlinerRow, width int) []string {
+	return m.inlinePeekDocumentForRow(row, "  ", width, chrome.WorstCaseColumnLayout(width)).Body
+}
+
+// peekFirstPage is the first page of a document built straight from options,
+// which is what the renderer and the viewport measurement both consume. Paging
+// past it is inline_peek_paging_test.go's subject, not this file's.
+func peekFirstPage(opts inlinePeekOptions) []string {
+	return inlinePeekDocumentFor(opts).Lines(0)
+}
+
 func TestInlinePeekNilAndEmptyTask(t *testing.T) {
-	if lines := inlinePeekLines(inlinePeekOptions{}); lines != nil {
+	if lines := peekFirstPage(inlinePeekOptions{}); lines != nil {
 		t.Fatalf("nil task lines = %v, want nil", lines)
 	}
 
-	lines := inlinePeekLines(inlinePeekOptions{
+	lines := peekFirstPage(inlinePeekOptions{
 		Task:   &models.Task{},
 		Indent: "  ",
 		Width:  40,
@@ -28,8 +43,11 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 	}
 }
 
-func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
-	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
+// TestInlinePeekPageIsBoundedWhileTheDocumentIsNot is the split session 4 bought:
+// the document holds every detail row the task has, and the five-row budget
+// decides only how many of them are on screen. One of those five goes to the
+// counter as soon as anything is off screen.
+func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
 		ShortID:     99,
@@ -44,30 +62,37 @@ func TestInlinePeekShowsAdditiveContentWithinFiveLines(t *testing.T) {
 			{Text: "Third item"},
 		},
 	}
-	project.Tasks = []*models.Task{task}
-	project.BuildTaskTree()
 
 	const width = 64
-	rendered := inlinePeekLines(inlinePeekOptions{
-		Task: task, Indent: "    ", Width: width,
-	})
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "    ", Width: width})
+	if !doc.Paged() {
+		t.Fatalf("a description this long fit in one page:\n%s", ansi.Strip(strings.Join(doc.Body, "\n")))
+	}
+	if len(doc.Body) <= inlinePeekBodyRows {
+		t.Fatalf("document body = %d rows, want more than the %d-row budget", len(doc.Body), inlinePeekBodyRows)
+	}
+
+	rendered := doc.Lines(0)
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if len(rendered) != 4 || len(rendered) > inlinePeekMaxLines {
-		t.Fatalf("Peek line count = %d, want 4 within cap %d:\n%s", len(rendered), inlinePeekMaxLines, plain)
+	if len(rendered) != inlinePeekBodyRows {
+		t.Fatalf("first page = %d rows, want %d:\n%s", len(rendered), inlinePeekBodyRows, plain)
 	}
-	if got := strings.Count(plain, "\n"); got != 3 {
-		t.Fatalf("description rows = %d, want the raised budget of %d:\n%s", got, inlinePeekDescriptionRows, plain)
+	if !strings.HasPrefix(ansi.Strip(rendered[0]), "    Description: ") {
+		t.Fatalf("page does not lead with the description:\n%s", plain)
 	}
-	for _, want := range []string{
-		"Description:", "Comments: 1",
-	} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("Peek missing %q:\n%s", want, plain)
-		}
+	if !strings.Contains(ansi.Strip(rendered[len(rendered)-1]), "0 above · ") {
+		t.Fatalf("paged Peek did not reserve a counter row:\n%s", plain)
+	}
+
+	// The comment count is in the document even though the description pushed it
+	// off the first page, and the checklist is nowhere: those stay outline rows.
+	whole := ansi.Strip(strings.Join(doc.Body, "\n"))
+	if !strings.Contains(whole, "Comments: 1") {
+		t.Fatalf("document dropped the comment count:\n%s", whole)
 	}
 	for _, banned := range []string{"#41", "#42", "#99", "State:", "Priority:", "Due:", "Checklist:", "First item"} {
-		if strings.Contains(plain, banned) {
-			t.Fatalf("Peek repeated %q:\n%s", banned, plain)
+		if strings.Contains(whole, banned) {
+			t.Fatalf("Peek repeated %q:\n%s", banned, whole)
 		}
 	}
 	for lineNumber, line := range rendered {
@@ -131,13 +156,16 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 	}
 }
 
-// TestInlinePeekSpendsTheCapOnDescriptionAndDates locks the drop order once the
-// checklist line is gone: description takes three rows, the dates line sits
-// directly beneath it, and the tail cut sheds whatever no longer fits.
-func TestInlinePeekSpendsTheCapOnDescriptionAndDates(t *testing.T) {
+// TestInlinePeekBodyKeepsItsContentOrder locks what replaced the old drop
+// ladder. Nothing is shed to make room any more, so the body's only decision is
+// order: resume, description, dates, attachments, comments, references,
+// context, tags — and the checklist stays out of it entirely.
+func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
+		ResumeNote:  "Left mid-refactor",
 		Description: strings.Repeat("Wrapped description content ", 12),
+		Context:     "platform-core",
 		CreatedAt:   time.Now().Add(-5 * 24 * time.Hour),
 		UpdatedAt:   time.Now().Add(-time.Hour),
 		Attachments: []models.Attachment{{Filename: "spec.pdf"}},
@@ -146,21 +174,32 @@ func TestInlinePeekSpendsTheCapOnDescriptionAndDates(t *testing.T) {
 		Checklist:   []models.ChecklistItem{{Text: "First item"}},
 	}
 
-	rendered := inlinePeekLines(inlinePeekOptions{Task: task, Width: 80})
-	if len(rendered) != inlinePeekMaxLines {
-		t.Fatalf("Peek line count = %d, want %d", len(rendered), inlinePeekMaxLines)
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 80})
+	body := ansi.Strip(strings.Join(doc.Body, "\n"))
+	order := []string{
+		"Resume: Left mid-refactor",
+		"Description: Wrapped description content",
+		"created 5d · updated 1h",
+		"Attachments: spec.pdf",
+		"Comments: 1",
+		"Context: [platform-core]",
+		"Tags: #backend",
 	}
-	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if !strings.Contains(plain, "created 5d · updated 1h") {
-		t.Fatalf("Peek dropped the dates line:\n%s", plain)
-	}
-	if !strings.Contains(plain, "Attachments: spec.pdf") {
-		t.Fatalf("Peek dropped the attachments line:\n%s", plain)
+	cursor := 0
+	for _, want := range order {
+		found := strings.Index(body[cursor:], want)
+		if found < 0 {
+			t.Fatalf("body is missing %q or has it out of order at %d:\n%s", want, cursor, body)
+		}
+		cursor += found + len(want)
 	}
 	for _, banned := range []string{"Checklist:", "First item"} {
-		if strings.Contains(plain, banned) {
-			t.Fatalf("Peek still renders %q:\n%s", banned, plain)
+		if strings.Contains(body, banned) {
+			t.Fatalf("Peek still renders %q:\n%s", banned, body)
 		}
+	}
+	if len(doc.Lines(0)) != inlinePeekBodyRows {
+		t.Fatalf("page = %d rows, want %d", len(doc.Lines(0)), inlinePeekBodyRows)
 	}
 }
 
@@ -172,7 +211,7 @@ func TestInlinePeekCompletesAClippedTitle(t *testing.T) {
 	const tail = "very large project archives over slow connections"
 	task := &models.Task{ID: "task", Title: head + tail}
 
-	rendered := inlinePeekLines(inlinePeekOptions{
+	rendered := peekFirstPage(inlinePeekOptions{
 		Task: task, TitleOverflow: tail, Indent: "  ", Width: 80,
 	})
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
@@ -194,10 +233,10 @@ func TestInlinePeekCompletesAClippedTitle(t *testing.T) {
 	}
 }
 
-// TestInlinePeekTitleContinuationRaisesTheCap proves the continuation displaces
-// nothing: with a three-row description beside it, the dates line still renders
-// because the cap grew by the continuation rows rather than absorbing them.
-func TestInlinePeekTitleContinuationRaisesTheCap(t *testing.T) {
+// TestInlinePeekTitleContinuationIsHeaderRatherThanBody proves the continuation
+// displaces nothing and pages with nothing: it sits above the body budget, so a
+// paged document still spends all five of its rows on detail beneath it.
+func TestInlinePeekTitleContinuationIsHeaderRatherThanBody(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
 		Title:       "Long title",
@@ -209,17 +248,29 @@ func TestInlinePeekTitleContinuationRaisesTheCap(t *testing.T) {
 	}
 
 	const overflow = "the remainder the row had no width for"
-	rendered := inlinePeekLines(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 80})
-	if len(rendered) != inlinePeekMaxLines+1 {
-		t.Fatalf("Peek line count = %d, want %d", len(rendered), inlinePeekMaxLines+1)
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 80})
+	if len(doc.Header) != 1 {
+		t.Fatalf("header = %d rows, want the continuation alone", len(doc.Header))
 	}
-	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if !strings.HasPrefix(plain, overflow) {
-		t.Fatalf("continuation is not the first Peek row:\n%s", plain)
+	rendered := doc.Lines(0)
+	if len(rendered) != len(doc.Header)+inlinePeekBodyRows {
+		t.Fatalf("page = %d rows, want %d header rows plus the %d-row budget",
+			len(rendered), len(doc.Header), inlinePeekBodyRows)
 	}
+	if !strings.HasPrefix(ansi.Strip(strings.Join(rendered, "\n")), overflow) {
+		t.Fatalf("continuation is not the first Peek row:\n%s", ansi.Strip(strings.Join(rendered, "\n")))
+	}
+
+	// The continuation is still the first row on the last page: header does not
+	// scroll out from under the body it heads.
+	last := doc.Lines(doc.PageCount() - 1)
+	if !strings.HasPrefix(ansi.Strip(last[0]), overflow) {
+		t.Fatalf("the continuation paged away:\n%s", ansi.Strip(strings.Join(last, "\n")))
+	}
+	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	for _, want := range []string{"created 5d · updated 1h", "Attachments: spec.pdf"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("continuation displaced %q:\n%s", want, plain)
+		if !strings.Contains(body, want) {
+			t.Fatalf("continuation displaced %q:\n%s", want, body)
 		}
 	}
 }
@@ -230,23 +281,23 @@ func TestInlinePeekTitleContinuationRaisesTheCap(t *testing.T) {
 func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Child"}
 
-	withParent := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{
+	withParent := ansi.Strip(strings.Join(peekFirstPage(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
 	}), "\n"))
 	if withParent != "Parent: Launch platform › User authentication" {
 		t.Fatalf("parent line = %q", withParent)
 	}
 
-	withoutParent := inlinePeekLines(inlinePeekOptions{Task: task, Width: 80})
+	withoutParent := peekFirstPage(inlinePeekOptions{Task: task, Width: 80})
 	if got := ansi.Strip(strings.Join(withoutParent, "\n")); got != "No additional details" {
 		t.Fatalf("root task Peek gained a parent line: %q", got)
 	}
 }
 
-// TestInlinePeekParentLineRaisesTheCap proves the parent line displaces nothing:
-// beside a three-row description the tags line still renders, because the cap
-// grew by the parent row exactly as it does for the title continuation.
-func TestInlinePeekParentLineRaisesTheCap(t *testing.T) {
+// TestInlinePeekParentLineIsHeaderRatherThanBody is the ancestor chain's half of
+// the same claim: it heads the pane beside the continuation and takes nothing
+// from the body's budget.
+func TestInlinePeekParentLineIsHeaderRatherThanBody(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
 		Title:       "Child",
@@ -257,17 +308,19 @@ func TestInlinePeekParentLineRaisesTheCap(t *testing.T) {
 		Comments:    []*models.Comment{{Text: "Decision"}},
 	}
 
-	rendered := inlinePeekLines(inlinePeekOptions{Task: task, Breadcrumb: "Parent ›", Width: 80})
-	if len(rendered) != inlinePeekMaxLines+1 {
-		t.Fatalf("Peek line count = %d, want %d", len(rendered), inlinePeekMaxLines+1)
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Breadcrumb: "Parent ›", Width: 80})
+	rendered := doc.Lines(0)
+	if len(rendered) != len(doc.Header)+inlinePeekBodyRows {
+		t.Fatalf("page = %d rows, want %d header rows plus the %d-row budget",
+			len(rendered), len(doc.Header), inlinePeekBodyRows)
 	}
-	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if !strings.HasPrefix(plain, "Parent: Parent\n") {
-		t.Fatalf("parent line is not the first Peek row:\n%s", plain)
+	if !strings.HasPrefix(ansi.Strip(strings.Join(rendered, "\n")), "Parent: Parent\n") {
+		t.Fatalf("parent line is not the first Peek row:\n%s", ansi.Strip(strings.Join(rendered, "\n")))
 	}
+	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	for _, want := range []string{"created 5d · updated 1h", "Attachments: spec.pdf"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("the parent line displaced %q:\n%s", want, plain)
+		if !strings.Contains(body, want) {
+			t.Fatalf("the parent line displaced %q:\n%s", want, body)
 		}
 	}
 }
@@ -276,11 +329,11 @@ func TestInlinePeekTitleContinuationEllipsizesPastItsBound(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Long title"}
 	overflow := strings.Repeat("continuation ", 40)
 
-	rendered := inlinePeekLines(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 40})
-	if len(rendered) != inlinePeekTitleRows {
-		t.Fatalf("continuation rows = %d, want %d", len(rendered), inlinePeekTitleRows)
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, TitleOverflow: overflow, Width: 40})
+	if len(doc.Header) != inlinePeekTitleRows {
+		t.Fatalf("continuation rows = %d, want %d", len(doc.Header), inlinePeekTitleRows)
 	}
-	if plain := ansi.Strip(rendered[len(rendered)-1]); !strings.HasSuffix(plain, "…") {
+	if plain := ansi.Strip(doc.Header[len(doc.Header)-1]); !strings.HasSuffix(plain, "…") {
 		t.Fatalf("bounded continuation missing ellipsis: %q", plain)
 	}
 }
@@ -295,9 +348,9 @@ func TestInlinePeekWithoutOverflowIsUnchanged(t *testing.T) {
 		Tags:        []string{"backend"},
 	}
 	opts := inlinePeekOptions{Task: task, Indent: "  ", Width: 60}
-	withEmpty := inlinePeekLines(opts)
+	withEmpty := peekFirstPage(opts)
 	opts.TitleOverflow = ""
-	if got := inlinePeekLines(opts); strings.Join(got, "\n") != strings.Join(withEmpty, "\n") {
+	if got := peekFirstPage(opts); strings.Join(got, "\n") != strings.Join(withEmpty, "\n") {
 		t.Fatalf("empty overflow changed the Peek block")
 	}
 	if strings.Contains(ansi.Strip(strings.Join(withEmpty, "\n")), "Short") {
@@ -305,52 +358,69 @@ func TestInlinePeekWithoutOverflowIsUnchanged(t *testing.T) {
 	}
 }
 
-func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
+func TestInlinePeekWrapsTagsRatherThanElidingThem(t *testing.T) {
 	task := &models.Task{
 		ID:   "task",
 		Tags: []string{"backend", "security", "type:authentication"},
 	}
 
-	styled := inlinePeekTagsLine(task, 80)
+	styled := inlinePeekTagsLines(task, "", 80)
 	wantStyled := theme.MutedStyle.Render("Tags: ") +
 		theme.TagChipStyle("backend").Render("#backend") + " " +
 		theme.TagChipStyle("security").Render("#security") + " " +
 		theme.TagChipStyle("type:authentication").Render("#type:authentication")
-	if styled != wantStyled {
+	if len(styled) != 1 || styled[0] != wantStyled {
 		t.Fatalf("styled Peek tags = %q, want %q", styled, wantStyled)
 	}
 
+	// Narrow enough that the chips cannot share a row. Every tag is still named:
+	// the chips hang under the label instead of being cut off behind an ellipsis.
 	const width = 32
-	lines := inlinePeekLines(inlinePeekOptions{Task: task, Indent: "  ", Width: width})
-	if len(lines) != 1 {
-		t.Fatalf("tags-only Peek lines = %d, want 1", len(lines))
+	lines := peekFirstPage(inlinePeekOptions{Task: task, Indent: "  ", Width: width})
+	plain := ansi.Strip(strings.Join(lines, "\n"))
+	if len(lines) < 2 {
+		t.Fatalf("narrow tags did not wrap: %q", plain)
 	}
-	plain := ansi.Strip(lines[0])
-	if !strings.HasPrefix(plain, "  Tags: #backend #security") {
+	if !strings.HasPrefix(plain, "  Tags: #backend") {
 		t.Fatalf("Peek tags = %q", plain)
 	}
-	if !strings.HasSuffix(plain, "…") {
-		t.Fatalf("truncated Peek tags missing ellipsis: %q", plain)
+	for _, want := range []string{"#backend", "#security", "#type:authentication"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("wrapped tags dropped %q: %q", want, plain)
+		}
 	}
-	if got := lipgloss.Width(lines[0]); got > width {
-		t.Fatalf("Peek tags width = %d, want <= %d", got, width)
+	if strings.Contains(plain, "…") {
+		t.Fatalf("wrapped tags were also elided: %q", plain)
+	}
+	for lineNumber, line := range lines {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("tag line %d width = %d, want <= %d", lineNumber, got, width)
+		}
 	}
 }
 
-func TestInlinePeekFoldsOnlyTruncatedContextIntoTagsLine(t *testing.T) {
+// TestInlinePeekNamesTheContextInItsOwnSection replaced the old fold into the
+// tags line. The row reserves a context segment at every width and truncates it
+// there, so Peek shows the whole value on a line of its own whether or not the
+// row could fit it.
+func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
 	short := &models.Task{Context: "platform"}
-	if line := inlinePeekTagsLine(short, 80); line != "" {
-		t.Fatalf("short context was duplicated in Peek: %q", ansi.Strip(line))
+	if got := ansi.Strip(strings.Join(inlinePeekContextLines(short, "", 80), "\n")); got != "Context: [platform]" {
+		t.Fatalf("short context line = %q", got)
 	}
 
 	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
-	plain := ansi.Strip(inlinePeekTagsLine(long, 80))
-	if plain != "Tags: [platform-core] #bug" {
-		t.Fatalf("long context Peek line = %q", plain)
+	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80}).Body, "\n"))
+	if body != "Context: [platform-core]\nTags: #bug" {
+		t.Fatalf("context and tags body = %q", body)
+	}
+
+	if inlinePeekContextLines(&models.Task{}, "", 80) != nil {
+		t.Fatal("a task with no context grew a Context line")
 	}
 }
 
-func TestInlinePeekShowsAttachmentNames(t *testing.T) {
+func TestInlinePeekNamesEveryAttachment(t *testing.T) {
 	task := &models.Task{
 		Attachments: []models.Attachment{
 			{Filename: "design-spec.pdf"},
@@ -359,15 +429,29 @@ func TestInlinePeekShowsAttachmentNames(t *testing.T) {
 		},
 	}
 
-	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{Task: task, Width: 80}), "\n"))
-	for _, want := range []string{"Attachments: design-spec.pdf · GH acme/roadmap#123 · +1 more"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("Peek missing %q:\n%s", want, plain)
+	lines := inlinePeekAttachmentsLines(task, "", 80)
+	if len(lines) != 3 {
+		t.Fatalf("attachment rows = %d, want one per attachment:\n%s", len(lines), ansi.Strip(strings.Join(lines, "\n")))
+	}
+	want := []string{
+		"Attachments: design-spec.pdf",
+		"             GH acme/roadmap#123",
+		"             notes.md",
+	}
+	for i, expected := range want {
+		if got := ansi.Strip(lines[i]); got != expected {
+			t.Fatalf("attachment row %d = %q, want %q", i, got, expected)
 		}
+	}
+	if strings.Contains(ansi.Strip(strings.Join(lines, "\n")), "more") {
+		t.Fatalf("attachments still counted an overflow instead of naming it")
 	}
 }
 
-func TestInlinePeekTruncatesLongCategoryLines(t *testing.T) {
+// TestInlinePeekWrapsALongAttachmentNameInsteadOfEliding is the wide-character
+// half of the same claim: a name longer than the pane hangs under its label over
+// as many rows as it needs, and no row outgrows the pane.
+func TestInlinePeekWrapsALongAttachmentNameInsteadOfEliding(t *testing.T) {
 	task := &models.Task{
 		ID: "task",
 		Attachments: []models.Attachment{
@@ -376,14 +460,45 @@ func TestInlinePeekTruncatesLongCategoryLines(t *testing.T) {
 			{Filename: "third.pdf"},
 		},
 	}
-	lines := inlinePeekLines(inlinePeekOptions{Task: task, Indent: "  ", Width: 24})
-	if len(lines) != 1 {
-		t.Fatalf("attachments-only Peek lines = %d, want 1", len(lines))
+	const width = 40
+	lines := inlinePeekAttachmentsLines(task, "  ", width-2)
+	if len(lines) < 5 {
+		t.Fatalf("long attachment name did not wrap: %d rows", len(lines))
 	}
-	if !strings.Contains(ansi.Strip(lines[0]), "…") {
-		t.Fatalf("truncated attachments missing ellipsis: %q", ansi.Strip(lines[0]))
+	plain := ansi.Strip(strings.Join(lines, "\n"))
+	for _, want := range []string{"second.pdf", "third.pdf"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("wrapped attachments dropped %q:\n%s", want, plain)
+		}
 	}
-	if got := lipgloss.Width(lines[0]); got > 24 {
-		t.Fatalf("truncated attachments width = %d", got)
+	if strings.Contains(plain, "…") {
+		t.Fatalf("wrapped attachments were also elided:\n%s", plain)
+	}
+	if got := strings.Count(plain, "界"); got != 40 {
+		t.Fatalf("wrapped attachment kept %d of its 40 wide characters:\n%s", got, plain)
+	}
+	for lineNumber, line := range lines {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("attachment row %d width = %d, want <= %d: %q", lineNumber, got, width, ansi.Strip(line))
+		}
+	}
+
+	// The narrowest pane the product supports has room for less than one name.
+	// The claim there is only that nothing is elided and nothing overflows: a
+	// name too long for a row is broken across rows, never cut short.
+	for _, narrow := range []int{20, 24} {
+		narrowLines := inlinePeekAttachmentsLines(task, "  ", narrow-2)
+		narrowPlain := ansi.Strip(strings.Join(narrowLines, "\n"))
+		if strings.Contains(narrowPlain, "…") {
+			t.Fatalf("width %d elided an attachment:\n%s", narrow, narrowPlain)
+		}
+		if got := strings.Count(narrowPlain, "界"); got != 40 {
+			t.Fatalf("width %d kept %d of the 40 wide characters:\n%s", narrow, got, narrowPlain)
+		}
+		for lineNumber, line := range narrowLines {
+			if got := lipgloss.Width(line); got > narrow {
+				t.Fatalf("width %d row %d = %d columns: %q", narrow, lineNumber, got, ansi.Strip(line))
+			}
+		}
 	}
 }

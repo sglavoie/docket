@@ -15,7 +15,7 @@
     { "type": "key", "label": "triage the nested parent to Backlog", "key": "b" },
     { "type": "assert", "label": "the status names the departing parent", "assert": "status_contains", "value": "Move to Backlog: Beta intake parent awaiting triage · u undo" },
     { "type": "assert", "label": "the surviving child was promoted into the parent's place", "assert": "contains", "value": "[triage-beta] (2)" },
-    { "type": "key", "label": "peek at whatever the advance landed on", "key": "ctrl+enter" },
+    { "type": "key", "label": "peek at whatever the advance landed on", "key": "b" },
     { "type": "assert", "label": "Peek names the promoted child, not the trailing remainder", "assert": "contains", "value": "Parent: Beta intake parent awaiting triage" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "widest committed size", "width": 160, "height": 55 },

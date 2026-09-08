@@ -115,10 +115,11 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
 	// s and t are absent: the three-toggle fold family took both back, s for
-	// section headers and t for task subtrees.
+	// section headers and t for task subtrees. b is absent too, because Peek
+	// answers to it now.
 	for _, retired := range []string{
 		"q", "i", "|", "ctrl+x",
-		":", "R", "ctrl+esc", "m", "b", ",",
+		":", "R", "ctrl+esc", "m", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {

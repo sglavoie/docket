@@ -15,7 +15,7 @@
     { "type": "key", "label": "the flat ranked list is the one a jump leaves", "key": "o" },
     { "type": "key", "key": "r" },
     { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
-    { "type": "key", "label": "Peek keeps the count on its existing dates line", "key": "ctrl+enter" },
+    { "type": "key", "label": "Peek keeps the count on its existing dates line", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "deferred ×3" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -60,7 +60,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Set Dependencies: #1 Alpha migration kickoff" },
     { "type": "assert", "label": "the stranded reference is gone, so the count is gone with it", "assert": "not_contains", "value": "Alpha migration kickoff ~0/1?" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
-    { "type": "key", "key": "ctrl+enter" },
+    { "type": "key", "key": "b" },
     { "type": "assert", "label": "Peek names no reference line; the one match left is the strip's ledger action", "assert": "count_contains", "value": "Dependencies", "count": 1 },
     { "type": "assert", "assert": "not_contains", "value": "unavailable" },
     { "type": "assert", "assert": "no_layout_issues" }

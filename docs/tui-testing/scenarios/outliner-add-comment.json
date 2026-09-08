@@ -37,10 +37,10 @@
     { "type": "assert", "label": "the row carries the comment the commit produced", "assert": "contains", "value": "▪ 1" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "Peek names it too, on its own line", "key": "ctrl+enter" },
+    { "type": "key", "label": "Peek names it too, on its own line", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Comments: 1" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "close Peek", "key": "ctrl+enter" },
+    { "type": "key", "label": "close Peek", "key": "b" },
 
     { "type": "key", "label": "a comment is an ordinary ledger entry", "key": "u" },
     { "type": "wait" },

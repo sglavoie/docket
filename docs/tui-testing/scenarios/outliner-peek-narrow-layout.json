@@ -6,7 +6,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Inspector" },
     { "type": "key", "label": "select the task with additive detail", "key": "end" },
-    { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "ctrl+enter" },
+    { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
     { "type": "assert", "label": "the dates line survives minimum width", "assert": "contains", "value": "created" },
     { "type": "assert", "assert": "contains", "value": "· updated" },

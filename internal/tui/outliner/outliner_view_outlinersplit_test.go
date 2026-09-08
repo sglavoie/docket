@@ -115,7 +115,7 @@ func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
 	row := outliner.Rows[outliner.Cursor]
 	indent := strings.Repeat(" ", lipgloss.Width(row.Prefix)+4)
 	reserved := outliner.inlinePeekLineCount(row, width-1)
-	bare := len(inlinePeekLines(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}))
+	bare := len(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}).Lines(0))
 	if reserved <= bare {
 		t.Fatalf("reserved %d Peek rows, want more than the %d the block holds without a continuation", reserved, bare)
 	}

@@ -19,7 +19,7 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 	if !ok || spec.Rows != 2 {
 		t.Fatalf("Peek guidance = (%+v, %v), want two-row profile", spec, ok)
 	}
-	if got := guidanceEntryText(spec); !strings.Contains(got, "Ctrl+Enter close Peek") || !strings.Contains(got, "Esc close Peek") {
+	if got := guidanceEntryText(spec); !strings.Contains(got, "b close Peek") || !strings.Contains(got, "Esc close Peek") {
 		t.Fatalf("Peek guidance = %q", got)
 	}
 
@@ -69,7 +69,7 @@ func TestOutlinerHeaderGuidanceDoesNotAdvertiseTaskWorkflow(t *testing.T) {
 	if !strings.Contains(got, "collapse") && !strings.Contains(got, "expand") {
 		t.Fatalf("header guidance omits its live fold action: %q", got)
 	}
-	for _, taskOnly := range []string{"$ workflow", "! priority", "Ctrl+Enter peek"} {
+	for _, taskOnly := range []string{"$ workflow", "! priority", "b peek"} {
 		if strings.Contains(got, taskOnly) {
 			t.Errorf("header guidance exposes task-only hint %q: %q", taskOnly, got)
 		}

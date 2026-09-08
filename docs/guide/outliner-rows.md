@@ -188,29 +188,39 @@ reports `No parent to focus`. Inside Focus it climbs one level from the focus
 root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
-`Ctrl+Enter` toggles a session-only Peek directly beneath the cursor task. Peek
-follows navigation and shows at most five lines of additive detail: up to two
-lines of resume note, up to three
-lines of description, a dates line reading
+`b` toggles a session-only Peek directly beneath the cursor task. Peek
+follows navigation and reads, in this order: the resume note, the description, a
+dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
-attachment names, comment counts, a `Dependencies 1/3:` line, a `Dependents 2:`
-line, and tags. Both reference lines are read-only wherever Peek is open, and
-both carry their own count, so a set the entry cap elided still reports its whole
-size. `Dependencies` names what this task stores, in the order it stores it, and
-its fraction is the row's very numbers; that outgoing set is edited from the row
-itself with `~`, never from inside Peek. `Dependents` is computed from the
-projects currently loaded, so its count is of the tasks that point back from
-there and no key edits it at all. Each entry reads as its project, short ID, title, and
+attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
+list, the task's context, and its tags. Every one of those is shown whole. Long
+text wraps rather than being cut off, and nothing is dropped to make room for
+something else: Peek shows five rows at a time and `Ctrl+F` and `Ctrl+B` page
+through the rest. Each turn keeps one row of the last page for continuity, and
+while there is more than a page a row at the bottom reads `12 above · 7 below` so
+you always know how much is out of sight. Those two keys are offered only when
+Peek is open and that direction can actually move. The page you turn to is
+remembered while you stay on the task and resets by itself when you move to
+another task, the detail changes, or the terminal is resized.
+
+Both reference lists are read-only wherever Peek is open, and
+both carry their own count. `Dependencies` names what this task stores, in the
+order it stores it, and its fraction is the row's very numbers; that outgoing set
+is edited from the row itself with `~`, never from inside Peek. `Dependents` is
+computed from the projects currently loaded, so its count is of the tasks that
+point back from there and no key edits it at all. Each entry takes a row of its
+own, reading as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
-`project-id:task-id` locator and reads `(unavailable)` rather than being dropped,
-and past the first two entries the line ends `+N more`. Checklist items are not among them,
-because they are already rows of their own beneath the task. A promoted row's
-ancestor chain is named there in full, root-first, as
+`project-id:task-id` locator and reads `(unavailable)` rather than being dropped.
+Comments stay a count, because `;` is the panel that reads them, and checklist
+items are absent because they are already rows of their own beneath the task. A
+promoted row's
+ancestor chain is named above the body in full, root-first, as
 `Parent: Launch platform › User authentication`; it and a clipped title's
-continuation are the two blocks that raise the five-line cap rather than spend
-it. The `Resume:` line spends it like every other detail, and leads because it
-answers the question Peek is opened to ask. `Esc` closes Peek before unwinding
-Outliner navigation.
+continuation sit outside the five rows rather than spending
+them, so a page is always five rows of detail. The `Resume:` line is the first of
+those, because it answers the question Peek is opened to ask. `Esc` closes Peek
+before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, defer, pin, and Move to Project actions
 apply atomically to the complete project-qualified selection, including hidden

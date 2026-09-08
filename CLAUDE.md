@@ -153,6 +153,7 @@ One key is one act on every entity surface:
 | `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
+| `b` `Ctrl+F`/`Ctrl+B` | Peek · page it |
 | `Space` | menu: destructive and rare operations only |
 
 Transient input overlays are exempt: composer, project editor/creator, text
@@ -261,12 +262,20 @@ whole-line authority on every other list surface.
 
 Row and Peek budget:
 
-- `inlinePeekLines` owns a drop order, not a set; place new lines deliberately.
-  Peek holds no checklist line; only title continuation and parent raise its cap.
-  Its read-only `Dependencies`/`Dependents` lines sit above tags and are the only
-  place a reference target is named; an unresolvable one degrades to its stored
-  locator, never dropped. `project export` shares that fallback and writes no
-  dependents.
+- `inlinePeekDocument` separates the whole detail from the page of it on screen,
+  and `Lines` is the only way to either, so render and measurement cannot
+  disagree about height. The body is complete and wrapped, never elided;
+  `inlinePeekBodyRows` bounds visibility alone and the counter row spends one of
+  those rows. Body order is resume, description, dates, attachments, comment
+  count, `Dependencies`/`Dependents`, context, tags; place a new section
+  deliberately. Peek holds no checklist line; title continuation and parent are
+  header, so they sit outside every page. A reference target is named nowhere
+  else, and an unresolvable one degrades to its stored locator, never dropped.
+  `project export` shares that fallback and writes no dependents.
+- Peek's page is session-only, keyed by task identity, document fingerprint, and
+  terminal size; nothing else resets it. `peekPageForRow` is pure and `PagePeek`
+  the only writer, so no render moves a page. `Ctrl+F`/`Ctrl+B` turn it with one
+  content row of overlap, offered only where `PeekCommandContext` says it moves.
 - `VisualWidthOverflow` must subtract the same ellipsis column as
   `TruncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
@@ -321,9 +330,10 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `b`, `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the
+The old `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
+`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
 
 `;` opens the panel that reads, edits, reorders, and deletes comments and `C`
 only appends one from the list; both commit through `Service.AddComment` under

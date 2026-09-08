@@ -317,7 +317,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// later refactor and neither shows up in a passing render. Nothing was
 	// trimmed to pay for it: the retired-key list gave back only the five bytes
 	// `C` itself occupied.
-	const budget = 31942
+	//
+	// Tenth raise, 31942 to 32732, for a Peek that pages. 790 bytes buy the two
+	// rules the old five-line cap used to make unnecessary. The first is that
+	// there are now two heights — the document's and the page's — and exactly
+	// one function returns either, which is the whole reason a render and a
+	// viewport measurement taken at different widths still agree; a reader who
+	// reached for a second line count would reserve a height nothing draws. The
+	// second is that a remembered page is state, and state in a render path
+	// needs its reset rule stated where the render rule is: keyed on identity,
+	// content, and size, read purely, written from one place. Neither is
+	// derivable from the drop-order bullet they replace, which said the
+	// opposite — that Peek sheds content to fit. That bullet, the body order it
+	// carried, and `Ctrl+Enter`'s line in the retired-key list were all trimmed
+	// in the same edit; the section order survives because it is still a rule,
+	// just about placement rather than about what gets dropped. The
+	// explanatory half lives in docs/architecture/search-filters-and-sorting.md.
+	const budget = 32732
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -372,13 +388,14 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"Arming stays in the one deferred closure in `AppModel.Update`",
 		"The interactive TUI ignores an inherited `NO_COLOR`",
 		"A value provider is exactly one of `TextEntry()`",
-		"`inlinePeekLines` owns a drop order, not a set",
+		"`inlinePeekDocument` separates the whole detail from the page of it on screen",
+		"`peekPageForRow` is pure and `PagePeek` the only writer, so no render moves a page",
 		"`VisualWidthOverflow` must subtract the same ellipsis column as `TruncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",
 		"amber blocked, green settled, muted unreadable",
 		"an addition naming a task inside the selection",
-		"Its read-only `Dependencies`/`Dependents` lines sit above tags",
+		"A reference target is named nowhere else",
 		"`project export` shares that fallback and writes no dependents",
 		"`~task` is the one repeatable reference crossing a project boundary",
 		"`DependencyPatch`'s zero value is no intent, so a save that never mentions a reference " +
@@ -393,8 +410,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `b`, `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
+		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
 		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +
 			"only appends one from the list; both commit through `Service.AddComment` under " +
 			"the one limit `taskdetail.CommentCharLimit` states",

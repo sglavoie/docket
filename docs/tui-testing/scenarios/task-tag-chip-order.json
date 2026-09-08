@@ -20,7 +20,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },
     { "type": "key", "label": "past the project header onto the captured row", "key": "j" },
-    { "type": "key", "label": "open Peek on the row the +1 abbreviated", "key": "ctrl+enter" },
+    { "type": "key", "label": "open Peek on the row the +1 abbreviated", "key": "b" },
     { "type": "assert", "label": "Peek completes the set in the row's own order, the semantic tag last", "assert": "contains", "value": "Tags: #billing #ux #bug" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Esc closes Peek before Outliner navigation", "key": "esc" },

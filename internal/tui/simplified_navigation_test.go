@@ -175,18 +175,18 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 			Context: app.operationCommandContext(),
 		})
 		if result.Err != nil || result.Message != nil {
-			t.Fatalf("width %d Ctrl+Enter result = message %T err %v", width, result.Message, result.Err)
+			t.Fatalf("width %d b result = message %T err %v", width, result.Message, result.Err)
 		}
 		if !app.crossOutliner.PeekMode {
-			t.Fatalf("width %d Ctrl+Enter did not enable Peek", width)
+			t.Fatalf("width %d b did not enable Peek", width)
 		}
 		plain := ansi.Strip(app.crossOutliner.View().Content)
 		if !strings.Contains(plain, "Tags: #backend #security") {
-			t.Fatalf("width %d Ctrl+Enter Peek missing selected task tags:\n%s", width, plain)
+			t.Fatalf("width %d b Peek missing selected task tags:\n%s", width, plain)
 		}
 	}
 	if len(app.crossOutliner.Focus.CrossStack) != 0 || len(app.crossOutliner.Focus.Stack) != 0 {
-		t.Fatal("Ctrl+Enter unexpectedly changed task Focus")
+		t.Fatal("b unexpectedly changed task Focus")
 	}
 }
 

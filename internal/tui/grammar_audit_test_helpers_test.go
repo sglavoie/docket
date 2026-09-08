@@ -86,6 +86,23 @@ func parityAuditApp(t *testing.T) *AppModel {
 	return driver.App()
 }
 
+// peekPagingGrammar names the operations that exist only while a Peek is open
+// over the cursor task and has somewhere to move. An audit that builds its
+// context from a closed Peek would read them as unbound keys, which is the
+// grammar working rather than a gap, so it opens that state for them the same
+// way it puts a checklist cursor under the checklist row grammar.
+var peekPagingGrammar = map[operation.OperationID]bool{
+	operation.OperationCorePeekPageDown: true,
+	operation.OperationCorePeekPageUp:   true,
+}
+
+// pagePeekParityContext is that state: a visible Peek that can move either way,
+// which is the only context in which both paging keys resolve at once.
+func pagePeekParityContext(ctx operation.CommandContext) operation.CommandContext {
+	ctx.Peek = operation.PeekContext{Visible: true, CanPageDown: true, CanPageUp: true}
+	return ctx
+}
+
 // taskActionParityContext focuses the Outliner on the first live task so the
 // sheet projection is evaluated against a real target instead of an empty one.
 func taskActionParityContext(t *testing.T, app *AppModel) operation.CommandContext {

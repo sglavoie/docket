@@ -35,6 +35,12 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		if operation.ChecklistRowGrammar[binding.OperationID] {
 			bindingCtx.Entity.HasChecklistCursor = true
 		}
+		// Peek paging is the same rule one surface further in: the keys exist
+		// while a Peek is open over the cursor task, so that is the state they
+		// are audited from.
+		if peekPagingGrammar[binding.OperationID] {
+			bindingCtx = pagePeekParityContext(bindingCtx)
+		}
 		for _, path := range binding.Paths() {
 			for _, key := range path {
 				if !slices.Contains(expectedKeys, key) {

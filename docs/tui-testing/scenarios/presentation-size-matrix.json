@@ -56,10 +56,10 @@
 
     { "type": "resize", "width": 100, "height": 35 },
     { "type": "assert", "label": "100x35 covers Outliner Peek and visual selection", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "open Peek", "key": "ctrl+enter" },
-    { "type": "assert", "assert": "contains", "value": "Ctrl+Enter close Peek" },
+    { "type": "key", "label": "open Peek", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "b close Peek" },
     { "type": "assert", "label": "Peek title and guidance fit at 100x35", "assert": "no_layout_issues" },
-    { "type": "key", "key": "ctrl+enter" },
+    { "type": "key", "key": "b" },
     { "type": "key", "label": "start visual selection", "key": "v" },
     { "type": "key", "key": "down" },
     { "type": "key", "label": "freeze visual selection", "key": "v" },
