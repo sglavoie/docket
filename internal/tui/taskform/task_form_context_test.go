@@ -10,16 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// navigateToContextField focuses the expanded Basics-tab Context row through the
-// same focus sync production navigation uses, so the inline input is live.
-func navigateToContextField(m *TaskFormModel) *TaskFormModel {
-	m.activeTab = formTabBasics
-	m.collapsedBasics = false
-	m.focusIndex = formBasicsContextField
-	m.syncInputFocus()
-	return m
-}
-
 func TestTaskFormBasicsTabRendersContextRow(t *testing.T) {
 	m := newTestTaskForm()
 	m.activeTab = formTabBasics
