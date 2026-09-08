@@ -280,7 +280,7 @@ func unreadableDocumentReason(content string, parseErr error) string {
 	if match := schemaMarkerRegex.FindStringSubmatch(documentSchemaMarkerLine(content)); match != nil {
 		return fmt.Sprintf(
 			"stored document is schema %s, unreadable at schema %d (recorded before a schema migration)",
-			match[1], SchemaVersionV15,
+			match[1], CurrentTaskSchemaVersion,
 		)
 	}
 	return fmt.Sprintf("stored document does not parse: %v", parseErr)

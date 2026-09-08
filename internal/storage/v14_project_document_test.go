@@ -67,7 +67,7 @@ func TestEmptyDependenciesLeaveLiveBytesUnchanged(t *testing.T) {
 
 func v13ProjectDocumentFromV14Model(t *testing.T, doc *ProjectDocument) (string, error) {
 	t.Helper()
-	lifted, err := v15ProjectDocumentFromModel(&models.Project{Name: doc.ProjectName, Tasks: doc.Tasks})
+	lifted, err := currentTaskProjectDocumentFromModel(&models.Project{Name: doc.ProjectName, Tasks: doc.Tasks})
 	if err != nil {
 		return "", err
 	}
@@ -94,7 +94,7 @@ func TestV14ProjectDocumentLiftFromV13AddsNoDependencies(t *testing.T) {
 
 func v13ProjectTestRecord() format.V13TaskRecord {
 	task := mergeTestTask("task-1", "Lifted")
-	record, err := v15TaskRecordFromModel(task)
+	record, err := currentTaskRecordFromModel(task)
 	if err != nil {
 		panic(err)
 	}

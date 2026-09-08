@@ -180,7 +180,7 @@ func TestReliability_ExternalFileEditDetectedByRevisionCheck(t *testing.T) {
 		reliabilityTask(t, 1, "original"),
 		reliabilityTask(t, 2, "added by external editor"),
 	)
-	externalContent := mustWriteV5Project(t, edited)
+	externalContent := mustWriteCurrentProject(t, edited)
 	if err := os.WriteFile(tasksFilePath(p.Path), []byte(externalContent), FilePermissions); err != nil {
 		t.Fatalf("simulate external edit: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestReliability_CommitDrivesCrashRecoveryRollForward(t *testing.T) {
 	}
 	betaTasks := tasksFilePath(betaPath)
 	stranded := reliabilityProject(t, dataDir, "beta", reliabilityTask(t, 1, "recovered work"))
-	strandedContent := mustWriteV5Project(t, stranded)
+	strandedContent := mustWriteCurrentProject(t, stranded)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{{
 		Kind:   transaction.OpWrite,

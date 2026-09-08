@@ -9,6 +9,14 @@ import (
 // written beneath the metadata comment, and the reader that recovers them. The
 // metadata line itself belongs to v6_task_codec.go. Both halves are shared with
 // the later schemas that changed nothing about the body.
+//
+// writeTaskBody and parseTaskBodyBlocks are frozen. Every schema from 6 to the
+// current one reads and writes its body through them, so widening either widens
+// all of them at once: a historical reader would start accepting a block that
+// did not exist when its documents were written, and the archives a migration
+// validates against would stop being a fixed target. A schema that admits a new
+// block writes its own body file and calls a helper of its own, exactly as
+// v15_task_body.go would if schema 15 had added one.
 
 // WriteV6TaskBody renders metadata plus the retained description and comment
 // blocks. The project document owns the generic Task heading.

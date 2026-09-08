@@ -120,6 +120,9 @@ dependency	internal/models/query_string.go	QueryFieldDependency	2
 dependency	internal/models/query_value.go	QueryFieldDependency	1
 dependency	internal/models/query_vocabulary.go	QueryFieldDependency	2
 dependency	internal/models/task.go	Dependencies	1
+dependency	internal/storage/current_task_conversion.go	Dependencies	6
+dependency	internal/storage/current_task_conversion.go	V14TaskDependency	1
+dependency	internal/storage/current_task_conversion.go	dependency	6
 dependency	internal/storage/export_markdown.go	Dependencies	2
 dependency	internal/storage/format/legacy_v4_task_convert.go	DependsOn	2
 dependency	internal/storage/format/v14_task_codec.go	Dependencies	5
@@ -139,9 +142,6 @@ dependency	internal/storage/format/v5_task_codec.go	DependsOn	3
 dependency	internal/storage/format/v5_task_validate.go	DependsOn	1
 dependency	internal/storage/format/v6_task_convert.go	DependsOn	1
 dependency	internal/storage/format/v6_task_convert.go	dependency	2
-dependency	internal/storage/project_document.go	Dependencies	6
-dependency	internal/storage/project_document.go	V14TaskDependency	1
-dependency	internal/storage/project_document.go	dependency	6
 dependency	internal/storage/project_merge.go	Dependencies	2
 dependency	internal/storage/project_merge_helpers.go	Dependencies	2
 dependency	internal/storage/v5_archive_reintegration.go	DependsOn	5

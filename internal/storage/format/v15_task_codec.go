@@ -3,7 +3,6 @@ package format
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // V15TaskRecord is the complete schema-15 storage shape: the schema-14 fields
@@ -131,41 +130,6 @@ func ParseV15TaskMetadata(comment string) (V15TaskRecord, error) {
 		task.Review = true
 	}
 	if err := validateV15TaskRecord(task, false); err != nil {
-		return V15TaskRecord{}, err
-	}
-	return task, nil
-}
-
-// WriteV15TaskBody renders metadata plus the retained description and comment
-// blocks. The project document owns the generic Task heading.
-func WriteV15TaskBody(task V15TaskRecord) (string, error) {
-	if err := ValidateV15TaskRecord(task); err != nil {
-		return "", err
-	}
-	metadata, err := WriteV15TaskMetadata(task)
-	if err != nil {
-		return "", err
-	}
-	return writeTaskBody(metadata, task.Description, task.Comments), nil
-}
-
-// ParseV15TaskBody parses the body below one generic Task heading.
-func ParseV15TaskBody(title, body string) (V15TaskRecord, error) {
-	lines := strings.Split(strings.TrimSuffix(body, "\n"), "\n")
-	if len(lines) == 0 || strings.TrimSpace(lines[0]) == "" {
-		return V15TaskRecord{}, fmt.Errorf("v15 task %q is missing metadata", title)
-	}
-	task, err := ParseV15TaskMetadata(lines[0])
-	if err != nil {
-		return V15TaskRecord{}, fmt.Errorf("v15 task %q: %w", title, err)
-	}
-	task.Title = title
-
-	task.Description, task.Comments, err = parseTaskBodyBlocks("v15", title, lines)
-	if err != nil {
-		return V15TaskRecord{}, err
-	}
-	if err := ValidateV15TaskRecord(task); err != nil {
 		return V15TaskRecord{}, err
 	}
 	return task, nil

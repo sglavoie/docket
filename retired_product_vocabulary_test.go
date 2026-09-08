@@ -88,7 +88,7 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 			"internal/storage/format/v6_task_fields.go":         true,
 			"internal/storage/format/v6_task_validate.go":       true,
 			"internal/storage/format/v6_task_convert.go":        true,
-			"internal/storage/project_document.go":              true,
+			"internal/storage/current_task_conversion.go":       true,
 			"internal/storage/v10_project_document.go":          true,
 			"internal/config/v10_migration_activation.go":       true,
 			"internal/config/v11_migration_activation.go":       true,

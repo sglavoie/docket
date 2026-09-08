@@ -158,9 +158,10 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	if repairErr := catalog.RepairSystemUnfiledProject(project); repairErr != nil {
 		return storage.ArtifactChange{}, repairErr
 	}
-	document, err := storage.WriteV15ProjectDocument(storage.V15ProjectDocument{
-		ProjectName: project.Name,
-	})
+	// The live writer, not a named schema version: a fresh Unfiled must be born
+	// at whatever version the workspace is current at, and this bootstrap is not
+	// a migration that gets to pin one.
+	document, err := storage.WriteTasksMarkdown(project.Name, nil)
 	if err != nil {
 		return storage.ArtifactChange{}, err
 	}

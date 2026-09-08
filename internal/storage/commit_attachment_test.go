@@ -234,8 +234,8 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 	dst.NextShortID = moved.ShortID + 1
 	dst.BuildTaskTree()
 
-	srcContent := mustWriteV5Project(t, src)
-	dstContent := mustWriteV5Project(t, dst)
+	srcContent := mustWriteCurrentProject(t, src)
+	dstContent := mustWriteCurrentProject(t, dst)
 
 	txnDir := filepath.Join(dataDir, ".tt", "transactions")
 	journal := transaction.NewJournal(txnDir, []string{dataDir}, "")
