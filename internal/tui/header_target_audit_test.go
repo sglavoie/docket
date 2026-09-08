@@ -130,6 +130,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.sort.ranked":                 "target-free",
 	"tui.sort.title":                  "target-free",
 	"tui.sort.updated":                "target-free",
+	"tui.task.add-comment":            "reject",
 	"tui.task.adopt-children":         "reject",
 	"tui.task.attachments":            "reject",
 	"tui.task.comments":               "reject",

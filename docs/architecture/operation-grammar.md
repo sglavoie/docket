@@ -259,7 +259,7 @@ state, and that read is what lets the strip name the axes it cleared or answer
 `$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound
 rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
-other retired root key — `b`, `c`, `m`, `w`, `:`, `C`, `R`, the comma state
+other retired root key — `b`, `c`, `m`, `w`, `:`, `R`, the comma state
 prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
 `t`, `P`, and `C` left that list by an explicit decision rather than by drift:
