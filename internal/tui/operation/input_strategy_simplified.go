@@ -168,6 +168,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// neighborhood rather than a new letter: `;` reads comments, `C` writes
 			// one.
 			{OperationID: OperationTaskAddComment, Keys: []string{"C"}, DisplayKey: "C"},
+			// D carries no FooterRank on the same terms as r and C: repeating work
+			// is deliberate and occasional, and the footer already spends its ranks
+			// on the daily loop. The capital keeps the lowercase letter free and
+			// stays clear of `d`, which is retired vocabulary no alias may return.
+			{OperationID: OperationTaskRepeat, Keys: []string{"D"}, DisplayKey: "D"},
 			{OperationID: OperationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: OperationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: OperationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},

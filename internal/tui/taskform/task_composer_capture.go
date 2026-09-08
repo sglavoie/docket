@@ -139,6 +139,48 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	return form.Init()
 }
 
+// seedExpandedForm builds the expanded form from a typed seed and leaves the
+// composer in expanded mode. It is ExpandRequest's sibling and deliberately not
+// a call into it: an expansion starts from a parsed capture line, while a seed
+// starts from values that must never meet the parser, so the two share a shape
+// rather than a path.
+//
+// Fields the seed does not carry are left at their created-draft defaults, which
+// is what makes the absences durable: no parent, no due date, no deferral, no
+// pin, no review, no subtask, no attachment, no comment, no dependency.
+func (m *TaskComposerModel) seedExpandedForm(seed TaskComposerSeed) {
+	project := m.Preset.Project
+	if project == nil {
+		// initCompactInput already recorded the missing-project refusal, and the
+		// compact surface can still report it; an expanded form cannot.
+		return
+	}
+	form := NewTaskFormModelCreate(project, m.runtime, nil)
+	form.draft.title = seed.Title
+	form.draft.desc = seed.Description
+	form.draft.priority = seed.Priority
+	form.draft.tags = append([]string(nil), seed.Tags...)
+	form.draft.context = seed.Context
+	destination := seed.Destination
+	if destination == "" {
+		destination = app.CaptureDestinationBacklog
+	}
+	form.draft.state = destination.WorkflowState()
+	for _, text := range seed.ChecklistItems {
+		form.draft.checklist = append(form.draft.checklist, models.ChecklistItem{Text: text, Done: false})
+	}
+	form.checklistExpanded = len(form.draft.checklist) > 0
+	form.titleInput.SetValue(seed.Title)
+	form.contextInput.SetValue(seed.Context)
+	form.dueTextInput.SetValue("")
+	form.presetDestination = destination
+	form.hostTitle = seed.HostTitle
+	form.SetTaskFormCoordinator(m.taskForm)
+	form.SetSize(m.width, m.height)
+	m.Expanded = form
+	m.Mode = ComposerExpanded
+}
+
 func (m *TaskComposerModel) cycleProject() {
 	if !m.Preset.AllowProjectSwitch || len(m.Preset.AllProjects) < 2 || m.Preset.Project == nil {
 		return

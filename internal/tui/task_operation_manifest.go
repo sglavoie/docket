@@ -50,6 +50,13 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		// selection of tasks has nothing to say in one voice. Comments above keeps
 		// the panel that reads, edits, reorders, and deletes; this only appends.
 		{ID: operation.OperationTaskAddComment, Label: "Add Comment", Aliases: []string{"comment", "quick comment", "note on task"}, Provider: operation.ValueProviderComment, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		// Not Bulk: the draft it opens is one task's, and a composer holding a
+		// selection would have to be a batch creation screen the product does not
+		// have. Mutation risk rather than read-only even though opening the draft
+		// writes nothing, because what the key offers is the creation the draft
+		// leads to: an archived owner must refuse the offer at the keystroke rather
+		// than at the save.
+		{ID: operation.OperationTaskRepeat, Label: "Repeat Task", Aliases: []string{"repeat", "duplicate", "again", "another like this", "copy task"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},

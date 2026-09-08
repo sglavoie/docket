@@ -60,6 +60,14 @@ const (
 	// comment is.
 	OperationTaskAddComment OperationID = "tui.task.add-comment"
 
+	// OperationTaskRepeat opens a fresh creation draft seeded from one task. It
+	// is neither a copy of the task nor a relationship to it: nothing links the
+	// two afterwards, and no recurrence is recorded. The operation only prepares
+	// a draft, so pressing it writes nothing; the ordinary creation transaction
+	// is still what mints the identity, timestamps, and undo entry if the human
+	// saves.
+	OperationTaskRepeat OperationID = "tui.task.repeat"
+
 	// OperationTaskDelete carries no direct key. Delete is the whole task
 	// `Space` menu and confirms first, so the ID is manifest vocabulary the
 	// sheet reads rather than a binding the strategy declares.

@@ -333,7 +333,26 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// in the same edit; the section order survives because it is still a rule,
 	// just about placement rather than about what gets dropped. The
 	// explanatory half lives in docs/architecture/search-filters-and-sorting.md.
-	const budget = 32732
+	//
+	// Eleventh raise, 32732 to 33543, for repeating a task on `D`. 811 bytes buy
+	// two rules and one prohibition, none of them implied by anything above. The
+	// first is the seam: a draft is prepared read-only in the application layer
+	// and reaches the composer as copied values through a typed seed rather than
+	// as `InitialText`. The preset already carries a text field that the compact
+	// surface parses, so a reader following the nearest precedent would route the
+	// title through the capture grammar and silently turn a literal `#123` into a
+	// tag — the file has to say which channel this is, because both exist and
+	// only one is correct. The second is the retain/clear split itself, which is
+	// a policy decision rather than a derivation: nothing in the task invariants
+	// says whether a repetition keeps a due date or a pin, and a later reader
+	// adding one field to the seed would have no line to check against. The
+	// prohibition — no recurrence field, no repeat relationship, no copy-options
+	// screen — is the boundary that keeps this one key from growing into a
+	// scheduling feature, and it is exactly the kind of thing a passing test
+	// cannot state. Nothing was trimmed to pay for it; the key table cell is
+	// fourteen of the bytes and the rest is the paragraph. The behavioral half
+	// lives in docs/guide/outliner-keys.md.
+	const budget = 33543
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

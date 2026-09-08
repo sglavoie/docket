@@ -25,6 +25,38 @@ where the task landed.
 `A` on a project header row keeps rejecting, since a project has no task to
 parent under.
 
+`D` reaches the same composer over a draft instead of a blank line.
+`Service.PrepareTaskRepeatDraft` reads one task through the ordinary snapshot
+and returns a `TaskRepeatDraft`: a value carrying the retained fields and the
+Backlog destination, every slice copied, nothing written. `repeatComposerPreset`
+wraps it as `TaskComposerPreset.Seed`, and `NewTaskComposerModel` hands a
+non-nil seed to `seedExpandedForm`, which builds the expanded `TaskFormModel`
+straight away and leaves `Mode` on `ComposerExpanded`. `View`, `Update`, `Init`,
+`SetSize`, and `SetTaskFormCoordinator` all delegate to `Expanded` when it is
+set, so a composer constructed in expanded mode needs no other wiring than the
+one `openTaskComposer` already does.
+
+`seedExpandedForm` is `ExpandRequest`'s sibling and deliberately not a call into
+it. An expansion starts from a parsed capture line; a seed starts from stored
+field values that must never meet the parser, which is what keeps a title of
+`Fix bug #123` a title. That is also why the seed is a typed struct beside
+`InitialText` rather than a spelling of it: the compact surface parses that
+field, and a repetition routed through it would mint tags out of prose. What the
+seed omits is as load-bearing as what it carries — `NewTaskFormModelCreate`'s
+defaults supply no parent, due date, deferral, pin, review flag, subtask,
+attachment, comment, or reference, so the cleared half of the repeat contract is
+the form's resting state rather than a list of assignments a later edit could
+forget. `TaskComposerSeed.ChecklistItems` is `[]string` for the same reason: a
+struct that cannot spell a tick cannot carry one across.
+
+The seed leaves `presetDestination` on Backlog, which `IsPlanning` rejects, so
+`saveCreate` reads the destination off `draft.state` and a repetition never
+inherits the source's Today or Next membership. Creation itself is unchanged:
+the draft rides the same `AddTaskRequest` every expanded save builds, so
+identity, `ShortID`, timestamps, checklist persistence, and the single undo
+entry all come from the one creation transaction. Opening a draft and
+abandoning it writes nothing at all.
+
 `##context` is the singleton task-context sigil. It shares tag normalization,
 but projects one optional field rather than a repeatable tag set. Capture and
 outline input reject `##0`; inline edit consumes it as the explicit clear while

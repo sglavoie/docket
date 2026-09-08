@@ -100,6 +100,40 @@ func (m *AppModel) createComposerPreset(project *models.Project, parent *models.
 	return preset
 }
 
+// repeatComposerPreset prepares the draft a repetition starts from and wraps it
+// in a composer preset that opens straight into the expanded form. The draft is
+// read through the application layer rather than off the row's task pointer, so
+// the values are the stored ones at this instant and the preparation refuses
+// exactly where the application layer would.
+//
+// Once this returns, the preset owns everything: the seed holds copied values,
+// so a later edit to the source task, or its deletion, cannot reach the open
+// draft. Only Project stays a live pointer, because the composer needs the
+// destination project itself, and the save re-resolves it against current state
+// anyway.
+func (m *AppModel) repeatComposerPreset(project *models.Project, task *models.Task) (taskform.TaskComposerPreset, error) {
+	draft, err := m.DomainService().PrepareTaskRepeatDraft(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID})
+	if err != nil {
+		return taskform.TaskComposerPreset{}, err
+	}
+	return taskform.TaskComposerPreset{
+		Kind:        taskform.ComposerProject,
+		Project:     project,
+		AllProjects: m.availableProjects(),
+		Shared:      taskform.TaskComposerSharedAttributes{Destination: draft.Destination},
+		Seed: &taskform.TaskComposerSeed{
+			HostTitle:      "Repeat Task",
+			Title:          draft.Title,
+			Description:    draft.Description,
+			Priority:       draft.Priority,
+			Tags:           draft.Tags,
+			Context:        draft.Context,
+			ChecklistItems: draft.ChecklistItems,
+			Destination:    draft.Destination,
+		},
+	}, nil
+}
+
 // focusChildComposerPreset names the focused task in the composer header, so
 // capture inside a Focus is never mistaken for capture into the project root.
 func (m *AppModel) focusChildComposerPreset(project *models.Project, parent *models.Task) taskform.TaskComposerPreset {

@@ -148,7 +148,7 @@ One key is one act on every entity surface:
 
 | Keys | Act |
 | --- | --- |
-| `Enter` `a` `c` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · edit · body/external |
+| `Enter` `a` `c` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · repeat · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
@@ -341,6 +341,17 @@ the one limit `taskdetail.CommentCharLimit` states. That popup is the multiline
 `TextEntry()` provider, so `Enter` writes a newline, `Ctrl+S` saves, `Esc`
 confirms a discard the prompt draws in its own box, and the prompt emits one
 submission until a refusal restores its text.
+
+`D` repeats one task through a fresh expanded-composer draft titled Repeat Task.
+`internal/app` prepares that draft read-only and the composer preset carries it
+as a typed seed of copied values, never as `InitialText`: a title is seeded, not
+reparsed, so a literal `#123` or `$today` stays literal. The seed retains title,
+description, priority, tags, context, and the checklist unticked in stored
+order, in the source project at its root in Backlog, and carries nothing else —
+no parent, child, due date, deferral, planning membership, pin, review flag,
+resume note, comment, attachment, or reference. Opening writes nothing; the
+ordinary creation transaction still mints identity, timestamps, and the one undo
+entry. There is no recurrence field, repeat relationship, or copy-options screen.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the

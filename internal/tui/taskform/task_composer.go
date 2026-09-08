@@ -60,6 +60,34 @@ type TaskComposerPreset struct {
 	InitialText        string
 	AllowProjectSwitch bool
 	PreferMultiline    bool
+	// Seed opens the composer straight into the expanded form over a prepared
+	// draft. It is the typed alternative to InitialText: text goes through the
+	// capture grammar and a seed does not, which is what lets a caller start a
+	// draft from field values that would otherwise be read as syntax.
+	Seed *TaskComposerSeed
+}
+
+// TaskComposerSeed is a complete expanded-form draft expressed as plain values.
+// Everything in it is copied into the form at construction, so the seed's owner
+// may hold no live model pointer and the draft that opens is independent of
+// whatever it was derived from.
+//
+// The checklist is text alone. A seeded checklist starts wholly unticked by
+// construction rather than by a reset the caller has to remember, which is the
+// only tick state a fresh draft can honestly carry.
+type TaskComposerSeed struct {
+	// HostTitle names the overlay, replacing the generic expanded heading.
+	HostTitle      string
+	Title          string
+	Description    string
+	Priority       int
+	Tags           []string
+	Context        string
+	ChecklistItems []string
+	// Destination is the lifecycle the draft starts in. Empty means Backlog:
+	// a seeded draft is never Inbox, because a seed is a considered starting
+	// point rather than an unsorted one.
+	Destination app.CaptureDestination
 }
 
 func (p TaskComposerPreset) label() string {
@@ -118,6 +146,9 @@ func NewTaskComposerModel(preset TaskComposerPreset, runtime *config.RuntimeStat
 	}
 
 	m.initCompactInput()
+	if preset.Seed != nil {
+		m.seedExpandedForm(*preset.Seed)
+	}
 	return m
 }
 

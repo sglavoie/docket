@@ -144,6 +144,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.task.new-child":              "reject",
 	"tui.task.outdent":                "reject",
 	"tui.task.references":             "reject",
+	"tui.task.repeat":                 "reject",
 	"tui.task.set-due-date":           "reject",
 	"tui.task.set-priority":           "reject",
 	"tui.task.set-parent":             "reject",

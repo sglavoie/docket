@@ -382,6 +382,12 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 		return message(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
 	case operation.OperationTaskNewChild:
 		return message(taskform.CreateTaskMsg{ParentTask: task, Project: project})
+	case operation.OperationTaskRepeat:
+		preset, err := m.repeatComposerPreset(project, task)
+		if err != nil {
+			return operation.OperationHandlerResult{Err: err}
+		}
+		return message(taskform.ShowTaskComposerMsg{Preset: preset})
 	default:
 		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
 	}

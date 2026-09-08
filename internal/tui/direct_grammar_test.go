@@ -252,7 +252,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"C": operation.OperationTaskAddComment,
 		// r is not shared either: only a task carries a resume note, so the key
 		// never asks what the cursor names.
-		"r":           operation.OperationTaskSetResumeNote,
+		"r": operation.OperationTaskSetResumeNote,
+		// D is not shared either: repeating names one task's fields, and a project
+		// has no draft to seed.
+		"D":           operation.OperationTaskRepeat,
 		"shift+enter": operation.OperationCoreFocusParent,
 		// Peek reads as a root letter now rather than a modified Enter, and its two
 		// page turns spell the same pair every other pageable body on the product

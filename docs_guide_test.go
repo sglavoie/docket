@@ -24,8 +24,8 @@ import (
 func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
-		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, `e` edits " +
-			"whatever the cursor names",
+		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, " +
+			"`D` repeat the cursor task as a new draft, `e` edits whatever the cursor names",
 		"`$` opens the workflow chord",
 		"`$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing",
 		"`$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled",
