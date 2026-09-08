@@ -306,13 +306,15 @@ func helperCommitNewProject(t *testing.T, env helperEnvironment, name string) {
 	}
 }
 
-// TestCrossMachineHelperSetsResumeNote is run twice at once against one task,
-// with a different note each side. Both processes load before the barrier and
-// commit after it, so exactly one may win. The loser has three admissible
-// outcomes and one inadmissible one: it may expire, it may record a conflict
-// bundle, or it may serialize behind the winner — but it may never report a
-// commit whose note is not the one on disk, which is what a lost update looks
-// like from inside the process that lost it.
+// TestCrossMachineHelperSetsResumeNote is run twice at once, each side naming
+// its own task and its own note. The gate pairs it with two tasks in one
+// project, so both processes rewrite one tasks.md having each read it before the
+// other committed: the hazard is a lost update, not a lost race. Both sides may
+// legitimately commit — a three-way merge resolves edits to distinct tasks — and
+// a side that does not has three admissible outcomes: it may expire, it may
+// record a conflict bundle, or it may find the note already equal. What it may
+// never do is report a commit whose note is not the one on disk, which is what a
+// lost update looks like from inside the process that lost it.
 func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 	env := openHelperWorkspace(t)
 	note := helperEnv(t, helperNoteEnv)
