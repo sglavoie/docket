@@ -1,7 +1,7 @@
 package valuepicker
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -112,10 +112,10 @@ func (model *OperationValuePickerModel) vocabularyRenameSourceUnderCursor() (str
 	}
 	name, ok := item.Data.(string)
 	if !ok || name == "" {
-		return "", fmt.Errorf("this row is not a stored name")
+		return "", errors.New("this row is not a stored name")
 	}
 	if name == query.NoContextFilterKey {
-		return "", fmt.Errorf("No context is a facet, not a context")
+		return "", errors.New("the No context row is a facet, not a context")
 	}
 	return name, nil
 }

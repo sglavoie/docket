@@ -229,7 +229,7 @@ func TestVocabularyRenameRefusesThePseudoRowAndOffersNoWorkflowElsewhere(t *test
 		t.Fatal("a refused rename dismissed the picker")
 	}
 	refusal, ok := msg.(status.StatusMsg)
-	if !ok || string(refusal) != "No context is a facet, not a context" {
+	if !ok || string(refusal) != "the No context row is a facet, not a context" {
 		t.Fatalf("refusal = %#v, want the pseudo-row refusal", msg)
 	}
 	if contexts.VocabularyRenameSource() != "" {

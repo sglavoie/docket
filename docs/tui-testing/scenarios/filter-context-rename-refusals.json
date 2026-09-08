@@ -9,7 +9,7 @@
     { "type": "assert", "assert": "contains", "value": "e rename" },
 
     { "type": "key", "label": "the gap row is a facet, so it cannot be renamed", "key": "e" },
-    { "type": "assert", "assert": "status_contains", "value": "No context is a facet, not a context" },
+    { "type": "assert", "assert": "status_contains", "value": "the No context row is a facet, not a context" },
     { "type": "assert", "assert": "not_contains", "value": "Rename Context" },
     { "type": "assert", "assert": "no_layout_issues" },
 

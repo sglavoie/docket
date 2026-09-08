@@ -58,8 +58,9 @@ func vocabularyRenameAxisFor(provider operation.ValueProviderID) (vocabularyRena
 			sigil:     "##",
 			noun:      "context",
 		}, true
+	default:
+		return vocabularyRenameAxis{}, false
 	}
-	return vocabularyRenameAxis{}, false
 }
 
 // vocabularyRenameSession is the plan the shell holds between the confirmation
@@ -85,19 +86,20 @@ type vocabularyRenameLensImpact struct {
 // handleVocabularyRenameRequested answers a typed destination with a frozen
 // plan. Everything the confirmation states — the counts, the scope, the merge,
 // and the affected lenses — is computed once, here, from the same census the
-// apply will be validated against.
-func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRenameRequestedMsg) tea.Cmd {
+// apply will be validated against. It issues no command: the plan is written
+// straight onto the mounted picker, which the very next render reads.
+func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRenameRequestedMsg) {
 	picker := m.operations.ValuePicker
 	axis, ok := vocabularyRenameAxisFor(msg.Provider)
 	if picker == nil || !ok {
-		return nil
+		return
 	}
 	// A superseded plan is released before a new one is computed, so a failed
 	// preview cannot leave the previous confirmation's census behind it.
 	m.vocabularyRename = vocabularyRenameSession{}
 	if m.domain.service == nil {
 		picker.RefuseVocabularyRename("This workspace cannot commit a rename")
-		return nil
+		return
 	}
 	preview, err := m.domain.service.PreviewTaskNameRename(app.RenameTaskNameRequest{
 		Namespace: axis.namespace,
@@ -106,14 +108,14 @@ func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRen
 	})
 	if err != nil {
 		picker.RefuseVocabularyRename(vocabularyRenameRefusal(err))
-		return nil
+		return
 	}
 	if len(preview.Tasks) == 0 {
 		// The picker lists the scope's vocabulary and the census reads the whole
 		// workspace, so this is nearly unreachable; saying so beats confirming a
 		// change that would write nothing.
 		picker.RefuseVocabularyRename(fmt.Sprintf("No task carries %s%s", axis.sigil, preview.From))
-		return nil
+		return
 	}
 	impacts := m.vocabularyRenameLensImpacts(axis.field, preview.From, preview.To)
 	m.vocabularyRename = vocabularyRenameSession{preview: preview, lenses: impacts}
@@ -121,14 +123,13 @@ func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRen
 		Heading: vocabularyRenameHeading(axis, preview.Merge),
 		Lines:   vocabularyRenamePlanLines(axis, preview, impacts),
 	})
-	return nil
 }
 
 // handleVocabularyRenameAbandoned releases the census a declined confirmation
-// froze. The picker has already stepped back to its name field.
-func (m *AppModel) handleVocabularyRenameAbandoned() tea.Cmd {
+// froze. The picker has already stepped back to its name field, so this is a
+// release and nothing else.
+func (m *AppModel) handleVocabularyRenameAbandoned() {
 	m.vocabularyRename = vocabularyRenameSession{}
-	return nil
 }
 
 // handleVocabularyRenameConfirmed commits the frozen plan. The preview is
@@ -319,8 +320,12 @@ func vocabularyRenameClauseSelects(clause models.QueryClause, name string) bool 
 		return clause.Value == name
 	case models.QueryOperatorPrefix:
 		return strings.HasPrefix(name, clause.Value)
+	default:
+		// Every other operator answers a question a stored name is not the
+		// subject of, so neither spelling is selected and the clause is silent
+		// about the rename rather than reported by it.
+		return false
 	}
-	return false
 }
 
 // vocabularyRenameHeading is the four-way title the undo ledger also writes, so

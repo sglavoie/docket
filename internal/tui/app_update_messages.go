@@ -438,11 +438,13 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// The three rename messages deliberately leave the value step mounted: the
 		// workflow is a stage of that picker, and its query, cursor, and pending
 		// choices are preserved by never being torn down in the first place.
-		return true, m.handleVocabularyRenameRequested(typed)
+		m.handleVocabularyRenameRequested(typed)
+		return true, nil
 	case valuepicker.VocabularyRenameConfirmedMsg:
 		return true, m.handleVocabularyRenameConfirmed(typed)
 	case valuepicker.VocabularyRenameAbandonedMsg:
-		return true, m.handleVocabularyRenameAbandoned()
+		m.handleVocabularyRenameAbandoned()
+		return true, nil
 	default:
 		return false, nil
 	}
