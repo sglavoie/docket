@@ -46,6 +46,41 @@ type ArtifactCommitter interface {
 	CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error)
 }
 
+// CensusProject is one project of a strict workspace census, paired with the
+// canonical revision and the exact lossless document it was read at. The trio
+// is what lets a whole-workspace mutation both mutate the project and guard the
+// state it was derived from at the commit boundary.
+type CensusProject struct {
+	Project  *models.Project
+	Revision string
+	Document *storage.ProjectDocument
+}
+
+// WorkspaceCensus is a complete, strict read of every unarchived project —
+// parked ones included, in every task state — taken together with the identity
+// and revision of the catalog that enumerated them. It is deliberately not a
+// Snapshot: Snapshot skips a project it cannot read so one broken document
+// never blocks an unrelated single-task edit, while a census that silently
+// omitted a project would let a whole-workspace rename report and commit an
+// incomplete result. Every read failure fails the census instead.
+type WorkspaceCensus struct {
+	// Projects are the enumerated projects in catalog order.
+	Projects []CensusProject
+	// CatalogPath is the artifact the enumeration came from, guarded read-only at
+	// the commit boundary so a concurrent catalog write expires the census.
+	CatalogPath string
+	// CatalogRevision is that artifact's raw revision at census time.
+	CatalogRevision string
+}
+
+// WorkspaceCensusSource is the optional repository capability behind
+// whole-workspace vocabulary mutations. Only the production filesystem
+// repository implements it; a repository without it refuses the operation by
+// name rather than silently renaming across a partial workspace.
+type WorkspaceCensusSource interface {
+	WorkspaceCensus() (WorkspaceCensus, error)
+}
+
 // Clock supplies wall-clock time to the use cases. Injecting it keeps
 // time-derived behavior (deferral targets, due dates) deterministic under test.
 type Clock interface {

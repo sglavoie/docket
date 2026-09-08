@@ -48,6 +48,63 @@ type fakeRepo struct {
 	// referenceDocumentCalls counts enumerations, so a mutation with nothing to
 	// maintain can be shown never to open the wider catalog at all.
 	referenceDocumentCalls int
+	// censusErr fails the strict workspace census, standing in for a project the
+	// production repository could read for no snapshot but must never skip here.
+	censusErr error
+	// censusCalls counts censuses, so an operation that must freeze exactly one
+	// read set can be shown not to take a second one.
+	censusCalls int
+}
+
+// fakeCatalogPath is the in-memory stand-in for workspace.json. The census
+// reports it and its raw revision the way the production repository reports the
+// real catalog, so a test can advance it in preCommit and watch the guard fire.
+var fakeCatalogPath = filepath.Clean("mem-workspace/.tt/workspace.json")
+
+// WorkspaceCensus implements app.WorkspaceCensusSource over the seeded snapshot
+// population, which is the fake's analog of "every unarchived project": the
+// separately tracked unloaded set stands in for archived projects and is
+// omitted here exactly as it is from Snapshot. Each project is deep-copied
+// through the durable document format, mirroring the production census's fresh
+// load — a refused commit must leave the repository's own state untouched.
+func (r *fakeRepo) WorkspaceCensus() (app.WorkspaceCensus, error) {
+	r.censusCalls++
+	if r.censusErr != nil {
+		return app.WorkspaceCensus{}, r.censusErr
+	}
+	census := app.WorkspaceCensus{CatalogPath: fakeCatalogPath}
+	if data, ok := r.files[fakeCatalogPath]; ok {
+		census.CatalogRevision = storage.RawArtifactRevision(data)
+	}
+	for _, project := range r.projects {
+		if project == nil {
+			continue
+		}
+		census.Projects = append(census.Projects, app.CensusProject{
+			Project:  cloneProjectForTest(project),
+			Revision: r.revisions[project.ID],
+			Document: r.documents[project.ID],
+		})
+	}
+	return census, nil
+}
+
+// cloneProjectForTest deep-copies a project by round-tripping it through the
+// durable format, so a mutation applied to the copy cannot reach the original
+// through a shared task pointer.
+func cloneProjectForTest(project *models.Project) *models.Project {
+	content, err := documentOf(project, nil).WriteCurrent()
+	if err != nil {
+		panic(err)
+	}
+	parsed, err := storage.ParseProjectDocument(content)
+	if err != nil {
+		panic(err)
+	}
+	clone := *project
+	clone.Tasks = parsed.Tasks
+	clone.BuildTaskTree()
+	return &clone
 }
 
 // withUnloaded seeds cataloged projects outside the snapshot population. They
@@ -109,14 +166,8 @@ func (r *fakeRepo) CommitArtifactTransaction(request storage.ArtifactCommitReque
 		if artifact.ExpectedRevision == nil {
 			continue
 		}
-		path := filepath.Clean(artifact.Path)
-		data, exists := r.files[path]
-		actual := ""
-		if exists {
-			actual = storage.RawArtifactRevision(data)
-		}
-		if (!exists && *artifact.ExpectedRevision != "") || (exists && (*artifact.ExpectedRevision == "" || *artifact.ExpectedRevision != actual)) {
-			return "", &storage.ArtifactConflictError{Path: path, Expected: *artifact.ExpectedRevision, Actual: actual}
+		if err := r.artifactConflict(artifact.Path, *artifact.ExpectedRevision); err != nil {
+			return "", err
 		}
 	}
 	for _, artifact := range request.Artifacts {
@@ -166,20 +217,39 @@ func (r *fakeRepo) Snapshot() (app.Snapshot, error) {
 	return app.NewSnapshot(r.projects, revs, docs), nil
 }
 
-func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
-	if r.preCommit != nil {
-		r.preCommit()
+// artifactConflict applies one raw-revision expectation to the in-memory file
+// store and returns the conflict a real commit boundary would raise: an empty
+// expectation requires absence, a non-empty one requires an exact match.
+func (r *fakeRepo) artifactConflict(path, expected string) error {
+	clean := filepath.Clean(path)
+	data, exists := r.files[clean]
+	actual := ""
+	if exists {
+		actual = storage.RawArtifactRevision(data)
 	}
-	if r.commitErr != nil {
-		return nil, r.commitErr
+	if (!exists && expected != "") || (exists && (expected == "" || expected != actual)) {
+		return &storage.ArtifactConflictError{Path: clean, Expected: expected, Actual: actual}
 	}
-	// Validate the complete project-and-artifact revision set before changing the
-	// in-memory repository, mirroring CommitService's all-or-none preflight.
+	return nil
+}
+
+// validateReadOnlyGuards enforces every changeset's read-only guards before the
+// in-memory repository changes, in the same order and with the same meaning
+// CommitService gives them — artifacts first, then projects — so a dropped guard
+// is never mistaken for a satisfied one.
+func (r *fakeRepo) validateReadOnlyGuards(changesets []storage.ChangeSet) error {
+	for i := range changesets {
+		for _, precondition := range changesets[i].ArtifactPreconditions {
+			if err := r.artifactConflict(precondition.Path, precondition.ExpectedRevision); err != nil {
+				return err
+			}
+		}
+	}
 	for i := range changesets {
 		for _, precondition := range changesets[i].ProjectPreconditions {
 			stored := r.revisions[precondition.ProjectID]
 			if precondition.ExpectedRevision != stored {
-				return nil, &storage.RevisionConflictError{
+				return &storage.RevisionConflictError{
 					ProjectID:   precondition.ProjectID,
 					ProjectName: precondition.ProjectName,
 					Expected:    precondition.ExpectedRevision,
@@ -187,6 +257,19 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
+	if r.preCommit != nil {
+		r.preCommit()
+	}
+	if r.commitErr != nil {
+		return nil, r.commitErr
+	}
+	if err := r.validateReadOnlyGuards(changesets); err != nil {
+		return nil, err
 	}
 	for i := range changesets {
 		cs := changesets[i]
@@ -200,20 +283,11 @@ func (r *fakeRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitRes
 			}
 		}
 		for _, artifact := range cs.Artifacts {
-			if !r.validateChangeArtifacts {
+			if !r.validateChangeArtifacts || artifact.ExpectedRevision == nil {
 				continue
 			}
-			if artifact.ExpectedRevision == nil {
-				continue
-			}
-			path := filepath.Clean(artifact.Path)
-			data, exists := r.files[path]
-			actual := ""
-			if exists {
-				actual = storage.RawArtifactRevision(data)
-			}
-			if (!exists && *artifact.ExpectedRevision != "") || (exists && (*artifact.ExpectedRevision == "" || *artifact.ExpectedRevision != actual)) {
-				return nil, &storage.ArtifactConflictError{Path: path, Expected: *artifact.ExpectedRevision, Actual: actual}
+			if err := r.artifactConflict(artifact.Path, *artifact.ExpectedRevision); err != nil {
+				return nil, err
 			}
 		}
 	}

@@ -82,6 +82,40 @@ func NormalizeTaskTags(tags []string) ([]string, error) {
 	return normalized, nil
 }
 
+// ReplaceTag rewrites every occurrence of the canonical tag from as to and
+// returns the resulting set plus whether it differs from tags. Both sides are
+// compared on their canonical spelling, so a stored variant renames like the
+// value a filter would have matched. A rename onto a tag the task already
+// carries merges the two: the destination keeps the earliest position of either
+// membership and appears exactly once, while every unrelated tag keeps its own
+// position and spelling.
+//
+// It is deliberately a pure list transform rather than a Task method: AddTag and
+// RemoveTag stamp UpdatedAt, and a vocabulary rename is not task activity.
+func ReplaceTag(tags []string, from, to string) ([]string, bool) {
+	renamed := make([]string, 0, len(tags))
+	seen := make(map[string]bool, len(tags))
+	for _, existing := range tags {
+		key := existing
+		if normalized, err := NormalizeTaskTag(existing); err == nil {
+			key = normalized
+		}
+		value := existing
+		if key == from {
+			key, value = to, to
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		renamed = append(renamed, value)
+	}
+	if slices.Equal(renamed, tags) {
+		return tags, false
+	}
+	return renamed, true
+}
+
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {

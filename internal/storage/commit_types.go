@@ -137,6 +137,13 @@ type ChangeSet struct {
 	// the same early path validation and deterministic project-lock set as Project,
 	// then validate before the ordinary expected-revision merge path begins.
 	ProjectPreconditions []ProjectRevisionPrecondition
+	// ArtifactPreconditions guard every non-project artifact this mutation read
+	// but does not rewrite — the workspace catalog a whole-workspace census was
+	// derived from, for instance. They are containment-checked and locked with the
+	// changeset's own artifacts and validate in the same first phase as
+	// ProjectPreconditions, so a concurrent catalog write expires the mutation
+	// before any merge, conflict bundle, ledger image, or staged byte.
+	ArtifactPreconditions []ArtifactPrecondition
 	// Artifacts are additional files committed atomically with the project write.
 	Artifacts []ArtifactChange
 	// AttachmentOps are attachment file side effects (copy, move, delete) resolved

@@ -22,10 +22,16 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 	// durably recorded, so no project or artifact is written.
 	var recorded []RecordedConflict
 
-	// Project preconditions are deliberately a separate first phase. They guard
-	// the complete application-level read set and must expire atomically before
-	// the ordinary ExpectedRevision path can attempt a merge or record a durable
-	// conflict bundle for any changeset.
+	// Preconditions are deliberately a separate first phase. They guard the
+	// complete application-level read set and must expire atomically before the
+	// ordinary ExpectedRevision path can attempt a merge or record a durable
+	// conflict bundle for any changeset. Artifact guards run first: the catalog a
+	// whole-workspace census enumerated decides which projects the read set was
+	// even supposed to contain, so a catalog race is reported as itself rather
+	// than as whichever project guard happens to notice the consequence.
+	if err := validateChangesetArtifactPreconditions(changesets); err != nil {
+		return nil, nil, err
+	}
 	if err := s.validateProjectRevisionPreconditions(changesets); err != nil {
 		return nil, nil, err
 	}
@@ -99,6 +105,19 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 		}
 	}
 	return mergedDocs, recorded, nil
+}
+
+// validateChangesetArtifactPreconditions checks every changeset's read-only
+// artifact guards under the advisory locks CommitMulti already holds. It reuses
+// the artifact-only path's validator so a guard means the same thing on both
+// commit boundaries.
+func validateChangesetArtifactPreconditions(changesets []ChangeSet) error {
+	for i := range changesets {
+		if err := validateArtifactPreconditions(changesets[i].ArtifactPreconditions); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *CommitService) validateProjectRevisionPreconditions(changesets []ChangeSet) error {

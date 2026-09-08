@@ -144,6 +144,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 
 	seenPaths := make(map[string]bool, len(changesets))
 	var artifacts []ArtifactChange
+	var artifactPreconditions []ArtifactPrecondition
 	for i := range changesets {
 		project := changesets[i].Project
 		if project == nil {
@@ -161,6 +162,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 		}
 		seenPaths[pathID] = true
 		artifacts = append(artifacts, changesets[i].Artifacts...)
+		artifactPreconditions = append(artifactPreconditions, changesets[i].ArtifactPreconditions...)
 		for j := range changesets[i].ProjectPreconditions {
 			precondition := changesets[i].ProjectPreconditions[j]
 			if err := validateProjectPreconditionPath(i, j, precondition.Path, s.roots); err != nil {
@@ -171,6 +173,14 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	artifactLocks, err := artifactLockPaths(artifacts, s.roots)
 	if err != nil {
 		return nil, fmt.Errorf("storage: changeset artifacts: %w", err)
+	}
+	// Read-only artifact guards are containment-checked here, before the workspace
+	// lock creates anything, exactly like the writes they accompany. They yield the
+	// same adjacent advisory lock a write of those bytes would take, so the guard
+	// and a concurrent writer serialize on one lock.
+	artifactPreconditionLocks, err := artifactPreconditionLockPaths(artifactPreconditions, s.roots)
+	if err != nil {
+		return nil, fmt.Errorf("storage: changeset artifact preconditions: %w", err)
 	}
 
 	// The whole commit pipeline — crash recovery plus the project-scoped apply —
@@ -225,6 +235,10 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 			return err
 		}
 		lockPaths = append(lockPaths, artifactLocks...)
+		if err := createArtifactLockDirectories(artifactPreconditionLocks); err != nil {
+			return err
+		}
+		lockPaths = append(lockPaths, artifactPreconditionLocks...)
 
 		return withOrderedFileLocks(lockPaths, func() error {
 			r, commitErr := s.commitMultiLocked(journal, changesets)

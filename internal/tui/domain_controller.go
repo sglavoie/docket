@@ -333,6 +333,47 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 	return app.NewSnapshot(loaded, revisions, documents), nil
 }
 
+// WorkspaceCensus implements app.WorkspaceCensusSource: it reads every
+// unarchived project — parked ones included, in every task state — together
+// with the catalog revision that enumerated them, and fails on the first
+// project it cannot read.
+//
+// It deliberately does not reuse Snapshot or AvailableProjects. Snapshot's
+// tolerance is right for a single-task edit and wrong for a whole-workspace
+// rename: skipping an unreadable project there would quietly under-report what
+// a rename covers and then commit that partial answer. Taking the catalog
+// through one checked load is what pairs the enumerated project set with the
+// revision the commit boundary guards it against.
+func (r *tuiAppRepository) WorkspaceCensus() (app.WorkspaceCensus, error) {
+	catalog, revision, err := config.NewDomainFileStore(r.dataDir).LoadCatalogChecked()
+	if err != nil {
+		return app.WorkspaceCensus{}, fmt.Errorf("reading workspace catalog for census: %w", err)
+	}
+	census := app.WorkspaceCensus{
+		CatalogPath:     config.WorkspaceCatalogPath(r.dataDir),
+		CatalogRevision: revision,
+	}
+	for _, cataloged := range catalog.Projects {
+		if cataloged.Archived {
+			continue
+		}
+		project := cataloged.ToModel(r.dataDir)
+		if err := storage.LoadProject(project); err != nil {
+			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s for census: %w", project.Name, err)
+		}
+		doc, err := tuiProjectDiskDocument(project)
+		if err != nil {
+			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s document for census: %w", project.Name, err)
+		}
+		census.Projects = append(census.Projects, app.CensusProject{
+			Project:  project,
+			Revision: doc.Revision,
+			Document: doc,
+		})
+	}
+	return census, nil
+}
+
 // tuiProjectDiskDocument returns the exact lossless on-disk document whose
 // revision the commit service compares against ExpectedRevision. It reads the
 // disk document rather than the load-normalized in-memory project: a fresh
@@ -354,10 +395,13 @@ func tuiProjectDiskDocument(p *models.Project) (*storage.ProjectDocument, error)
 // Commit applies the changesets atomically. On the real filesystem it drives the
 // transaction journal; against a test double it raw-saves each project and
 // synthesizes a CommitResult carrying the recomputed revision. The fallback
-// fails closed on auxiliary artifacts or attachment side effects rather than
-// silently dropping them — the primary feature mutations this repository serves
-// (capture, state transition, priority, completion) carry neither, so the
-// fallback stays observably faithful for the paths that actually use it.
+// fails closed on auxiliary artifacts, attachment side effects, and read-only
+// guards rather than silently dropping them — the primary feature mutations this
+// repository serves (capture, state transition, priority, completion) carry
+// none of them, so the fallback stays observably faithful for the paths that
+// actually use it. A dropped guard would be worse than a dropped write: the
+// commit would appear to succeed while proving nothing about the state it was
+// derived from.
 func (r *tuiAppRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
 	if r.useCommitService() {
 		return r.svc.CommitMulti(changesets)
@@ -366,6 +410,9 @@ func (r *tuiAppRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.C
 	for i, cs := range changesets {
 		if len(cs.Artifacts) > 0 || len(cs.AttachmentOps) > 0 {
 			return nil, fmt.Errorf("tui fallback commit cannot apply auxiliary artifacts or attachment ops")
+		}
+		if len(cs.ProjectPreconditions) > 0 || len(cs.ArtifactPreconditions) > 0 {
+			return nil, fmt.Errorf("tui fallback commit cannot validate read-only preconditions")
 		}
 		if cs.Project != nil {
 			if err := storage.SaveProject(cs.Project); err != nil {

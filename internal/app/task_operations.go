@@ -30,6 +30,11 @@ const (
 	TaskOperationSetPinned            TaskOperation = "set_pinned"
 	TaskOperationToggleReview         TaskOperation = "toggle_review"
 	TaskOperationSetDependencies      TaskOperation = "set_dependencies"
+	// TaskOperationRenameTaskName renames or merges one tag or context across the
+	// whole workspace. It is the one operation here that carries no targets: its
+	// scope is every unarchived project, resolved by a strict census rather than
+	// by a presentation's selection.
+	TaskOperationRenameTaskName TaskOperation = "rename_task_name"
 )
 
 // TaskOperationRequest carries one operation and its value. Targets are always
@@ -66,6 +71,9 @@ type TaskOperationRequest struct {
 	// preserves every target's stored set — the same preserve-by-default rule the
 	// edit surfaces obey, applied to a selection of any size.
 	Dependencies DependencyPatch
+	// RenameName carries the whole-workspace tag or context rename. It is the one
+	// value here that ignores Targets entirely.
+	RenameName RenameTaskNameRequest
 }
 
 // TaskClipboardProjection is application-owned clipboard text. The application
@@ -190,6 +198,17 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 	case TaskOperationToggleReview:
 		result, err := s.bulkToggleReview(req.Targets)
 		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationRenameTaskName:
+		result, err := s.RenameTaskName(req.RenameName)
+		if err != nil {
+			return TaskOperationResult{}, err
+		}
+		return TaskOperationResult{
+			Tasks:             result.Tasks,
+			TouchedProjectIDs: result.TouchedProjectIDs,
+			TransactionID:     result.TransactionID,
+		}, nil
 
 	case TaskOperationSetDependencies:
 		result, err := s.bulkPatchDependencies(req.Targets, req.Dependencies)
