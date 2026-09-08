@@ -52,6 +52,14 @@ const (
 	// prompts for one nor clears the one already stored.
 	OperationTaskSetResumeNote OperationID = "tui.task.set-resume-note"
 
+	// OperationTaskAddComment appends one comment to one task without leaving the
+	// list. It is a separate operation from OperationTaskComments because that
+	// one zooms into the panel that owns reading, editing, reordering, and
+	// deleting comments, and this one only writes a new one; both commit through
+	// the same Service.AddComment, so the two routes cannot disagree about what a
+	// comment is.
+	OperationTaskAddComment OperationID = "tui.task.add-comment"
+
 	// OperationTaskDelete carries no direct key. Delete is the whole task
 	// `Space` menu and confirms first, so the ID is manifest vocabulary the
 	// sheet reads rather than a binding the strategy declares.

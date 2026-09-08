@@ -153,6 +153,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			// deliberate act like Named Lenses rather than a daily-loop one; `?` and
 			// the menu bar teach it and the compact footer stays as quiet as it is.
 			{OperationID: OperationTaskSetResumeNote, Keys: []string{"r"}, DisplayKey: "r"},
+			// C carries no FooterRank either, and for the same reason: `;` already
+			// advertises comments in the footer, and this key is the shortcut past
+			// the panel for the one act — appending — that is worth not leaving the
+			// list for. The capital is the shifted form of the panel's own sigil
+			// neighborhood rather than a new letter: `;` reads comments, `C` writes
+			// one.
+			{OperationID: OperationTaskAddComment, Keys: []string{"C"}, DisplayKey: "C"},
 			{OperationID: OperationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: OperationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: OperationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},

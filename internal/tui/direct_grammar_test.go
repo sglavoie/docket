@@ -246,6 +246,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"%": operation.OperationTaskMoveToProject,
 		"&": operation.OperationTaskAttachments,
 		";": operation.OperationTaskComments,
+		// C is the shifted write to that panel's read: ; opens comments and C
+		// appends one without leaving the list. Neither is shared, because only a
+		// task carries comments.
+		"C": operation.OperationTaskAddComment,
 		// r is not shared either: only a task carries a resume note, so the key
 		// never asks what the cursor names.
 		"r":           operation.OperationTaskSetResumeNote,
@@ -329,9 +333,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// and L went with the screen-relative jumps; the z chord kept the family. M
 	// has since been spent on the menu bar and is asserted in direct above, so
 	// only its two neighbors are still owed silence: either one alone would
-	// advertise half of a jump the z chord already owns.
+	// advertise half of a jump the z chord already owns. C is likewise absent
+	// now: quick Add Comment took it, and direct above is where it is asserted.
 	for _, removed := range []string{
-		"b", "d", "g", "z", ",", "m", ":", "C", "R", "ctrl+esc",
+		"b", "d", "g", "z", ",", "m", ":", "R", "ctrl+esc",
 		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {

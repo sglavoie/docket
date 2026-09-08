@@ -113,6 +113,22 @@ value type the provider's preset rows carry, so the executor and the single and
 bulk handlers stay untouched. A value the presets cannot express belongs in an
 inline mode on the one picker, never in a standalone form.
 
+`OperationTextPromptModel` is that overlay, and `OperationTextPromptOptions` is
+where the providers that share it differ: the character bound, whether an empty
+buffer is an answer or a refusal, whether the buffer is multiline, and what an
+`Esc` on a non-empty buffer asks before discarding it. Multiline is the one
+option that moves a key. A comment's stored text holds newlines, so `Enter` has
+to write one and the apply moves to `Ctrl+S`; the prompt reads its own submit key
+in exactly two places, the key switch and the guidance hints, so the footer
+cannot advertise a key the handler does not take. The discard question is drawn
+inside the prompt's own box rather than as a second floating overlay, because
+`AppModel` paints the confirmation the controller owns and a box over this one
+would hide the text the question is about. Two properties are the prompt's own
+rather than the shell's: it emits one selection per open and answers every later
+submit key with nothing, and `Restore` is what reopens it — on the text already
+typed, with the reason the commit was refused — which is also what clears that
+guard for the retry.
+
 The vocabulary rename `e` opens on `ValueProviderFilterTags` and
 `ValueProviderFilterContexts` is a third nested grammar on that same model
 (`internal/tui/valuepicker/vocabulary_rename.go`), and `vocabularyRenameProvider`
@@ -246,9 +262,10 @@ rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
 other retired root key — `b`, `c`, `m`, `w`, `:`, `C`, `R`, the comma state
 prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
-`t` and `P` left that list by an explicit decision rather than by drift: `t`
-took the task-subtree fold and `P` took Select Project, so both are live keys
-with new acts rather than aliases for the ones they used to name.
+`t`, `P`, and `C` left that list by an explicit decision rather than by drift:
+`t` took the task-subtree fold, `P` took Select Project, and `C` took quick Add
+Comment, so all three are live keys with new acts rather than aliases for the
+ones they used to name.
 
 Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
 built by `operationParentListSource` from the cursor task's own

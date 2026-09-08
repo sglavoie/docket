@@ -301,7 +301,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// docs/architecture/tui-architecture.md. Retiring the start-only operation
 	// and the Edit project sheet row paid part of the raise back in the same
 	// edit; no rule elsewhere was trimmed for the rest.
-	const budget = 31492
+	//
+	// Ninth raise, 31492 to 31942, for quick Add Comment on `C`. 450 bytes buy
+	// three rules that nothing else in the file implies. The first is which of
+	// the two comment routes may do what: `;` still owns reading, editing,
+	// reordering, and deleting, `C` only appends, and the only reason that is
+	// not a second route to an existing act is that they share one mutation and
+	// one limit — a reader who does not know that would either duplicate the
+	// mutation or refuse the key. The second is that a multiline `TextEntry()`
+	// provider moves apply off `Enter`, which the value-provider rule above
+	// cannot say for it, since Enter-as-newline is a property of the value and
+	// not of the provider kind. The third is the pair of properties that make
+	// the popup safe rather than merely convenient — one submission per open,
+	// and text that survives a refusal — because both are easy to drop in a
+	// later refactor and neither shows up in a passing render. Nothing was
+	// trimmed to pay for it: the retired-key list gave back only the five bytes
+	// `C` itself occupied.
+	const budget = 31942
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -377,8 +393,14 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `b`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `b`, `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
+		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +
+			"only appends one from the list; both commit through `Service.AddComment` under " +
+			"the one limit `taskdetail.CommentCharLimit` states",
+		"That popup is the multiline `TextEntry()` provider, so `Enter` writes a newline, " +
+			"`Ctrl+S` saves, `Esc` confirms a discard the prompt draws in its own box, and " +
+			"the prompt emits one submission until a refusal restores its text",
 		"Done is `$d` alone and no `d` alias may return",
 		"Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +
 			"and cursor-top is `gg` or `Home`",

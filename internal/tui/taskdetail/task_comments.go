@@ -12,6 +12,12 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+// CommentCharLimit bounds a comment however it is typed. The Comments panel
+// owns the number because it owns comments; the Outliner's quick Add Comment
+// popup reads it from here rather than restating it, so the two routes cannot
+// promise different lengths.
+const CommentCharLimit = 2000
+
 // TaskCommentsModel displays and manages comments for a task.
 type TaskCommentsModel struct {
 	listsurface.BaseView
@@ -53,14 +59,14 @@ func (m *TaskCommentsModel) SetOperationDispatch(dispatch operation.KeyDispatch)
 func NewTaskCommentsModel(task *models.Task, project *models.Project) *TaskCommentsModel {
 	ti := textarea.New()
 	ti.Placeholder = "Enter comment text..."
-	ti.CharLimit = 2000
+	ti.CharLimit = CommentCharLimit
 	ti.SetHeight(4)
 	ti.ShowLineNumbers = false
 	theme.ApplyThemedTextarea(&ti)
 
 	editTi := textarea.New()
 	editTi.Placeholder = "Edit comment text..."
-	editTi.CharLimit = 2000
+	editTi.CharLimit = CommentCharLimit
 	editTi.SetHeight(6)
 	editTi.ShowLineNumbers = false
 	theme.ApplyThemedTextarea(&editTi)

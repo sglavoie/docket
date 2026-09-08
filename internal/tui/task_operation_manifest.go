@@ -46,6 +46,10 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		// off is also what refuses the operation under a visual selection outright
 		// rather than letting it fall back to the cursor row.
 		{ID: operation.OperationTaskSetResumeNote, Label: "Set Resume Note", Aliases: []string{"resume note", "where was I", "clear resume note"}, Provider: operation.ValueProviderResumeNote, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		// Not Bulk for the same reason: a comment is one task's own remark, and a
+		// selection of tasks has nothing to say in one voice. Comments above keeps
+		// the panel that reads, edits, reorders, and deletes; this only appends.
+		{ID: operation.OperationTaskAddComment, Label: "Add Comment", Aliases: []string{"comment", "quick comment", "note on task"}, Provider: operation.ValueProviderComment, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCorePeek, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
@@ -265,6 +269,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		operation.ValueProviderProject,
 		operation.ValueProviderTaskReference,
 		operation.ValueProviderResumeNote,
+		operation.ValueProviderComment,
 	} {
 		if err := executor.RegisterValueProvider(provider, operation.PendingPickedValueProvider); err != nil {
 			return err

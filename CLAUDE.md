@@ -151,7 +151,7 @@ One key is one act on every entity surface:
 | `Enter` `a` `c` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
-| `&` `;` `~` | attachments · comments · dependencies |
+| `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `Space` | menu: destructive and rare operations only |
 
@@ -321,9 +321,16 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `b`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the
+The old `b`, `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
+
+`;` opens the panel that reads, edits, reorders, and deletes comments and `C`
+only appends one from the list; both commit through `Service.AddComment` under
+the one limit `taskdetail.CommentCharLimit` states. That popup is the multiline
+`TextEntry()` provider, so `Enter` writes a newline, `Ctrl+S` saves, `Esc`
+confirms a discard the prompt draws in its own box, and the prompt emits one
+submission until a refusal restores its text.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the

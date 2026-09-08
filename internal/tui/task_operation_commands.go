@@ -136,6 +136,50 @@ func (m *AppModel) reopenResumeNotePrompt(msg ResumeNoteRejectedMsg) tea.Cmd {
 	return prompt.InitCmd()
 }
 
+// CommentRejectedMsg is the resume-note message's twin, for the same reason: a
+// comment save can only fail after the popup closed, and a paragraph someone
+// just typed is exactly the thing that must not be thrown away by a refusal.
+type CommentRejectedMsg struct {
+	Request operation.OperationExecutionRequest
+	Text    string
+	Err     error
+}
+
+// addCommentCmd appends one comment through the same SubviewCoordinator the
+// Comments panel commits through, so the two routes share one mutation, one
+// transaction, and one undo entry shape. Only a rejection is rewritten; every
+// other message the coordinator produces reaches the shell untouched and gets
+// the ordinary reconciliation.
+func (m *AppModel) addCommentCmd(
+	request operation.OperationExecutionRequest,
+	identity taskref.TaskIdentity,
+	text string,
+) tea.Cmd {
+	cmd := m.secondaryFeatures.Subview.AddComment(identity, text)
+	return func() tea.Msg {
+		msg := cmd()
+		if failure, ok := msg.(coordinator.TransactionErrorMsg); ok {
+			return CommentRejectedMsg{Request: request, Text: text, Err: failure.Err}
+		}
+		return msg
+	}
+}
+
+// reopenCommentPrompt puts the refused comment back in the buffer it was typed
+// in. It degrades the same way the resume note does: a prompt that cannot be
+// rebuilt means the task itself is gone, and there is nothing left to retry
+// into, so the refusal becomes the ordinary error notice.
+func (m *AppModel) reopenCommentPrompt(msg CommentRejectedMsg) tea.Cmd {
+	prompt, err := m.newOperationTextPrompt(msg.Request, operation.ValueProviderComment)
+	if err != nil {
+		m.feedback.err = msg.Err
+		return status.StatusTimeout(5 * time.Second)
+	}
+	prompt.Restore(msg.Text, operationRefusalReason(msg.Err))
+	m.operations.TextPrompt = prompt
+	return prompt.InitCmd()
+}
+
 // moveTaskToProjectCmd relocates one or many selected subtrees into the picked
 // project. Cardinality chooses the transaction, not the meaning: one target
 // routes through the same task-line edit the `%project` sigil uses, so a

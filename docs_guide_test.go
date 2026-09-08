@@ -36,6 +36,8 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"the destination mints its own `#N` numbers for every task it receives",
 		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
 			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
+		"`C` appends one comment to the cursor task without opening that panel, in a multiline " +
+			"popup where `Enter` starts a new line and `Ctrl+S` saves",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
 		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +
@@ -344,6 +346,8 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 			"`:`, `C`, `R`, and `Ctrl+Esc`",
 		"Two names came back with new acts rather than as aliases: `t` is the task-subtree fold and " +
 			"`P` is Select Project",
+		"`C` is a fourth name back with a new act: it appends a comment to the cursor task " +
+			"without leaving the list, the write beside the read `;` already opens",
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
 		"`$` joins them as a chord prefix rather than a key of its own",
 		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",

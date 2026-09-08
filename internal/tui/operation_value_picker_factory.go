@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
@@ -301,6 +302,19 @@ func (m *AppModel) newOperationTextPrompt(
 		return operationhost.NewOperationTextPromptModel(
 			request, label, task.Title, task.ResumeNote, "where you left off (blank clears)",
 			operationhost.ResumeNoteTextPromptOptions(),
+		), nil
+	case operation.ValueProviderComment:
+		refs, err := m.operationTaskRefs(request.Context)
+		if err != nil {
+			return nil, err
+		}
+		// The subtitle names the task this comment is being written on and the
+		// buffer opens empty, because appending never edits an existing comment.
+		// Resolving the target here is what freezes it: a refresh or a deletion
+		// while the popup is open cannot redirect the text somewhere else.
+		return operationhost.NewOperationTextPromptModel(
+			request, label, refs[0].Task.Title, "", "comment text",
+			operationhost.CommentTextPromptOptions(taskdetail.CommentCharLimit),
 		), nil
 	case operation.ValueProviderLensName:
 		// Saving the current view mints a new record, so only a rename has a

@@ -32,6 +32,12 @@ const (
 	// nothing to express with one.
 	ValueProviderResumeNote ValueProviderID = "resume-note"
 
+	// ValueProviderComment is the typed text of one new comment. It is its own
+	// provider because it is the only text prompt whose value is multiline: a
+	// comment's stored form holds newlines, so Enter has to write one and the
+	// save moves to Ctrl+S, which no single-line prompt would want.
+	ValueProviderComment ValueProviderID = "comment"
+
 	// ValueProviderLensName is the typed name of one saved lens. It is separate
 	// from the note title because it prefills the lens under the cursor on a
 	// rename and stays blank when the current view is being saved as a new lens.
@@ -106,7 +112,8 @@ func (id ValueProviderID) TextEntry() bool {
 		id == ValueProviderTagName ||
 		id == ValueProviderChecklistItem ||
 		id == ValueProviderLensName ||
-		id == ValueProviderResumeNote
+		id == ValueProviderResumeNote ||
+		id == ValueProviderComment
 }
 
 // TagEntry reports whether the picker offers "a" to mint a tag the vocabulary

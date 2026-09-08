@@ -453,6 +453,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	case ResumeNoteRejectedMsg:
 		return true, m.reopenResumeNotePrompt(typed)
+	case CommentRejectedMsg:
+		return true, m.reopenCommentPrompt(typed)
 	case valuepicker.ProjectTagVocabularyActionsMsg:
 		m.operations.ClearValueStep()
 		return true, m.openProjectTagVocabularyActions(typed.Tag)

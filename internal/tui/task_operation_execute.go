@@ -444,6 +444,19 @@ func (m *AppModel) executeSingleTaskOperation(
 			ID:      invocation.Descriptor.ID,
 			Context: invocation.Context,
 		}, identity, note))
+	case operation.OperationTaskAddComment:
+		// The prompt already refused an empty buffer and the application layer
+		// refuses one again, so the assertion is all this layer owes.
+		text, ok := invocation.Value.(string)
+		if !ok {
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid comment value")}
+		}
+		// No relocation capture: a comment changes no axis any lane sorts or
+		// filters on, so the row the cursor is on is the row it stays on.
+		return cmdResult(m.addCommentCmd(operation.OperationExecutionRequest{
+			ID:      invocation.Descriptor.ID,
+			Context: invocation.Context,
+		}, identity, text))
 	case operation.OperationTaskSetParent:
 		value, ok := invocation.Value.(operation.OperationParentValue)
 		if !ok {
