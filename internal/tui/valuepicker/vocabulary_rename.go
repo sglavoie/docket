@@ -38,8 +38,24 @@ const vocabularyRenameNameLimit = models.MaxTagLength
 // vocabularyRenameReportLines is how many outcome lines are on screen at once.
 // A rename can name every affected lens, and the overlay has to stay inside the
 // terminal, so the report is a window with a scroll rather than a list that
-// grows until it is cut off.
+// grows until it is cut off. The report is drawn after the workspace was
+// already written, so its window is a fixed one: nothing is being decided from
+// it, and a taller terminal buys the reader nothing a scroll does not.
 const vocabularyRenameReportLines = 8
+
+// vocabularyRenameConfirmMinWindowRows is the smallest list window the
+// confirmation will draw. The confirmation is read before anything is written,
+// so a box too short for both the summary and a usable window gives up the
+// summary's tail rather than the reader's ability to page the list.
+const vocabularyRenameConfirmMinWindowRows = 3
+
+// vocabularyRenameChromeRows is what a step spends before its body: two halo
+// rows, two border rows, the title, and the two-row guidance budget every step
+// declares, plus the one row the shell holds back so the host title stays
+// visible above the popup. Reserving the declared budget rather than the packed
+// height is what keeps the body measurable before the guidance is asked for,
+// which is the order the scroll hint needs.
+const vocabularyRenameChromeRows = 8
 
 // VocabularyRenameRequestedMsg asks the shell to freeze a plan for one rename.
 // The picker cannot compute one: the affected counts come from a workspace
@@ -63,9 +79,13 @@ type VocabularyRenameConfirmedMsg struct {
 type VocabularyRenameAbandonedMsg struct{}
 
 // VocabularyRenamePlan is the shell's frozen answer to one rename request: what
-// the act is called, and the lines that say what it would change.
+// the act is called, the sentences that say what it would change, and the
+// enumeration those sentences count. The two are separate because they are read
+// differently: Summary is what the confirmation is answerable for and stays on
+// screen, while Lines is a list of unbounded length that scrolls under it.
 type VocabularyRenamePlan struct {
 	Heading string
+	Summary []string
 	Lines   []string
 }
 
@@ -95,7 +115,14 @@ type vocabularyRenameState struct {
 	failure string
 	plan    VocabularyRenamePlan
 	outcome VocabularyRenameOutcome
-	offset  int
+	// offset is the scroll position of whichever step windows a list, and rows
+	// and window are the last render's line count and window height. The two
+	// measurements are written by the render because it is the only place the
+	// box's height is known, and the scroll keys clamp against them — which is
+	// also what makes a resize reseat an offset the new window cannot hold.
+	offset int
+	rows   int
+	window int
 }
 
 // vocabularyRenameProvider reports whether a picker lists stored task names a
@@ -193,8 +220,14 @@ func (model *OperationValuePickerModel) handleVocabularyRenameConfirmKey(msg tea
 		model.rename.stage = vocabularyRenameNaming
 		model.rename.plan = VocabularyRenamePlan{}
 		model.rename.failure = ""
+		model.rename.offset = 0
 		return nil, false, VocabularyRenameAbandonedMsg{}
 	}
+	// Reading the rest of the plan is the only other thing this step does. A
+	// confirmation names an unbounded list — one row per affected lens — and the
+	// two answers above are the only keys that decide anything, so a scroll is
+	// reachable here without ever being a second route to accepting it.
+	model.scrollVocabularyRename(msg)
 	return nil, false, nil
 }
 
@@ -202,20 +235,28 @@ func (model *OperationValuePickerModel) handleVocabularyRenameReportKey(msg tea.
 	switch msg.String() {
 	case "esc", "enter":
 		model.rename = vocabularyRenameState{}
-	case "up", "k":
-		if model.rename.offset > 0 {
-			model.rename.offset--
-		}
-	case "down", "j":
-		if model.rename.offset < model.vocabularyRenameMaxOffset() {
-			model.rename.offset++
-		}
+		return nil, false, nil
 	}
+	model.scrollVocabularyRename(msg)
 	return nil, false, nil
 }
 
+// scrollVocabularyRename moves the open step's window and is the whole of what
+// a scroll key does: it reads the frozen lines the render already holds and
+// touches no workspace, no plan, and no stage.
+func (model *OperationValuePickerModel) scrollVocabularyRename(msg tea.KeyPressMsg) {
+	switch msg.String() {
+	case "up", "k":
+		model.rename.offset = max(model.rename.offset-1, 0)
+	case "down", "j":
+		model.rename.offset = min(model.rename.offset+1, model.vocabularyRenameMaxOffset())
+	}
+}
+
+// vocabularyRenameMaxOffset is measured from the last render rather than from
+// the lines alone, because how many of them fit is the render's answer.
 func (model *OperationValuePickerModel) vocabularyRenameMaxOffset() int {
-	return max(len(model.rename.outcome.Lines)-vocabularyRenameReportLines, 0)
+	return max(model.rename.rows-model.rename.window, 0)
 }
 
 // ShowVocabularyRenamePlan mounts the shell's frozen plan as the confirmation
@@ -228,6 +269,7 @@ func (model *OperationValuePickerModel) ShowVocabularyRenamePlan(plan Vocabulary
 	model.rename.stage = vocabularyRenameConfirming
 	model.rename.plan = plan
 	model.rename.failure = ""
+	model.rename.offset = 0
 }
 
 // RefuseVocabularyRename retains a refusal on the name step with the typed
@@ -240,6 +282,7 @@ func (model *OperationValuePickerModel) RefuseVocabularyRename(message string) {
 	model.rename.stage = vocabularyRenameNaming
 	model.rename.plan = VocabularyRenamePlan{}
 	model.rename.failure = message
+	model.rename.offset = 0
 }
 
 // AdoptVocabularyRenameOutcome retains a committed rename's details on the

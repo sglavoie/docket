@@ -247,6 +247,14 @@ differently, whether they spell the name in full, by prefix, or negated, and say
 so plainly when none do. A lens that named the old spelling keeps naming it, and
 will simply match less.
 
+There is one row per named lens, so a workspace can name more of them than the
+terminal has room for. `j`/`k` page that list, on the confirmation and on the
+report alike, and the confirmation says how many rows it is still holding back.
+The destination, the counts, the scope, and how many lenses are named stay on
+screen while you page, so the whole reported impact is readable before anything
+is written — and paging itself writes nothing, applies nothing, and leaves the
+confirmation exactly where `y` and `n` found it.
+
 What you were in the middle of survives all three steps. The query you typed
 into the picker, the cursor, and the values you had already checked are still
 there when a step closes, and a committed rename rebuilds the list from the

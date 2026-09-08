@@ -164,7 +164,7 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
-	if rendered, ok := model.renderVocabularyRename(innerWidth); ok {
+	if rendered, ok := model.renderVocabularyRename(innerWidth, height); ok {
 		return rendered
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)

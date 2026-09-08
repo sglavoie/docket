@@ -143,6 +143,21 @@ browse state across, remapping the pending source row onto the destination and
 deduplicating what a merge collapsed; only the picker-local search is given up,
 and only when it would hide the row the rename produced.
 
+The lens report is one row per lens and therefore unbounded, so both the
+confirmation and the outcome window it. `VocabularyRenamePlan` carries that cut:
+`Summary` is the bounded prose the confirmation is answerable for — destination,
+counts, scope, the merge sentence, and the lens count — and is pinned, while
+`Lines` scrolls under it. The confirmation's window is height-aware, budgeted
+from the height `RenderWithin` is given less `vocabularyRenameChromeRows`, which
+reserves the guidance's declared two-row budget rather than its packed height so
+the body is measurable before the scroll hint is asked for. The post-commit
+report keeps its fixed `vocabularyRenameReportLines` window: nothing is being
+decided from it. `renderVocabularyRenameWindow` records the line count and the
+window height because the render is the only place either is known, which is
+what lets a scroll key clamp and a resize reseat an offset the new window cannot
+hold. The scroll keys are the whole of what they do — the two answers stay
+required in the footer, and no step commits, cancels, or edits from one.
+
 `ValueProviderDate` is the one date picker a task operation reaches. It sections
 due presets above defer presets so a single key answers both fields, and the
 committed row carries `OperationDateValue.Deferred`, which is what tells the

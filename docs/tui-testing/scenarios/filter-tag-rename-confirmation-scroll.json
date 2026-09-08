@@ -1,0 +1,836 @@
+{
+  "name": "filter-tag-rename-confirmation-scroll",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    {
+      "type": "key",
+      "label": "save a lens naming the tag",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 0"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 0"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 1"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 1"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 2"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 2"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 3"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 3"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 4"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 4"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 5"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 5"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 6"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 6"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Search: > #security"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "text",
+      "text": "Security 7"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Lens: Security 7"
+    },
+    {
+      "type": "key",
+      "key": "Q"
+    },
+    {
+      "type": "key",
+      "key": "1"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Build login form"
+    },
+    {
+      "type": "key",
+      "label": "review a rename every one of those lenses names",
+      "key": "f"
+    },
+    {
+      "type": "key",
+      "key": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "e"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "platform-api"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "#security → #platform-api"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "8 saved lenses may select differently"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Security 0 · #security"
+    },
+    {
+      "type": "assert",
+      "label": "the tail does not fit a 20-row terminal",
+      "assert": "not_contains",
+      "value": "Security 7 · #security"
+    },
+    {
+      "type": "assert",
+      "label": "and the confirmation says how many it is holding back",
+      "assert": "contains",
+      "value": "more"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "j/k scroll"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "label": "every affected lens is reachable before any commit",
+      "assert": "contains",
+      "value": "Security 7 · #security"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Security 0 · #security"
+    },
+    {
+      "type": "assert",
+      "label": "and what the reader is answering for stays on screen",
+      "assert": "contains",
+      "value": "#security → #platform-api"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "1 task in 1 project"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Scope: every unarchived project"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "8 saved lenses may select differently"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "y/Enter apply"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "key",
+      "key": "k"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Security 0 · #security"
+    },
+    {
+      "type": "key",
+      "label": "the scroll decided nothing: n still steps back to the name",
+      "key": "n"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Typing a name already in use merges the two."
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "key",
+      "label": "and nothing was written",
+      "key": "f"
+    },
+    {
+      "type": "key",
+      "key": "#"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "security"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "platform-api"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}

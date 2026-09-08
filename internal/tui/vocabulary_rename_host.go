@@ -121,7 +121,8 @@ func (m *AppModel) handleVocabularyRenameRequested(msg valuepicker.VocabularyRen
 	m.vocabularyRename = vocabularyRenameSession{preview: preview, lenses: impacts}
 	picker.ShowVocabularyRenamePlan(valuepicker.VocabularyRenamePlan{
 		Heading: vocabularyRenameHeading(axis, preview.Merge),
-		Lines:   vocabularyRenamePlanLines(axis, preview, impacts),
+		Summary: vocabularyRenamePlanSummary(axis, preview, impacts),
+		Lines:   vocabularyRenameLensRows(impacts),
 	})
 }
 
@@ -348,7 +349,12 @@ func vocabularyRenameArrow(axis vocabularyRenameAxis, from, to string) string {
 	return axis.sigil + from + " → " + axis.sigil + to
 }
 
-func vocabularyRenamePlanLines(
+// vocabularyRenamePlanSummary is everything the confirmation is answerable for
+// stated as prose: what the change is, how much it touches, how far it reaches,
+// and how many saved lenses it is about to read differently. It is separate
+// from the enumeration those last words count because the enumeration is
+// unbounded and this is not: the picker pins this and scrolls the rest.
+func vocabularyRenamePlanSummary(
 	axis vocabularyRenameAxis,
 	preview app.RenameTaskNamePreview,
 	impacts []vocabularyRenameLensImpact,
@@ -370,7 +376,7 @@ func vocabularyRenamePlanLines(
 			"%s%s is already in use, so the two become one.", axis.sigil, preview.To,
 		))
 	}
-	return append(lines, vocabularyRenameLensLines(impacts)...)
+	return append(lines, vocabularyRenameLensSummary(impacts)...)
 }
 
 func vocabularyRenameOutcomeLines(
@@ -391,20 +397,34 @@ func vocabularyRenameOutcomeLines(
 }
 
 // vocabularyRenameLensLines is the saved-lens report both steps carry, so the
-// confirmation and the outcome name the same lenses in the same words.
+// confirmation and the outcome name the same lenses in the same words. The
+// confirmation reads its two halves apart, because only one of them is bounded.
 func vocabularyRenameLensLines(impacts []vocabularyRenameLensImpact) []string {
+	return append(vocabularyRenameLensSummary(impacts), vocabularyRenameLensRows(impacts)...)
+}
+
+// vocabularyRenameLensSummary is the sentence that counts the affected lenses,
+// under the blank row that separates it from what came before.
+func vocabularyRenameLensSummary(impacts []vocabularyRenameLensImpact) []string {
 	if len(impacts) == 0 {
 		return []string{"", "No saved lens names it."}
 	}
-	lines := []string{"", fmt.Sprintf(
+	return []string{"", fmt.Sprintf(
 		"%d saved %s may select differently, and %s left unchanged:",
 		len(impacts), listsurface.Pluralize(len(impacts), "lens", "lenses"),
 		listsurface.Pluralize(len(impacts), "it is", "they are"),
 	)}
+}
+
+// vocabularyRenameLensRows names one affected lens per row, with the clauses
+// that made it so. There is one row per saved lens naming the name, so this is
+// the half a short terminal has to be able to page.
+func vocabularyRenameLensRows(impacts []vocabularyRenameLensImpact) []string {
+	rows := make([]string, 0, len(impacts))
 	for _, impact := range impacts {
-		lines = append(lines, "  "+impact.name+" · "+strings.Join(impact.clauses, " "))
+		rows = append(rows, "  "+impact.name+" · "+strings.Join(impact.clauses, " "))
 	}
-	return lines
+	return rows
 }
 
 func vocabularyRenameStatus(

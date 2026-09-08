@@ -221,6 +221,50 @@ func TestVocabularyRenameLensLinesNamesEveryImpactOrSaysThereIsNone(t *testing.T
 	}
 }
 
+// The confirmation is split into what stays on screen and what scrolls under
+// it, and the split is exactly one cut: every sentence the reader is answering
+// for is above it, the unbounded enumeration is below, and the two together
+// still read as the report the outcome carries whole.
+func TestVocabularyRenamePlanPinsEverySentenceAndScrollsOnlyTheEnumeration(t *testing.T) {
+	axis, _ := vocabularyRenameAxisFor(operation.ValueProviderFilterTags)
+	impacts := []vocabularyRenameLensImpact{
+		{name: "Security Sweep", clauses: []string{"#security"}},
+		{name: "Security Family", clauses: []string{"#sec*"}},
+	}
+	preview := app.RenameTaskNamePreview{
+		From:       "security",
+		To:         "platform-api",
+		Merge:      true,
+		Tasks:      []app.TaskLocator{{}, {}},
+		ProjectIDs: []string{"alpha"},
+	}
+	summary := vocabularyRenamePlanSummary(axis, preview, impacts)
+	want := []string{
+		"#security → #platform-api",
+		"2 tasks in 1 project",
+		"Scope: every unarchived project, not the filtered view",
+		"#platform-api is already in use, so the two become one.",
+		"",
+		"2 saved lenses may select differently, and they are left unchanged:",
+	}
+	if strings.Join(summary, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("summary = %#v, want %#v", summary, want)
+	}
+	rows := vocabularyRenameLensRows(impacts)
+	wantRows := []string{"  Security Sweep · #security", "  Security Family · #sec*"}
+	if strings.Join(rows, "\n") != strings.Join(wantRows, "\n") {
+		t.Fatalf("rows = %#v, want %#v", rows, wantRows)
+	}
+	// One lens is one row, so the half that scrolls is the half that grows.
+	if len(rows) != len(impacts) {
+		t.Fatalf("%d impacts produced %d scrollable rows", len(impacts), len(rows))
+	}
+	joined := append(append([]string{}, vocabularyRenameLensSummary(impacts)...), rows...)
+	if strings.Join(joined, "\n") != strings.Join(vocabularyRenameLensLines(impacts), "\n") {
+		t.Fatalf("the split halves do not rejoin into the report the outcome carries")
+	}
+}
+
 // vocabularyRenameSurfaceForTest is a filter-tag list over the given rows, which
 // is all the pending-selection remap reads of either picker.
 func vocabularyRenameSurfaceForTest(t *testing.T, names ...string) *listsurface.ListSurfaceModel {
