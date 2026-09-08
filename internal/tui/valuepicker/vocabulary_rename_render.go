@@ -67,6 +67,14 @@ func (model *OperationValuePickerModel) renderVocabularyRename(innerWidth int) (
 
 func (model *OperationValuePickerModel) renderVocabularyRenameNaming(width int) (string, string) {
 	noun := model.vocabularyRenameNoun()
+	// The field admits the whole canonical namespace length, which is wider than a
+	// narrow box can draw, so its window is set from the width it is painted at
+	// rather than from what it may hold. Re-anchoring the cursor is what applies
+	// that width: the input recomputes its window on a cursor move and not on a
+	// resize, so a prefilled name would otherwise wrap on the first frame and only
+	// start scrolling once a key was pressed.
+	model.rename.input.SetWidth(max(width-lipgloss.Width(model.rename.input.Prompt), 10))
+	model.rename.input.SetCursor(model.rename.input.Position())
 	lead := fmt.Sprintf(
 		"Rename %s across every unarchived project. Typing a name already in use merges the two.",
 		model.rename.from,

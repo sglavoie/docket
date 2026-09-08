@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -24,10 +25,15 @@ import (
 // confirmation are stages of this picker rather than overlays above it, so the
 // query, the cursor, and the pending multi-select are simply never touched.
 
-// vocabularyRenameNameLimit bounds the typed destination at the same fifty
-// characters the inline tag add mode accepts, so a name that can be minted is a
-// name that can be renamed onto.
-const vocabularyRenameNameLimit = 50
+// vocabularyRenameNameLimit bounds the typed destination at the canonical
+// namespace length, which tags and the task context share through ValidateTag.
+// It is that bound and not a stricter one because this field is prefilled with
+// a name the workspace already stores: a shorter limit would silently truncate
+// a valid source before the reader typed anything, and would refuse a valid
+// existing destination a merge has to be able to name. The model stays
+// authoritative — a value this field admits may still be refused by
+// normalization — but nothing storable is unspellable here.
+const vocabularyRenameNameLimit = models.MaxTagLength
 
 // vocabularyRenameReportLines is how many outcome lines are on screen at once.
 // A rename can name every affected lens, and the overlay has to stay inside the

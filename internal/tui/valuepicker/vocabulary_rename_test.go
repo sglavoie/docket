@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -178,6 +180,66 @@ func TestVocabularyRenameNamingStepTakesEveryPrintableKeyAsInput(t *testing.T) {
 	if requested.From != "backend" || requested.To != "backendetc" ||
 		requested.Provider != operation.ValueProviderFilterTags {
 		t.Fatalf("request = %#v, want the picker's own provider and both names", requested)
+	}
+}
+
+// The name step is prefilled with a name the workspace already stores, so its
+// bound is the namespace's own bound and nothing narrower: a stricter field
+// would truncate a valid source before the reader touched it, turning an
+// unedited Enter into a confirmation to rename onto a prefix nobody typed, and
+// would leave a valid long destination unspellable for a merge.
+func TestVocabularyRenameSpansTheWholeCanonicalNameLength(t *testing.T) {
+	source := strings.Repeat("a", models.MaxTagLength)
+	picker := newFilterTagPickerForTest(t, []query.TagInfo{{Name: source, TaskCount: 1}})
+	picker.HandleKey(renameKey("e"))
+
+	if got := picker.VocabularyRenameSource(); got != source {
+		t.Fatalf("rename source is %d characters, want the whole %d-character name", len(got), len(source))
+	}
+	if got := picker.VocabularyRenameDestination(); got != source {
+		t.Fatalf("prefilled destination is %d characters, want the source untruncated", len(got))
+	}
+
+	_, _, msg := picker.HandleKey(renameKey("enter"))
+	requested, ok := msg.(VocabularyRenameRequestedMsg)
+	if !ok {
+		t.Fatalf("enter on an unedited name step = %#v, want a rename request", msg)
+	}
+	if requested.From != source || requested.To != source {
+		t.Fatalf("request = %q → %q, want the same name on both sides so it refuses as unchanged",
+			requested.From, requested.To)
+	}
+}
+
+func TestVocabularyRenameTakesAFullLengthDestinationAndStaysInsideItsBox(t *testing.T) {
+	picker := newFilterTagPickerForTest(t, []query.TagInfo{{Name: "backend", TaskCount: 1}})
+	picker.HandleKey(renameKey("e"))
+	// More keys than the bound admits, so the field's own limit is what decides
+	// the length rather than the typing.
+	for range models.MaxTagLength {
+		picker.HandleKey(renameKey("z"))
+	}
+	if got := picker.VocabularyRenameDestination(); len(got) != models.MaxTagLength {
+		t.Fatalf("destination is %d characters, want the canonical bound of %d",
+			len(got), models.MaxTagLength)
+	}
+
+	// A field that admits more than a narrow box can draw windows over its value
+	// rather than wrapping it, so the long name stays inside the border and costs
+	// the step no row a short one would not have cost.
+	const narrow = 60
+	view := ansi.Strip(picker.RenderWithin(narrow, 24))
+	for _, line := range strings.Split(view, "\n") {
+		if width := ansi.StringWidth(line); width > narrow {
+			t.Fatalf("the name step draws %d columns inside %d:\n%s", width, narrow, view)
+		}
+	}
+	short := newFilterTagPickerForTest(t, []query.TagInfo{{Name: "backend", TaskCount: 1}})
+	short.HandleKey(renameKey("e"))
+	shortView := ansi.Strip(short.RenderWithin(narrow, 24))
+	if long, brief := lipgloss.Height(view), lipgloss.Height(shortView); long != brief {
+		t.Fatalf("a %d-character name draws %d rows against %d for a short one:\n%s",
+			models.MaxTagLength, long, brief, view)
 	}
 }
 
