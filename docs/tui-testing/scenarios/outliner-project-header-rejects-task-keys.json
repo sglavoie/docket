@@ -23,9 +23,12 @@
     { "type": "key", "label": "Copy Title has no task here", "key": "y" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Edit Title has no task here", "key": "e" },
-    { "type": "assert", "label": "the title editor never opens", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+    { "type": "key", "label": "e is the one key here that does name something: the project the header draws", "key": "e" },
+    { "type": "assert", "label": "the project editor opens, never the task title editor", "assert": "view", "value": "ProjectEditor" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Esc leaves it untouched", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "Indent has no task here", "key": "]" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },

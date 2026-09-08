@@ -41,8 +41,17 @@ because its rows name more than one kind of entity. `Space` resolves against the
 row under the cursor — a checklist item, a project group header, or a task — and
 `outlinerProjectOperationManifest` is the third answer. One-path is per-surface,
 so an operation may legitimately be a direct key on one surface and a menu row
-on another: Edit project is `e` on the Project Hub and a menu row here, because
-the Outliner's `e` already edits a task. `validateOutlinerOperationOnePath`
+on another. Edit project used to be that example — `e` on the Project Hub, a menu
+row here — and stopped being one when the Outliner's `e` learned to read the row
+under the cursor: `e` edits the task, the checklist item, or the project the
+cursor names, exactly one of the three descriptors applying at any cursor, so the
+manifest entry became `DirectOnly` and left the sheet, which keeps Archive and
+Delete. The narrowing that makes it safe is
+`outlinerProjectEditTargetsHeader`, and it is Edit project's alone: `e` is a root
+key in the Outliner, so the cursor is the only thing that says which project was
+meant, and `ProjectOperationApplicable`'s sole-scope fallback — right for a Hub
+row that already named its project — would otherwise edit the one scoped project
+from a section header or an empty projection. `validateOutlinerOperationOnePath`
 therefore reads the manifests concatenated, and each sheet projects only its own,
 which is what keeps a project row out of the task menu and the reverse. Unarchive
 project is absent from the Outliner manifest for a different reason than Open

@@ -270,13 +270,15 @@ var outlinerProjectActionCategories = []listsurface.ListCategory{
 // source the project sheet groups and orders by. It is deliberately separate
 // from the Project Hub's ProjectOperationManifest: one-path is a per-surface
 // rule, so the same operation is legitimately a direct key on one surface and a
-// menu row on the other. Edit project is the clearest case — `e` on the Hub,
-// menu row here, because the Outliner's `e` already edits a task.
+// menu row on the other.
 //
 // The DirectOnly entries stay listed here so ValidateOperationOnePath can see
 // them, but the sheet skips them: each already has a key on this surface. Pin
 // joined them when the project header gained `*`, the same rule that took
 // Comments and Attachments out of the task menu when they gained `;` and `&`.
+// Edit project joined them last, when `e` learned to answer from a project
+// header: the Outliner's `e` edits whatever the cursor names, so the menu row
+// became the second path the rule exists to prevent.
 //
 // Three project operations are absent on purpose. Open project already has
 // Enter through OperationCoreActivateGroup and Open project notes already has
@@ -289,7 +291,7 @@ func outlinerProjectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
 		{ID: operation.OperationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operation.OperationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation},
+		{ID: operation.OperationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operation.OperationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 		{ID: operation.OperationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},

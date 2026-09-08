@@ -25,18 +25,23 @@ func SimplifiedInputStrategy() InputStrategy {
 		ID: InputStrategySimplified,
 		Bindings: []OperationKeyBinding{
 			{OperationID: OperationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 8, FooterLabel: "capture"},
-			// The eight keys a checklist row shares with a task row are declared
+			// The keys a checklist row shares with a task row are declared
 			// checklist-first: shared-key resolution takes the first applicable
 			// descriptor, and only one of each pair applies to any given cursor.
+			// e is three-way, because a project header edits the project it names:
+			// exactly one of the three applies at any cursor.
 			{OperationID: OperationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "item", SharedKey: true},
+			{OperationID: OperationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "project", SharedKey: true},
 			{OperationID: OperationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "edit", SharedKey: true},
 			{OperationID: OperationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: OperationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
 			{OperationID: OperationCoreOutlineEditor, Keys: []string{"O"}, DisplayKey: "O", FooterRank: 23, FooterLabel: "outline"},
-			{OperationID: OperationChecklistAddItem, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "item", SharedKey: true},
-			{OperationID: OperationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child", SharedKey: true},
-			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick", SharedKey: true},
-			{OperationID: OperationChecklistStart, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "checklist", SharedKey: true},
+			{OperationID: OperationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
+			// c appends to the cursor's checklist from either row, so it is one
+			// binding rather than a shared pair: the descriptor answers from the
+			// owner task and from any of its items alike.
+			{OperationID: OperationChecklistAddItem, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 21, FooterLabel: "checklist item"},
+			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick"},
 			// Space is a three-way shared key: checklist row, project header, task
 			// row. Exactly one of the three applies at any cursor, so declaration
 			// order only decides which is asked first, never which one wins.
@@ -220,9 +225,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			// `~` is the reference sigil everywhere else, so the relationship walk
 			// spells itself the same way under the go-to chord.
 			{OperationID: OperationCoreGotoRelation, Sequence: []string{"g", "~"}, DisplayKey: "g~", HintLabel: "related task"},
-			// Conflicts joins the go-to chord rather than claiming a root key: `c` is
-			// retired at the root, and what the strip already names as workspace state
-			// is something the user goes to look at.
+			// Conflicts joins the go-to chord rather than claiming a root key: what
+			// the strip already names as workspace state is something the user goes
+			// to look at, and root `c` appends a checklist item.
 			{OperationID: OperationCoreConflicts, Sequence: []string{"g", "c"}, DisplayKey: "gc", HintLabel: "conflicts"},
 			{OperationID: OperationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: OperationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},

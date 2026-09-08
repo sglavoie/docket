@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
@@ -221,9 +222,28 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 	if m.crossOutliner != nil {
 		m.crossOutliner.SettleRelocationCursor()
 	}
+	m.revealCommittedChecklistItem(msg.RevealChecklistFor)
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
+}
+
+// revealCommittedChecklistItem opens the owner's checklist and seats the cursor
+// on the item the transaction appended. It runs from the success message alone
+// and after the workspace refresh, so the fold and the cursor move only once the
+// committed item actually exists in a rebuilt projection; a refused append never
+// reaches here and leaves the outline exactly as it was.
+func (m *AppModel) revealCommittedChecklistItem(identity taskref.TaskIdentity) {
+	if m == nil || m.crossOutliner == nil || !identity.Valid() {
+		return
+	}
+	task, _ := m.taskAndProjectForIdentity(identity)
+	if task == nil || len(task.Checklist) == 0 {
+		return
+	}
+	m.crossOutliner.Folds.SetChecklist(identity, true)
+	m.crossOutliner.RebuildRows()
+	m.crossOutliner.MoveCursorToChecklistItem(identity, len(task.Checklist)-1)
 }
 
 // handleBatchTransactionResult routes a committed project-scoped or multi-task

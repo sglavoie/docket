@@ -285,7 +285,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// a contributor who assumes otherwise looks for the lens restage that is
 	// deliberately absent. The mechanism is in docs/architecture/migration.md.
 	// No rule elsewhere was trimmed to pay for it.
-	const budget = 30960
+	//
+	// An eighth raise, of 532 bytes, for the two keys that stopped naming one
+	// entity. `e` joined `*`, `#`, and `Space` as a shared key, so the sentence
+	// that enumerates them had to grow a third member and, with it, the one
+	// rule the widening creates: Edit project's Outliner route is narrowed to a
+	// project header, because `e` is a root key there and the sole-scope
+	// fallback that is right on the Hub would otherwise edit the scoped project
+	// from a section header. `c` cost a checklist bullet for the same reason in
+	// the other direction — Add Item is the one member of that family answering
+	// from a row it does not own, and the fold and cursor it moves are a
+	// property of the commit rather than of the press, which is the fact a
+	// future handler that reveals at dispatch time would get wrong. The
+	// explanatory halves live in docs/architecture/operation-grammar.md and
+	// docs/architecture/tui-architecture.md. Retiring the start-only operation
+	// and the Edit project sheet row paid part of the raise back in the same
+	// edit; no rule elsewhere was trimmed for the rest.
+	const budget = 31492
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -313,10 +329,15 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"a menu-only operation's `TargetSource` is target-free or view-scoped, never a task or project",
 		"The task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no " +
 			"direct key and confirms first",
-		"The Outliner project-header sheet is Edit, Archive, Delete, and never Unarchive: " +
+		"The Outliner project-header sheet is Archive and Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
-		"`*`, `#`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
-			"task or project tags, and checklist, project, or task actions",
+		"`*`, `#`, `e`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
+			"task or project tags, checklist-item or task or project edit, and checklist, project, " +
+			"or task actions",
+		"Edit project narrows to an Outliner project header through " +
+			"`outlinerProjectEditTargetsHeader`",
+		"Add Item also answers from the owner task's row, since an empty checklist has no item row",
+		"Its reveal rides `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing",
 		"`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and commits it " +
 			"with the catalog and planning rewrites",
 		"It confirms, names the cascade, and refuses the system Unfiled project",
@@ -356,7 +377,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `b`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"Done is `$d` alone and no `d` alias may return",
 		"Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +

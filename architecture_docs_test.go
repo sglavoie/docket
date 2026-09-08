@@ -77,7 +77,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`s` refuses under a section zoom and `p` does not, which is the one place the family diverges",
 		"The walk wraps at either end",
 		"A checklist row owns nine operations",
-		"Eight of them reuse the key their task-row counterpart holds",
+		"Eight of them answer a key \u2014 `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, and " +
+			"`Space`. Six of those reuse the key their task-row counterpart holds",
 		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
 		"Recent is the activity review projection",
 		"Stale draws immediately after Review",

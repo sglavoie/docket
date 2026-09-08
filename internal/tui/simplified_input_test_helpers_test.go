@@ -50,7 +50,6 @@ func simplifiedTaskActionDescriptors() []operation.OperationDescriptor {
 	descriptors = append(descriptors, filterops.ProjectFilterOperationDescriptors()...)
 	descriptors = append(descriptors, filterops.SortAxisOperationDescriptors()...)
 	descriptors = append(descriptors, entityops.ChecklistRowOperationDescriptors()...)
-	descriptors = append(descriptors, (&entityops.Controller{}).ChecklistStartOperationDescriptor(&AppModel{}))
 	descriptors = append(descriptors, projectActionSheetOperationDescriptor())
 	return append(descriptors, projecthub.ProjectOperationDescriptors()...)
 }

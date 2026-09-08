@@ -26,7 +26,7 @@
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
     { "type": "assert", "assert": "contains", "value": "[ ] Name the on-call owner" },
 
-    { "type": "key", "label": "A appends a new item to this checklist", "key": "A" },
+    { "type": "key", "label": "c appends a new item to this checklist", "key": "c" },
     { "type": "assert", "assert": "contains", "value": "Add Item" },
     { "type": "text", "text": "Verify the rollback drill" },
     { "type": "key", "key": "enter" },
@@ -35,6 +35,16 @@
     { "type": "assert", "assert": "contains", "value": "[ ] Verify the rollback drill" },
     { "type": "assert", "assert": "contains", "value": "1/4" },
     { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "x proves the cursor followed the committed item", "key": "x" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[x] Verify the rollback drill" },
+    { "type": "assert", "assert": "contains", "value": "2/4" },
+    { "type": "key", "label": "untick it again", "key": "x" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "1/4" },
+    { "type": "key", "label": "step back onto the item the rest of this scenario acts on", "key": "k" },
+    { "type": "key", "key": "k" },
 
     { "type": "key", "label": "e rewrites the item under the cursor", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "Edit Item" },

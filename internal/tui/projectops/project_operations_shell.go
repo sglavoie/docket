@@ -31,6 +31,9 @@ func (c *Controller) projectOperationApplicability(
 		if !projecthub.ProjectOperationApplicable(ctx) {
 			return false
 		}
+		if !outlinerProjectEditTargetsHeader(id, ctx) {
+			return false
+		}
 		project := shell.ProjectByID(operation.CurrentEntityIdentity(ctx).ProjectID)
 		if project == nil {
 			return true
@@ -40,6 +43,23 @@ func (c *Controller) projectOperationApplicability(
 		}
 		return c.projectRequirementUnmet(shell, requirement, label, project) == nil
 	}
+}
+
+// outlinerProjectEditTargetsHeader narrows Edit project to an actual Outliner
+// project header. `e` is a root key there, so the cursor is the only thing that
+// says which project the user meant: ProjectOperationApplicable's sole-scope
+// fallback is right for a Hub row that named its project and wrong for a key
+// press from a section header, a checklist row, or an empty projection, where it
+// would silently edit the one scoped project. The narrowing is Edit project's
+// alone — the Hub keeps the fallback, and every other project operation keeps
+// the applicability it had.
+func outlinerProjectEditTargetsHeader(id operation.OperationID, ctx operation.CommandContext) bool {
+	if id != operation.OperationScopeRenameProject || !operation.CoreOutlinerApplicability(ctx) {
+		return true
+	}
+	return ctx.Entity.HasProjectHeaderCursor &&
+		!ctx.Entity.HasChecklistCursor &&
+		!ctx.Selection.Visual
 }
 
 // RegisterProjectOperations binds every project operation to one handler.

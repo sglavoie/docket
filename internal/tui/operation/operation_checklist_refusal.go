@@ -2,6 +2,9 @@ package operation
 
 // Checklist row operation IDs. Each one acts on the item the cursor names,
 // addressed as an index inside the owner task the checklist row carries.
+// OperationChecklistAddItem is the exception: it names the owner alone, so it
+// is also the one the task row answers, which is how a checklist that does not
+// exist yet gets its first item.
 //
 // They are declared beside the refusal predicate rather than beside the
 // descriptors they mint because the predicate, the key strategy, and the
@@ -18,11 +21,6 @@ const (
 	OperationChecklistActions    OperationID = "tui.checklist.actions"
 	OperationChecklistDeleteItem OperationID = "tui.checklist.delete-item"
 )
-
-// OperationChecklistStart is the one checklist operation a task row owns. A
-// checklist row only exists once the checklist does, so without it the whole
-// row grammar is unreachable until an item is minted somewhere else.
-const OperationChecklistStart OperationID = "tui.checklist.start"
 
 // ChecklistRowGrammar is the set of operations a checklist cursor owns. It is
 // what operationRefusedOnChecklistRow exempts, so the refusal rule stays one

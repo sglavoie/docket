@@ -56,15 +56,14 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 
 	ids := ProjectActionSheetOperationIDs(registry, context)
 	wantIDs := []operation.OperationID{
-		operation.OperationScopeRenameProject,
 		operation.OperationScopeArchiveProject,
 		operation.OperationProjectDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("project sheet IDs = %v, want exact three %v", ids, wantIDs)
+		t.Fatalf("project sheet IDs = %v, want exact two %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Edit project", "Archive project", "Delete project",
+		"Archive project", "Delete project",
 	}
 	for index, id := range ids {
 		descriptor, ok := registry.Descriptor(id)
@@ -75,8 +74,8 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 			t.Errorf("row %d label = %q, want %q", index, descriptor.Label, wantLabels[index])
 		}
 	}
-	// Danger holds exactly the two acts that end the project's presence, so the
-	// list a user arrows through looking for Edit never puts one under the cursor.
+	// Both remaining rows end the project's presence, so the categories still
+	// separate them from the reversible edits every one of which now has a key.
 	for id, want := range map[operation.OperationID]listsurface.ListCategoryID{
 		operation.OperationScopeRenameProject:  outlinerProjectActionCategoryProject,
 		operation.OperationScopeArchiveProject: outlinerProjectActionCategoryDanger,
@@ -87,12 +86,13 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 			t.Errorf("%s category = %q, want %q", id, got, want)
 		}
 	}
-	// The three direct-only manifest entries carry their own keys — `#`, `*` and
-	// Space itself — so listing any would be the second path one-path forbids.
+	// The four direct-only manifest entries carry their own keys — `#`, `*`, `e`
+	// and Space itself — so listing any would be the second path one-path forbids.
 	for _, excluded := range []operation.OperationID{
 		operation.OperationProjectSetTags,
 		operation.OperationProjectActions,
 		operation.OperationScopePinProject,
+		operation.OperationScopeRenameProject,
 		operation.OperationProjectOpen,
 		operation.OperationScopeOpenProjectNote,
 		operation.OperationScopeRestoreProject,
@@ -112,17 +112,19 @@ func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 	project.Archived = true
 
 	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
-	wantIDs := []operation.OperationID{operation.OperationScopeRenameProject, operation.OperationProjectDelete}
+	wantIDs := []operation.OperationID{operation.OperationProjectDelete}
 	if !slices.Equal(ids, wantIDs) {
 		t.Fatalf("archived project sheet IDs = %v, want %v", ids, wantIDs)
 	}
 }
 
 // TestProjectActionSheetRefusesTheSystemUnfiledDelete keeps the storage-layer
-// protection visible in the surface that offers the act: Unfiled may be edited,
-// but the row that would remove it is never drawn. Only the frozen
-// project identity is swapped, because that is the single fact the sheet keeps
-// from the row it was raised on.
+// protection visible in the surface that offers the act: neither row that would
+// end Unfiled's presence is ever drawn, and the sheet is left with nothing at
+// all. Editing Unfiled is still allowed, so the assertion follows Edit project
+// to the key it now answers to rather than dropping the guarantee. Only the
+// frozen project identity is swapped, because that is the single fact the sheet
+// keeps from the row it was raised on.
 func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {
 	app, _, context := projectHeaderCursorApp(t)
 	unfiled := app.domain.runtime.SystemUnfiledProject()
@@ -132,15 +134,20 @@ func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {
 	context.Entity.ProjectID = unfiled.ID
 	context.CurrentEntity = operation.CommandContextCurrentEntity(context.Entity)
 
-	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
+	registry := app.GetOperationRegistry()
+	ids := ProjectActionSheetOperationIDs(registry, context)
 	if slices.Contains(ids, operation.OperationProjectDelete) {
 		t.Errorf("project sheet offers Delete project for the system Unfiled project: %v", ids)
 	}
 	if slices.Contains(ids, operation.OperationScopeArchiveProject) {
 		t.Errorf("project sheet offers Archive project for the system Unfiled project: %v", ids)
 	}
-	if !slices.Contains(ids, operation.OperationScopeRenameProject) {
-		t.Errorf("project sheet withdrew Edit project from the system Unfiled project: %v", ids)
+	rename, ok := registry.Descriptor(operation.OperationScopeRenameProject)
+	if !ok {
+		t.Fatal("Edit project is not registered")
+	}
+	if !rename.Applicable(context) {
+		t.Error("e withdrew Edit project from the system Unfiled project")
 	}
 }
 

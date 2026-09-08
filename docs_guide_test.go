@@ -24,7 +24,8 @@ import (
 func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
-		"`a` capture, `A` child, `e` inline task edit, `E` description",
+		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, `e` edits " +
+			"whatever the cursor names",
 		"`$` opens the workflow chord",
 		"`$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing",
 		"`$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled",
@@ -68,8 +69,9 @@ func TestGuideDocumentsExactTaskMenu(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`Space` contains exactly: 1. Delete",
 		"Comments and Attachments left this menu when they gained `;` and `&`",
-		"Project Actions holds Edit project, then Archive project and Delete project under Danger",
-		"Pinning left this menu when the header gained `*`",
+		"Project Actions holds Archive project and Delete project under Danger, and nothing else",
+		"Editing left this menu when the header gained `e`, and pinning left it when the " +
+			"header gained `*`",
 		"`Enter` and `Ctrl+N` already reach both from that row",
 		"Delete always asks for confirmation",
 		"1. Reveal original 2. Open original 3. Open attachments folder 4. Unlink 5. Delete",

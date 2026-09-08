@@ -141,14 +141,14 @@ target-free. The
 task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
 direct key and confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
-Outliner project-header sheet is Edit, Archive, Delete, and never Unarchive:
-that header is drawn from the active population.
+Outliner project-header sheet is Archive and Delete, and never Unarchive: that
+header is drawn from the active population.
 
 One key is one act on every entity surface:
 
 | Keys | Act |
 | --- | --- |
-| `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · open note · create · edit · body/external |
+| `Enter` `a` `c` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
 | `&` `;` `~` | attachments · comments · dependencies |
@@ -159,16 +159,23 @@ Transient input overlays are exempt: composer, project editor/creator, text
 editor, operation text prompt, tag/date add modes, list picker adapter, and the
 outline error and help viewers. They are modal value entry, not grammars.
 
-`*`, `#`, and `Space` are the shared keys, the cursor deciding: task or project
-pin, task or project tags, and checklist, project, or task actions. Keep each set
-distinct so the footer and `?` help carry honest labels; never branch one
-descriptor's target source on runtime context.
+`*`, `#`, `e`, and `Space` are the shared keys, the cursor deciding: task or
+project pin, task or project tags, checklist-item or task or project edit, and
+checklist, project, or task actions. Keep each set distinct so the footer and `?`
+help carry honest labels; never branch one descriptor's target source on runtime
+context. Edit project narrows to an Outliner project header through
+`outlinerProjectEditTargetsHeader`: the sole-scope fallback is the Hub's, where
+the row already named its project.
 
 Checklist rules:
 
 - Checklist rows own their mutations, so the checklist is absent from the task
   `Space` menu. Their menu lists Edit Item (also `e`) and exclusively routes
   Delete Item; this is the only direct-or-menu exception.
+- Add Item also answers from the owner task's row, since an empty checklist has
+  no item row: `c` is one binding over both, refusing on section, project, and
+  empty rows and under a visual selection. Its reveal rides
+  `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing.
 - Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability`
   field so an unconditional descriptor stays unconditional to `Register`.
 
@@ -314,7 +321,7 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the
+The old `b`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 

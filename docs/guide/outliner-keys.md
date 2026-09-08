@@ -8,7 +8,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project, `g~` a task the cursor task references, `gc` the read-only merge-conflict browser; `1`–`7` are the same seven jumps in `Tab`-cycle order — `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent — and `0` resets the view to the launch view |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
-| Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
+| Capture and edit | `a` capture, `A` child, `c` add a checklist item to the cursor's task, `e` edits whatever the cursor names — the task inline, the checklist item, or the project a group header names — `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag, and it names a task only |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
@@ -166,11 +166,12 @@ by a key is not also a row, so the single-task sheet is now identical to the
 bulk one.
 
 The same key on a project group header opens a different sheet, because the row
-names a project rather than a task. Project Actions holds Edit project, then
-Archive project and Delete project under Danger. Pinning left this menu when the
-header gained `*`, the same rule that took Comments and Attachments out of the
-task menu. Opening the project and opening its notes are absent for the reason
-above: `Enter` and `Ctrl+N` already reach both from that row.
+names a project rather than a task. Project Actions holds Archive project and
+Delete project under Danger, and nothing else. Editing left this menu when the
+header gained `e`, and pinning left it when the header gained `*`, the same rule
+that took Comments and Attachments out of the task menu. Opening the project and
+opening its notes are absent for the reason above: `Enter` and `Ctrl+N` already
+reach both from that row.
 
 The Attachments panel that `&` opens carries the same split. `Enter` opens
 the attachment under the cursor, `a` adds one, `E` opens it in the external

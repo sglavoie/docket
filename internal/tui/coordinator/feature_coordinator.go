@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // This file introduces the feature-coordinator seam for the primary TUI views.
@@ -104,6 +105,12 @@ type TransactionResultMsg struct {
 	// operation that may move the followed task between rows. It is nil
 	// whenever the operation cannot relocate anything.
 	Relocation TransactionRelocation
+	// RevealChecklistFor names the task whose checklist the primary view opens
+	// and seats its cursor into once this transaction has committed. It is the
+	// zero identity on every mutation that appends no checklist item. A refused
+	// write resolves to TransactionErrorMsg and never carries it, which is what
+	// keeps a failed append from folding the outline open.
+	RevealChecklistFor taskref.TaskIdentity
 }
 
 // SuccessMessage renders the status line shown when the transaction commits.

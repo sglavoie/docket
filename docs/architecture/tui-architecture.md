@@ -319,11 +319,11 @@ offered and still readable.
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in
-`internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that apply only under a
-checklist cursor. Eight of them reuse the key their task-row counterpart holds
-— `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `A`, and `Space` — which works
-because resolution takes the first applicable binding and the two are disjoint
-by cursor. Delete Item is the ninth and answers no key at all: it reaches the
+`internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that
+apply under a checklist cursor, Add Item alone excepted. Eight of them answer a
+key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, and `Space`. Six of those
+reuse the key their task-row counterpart holds, which works because resolution
+takes the first applicable binding and the two are disjoint by cursor. Delete Item is the ninth and answers no key at all: it reaches the
 user only from the `Space` menu that Checklist Actions opens, behind the
 executor's destructive confirmation. The refusal that keeps them disjoint is one
 predicate, `operationRefusedOnChecklistRow`, read by
@@ -337,15 +337,28 @@ operations individually, because the core family mixes navigation — which is h
 the cursor leaves the row and therefore stays — with operations that would reach
 through the item to the owner task whose pointer it carries.
 
-A checklist row exists only once the checklist does, so `tui.checklist.start`
-holds the one case no row can cover: `x` on a task row whose checklist is empty
-prompts for the first item and expands it, and the row grammar owns every item
-after that. Its applicability is `len(task.Checklist) == 0`, which makes it
-disjoint from Add Item rather than a second route to it, and that gate is why it
-belongs outside both task manifests — the `DirectOnly` branch of
-`taskActionOperationApplicable` returns before any live-state check. The task
-composer's Children tab remains the full editor for a task not yet in a
-projection.
+A checklist row exists only once the checklist does, which is why Add Item is the
+one member of the family that also answers from the owner task's own row: a task
+whose checklist is still empty has no item row for the row grammar to act on.
+`checklistAddItemApplicable` is that widening and nothing more — a checklist
+cursor qualifies outright, and a task cursor qualifies only when it positively
+names a task, so `c` refuses on a section header, on a project header, on an
+empty projection, and under a visual selection rather than falling back to a
+nearby task. Both cases resolve the owner identity rather than an item index,
+so one descriptor and one binding cover the first item and every item after it.
+
+Revealing the new item is a property of the commit rather than of the key press.
+`withChecklistReveal` decorates the coordinator command the way
+`withOutlinerRelocationCapture` does, naming the owner on
+`TransactionResultMsg.RevealChecklistFor` and passing every other message —
+`TransactionErrorMsg` included — through unchanged. `AppModel.handleTransactionResult`
+reads that field after the workspace refresh and the relocation settle, so
+`revealCommittedChecklistItem` opens the fold and seats the cursor on the
+committed item through `MoveCursorToChecklistItem`, the checklist counterpart of
+`MoveCursorToIdentity` that a row's owner-task pointer would otherwise leave one
+row short. A refused write never reaches it, so a failed append changes neither
+the fold map nor the cursor. The task composer's Children tab remains the full
+editor for a task not yet in a projection.
 
 Recent is the activity review projection. It groups tasks touched within the
 last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,

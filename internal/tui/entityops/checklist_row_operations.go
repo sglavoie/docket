@@ -6,17 +6,41 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // checklistRowOperationApplicable admits an operation only while the cursor
 // rests on a checklist row. That disjointness is what lets these operations
-// share e, A, J, K and Space with their task-row counterparts, since shared-key
+// share e, J, K and Space with their task-row counterparts, since shared-key
 // resolution picks the first binding whose descriptor applies.
 func checklistRowOperationApplicable(ctx operation.CommandContext) bool {
 	return ctx.View == presentation.ViewCrossProjectOutliner && ctx.Entity.HasChecklistCursor
+}
+
+// checklistAddItemApplicable is the one checklist operation that also answers
+// from the owner's own row, because `c` appends to a checklist the task may not
+// have yet: an empty one has no item row the row grammar could act on. Every
+// other operation names an existing item and stays checklist-row only.
+//
+// A task row qualifies only when the cursor positively names that task, so the
+// key refuses on a section header, a project header and an empty projection
+// rather than falling back to a nearby task. A visual selection refuses too:
+// one item appended to one of N tasks is not a bulk act.
+func checklistAddItemApplicable(ctx operation.CommandContext) bool {
+	if ctx.View != presentation.ViewCrossProjectOutliner {
+		return false
+	}
+	if ctx.Entity.HasChecklistCursor {
+		return true
+	}
+	if ctx.Selection.Visual || operation.CommandContextNamesNonTaskEntity(ctx) {
+		return false
+	}
+	return operation.CurrentTaskIdentity(ctx).Valid()
 }
 
 // ChecklistRowOperationDescriptors is the authoritative catalog of checklist
@@ -46,6 +70,13 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 			Risk:                 risk,
 		}
 	}
+	withApplicability := func(
+		descriptor operation.OperationDescriptor,
+		applicable func(operation.CommandContext) bool,
+	) operation.OperationDescriptor {
+		descriptor.Applicability = applicable
+		return descriptor
+	}
 	return []operation.OperationDescriptor{
 		item(operation.OperationChecklistToggleItem, "Toggle Item", "Tick or untick this checklist item", operation.OperationRiskMutation),
 		operation.WithValueProvider(
@@ -57,7 +88,10 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 		item(operation.OperationChecklistMoveBottom, "Move Item to Bottom", "Send this item past every item below it", operation.OperationRiskMutation),
 		item(operation.OperationChecklistMoveTop, "Move Item to Top", "Send this item past every item above it", operation.OperationRiskMutation),
 		operation.WithValueProvider(
-			item(operation.OperationChecklistAddItem, "Add Item", "Append an item to this checklist", operation.OperationRiskMutation),
+			withApplicability(
+				item(operation.OperationChecklistAddItem, "Add Item", "Append an item to this task's checklist", operation.OperationRiskMutation),
+				checklistAddItemApplicable,
+			),
 			operation.ValueProviderChecklistItem,
 		),
 		item(operation.OperationChecklistActions, "Checklist Actions", "Open the checklist item action menu", operation.OperationRiskReadOnly),
@@ -65,61 +99,23 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// ChecklistStartOperationDescriptor admits the cursor's task only while that
-// task holds no checklist at all, which is exactly the case no checklist row can
-// cover. The gate is disjoint from OperationChecklistAddItem rather than a
-// second route to it, so the row grammar keeps owning every later item.
-func (c *Controller) ChecklistStartOperationDescriptor(shell Shell) operation.OperationDescriptor {
-	return operation.WithValueProvider(operation.OperationDescriptor{
-		ID:                   operation.OperationChecklistStart,
-		Label:                "Start Checklist",
-		Description:          "Add the first checklist item to this task",
-		Category:             operation.OperationCategoryTask,
-		TargetSource:         operation.OperationTargetCurrentTask,
-		TargetCardinality:    operation.TargetCardinalityOne,
-		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-		Applicability: func(ctx operation.CommandContext) bool {
-			return c.checklistStartApplicable(shell, ctx)
-		},
-		Risk: operation.OperationRiskMutation,
-	}, operation.ValueProviderChecklistItem)
-}
-
-func (c *Controller) checklistStartApplicable(shell Shell, ctx operation.CommandContext) bool {
-	if ctx.View != presentation.ViewCrossProjectOutliner ||
-		ctx.Entity.HasChecklistCursor ||
-		ctx.Selection.Visual ||
-		operation.CommandContextNamesNonTaskEntity(ctx) {
-		return false
+// withChecklistReveal names the owner task on a successful append so the shell
+// opens its checklist and seats the cursor on the item that was just written.
+// It decorates the result message rather than touching the fold here, which is
+// what keeps a refused write — a TransactionErrorMsg, passed through unchanged —
+// from expanding an outline merely because an item was attempted.
+func withChecklistReveal(cmd tea.Cmd, identity taskref.TaskIdentity) tea.Cmd {
+	if cmd == nil {
+		return nil
 	}
-	identity := operation.CurrentTaskIdentity(ctx)
-	if !identity.Valid() {
-		return false
+	return func() tea.Msg {
+		msg := cmd()
+		if result, ok := msg.(coordinator.TransactionResultMsg); ok {
+			result.RevealChecklistFor = identity
+			return result
+		}
+		return msg
 	}
-	task, _ := shell.TaskAndProjectForIdentity(identity)
-	return task != nil && len(task.Checklist) == 0
-}
-
-// executeChecklistStart appends the first item through the same coordinator the
-// row grammar uses, then expands the checklist so the item it just created is
-// visible and the row keys take over from here.
-func (c *Controller) executeChecklistStart(
-	shell Shell,
-	invocation operation.OperationInvocation,
-) operation.OperationHandlerResult {
-	identity := operation.CurrentTaskIdentity(invocation.Context)
-	task, _ := shell.TaskAndProjectForIdentity(identity)
-	if task == nil {
-		return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
-	}
-	text, err := checklistItemText(invocation)
-	if err != nil {
-		return operation.OperationHandlerResult{Err: err}
-	}
-	if out, ok := shell.OutlinerPrimary(); ok && out != nil {
-		out.Folds.SetChecklist(identity, true)
-	}
-	return checklistCommandResult(shell.SubviewCoordinator().AddChecklistItem(identity, text))
 }
 
 func (c *Controller) RegisterChecklistRowOperations(shell Shell) error {
@@ -146,15 +142,7 @@ func (c *Controller) RegisterChecklistRowOperations(shell Shell) error {
 			return err
 		}
 	}
-	start := c.ChecklistStartOperationDescriptor(shell)
-	return shell.RegisterOperation(start, operation.OperationBinding{
-		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-		Applicability:        start.Applicability,
-		Handler: func(invocation operation.OperationInvocation) operation.OperationHandlerResult {
-			return c.executeChecklistStart(shell, invocation)
-		},
-		DelegateTransaction: true,
-	})
+	return nil
 }
 
 // executeChecklistRowOperation resolves the frozen owner task and item index,
@@ -165,6 +153,11 @@ func (c *Controller) executeChecklistRowOperation(
 	shell Shell,
 	invocation operation.OperationInvocation,
 ) operation.OperationHandlerResult {
+	// Add Item is the one member of this family that names no existing item, so
+	// it resolves before the checklist-cursor gate every other member needs.
+	if invocation.Descriptor.ID == operation.OperationChecklistAddItem {
+		return c.executeChecklistAddItem(shell, invocation)
+	}
 	entity := invocation.Context.Entity
 	if !entity.HasChecklistCursor {
 		return operation.OperationHandlerResult{Err: errors.New(operation.ChecklistRowRejectionMessage)}
@@ -216,12 +209,6 @@ func (c *Controller) executeChecklistRowOperation(
 		}
 		c.followReorderedChecklistItem(shell, -index)
 		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0))
-	case operation.OperationChecklistAddItem:
-		text, err := checklistItemText(invocation)
-		if err != nil {
-			return operation.OperationHandlerResult{Err: err}
-		}
-		return checklistCommandResult(coordinator.AddChecklistItem(identity, text))
 	case operation.OperationChecklistActions:
 		if err := c.openChecklistActionSheet(shell, invocation.Context); err != nil {
 			return operation.OperationHandlerResult{Err: err}
@@ -232,6 +219,29 @@ func (c *Controller) executeChecklistRowOperation(
 			Err: fmt.Errorf("operation %s has no checklist handler", invocation.Descriptor.ID),
 		}
 	}
+}
+
+// executeChecklistAddItem appends one item to the cursor's owner task, whether
+// the cursor rests on that task's row or on one of its existing items. It
+// resolves the owner identity rather than an item index, which is what lets the
+// same operation answer from a task whose checklist is still empty.
+func (c *Controller) executeChecklistAddItem(
+	shell Shell,
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	identity := operation.CurrentTaskIdentity(invocation.Context)
+	task, _ := shell.TaskAndProjectForIdentity(identity)
+	if task == nil {
+		return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
+	}
+	text, err := checklistItemText(invocation)
+	if err != nil {
+		return operation.OperationHandlerResult{Err: err}
+	}
+	return checklistCommandResult(withChecklistReveal(
+		shell.SubviewCoordinator().AddChecklistItem(identity, text),
+		identity,
+	))
 }
 
 // followReorderedChecklistItem walks the cursor with the item it just moved.

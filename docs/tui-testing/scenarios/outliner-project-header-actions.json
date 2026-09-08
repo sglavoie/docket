@@ -7,11 +7,11 @@
     { "type": "assert", "label": "the header footer offers the menu that reaches every act no key does", "assert": "contains", "value": "Space actions" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },
     { "type": "assert", "label": "and the two acts that left the menu for their own keys", "assert": "contains", "value": "* project pin" },
+    { "type": "assert", "assert": "contains", "value": "e project" },
 
     { "type": "key", "label": "Space on a project header opens the project sheet", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
-    { "type": "assert", "label": "reversible edits sit above the pair that ends the project's presence", "assert": "contains", "value": "PROJECT" },
-    { "type": "assert", "assert": "contains", "value": "Edit project" },
+    { "type": "assert", "label": "editing left this menu when the header gained `e`", "assert": "not_contains", "value": "Edit project" },
     { "type": "assert", "label": "pinning left this menu when the header gained `*`", "assert": "not_contains", "value": "Toggle project pin" },
     { "type": "assert", "assert": "contains", "value": "DANGER" },
     { "type": "assert", "assert": "contains", "value": "Archive project  confirmation required" },

@@ -360,6 +360,28 @@ func (m *OutlinerModel) MoveCursorToIdentity(identity taskref.TaskIdentity) bool
 	return false
 }
 
+// MoveCursorToChecklistItem seats the cursor on one expanded checklist row of
+// identity. It is the checklist counterpart of MoveCursorToIdentity and exists
+// because a checklist row carries its owner's task pointer: that method would
+// stop on the owner row instead, one row above the item the caller named.
+func (m *OutlinerModel) MoveCursorToChecklistItem(identity taskref.TaskIdentity, index int) bool {
+	if m == nil {
+		return false
+	}
+	for i, row := range m.Rows {
+		if !row.IsChecklistItem || row.Task == nil || row.ChecklistIndex != index {
+			continue
+		}
+		if m.TaskIdentityForRow(row) != identity {
+			continue
+		}
+		m.Cursor = i
+		return true
+	}
+	m.ClampCursor()
+	return false
+}
+
 // crossSkipNonNavigableRows walks the cursor off a header or other unselectable
 // row in the direction the move was already going, falling back to the other
 // direction at an edge. It passes cmd straight through so a caller can thread a

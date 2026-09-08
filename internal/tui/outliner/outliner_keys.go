@@ -718,13 +718,14 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 		hints = append(hints, chrome.NewGuidanceHint("h/Left collapse", 1, false))
 	}
 	if row.IsProjectHeader {
-		// All three sit at rank 2 and the stable sort keeps them in this order, so
+		// All four sit at rank 2 and the stable sort keeps them in this order, so
 		// the narrowest header footer that carries a project act carries the menu
-		// first: it still reaches Edit, Archive and Delete, which no key beside it
-		// does. The two keys that left the menu follow it, each labeled as the
-		// strategy labels it.
+		// first: it still reaches Archive and Delete, which no key beside it does.
+		// The three keys that left the menu follow it, each labeled as the strategy
+		// labels it.
 		hints = append(hints,
 			chrome.NewGuidanceHint("Space actions", 2, false),
+			chrome.NewGuidanceHint("e project", 2, false),
 			chrome.NewGuidanceHint("# project tags", 2, false),
 			chrome.NewGuidanceHint("* project pin", 2, false),
 		)

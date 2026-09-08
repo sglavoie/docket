@@ -217,7 +217,14 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"E":      operation.OperationCoreEditDescription,
 		"ctrl+e": operation.OperationCoreExternalEditor,
 		"O":      operation.OperationCoreOutlineEditor,
-		"j":      operation.OperationCoreCursorDown, "down": operation.OperationCoreCursorDown,
+		"A":      operation.OperationTaskNewChild,
+		// c appends to whichever checklist the cursor names, the owner task's or
+		// the one an item already belongs to, so one descriptor answers both rows
+		// and the key is not shared. x is no longer shared for the same reason:
+		// starting a checklist and appending to one are now one act.
+		"c": operation.OperationChecklistAddItem,
+		"x": operation.OperationChecklistToggleItem,
+		"j": operation.OperationCoreCursorDown, "down": operation.OperationCoreCursorDown,
 		"k": operation.OperationCoreCursorUp, "up": operation.OperationCoreCursorUp,
 		"home": operation.OperationCoreCursorTop,
 		"G":    operation.OperationCoreCursorBottom, "end": operation.OperationCoreCursorBottom,
@@ -272,16 +279,17 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own
 	// descriptor so help and the footer can name both honestly. # and * both ask
-	// whether the cursor names a task or a project; Space asks the same question
-	// with a third answer, the checklist row; the rest ask whether it names a
-	// checklist item, and the checklist meaning is listed first because resolution
-	// takes the first applicable binding.
+	// whether the cursor names a task or a project; e and Space ask the same
+	// question with a third answer, the checklist row; the rest ask whether it
+	// names a checklist item, and the checklist meaning is listed first because
+	// resolution takes the first applicable binding.
 	shared := map[string][]operation.OperationID{
-		"#":      {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
-		"*":      {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
-		"e":      {operation.OperationChecklistEditItem, operation.OperationCoreEdit},
-		"A":      {operation.OperationChecklistAddItem, operation.OperationTaskNewChild},
-		"x":      {operation.OperationChecklistToggleItem, operation.OperationChecklistStart},
+		"#": {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
+		"*": {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
+		"e": {
+			operation.OperationChecklistEditItem, operation.OperationScopeRenameProject,
+			operation.OperationCoreEdit,
+		},
 		"space":  {operation.OperationChecklistActions, operation.OperationProjectActions, operation.OperationCoreActions},
 		"J":      {operation.OperationChecklistMoveDown, operation.OperationCoreReorderDown},
 		"K":      {operation.OperationChecklistMoveUp, operation.OperationCoreReorderUp},
@@ -323,7 +331,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// only its two neighbors are still owed silence: either one alone would
 	// advertise half of a jump the z chord already owns.
 	for _, removed := range []string{
-		"b", "c", "d", "g", "z", ",", "m", ":", "C", "R", "ctrl+esc",
+		"b", "d", "g", "z", ",", "m", ":", "C", "R", "ctrl+esc",
 		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {

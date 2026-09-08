@@ -32,7 +32,6 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.checklist.move-down":         "reject",
 	"tui.checklist.move-top":          "reject",
 	"tui.checklist.move-up":           "reject",
-	"tui.checklist.start":             "reject",
 	"tui.checklist.toggle-item":       "reject",
 	"tui.core.actions":                "reject",
 	"tui.core.activate-group":         "target-free",
@@ -123,6 +122,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.project.actions":             "project",
 	"tui.project.set-tags":            "project",
 	"tui.scope.pin-project":           "project",
+	"tui.scope.rename-project":        "project",
 	"tui.sort.clear":                  "target-free",
 	"tui.sort.created":                "target-free",
 	"tui.sort.due":                    "target-free",
@@ -275,7 +275,10 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 		{"!"},
 		{"@"},
 		{"y"},
-		{"e"},
+		// e is absent: it is one of the three keys a project header answers, beside
+		// * and #, so from here it edits the project rather than refusing. The
+		// task-editing meaning is what the header refuses, and E and Ctrl+E below
+		// still cover that the rest of the edit family stays task-only.
 		{"E"},
 		{"ctrl+e"},
 		{"shift+enter"},

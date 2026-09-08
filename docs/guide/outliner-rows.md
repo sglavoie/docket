@@ -19,7 +19,7 @@ sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
 What a checklist row does own is nine operations of its own. Eight of them
-answer a key its task-row counterpart also holds:
+answer a key:
 
 | Key | Operation |
 | --- | --- |
@@ -29,11 +29,19 @@ answer a key its task-row counterpart also holds:
 | `K` | Move Item Up — swap it with the item above |
 | `Ctrl+J` | Move Item to Bottom — send it past every item below |
 | `Ctrl+K` | Move Item to Top — send it past every item above |
-| `A` | Add Item — append an item to this checklist |
+| `c` | Add Item — append an item to this task's checklist |
 | `Space` | Checklist Actions — the item menu: Edit Item and Delete Item |
 
 Delete Item is the ninth and answers no key. It is reachable only from the
 `Space` menu and confirms before it removes anything.
+
+Add Item is the one of the nine that also answers from the owner task's own row,
+because a task with no checklist yet has no item row to press a key on. `c`
+therefore adds the first item and every item after it, from the task or from any
+of its items, and the prompt is the same single line either way: `Enter` saves,
+`Esc` cancels, and a blank line is refused. Once the item is written the
+checklist opens and the cursor lands on it, so pressing `c` again adds the next
+one. A refused write leaves the fold and the cursor exactly as they were.
 
 Visual selection is one of the actions a checklist row refuses, because a
 selection names task rows. Entering it from a task row hides any open checklist
