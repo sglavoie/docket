@@ -41,6 +41,13 @@ const (
 	// helperRenameTag is the one vocabulary the seeded workspace carries, so the
 	// gate never has to pass a name the seed and the rename both have to agree on.
 	helperRenameTag = "work"
+	// helperRaceProjectName owns the one tasks.md the resume-note race is fought
+	// over, and the two titles below are the two tasks inside it. They are named
+	// here because the gate script, the seed, and the in-suite regression all have
+	// to agree on them.
+	helperRaceProjectName = "Delivery"
+	helperRaceTitleA      = "Draft the migration plan"
+	helperRaceTitleB      = "Review the vendor contract"
 	// helperRenameDestination is what a rename that reached the commit would have
 	// written. The refusal cases assert its absence, so it has to be a spelling
 	// nothing else could produce.
@@ -105,8 +112,25 @@ func helperEnv(t *testing.T, name string) string {
 
 func helperSignal(t *testing.T, path string) {
 	t.Helper()
-	if err := os.WriteFile(path, []byte("ready\n"), storage.FilePermissions); err != nil {
+	helperSignalValue(t, path, "ready")
+}
+
+// helperSignalValue publishes one line through a barrier file. The resume-note
+// role publishes the project revision its mutation snapshot was taken at, so the
+// party that releases both processes can prove they are holding one version of
+// the document rather than merely that both are waiting.
+//
+// The write lands through a rename because the content is now read and not only
+// stat'ed: a poller that saw a file being written in place could read it empty
+// and compare two revisions that were never observed.
+func helperSignalValue(t *testing.T, path, value string) {
+	t.Helper()
+	staging := path + ".partial"
+	if err := os.WriteFile(staging, []byte(value+"\n"), storage.FilePermissions); err != nil {
 		t.Fatalf("signal %q: %v", path, err)
+	}
+	if err := os.Rename(staging, path); err != nil {
+		t.Fatalf("publish signal %q: %v", path, err)
 	}
 }
 
@@ -166,28 +190,41 @@ func helperTaskLocator(t *testing.T, env helperEnvironment, title string) app.Ta
 // process — in the migration case, by an older binary.
 func TestCrossMachineHelperSeedsWorkspace(t *testing.T) {
 	env := openHelperWorkspace(t)
-	if _, err := env.workspace.addProject("Delivery", func(p *models.Project) {
-		plan := newFixtureTask(p, "Draft the migration plan")
+	if _, err := seedCrossMachineWorkspace(env.workspace); err != nil {
+		t.Fatal(err)
+	}
+	helperRecord(t, "seeded")
+}
+
+// seedCrossMachineWorkspace writes the two projects and the one shared tag every
+// helper role reads, and returns the project holding the two tasks the
+// resume-note race rewrites through a single tasks.md. It is shared with the
+// in-suite regression so the forked roles and the test that forks them cannot
+// disagree about the fixture they are racing over.
+func seedCrossMachineWorkspace(workspace *uitestWorkspace) (*models.Project, error) {
+	race, err := workspace.addProject(helperRaceProjectName, func(p *models.Project) {
+		plan := newFixtureTask(p, helperRaceTitleA)
 		plan.ApplyWorkflowState(models.StateBacklog)
 		plan.Tags = []string{helperRenameTag}
 
-		vendor := newFixtureTask(p, "Review the vendor contract")
+		vendor := newFixtureTask(p, helperRaceTitleB)
 		vendor.ApplyWorkflowState(models.StateBacklog)
 		vendor.Tags = []string{helperRenameTag}
-	}); err != nil {
-		t.Fatalf("seed Delivery: %v", err)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("seed %s: %w", helperRaceProjectName, err)
 	}
-	if _, err := env.workspace.addProject("Support", func(p *models.Project) {
+	if _, err = workspace.addProject("Support", func(p *models.Project) {
 		followUp := newFixtureTask(p, "Follow up with the support queue")
 		followUp.ApplyWorkflowState(models.StateBacklog)
 		followUp.Tags = []string{helperRenameTag}
 	}); err != nil {
-		t.Fatalf("seed Support: %v", err)
+		return nil, fmt.Errorf("seed Support: %w", err)
 	}
-	if err := env.workspace.persistSyncedDomains(); err != nil {
-		t.Fatalf("persist seeded domains: %v", err)
+	if err = workspace.persistSyncedDomains(); err != nil {
+		return nil, fmt.Errorf("persist seeded domains: %w", err)
 	}
-	helperRecord(t, "seeded")
+	return race, nil
 }
 
 // TestCrossMachineHelperPendingRenameExpiresOnCatalogChange is the held half of
@@ -315,6 +352,15 @@ func helperCommitNewProject(t *testing.T, env helperEnvironment, name string) {
 // record a conflict bundle, or it may find the note already equal. What it may
 // never do is report a commit whose note is not the one on disk, which is what a
 // lost update looks like from inside the process that lost it.
+//
+// The barrier is installed inside SetResumeNote rather than wrapped around it.
+// The locator resolved out here reads a snapshot the mutation then discards, so
+// a pair released before the call would prove only that both processes had found
+// a task: one of them could still read, commit and exit before the other read
+// anything, and the "race" would be two sequential writes. Held at
+// app.ResumeNoteCommitBarrier, both processes are demonstrably holding the same
+// document version with nothing yet written, which is what the revision each one
+// publishes says.
 func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 	env := openHelperWorkspace(t)
 	note := helperEnv(t, helperNoteEnv)
@@ -322,10 +368,13 @@ func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 	ready := strings.TrimSpace(os.Getenv(helperReadyEnv))
 	proceed := helperEnv(t, helperGoEnv)
 
-	if ready != "" {
-		helperSignal(t, ready)
+	app.ResumeNoteCommitBarrier = func(_ app.TaskLocator, expectedRevision string) {
+		if ready != "" {
+			helperSignalValue(t, ready, expectedRevision)
+		}
+		helperAwait(t, proceed)
 	}
-	helperAwait(t, proceed)
+	defer func() { app.ResumeNoteCommitBarrier = nil }()
 
 	result, err := env.service.SetResumeNote(locator, note)
 	if err != nil {

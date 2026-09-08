@@ -403,6 +403,13 @@ case_four() {
 # keeps both notes, and the failure this catches is one machine's note quietly
 # replacing the other's rather than either machine losing a race, which is a
 # legitimate outcome and not a defect.
+#
+# The barrier each helper waits at is inside SetResumeNote, between the snapshot
+# it resolves the task from and the commit that writes it, and each side
+# publishes the project revision it is holding. Comparing those two revisions is
+# what makes this a race and not two sequential writes: a helper released before
+# its own snapshot could read a document the other machine had already rewritten,
+# and every assertion below would still pass.
 
 case_five() {
 	shared="$work_dir/case5/workspace"
@@ -433,14 +440,27 @@ case_five() {
 		>"$work_dir/case5-b.log" 2>&1 &
 	pid_b=$!
 
-	# Both sides load their task before the barrier and commit after it, so the
-	# barrier is what makes this a race rather than a sequence. This script is the
-	# only party that can see both are ready.
+	# Both sides hold their mutation snapshot at the barrier and commit after it,
+	# so the barrier is what makes this a race rather than a sequence. This script
+	# is the only party that can see both are there.
 	if ! await_file "$work_dir/case5-ready-a" || ! await_file "$work_dir/case5-ready-b"; then
 		kill "$pid_a" "$pid_b" >/dev/null 2>&1 || true
 		wait "$pid_a" >/dev/null 2>&1 || true
 		wait "$pid_b" >/dev/null 2>&1 || true
 		report_fail "a resume-note helper never reached the barrier (see $work_dir/case5-*.log)"
+		return
+	fi
+
+	# Each helper published the project revision its snapshot was taken at. Two
+	# different revisions would mean one machine read a document the other had
+	# already rewritten, which is the two-sequential-writes case this is not.
+	revision_a=$(helper_outcome "$work_dir/case5-ready-a")
+	revision_b=$(helper_outcome "$work_dir/case5-ready-b")
+	if [ -z "$revision_a" ] || [ "$revision_a" != "$revision_b" ]; then
+		kill "$pid_a" "$pid_b" >/dev/null 2>&1 || true
+		wait "$pid_a" >/dev/null 2>&1 || true
+		wait "$pid_b" >/dev/null 2>&1 || true
+		report_fail "the two machines held different base revisions: '$revision_a' / '$revision_b'"
 		return
 	fi
 	echo "go" >"$proceed"

@@ -16,6 +16,22 @@ type ResumeNoteResult struct {
 	Changed bool
 }
 
+// ResumeNoteCommitBarrier is the optional coordination seam a cross-machine
+// consistency test installs to hold SetResumeNote at the one instant that makes
+// a lost update possible: the snapshot is taken, the target task and the
+// revision its commit will be guarded by are captured, and nothing has been
+// written yet. Normal execution leaves it nil, nothing in production ever writes
+// it, and it mints no command, flag, or CLI spelling.
+//
+// It exists because the property this method owes a synced workspace — that two
+// machines editing one tasks.md at once lose neither note — is only observable
+// while both processes are holding that state at the same time. A barrier placed
+// around the call cannot arrange it: SetResumeNote loads its own snapshot, so a
+// partner released before this line could read, commit, and exit before the
+// other process read the document it is about to rewrite, and the pair would be
+// two sequential writes wearing a race's clothes.
+var ResumeNoteCommitBarrier func(locator TaskLocator, expectedRevision string)
+
 // SetResumeNote writes, replaces, or clears one task's resume note. The empty
 // note is the only spelling of "clear", matching the model's absence rule, so
 // this is a single entry point rather than a set/clear pair.
@@ -44,6 +60,9 @@ func (s *Service) SetResumeNote(locator TaskLocator, note string) (ResumeNoteRes
 	undoContext := fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
 	ref.Task.ResumeNote = note
 	ref.Task.UpdatedAt = s.clock.Now()
+	if ResumeNoteCommitBarrier != nil {
+		ResumeNoteCommitBarrier(locator, revision)
+	}
 	result, err := s.commitProject(ref, revision, action, undoContext)
 	if err != nil {
 		return ResumeNoteResult{}, err
