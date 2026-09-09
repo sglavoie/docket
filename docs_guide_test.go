@@ -347,8 +347,15 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 			"`:`, `C`, and `Ctrl+Esc`",
 		"Two names came back with new acts rather than as aliases: `t` is the task-subtree fold and " +
 			"`P` is Select Project",
-		"`C` is a fourth name back with a new act: it appends a comment to the cursor task " +
+		"`c` is a fourth name back with a new act: it appends a checklist item to the " +
+			"cursor task, answering from the owner row and from an item row alike, and it is " +
+			"the return that retired a key in exchange, since task-row `x` gave up starting a " +
+			"checklist to it and checklist-row `A` gave up appending, both now silent with no " +
+			"alias back",
+		"`C` is a fifth name back with a new act: it appends a comment to the cursor task " +
 			"without leaving the list, the write beside the read `;` already opens",
+		"`b` is a sixth: it toggles Peek",
+		"`R` is a seventh: it marks the cursor task reviewed and moves to the next candidate",
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
 		"`$` joins them as a chord prefix rather than a key of its own",
 		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",

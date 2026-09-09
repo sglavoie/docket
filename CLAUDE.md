@@ -572,6 +572,14 @@ is left untouched, never rolled either way and never quarantined. Machine
 identity is recomputed per call, never cached, so a `HOME` switch is a different
 machine. Neither field advances the journal schema.
 
+`auditMergedDocument` judges the merged whole, so a merge that is field-wise
+clean but yields a document `WriteV8ProjectDocument` would refuse is a recorded
+retry-only conflict, never a commit-time render failure. Project-local ShortID
+uniqueness is audited there for that reason: two concurrent creations each mint
+the next free number against a document that has not seen the other. An
+invariant the canonical writer enforces belongs in that audit, or the losing
+machine gets an error naming no bundle.
+
 No migration rewrites `.tt/conflicts/`, so a bundle's documents stay frozen at
 the schema that recorded them: undecodable is allowed, unresolvable is not. A
 parse failure degrades like a missing file, naming a reason on

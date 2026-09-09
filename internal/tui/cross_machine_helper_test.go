@@ -37,6 +37,17 @@ const (
 	helperResultEnv  = "TT_HELPER_RESULT_FILE"
 	helperTitleEnv   = "TT_HELPER_TASK_TITLE"
 	helperNoteEnv    = "TT_HELPER_RESUME_NOTE"
+	// helperMutationEnv names which mutation the general role runs and
+	// helperTextEnv carries the one value that mutation needs — a comment's text,
+	// a new task's title, or nothing the review case reads. They are one pair
+	// rather than one variable per role because the three mutations differ only
+	// in which call they make, not in how they race.
+	helperMutationEnv = "TT_HELPER_MUTATION"
+	helperTextEnv     = "TT_HELPER_TEXT"
+
+	helperMutationComment = "comment"
+	helperMutationReview  = "review"
+	helperMutationCreate  = "create"
 
 	// helperRenameTag is the one vocabulary the seeded workspace carries, so the
 	// gate never has to pass a name the seed and the rename both have to agree on.
@@ -206,10 +217,18 @@ func seedCrossMachineWorkspace(workspace *uitestWorkspace) (*models.Project, err
 		plan := newFixtureTask(p, helperRaceTitleA)
 		plan.ApplyWorkflowState(models.StateBacklog)
 		plan.Tags = []string{helperRenameTag}
+		// Both race tasks carry the review flag from the seed. Acknowledgement is
+		// only admitted for a task that awaits review, and the two mutations that
+		// race have to be the acknowledgements themselves: a helper that flagged
+		// its own target first would put an extra write into the document its
+		// partner is about to read, and the pair would be racing over that write
+		// instead of over the one under test. A flag is inert for every other role.
+		plan.Review = true
 
 		vendor := newFixtureTask(p, helperRaceTitleB)
 		vendor.ApplyWorkflowState(models.StateBacklog)
 		vendor.Tags = []string{helperRenameTag}
+		vendor.Review = true
 	})
 	if err != nil {
 		return nil, fmt.Errorf("seed %s: %w", helperRaceProjectName, err)
@@ -358,38 +377,18 @@ func helperCommitNewProject(t *testing.T, env helperEnvironment, name string) {
 // a pair released before the call would prove only that both processes had found
 // a task: one of them could still read, commit and exit before the other read
 // anything, and the "race" would be two sequential writes. Held at
-// app.ResumeNoteCommitBarrier, both processes are demonstrably holding the same
+// app.TaskCommitBarrier, both processes are demonstrably holding the same
 // document version with nothing yet written, which is what the revision each one
 // publishes says.
 func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 	env := openHelperWorkspace(t)
 	note := helperEnv(t, helperNoteEnv)
 	locator := helperTaskLocator(t, env, helperEnv(t, helperTitleEnv))
-	ready := strings.TrimSpace(os.Getenv(helperReadyEnv))
-	proceed := helperEnv(t, helperGoEnv)
-
-	app.ResumeNoteCommitBarrier = func(_ app.TaskLocator, expectedRevision string) {
-		if ready != "" {
-			helperSignalValue(t, ready, expectedRevision)
-		}
-		helperAwait(t, proceed)
-	}
-	defer func() { app.ResumeNoteCommitBarrier = nil }()
+	defer helperHoldAtCommit(t, "Set Resume Note")()
 
 	result, err := env.service.SetResumeNote(locator, note)
 	if err != nil {
-		switch {
-		case errors.Is(err, storage.ErrMergeConflict):
-			// Two processes rewriting one line is the case the three-way merge
-			// cannot resolve, so the loser's edit is durably recorded rather than
-			// dropped. The bundle id is what the gate checks the workspace for.
-			helperRecord(t, "conflicted: "+helperConflictIDs(err))
-		case errors.Is(err, storage.ErrStaleRevision), errors.Is(err, storage.ErrStaleArtifact):
-			helperRecord(t, "expired")
-		default:
-			helperRecord(t, "failed: "+err.Error())
-			t.Fatalf("SetResumeNote error = %v, want a commit, a staleness refusal, or a recorded conflict", err)
-		}
+		helperRecordRefusal(t, "SetResumeNote", err)
 		return
 	}
 	if !result.Changed {
@@ -404,6 +403,158 @@ func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 		t.Fatalf("stored resume note = %q, want the note this process committed", stored)
 	}
 	helperRecord(t, "committed")
+}
+
+// TestCrossMachineHelperAppliesTaskMutation is the resume-note role generalized
+// to the three mutations this release added a key for: appending a comment,
+// acknowledging a review, and creating a fresh task. All three are single-task
+// writes into one shared tasks.md, so all three carry the same lost-update
+// hazard and all three are held at the same seam; only the call and the
+// on-disk claim differ, which is why they are one role selected by
+// TT_HELPER_MUTATION rather than three near-copies.
+//
+// Creation is the sharpest of the three. The other two rewrite a task each
+// machine already resolved, while two creations mint two identities and two
+// short IDs against one document that named neither, so a merge that dropped
+// one would be invisible to the machine that lost it. It is also the only one of
+// the three whose loser is guaranteed to lose: both machines mint the same short
+// id, so the second commit's merge is textually clean and semantically invalid,
+// and the contract it proves is the classified refusal plus the retry.
+func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
+	env := openHelperWorkspace(t)
+	kind := helperEnv(t, helperMutationEnv)
+	text := strings.TrimSpace(os.Getenv(helperTextEnv))
+	title := helperEnv(t, helperTitleEnv)
+
+	switch kind {
+	case helperMutationComment:
+		locator := helperTaskLocator(t, env, title)
+		defer helperHoldAtCommit(t, "Add Comment")()
+		if _, err := env.service.AddComment(locator, text); err != nil {
+			helperRecordRefusal(t, "AddComment", err)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			task := helperStoredTask(t, env, locator)
+			return task != nil && slices.ContainsFunc(task.Comments, func(c *models.Comment) bool {
+				return c != nil && c.Text == text
+			})
+		})
+	case helperMutationReview:
+		locator := helperTaskLocator(t, env, title)
+		defer helperHoldAtCommit(t, "Mark Reviewed")()
+		if _, err := env.service.MarkReviewed(locator); err != nil {
+			helperRecordRefusal(t, "MarkReviewed", err)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			task := helperStoredTask(t, env, locator)
+			return task != nil && !task.Review
+		})
+	case helperMutationCreate:
+		// The title names the project's existing task the new one joins, so the
+		// creation lands in the document the other machine is rewriting.
+		project := helperTaskLocator(t, env, title).ProjectID
+		create := func() error {
+			_, err := env.service.AddTask(app.AddTaskRequest{
+				ProjectID: project,
+				Title:     text,
+				State:     models.StateBacklog,
+			})
+			return err
+		}
+		release := helperHoldAtCommit(t, "Add Task")
+		err := create()
+		// Released before the retry rather than deferred: the retry is a second
+		// commit of the same undo action, and a barrier still installed would hold
+		// it at a rendezvous the partner has already left.
+		release()
+		if err != nil {
+			if !errors.Is(err, storage.ErrMergeConflict) {
+				helperRecordRefusal(t, "AddTask", err)
+				return
+			}
+			// Two machines minting an identity against one document produce the one
+			// merge that is textually clean and still an invalid project: both
+			// additions are non-overlapping, so both survive, and both answer to the
+			// short id that was next free in the document neither had seen the other
+			// write. The loser's whole commit is refused and recorded as a retry-only
+			// bundle, so its task is nowhere yet and the retry — which reads what the
+			// winner left — is what actually completes this creation.
+			recorded := helperConflictIDs(err)
+			if helperStoredTaskTitled(t, env, project, text) != nil {
+				helperRecord(t, "lost: a refused creation wrote its task anyway")
+				t.Fatal("a creation refused as a conflict left partial task data on disk")
+			}
+			if retryErr := create(); retryErr != nil {
+				helperRecord(t, "failed: "+retryErr.Error())
+				t.Fatalf("retrying a creation refused as %s: %v", recorded, retryErr)
+			}
+			helperRequireStored(t, kind, func() bool {
+				return helperStoredTaskTitled(t, env, project, text) != nil
+			})
+			helperRecord(t, "retried: "+recorded)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			return helperStoredTaskTitled(t, env, project, text) != nil
+		})
+	default:
+		t.Fatalf("%s=%q names no helper mutation", helperMutationEnv, kind)
+	}
+	helperRecord(t, "committed")
+}
+
+// helperHoldAtCommit installs the shared commit barrier for one undo action and
+// returns the deferred removal. Filtering on the action is what lets a role
+// whose mutation opens more than one transaction — or a process that reconciles
+// something on the way past — be held at exactly the write under test.
+func helperHoldAtCommit(t *testing.T, undoAction string) func() {
+	t.Helper()
+	ready := strings.TrimSpace(os.Getenv(helperReadyEnv))
+	proceed := helperEnv(t, helperGoEnv)
+	app.TaskCommitBarrier = func(action string, _ app.TaskLocator, expectedRevision string) {
+		if action != undoAction {
+			return
+		}
+		if ready != "" {
+			helperSignalValue(t, ready, expectedRevision)
+		}
+		helperAwait(t, proceed)
+	}
+	return func() { app.TaskCommitBarrier = nil }
+}
+
+// helperRecordRefusal classifies the three refusals a losing machine may
+// legitimately report and fails on anything else. Losing a race is a result;
+// failing for another reason is a defect, and the gate has to be able to tell
+// them apart from the recorded line alone.
+func helperRecordRefusal(t *testing.T, call string, err error) {
+	t.Helper()
+	switch {
+	case errors.Is(err, storage.ErrMergeConflict):
+		// Two processes rewriting one region is the case the three-way merge
+		// cannot resolve, so the loser's edit is durably recorded rather than
+		// dropped. The bundle id is what the gate checks the workspace for.
+		helperRecord(t, "conflicted: "+helperConflictIDs(err))
+	case errors.Is(err, storage.ErrStaleRevision), errors.Is(err, storage.ErrStaleArtifact):
+		helperRecord(t, "expired")
+	default:
+		helperRecord(t, "failed: "+err.Error())
+		t.Fatalf("%s error = %v, want a commit, a staleness refusal, or a recorded conflict", call, err)
+	}
+}
+
+// helperRequireStored turns a reported commit into a claim about the bytes. A
+// machine that says "committed" and cannot find its own write on disk is the
+// lost update this whole gate exists to catch, so it records that and fails
+// rather than reporting success.
+func helperRequireStored(t *testing.T, kind string, stored func() bool) {
+	t.Helper()
+	if !stored() {
+		helperRecord(t, "lost")
+		t.Fatalf("the %s this process committed is not on disk", kind)
+	}
 }
 
 // helperConflictIDs names the bundles a refused commit recorded, so the gate can
@@ -423,22 +574,64 @@ func helperConflictIDs(err error) string {
 
 func helperStoredResumeNote(t *testing.T, env helperEnvironment, locator app.TaskLocator) string {
 	t.Helper()
+	task := helperStoredTask(t, env, locator)
+	if task == nil {
+		t.Fatalf("no task %s/%s on disk", locator.ProjectID, locator.TaskID)
+	}
+	return task.ResumeNote
+}
+
+// helperReloadProject reads one project's tasks.md back off disk. Every stored
+// claim goes through it rather than through the runtime this process already
+// holds: the point of the assertion is what the bytes say after the other
+// machine's write merged into them, and an in-memory task would answer with what
+// this process wrote regardless.
+func helperReloadProject(t *testing.T, env helperEnvironment, projectID string) *models.Project {
+	t.Helper()
 	for _, project := range env.workspace.Runtime.AvailableProjects() {
-		if project.ID != locator.ProjectID {
+		if project.ID != projectID {
 			continue
 		}
 		loaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
 		if err := storage.LoadProject(loaded); err != nil {
 			t.Fatalf("LoadProject(%q): %v", project.Name, err)
 		}
-		for _, task := range loaded.Tasks {
-			if task.ID == locator.TaskID {
-				return task.ResumeNote
-			}
+		return loaded
+	}
+	return nil
+}
+
+// helperStoredTask returns the identified task as the file now holds it, or nil
+// when the merge did not keep it.
+func helperStoredTask(t *testing.T, env helperEnvironment, locator app.TaskLocator) *models.Task {
+	t.Helper()
+	loaded := helperReloadProject(t, env, locator.ProjectID)
+	if loaded == nil {
+		return nil
+	}
+	for _, task := range loaded.Tasks {
+		if task.ID == locator.TaskID {
+			return task
 		}
 	}
-	t.Fatalf("no task %s/%s on disk", locator.ProjectID, locator.TaskID)
-	return ""
+	return nil
+}
+
+// helperStoredTaskTitled is the creation role's reading of the same file. A new
+// task has no identity the gate could have been told in advance, so the title
+// this process minted is what it looks for.
+func helperStoredTaskTitled(t *testing.T, env helperEnvironment, projectID, title string) *models.Task {
+	t.Helper()
+	loaded := helperReloadProject(t, env, projectID)
+	if loaded == nil {
+		return nil
+	}
+	for _, task := range loaded.Tasks {
+		if task.Title == title {
+			return task
+		}
+	}
+	return nil
 }
 
 // TestCrossMachineHelperUsesMigratedWorkspace is the new-schema half of the

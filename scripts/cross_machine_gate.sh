@@ -603,6 +603,235 @@ case_six() {
 	report_pass "a workspace minted at $ref migrates, carries a resume note, and is then refused by $ref"
 }
 
+# --- Case 7: two machines applying the release's new mutations at once --------
+#
+# Case 5 proved one write into one shared document. This one proves the shape
+# generalizes to the three writes the release added a key for, because the hazard
+# is a property of the document, not of the field: two machines that resolved the
+# same base revision both rewrite the whole tasks.md, so whichever commits second
+# is merging over bytes it never read.
+#
+# Creation is the sharpest of the three and the reason the case is not folded
+# into case 5. The other two rewrite a task both machines can name; two creations
+# mint two identities against a document that named neither, so a merge that
+# silently dropped one would leave the losing machine with no evidence at all.
+
+# race_two_helpers forks one helper role twice, holds both at the commit barrier,
+# releases them together, and reports the pair of outcomes on stdout. It is the
+# whole of what makes these cases races, so it is written once: a case that
+# arranged its own barrier could differ from case 5's in ways nobody would see
+# until a lost update was blamed on the wrong layer.
+#
+# It echoes "<outcome_a>|<outcome_b>" on success and nothing on failure, having
+# already reported the failure itself.
+race_two_helpers() {
+	tag=$1
+	role=$2
+	title_a=$3
+	title_b=$4
+	shift 4
+	# The remaining arguments are extra environment assignments, applied to both
+	# roles. Passing them through `env` rather than inline keeps one spelling for
+	# a role that takes no extras and a role that takes several.
+	proceed="$work_dir/$tag-go"
+
+	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-a" \
+		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/$tag-a.txt" \
+		TT_HELPER_TASK_TITLE="$title_a" \
+		env "$@" TT_HELPER_TEXT="$helper_text_a" \
+		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-a.log" 2>&1 &
+	pid_a=$!
+	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-b" \
+		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/$tag-b.txt" \
+		TT_HELPER_TASK_TITLE="$title_b" \
+		env "$@" TT_HELPER_TEXT="$helper_text_b" \
+		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-b.log" 2>&1 &
+	pid_b=$!
+
+	if ! await_file "$work_dir/$tag-ready-a" || ! await_file "$work_dir/$tag-ready-b"; then
+		kill "$pid_a" "$pid_b" >/dev/null 2>&1 || true
+		wait "$pid_a" >/dev/null 2>&1 || true
+		wait "$pid_b" >/dev/null 2>&1 || true
+		report_fail "$tag: a helper never reached the barrier (see $work_dir/$tag-*.log)"
+		return 1
+	fi
+
+	revision_a=$(helper_outcome "$work_dir/$tag-ready-a")
+	revision_b=$(helper_outcome "$work_dir/$tag-ready-b")
+	if [ -z "$revision_a" ] || [ "$revision_a" != "$revision_b" ]; then
+		kill "$pid_a" "$pid_b" >/dev/null 2>&1 || true
+		wait "$pid_a" >/dev/null 2>&1 || true
+		wait "$pid_b" >/dev/null 2>&1 || true
+		report_fail "$tag: the two machines held different base revisions: '$revision_a' / '$revision_b'"
+		return 1
+	fi
+	echo "go" >"$proceed"
+
+	status_a=0
+	status_b=0
+	wait "$pid_a" || status_a=$?
+	wait "$pid_b" || status_b=$?
+	if [ "$status_a" -ne 0 ] || [ "$status_b" -ne 0 ]; then
+		report_fail "$tag: the race exited $status_a/$status_b (see $work_dir/$tag-*.log)"
+		return 1
+	fi
+
+	outcome_a=$(helper_outcome "$work_dir/$tag-a.txt")
+	outcome_b=$(helper_outcome "$work_dir/$tag-b.txt")
+	case "$outcome_a$outcome_b" in
+	*lost*)
+		report_fail "$tag: a commit was silently replaced: $outcome_a / $outcome_b"
+		return 1
+		;;
+	esac
+	if [ "$outcome_a" != "committed" ] && [ "$outcome_b" != "committed" ]; then
+		report_fail "$tag: neither machine committed: $outcome_a / $outcome_b"
+		return 1
+	fi
+	echo "$outcome_a|$outcome_b"
+	return 0
+}
+
+# require_clean_workspace is the shared tail of every race case: nothing
+# quarantined, and the shipped maintenance command still calls the workspace
+# healthy. A race that merged incorrectly but left plausible bytes is exactly
+# what doctor is for.
+require_clean_workspace() {
+	tag=$1
+	if [ -d "$shared/.tt/transactions/quarantine" ] &&
+		[ -n "$(find "$shared/.tt/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
+		report_fail "$tag: the race quarantined a transaction"
+		return 1
+	fi
+	if ! HOME="$home_mint" "$current_binary" doctor --data-dir "$shared" >"$work_dir/$tag-verify.log" 2>&1; then
+		report_fail "$tag: the workspace is no longer clean (see $work_dir/$tag-verify.log)"
+		return 1
+	fi
+	return 0
+}
+
+# prepare_race_workspace mints and seeds a workspace of its own for one race, so
+# a case that leaves a document merged cannot change what the next one races
+# over. It sets $shared and $home_mint for the helpers that follow.
+prepare_race_workspace() {
+	tag=$1
+	shared="$work_dir/$tag/workspace"
+	home_mint="$work_dir/$tag/home-mint"
+	if ! mint_workspace "$shared" "$home_mint" "$work_dir/$tag-mint.log"; then
+		report_fail "$tag: could not mint the workspace (see $work_dir/$tag-mint.log)"
+		return 1
+	fi
+	if ! seed_workspace "$shared" "$work_dir/$tag-seed.log"; then
+		report_fail "$tag: could not seed the workspace (see $work_dir/$tag-seed.log)"
+		return 1
+	fi
+	return 0
+}
+
+case_seven_comments() {
+	tag=case7-comment
+	prepare_race_workspace "$tag" || return
+	helper_text_a="Machine A saw this in the migration review"
+	helper_text_b="Machine B heard back from the vendor"
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
+		"Draft the migration plan" "Review the vendor contract" \
+		TT_HELPER_MUTATION=comment) || return
+
+	document="$shared/projects/delivery/tasks.md"
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	if [ "$outcome_a" = "committed" ] && ! grep -qF "$helper_text_a" "$document"; then
+		report_fail "$tag: machine A committed a comment that is not in $document"
+		return
+	fi
+	if [ "$outcome_b" = "committed" ] && ! grep -qF "$helper_text_b" "$document"; then
+		report_fail "$tag: machine B committed a comment that is not in $document"
+		return
+	fi
+	require_clean_workspace "$tag" || return
+	report_pass "two machines comment on one document without losing either ($outcome_a / $outcome_b)"
+}
+
+case_seven_reviews() {
+	tag=case7-review
+	prepare_race_workspace "$tag" || return
+	# Acknowledgement takes no text; the seed flags both tasks, so each machine's
+	# write is the clearing of one flag and the claim is the key's absence.
+	helper_text_a=""
+	helper_text_b=""
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
+		"Draft the migration plan" "Review the vendor contract" \
+		TT_HELPER_MUTATION=review) || return
+
+	document="$shared/projects/delivery/tasks.md"
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	flagged=$(grep -c 'review: true' "$document" || true)
+	committed=0
+	[ "$outcome_a" = "committed" ] && committed=$((committed + 1))
+	[ "$outcome_b" = "committed" ] && committed=$((committed + 1))
+	if [ "$flagged" -ne $((2 - committed)) ]; then
+		report_fail "$tag: $flagged task(s) still flagged after $committed acknowledgement(s)"
+		return
+	fi
+	require_clean_workspace "$tag" || return
+	report_pass "two machines acknowledge reviews in one document without restoring either flag ($outcome_a / $outcome_b)"
+}
+
+# case_seven_creations is the one race with a guaranteed loser, which is why it
+# gets a case of its own rather than a third pass through the comment shape.
+#
+# Both machines name the same anchor task, so both creations are minted against
+# one document that named neither, and each takes the same next-free short id. The
+# second commit's three-way merge is therefore textually clean — two additions
+# that overlap nowhere — and the whole it produces is invalid, because a short id
+# is the reference every `#N` spelling resolves through and no project may hold
+# two tasks answering to one. The contract is that this is refused as a recorded
+# conflict rather than as a rendering failure with nothing to show, and that the
+# retry, reading what the winner left, completes the losing machine's creation.
+case_seven_creations() {
+	tag=case7-create
+	prepare_race_workspace "$tag" || return
+	helper_text_a="Draft the rollout announcement"
+	helper_text_b="Book the contract review slot"
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
+		"Draft the migration plan" "Draft the migration plan" \
+		TT_HELPER_MUTATION=create) || return
+
+	document="$shared/projects/delivery/tasks.md"
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	case "$outcome_a$outcome_b" in
+	*retried:*) ;;
+	*)
+		report_fail "$tag: no creation was refused and retried: $outcome_a / $outcome_b"
+		return
+		;;
+	esac
+	if ! grep -qF "$helper_text_a" "$document" || ! grep -qF "$helper_text_b" "$document"; then
+		report_fail "$tag: a creation is missing from $document"
+		return
+	fi
+	# Read off the bytes rather than from either machine's report: a merge that
+	# kept both tasks and both numbers would satisfy every claim above.
+	duplicates=$(grep -o 'short_id: [0-9]*' "$document" | sort | uniq -d)
+	if [ -n "$duplicates" ]; then
+		report_fail "$tag: two tasks answer to one short id after the race ($duplicates)"
+		return
+	fi
+	# The refusal has to have left something for `tt conflict` to list. That is the
+	# whole difference between this classification and the bare error it replaced.
+	if [ -z "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+		report_fail "$tag: a creation was refused as a conflict but recorded no bundle"
+		return
+	fi
+	require_clean_workspace "$tag" || return
+	report_pass "two machines create into one document; the refused one is recorded and completes on retry ($outcome_a / $outcome_b)"
+}
+
 # snapshot_workspace writes a sorted path/size/checksum listing of every file
 # under a workspace, which is what "byte-identical" is checked against.
 snapshot_workspace() {
@@ -617,6 +846,9 @@ case_three
 case_four
 case_five
 case_six
+case_seven_comments
+case_seven_reviews
+case_seven_creations
 
 echo
 if [ "$failures" -gt 0 ]; then

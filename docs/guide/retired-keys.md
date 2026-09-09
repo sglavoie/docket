@@ -17,12 +17,17 @@ has since been spent: it is the menu bar toggle, a third name back with a new
 act. `H` and `L` stay silent, and they are the pair that is not free to return,
 since either one alone would advertise half of a jump the `z` chord already
 owns.
-`C` is a fourth name back with a new act: it appends a comment to the cursor
+`c` is a fourth name back with a new act: it appends a checklist item to the
+cursor task, answering from the owner row and from an item row alike, and it is
+the return that retired a key in exchange, since task-row `x` gave up starting a
+checklist to it and checklist-row `A` gave up appending, both now silent with no
+alias back.
+`C` is a fifth name back with a new act: it appends a comment to the cursor
 task without leaving the list, the write beside the read `;` already opens. `b`
-is a fifth: it toggles Peek, and it is the one return that retired a key in
+is a sixth: it toggles Peek, and it is the other return that retired a key in
 exchange, since `Ctrl+Enter` gave Peek up to it and is now silent with no alias
 back. A letter earns a place beside `Enter` and `Shift+Enter`, which zoom and
-widen, better than a modifier does. `R` is a sixth: it marks the cursor task
+widen, better than a modifier does. `R` is a seventh: it marks the cursor task
 reviewed and moves to the next candidate, the capital beside the `=` that flags
 one.
 `d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is

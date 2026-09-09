@@ -176,6 +176,27 @@ non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
 durable conflict bundle without partially committing the transaction.
 
+Merging field by field is not enough to know the result is writable, so
+`auditMergedDocument` judges the whole document the merge produced before that
+document is allowed to become a commit. It runs the project audit — duplicate
+task ids, hierarchy, cycles, depth, state — the terminal/`CompletedAt`
+agreement checks, and project-local ShortID uniqueness, and anything it finds
+becomes an ordinary `MergeConflictInvariant` entry in the same retry-only
+bundle a competing edit would produce.
+
+ShortID is in that list because it is the one invariant the canonical writer
+enforces that the project audit does not, and because concurrent creation is
+the case that breaks it. A short id is minted next-free against the document
+the minting machine can see, so two machines creating a task at the same time
+both pick the same number; the merge itself is clean, since the two additions
+touch nothing in common. Without the audit the whole was rejected later, while
+rendering the merged document at the commit boundary — no data was lost, but
+the losing machine received a bare render error, `tt conflict` had no bundle to
+list, and the retry that would have succeeded was never suggested. Auditing it
+here makes that outcome the third ordinary one: nothing partial on disk, a
+classified bundle naming `short_id`, and a retry that mints against the merged
+document and lands.
+
 The maintenance CLI lists, shows, and resolves those bundles. Resolution
 rechecks the current remote revision. A conflict from an aborted multi-artifact
 transaction may require adopting remote and retrying the original operation so

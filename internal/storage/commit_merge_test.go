@@ -442,3 +442,123 @@ func TestCommitMerge_MultiProjectConflictWritesNothing(t *testing.T) {
 		t.Fatalf("recorded conflict project = %q, want %q", records[0].ProjectID, projB.ID)
 	}
 }
+
+// mergeTestDocAdding returns doc with one extra task appended, which is what a
+// creation is at this layer: the loaded document plus a task minted against it.
+// cloneEdit only reaches Tasks[0], so a creation race needs its own spelling.
+func mergeTestDocAdding(doc *ProjectDocument, id, title string, shortID int) *ProjectDocument {
+	copied := *doc
+	copied.Tasks = append(cloneDocTasks(doc.Tasks), mergeTestTask(id, title))
+	copied.Tasks[len(copied.Tasks)-1].ShortID = shortID
+	copied.Revision = copied.ComputeRevision()
+	return &copied
+}
+
+// TestCommitMerge_ConcurrentCreationsRecordAConflictAndSucceedOnRetry covers the
+// one shape a textual merge resolves cleanly and the canonical writer then
+// refuses: two machines creating a task at once. Each mints the next free short
+// id against a document that has not seen the other's task, so both new tasks are
+// non-overlapping additions the field-wise merge keeps — and both answer to the
+// same number, which is the reference every `#N` spelling resolves through.
+//
+// The claim is that this is classified rather than merely refused. Before the
+// merge audit knew about short ids the commit boundary failed while rendering the
+// merged document: nothing was written and no update was lost, but the loser got
+// a bare error naming no conflict bundle, so there was nothing for `tt conflict`
+// to show and nothing to resolve. It is now the ordinary retry-only conflict, and
+// the retry — which reads the document the winner left — is what actually
+// completes the losing machine's creation.
+func TestCommitMerge_ConcurrentCreationsRecordAConflictAndSucceedOnRetry(t *testing.T) {
+	env := newMergeCommitEnv(t)
+	project := env.project("p1", "Alpha", "alpha")
+
+	base := env.commitDoc(t, project, mergeTestDoc("Alpha", mergeTestTask("t1", "the anchor")), "", nil)
+
+	// The remote machine creates first and lands. #2 is the next free short id in
+	// the document both machines read.
+	remote := env.commitDoc(t, project, mergeTestDocAdding(base, "t2", "remote creation", 2), base.Revision, base)
+
+	// The local machine, still holding the pre-race base, mints the same #2.
+	local := projectFromDocument(project, mergeTestDocAdding(base, "t3", "local creation", 2))
+	_, err := env.svc.Commit(ChangeSet{
+		Project:          local,
+		ExpectedRevision: base.Revision,
+		Base:             base,
+		UndoAction:       "Add Task",
+		UndoContext:      "local creation",
+	})
+	if !errors.Is(err, ErrMergeConflict) {
+		t.Fatalf("Commit err = %v, want ErrMergeConflict", err)
+	}
+	var conflict *CommitConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("expected *CommitConflictError, got %T", err)
+	}
+	if len(conflict.Conflicts) != 1 || conflict.Conflicts[0].ConflictID == "" {
+		t.Fatalf("expected one recorded conflict carrying an id, got %+v", conflict.Conflicts)
+	}
+
+	// The bundle names the invariant rather than an edited field, which is what
+	// separates "two machines edited one title" from "the merged whole is invalid".
+	records, err := env.store.List()
+	if err != nil || len(records) != 1 {
+		t.Fatalf("expected exactly one durable conflict record, got %d (err %v)", len(records), err)
+	}
+	if records[0].Action != "Add Task" {
+		t.Fatalf("recorded conflict action = %q, want the mutation's own %q", records[0].Action, "Add Task")
+	}
+	classified := false
+	for _, recorded := range records[0].Conflicts {
+		if recorded.Kind == MergeConflictInvariant && recorded.Field == "short_id" {
+			classified = true
+		}
+	}
+	if !classified {
+		t.Fatalf("recorded conflict does not name the short id invariant: %+v", records[0].Conflicts)
+	}
+
+	// No partial task data: the document is byte-for-byte the winner's, and the
+	// losing machine's task is nowhere in it.
+	after, err := LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("reload after the refused creation: %v", err)
+	}
+	if after.Revision != remote.Revision {
+		t.Fatalf("on-disk revision moved on a refused creation: got %q want %q", after.Revision, remote.Revision)
+	}
+	for _, task := range after.Tasks {
+		if task.Title == "local creation" {
+			t.Fatal("the refused creation wrote its task anyway")
+		}
+	}
+
+	// The retry is the point of a retry-only bundle. It reads what the winner left
+	// and mints against that, so the short id it takes is free.
+	retried := projectFromDocument(project, mergeTestDocAdding(after, "t3", "local creation", 3))
+	if _, err = env.svc.Commit(ChangeSet{
+		Project:          retried,
+		ExpectedRevision: after.Revision,
+		Base:             after,
+		UndoAction:       "Add Task",
+		UndoContext:      "local creation",
+	}); err != nil {
+		t.Fatalf("retrying the refused creation: %v", err)
+	}
+
+	settled, err := LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("reload after the retry: %v", err)
+	}
+	shortIDs := map[int]string{}
+	titles := map[string]bool{}
+	for _, task := range settled.Tasks {
+		if previous, clash := shortIDs[task.ShortID]; clash {
+			t.Fatalf("tasks %q and %q both answer to #%d after the retry", previous, task.Title, task.ShortID)
+		}
+		shortIDs[task.ShortID] = task.Title
+		titles[task.Title] = true
+	}
+	if !titles["remote creation"] || !titles["local creation"] {
+		t.Fatalf("both creations should survive the retry, got %v", titles)
+	}
+}

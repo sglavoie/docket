@@ -375,7 +375,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// docs/guide/outliner-keys.md and the mechanism in
 	// docs/architecture/tui-architecture.md; the retired-key list gave back the
 	// five bytes `R` occupied.
-	const budget = 34557
+	//
+	// Thirteenth raise, 34557 to 35063, for what a merge owes the canonical
+	// writer. 506 bytes buy one rule and the one worked example that makes it
+	// checkable. The rule is not discoverable from the code: auditMergedDocument
+	// reads as a duplicate of models.AuditProject, so a reader adding an invariant
+	// to the writer has no reason to look at it, and the failure that follows is
+	// silent in the only way that matters — the merge succeeds field by field, the
+	// commit fails while rendering, and the losing machine holds an error that
+	// names no bundle, so `tt conflict` lists nothing and the retry path that
+	// already exists is never reached. Concurrent creation is the example because
+	// it is the case the file otherwise implies is handled: ShortID is
+	// project-local and minted next-free, which two machines do independently
+	// against documents neither has seen, and nothing above says where that
+	// collision is caught. Naming the audit rather than the symptom is what keeps
+	// the next invariant — not this one — from landing in the same blind spot.
+	// The mechanism lives in docs/architecture/persistence-and-transactions.md.
+	const budget = 35063
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

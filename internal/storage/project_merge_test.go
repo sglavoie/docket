@@ -13,7 +13,7 @@ func mergeTestTask(id, title string) *models.Task {
 	stamp := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 	return &models.Task{
 		ID:             id,
-		ShortID:        1,
+		ShortID:        mergeTestShortID(id),
 		Title:          title,
 		WorkflowState:  models.StateBacklog,
 		Priority:       models.PriorityUnset,
@@ -22,6 +22,27 @@ func mergeTestTask(id, title string) *models.Task {
 		UpdatedAt:      stamp,
 		StateChangedAt: stamp,
 	}
+}
+
+// mergeTestShortID gives every fixture task a short id of its own, derived from
+// its task id alone. It has to be a pure function of the id and not a counter:
+// a three-way merge fixture spells one logical task once per document, and a
+// task whose number depended on construction order would read as a divergent
+// short-id edit between base, local, and current rather than as the same task.
+//
+// A real document never carries two tasks answering to one number — the
+// canonical writer refuses it, and auditMergedDocument now refuses a merge that
+// would produce it — so a fixture that numbered every task 1 was describing a
+// document that cannot exist.
+func mergeTestShortID(id string) int {
+	hash := uint32(2166136261)
+	for i := 0; i < len(id); i++ {
+		hash ^= uint32(id[i])
+		hash *= 16777619
+	}
+	// Positive and bounded well below any real id, so a fixture reading a number
+	// out of a failure message can still tell the two apart.
+	return int(hash%(1<<30)) + 1
 }
 
 func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {

@@ -299,6 +299,28 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 		})
 	}
 
+	// ShortID uniqueness is the one project-local invariant the canonical writer
+	// enforces that models.AuditProject does not, and it is precisely the one two
+	// concurrent creations break: each machine mints the next free short id
+	// against a document that has not seen the other's task, so a field-wise clean
+	// merge keeping both tasks keeps two copies of one number. Auditing it here is
+	// what makes that merge a recorded conflict the loser can retry, rather than a
+	// render failure raised at the commit boundary — which named no bundle, so the
+	// losing machine had nothing to resolve and nothing to show.
+	shortIDs := make(map[int]*models.Task, len(doc.Tasks))
+	for _, task := range doc.Tasks {
+		if existing, clash := shortIDs[task.ShortID]; clash {
+			conflicts = append(conflicts, MergeConflict{
+				Kind:      MergeConflictInvariant,
+				TaskTitle: task.Title,
+				Field:     "short_id",
+				Detail:    fmt.Sprintf("short id %d is already used by %q", task.ShortID, existing.Title),
+			})
+			continue
+		}
+		shortIDs[task.ShortID] = task
+	}
+
 	for _, task := range doc.Tasks {
 		// State invariant: a completion timestamp exists exactly for terminal
 		// states. A field-wise clean merge can still combine a terminal state from
