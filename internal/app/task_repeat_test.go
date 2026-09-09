@@ -60,7 +60,6 @@ func TestPrepareTaskRepeatDraftRetainsOnlyTheShapeOfTheWork(t *testing.T) {
 	}
 
 	want := app.TaskRepeatDraft{
-		ProjectID:      "proj-1",
 		Destination:    app.CaptureDestinationBacklog,
 		Title:          "Ship the quarterly report",
 		Description:    "Pull the numbers, then circulate for sign-off.",
@@ -68,9 +67,6 @@ func TestPrepareTaskRepeatDraftRetainsOnlyTheShapeOfTheWork(t *testing.T) {
 		Tags:           []string{"finance", "recurring"},
 		Context:        "office",
 		ChecklistItems: []string{"Pull the numbers", "Draft the summary", "Circulate"},
-	}
-	if draft.ProjectID != want.ProjectID {
-		t.Errorf("ProjectID = %q, want %q", draft.ProjectID, want.ProjectID)
 	}
 	if draft.Destination != want.Destination {
 		t.Errorf("Destination = %q, want %q", draft.Destination, want.Destination)
@@ -107,7 +103,7 @@ func TestTaskRepeatDraftCarriesNoOccurrenceField(t *testing.T) {
 		fields = append(fields, value.Field(i).Name)
 	}
 	want := []string{
-		"ProjectID", "Destination", "Title", "Description",
+		"Destination", "Title", "Description",
 		"Priority", "Tags", "Context", "ChecklistItems",
 	}
 	if !slices.Equal(fields, want) {

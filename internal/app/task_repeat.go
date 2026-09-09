@@ -18,10 +18,13 @@ import (
 // repeated rather than the shape of it. ChecklistItems carries text alone for
 // the same reason — a repeated checklist starts unticked, and a struct that
 // cannot spell a tick cannot leak one.
+//
+// The source project is absent too, and for a different reason: the caller
+// named it in the locator it passed, so echoing it back would be a value the
+// surface already holds rather than one the draft decides. A repetition never
+// crosses a project boundary on its own, and that is enforced where the
+// destination project is chosen, not by a field nothing reads.
 type TaskRepeatDraft struct {
-	// ProjectID is the source task's own project. A repetition never crosses a
-	// project boundary on its own; the surface may still let a human move it.
-	ProjectID string
 	// Destination is always CaptureDestinationBacklog. It is carried rather
 	// than assumed so a surface seeds one value instead of restating the rule.
 	Destination CaptureDestination
@@ -54,14 +57,13 @@ func (s *Service) PrepareTaskRepeatDraft(locator TaskLocator) (TaskRepeatDraft, 
 	if ref.Project.Archived {
 		return TaskRepeatDraft{}, invalidInput("project", "project is archived; restore it to add tasks")
 	}
-	return newTaskRepeatDraft(ref.Project.ID, ref.Task), nil
+	return newTaskRepeatDraft(ref.Task), nil
 }
 
 // newTaskRepeatDraft copies the retained fields off a source task. It is split
 // out so the copying rule has one home and the tests can state it directly.
-func newTaskRepeatDraft(projectID string, task *models.Task) TaskRepeatDraft {
+func newTaskRepeatDraft(task *models.Task) TaskRepeatDraft {
 	draft := TaskRepeatDraft{
-		ProjectID:   projectID,
 		Destination: CaptureDestinationBacklog,
 		Title:       task.Title,
 		Description: task.Description,
