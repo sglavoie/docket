@@ -4,10 +4,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// BuildKeyMap constructs the declarative KeyMap for TaskCommentsModel. It is the
+// BuildKeyMap constructs the declarative KeyMap for CommentsModel. It is the
 // panel's help and footer source; CommentsInputStrategy is what the browse keys
 // actually resolve through, so the two must keep describing the same grammar.
-func (m *TaskCommentsModel) BuildKeyMap() *keymap.KeyMap {
+func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 	inInputMode := func() bool { return m.AddMode || m.EditMode || m.ExpandedView }
 	inBrowseMode := func() bool { return !inInputMode() }
 	hasBrowseSelection := func() bool { return inBrowseMode() && m.HasSelection() }

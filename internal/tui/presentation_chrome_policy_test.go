@@ -149,7 +149,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "task tool", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := taskdetail.NewTaskCommentsModel(task, project)
+			m := taskdetail.NewCommentsPanel(taskdetail.NewTaskCommentOwner(task, project, coordinator.SubviewCoordinator{}), "")
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

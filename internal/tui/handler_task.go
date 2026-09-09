@@ -91,12 +91,8 @@ func (m *AppModel) handleShowTaskComments(msg taskdetail.ShowTaskCommentsMsg) (b
 	if msg.Task == nil || msg.Project == nil {
 		return true, nil
 	}
-	view := taskdetail.NewTaskCommentsModelWithEditor(
-		msg.Task,
-		msg.Project,
-		"",
-		m.secondaryFeatures.Subview,
-	)
+	owner := taskdetail.NewTaskCommentOwner(msg.Task, msg.Project, m.secondaryFeatures.Subview)
+	view := taskdetail.NewCommentsPanel(owner, "")
 	view.SetOperationDispatch(m.dispatchOperationKey)
 	return m.showViewInit(presentation.ViewTaskComments, view)
 }
@@ -143,6 +139,9 @@ func (m *AppModel) handleTaskCommentMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case taskdetail.CommentEditedMsg:
 		return m.handleCommentEdited(msg)
 
+	case taskdetail.CommentMutationFailedMsg:
+		return true, m.handleCommentMutationFailed(msg)
+
 	}
 	return false, nil
 }
@@ -161,18 +160,41 @@ func (m *AppModel) refreshAfterSubviewCommit() tea.Cmd {
 func (m *AppModel) handleCommentAdded(msg taskdetail.CommentAddedMsg) (bool, tea.Cmd) {
 	// Delegate to current view so it can refresh stale task data
 	// (outliner rows contain clones from tree projections)
-	viewCmd := m.delegateToCurrentView(msg)
+	viewCmd := m.committedCommentViewCmd(msg.ProjectID, msg)
 	return true, tea.Batch(m.setRecoveryFeedback("Comment added", msg.TransactionID, false), viewCmd, m.refreshAfterSubviewCommit())
 }
 
 // handleCommentDeleted handles the CommentDeletedMsg.
 func (m *AppModel) handleCommentDeleted(msg taskdetail.CommentDeletedMsg) (bool, tea.Cmd) {
-	return true, tea.Batch(m.setRecoveryFeedback("Comment deleted", msg.TransactionID, false), m.refreshAfterSubviewCommit())
+	viewCmd := m.committedCommentViewCmd(msg.ProjectID, msg)
+	return true, tea.Batch(m.setRecoveryFeedback("Comment deleted", msg.TransactionID, false), viewCmd, m.refreshAfterSubviewCommit())
 }
 
 // handleCommentEdited handles the CommentEditedMsg.
 func (m *AppModel) handleCommentEdited(msg taskdetail.CommentEditedMsg) (bool, tea.Cmd) {
-	return true, tea.Batch(m.setRecoveryFeedback("Comment updated", msg.TransactionID, false), m.refreshAfterSubviewCommit())
+	viewCmd := m.committedCommentViewCmd(msg.ProjectID, msg)
+	return true, tea.Batch(m.setRecoveryFeedback("Comment updated", msg.TransactionID, false), viewCmd, m.refreshAfterSubviewCommit())
+}
+
+// committedCommentViewCmd reloads the committed project before the panel reads it
+// back. The three comment outcomes replace the TransactionResultMsg the
+// coordinator would otherwise have raised, so they owe the shell the same
+// in-memory reload handleTransactionResult performs: the panel projects its
+// owner's stored comments rather than editing them, and the application layer
+// committed against its own freshly loaded snapshot, so without this the panel
+// re-reads the pre-commit copy the shell still holds.
+func (m *AppModel) committedCommentViewCmd(projectID string, msg tea.Msg) tea.Cmd {
+	m.reloadProjectByID(projectID)
+	return m.delegateToCurrentView(msg)
+}
+
+// handleCommentMutationFailed routes a refused comment commit back to the panel
+// that submitted it. It mirrors the shared ErrorMsg handling — the same status
+// surface, the same timeout — and adds the delegation the panel needs to put the
+// user's draft back in front of them; a panel that has since moved on drops it.
+func (m *AppModel) handleCommentMutationFailed(msg taskdetail.CommentMutationFailedMsg) tea.Cmd {
+	m.feedback.err = msg.Err
+	return tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
 }
 
 func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMsg) tea.Cmd {

@@ -132,7 +132,7 @@ var commentActionSheetOperations = []operation.OperationID{OperationCommentDelet
 // openCommentsActionSheet raises the shell-owned sheet over the panel. Its row
 // acts on the panel's cursor rather than on a named entity, so an empty list or
 // a cursor past its end names nothing and the sheet refuses to open.
-func (c *Controller) openCommentsActionSheet(shell Shell, ctx operation.CommandContext, panel *taskdetail.TaskCommentsModel) error {
+func (c *Controller) openCommentsActionSheet(shell Shell, ctx operation.CommandContext, panel *taskdetail.CommentsModel) error {
 	if !panel.HasSelection() {
 		return errors.New("select a comment to open actions")
 	}
@@ -235,10 +235,10 @@ func (c *Controller) executeCommentOperation(shell Shell, invocation operation.O
 // ActiveCommentsPanel returns the mounted panel, or nil when the route moved on.
 // A dispatched key already knows the panel is what it came from, so the lookup
 // keys on the current view rather than searching the whole stack.
-func (c *Controller) ActiveCommentsPanel(shell Shell) *taskdetail.TaskCommentsModel {
+func (c *Controller) ActiveCommentsPanel(shell Shell) *taskdetail.CommentsModel {
 	if shell == nil || shell.CurrentView() != presentation.ViewTaskComments {
 		return nil
 	}
-	panel, _ := shell.RenderedView(presentation.ViewTaskComments).(*taskdetail.TaskCommentsModel)
+	panel, _ := shell.RenderedView(presentation.ViewTaskComments).(*taskdetail.CommentsModel)
 	return panel
 }

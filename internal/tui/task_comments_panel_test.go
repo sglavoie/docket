@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry walks the
@@ -28,9 +29,10 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 		if panel == nil {
 			t.Fatal("the Comments panel left the route")
 		}
-		texts := make([]string, 0, len(panel.Task.Comments))
-		for _, comment := range panel.Task.Comments {
-			texts = append(texts, comment.Text)
+		entries := panel.Entries()
+		texts := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			texts = append(texts, entry.Text)
 		}
 		return texts
 	}
@@ -117,7 +119,29 @@ func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(str
 // comment now, so the Space sheet has to, and the confirmation behind it has to
 // still commit the removal.
 func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
-	driver, panel, press := mountCommentsPanel(t)
+	// The removal is asserted over a live workspace rather than mountCommentsPanel's
+	// in-memory task, because the panel no longer edits the stored comments itself:
+	// the row leaves the list when the transaction confirms, and only a task the
+	// application service knows can confirm one.
+	driver, press, typeText := mountLiveCommentsPanel(t)
+	panel := func() *taskdetail.CommentsModel {
+		t.Helper()
+		mounted := driver.App().entities.ActiveCommentsPanel(driver.App())
+		if mounted == nil {
+			t.Fatal("the Comments panel left the route")
+		}
+		return mounted
+	}
+	const doomed = "comment to remove"
+	press("a")
+	typeText(doomed)
+	press("ctrl+s")
+	driver.Wait(defaultWaitTimeout)
+	before := panel().Entries()
+	if len(before) == 0 || before[len(before)-1].Text != doomed {
+		t.Fatalf("the add left %v, want %q appended for the delete to remove", before, doomed)
+	}
+	press("G")
 
 	press("space")
 	sheet := driver.App().operations.ActionSheet
@@ -133,13 +157,20 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	if driver.App().operations.ActionSheet != nil {
 		t.Fatal("choosing Delete left the sheet open over the confirmation")
 	}
-	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "delete" {
-		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel.Confirm.Action())
+	if !panel().Confirm.IsActive() || panel().Confirm.Action() != "delete" {
+		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel().Confirm.Action())
 	}
 
 	press("y")
-	if len(panel.Task.Comments) != 1 || panel.Task.Comments[0].Text != "second comment" {
-		t.Fatalf("confirming the sheet's Delete left %d comment(s), want the first one removed", len(panel.Task.Comments))
+	driver.Wait(defaultWaitTimeout)
+	after := panel().Entries()
+	if len(after) != len(before)-1 {
+		t.Fatalf("confirming the sheet's Delete left %d comment(s), want %d", len(after), len(before)-1)
+	}
+	for _, entry := range after {
+		if entry.Text == doomed {
+			t.Fatalf("the comment under the cursor (%q) survived the confirmed delete", doomed)
+		}
 	}
 }
 

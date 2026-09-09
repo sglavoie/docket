@@ -12,7 +12,7 @@ import (
 
 // mountCommentsPanel opens the panel over a live shell on a task carrying two
 // comments, and returns the driver, the panel, and a key press helper.
-func mountCommentsPanel(t *testing.T) (*UITestDriver, *taskdetail.TaskCommentsModel, func(string)) {
+func mountCommentsPanel(t *testing.T) (*UITestDriver, *taskdetail.CommentsModel, func(string)) {
 	t.Helper()
 	driver, workspace, err := NewFixtureDriver(FixtureFresh, 100, 30)
 	if err != nil {

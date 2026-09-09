@@ -467,8 +467,13 @@ checklist_row_operations.go	tui	L8	receiver:AppModel
 column_config.go	listsurface	L5	receiver:ColumnConfig
 column_layout.go	chrome	L1	assigned
 command_context.go	operation	L3	receiver:CapabilitySet
-comment_helpers.go	taskdetail	L7	assigned
 comment_operations.go	tui	L8	receiver:AppModel
+comment_owner.go	taskdetail	L7	assigned
+comments.go	taskdetail	L7	receiver:CommentsModel
+comments_actions.go	taskdetail	L7	receiver:CommentsModel
+comments_keymap.go	taskdetail	L7	receiver:CommentsModel
+comments_update.go	taskdetail	L7	receiver:CommentsModel
+comments_view.go	taskdetail	L7	receiver:CommentsModel
 config_artifacts.go	tui	L8	assigned
 confirm_dialog.go	chrome	L1	receiver:ConfirmDialog
 conflict_browser.go	conflict	L7	receiver:ConflictBrowserModel
@@ -736,11 +741,7 @@ task_attachments_actions.go	taskdetail	L7	receiver:TaskAttachmentsModel
 task_attachments_keymap.go	taskdetail	L7	receiver:TaskAttachmentsModel
 task_attachments_update.go	taskdetail	L7	receiver:TaskAttachmentsModel
 task_attachments_view.go	taskdetail	L7	receiver:TaskAttachmentsModel
-task_comments.go	taskdetail	L7	receiver:TaskCommentsModel
-task_comments_actions.go	taskdetail	L7	receiver:TaskCommentsModel
-task_comments_keymap.go	taskdetail	L7	receiver:TaskCommentsModel
-task_comments_update.go	taskdetail	L7	receiver:TaskCommentsModel
-task_comments_view.go	taskdetail	L7	receiver:TaskCommentsModel
+task_comment_owner.go	taskdetail	L7	receiver:taskCommentOwner
 task_composer.go	taskform	L7	receiver:TaskComposerModel
 task_composer_capture.go	taskform	L7	receiver:TaskComposerModel
 task_composer_view.go	taskform	L7	receiver:TaskComposerModel

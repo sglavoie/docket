@@ -14,7 +14,28 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// Update routes one message. The four commit-lifecycle messages are answered
+// before the sub-state switch because they are outcomes rather than input: a
+// transaction that confirms while the user is typing in the composer still has
+// to land, and one that arrives for another owner or an abandoned submission
+// still has to be dropped.
+func (m *CommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case commentEditorFinishedMsg:
+		return m, m.applyCommentEditorResult(msg)
+	case CommentAddedMsg:
+		m.completeCommentMutation(msg.Owner, msg.Token)
+		return m, nil
+	case CommentEditedMsg:
+		m.completeCommentMutation(msg.Owner, msg.Token)
+		return m, nil
+	case CommentDeletedMsg:
+		m.completeCommentMutation(msg.Owner, msg.Token)
+		return m, nil
+	case CommentMutationFailedMsg:
+		return m, m.failCommentMutation(msg)
+	}
+
 	switch {
 	case m.ExpandedView:
 		return m.updateExpandedView(msg)
@@ -29,7 +50,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
@@ -41,7 +62,7 @@ func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-func (m *TaskCommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		action := m.Confirm.Action()
@@ -66,7 +87,7 @@ func (m *TaskCommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-func (m *TaskCommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -93,7 +114,7 @@ func (m *TaskCommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -120,7 +141,7 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *CommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case status.CursorFlashClearMsg:
 		m.CursorFlash = false
@@ -135,7 +156,7 @@ func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *TaskCommentsModel) HandleNormalKey(key string) tea.Cmd {
+func (m *CommentsModel) HandleNormalKey(key string) tea.Cmd {
 	if m.completeCommentsTopChord(key) {
 		return nil
 	}
@@ -169,7 +190,7 @@ func (m *TaskCommentsModel) HandleNormalKey(key string) tea.Cmd {
 // them, so listing them here rather than handing the helper every press is what
 // keeps the paging keys the panel never bound from arriving through the back
 // door.
-func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bool) {
+func (m *CommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bool) {
 	switch key {
 	case "esc":
 		return func() tea.Msg { return CloseTaskCommentsMsg{} }, true
@@ -177,7 +198,7 @@ func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bo
 		m.pendingTopChord = true
 		return nil, true
 	case "j", "down", "k", "up", "home", "G", "end":
-		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.Task.Comments), m.Height(), &m.CursorFlash)
+		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.entries), m.Height(), &m.CursorFlash)
 		return cmd, true
 	default:
 		return nil, false
@@ -187,7 +208,7 @@ func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bo
 // completeCommentsTopChord answers the second g of gg and reports the press as
 // consumed. Any other key abandons the prefix silently and is then handled
 // normally, so a stray g never swallows the key after it.
-func (m *TaskCommentsModel) completeCommentsTopChord(key string) bool {
+func (m *CommentsModel) completeCommentsTopChord(key string) bool {
 	if !m.pendingTopChord {
 		return false
 	}
@@ -205,7 +226,7 @@ func (m *TaskCommentsModel) completeCommentsTopChord(key string) bool {
 // key pressed and the descriptor that names it can never drift apart. Space is
 // spelled out because a bare space key and the name the grammar binds describe
 // the same act differently.
-func (m *TaskCommentsModel) handleCommentsGrammarKey(key string) (tea.Cmd, bool) {
+func (m *CommentsModel) handleCommentsGrammarKey(key string) (tea.Cmd, bool) {
 	switch key {
 	case "enter", "a", "e", "E", "y", "Y":
 		return m.dispatchCommentsKey(key), true
@@ -218,7 +239,7 @@ func (m *TaskCommentsModel) handleCommentsGrammarKey(key string) (tea.Cmd, bool)
 
 // dispatchCommentsKey resolves one browse key through the Comments grammar and
 // runs whatever operation it reaches.
-func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
+func (m *CommentsModel) dispatchCommentsKey(key string) tea.Cmd {
 	if m.Dispatch == nil {
 		return nil
 	}
@@ -229,68 +250,71 @@ func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
 // commentsCommandContext names the panel rather than a comment: a comment
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which one an operation means.
-func (m *TaskCommentsModel) commentsCommandContext() operation.CommandContext {
+func (m *CommentsModel) commentsCommandContext() operation.CommandContext {
 	ctx := route.PresentationCommandContext(presentation.ViewTaskComments)
 	ctx.Capabilities.Add(operation.CapabilityCommentsPanel)
 	return ctx
 }
 
-func (m *TaskCommentsModel) HandledKeys() []string {
+func (m *CommentsModel) HandledKeys() []string {
 	return m.BuildKeyMap().HandledKeys()
 }
 
-func (m *TaskCommentsModel) HasSelection() bool {
-	return len(m.Task.Comments) > 0 && m.Cursor < len(m.Task.Comments)
+func (m *CommentsModel) HasSelection() bool {
+	return len(m.entries) > 0 && m.Cursor >= 0 && m.Cursor < len(m.entries)
 }
 
-func (m *TaskCommentsModel) hasUnsavedEditChanges() bool {
-	return m.editIndex < len(m.Task.Comments) && strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.Task.Comments[m.editIndex].Text)
+func (m *CommentsModel) hasUnsavedEditChanges() bool {
+	return m.editIndex < len(m.entries) && strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.entries[m.editIndex].Text)
 }
 
-func (m *TaskCommentsModel) BeginAddMode() tea.Cmd {
+func (m *CommentsModel) BeginAddMode() tea.Cmd {
+	if m.refuseWhilePending() {
+		return nil
+	}
 	m.AddMode = true
 	m.TextInput.Focus()
 	return textarea.Blink
 }
 
-func (m *TaskCommentsModel) StartEditSelectedComment() tea.Cmd {
-	if !m.HasSelection() {
+func (m *CommentsModel) StartEditSelectedComment() tea.Cmd {
+	if !m.HasSelection() || m.refuseWhilePending() {
 		return nil
 	}
 	return m.startEditComment()
 }
 
-func (m *TaskCommentsModel) EditSelectedCommentInExternalEditor() tea.Cmd {
+func (m *CommentsModel) EditSelectedCommentInExternalEditor() tea.Cmd {
 	if !m.HasSelection() {
 		return nil
 	}
 	return m.editInExternalEditor()
 }
 
-func (m *TaskCommentsModel) CopySelectedCommentText() {
+func (m *CommentsModel) CopySelectedCommentText() {
 	if m.HasSelection() {
 		m.copyCommentText()
 	}
 }
 
-func (m *TaskCommentsModel) ConfirmDeleteSelectedComment() {
-	if m.HasSelection() {
+func (m *CommentsModel) ConfirmDeleteSelectedComment() {
+	if m.HasSelection() && !m.refuseWhilePending() {
 		m.Confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.Cursor))
 	}
 }
 
-func (m *TaskCommentsModel) ExpandSelectedComment() {
+func (m *CommentsModel) ExpandSelectedComment() {
 	if m.HasSelection() {
 		m.ExpandedView = true
 	}
 }
 
-func (m *TaskCommentsModel) cancelAddMode() {
+func (m *CommentsModel) cancelAddMode() {
 	m.AddMode = false
 	m.TextInput.Reset()
 }
 
-func (m *TaskCommentsModel) cancelEditMode() {
+func (m *CommentsModel) cancelEditMode() {
 	m.EditMode = false
 	m.EditTextInput.Reset()
 }

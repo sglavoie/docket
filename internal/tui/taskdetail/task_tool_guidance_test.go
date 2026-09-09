@@ -39,7 +39,7 @@ func assertGuidanceExcludes(t *testing.T, state string, spec chrome.GuidanceSpec
 func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testing.T) {
 	project, task := newTaskToolGuidanceFixture(t)
 	task.Comments = []*models.Comment{{Text: "comment", CreatedAt: time.Now()}}
-	model := NewTaskCommentsModel(task, project)
+	model := newTestCommentsPanel(task, project)
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "comments browse", spec, ok,
@@ -66,7 +66,11 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 
 	model.Confirm.Cancel()
 	model.AddMode = false
+	// The panel reads its owner's entries rather than the task pointer, so an
+	// out-of-band removal reaches it the way the shell delivers one: through the
+	// reload hook.
 	task.Comments = nil
+	model.RefreshAfterReload()
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "comments empty", spec, ok, "a add", "Esc close")
 	assertGuidanceExcludes(t, "comments empty", spec, "expand", "edit", "delete", "copy", "actions", "navigate")
@@ -118,7 +122,7 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 		})
 	}
 
-	comments := NewTaskCommentsModel(task, project)
+	comments := newTestCommentsPanel(task, project)
 	comments.SetSize(36, 16)
 	comments.Cursor = len(task.Comments) - 1
 	attachments := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})

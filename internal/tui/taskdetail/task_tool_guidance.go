@@ -20,7 +20,7 @@ func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap
 	return chrome.GuidanceSpecFromKeyMap(km, rows)
 }
 
-func (m *TaskCommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
+func (m *CommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.AddMode || m.EditMode || m.ExpandedView, m.BuildKeyMap())
 }
 

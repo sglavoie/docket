@@ -107,6 +107,23 @@ func newTestSecondaryCoordinators(projects ...*models.Project) coordinator.Secon
 	return coordinator.NewSecondaryCoordinators(app.NewServiceWithArtifacts(newTestAppRepo(projects...), nil, nil, nil))
 }
 
+// newTestCommentsPanel mounts the shared panel over a task owner whose commits
+// reach a real application service seeded with the given project, which is what
+// the shell does.
+func newTestCommentsPanel(task *models.Task, project *models.Project) *CommentsModel {
+	owner := NewTaskCommentOwner(task, project, newTestSecondaryCoordinators(project).Subview)
+	return NewCommentsPanel(owner, "")
+}
+
+// newRefusingCommentsPanel mounts the same panel over coordinators that know
+// nothing about the project, so every commit is refused at the application
+// layer. It is how the draft-preserving failure paths are forced without a
+// hand-written double that could disagree with a real refusal.
+func newRefusingCommentsPanel(task *models.Task, project *models.Project) *CommentsModel {
+	owner := NewTaskCommentOwner(task, project, newTestSecondaryCoordinators().Subview)
+	return NewCommentsPanel(owner, "")
+}
+
 // fakeAttachmentMutator records the application use cases the attachments panel
 // dispatches through its coordinator (the panel no longer mutates or saves the
 // project itself).

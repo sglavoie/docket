@@ -55,12 +55,10 @@ func TestCommentsCopyAllIncludesEveryRecord(t *testing.T) {
 	task.AddComment("second comment")
 	project.Tasks = []*models.Task{task}
 
-	coords := newTestSecondaryCoordinators(project)
-
 	t.Run("comments", func(t *testing.T) {
 		var captured string
 		withFakeClipboard(t, nil, &captured)
-		cm := NewTaskCommentsModelWithEditor(task, project, "", coords.Subview)
+		cm := newTestCommentsPanel(task, project)
 		cm.CopyAllCommentsText()
 		want := strings.Join([]string{"1. first comment", "2. second comment"}, "\n")
 		if captured != want {
@@ -73,14 +71,13 @@ func TestCommentsCopyAllEmptyNothingToCopy(t *testing.T) {
 	project, _ := models.NewProject("empty-project", "Empty", t.TempDir())
 	task, _ := models.NewGenericTask("empty-task", 1, "Empty task")
 	project.Tasks = []*models.Task{task}
-	coords := newTestSecondaryCoordinators(project)
 
 	called := false
 	orig := external.CopyText
 	t.Cleanup(func() { external.CopyText = orig })
 	external.CopyText = func(string) error { called = true; return nil }
 
-	cm := NewTaskCommentsModelWithEditor(task, project, "", coords.Subview)
+	cm := newTestCommentsPanel(task, project)
 	cm.CopyAllCommentsText()
 	if called {
 		t.Fatal("empty comment list must not invoke the clipboard")
