@@ -422,7 +422,17 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// what a bundle is addressable by, and borrowing TaskTitle would send an
 	// operator looking for a task that does not exist. The mechanism lives in
 	// docs/architecture/persistence-and-transactions.md.
-	const budget = 36516
+	//
+	// Sixteenth raise, 36516 to 36574, for `C` joining the shared keys. 58 bytes
+	// buy two rules that are cheaper stated than inferred. The first is that the
+	// key is shared at all: a reader who knows `*` and `#` branch on the cursor
+	// has no way to tell whether the comment key does, and guessing wrong writes a
+	// project comment where a task comment was meant. The second is the name of
+	// the guard, which stopped being about one operation: the narrowing is now a
+	// set, so a third root key aimed at a project header declares itself in
+	// `outlinerProjectOperationTargetsHeader` instead of restating the check. The
+	// mechanism lives in docs/architecture/operation-grammar.md.
+	const budget = 36574
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -452,11 +462,11 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"direct key and confirms first",
 		"The Outliner project-header sheet is Archive and Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
-		"`*`, `#`, `e`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
-			"task or project tags, checklist-item or task or project edit, and checklist, project, " +
-			"or task actions",
-		"Edit project narrows to an Outliner project header through " +
-			"`outlinerProjectEditTargetsHeader`",
+		"`*`, `#`, `C`, `e`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
+			"task or project tags, task or project comment, checklist-item or task or project edit, " +
+			"and checklist, project, or task actions",
+		"Edit project and Add project comment narrow to an Outliner project header through " +
+			"`outlinerProjectOperationTargetsHeader`",
 		"Add Item also answers from the owner task's row, since an empty checklist has no item row",
 		"Its reveal rides `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing",
 		"`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and commits it " +

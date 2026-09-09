@@ -160,13 +160,14 @@ Transient input overlays are exempt: composer, project editor/creator, text
 editor, operation text prompt, tag/date add modes, list picker adapter, and the
 outline error and help viewers. They are modal value entry, not grammars.
 
-`*`, `#`, `e`, and `Space` are the shared keys, the cursor deciding: task or
-project pin, task or project tags, checklist-item or task or project edit, and
-checklist, project, or task actions. Keep each set distinct so the footer and `?`
-help carry honest labels; never branch one descriptor's target source on runtime
-context. Edit project narrows to an Outliner project header through
-`outlinerProjectEditTargetsHeader`: the sole-scope fallback is the Hub's, where
-the row already named its project.
+`*`, `#`, `C`, `e`, and `Space` are the shared keys, the cursor deciding: task or
+project pin, task or project tags, task or project comment, checklist-item or
+task or project edit, and checklist, project, or task actions. Keep each set
+distinct so the footer and `?` help carry honest labels; never branch one
+descriptor's target source on runtime context. Edit project and Add project
+comment narrow to an Outliner project header through
+`outlinerProjectOperationTargetsHeader`: the sole-scope fallback is the Hub's,
+where the row already named its project.
 
 Checklist rules:
 

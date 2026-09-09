@@ -83,6 +83,17 @@ func CommentTextPromptOptions(maxLength int) OperationTextPromptOptions {
 	}
 }
 
+// ProjectCommentTextPromptOptions is the project owner's spelling of the same
+// quick-comment rule. It reuses CommentTextPromptOptions rather than restating
+// it, because a project comment and a task comment are typed under identical
+// terms — one limit, one multiline buffer, one discard question — and the only
+// thing that differs is what the subtitle line is naming.
+func ProjectCommentTextPromptOptions(maxLength int) OperationTextPromptOptions {
+	options := CommentTextPromptOptions(maxLength)
+	options.SubtitleLabel = "Project"
+	return options
+}
+
 // operationTextPromptMultilineHeight is how many rows the multiline buffer
 // shows. It matches the Comments panel's own add-mode textarea so the same text
 // wraps the same way whichever route typed it.

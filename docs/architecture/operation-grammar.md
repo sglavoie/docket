@@ -47,11 +47,16 @@ under the cursor: `e` edits the task, the checklist item, or the project the
 cursor names, exactly one of the three descriptors applying at any cursor, so the
 manifest entry became `DirectOnly` and left the sheet, which keeps Archive and
 Delete. The narrowing that makes it safe is
-`outlinerProjectEditTargetsHeader`, and it is Edit project's alone: `e` is a root
-key in the Outliner, so the cursor is the only thing that says which project was
-meant, and `ProjectOperationApplicable`'s sole-scope fallback — right for a Hub
-row that already named its project — would otherwise edit the one scoped project
-from a section header or an empty projection. `validateOutlinerOperationOnePath`
+`outlinerProjectOperationTargetsHeader`: `e` is a root key in the Outliner, so
+the cursor is the only thing that says which project was meant, and
+`ProjectOperationApplicable`'s sole-scope fallback — right for a Hub row that
+already named its project — would otherwise edit the one scoped project from a
+section header or an empty projection. Add project comment is the second
+operation behind that same narrowing, for the same reason and on the same terms:
+`C` is a root key too, and a quick comment that borrowed the sole scoped project
+from a section header would write to a project the user never pointed at. The set
+is a set rather than a special case so a third root key aimed at a project header
+declares itself there instead of restating the guard. `validateOutlinerOperationOnePath`
 therefore reads the manifests concatenated, and each sheet projects only its own,
 which is what keeps a project row out of the task menu and the reverse. Unarchive
 project is absent from the Outliner manifest for a different reason than Open

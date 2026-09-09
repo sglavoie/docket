@@ -114,7 +114,8 @@ reading the file top to bottom gives you the project's own notes before its
 work. Each one carries its own identity and the moment it was written, and the
 file always lists them oldest first, so the same set of comments looks the same
 on every machine that opens the workspace. A project with no comments writes no
-block at all.
+block at all. `C` on a project group header in the Outliner is where you add
+one.
 
 `lenses.json` contains your saved named-lens definitions — the three seeded
 starters, anything you saved yourself, and anything you added from the built-in

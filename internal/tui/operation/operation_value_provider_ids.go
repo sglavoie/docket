@@ -77,6 +77,13 @@ const (
 	// ValueProviderTags.
 	ValueProviderProjectTags ValueProviderID = "project-tags"
 
+	// ValueProviderProjectComment is the typed text of one new project comment.
+	// It shares every rule with ValueProviderComment — multiline, bounded by the
+	// same limit, refusing an empty buffer — and is still its own provider,
+	// because the target it freezes is a project and the prompt built from a task
+	// ref would have nothing to resolve on a project header.
+	ValueProviderProjectComment ValueProviderID = "project-comment"
+
 	// Filter providers feed the Outliner's view-state filter facets rather than
 	// a task mutation; priority is preset-only while states, tags, due, and
 	// completion age use pickers.
@@ -113,7 +120,8 @@ func (id ValueProviderID) TextEntry() bool {
 		id == ValueProviderChecklistItem ||
 		id == ValueProviderLensName ||
 		id == ValueProviderResumeNote ||
-		id == ValueProviderComment
+		id == ValueProviderComment ||
+		id == ValueProviderProjectComment
 }
 
 // TagEntry reports whether the picker offers "a" to mint a tag the vocabulary

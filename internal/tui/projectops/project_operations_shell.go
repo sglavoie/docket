@@ -20,7 +20,7 @@ import (
 // against a project whose state changed is refused before the executor's
 // destructive confirmation instead of after it. An unresolved project stays
 // applicable so the handler reports the single authoritative "no longer
-// available" error.
+// available" error, and so does an operation that owns its own refusal.
 func (c *Controller) projectOperationApplicability(
 	shell Shell,
 	id operation.OperationID,
@@ -31,30 +31,54 @@ func (c *Controller) projectOperationApplicability(
 		if !projecthub.ProjectOperationApplicable(ctx) {
 			return false
 		}
-		if !outlinerProjectEditTargetsHeader(id, ctx) {
+		if !outlinerProjectOperationTargetsHeader(id, ctx) {
 			return false
 		}
 		project := shell.ProjectByID(operation.CurrentEntityIdentity(ctx).ProjectID)
 		if project == nil {
 			return true
 		}
-		if !gated {
+		if !gated || projectOperationsOwningTheirRefusal[id] {
 			return true
 		}
 		return c.projectRequirementUnmet(shell, requirement, label, project) == nil
 	}
 }
 
-// outlinerProjectEditTargetsHeader narrows Edit project to an actual Outliner
-// project header. `e` is a root key there, so the cursor is the only thing that
-// says which project the user meant: ProjectOperationApplicable's sole-scope
-// fallback is right for a Hub row that named its project and wrong for a key
-// press from a section header, a checklist row, or an empty projection, where it
-// would silently edit the one scoped project. The narrowing is Edit project's
-// alone — the Hub keeps the fallback, and every other project operation keeps
-// the applicability it had.
-func outlinerProjectEditTargetsHeader(id operation.OperationID, ctx operation.CommandContext) bool {
-	if id != operation.OperationScopeRenameProject || !operation.CoreOutlinerApplicability(ctx) {
+// projectOperationsOwningTheirRefusal are the project operations whose handler
+// reports an unmet requirement itself. The requirement is still enforced, at
+// execution by projectOperationUnavailable; it is deliberately not mirrored into
+// applicability, because applicability is checked again on the resumed
+// submission and would refuse there with the executor's generic sentence,
+// discarding text the user had already typed into the value step. Nothing is
+// advertised dishonestly by the omission: the quick project comment is reached
+// only from an Outliner project header, and that population is never archived,
+// so the requirement can fail only after the prompt is already open.
+var projectOperationsOwningTheirRefusal = map[operation.OperationID]bool{
+	operation.OperationProjectAddComment: true,
+}
+
+// outlinerProjectHeaderOperations are the project operations an Outliner root
+// key reaches, and therefore the ones the cursor alone has to identify. Every
+// other project operation is entered from a sheet or a Hub row that already
+// named its project, so it keeps ProjectOperationApplicable's sole-scope
+// fallback unchanged.
+var outlinerProjectHeaderOperations = map[operation.OperationID]bool{
+	operation.OperationScopeRenameProject: true,
+	operation.OperationProjectAddComment:  true,
+}
+
+// outlinerProjectOperationTargetsHeader narrows the root-key project operations
+// to an actual Outliner project header. `e` and `C` are root keys there, so the
+// cursor is the only thing that says which project the user meant:
+// ProjectOperationApplicable's sole-scope fallback is right for a Hub row that
+// named its project and wrong for a key press from a section header, a checklist
+// row, or an empty projection, where it would silently edit or comment on the
+// one scoped project. The narrowing belongs to those two alone — the Hub keeps
+// the fallback, and every other project operation keeps the applicability it
+// had.
+func outlinerProjectOperationTargetsHeader(id operation.OperationID, ctx operation.CommandContext) bool {
+	if !outlinerProjectHeaderOperations[id] || !operation.CoreOutlinerApplicability(ctx) {
 		return true
 	}
 	return ctx.Entity.HasProjectHeaderCursor &&
@@ -101,13 +125,21 @@ func (c *Controller) ExecuteProjectOperation(
 		}
 	}
 	project := shell.ProjectByID(target.ProjectID)
+	var unavailable error
 	if project == nil {
-		return operation.OperationHandlerResult{
-			Err: fmt.Errorf("project %s is no longer available", target.ProjectID),
-		}
+		unavailable = fmt.Errorf("project %s is no longer available", target.ProjectID)
+	} else {
+		unavailable = c.projectOperationUnavailable(shell, invocation.Descriptor, project)
 	}
-	if err := c.projectOperationUnavailable(shell, invocation.Descriptor, project); err != nil {
-		return operation.OperationHandlerResult{Err: err}
+	// The quick comment answers a refused owner itself rather than failing at the
+	// shared gate, because it is the one project operation that may already be
+	// holding text the user typed. Every other operation reaches the gate below
+	// with nothing to lose.
+	if invocation.Descriptor.ID == operation.OperationProjectAddComment {
+		return projecthub.ProjectCommentOperationResult(invocation, project, unavailable)
+	}
+	if unavailable != nil {
+		return operation.OperationHandlerResult{Err: unavailable}
 	}
 	if invocation.Descriptor.ID == operation.OperationProjectSetTags {
 		return projecthub.ProjectTagsOperationResult(invocation, project)

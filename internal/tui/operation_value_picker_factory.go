@@ -316,6 +316,16 @@ func (m *AppModel) newOperationTextPrompt(
 			request, label, refs[0].Task.Title, "", "comment text",
 			operationhost.CommentTextPromptOptions(taskdetail.CommentCharLimit),
 		), nil
+	case operation.ValueProviderProjectComment:
+		// The project is resolved here for the same reason the task is above: that
+		// is what freezes the owner, so a refresh, a rename, or a delete while the
+		// popup is open cannot redirect the text to another project. The identity
+		// carried by the request is what a retry reopens onto, so a project that has
+		// already vanished refuses here rather than silently borrowing the cursor's.
+		if m.projectByID(identity.ProjectID) == nil {
+			return nil, fmt.Errorf("a project comment needs a project target")
+		}
+		return m.projectCommentPrompt(request), nil
 	case operation.ValueProviderLensName:
 		// Saving the current view mints a new record, so only a rename has a
 		// current value. The request's own operation decides which, because the

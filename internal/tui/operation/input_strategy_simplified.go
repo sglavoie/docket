@@ -174,7 +174,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			// list for. The capital is the shifted form of the panel's own sigil
 			// neighborhood rather than a new letter: `;` reads comments, `C` writes
 			// one.
-			{OperationID: OperationTaskAddComment, Keys: []string{"C"}, DisplayKey: "C"},
+			// C writes a comment on whatever the cursor names, for the same reason #
+			// tags it and * pins it: the task and the project store different records
+			// through different use cases, so they stay two descriptors with two
+			// honest labels rather than one that branches on runtime context.
+			{OperationID: OperationTaskAddComment, Keys: []string{"C"}, DisplayKey: "C", SharedKey: true},
+			{OperationID: OperationProjectAddComment, Keys: []string{"C"}, DisplayKey: "C", SharedKey: true},
 			// D carries no FooterRank on the same terms as r and C: repeating work
 			// is deliberate and occasional, and the footer already spends its ranks
 			// on the daily loop. The capital keeps the lowercase letter free and

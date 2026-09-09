@@ -42,6 +42,10 @@ func ProjectOperationDescriptors() []operation.OperationDescriptor {
 			descriptor(operation.OperationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
 			operation.ValueProviderProjectTags,
 		),
+		operation.WithValueProvider(
+			descriptor(operation.OperationProjectAddComment, "Add project comment", "Append one comment to this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "comment on project", "project comment"),
+			operation.ValueProviderProjectComment,
+		),
 	}
 }
 
@@ -86,6 +90,49 @@ func ProjectTagsOperationResult(
 	return operation.OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
 }
 
+// ProjectCommentOperationResult round-trips one typed comment through the value
+// prompt and then hands the commit to the shell.
+//
+// The unavailable argument is the reason this owner cannot be written to, or nil
+// when it can. It is threaded in rather than checked here because the answer
+// depends on the freshly reloaded project, and because what it means differs
+// with what the user has already invested: before anything is typed a refused
+// owner is an ordinary error, while after a paragraph is typed the same refusal
+// must reopen the buffer instead of discarding it. That is the whole reason this
+// operation does not simply fail at the shared availability gate.
+func ProjectCommentOperationResult(
+	invocation operation.OperationInvocation,
+	project *models.Project,
+	unavailable error,
+) operation.OperationHandlerResult {
+	request := operation.OperationExecutionRequest{
+		ID:      invocation.Descriptor.ID,
+		Context: operation.CloneCommandContext(invocation.Context),
+	}
+	text, ok := invocation.Value.(string)
+	if !invocation.HasValue || !ok {
+		if unavailable != nil {
+			return operation.OperationHandlerResult{Err: unavailable}
+		}
+		return operation.OperationHandlerResult{Message: operation.OperationValueRequestMsg{
+			Request:  request,
+			Provider: operation.ValueProviderProjectComment,
+		}}
+	}
+	if unavailable != nil {
+		return operation.OperationHandlerResult{Message: ProjectCommentRejectedMsg{
+			Request: request,
+			Text:    text,
+			Err:     unavailable,
+		}}
+	}
+	return operation.OperationHandlerResult{Message: AddProjectCommentMsg{
+		Request: request,
+		Project: project,
+		Text:    text,
+	}}
+}
+
 // ProjectOperationRequirement declares the project state one operation needs.
 type ProjectOperationRequirement struct {
 	RequireArchived     bool
@@ -100,6 +147,10 @@ var ProjectOperationRequirements = map[operation.OperationID]ProjectOperationReq
 	operation.OperationScopeRestoreProject:  {RequireArchived: true},
 	operation.OperationScopeOpenProjectNote: {RequireActive: true},
 	operation.OperationProjectSetTags:       {RequireActive: true},
+	// Parked and Unfiled are deliberately absent from this requirement: parking
+	// hides a project rather than sealing it, and Unfiled is protected against
+	// lifecycle changes, not against content.
+	operation.OperationProjectAddComment: {RequireActive: true},
 	// Deleting carries no lifecycle requirement on purpose: an archived project
 	// stays deletable, so archiving is a step toward removal rather than a state
 	// that traps the project in the catalog.

@@ -21,6 +21,13 @@ const (
 	OperationProjectSetTags OperationID = "tui.project.set-tags"
 	OperationProjectDelete  OperationID = "tui.project.delete"
 
+	// OperationProjectAddComment appends one comment to a project without leaving
+	// the list. It is a separate operation from OperationTaskAddComment rather
+	// than one descriptor that branches on the cursor: the two write different
+	// records through different use cases, so they carry different targets and
+	// keep two honest labels, exactly as the tag and pin pairs do.
+	OperationProjectAddComment OperationID = "tui.project.add-comment"
+
 	// OperationProjectActions is the Outliner's Space on a project group header.
 	// It lives in the tui.project.* namespace because it names a project, and
 	// apart from the Hub's own sheet operation because the two surfaces offer

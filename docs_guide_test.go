@@ -36,8 +36,9 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"the destination mints its own `#N` numbers for every task it receives",
 		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
 			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
-		"`C` appends one comment to the cursor task without opening that panel, in a multiline " +
-			"popup where `Enter` starts a new line and `Ctrl+S` saves",
+		"`C` appends one comment to whatever the cursor names — the task, or the project a " +
+			"group header names — without opening that panel, in a multiline popup where " +
+			"`Enter` starts a new line and `Ctrl+S` saves",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
 		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +
@@ -357,8 +358,9 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 			"the return that retired a key in exchange, since task-row `x` gave up starting a " +
 			"checklist to it and checklist-row `A` gave up appending, both now silent with no " +
 			"alias back",
-		"`C` is a fifth name back with a new act: it appends a comment to the cursor task " +
-			"without leaving the list, the write beside the read `;` already opens",
+		"`C` is a fifth name back with a new act: it appends a comment to whatever the " +
+			"cursor names — the task, or the project a group header names — without leaving " +
+			"the list, the write beside the read `;` already opens",
 		"`b` is a sixth: it toggles Peek",
 		"`R` is a seventh: it marks the cursor task reviewed and moves to the next candidate",
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",

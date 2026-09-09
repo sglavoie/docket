@@ -175,7 +175,7 @@ func (s *Service) maintainTaskReferences(snap Snapshot, maintenance TaskReferenc
 			project:          project,
 			expectedRevision: snap.Revision(project.ID),
 			base:             snap.Document(project.ID),
-			referencesOnly:   true,
+			tasksUntouched:   true,
 		})
 	}
 
@@ -197,7 +197,7 @@ func (s *Service) maintainTaskReferences(snap Snapshot, maintenance TaskReferenc
 			project:          document.Project,
 			expectedRevision: document.Revision,
 			base:             document.Base,
-			referencesOnly:   true,
+			tasksUntouched:   true,
 		})
 	}
 	return pass, nil

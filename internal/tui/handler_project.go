@@ -100,6 +100,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 	case projecthub.SetProjectTagsMsg:
 		return true, m.requestProjectTags(msg.Project, msg.Tags)
 
+	case projecthub.AddProjectCommentMsg:
+		return true, m.addProjectCommentCmd(msg)
+
+	case projecthub.ProjectCommentRejectedMsg:
+		return true, m.reopenProjectCommentPrompt(msg)
+
 	case projecthub.ProjectBulkTagsMsg:
 		return true, m.requestProjectBulkTags(msg)
 

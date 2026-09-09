@@ -246,10 +246,6 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"%": operation.OperationTaskMoveToProject,
 		"&": operation.OperationTaskAttachments,
 		";": operation.OperationTaskComments,
-		// C is the shifted write to that panel's read: ; opens comments and C
-		// appends one without leaving the list. Neither is shared, because only a
-		// task carries comments.
-		"C": operation.OperationTaskAddComment,
 		// r is not shared either: only a task carries a resume note, so the key
 		// never asks what the cursor names.
 		"r": operation.OperationTaskSetResumeNote,
@@ -293,14 +289,19 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	}
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own
-	// descriptor so help and the footer can name both honestly. # and * both ask
-	// whether the cursor names a task or a project; e and Space ask the same
+	// descriptor so help and the footer can name both honestly. #, *, and C all
+	// ask whether the cursor names a task or a project; e and Space ask the same
 	// question with a third answer, the checklist row; the rest ask whether it
 	// names a checklist item, and the checklist meaning is listed first because
 	// resolution takes the first applicable binding.
 	shared := map[string][]operation.OperationID{
 		"#": {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
 		"*": {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
+		// C is the shifted write to the comment panel's read: ; opens comments and
+		// C appends one without leaving the list. The read stays task-only; the
+		// write learned the project header, because a project now carries comments
+		// of its own and they are a different record through a different use case.
+		"C": {operation.OperationTaskAddComment, operation.OperationProjectAddComment},
 		"e": {
 			operation.OperationChecklistEditItem, operation.OperationScopeRenameProject,
 			operation.OperationCoreEdit,
@@ -345,7 +346,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// has since been spent on the menu bar and is asserted in direct above, so
 	// only its two neighbors are still owed silence: either one alone would
 	// advertise half of a jump the z chord already owns. C is likewise absent
-	// now: quick Add Comment took it, and direct above is where it is asserted. b
+	// now: quick Add Comment took it, and shared below is where it is asserted. b
 	// has likewise left this list: Peek took it off Ctrl+Enter, and direct above
 	// is where it is asserted, as has R, which Mark Reviewed took.
 	for _, removed := range []string{

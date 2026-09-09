@@ -160,10 +160,11 @@ type SubviewMutator interface {
 // Compile-time assurance that the production services satisfy every secondary
 // port, so the coordinators can be built from one *app.Service.
 var (
-	_ BulkMutator       = (*app.Service)(nil)
-	_ TaskItemMutator   = (*app.Service)(nil)
-	_ AttachmentMutator = (*app.Service)(nil)
-	_ SubviewMutator    = (*app.Service)(nil)
+	_ BulkMutator           = (*app.Service)(nil)
+	_ TaskItemMutator       = (*app.Service)(nil)
+	_ AttachmentMutator     = (*app.Service)(nil)
+	_ SubviewMutator        = (*app.Service)(nil)
+	_ ProjectCommentMutator = (*app.Service)(nil)
 )
 
 // BatchTransactionResultMsg is emitted when a project-scoped or multi-task
@@ -255,10 +256,11 @@ func runBatch(action string, mutate func() ([]string, string, string, error)) te
 // SecondaryCoordinators aggregates the secondary-view coordinators the AppModel
 // hands to retained overlays as they migrate onto the application layer.
 type SecondaryCoordinators struct {
-	Bulk       BulkCoordinator
-	TaskItem   TaskItemCoordinator
-	Attachment AttachmentCoordinator
-	Subview    SubviewCoordinator
+	Bulk           BulkCoordinator
+	TaskItem       TaskItemCoordinator
+	Attachment     AttachmentCoordinator
+	Subview        SubviewCoordinator
+	ProjectComment ProjectCommentCoordinator
 }
 
 // NewSecondaryCoordinators builds the secondary coordinators over the shared
@@ -268,9 +270,10 @@ type SecondaryCoordinators struct {
 // service.
 func NewSecondaryCoordinators(svc *app.Service) SecondaryCoordinators {
 	return SecondaryCoordinators{
-		Bulk:       BulkCoordinator{bulk: svc},
-		TaskItem:   TaskItemCoordinator{task: svc},
-		Attachment: NewAttachmentCoordinator(svc),
-		Subview:    SubviewCoordinator{sub: svc},
+		Bulk:           BulkCoordinator{bulk: svc},
+		TaskItem:       TaskItemCoordinator{task: svc},
+		Attachment:     NewAttachmentCoordinator(svc),
+		Subview:        SubviewCoordinator{sub: svc},
+		ProjectComment: NewProjectCommentCoordinator(svc),
 	}
 }

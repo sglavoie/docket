@@ -1,0 +1,56 @@
+{
+  "name": "outliner-add-project-comment",
+  "fixture": "checklist",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "move onto the project header", "key": "j" },
+
+    { "type": "key", "label": "C on a project header comments on the project", "key": "C" },
+    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "assert", "label": "the popup names the project it froze", "assert": "contains", "value": "Checklist Delivery" },
+    { "type": "assert", "label": "the same multiline terms as the task popup", "assert": "contains", "value": "Ctrl+S save" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "an empty buffer closes outright, with nothing to lose", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "C again, this time with text in it", "key": "C" },
+    { "type": "text", "text": "Scope note for the whole project" },
+    { "type": "key", "label": "Enter writes a newline instead of saving", "key": "enter" },
+    { "type": "text", "text": "Second line of the project note" },
+    { "type": "assert", "assert": "contains", "value": "Scope note for the whole project" },
+    { "type": "assert", "assert": "contains", "value": "Second line of the project note" },
+
+    { "type": "key", "label": "Esc on typed text asks before discarding it", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Discard comment?" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "n keeps the text", "key": "n" },
+    { "type": "assert", "assert": "not_contains", "value": "Discard comment?" },
+    { "type": "assert", "assert": "contains", "value": "Second line of the project note" },
+
+    { "type": "key", "label": "Ctrl+S commits and returns to the outline", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the ledger entry names the project it was written to", "assert": "status_contains", "value": "Add Project Comment: Checklist Delivery · u undo" },
+    { "type": "assert", "label": "no task gained a comment from a project comment", "assert": "not_contains", "value": "▪ 1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo takes the whole entry back and leaves the outline where it was", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the spent entry stops offering itself", "assert": "not_contains", "value": "· u undo" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "and redo puts it back", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the cursor moves onto a task row", "key": "j" },
+    { "type": "key", "label": "and C there still writes a task comment", "key": "C" },
+    { "type": "assert", "assert": "contains", "value": "Add Comment" },
+    { "type": "assert", "label": "naming the task, not the project", "assert": "contains", "value": "Draft the launch runbook" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
+  ]
+}
