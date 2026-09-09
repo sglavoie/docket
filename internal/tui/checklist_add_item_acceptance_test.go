@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -165,46 +166,144 @@ func TestChecklistAddItemReachesACompletedTask(t *testing.T) {
 	}
 }
 
+// checklistFixtureProjectDirectory is the one project every checklist fixture
+// task lives in, which is the directory a forced write failure has to seal.
+func checklistFixtureProjectDirectory(workspace *uitestWorkspace) string {
+	return filepath.Join(workspace.DataDir, "projects", "checklist-delivery")
+}
+
+// checklistItemTexts is what the projection currently says the task's checklist
+// holds. Reading the committed items rather than the screen is what separates an
+// item that reached the outline from one that is only sitting in a prompt.
+func checklistItemTexts(t *testing.T, view *outliner.OutlinerModel, title string) []string {
+	t.Helper()
+	task := projectedTaskTitled(t, view, title)
+	texts := make([]string, 0, len(task.Checklist))
+	for _, item := range task.Checklist {
+		texts = append(texts, item.Text)
+	}
+	return texts
+}
+
 // TestChecklistAddItemLeavesTheOutlineAloneWhenTheWriteFails is the failure half
 // of the reveal contract. Both the fold and the cursor move off the success
 // message, so a refused write has to leave a collapsed checklist collapsed and
 // the cursor where it stood. A read-only project directory is the honest
 // refusal: it stops the transaction at the lock, before anything is written, so
 // tasks.md is still exactly what the fixture wrote.
+//
+// The item text is the one thing a refusal must not take with it. It is on
+// screen afterwards and it must be, because it is in the reopened prompt; what
+// the outline may not carry is a committed item. So the two are asserted apart:
+// the projection by its checklist, the buffer by the prompt's own value.
 func TestChecklistAddItemLeavesTheOutlineAloneWhenTheWriteFails(t *testing.T) {
 	driver, workspace, view := checklistFixtureApp(t)
 	seatCursorOnTaskTitled(t, view, checklistFixtureFoldTitle)
 	before := view.Cursor
 	identity := view.TaskIdentityForRow(view.Rows[before])
+	committed := checklistItemTexts(t, view, checklistFixtureFoldTitle)
 
-	directory := filepath.Join(workspace.DataDir, "projects", "checklist-delivery")
-	if err := os.Chmod(directory, 0o555); err != nil {
-		t.Fatalf("seal the project directory: %v", err)
+	directory := checklistFixtureProjectDirectory(workspace)
+	document := filepath.Join(directory, "tasks.md")
+	written, err := os.ReadFile(document)
+	if err != nil {
+		t.Fatalf("read the fixture document: %v", err)
 	}
-	// Restored before Cleanup removes the workspace, which cannot delete a
-	// directory it may not write.
-	t.Cleanup(func() { _ = os.Chmod(directory, 0o755) })
+	sealProjectDirectory(t, directory)
 
+	const draft = "Never committed"
 	runChecklistActions(t, driver, []UITestAction{
 		{Type: UITestActionKey, Key: "c"},
-		{Type: UITestActionText, Text: "Never committed"},
+		{Type: UITestActionText, Text: draft},
 		{Type: UITestActionKey, Key: "enter"},
 		{Type: UITestActionWait},
 	})
 
-	screen := driver.Render()
-	if !strings.Contains(screen, "✕") {
-		t.Fatalf("the append was never refused, so nothing here is a failure test:\n%s", screen)
+	prompt := driver.App().operations.TextPrompt
+	if prompt == nil {
+		t.Fatalf("a refused append threw the buffer away:\n%s", driver.Render())
 	}
+	if prompt.Value() != draft {
+		t.Errorf("the reopened buffer holds %q, want the refused item %q", prompt.Value(), draft)
+	}
+	if prompt.Notice() == "" {
+		t.Error("the reopened buffer says nothing about why the save was refused")
+	}
+	if !strings.Contains(driver.Render(), draft) {
+		t.Errorf("the retained item is not on screen:\n%s", driver.Render())
+	}
+
 	view = driver.App().crossOutliner
+	if got := checklistItemTexts(t, view, checklistFixtureFoldTitle); !slices.Equal(got, committed) {
+		t.Errorf("a refused append changed the committed checklist to %q, want %q", got, committed)
+	}
+	if after, err := os.ReadFile(document); err != nil || string(after) != string(written) {
+		t.Errorf("a refused append rewrote tasks.md (read error %v)", err)
+	}
 	if view.Folds.ExpandedChecklists[identity] {
 		t.Error("a refused append expanded the owner's checklist")
 	}
-	if strings.Contains(screen, "Never committed") {
-		t.Errorf("a refused append put its item on screen:\n%s", screen)
-	}
 	if view.Cursor != before {
 		t.Errorf("cursor = %d after a refused append, want the row it was on (%d)", view.Cursor, before)
+	}
+}
+
+// TestChecklistAddItemRetriesTheRetainedItem is the other half of retaining the
+// draft: keeping the text is only worth anything if pressing the submit key
+// again lands it. Both owner shapes are covered because they reach the same
+// operation by different routes — an empty checklist has no item row, so `c`
+// answers from the task itself, while a populated one is the shape the checklist
+// row grammar owns — and a retry has to append exactly one item either way.
+func TestChecklistAddItemRetriesTheRetainedItem(t *testing.T) {
+	for _, owner := range []struct {
+		name  string
+		title string
+	}{
+		{"empty checklist", checklistFixturePlainTitle},
+		{"populated checklist", checklistFixtureFoldTitle},
+	} {
+		t.Run(owner.name, func(t *testing.T) {
+			driver, workspace, view := checklistFixtureApp(t)
+			seatCursorOnTaskTitled(t, view, owner.title)
+			committed := checklistItemTexts(t, view, owner.title)
+
+			unseal := sealProjectDirectory(t, checklistFixtureProjectDirectory(workspace))
+
+			const draft = "Keep this item after a refused save"
+			runChecklistActions(t, driver, []UITestAction{
+				{Type: UITestActionKey, Key: "c"},
+				{Type: UITestActionText, Text: draft},
+				{Type: UITestActionKey, Key: "enter"},
+				{Type: UITestActionWait},
+			})
+			if prompt := driver.App().operations.TextPrompt; prompt == nil || prompt.Value() != draft {
+				t.Fatalf("the refusal did not leave the item to retry:\n%s", driver.Render())
+			}
+
+			unseal()
+			runChecklistActions(t, driver, []UITestAction{
+				{Type: UITestActionKey, Key: "enter"},
+				{Type: UITestActionWait},
+			})
+
+			if driver.App().operations.TextPrompt != nil {
+				t.Errorf("a committed retry left the prompt open:\n%s", driver.Render())
+			}
+			want := append(slices.Clone(committed), draft)
+			if got := checklistItemTexts(t, driver.App().crossOutliner, owner.title); !slices.Equal(got, want) {
+				t.Fatalf("after the retry the checklist is %q, want %q", got, want)
+			}
+
+			// One append is one undo entry, so the refusal that preceded it recorded
+			// nothing: a single u has to reach the fixture's own checklist.
+			runChecklistActions(t, driver, []UITestAction{
+				{Type: UITestActionKey, Key: "u"},
+				{Type: UITestActionWait},
+			})
+			if got := checklistItemTexts(t, driver.App().crossOutliner, owner.title); !slices.Equal(got, committed) {
+				t.Fatalf("one undo left the checklist at %q, want the %q it started from", got, committed)
+			}
+		})
 	}
 }
 

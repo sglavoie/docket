@@ -99,22 +99,51 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// withChecklistReveal names the owner task on a successful append so the shell
-// opens its checklist and seats the cursor on the item that was just written.
-// It decorates the result message rather than touching the fold here, which is
-// what keeps a refused write — a TransactionErrorMsg, passed through unchanged —
-// from expanding an outline merely because an item was attempted.
-func withChecklistReveal(cmd tea.Cmd, identity taskref.TaskIdentity) tea.Cmd {
+// ChecklistItemRejectedMsg carries a refused append back to the shell so the
+// prompt can reopen on the item the user already typed. It exists because the
+// failure can only be known after the value overlay closed — the commit resolves
+// the owner again and may find an unwritable project or a newer revision — and
+// the typed item is the user's work, not the failure's. Request is the retry the
+// shell resubmits and Owner is the identity the append was frozen onto, so a
+// cursor that moved in the meantime cannot redirect the retry.
+type ChecklistItemRejectedMsg struct {
+	Request operation.OperationExecutionRequest
+	Owner   taskref.TaskIdentity
+	Text    string
+	Err     error
+}
+
+// withChecklistAppendOutcome decorates both ends of one append. Success names
+// the owner task so the shell opens its checklist and seats the cursor on the
+// item that was just written; a refusal is rewritten into the retry message
+// above. Neither half touches the fold here, which is what keeps a refused write
+// from expanding an outline merely because an item was attempted: the reveal
+// rides the success message alone.
+func withChecklistAppendOutcome(
+	cmd tea.Cmd,
+	identity taskref.TaskIdentity,
+	request operation.OperationExecutionRequest,
+	text string,
+) tea.Cmd {
 	if cmd == nil {
 		return nil
 	}
 	return func() tea.Msg {
 		msg := cmd()
-		if result, ok := msg.(coordinator.TransactionResultMsg); ok {
-			result.RevealChecklistFor = identity
-			return result
+		switch typed := msg.(type) {
+		case coordinator.TransactionResultMsg:
+			typed.RevealChecklistFor = identity
+			return typed
+		case coordinator.TransactionErrorMsg:
+			return ChecklistItemRejectedMsg{
+				Request: request,
+				Owner:   identity,
+				Text:    text,
+				Err:     typed.Err,
+			}
+		default:
+			return msg
 		}
-		return msg
 	}
 }
 
@@ -238,9 +267,17 @@ func (c *Controller) executeChecklistAddItem(
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	return checklistCommandResult(withChecklistReveal(
+	// The retry request is rebuilt from the invocation rather than carried
+	// through the mutation: ID and context are all the prompt factory reads, and
+	// the value it would carry is exactly the one being retried.
+	return checklistCommandResult(withChecklistAppendOutcome(
 		shell.SubviewCoordinator().AddChecklistItem(identity, text),
 		identity,
+		operation.OperationExecutionRequest{
+			ID:      invocation.Descriptor.ID,
+			Context: invocation.Context,
+		},
+		text,
 	))
 }
 

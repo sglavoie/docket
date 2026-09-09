@@ -41,7 +41,9 @@ therefore adds the first item and every item after it, from the task or from any
 of its items, and the prompt is the same single line either way: `Enter` saves,
 `Esc` cancels, and a blank line is refused. Once the item is written the
 checklist opens and the cursor lands on it, so pressing `c` again adds the next
-one. A refused write leaves the fold and the cursor exactly as they were.
+one. A refused write leaves the fold and the cursor exactly as they were and
+hands the item back: the prompt reopens on the text you typed, with the reason
+the save was refused, so `Enter` retries it once the problem is fixed.
 
 Visual selection is one of the actions a checklist row refuses, because a
 selection names task rows. Entering it from a task row hides any open checklist

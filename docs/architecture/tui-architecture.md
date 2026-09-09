@@ -369,17 +369,30 @@ nearby task. Both cases resolve the owner identity rather than an item index,
 so one descriptor and one binding cover the first item and every item after it.
 
 Revealing the new item is a property of the commit rather than of the key press.
-`withChecklistReveal` decorates the coordinator command the way
+`withChecklistAppendOutcome` decorates the coordinator command the way
 `withOutlinerRelocationCapture` does, naming the owner on
-`TransactionResultMsg.RevealChecklistFor` and passing every other message —
-`TransactionErrorMsg` included — through unchanged. `AppModel.handleTransactionResult`
+`TransactionResultMsg.RevealChecklistFor`. `AppModel.handleTransactionResult`
 reads that field after the workspace refresh and the relocation settle, so
 `revealCommittedChecklistItem` opens the fold and seats the cursor on the
 committed item through `MoveCursorToChecklistItem`, the checklist counterpart of
 `MoveCursorToIdentity` that a row's owner-task pointer would otherwise leave one
 row short. A refused write never reaches it, so a failed append changes neither
-the fold map nor the cursor. The task composer's Children tab remains the full
-editor for a task not yet in a projection.
+the fold map nor the cursor.
+
+That same decoration owns the other end. The value overlay closes before the
+append is executed, so a commit refused by an unwritable project or a moved
+revision would otherwise take the typed item with it. `TransactionErrorMsg` is
+therefore rewritten into `entityops.ChecklistItemRejectedMsg`, which carries the
+retry request, the frozen owner, and the text; `AppModel.reopenChecklistItemPrompt`
+rebuilds the same single-line prompt and `Restore`s the item under the refusal
+reason, exactly as the resume note and the quick comment already do. It is the
+third of that shape and the one that has to recheck its owner, because the
+checklist prompt resolves no target when it is built: an owner that no longer
+resolves degrades to the ordinary error notice, since there is nothing left to
+retry into. Retrying is an ordinary submission of that reopened prompt, so the
+append is one transaction and one undo entry and the refusal before it recorded
+nothing. The task composer's Children tab remains the full editor for a task not
+yet in a projection.
 
 Recent is the activity review projection. It groups tasks touched within the
 last 30 days into Today, Yesterday, Last 7 Days, and Last 30 Days buckets,

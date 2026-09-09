@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/entityops"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -174,6 +175,33 @@ func (m *AppModel) reopenCommentPrompt(msg CommentRejectedMsg) tea.Cmd {
 	if err != nil {
 		m.feedback.err = msg.Err
 		return status.StatusTimeout(5 * time.Second)
+	}
+	prompt.Restore(msg.Text, operationRefusalReason(msg.Err))
+	m.operations.TextPrompt = prompt
+	return prompt.InitCmd()
+}
+
+// reopenChecklistItemPrompt puts the refused item back in the buffer it was
+// typed in, on the owner the append was frozen onto. It is the third of the
+// same shape as the resume note and the comment, and it degrades the same way:
+// an owner that no longer resolves means the task itself is gone rather than
+// the item being wrong, so there is nothing to retry into and the refusal
+// becomes the ordinary error notice.
+//
+// The owner is rechecked here rather than trusted, because unlike the other two
+// the checklist prompt resolves no target when it is built: Add Item appends to
+// a checklist the task may not have yet, so the factory reads nothing back.
+func (m *AppModel) reopenChecklistItemPrompt(msg entityops.ChecklistItemRejectedMsg) tea.Cmd {
+	refuse := func() tea.Cmd {
+		m.feedback.err = msg.Err
+		return status.StatusTimeout(5 * time.Second)
+	}
+	if task, _ := m.taskAndProjectForIdentity(msg.Owner); task == nil {
+		return refuse()
+	}
+	prompt, err := m.newOperationTextPrompt(msg.Request, operation.ValueProviderChecklistItem)
+	if err != nil {
+		return refuse()
 	}
 	prompt.Restore(msg.Text, operationRefusalReason(msg.Err))
 	m.operations.TextPrompt = prompt

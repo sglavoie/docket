@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/entityops"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notesops"
@@ -455,6 +456,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.reopenResumeNotePrompt(typed)
 	case CommentRejectedMsg:
 		return true, m.reopenCommentPrompt(typed)
+	case entityops.ChecklistItemRejectedMsg:
+		return true, m.reopenChecklistItemPrompt(typed)
 	case valuepicker.ProjectTagVocabularyActionsMsg:
 		m.operations.ClearValueStep()
 		return true, m.openProjectTagVocabularyActions(typed.Tag)
