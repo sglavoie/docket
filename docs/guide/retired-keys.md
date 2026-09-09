@@ -8,7 +8,7 @@ guidance, chord hints, and the key rows of `?` help. Every key an earlier
 vocabulary used and the sigils replaced is simply unbound, with no compatibility
 action, and every surface's retirements are inventoried here rather than left
 beside the surface that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, and
-`w` actions, the comma state prefix, and `:`, `C`, `R`, and `Ctrl+Esc`. Two
+`w` actions, the comma state prefix, and `:`, `C`, and `Ctrl+Esc`. Two
 names came back with new acts rather than as aliases: `t` is the task-subtree
 fold and `P` is Select Project. `H`, `M`, and `L` went with the
 screen-relative cursor jumps, because the `z` scroll chord moves the window
@@ -22,7 +22,9 @@ task without leaving the list, the write beside the read `;` already opens. `b`
 is a fifth: it toggles Peek, and it is the one return that retired a key in
 exchange, since `Ctrl+Enter` gave Peek up to it and is now silent with no alias
 back. A letter earns a place beside `Enter` and `Shift+Enter`, which zoom and
-widen, better than a modifier does.
+widen, better than a modifier does. `R` is a sixth: it marks the cursor task
+reviewed and moves to the next candidate, the capital beside the `=` that flags
+one.
 `d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is
 the scroll chord prefix. `$` joins them as a chord prefix rather than a key of
 its own. Select Project holds the same line: `n` no longer creates a project,

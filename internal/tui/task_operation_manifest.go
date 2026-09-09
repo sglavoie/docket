@@ -41,6 +41,11 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskToggleReview, Label: "Toggle Review", Aliases: []string{"flag for review", "clear review", "needs a second look"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		// Not Bulk: acknowledging is a pass over candidates one at a time, and the
+		// advance to the next one is half of what the key does — a selection has no
+		// next. Leaving the flag off is also what refuses it under a visual
+		// selection outright instead of letting it fall back to the cursor row.
+		{ID: operation.OperationTaskMarkReviewed, Label: "Mark Reviewed", Aliases: []string{"reviewed", "acknowledge", "seen it", "next review candidate"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Not Bulk: one resume note is one task's own sentence about where it was
 		// left, so there is nothing a selection of them could mean. Leaving the flag
 		// off is also what refuses the operation under a visual selection outright

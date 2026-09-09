@@ -185,8 +185,9 @@ panel rather than a picker: `&link` and `;comment;` write at capture time, and
 on a row the same characters open the Attachments and Comments panels that own
 add, reorder, unlink, and delete. The
 old standalone `b` and `d` actions and comma state prefix are intentionally
-unbound, as are `c`, `m`, `w`, `:`, `C`, `R`, and `Ctrl+Esc`. `t` and `P` are
-live again with different acts: the subtree fold and Select Project.
+unbound, as are `c`, `m`, `w`, `:`, `C`, and `Ctrl+Esc`. `t`, `P`, and `R` are
+live again with different acts: the subtree fold, Select Project, and Mark
+Reviewed.
 
 The presentation grammar is also part of the scenario contract. Full-screen
 titles stay on one row and carry the workspace pulse; browse guidance uses one

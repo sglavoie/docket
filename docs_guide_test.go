@@ -344,7 +344,7 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 		"every surface's retirements are inventoried here rather than left " +
 			"beside the surface that dropped them",
 		"the old standalone `b`, `c`, `m`, and `w` actions, the comma state prefix, and " +
-			"`:`, `C`, `R`, and `Ctrl+Esc`",
+			"`:`, `C`, and `Ctrl+Esc`",
 		"Two names came back with new acts rather than as aliases: `t` is the task-subtree fold and " +
 			"`P` is Select Project",
 		"`C` is a fourth name back with a new act: it appends a comment to the cursor task " +

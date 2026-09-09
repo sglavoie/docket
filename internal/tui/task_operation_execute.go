@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/app"
@@ -34,6 +35,9 @@ func (m *AppModel) executeTaskOperation(
 	}
 	if invocation.Descriptor.ID == operation.OperationTaskToggleReview {
 		return m.executeTaskToggleReviewOperation(invocation)
+	}
+	if invocation.Descriptor.ID == operation.OperationTaskMarkReviewed {
+		return m.executeTaskMarkReviewedOperation(invocation)
 	}
 	if operationProjectsClipboard(invocation.Descriptor.ID) {
 		return m.executeTaskCopyOperation(invocation)
@@ -182,6 +186,45 @@ func (m *AppModel) executeTaskToggleReviewOperation(
 			"Toggle Review",
 			"",
 		), capture),
+	}}
+}
+
+// executeTaskMarkReviewedOperation acknowledges the one task under the cursor
+// and arms the advance to the next visible candidate. It is single-target by
+// construction: the descriptor is not Bulk, so a visual selection refuses at
+// resolution and never reaches here.
+//
+// Eligibility is read from the live task rather than from the row's drawing, and
+// refused by name. The application layer reads it again against its own clock
+// before it commits, so this check is what keeps the keystroke honest rather
+// than what makes the mutation safe: a row admitted here and changed underneath
+// is still refused there.
+func (m *AppModel) executeTaskMarkReviewedOperation(
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	target := invocation.Targets.Targets[0]
+	identity := target.Task
+	if !identity.Valid() {
+		return operation.OperationHandlerResult{Err: fmt.Errorf(
+			"operation %s resolved an invalid task",
+			invocation.Descriptor.ID,
+		)}
+	}
+	task, _ := m.taskAndProjectForIdentity(identity)
+	if task == nil {
+		return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+	}
+	if !models.TaskAwaitsReview(task, time.Now()) {
+		return operation.OperationHandlerResult{Err: fmt.Errorf(
+			"task is not awaiting review: flag it with = or wait for it to go stale",
+		)}
+	}
+	capture := m.captureOutlinerReviewAdvance(invocation.Targets)
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
+		Cmd: withOutlinerRelocationCapture(
+			m.secondaryFeatures.TaskItem.MarkReviewed(identity),
+			capture,
+		),
 	}}
 }
 

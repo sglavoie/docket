@@ -291,6 +291,15 @@ func (c TaskItemCoordinator) SetPinned(task taskref.TaskIdentity, pinned bool) t
 	})
 }
 
+// MarkReviewed acknowledges one task awaiting review as one transaction. The
+// application layer rechecks eligibility against its own clock, so a row the
+// surface admitted from a stale draw is refused there rather than committed.
+func (c TaskItemCoordinator) MarkReviewed(task taskref.TaskIdentity) tea.Cmd {
+	return runTask("Mark Reviewed", func() (app.TaskResult, error) {
+		return c.task.MarkReviewed(task.Locator())
+	})
+}
+
 // SetResumeNote writes, replaces, or clears one task's resume note as one
 // transaction. The empty note is the clear, so this is one seam rather than a
 // set/clear pair.

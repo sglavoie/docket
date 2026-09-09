@@ -187,6 +187,23 @@ func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.Resolve
 	return out.CaptureOutlinerRelocation(identities)
 }
 
+// captureOutlinerReviewAdvance is the acknowledgement's capture: the ordinary
+// relocation snapshot plus the sequence of candidates the cursor may advance
+// onto. It is taken before the commit because the rows it reads are the ones the
+// user is looking at; a list rebuilt afterwards no longer knows who was next.
+func (m *AppModel) captureOutlinerReviewAdvance(targets operation.ResolvedOperationTargets) *outliner.OutlinerRelocationCapture {
+	capture := m.captureOutlinerRelocationForTargets(targets)
+	if capture == nil {
+		return nil
+	}
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return nil
+	}
+	out.PlanReviewAdvance(capture)
+	return capture
+}
+
 // withOutlinerRelocationCapture decorates only successful batch results. Error
 // messages pass through unchanged, so failed mutations cannot pollute history.
 func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outliner.OutlinerRelocationCapture) tea.Cmd {

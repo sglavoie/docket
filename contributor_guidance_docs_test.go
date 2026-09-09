@@ -352,7 +352,30 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// cannot state. Nothing was trimmed to pay for it; the key table cell is
 	// fourteen of the bytes and the rest is the paragraph. The behavioral half
 	// lives in docs/guide/outliner-keys.md.
-	const budget = 33543
+	//
+	// Twelfth raise, 33543 to 34557, for acknowledging a review candidate on `R`.
+	// 1014 bytes buy one policy, one prohibition, and one cursor contract, and the
+	// prohibition is the reason the other two cannot wait. This file already says
+	// that only the lifecycle transitions write the state clock, which is exactly
+	// the sentence that sends a reader implementing "mark it reviewed" to
+	// `ApplyStateTransitionAt` — and that call clears deferral and completion data
+	// on the way past. So the file has to say what acknowledging is instead: a
+	// flag clear and a touch, no transition, no second timestamp, no stored queue.
+	// The policy is the admission set. Flagged, stale, or Waiting is a choice
+	// nothing above implies — review is a stored axis and staleness is a derived
+	// one, and joining them is this operation's own decision — and a later reader
+	// adding a fourth clause has no other line to check against. The cursor
+	// contract is the half that is not about the mutation at all: the successors
+	// are read before the commit because the list that answers "who is next" stops
+	// existing once the acknowledgement lands, and the refusals beside it — no
+	// fold expanded, no lens changed, no project loaded, no wrap — are what keep a
+	// triage key from quietly becoming a navigation feature. `=` keeping both
+	// halves off is one clause and rides along, because the two keys are otherwise
+	// indistinguishable in a descriptor list. The behavioral half lives in
+	// docs/guide/outliner-keys.md and the mechanism in
+	// docs/architecture/tui-architecture.md; the retired-key list gave back the
+	// five bytes `R` occupied.
+	const budget = 34557
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -429,7 +452,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `d`, `m`, `w`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
 		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +

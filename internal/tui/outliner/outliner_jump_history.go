@@ -250,6 +250,16 @@ type OutlinerRelocationCapture struct {
 	TransactionID string
 	Settled       bool
 	SettledCursor int
+
+	// ReviewAdvance marks a capture that carries a review acknowledgement rather
+	// than a relocation. The two are different questions about the same commit:
+	// a relocation asks where the task went, and this asks which candidate the
+	// pass moves to next. The flag is separate from ReviewSuccessors because a
+	// pass with no successor left is exactly the case that has something to say.
+	ReviewAdvance bool
+	// ReviewSuccessors is the ordered deduplicated sequence of eligible task
+	// identities that followed the cursor when the acknowledgement was issued.
+	ReviewSuccessors []taskref.TaskIdentity
 }
 
 // StampTransaction satisfies coordinator.TransactionRelocation, which is how a
@@ -430,6 +440,13 @@ func (m *OutlinerModel) FinishOutlinerRelocation(capture *OutlinerRelocationCapt
 	m.SyncJumpProjection()
 	if capture.Projection != m.RelocationHistory.Projection {
 		return nil, false
+	}
+	// A review acknowledgement branches before every follow rule below. Its task
+	// usually does not move at all — a Waiting one keeps its row — so the ordinary
+	// "did it go somewhere" question has no bearing on where the pass goes next,
+	// and it records no origin because nothing was vacated.
+	if capture.ReviewAdvance {
+		return m.finishReviewAdvance(capture), false
 	}
 	// A departure is checked before the forceFollow guard so the synchronous and
 	// asynchronous callers reach the same advance. The task is gone from this

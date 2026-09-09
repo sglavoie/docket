@@ -167,56 +167,83 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 
 // TestReviewKeyWritesTheFlagAndKeepsItsFacet holds the whole keyboard surface of
 // the review axis. `=` toggles the stored flag on the frozen task target the way
-// `*` toggles the pin, `f=` still narrows by it, and the two are exactly two
-// operations: a setter that writes and a facet that reads. The destination the
-// grammar rejects stays rejected — $review is refused because a destination is a
-// singleton and review must coexist with a lifecycle state on one line — so
-// review is still not reachable through the `$` chord.
+// `*` toggles the pin, `f=` still narrows by it, and `R` acknowledges one
+// candidate and moves on — three operations, and each owns exactly one of them:
+// a setter that writes, a facet that reads, and an acknowledgement that answers.
+// `=` gains neither half of `R`, which is the whole point of keeping the
+// acknowledgement its own descriptor rather than a mode of the toggle. The
+// destination the grammar rejects stays rejected — $review is refused because a
+// destination is a singleton and review must coexist with a lifecycle state on
+// one line — so review is still not reachable through the `$` chord.
 func TestReviewKeyWritesTheFlagAndKeepsItsFacet(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	if _, exists := registry.Descriptor(operation.OperationTaskToggleReview); !exists {
-		t.Fatalf("%s is not registered", operation.OperationTaskToggleReview)
+	for _, id := range []operation.OperationID{
+		operation.OperationTaskToggleReview,
+		operation.OperationTaskMarkReviewed,
+	} {
+		if _, exists := registry.Descriptor(id); !exists {
+			t.Fatalf("%s is not registered", id)
+		}
 	}
-	manifested := false
+	manifested := map[operation.OperationID]bool{}
 	for _, entry := range taskOperationDescriptorManifest() {
 		if !strings.Contains(string(entry.ID), "review") {
 			continue
 		}
-		if entry.ID != operation.OperationTaskToggleReview {
+		manifested[entry.ID] = true
+		switch entry.ID {
+		case operation.OperationTaskToggleReview:
+			if !entry.Bulk {
+				t.Error("the review setter must carry every selected task, not just the cursor")
+			}
+			if !entry.DirectOnly {
+				t.Error("the review setter has a direct key, so it must stay out of the task Space sheet")
+			}
+		case operation.OperationTaskMarkReviewed:
+			// The acknowledgement is one task's act: it advances the cursor to the
+			// next candidate, which a selection has no meaning for, so refusing under
+			// one is what Bulk false buys.
+			if entry.Bulk {
+				t.Error("the acknowledgement must refuse a visual selection rather than sweep it")
+			}
+			if !entry.DirectOnly {
+				t.Error("the acknowledgement has a direct key, so it must stay out of the task Space sheet")
+			}
+		default:
 			t.Errorf("task operation manifest lists an unexpected review operation %s", entry.ID)
-			continue
-		}
-		manifested = true
-		if !entry.Bulk {
-			t.Error("the review setter must carry every selected task, not just the cursor")
-		}
-		if !entry.DirectOnly {
-			t.Error("the review setter has a direct key, so it must stay out of the task Space sheet")
 		}
 	}
-	if !manifested {
-		t.Fatal("the task operation manifest does not list the review setter")
+	for _, id := range []operation.OperationID{
+		operation.OperationTaskToggleReview,
+		operation.OperationTaskMarkReviewed,
+	} {
+		if !manifested[id] {
+			t.Fatalf("the task operation manifest does not list %s", id)
+		}
 	}
 
 	strategy := SimplifiedInputStrategy()
-	setters := 0
+	keys := map[operation.OperationID][]string{}
 	for _, binding := range strategy.Bindings {
 		if !strings.Contains(string(binding.OperationID), "review") {
 			continue
 		}
 		switch binding.OperationID {
-		case operation.OperationTaskToggleReview:
-			setters++
-			if len(binding.Keys) != 1 || binding.Keys[0] != "=" {
-				t.Errorf("the review setter is bound to %v, want the = root key", binding.Paths())
-			}
+		case operation.OperationTaskToggleReview, operation.OperationTaskMarkReviewed:
+			keys[binding.OperationID] = append(keys[binding.OperationID], binding.Keys...)
 		case operation.OperationFilterReview:
 		default:
-			t.Errorf("%s is bound to %v; review is one setter and one facet", binding.OperationID, binding.Paths())
+			t.Errorf("%s is bound to %v; review is one setter, one facet, and one acknowledgement",
+				binding.OperationID, binding.Paths())
 		}
 	}
-	if setters != 1 {
-		t.Fatalf("the review setter has %d bindings, want exactly one", setters)
+	for id, want := range map[operation.OperationID]string{
+		operation.OperationTaskToggleReview: "=",
+		operation.OperationTaskMarkReviewed: "R",
+	} {
+		if got := keys[id]; len(got) != 1 || got[0] != want {
+			t.Errorf("%s is bound to %v, want the %s root key alone", id, got, want)
+		}
 	}
 
 	ctx := simplifiedOperationContext()

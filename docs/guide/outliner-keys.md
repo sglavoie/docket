@@ -10,7 +10,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `b` toggles Peek and `Ctrl+F`/`Ctrl+B` page an open one |
 | Capture and edit | `a` capture, `A` child, `c` add a checklist item to the cursor's task, `D` repeat the cursor task as a new draft, `e` edits whatever the cursor names — the task inline, the checklist item, or the project a group header names — `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag, and it names a task only |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete; `C` appends one comment to the cursor task without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
@@ -78,6 +78,39 @@ to want another like it, and a parked project you have explicitly scoped into
 repeats like any other. Once the draft is open it is yours: editing or deleting
 the source afterwards leaves it untouched, and `Esc` discards it having created
 nothing.
+
+`R` marks the cursor task reviewed and moves to the next task that still wants
+looking at. It answers on one task at a time and refuses under a visual
+selection, because the move to the next candidate is half of what it does and a
+selection has no next.
+
+A candidate is an open task that is flagged for review with `=`, has gone stale,
+or is Waiting on someone else. Done and canceled tasks are never candidates, and
+a deferred task is one only if you flagged it yourself — hiding something until
+next week is already an answer to "is this still relevant". Pressing `R` on
+anything else refuses and says why.
+
+Marking clears the review flag and updates the task's timestamp, which is what
+makes a stale task stop being stale. Nothing else changes: the state and how
+long it has been in it, dates, deferral, Today or Next membership, pin, resume
+note, comments, and body all survive. A Waiting task is still Waiting
+afterwards, still shows its check-back date, and still counts the days it has
+been waiting — acknowledging that you have seen it is not the same as hearing
+back. Nothing records that a review happened beyond the updated timestamp, and
+there is no review queue accumulating anywhere.
+
+The cursor then moves down to the next candidate visible right where you are: it
+skips headers, checklist rows, and tasks that are not candidates, and it stays
+inside the view you are in. Folds stay folded, the lens and filters stay as they
+are, no other project is loaded, and the pass does not wrap around to the top.
+If a task that was going to be next is gone by the time the cursor gets there —
+completed in another window, filtered away by what you just did — it is skipped
+too. When nothing is left below, the cursor stays where it is and the status
+line says there are no further visible review candidates, which is how a pass
+ends. A refused `R` moves nothing at all, and `u` takes the mark back while
+leaving the cursor where the pass had carried it.
+
+`=` is unchanged: it flags and unflags, on any task, and never moves the cursor.
 
 `#` opens Set Tags & Context for the current task or visual selection. Inside
 the overlay, `Space` toggles tags, `a` creates and selects a new tag, and

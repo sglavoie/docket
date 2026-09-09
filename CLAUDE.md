@@ -150,7 +150,7 @@ One key is one act on every entity surface:
 | --- | --- |
 | `Enter` `a` `c` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · repeat · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
-| `y`/`Y` `J`/`K` `*` `#` `=` | copy · reorder · pin · tags · review |
+| `y`/`Y` `J`/`K` `*` `#` `=` `R` | copy · reorder · pin · tags · review · acknowledge |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `b` `Ctrl+F`/`Ctrl+B` | Peek · page it |
@@ -330,7 +330,7 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `d`, `m`, `w`, `:`, `R`, `Ctrl+Esc`, `H`, `L`, and the
+The old `d`, `m`, `w`, `:`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 `b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
@@ -352,6 +352,20 @@ no parent, child, due date, deferral, planning membership, pin, review flag,
 resume note, comment, attachment, or reference. Opening writes nothing; the
 ordinary creation transaction still mints identity, timestamps, and the one undo
 entry. There is no recurrence field, repeat relationship, or copy-options screen.
+
+`R` acknowledges one task and advances; `=` stays the flag toggle and gains
+neither half. A candidate is one visible nonterminal task that is flagged, stale
+under the stale predicate, or Waiting: `models.TaskAwaitsReview` is that one
+predicate and `internal/app` rechecks it against the operation clock before
+committing. Acknowledging clears the flag and writes `UpdatedAt`, nothing else.
+It is not a lifecycle transition, so a Waiting task keeps its state, its clock,
+its check-back date, and its unreset waiting age, and there is no review
+timestamp or persistent review queue. The successor sequence is the ordered
+deduplicated eligible task rows below the cursor, captured before the commit and
+rechecked after it; the cursor takes the first still visible and still eligible,
+expanding no fold, changing no lens, loading no project, and never wrapping, and
+otherwise holds the source and reports that none remain. A refusal advances
+nothing; undo takes the mutation back and leaves the cursor.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the

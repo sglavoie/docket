@@ -259,13 +259,13 @@ state, and that read is what lets the strip name the axes it cleared or answer
 `$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound
 rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
-other retired root key — `c`, `m`, `w`, `:`, `R`, the comma state
+other retired root key — `c`, `m`, `w`, `:`, the comma state
 prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
-`t`, `P`, `C`, and `b` left that list by an explicit decision rather than by
-drift: `t` took the task-subtree fold, `P` took Select Project, `C` took quick
-Add Comment, and `b` took Peek, so all four are live keys with new acts rather
-than aliases for the ones they used to name.
+`t`, `P`, `C`, `b`, and `R` left that list by an explicit decision rather than
+by drift: `t` took the task-subtree fold, `P` took Select Project, `C` took
+quick Add Comment, `b` took Peek, and `R` took Mark Reviewed, so all five are
+live keys with new acts rather than aliases for the ones they used to name.
 
 Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
 built by `operationParentListSource` from the cursor task's own

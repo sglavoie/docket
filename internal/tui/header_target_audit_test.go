@@ -140,6 +140,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.task.copy-title":             "reject",
 	"tui.task.copy-title-description": "reject",
 	"tui.task.indent":                 "reject",
+	"tui.task.mark-reviewed":          "reject",
 	"tui.task.move-to-project":        "reject",
 	"tui.task.new-child":              "reject",
 	"tui.task.outdent":                "reject",

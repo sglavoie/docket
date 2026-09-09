@@ -156,6 +156,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			// the tail of the ladder because flagging work for a later pass is a
 			// deliberate, occasional act rather than a daily-loop one.
 			{OperationID: OperationTaskToggleReview, Keys: []string{"="}, DisplayKey: "=", FooterRank: 28, FooterLabel: "review"},
+			// R acknowledges what = flagged, and carries no FooterRank: the pass it
+			// belongs to is a periodic sweep rather than a daily-loop act, and the
+			// footer already spends a rank on the flag itself. The capital is the
+			// shifted neighbor of nothing — `r` is the resume note — but it reads as
+			// Review to anyone running the sweep, and lowercase `r` was spoken for
+			// before this key existed.
+			{OperationID: OperationTaskMarkReviewed, Keys: []string{"R"}, DisplayKey: "R"},
 			// r carries no FooterRank. The note is written when a task is put down
 			// and read from Peek when it is picked back up, so it is an occasional
 			// deliberate act like Named Lenses rather than a daily-loop one; `?` and

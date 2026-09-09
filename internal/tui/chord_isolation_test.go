@@ -148,12 +148,13 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 // keep two vocabularies alive. t, P, c and C are deliberately absent — the fold
 // family took t back for task subtrees, P went back to Select Project, c went
 // to Add Checklist Item, and C went to quick Add Comment. b left the table for
-// the same reason: Peek took it off Ctrl+Enter, so it is a live root key.
+// the same reason: Peek took it off Ctrl+Enter, so it is a live root key. R left
+// it too: Mark Reviewed took the capital, which the sigil grammar never spelled.
 func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	app := headerTargetAuditApp(t)
 	for _, name := range []string{
-		"w", "d", "m", ":", "R", ",", "q",
+		"w", "d", "m", ":", ",", "q",
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, binding := range strategy.Bindings {

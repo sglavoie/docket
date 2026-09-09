@@ -67,6 +67,27 @@ the move. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
 and the undo path arms no capture at all, so restoring a task never moves the
 cursor.
 
+Mark Reviewed rides the same capture with a different question. `R` is not a
+relocation — a Waiting task acknowledged keeps its row — so the capture carries
+`ReviewAdvance` and a `ReviewSuccessors` sequence instead, and
+`FinishOutlinerRelocation` branches on that flag before every follow rule below
+it. `PlanReviewAdvance` records the sequence from the rows on screen at the
+keystroke, ordered, deduplicated by identity, and seeded with the source, since
+All draws one task in several lanes and landing on a second copy of a row is not
+advancing. Eligibility is `models.TaskAwaitsReview`, read there and again when
+the cursor lands, so a candidate the commit or another surface changed while the
+transaction was in flight is skipped rather than selected. `finishReviewAdvance`
+writes `m.Cursor` alone on the same terms as `advanceAfterDeparture`, adds no
+jump entry because nothing was vacated, and consults no catalog flag: a sweep
+the user asked for by name works in every mode. When no successor survives it
+prefers the source over the reload's nearest-row reconciliation and emits the
+one `status.InfoStatusMsg` that ends the pass. Everything else the advance owes
+is inherited rather than restated — the projection guard covers mode, scope,
+search, filters, sort, zoom, folds, and focus; `withOutlinerRelocationCapture`
+decorates successes only, so a refusal cannot advance; and
+`VoidRelocationCaptureAfterNavigation` drops the whole plan the moment the user
+moves the cursor themselves.
+
 Project grouping is universal, not per-mode: whenever the Outliner shows more
 than one project, every mode emits a foldable `IsProjectHeader` row per project,
 and project groups put pinned projects first and then sort alphabetically. All

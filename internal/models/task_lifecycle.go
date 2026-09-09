@@ -133,6 +133,22 @@ func (t *Task) ApplyReview(review bool, now time.Time) bool {
 	return true
 }
 
+// AcknowledgeReview records that a task has been reviewed: the flag comes off
+// and the touch clock moves, unconditionally. It is not ApplyReview(false):
+// clearing a flag that is already clear changes nothing, but acknowledging a
+// stale or Waiting task that was never flagged is the whole point of the
+// operation, and what makes it an acknowledgement is that UpdatedAt moves.
+//
+// Nothing else is written. The lifecycle state and its clock, completion data,
+// dates, deferral, planning membership, pin, and resume note all survive, so a
+// Waiting task stays Waiting with its check-back date and its waiting age
+// intact. There is no review timestamp: UpdatedAt already says when, and a
+// second clock would be a field with no reader.
+func (t *Task) AcknowledgeReview(now time.Time) {
+	t.Review = false
+	t.UpdatedAt = now
+}
+
 // Unpin removes the pinned status.
 func (t *Task) Unpin() {
 	t.Pinned = false

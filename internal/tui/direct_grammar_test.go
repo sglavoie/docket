@@ -278,6 +278,9 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// = is not shared: there is no project review flag for the cursor to
 		// disambiguate, so the key names a task and only a task.
 		"=": operation.OperationTaskToggleReview,
+		// R acknowledges what = flagged. It is not shared either, and for the same
+		// reason: only a task can await review.
+		"R": operation.OperationTaskMarkReviewed,
 		"y": operation.OperationTaskCopyTitle, "Y": operation.OperationTaskCopyDetails,
 		"ctrl+y": operation.OperationTaskCopyTitleDescription,
 		// The digit row: 0 returns to the launch view and 1-7 are the seven modes
@@ -344,9 +347,9 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// advertise half of a jump the z chord already owns. C is likewise absent
 	// now: quick Add Comment took it, and direct above is where it is asserted. b
 	// has likewise left this list: Peek took it off Ctrl+Enter, and direct above
-	// is where it is asserted.
+	// is where it is asserted, as has R, which Mark Reviewed took.
 	for _, removed := range []string{
-		"d", "g", "z", ",", "m", ":", "R", "ctrl+esc",
+		"d", "g", "z", ",", "m", ":", "ctrl+esc",
 		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {

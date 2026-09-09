@@ -46,6 +46,15 @@ const (
 	// narrowing by the same flag this writes.
 	OperationTaskToggleReview OperationID = "tui.task.toggle-review"
 
+	// OperationTaskMarkReviewed acknowledges a task the review pass is for and
+	// moves the cursor to the next visible candidate. It is not the toggle's
+	// other half: the toggle writes the flag in either direction on any task,
+	// while this one admits only a task that is awaiting review — flagged, stale,
+	// or Waiting — clears the flag whether or not it was set, and touches the
+	// task so a stale one stops being stale. The two keys stay distinct because
+	// one declares intent about a task and the other spends it.
+	OperationTaskMarkReviewed OperationID = "tui.task.mark-reviewed"
+
 	// OperationTaskSetResumeNote writes, replaces, or clears the one-line resume
 	// note. It is a content edit rather than a workflow act: every lifecycle state
 	// may carry a note, and pausing, starting, or completing a task neither
