@@ -591,10 +591,15 @@ the next free number against a document that has not seen the other. An
 invariant the canonical writer enforces belongs in that audit, or the losing
 machine gets an error naming no bundle.
 
-Project comments merge as one whole collection: a one-sided change is adopted,
-identical changes coalesce, any other divergence is a
-`MergeConflictProjectMetadata` conflict on `comments` whose summaries name
-identities, never prose. Deliberately coarser than the task merge beside it.
+Project comments merge by comment id, never position: independent additions and
+edits to different comments survive, identical changes coalesce, deletion beats
+an untouched comment, and `CreatedAt` is immutable, so a moved instant is refused
+even when both sides moved it alike. A divergent text edit, an edit/delete race,
+two comments added under one id, and that moved instant are each a
+`MergeConflictProjectMetadata` conflict carrying `CommentID` and one of `comment`,
+`comment.text`, `comment.created_at` — never `TaskTitle`. One entry per diverging
+id, summaries naming instants and a digest, never prose; the merged collection is
+sorted and detached from all three inputs.
 
 No migration rewrites `.tt/conflicts/`, so a bundle's documents stay frozen at
 the schema that recorded them: undecodable is allowed, unresolvable is not. A

@@ -210,16 +210,52 @@ agreement checks, and project-local ShortID uniqueness, and anything it finds
 becomes an ordinary `MergeConflictInvariant` entry in the same retry-only
 bundle a competing edit would produce.
 
-Project comments are the one collection that merge does not take apart.
-`mergeProjectComments` compares each side against the base as a whole: a
-one-sided change is adopted, two sides that arrived at the same collection
-coalesce, and any remaining divergence is a `MergeConflictProjectMetadata` entry
-on the field `comments`. Its summaries name counts and identities rather than
-prose, because the bundle already stores all three documents and a summary that
-inlined bodies would be the only place the text was duplicated. Whole-collection
-merging is deliberately coarser than the field-level task merge beside it: it is
-the conservative seam, and identity-keyed merging replaces it once comments have
-a mutation surface that can produce two genuinely independent additions.
+Project comments merge like tasks do, keyed by identity rather than by position.
+`mergeProjectComments` walks the union of the comment ids across the three sides
+and decides each one on its own, which is what makes two machines commenting on
+one project a non-event: their comments carry different UUIDs, so neither write
+is contended and both land. Position is never consulted, because a comment the
+other side added shifts every index below it — an index-keyed merge would
+reconcile two unrelated comments, and the stable UUID is the only thing that
+survives a concurrent insertion.
+
+Within one identity the cases are the familiar three-way ones. An edit on one
+side is adopted; identical concurrent edits coalesce; divergent ones conflict.
+Deletion versus an untouched comment resolves as deletion, deletion on both sides
+removes it, and deletion versus an edit conflicts, because neither intent
+contains the other. Two different comments added under one id conflict rather
+than either being adopted: independently minted UUIDs do not collide, so that
+shape means the one-identity-one-comment invariant is already gone and adopting a
+side would publish a body the other machine never agreed to store there.
+
+`CreatedAt` is treated as identity metadata rather than content. It is half of
+the canonical order, it is what the stored header spells beside the id, and no
+mutation writes it — editing a comment rewrites the text alone. A side that moved
+it is therefore reported, not reconciled, and that holds even when both sides
+moved it the same way: two machines agreeing is not permission for an immutable
+value to change.
+
+Every one of those is a `MergeConflictProjectMetadata` entry carrying `CommentID`
+and one of the fields `comment` (a presence race or a colliding addition),
+`comment.text`, or `comment.created_at`. The id lives in a field of its own
+rather than in `TaskTitle`: a bundle that spelled a comment id where a reader
+expects a task title would send the operator looking for a task that does not
+exist. The merge reports one entry per diverging identity instead of stopping at
+the first, so a bundle can be resolved once rather than once per comment, and it
+orders both the merged collection and the conflict list by the same canonical
+creation-time-then-identity key, so which side the caller passed as local cannot
+change the result. The merged collection is detached from all three inputs at one
+point, whichever branch adopted each value.
+
+The side summaries name the creation instant, a digest of the body, and its
+length — never the body. The bundle already stores all three documents, so a
+summary that inlined prose would be the only place a comment's text was
+duplicated; the digest still answers the one question a summary has to answer,
+which is whether two sides hold the same body.
+
+A comment conflict aborts the whole merge exactly as a task conflict does, so a
+clean task edit riding in the same transaction is refused with it and nothing
+partial reaches disk.
 
 ShortID is in that list because it is the one invariant the canonical writer
 enforces that the project audit does not, and because concurrent creation is

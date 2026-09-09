@@ -72,6 +72,12 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 			fmt.Printf(" — %q", c.TaskTitle)
 		}
 		fmt.Println()
+		// A project comment is located by its own identity, never by a task title.
+		// Printing it is what lets the operator find the entry in the stored
+		// documents beside the bundle, which is where the bodies live.
+		if c.CommentID != "" {
+			fmt.Printf("      comment: %s\n", c.CommentID)
+		}
 		if c.Field != "" {
 			fmt.Printf("      field:   %s\n", c.Field)
 		}

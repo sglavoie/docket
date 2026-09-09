@@ -50,9 +50,24 @@ func preservationProject(t *testing.T) (*models.Project, string) {
 	return project, content
 }
 
+// sameProjectComments compares two collections element by element. The merge
+// itself compares one comment at a time, so this lives with the tests that need
+// a whole-collection assertion rather than in the model beside the value.
+func sameProjectComments(left, right []*models.ProjectComment) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if !models.ProjectCommentEqual(left[i], right[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func assertPreservedComments(t *testing.T, where string, got []*models.ProjectComment) {
 	t.Helper()
-	if !models.ProjectCommentsEqual(got, preservationComments()) {
+	if !sameProjectComments(got, preservationComments()) {
 		t.Fatalf("%s did not preserve the project comments: %+v", where, got)
 	}
 }
@@ -259,40 +274,6 @@ func TestAuditProjectRefusesAnUnwritableCommentCollection(t *testing.T) {
 	}
 	if !strings.Contains(conflicts[0].Detail, "duplicate project comment id") {
 		t.Fatalf("audit conflict does not name the duplicate: %+v", conflicts[0])
-	}
-}
-
-// TestMergeProjectCommentsIsConservative pins the intermediate merge seam: a
-// one-sided change is adopted, an identical change coalesces, and a divergent
-// one is a conflict rather than a union nobody wrote.
-func TestMergeProjectCommentsIsConservative(t *testing.T) {
-	base := preservationComments()
-	added := append(preservationComments(),
-		preservationComment("cccccccc-dddd-4eee-8fff-000000000000", "added on one side", 2*time.Hour))
-	other := append(preservationComments(),
-		preservationComment("dddddddd-eeee-4fff-8000-111111111111", "added on the other side", 2*time.Hour))
-
-	if merged, conflict := mergeProjectComments(base, added, base); conflict != nil ||
-		!models.ProjectCommentsEqual(merged, added) {
-		t.Fatalf("a local-only change was not adopted: merged=%+v conflict=%+v", merged, conflict)
-	}
-	if merged, conflict := mergeProjectComments(base, base, other); conflict != nil ||
-		!models.ProjectCommentsEqual(merged, other) {
-		t.Fatalf("a remote-only change was not adopted: merged=%+v conflict=%+v", merged, conflict)
-	}
-	if merged, conflict := mergeProjectComments(base, added, added); conflict != nil ||
-		!models.ProjectCommentsEqual(merged, added) {
-		t.Fatalf("an identical change on both sides did not coalesce: merged=%+v conflict=%+v", merged, conflict)
-	}
-	merged, conflict := mergeProjectComments(base, added, other)
-	if conflict == nil || merged != nil {
-		t.Fatalf("a divergent change was resolved rather than reported: merged=%+v", merged)
-	}
-	if conflict.Field != "comments" || conflict.Kind != MergeConflictProjectMetadata {
-		t.Fatalf("conflict does not name the collection: %+v", conflict)
-	}
-	if !strings.Contains(conflict.Local, added[2].ID) || !strings.Contains(conflict.Current, other[2].ID) {
-		t.Fatalf("conflict summary does not identify both sides: %+v", conflict)
 	}
 }
 

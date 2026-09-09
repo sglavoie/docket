@@ -58,7 +58,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"first task heading",
 		"`storage.WriteProjectMarkdown` renders a complete `*models.Project` and is the only " +
 			"production rewrite entry point",
-		"`mergeProjectComments` compares each side against the base as a whole",
+		"`mergeProjectComments` walks the union of the comment ids across the three sides",
+		"`CreatedAt` is treated as identity metadata rather than content",
+		"The id lives in a field of its own rather than in `TaskTitle`",
 		"## Task model",
 		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
 		"deferral count (`defer_count`)",

@@ -90,22 +90,30 @@ func TestSortProjectCommentsIsTotalAndDerived(t *testing.T) {
 	}
 }
 
-// TestProjectCommentsEqualComparesInstants keeps the same moment spelled in two
+// TestProjectCommentEqualComparesInstants keeps the same moment spelled in two
 // zones one value, which is what stops a merge from reporting a conflict two
 // machines do not actually have.
-func TestProjectCommentsEqualComparesInstants(t *testing.T) {
+func TestProjectCommentEqualComparesInstants(t *testing.T) {
 	zone := time.FixedZone("test-plus-two", 2*60*60)
-	left := []*ProjectComment{{ID: projectCommentTestIDA, Text: "note", CreatedAt: time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)}}
-	right := []*ProjectComment{{ID: projectCommentTestIDA, Text: "note", CreatedAt: time.Date(2026, 8, 1, 14, 0, 0, 0, zone)}}
-	if !ProjectCommentsEqual(left, right) {
+	left := &ProjectComment{ID: projectCommentTestIDA, Text: "note", CreatedAt: time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)}
+	right := &ProjectComment{ID: projectCommentTestIDA, Text: "note", CreatedAt: time.Date(2026, 8, 1, 14, 0, 0, 0, zone)}
+	if !ProjectCommentEqual(left, right) {
 		t.Fatal("one instant spelled in two zones compared unequal")
 	}
-	if ProjectCommentsEqual(left, nil) {
-		t.Fatal("a collection compared equal to an empty one")
+	if ProjectCommentEqual(left, nil) {
+		t.Fatal("a stored comment compared equal to an absent one")
 	}
-	right[0].Text = "edited"
-	if ProjectCommentsEqual(left, right) {
+	if !ProjectCommentEqual(nil, nil) {
+		t.Fatal("two absent comments compared unequal")
+	}
+	right.Text = "edited"
+	if ProjectCommentEqual(left, right) {
 		t.Fatal("an edited comment compared equal")
+	}
+	right.Text = "note"
+	right.ID = projectCommentTestIDB
+	if ProjectCommentEqual(left, right) {
+		t.Fatal("two identities compared equal")
 	}
 }
 

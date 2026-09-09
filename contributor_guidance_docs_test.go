@@ -408,7 +408,21 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// conservative seam an id-keyed merge replaces once comments can be written.
 	// The mechanism for all three lives in
 	// docs/architecture/persistence-and-transactions.md.
-	const budget = 36119
+	//
+	// Fifteenth raise, 36119 to 36516, for the identity-keyed comment merge that
+	// replaced the conservative seam the fourteenth raise's third rule named. 397
+	// bytes buy the rules that seam did not need. Merging by id rather than
+	// position is the one a reader would otherwise have to infer from the value
+	// carrying a UUID, and inferring it wrong is silent: an index-keyed merge
+	// reconciles two unrelated comments after the other side inserts one above.
+	// CreatedAt being refused even when both sides moved it alike is the opposite
+	// of every other field beside it, where agreement coalesces, so it has to be
+	// stated or the next reader will "fix" it. The conflict shape — CommentID plus
+	// one of three field names, never TaskTitle, one entry per diverging id — is
+	// what a bundle is addressable by, and borrowing TaskTitle would send an
+	// operator looking for a task that does not exist. The mechanism lives in
+	// docs/architecture/persistence-and-transactions.md.
+	const budget = 36516
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

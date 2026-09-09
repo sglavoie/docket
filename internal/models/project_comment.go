@@ -106,24 +106,17 @@ func SortProjectComments(comments []*ProjectComment) {
 	})
 }
 
-// ProjectCommentsEqual reports whether two collections carry the same comments
-// in the same order. It compares the instants rather than the time structs, so
-// the same moment spelled in two locations is one value.
-func ProjectCommentsEqual(left, right []*ProjectComment) bool {
-	if len(left) != len(right) {
-		return false
+// ProjectCommentEqual reports whether two comments carry the same stored value.
+// It compares the instants rather than the time structs, so the same moment
+// spelled in two locations is one value. Two nil comments are equal; a nil and a
+// stored one are not.
+//
+// This is the single comparison the identity-keyed merge is built on: a
+// whole-collection comparison would answer a question the merge never asks,
+// because two collections that differ still merge comment by comment.
+func ProjectCommentEqual(left, right *ProjectComment) bool {
+	if left == nil || right == nil {
+		return left == right
 	}
-	for i := range left {
-		a, b := left[i], right[i]
-		if a == nil || b == nil {
-			if a != b {
-				return false
-			}
-			continue
-		}
-		if a.ID != b.ID || a.Text != b.Text || !a.CreatedAt.Equal(b.CreatedAt) {
-			return false
-		}
-	}
-	return true
+	return left.ID == right.ID && left.Text == right.Text && left.CreatedAt.Equal(right.CreatedAt)
 }
