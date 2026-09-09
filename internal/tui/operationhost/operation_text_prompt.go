@@ -251,6 +251,32 @@ func (model *OperationTextPromptModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, 
 	}
 }
 
+// HandlePaste puts a terminal bracketed paste into the same buffer HandleKey
+// types into. A paste arrives as its own message rather than as a run of key
+// presses, so a prompt that only read key presses would drop a pasted paragraph
+// into whatever view the overlay is covering. Pasting is not submitting: the
+// buffer stays open and the widget's own CharLimit truncates, so pasted text
+// obeys exactly the bound typed text does.
+func (model *OperationTextPromptModel) HandlePaste(msg tea.PasteMsg) tea.Cmd {
+	if model == nil {
+		return nil
+	}
+	// An armed discard owns every input, paste included: the question on screen
+	// is whether to throw this text away, and letting a paste answer it would
+	// change the text being asked about.
+	if model.confirm.IsActive() {
+		return nil
+	}
+	model.notice = ""
+	var cmd tea.Cmd
+	if model.options.Multiline {
+		model.area, cmd = model.area.Update(msg)
+	} else {
+		model.input, cmd = model.input.Update(msg)
+	}
+	return cmd
+}
+
 // submit is the one road out of the buffer. It trims exactly what the
 // application layer trims, so a buffer holding only whitespace is refused here
 // with the text still on screen rather than committed and rejected.

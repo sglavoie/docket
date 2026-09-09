@@ -6,9 +6,11 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // addCommentFixtureApp launches the checklist fixture, which is the one that
@@ -173,6 +175,75 @@ func TestAddCommentStoresWhatWasTyped(t *testing.T) {
 	})
 	if undone := projectedTaskTitled(t, driver.App().crossOutliner, checklistFixturePlainTitle); len(undone.Comments) != 0 {
 		t.Fatalf("after undo comments = %+v, want none", undone.Comments)
+	}
+}
+
+// TestAddCommentAcceptsATerminalPaste is the event-path half of "the popup owns
+// the keyboard". A bracketed paste is not a run of key presses: the terminal
+// hands the whole clipboard over as one tea.PasteMsg, so a popup that read only
+// key presses would watch a pasted paragraph fall past it into the Outliner,
+// which drops a paste outside quick edit. Every rule typed text obeys holds
+// here — newlines and the literal sigil characters survive untouched, the
+// comment bound truncates, the discard question still owns the input, and
+// pasting is not submitting.
+func TestAddCommentAcceptsATerminalPaste(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		paste string
+		want  string
+	}{
+		{
+			name:  "multiline text is buffered verbatim",
+			paste: "Root cause: naïve retry ✓\n@today #tag ~ref *pin $done ##ops",
+			want:  "Root cause: naïve retry ✓\n@today #tag ~ref *pin $done ##ops",
+		},
+		{
+			name:  "an oversized paste is cut to the comment bound",
+			paste: strings.Repeat("x", taskdetail.CommentCharLimit+5),
+			want:  strings.Repeat("x", taskdetail.CommentCharLimit),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			driver, _, view := addCommentFixtureApp(t)
+			seatCursorOnTaskTitled(t, view, checklistFixturePlainTitle)
+
+			runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "C"}})
+			driver.dispatch(tea.PasteMsg{Content: tc.paste})
+			driver.drain()
+
+			prompt := driver.App().operations.TextPrompt
+			if prompt == nil {
+				t.Fatalf("the paste closed the popup:\n%s", driver.Render())
+			}
+			if prompt.Value() != tc.want {
+				t.Fatalf("pasted buffer = %q, want %q", prompt.Value(), tc.want)
+			}
+			if task := projectedTaskTitled(t, driver.App().crossOutliner, checklistFixturePlainTitle); len(task.Comments) != 0 {
+				t.Fatalf("the paste committed a comment by itself: %+v", task.Comments)
+			}
+
+			// An armed discard is asking about this very text, so a paste that
+			// rewrote it would change the question being answered.
+			runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "esc"}})
+			if !prompt.ConfirmingDiscard() {
+				t.Fatalf("esc did not ask before discarding the pasted text:\n%s", driver.Render())
+			}
+			driver.dispatch(tea.PasteMsg{Content: "never entered"})
+			driver.drain()
+			if prompt.Value() != tc.want {
+				t.Fatalf("a paste reached the buffer under the discard question: %q", prompt.Value())
+			}
+
+			runChecklistActions(t, driver, []UITestAction{
+				{Type: UITestActionKey, Key: "n"},
+				{Type: UITestActionKey, Key: "ctrl+s"},
+				{Type: UITestActionWait},
+			})
+			task := projectedTaskTitled(t, driver.App().crossOutliner, checklistFixturePlainTitle)
+			if len(task.Comments) != 1 || task.Comments[0].Text != tc.want {
+				t.Fatalf("after Ctrl+S comments = %+v, want the one pasted comment", task.Comments)
+			}
+		})
 	}
 }
 

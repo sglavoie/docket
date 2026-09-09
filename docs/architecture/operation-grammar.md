@@ -129,6 +129,16 @@ submit key with nothing, and `Restore` is what reopens it — on the text alread
 typed, with the reason the commit was refused — which is also what clears that
 guard for the retry.
 
+A terminal bracketed paste reaches that buffer through its own arm.
+`tea.PasteMsg` is one message rather than a run of key presses, so
+`handleActiveKeyOverlay` never sees it; `AppModel.handleActivePasteOverlay`
+is the paste-side twin, and the text prompt is the only one of the five overlays
+it names, because it is the only one that collects typed text. Everything the
+prompt's key path enforces the paste path enforces too: the widget's own
+`CharLimit` cuts an oversized paste to the same bound a typed one stops at, an
+armed discard swallows the paste rather than rewriting the text it is asking
+about, and a paste never submits — only the submit key does.
+
 The vocabulary rename `e` opens on `ValueProviderFilterTags` and
 `ValueProviderFilterContexts` is a third nested grammar on that same model
 (`internal/tui/valuepicker/vocabulary_rename.go`), and `vocabularyRenameProvider`

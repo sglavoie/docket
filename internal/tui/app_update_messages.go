@@ -50,6 +50,8 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, nil
 		}
 		return m.handleGlobalKeyPress(msg)
+	case tea.PasteMsg:
+		return m.handleActivePasteOverlay(msg)
 	case tea.KeyboardEnhancementsMsg:
 		return true, nil
 	case tea.KeyReleaseMsg:
