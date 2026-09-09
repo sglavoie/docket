@@ -20,17 +20,18 @@ import (
 // validates a structural conversion's specific artifacts, so their prefixes stay
 // beside those checks.
 const (
-	preTagV8SnapshotPrefix             = "pre-tag-v8-"
-	preStateClockV9SnapshotPrefix      = "pre-state-clock-v9-"
-	preDeferRenameV10SnapshotPrefix    = "pre-defer-rename-v10-"
-	preDeferInstantV11SnapshotPrefix   = "pre-defer-instant-v11-"
-	preContextV12SnapshotPrefix        = "pre-context-v12-"
-	preDeferCountV13SnapshotPrefix     = "pre-defer-count-v13-"
-	preDueTimeV14SnapshotPrefix        = "pre-due-time-v14-"
-	preDependenciesV15SnapshotPrefix   = "pre-dependencies-v15-"
-	prePortableLensesV16SnapshotPrefix = "pre-portable-lenses-v16-"
-	preStoredReviewV17SnapshotPrefix   = "pre-stored-review-v17-"
-	preResumeNoteV18SnapshotPrefix     = "pre-resume-note-v18-"
+	preTagV8SnapshotPrefix              = "pre-tag-v8-"
+	preStateClockV9SnapshotPrefix       = "pre-state-clock-v9-"
+	preDeferRenameV10SnapshotPrefix     = "pre-defer-rename-v10-"
+	preDeferInstantV11SnapshotPrefix    = "pre-defer-instant-v11-"
+	preContextV12SnapshotPrefix         = "pre-context-v12-"
+	preDeferCountV13SnapshotPrefix      = "pre-defer-count-v13-"
+	preDueTimeV14SnapshotPrefix         = "pre-due-time-v14-"
+	preDependenciesV15SnapshotPrefix    = "pre-dependencies-v15-"
+	prePortableLensesV16SnapshotPrefix  = "pre-portable-lenses-v16-"
+	preStoredReviewV17SnapshotPrefix    = "pre-stored-review-v17-"
+	preResumeNoteV18SnapshotPrefix      = "pre-resume-note-v18-"
+	preProjectCommentsV19SnapshotPrefix = "pre-project-comments-v19-"
 )
 
 // MigrationSnapshotBoundary is one schema boundary that publishes an immutable
@@ -58,6 +59,7 @@ func MigrationSnapshotBoundaries() []MigrationSnapshotBoundary {
 		{Schema: 16, Prefix: prePortableLensesV16SnapshotPrefix},
 		{Schema: 17, Prefix: preStoredReviewV17SnapshotPrefix},
 		{Schema: 18, Prefix: preResumeNoteV18SnapshotPrefix},
+		{Schema: 19, Prefix: preProjectCommentsV19SnapshotPrefix},
 	}
 }
 

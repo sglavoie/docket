@@ -83,8 +83,8 @@ func TestSaveProject_OmitsLegacyProjectSections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read saved project: %v", err)
 	}
-	if !strings.Contains(string(content), schemaMarkerV16) {
-		t.Fatalf("saved project is missing schema-16 marker:\n%s", content)
+	if !strings.Contains(string(content), schemaMarkerV17) {
+		t.Fatalf("saved project is missing schema-17 marker:\n%s", content)
 	}
 	if strings.Contains(string(content), "<!-- sections:") {
 		t.Fatalf("saved project retained legacy section metadata:\n%s", content)
@@ -255,7 +255,7 @@ func TestSaveProjectLocked_CreatesLockFile(t *testing.T) {
 	}
 }
 
-func TestWriteTasksMarkdownRejectsNilTasks(t *testing.T) {
+func TestWriteProjectMarkdownRejectsNilTasks(t *testing.T) {
 	tk1, err := models.NewGenericTask("task-1", 1, "First")
 	if err != nil {
 		t.Fatal(err)
@@ -267,8 +267,8 @@ func TestWriteTasksMarkdownRejectsNilTasks(t *testing.T) {
 
 	tasks := []*models.Task{tk1, nil, tk2}
 
-	if _, err := WriteTasksMarkdown("Nil Test", tasks); err == nil || !strings.Contains(err.Error(), "nil task") {
-		t.Fatalf("WriteTasksMarkdown error = %v, want nil-task rejection", err)
+	if _, err := WriteProjectMarkdown(&models.Project{Name: "Nil Test", Tasks: tasks}); err == nil || !strings.Contains(err.Error(), "nil task") {
+		t.Fatalf("WriteProjectMarkdown error = %v, want nil-task rejection", err)
 	}
 }
 

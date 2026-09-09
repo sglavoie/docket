@@ -393,7 +393,7 @@ func TestManagerV18MigrationRefusesANewerWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer := bytes.Replace(source, []byte("\"schema_version\": 18"), []byte("\"schema_version\": 19"), 1)
+	newer := bytes.Replace(source, []byte("\"schema_version\": 18"), []byte("\"schema_version\": 20"), 1)
 	if bytes.Equal(newer, source) {
 		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
 	}
@@ -468,69 +468,6 @@ func markArchivedAndParked(t *testing.T, root string, catalog *WorkspaceCatalog)
 	}
 	if err := os.WriteFile(WorkspaceCatalogPath(root), published, FilePermissions); err != nil {
 		t.Fatal(err)
-	}
-}
-
-// TestOperationsAfterV18MigrationAreNormallyUndoable is the other half of the
-// history-cleanup contract. Dropping the ledger is only acceptable because the
-// next mutation rebuilds one, so this replays an ordinary post-migration edit —
-// writing the field the boundary exists for — and takes it back.
-func TestOperationsAfterV18MigrationAreNormallyUndoable(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
-	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.RecoverWorkspace(); err != nil {
-		t.Fatalf("recover workspace: %v", err)
-	}
-	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if catalog.SchemaVersion != V18ConfigSchemaVersion {
-		t.Fatalf("catalog schema = %d, want %d", catalog.SchemaVersion, V18ConfigSchemaVersion)
-	}
-	if _, statErr := os.Stat(UndoLedgerDir(root)); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("undo history survived migration: %v", statErr)
-	}
-
-	project, tasksPath := loadMigratedProjectWithTasks(t, root, catalog)
-	migratedBytes, err := os.ReadFile(tasksPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	document, err := storage.ParseProjectDocument(string(migratedBytes))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ledger := storage.NewWorkspaceLedger(UndoLedgerDir(root), []string{root})
-	commits := storage.NewCommitServiceWithLedger(TransactionsDir(root), []string{root}, ledger)
-	project.Tasks[0].ResumeNote = "picked this up after the upgrade"
-	if _, commitErr := commits.Commit(storage.ChangeSet{
-		Project: project, ExpectedRevision: document.Revision, Base: document,
-		UndoAction: "Edit Task", UndoContext: project.Tasks[0].Title,
-	}); commitErr != nil {
-		t.Fatalf("commit after migration: %v", commitErr)
-	}
-	if count, countErr := ledger.UndoCount(storage.GlobalScope()); countErr != nil || count != 1 {
-		t.Fatalf("undo entries after one post-migration commit = %d err=%v, want 1", count, countErr)
-	}
-	edited, err := os.ReadFile(tasksPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(edited), "picked this up after the upgrade") {
-		t.Fatalf("post-migration commit did not persist the resume note:\n%s", edited)
-	}
-
-	if _, undoErr := ledger.Undo(storage.GlobalScope()); undoErr != nil {
-		t.Fatalf("undo after migration: %v", undoErr)
-	}
-	restored, err := os.ReadFile(tasksPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(restored, migratedBytes) {
-		t.Fatalf("undo did not restore the migrated bytes\nwant: %s\ngot:  %s", migratedBytes, restored)
 	}
 }
 

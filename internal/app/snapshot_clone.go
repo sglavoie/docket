@@ -28,6 +28,7 @@ func cloneSnapshot(source Snapshot) (Snapshot, error) {
 			value := *project.PinnedAt
 			clone.PinnedAt = &value
 		}
+		clone.Comments = models.CloneProjectComments(project.Comments)
 		clone.Tasks = make([]*models.Task, 0, len(project.Tasks))
 		for _, task := range project.Tasks {
 			if task == nil {
@@ -79,6 +80,7 @@ func useRollbackDocuments(before Snapshot) {
 		}
 		project.Name = document.ProjectName
 		project.Tasks = document.Tasks
+		project.Comments = models.CloneProjectComments(document.Comments)
 		project.BuildTaskTree()
 	}
 }
@@ -120,6 +122,9 @@ func restoreSnapshotProjects(target, before Snapshot) {
 		}
 		restoredProject := *saved
 		restoredProject.Tasks = restoredTasks
+		// Detach the collection the backup snapshot still owns; restoring an alias
+		// would let the next mutation edit the value a second rollback reads.
+		restoredProject.Comments = models.CloneProjectComments(saved.Comments)
 		*project = restoredProject
 		project.BuildTaskTree()
 	}

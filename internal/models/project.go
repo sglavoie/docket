@@ -33,8 +33,9 @@ type Project struct {
 	Tags        []string   `json:"tags,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
-	Tasks       []*Task `json:"-"`
-	NextShortID int     `json:"-"`
+	Tasks       []*Task           `json:"-"`
+	Comments    []*ProjectComment `json:"-"`
+	NextShortID int               `json:"-"`
 }
 
 const (

@@ -63,7 +63,7 @@ because the document it would commit is the unreadable one, and it says so by
 naming the schema that wrote it.
 
 
-## Schema 17 storage and migration
+## Schema 19 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -84,7 +84,7 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-16 Markdown and generic `Task` headings.
+Project task files use strict schema-17 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
@@ -107,6 +107,14 @@ you write it and Peek is where you read it back; it is yours to clear, so
 pausing, starting, or finishing a task never prompts for one and never throws
 one away. `/` searches it beside titles and descriptions, and `project export`
 prints it as a labelled `Resume:` paragraph above the description.
+
+A project file may also hold comments that belong to the project itself rather
+than to any one task. They live in their own block above the first task, so
+reading the file top to bottom gives you the project's own notes before its
+work. Each one carries its own identity and the moment it was written, and the
+file always lists them oldest first, so the same set of comments looks the same
+on every machine that opens the workspace. A project with no comments writes no
+block at all.
 
 `lenses.json` contains your saved named-lens definitions — the three seeded
 starters, anything you saved yourself, and anything you added from the built-in
@@ -162,7 +170,8 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates supported schema-17 workspaces to schema 18, supported
+Startup migrates supported schema-18 workspaces to schema 19, supported
+schema-17 workspaces to schema 18, supported
 schema-16 workspaces to schema 17, supported
 schema-15 workspaces to schema 16, supported
 schema-14 workspaces to schema 15, supported
@@ -182,8 +191,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-due-time-v14-<UTC>.tar.gz` for v13→v14,
 `pre-dependencies-v15-<UTC>.tar.gz` for v14→v15, and
 `pre-portable-lenses-v16-<UTC>.tar.gz` for v15→v16,
-`pre-stored-review-v17-<UTC>.tar.gz` for v16→v17, and
-`pre-resume-note-v18-<UTC>.tar.gz` for v17→v18.
+`pre-stored-review-v17-<UTC>.tar.gz` for v16→v17,
+`pre-resume-note-v18-<UTC>.tar.gz` for v17→v18, and
+`pre-project-comments-v19-<UTC>.tar.gz` for v18→v19.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -213,6 +223,7 @@ already say.
 | Schema 16 leaves task Markdown at schema 14 | It is the one boundary that upgrades no task grammar: it marks the workspace as the home of named lens definitions, so the catalog is the only file it rewrites. Every project document is still read and validated first, so an unreadable workspace is refused rather than half-migrated |
 | Schema 17 upgrades task Markdown to schema 15 by moving review off the tag list and onto a stored `review` flag | A task carrying the `review` tag before the migration carries `review: true` after it, and that tag is removed as it is lifted, so the workspace never holds two answers to one question. Every other tag is preserved in place, and a task that was not up for review is written back unchanged, because the key is omitted when the flag is off. Your saved lenses are rewritten in the same step and by the same rule: each one becomes a single query, and a lens that narrowed by the `review` tag narrows by review itself, so it still selects the rows you saved it for |
 | Schema 18 upgrades task Markdown to schema 16 by adding the optional `RESUME` block that holds one resume note | No existing task has a note to lift, so every document comes out byte-identical to its schema-15 source apart from the schema marker line. Your saved lenses are not rewritten: a resume note is prose on one task rather than a value a query narrows by, so every lens keeps selecting exactly the rows it selected before |
+| Schema 19 upgrades task Markdown to schema 17 by adding the optional `PROJECT-COMMENTS` block that holds a project's own comments | No existing project has a comment to lift, so every document comes out byte-identical to its schema-16 source apart from the schema marker line, and every migrated project — active, parked, or archived — starts with none. Your saved lenses are not rewritten: a project comment is prose on a project rather than a value a task query narrows by, so every lens keeps selecting exactly the rows it selected before |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -224,8 +235,9 @@ than its supported schema, and no build converts a workspace back. Recovery is
 manual: extract the matching archive — `pre-due-time-v14-<UTC>.tar.gz` for the
 schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
 `pre-portable-lenses-v16-<UTC>.tar.gz` for schema 16,
-`pre-stored-review-v17-<UTC>.tar.gz` for schema 17, or
-`pre-resume-note-v18-<UTC>.tar.gz` for schema 18 — into a
+`pre-stored-review-v17-<UTC>.tar.gz` for schema 17,
+`pre-resume-note-v18-<UTC>.tar.gz` for schema 18, or
+`pre-project-comments-v19-<UTC>.tar.gz` for schema 19 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

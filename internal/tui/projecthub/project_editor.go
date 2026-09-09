@@ -337,8 +337,11 @@ func (s *ProjectEditorSave) Commit() tea.Msg {
 
 	var tasksMarkdown []byte
 	var tasksExpectedRevision *string
+	// The rewrite renders the whole freshly loaded project, not its name and
+	// task list: tasks.md also holds the project's comments, and a rename that
+	// re-rendered only the tasks would drop them.
 	if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
-		content, renderErr := storage.WriteTasksMarkdown(updated.Name, updated.Tasks)
+		content, renderErr := storage.WriteProjectMarkdown(&updated)
 		if renderErr != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
 		}

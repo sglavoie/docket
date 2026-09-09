@@ -192,7 +192,7 @@ things up in rather than read straight through:
 - [`docs/guide/projects-and-notes.md`](docs/guide/projects-and-notes.md) —
   project scope, Select Project, project tags including `parked`, All Notes.
 - [`docs/guide/storage.md`](docs/guide/storage.md) — the durable layout, the undo
-  ledger, conflict recovery, and the schema-16 migration chain.
+  ledger, conflict recovery, and the schema-19 migration chain.
 - [`docs/guide/retired-keys.md`](docs/guide/retired-keys.md) — every retired key,
   per surface, and what answers it now.
 

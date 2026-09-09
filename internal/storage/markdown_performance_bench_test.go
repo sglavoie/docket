@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func BenchmarkWriteTasksMarkdownLargeHierarchy(b *testing.B) {
+func BenchmarkWriteProjectMarkdownLargeHierarchy(b *testing.B) {
 	const taskCount = 5000
 	tasks := make([]*models.Task, 0, taskCount)
 	for i := range taskCount {
@@ -27,7 +27,7 @@ func BenchmarkWriteTasksMarkdownLargeHierarchy(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		output, err := WriteTasksMarkdown("large-hierarchy", tasks)
+		output, err := WriteProjectMarkdown(&models.Project{Name: "large-hierarchy", Tasks: tasks})
 		if err != nil {
 			b.Fatal(err)
 		}

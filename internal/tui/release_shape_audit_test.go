@@ -47,15 +47,17 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 	}
 }
 
-// TestReleaseAdvancedNoSchemaVersion pins both stored schemas. The release added
-// comments, acknowledgements, checklist items, and repeats — every one of them
-// writes through fields the current schemas already carry, so either number
-// moving means a migration was written, and a migration is never incidental.
-func TestReleaseAdvancedNoSchemaVersion(t *testing.T) {
-	if got, want := storage.CurrentTaskSchemaVersion, 16; got != want {
+// TestReleaseSchemaVersionsMovedOnlyForProjectComments pins both stored schemas.
+// Acknowledgements, checklist items, and repeats write through fields the
+// schemas already carried; project comments are the one thing in this release
+// that no existing field could hold, so this pair moved exactly once and by
+// exactly one step. Either number moving again means another migration was
+// written, and a migration is never incidental.
+func TestReleaseSchemaVersionsMovedOnlyForProjectComments(t *testing.T) {
+	if got, want := storage.CurrentTaskSchemaVersion, 17; got != want {
 		t.Errorf("live task Markdown is schema %d, want %d", got, want)
 	}
-	if got, want := config.CurrentConfigVersion, 18; got != want {
+	if got, want := config.CurrentConfigVersion, 19; got != want {
 		t.Errorf("the catalog is schema %d, want %d", got, want)
 	}
 }

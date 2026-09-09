@@ -35,6 +35,14 @@ func AuditProject(p *Project) error {
 		}
 	}
 
+	// Project comments are audited beside the task graph because they are stored
+	// in the same document: a collection the canonical writer would refuse must
+	// fail here, where the caller still holds the project, rather than at the
+	// render that is already inside a transaction.
+	if err := ValidateProjectComments(p.Comments); err != nil {
+		return err
+	}
+
 	return nil
 }
 

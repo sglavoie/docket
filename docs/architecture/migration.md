@@ -3,7 +3,7 @@
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 17 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 19 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -14,8 +14,9 @@ crosses the schema-12 task-context path, a schema-12 workspace crosses the
 schema-13 defer-count path, a schema-13 workspace crosses the schema-14
 due-time path, a schema-14 workspace crosses the schema-15 soft-dependency
 path, a schema-15 workspace crosses the schema-16 portable-lens path, a
-schema-16 workspace crosses the schema-17 stored-review path, and a schema-17
-workspace finishes on the schema-18 resume-note path:
+schema-16 workspace crosses the schema-17 stored-review path, a schema-17
+workspace crosses the schema-18 resume-note path, and a schema-18 workspace
+finishes on the schema-19 project-comment path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -148,6 +149,19 @@ workspace finishes on the schema-18 resume-note path:
    schema-15 task-document marker. The portable lens collection is deliberately
    not restaged: a resume note is prose on one task rather than a value a query
    narrows by, so no saved lens changes what it selects.
+32. Validate every schema-16 project document, then lift it to schema 17 by
+   admitting the optional `PROJECT-COMMENTS` block that carries a project's own
+   comments. No retired field carries a comment across this boundary, so every
+   migrated project arrives with none, and a project with none writes no block:
+   each document comes out byte-identical to its schema-16 source apart from the
+   marker line.
+33. Publish `pre-project-comments-v19-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 19 and task Markdown schema 17 across active,
+   parked, and archived projects, and clear undo/redo history whose retained
+   bytes carry the schema-16 task-document marker. The portable lens collection
+   is deliberately not restaged, for the same reason the previous boundary did
+   not restage it: a project comment is prose on a project rather than a value a
+   task query narrows by.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
 than cleanup after it. Schema 15 removes the review tag from every task as it
@@ -165,9 +179,14 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-18 startup neither reconverts data
+Each boundary is idempotent: repeated schema-19 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
+No boundary rewrites `.tt/conflicts/`, so a bundle recorded before one keeps the
+documents it was recorded with and the recovery limits
+[`persistence-and-transactions.md`](persistence-and-transactions.md) states
+apply to it unchanged; nothing removes such a bundle on the workspace's behalf,
+and each migration audit says so in its own report.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a
 clean migration retry requires restoring the complete matching snapshot into a
 separate workspace with a compatible build; the schema-6 and schema-7 activation

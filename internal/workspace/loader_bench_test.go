@@ -43,7 +43,7 @@ func newRepresentativeWorkspaceFixture(tb testing.TB) representativeWorkspaceFix
 			tasks = append(tasks, task)
 			fixture.taskIDs = append(fixture.taskIDs, id)
 		}
-		content, err := storage.WriteTasksMarkdown(slug, tasks)
+		content, err := storage.WriteProjectMarkdown(&models.Project{Name: slug, Tasks: tasks})
 		if err != nil {
 			tb.Fatalf("render project: %v", err)
 		}

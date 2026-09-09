@@ -391,7 +391,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// collision is caught. Naming the audit rather than the symptom is what keeps
 	// the next invariant — not this one — from landing in the same blind spot.
 	// The mechanism lives in docs/architecture/persistence-and-transactions.md.
-	const budget = 35063
+	//
+	// Fourteenth raise, 35063 to 36119, for the project-comment collection. 1056
+	// bytes buy three rules a reader cannot derive. The first is where the
+	// `PROJECT-COMMENTS` block sits and what fixes its bytes: placement, escaping,
+	// UTC, and an order derived from stored values alone, because the canonical
+	// rendering is what ComputeRevision hashes and two machines disagreeing about
+	// any of those would trade revisions that describe one collection. The second
+	// is that `tasks.md` is now the whole project, so `WriteProjectMarkdown` is the
+	// only production renderer and the name-plus-task-list one is gone rather than
+	// deprecated — a rewrite site that could still spell a name and a task list
+	// would drop comments silently, and rename, task edit, outline edit, and
+	// cross-project move all rewrite documents they did not otherwise change. The
+	// third is that comments merge as one collection rather than by id, which
+	// reads as an oversight beside the field-level task merge and is instead the
+	// conservative seam an id-keyed merge replaces once comments can be written.
+	// The mechanism for all three lives in
+	// docs/architecture/persistence-and-transactions.md.
+	const budget = 36119
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

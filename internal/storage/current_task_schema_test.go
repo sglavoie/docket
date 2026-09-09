@@ -113,9 +113,9 @@ func TestCurrentTaskFixtureSetsEveryPersistedField(t *testing.T) {
 // persisted field set on both ends.
 func TestCurrentTaskSchemaRoundTripCarriesEveryPersistedField(t *testing.T) {
 	project := currentSchemaFixtureProject()
-	content, err := WriteTasksMarkdown(project.Name, project.Tasks)
+	content, err := WriteProjectMarkdown(project)
 	if err != nil {
-		t.Fatalf("WriteTasksMarkdown: %v", err)
+		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	parsed, err := ParseProjectDocument(content)
 	if err != nil {
@@ -145,12 +145,12 @@ func TestCurrentTaskSchemaRoundTripCarriesEveryPersistedField(t *testing.T) {
 // depends on these bytes.
 func TestCurrentTaskSchemaGoldenBytes(t *testing.T) {
 	project := currentSchemaFixtureProject()
-	content, err := WriteTasksMarkdown(project.Name, project.Tasks)
+	content, err := WriteProjectMarkdown(project)
 	if err != nil {
-		t.Fatalf("WriteTasksMarkdown: %v", err)
+		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	const golden = "# Project: Fixture\n" +
-		"<!-- tt-schema: 16 -->\n" +
+		"<!-- tt-schema: 17 -->\n" +
 		"\n" +
 		"## Task: Parent\n" +
 		"<!-- id: task-parent, short_id: 1, state: backlog, priority: 0, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T12:00:00Z, state_changed: 2026-08-01T12:00:00Z -->\n" +
@@ -230,9 +230,9 @@ func TestCurrentTaskSchemaEscapesDelimitersAndHeadings(t *testing.T) {
 		CreatedAt:     base, UpdatedAt: base, StateChangedAt: base,
 		Comments: []*models.Comment{{Text: hostile, CreatedAt: base}},
 	}
-	content, err := WriteTasksMarkdown("Escapes", []*models.Task{task})
+	content, err := WriteProjectMarkdown(&models.Project{Name: "Escapes", Tasks: []*models.Task{task}})
 	if err != nil {
-		t.Fatalf("WriteTasksMarkdown: %v", err)
+		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	parsed, err := ParseProjectDocument(content)
 	if err != nil {
@@ -259,9 +259,9 @@ func TestCurrentTaskSchemaEscapesDelimitersAndHeadings(t *testing.T) {
 func TestCurrentTaskDocumentRefusesMalformedBodies(t *testing.T) {
 	// The header comes from the live writer rather than a literal, so this case
 	// keeps testing the current schema after the marker line moves.
-	empty, err := WriteTasksMarkdown("Strict", nil)
+	empty, err := WriteProjectMarkdown(&models.Project{Name: "Strict"})
 	if err != nil {
-		t.Fatalf("WriteTasksMarkdown: %v", err)
+		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	header := empty + "## Task: Strict\n"
 	metadata := "<!-- id: task-1, short_id: 1, state: backlog, priority: 0, " +

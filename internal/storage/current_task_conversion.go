@@ -43,6 +43,27 @@ func modelsFromCurrentTaskDocument(document currentTaskProjectDocument, location
 	return tasks, nil
 }
 
+// projectCommentsFromCurrentDocument reads the stored project-comment
+// collection back into live values, in canonical order. Each element is a fresh
+// pointer, so a project loaded twice from the same bytes never shares a comment
+// object between the two answers.
+func projectCommentsFromCurrentDocument(document currentTaskProjectDocument) ([]*models.ProjectComment, error) {
+	if len(document.Comments) == 0 {
+		return nil, nil
+	}
+	comments := make([]*models.ProjectComment, 0, len(document.Comments))
+	for _, record := range document.Comments {
+		if err := models.ValidateProjectComment(record.ID, record.Text, record.CreatedAt); err != nil {
+			return nil, err
+		}
+		comments = append(comments, &models.ProjectComment{
+			ID: record.ID, Text: record.Text, CreatedAt: record.CreatedAt,
+		})
+	}
+	models.SortProjectComments(comments)
+	return comments, nil
+}
+
 // taskFromCurrentTaskRecord reads one stored record back into the live model.
 func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location) (*models.Task, error) {
 	state, ok := models.ParseWorkflowState(record.State)
@@ -131,6 +152,11 @@ func currentTaskProjectDocumentFromModel(project *models.Project) (currentTaskPr
 		return currentTaskProjectDocument{}, fmt.Errorf("project is required")
 	}
 	document := currentTaskProjectDocument{ProjectName: project.Name}
+	comments, commentsErr := currentProjectCommentRecordsFromModel(project.Comments)
+	if commentsErr != nil {
+		return currentTaskProjectDocument{}, commentsErr
+	}
+	document.Comments = comments
 	if len(project.Tasks) > 0 {
 		document.Tasks = make([]currentTaskRecord, 0, len(project.Tasks))
 	}
@@ -145,6 +171,28 @@ func currentTaskProjectDocumentFromModel(project *models.Project) (currentTaskPr
 		return currentTaskProjectDocument{}, err
 	}
 	return document, nil
+}
+
+// currentProjectCommentRecordsFromModel writes the live project-comment
+// collection out as stored records, in canonical order. A collection the
+// canonical writer would refuse is rejected here rather than rendered, so the
+// refusal names the comment instead of the document.
+func currentProjectCommentRecordsFromModel(comments []*models.ProjectComment) ([]currentProjectCommentRecord, error) {
+	if len(comments) == 0 {
+		return nil, nil
+	}
+	if err := models.ValidateProjectComments(comments); err != nil {
+		return nil, fmt.Errorf("live project writer refuses project comment: %w", err)
+	}
+	ordered := models.CloneProjectComments(comments)
+	models.SortProjectComments(ordered)
+	records := make([]currentProjectCommentRecord, 0, len(ordered))
+	for _, comment := range ordered {
+		records = append(records, currentProjectCommentRecord{
+			ID: comment.ID, Text: comment.Text, CreatedAt: comment.CreatedAt,
+		})
+	}
+	return records, nil
 }
 
 // currentTaskRecordFromModel writes one live task out as a stored record.

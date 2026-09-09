@@ -304,11 +304,12 @@ func resolvedDocument(bundle *ConflictBundle, resolution ConflictResolution, mer
 // project sections/colors are decode-only and receive runtime defaults.
 func projectFromDocument(identity *models.Project, doc *ProjectDocument) *models.Project {
 	return &models.Project{
-		ID:    identity.ID,
-		Name:  identity.Name,
-		Slug:  identity.Slug,
-		Path:  identity.Path,
-		Tasks: doc.Tasks,
+		ID:       identity.ID,
+		Name:     identity.Name,
+		Slug:     identity.Slug,
+		Path:     identity.Path,
+		Tasks:    doc.Tasks,
+		Comments: models.CloneProjectComments(doc.Comments),
 	}
 }
 

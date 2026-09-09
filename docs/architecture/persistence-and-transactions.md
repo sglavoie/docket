@@ -16,10 +16,33 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-13 generic Task Markdown
+        ├── tasks.md         # strict schema-17 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
+
+`tasks.md` holds the whole project, not only its tasks. Schema 17 adds an
+optional `PROJECT-COMMENTS` block between the schema marker and the first task
+heading, one `<!-- project-comment: UUID RFC3339Nano -->` header per entry with
+its body escaped by the same prose escaping the task blocks use, instants
+normalized to UTC, entries ordered by creation time and then identity, and the
+block omitted entirely when the project holds none. That order and that zone are
+what let two machines holding one collection render one byte sequence, which is
+what `ProjectDocument.ComputeRevision` hashes. `models.ValidateProjectComments`
+is the single gate — canonical lowercase UUID, non-blank text, non-zero instant,
+project-local id uniqueness — reached from `models.AuditProject`, from the block
+codec, and from the document validator, so no surface can accept a comment the
+canonical writer would refuse.
+
+Because the file is the whole project, `storage.WriteProjectMarkdown` renders a
+complete `*models.Project` and is the only production rewrite entry point. The
+earlier name-plus-task-list renderer is gone rather than deprecated: a rewrite
+site that could spell a project's name and tasks without its comments would drop
+them silently, and a project rename, a task edit, an outline edit, and a
+cross-project move all rewrite documents they did not otherwise change.
+`ProjectDocument.Comments` is detached on every hop — parse, `ToProjectDocument`,
+snapshot clone, rollback, and conflict reconstruction — so the model's collection
+and the merge base never share one comment object.
 
 Project paths are derived from the selected data directory and canonical
 lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path
@@ -170,7 +193,7 @@ recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-13 content. A stale writer is compared
+Project revisions hash canonical schema-17 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -178,11 +201,25 @@ durable conflict bundle without partially committing the transaction.
 
 Merging field by field is not enough to know the result is writable, so
 `auditMergedDocument` judges the whole document the merge produced before that
-document is allowed to become a commit. It runs the project audit — duplicate
-task ids, hierarchy, cycles, depth, state — the terminal/`CompletedAt`
+document is allowed to become a commit. The document it judges carries the
+merged comment collection as well as the merged tasks, so the project audit
+covers both. It runs that audit — duplicate
+task ids, hierarchy, cycles, depth, state, comment validity and comment id
+uniqueness — the terminal/`CompletedAt`
 agreement checks, and project-local ShortID uniqueness, and anything it finds
 becomes an ordinary `MergeConflictInvariant` entry in the same retry-only
 bundle a competing edit would produce.
+
+Project comments are the one collection that merge does not take apart.
+`mergeProjectComments` compares each side against the base as a whole: a
+one-sided change is adopted, two sides that arrived at the same collection
+coalesce, and any remaining divergence is a `MergeConflictProjectMetadata` entry
+on the field `comments`. Its summaries name counts and identities rather than
+prose, because the bundle already stores all three documents and a summary that
+inlined bodies would be the only place the text was duplicated. Whole-collection
+merging is deliberately coarser than the field-level task merge beside it: it is
+the conservative seam, and identity-keyed merging replaces it once comments have
+a mutation surface that can produce two genuinely independent additions.
 
 ShortID is in that list because it is the one invariant the canonical writer
 enforces that the project audit does not, and because concurrent creation is

@@ -136,9 +136,12 @@ func LoadProjectForRewrite(project *models.Project) (*string, error) {
 }
 
 // loadMissingProject treats an absent tasks file as a successful load of an
-// empty project.
+// empty project. Comments are cleared with the tasks: they live in the same
+// absent file, so keeping whatever the in-memory project happened to carry
+// would resurrect a collection nothing on disk holds.
 func loadMissingProject(project *models.Project) error {
 	project.Tasks = []*models.Task{}
+	project.Comments = nil
 	project.NextShortID = 1
 	return auditLoadedProject(project)
 }
@@ -149,6 +152,7 @@ func loadProjectContent(project *models.Project, content []byte) error {
 		return fmt.Errorf("%w: schema-v6 task document required: %w", tterrors.ErrParseError, err)
 	}
 	project.Tasks = document.Tasks
+	project.Comments = document.Comments
 	maxShortID := 0
 	for _, task := range project.Tasks {
 		if task.ShortID > maxShortID {

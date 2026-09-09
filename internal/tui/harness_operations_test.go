@@ -330,7 +330,7 @@ func (m *AppModel) harnessRecordConflict() error {
 	side := func() *storage.ProjectDocument {
 		return &storage.ProjectDocument{
 			ProjectName:   harnessConflictProjectName,
-			SchemaVersion: storage.SchemaVersionV16,
+			SchemaVersion: storage.SchemaVersionV17,
 		}
 	}
 	retryRequired := true

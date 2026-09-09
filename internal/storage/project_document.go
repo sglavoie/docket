@@ -16,10 +16,14 @@ import (
 // answer that: current_task_schema.go selects the codec, and
 // current_task_conversion.go crosses between records and live models.
 
-// ProjectDocument is the strict live storage representation of tasks.md.
+// ProjectDocument is the strict live storage representation of tasks.md. It
+// carries the project's own comment collection beside its tasks, because both
+// live in that one file and a document that dropped either would rewrite it on
+// the next save.
 type ProjectDocument struct {
 	ProjectName   string
 	Tasks         []*models.Task
+	Comments      []*models.ProjectComment
 	SchemaVersion int
 	Revision      string
 }
@@ -33,7 +37,14 @@ func ParseProjectDocument(content string) (*ProjectDocument, error) {
 	if err != nil {
 		return nil, err
 	}
-	doc := &ProjectDocument{ProjectName: parsed.ProjectName, Tasks: tasks, SchemaVersion: CurrentTaskSchemaVersion}
+	comments, err := projectCommentsFromCurrentDocument(parsed)
+	if err != nil {
+		return nil, err
+	}
+	doc := &ProjectDocument{
+		ProjectName: parsed.ProjectName, Tasks: tasks, Comments: comments,
+		SchemaVersion: CurrentTaskSchemaVersion,
+	}
 	doc.Revision = doc.ComputeRevision()
 	return doc, nil
 }
@@ -62,15 +73,25 @@ func (d *ProjectDocument) WriteCurrent() (string, error) {
 }
 
 func (d *ProjectDocument) render() (string, error) {
-	document, err := currentTaskProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
+	document, err := currentTaskProjectDocumentFromModel(&models.Project{
+		Name: d.ProjectName, Tasks: d.Tasks, Comments: d.Comments,
+	})
 	if err != nil {
 		return "", err
 	}
 	return writeCurrentTaskProjectDocument(document)
 }
 
+// ToProjectDocument projects a live project into a document. The task pointers
+// are shared with the project on purpose — a mutation edits them in place — but
+// the comment collection is detached, because a document is also the immutable
+// base a merge and a rollback are measured against and nothing may edit one
+// through the other.
 func ToProjectDocument(project *models.Project) *ProjectDocument {
-	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: CurrentTaskSchemaVersion}
+	doc := &ProjectDocument{
+		ProjectName: project.Name, Tasks: project.Tasks,
+		Comments: models.CloneProjectComments(project.Comments), SchemaVersion: CurrentTaskSchemaVersion,
+	}
 	doc.Revision = doc.ComputeRevision()
 	return doc
 }
@@ -95,6 +116,9 @@ func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
+		// An absent file means an empty project, comments included: initializing it
+		// from the in-memory project would let a stale collection outlive the file
+		// that was supposed to hold it.
 		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: CurrentTaskSchemaVersion}
 		doc.Revision = doc.ComputeRevision()
 		return doc, nil

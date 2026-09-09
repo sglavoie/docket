@@ -53,7 +53,12 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	required := []string{
 		"## Contents",
 		"## Runtime layers",
-		"strict schema-16 Markdown",
+		"strict schema-17 Markdown",
+		"Schema 17 adds an optional `PROJECT-COMMENTS` block between the schema marker and the " +
+			"first task heading",
+		"`storage.WriteProjectMarkdown` renders a complete `*models.Project` and is the only " +
+			"production rewrite entry point",
+		"`mergeProjectComments` compares each side against the base as a whole",
 		"## Task model",
 		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
 		"deferral count (`defer_count`)",

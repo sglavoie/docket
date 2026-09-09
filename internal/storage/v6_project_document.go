@@ -127,6 +127,26 @@ func writeTaskProjectDocument(projectName string, marker string, records []forma
 	return builder.String(), nil
 }
 
+// admitProjectCommentsDelimiter decides whether a delimiter line may open a
+// block here. The block is document-level and singular, so it belongs after the
+// schema marker, before the first task heading, and exactly once; a closing
+// delimiter reached in this position closes nothing.
+func admitProjectCommentsDelimiter(label, line string, schemaSeen bool, projectName string, hasCurrent, commentsSeen bool) error {
+	if line == format.ProjectCommentsEndLine {
+		return fmt.Errorf("%s PROJECT-COMMENTS block is closed before it is opened", label)
+	}
+	if !schemaSeen || projectName == "" {
+		return fmt.Errorf("%s PROJECT-COMMENTS block appears before the schema marker", label)
+	}
+	if hasCurrent {
+		return fmt.Errorf("%s PROJECT-COMMENTS block appears after a task heading", label)
+	}
+	if commentsSeen {
+		return fmt.Errorf("duplicate %s PROJECT-COMMENTS block", label)
+	}
+	return nil
+}
+
 func v6TaskDepth(task format.V6TaskRecord, byID map[string]format.V6TaskRecord) int {
 	depth := 0
 	for parentID := task.ParentID; parentID != ""; parentID = byID[parentID].ParentID {
@@ -158,10 +178,11 @@ func ParseV6ProjectDocument(content string) (V6ProjectDocument, error) {
 }
 
 // scannedTaskDocument is the schema-independent split of project Markdown into
-// its project name and raw task blocks. Every task schema shares this frame and
-// decodes the bodies itself.
+// its project name, optional project-comment block, and raw task blocks. Every
+// task schema shares this frame and decodes the bodies itself.
 type scannedTaskDocument struct {
 	ProjectName string
+	Comments    []format.ProjectCommentRecord
 	Tasks       []scannedTaskBlock
 }
 
@@ -170,8 +191,23 @@ type scannedTaskBlock struct {
 	Body  string
 }
 
-//nolint:gocyclo // Keeping the whole strict header grammar in one pass makes the schema frame auditable.
+// scanTaskProjectDocument splits project Markdown for a schema that carries no
+// document-level block. Every historical codec reads through it, so its accepted
+// grammar is frozen: a PROJECT-COMMENTS block is an unexpected header line here,
+// exactly as it was before that block existed.
 func scanTaskProjectDocument(content string, schema int, label string) (scannedTaskDocument, error) {
+	return scanTaskDocumentFrame(content, schema, label, false)
+}
+
+// scanTaskProjectDocumentWithComments splits project Markdown for a schema that
+// admits the optional PROJECT-COMMENTS block between the schema marker and the
+// first task heading.
+func scanTaskProjectDocumentWithComments(content string, schema int, label string) (scannedTaskDocument, error) {
+	return scanTaskDocumentFrame(content, schema, label, true)
+}
+
+//nolint:gocyclo // Keeping the whole strict header grammar in one pass makes the schema frame auditable.
+func scanTaskDocumentFrame(content string, schema int, label string, allowProjectComments bool) (scannedTaskDocument, error) {
 	content = strings.TrimPrefix(content, "\uFEFF")
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	scanner.Buffer(make([]byte, 0, scannerInitBufSize), 16*1024*1024)
@@ -181,6 +217,9 @@ func scanTaskProjectDocument(content string, schema int, label string) (scannedT
 	var hasCurrent bool
 	var currentTitle string
 	var currentBody []string
+	var commentsSeen bool
+	var inComments bool
+	var commentLines []string
 
 	flush := func() {
 		if !hasCurrent {
@@ -197,6 +236,31 @@ func scanTaskProjectDocument(content string, schema int, label string) (scannedT
 
 	for scanner.Scan() {
 		line := strings.TrimSuffix(scanner.Text(), "\r")
+		// The block is read before any other rule, blank lines included: its bodies
+		// are prose that may spell anything the escaping does not reserve, so a
+		// comment line must never be measured against the header grammar.
+		if inComments {
+			if line == format.ProjectCommentsEndLine {
+				parsed, err := format.ParseProjectCommentsBlock(commentLines)
+				if err != nil {
+					return scannedTaskDocument{}, fmt.Errorf("%s project comments: %w", label, err)
+				}
+				document.Comments = parsed
+				inComments = false
+				commentLines = nil
+				continue
+			}
+			commentLines = append(commentLines, line)
+			continue
+		}
+		if allowProjectComments && (line == format.ProjectCommentsStartLine || line == format.ProjectCommentsEndLine) {
+			if err := admitProjectCommentsDelimiter(label, line, schemaSeen, document.ProjectName, hasCurrent, commentsSeen); err != nil {
+				return scannedTaskDocument{}, err
+			}
+			commentsSeen = true
+			inComments = true
+			continue
+		}
 		if match := v6TaskHeadingRegex.FindStringSubmatch(line); match != nil {
 			if !schemaSeen || document.ProjectName == "" {
 				return scannedTaskDocument{}, fmt.Errorf("%s task heading appears before project header", label)
@@ -247,6 +311,9 @@ func scanTaskProjectDocument(content string, schema int, label string) (scannedT
 	}
 	if err := scanner.Err(); err != nil {
 		return scannedTaskDocument{}, fmt.Errorf("scan %s task document: %w", label, err)
+	}
+	if inComments {
+		return scannedTaskDocument{}, fmt.Errorf("unterminated %s PROJECT-COMMENTS block", label)
 	}
 	flush()
 	if document.ProjectName == "" {

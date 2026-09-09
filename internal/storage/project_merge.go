@@ -141,6 +141,11 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 		result.Conflicts = append(result.Conflicts, *nameConflict)
 	}
 
+	comments, commentsConflict := mergeProjectComments(base.Comments, local.Comments, current.Comments)
+	if commentsConflict != nil {
+		result.Conflicts = append(result.Conflicts, *commentsConflict)
+	}
+
 	// Any structural conflict aborts before we materialize a document: the merge
 	// is all-or-nothing, so a partially resolved model must never escape.
 	if result.HasConflicts() {
@@ -150,6 +155,7 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 	merged := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
+		Comments:      comments,
 		SchemaVersion: CurrentTaskSchemaVersion,
 	}
 
@@ -286,8 +292,9 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 // so a genuine invariant break surfaces instead of being papered over.
 func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	project := &models.Project{
-		Name:  doc.ProjectName,
-		Tasks: doc.Tasks,
+		Name:     doc.ProjectName,
+		Tasks:    doc.Tasks,
+		Comments: doc.Comments,
 	}
 
 	var conflicts []MergeConflict
@@ -345,6 +352,58 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	}
 
 	return conflicts
+}
+
+// mergeProjectComments three-way merges the project's comment collection as one
+// whole value: a one-sided change is adopted, an identical change on both sides
+// coalesces, and a divergent change is a conflict.
+//
+// This is deliberately coarser than the by-identity merge the collection's
+// stable ids make possible. Two machines adding different comments concurrently
+// are reported here rather than reconciled, which loses nothing — the conflict
+// bundle holds both documents and the retry re-adds — while a wrong automatic
+// union would silently publish a collection neither machine wrote. The finer
+// merge is a later boundary; this one only has to be safe.
+func mergeProjectComments(base, local, current []*models.ProjectComment) ([]*models.ProjectComment, *MergeConflict) {
+	localChanged := !models.ProjectCommentsEqual(local, base)
+	currentChanged := !models.ProjectCommentsEqual(current, base)
+	switch {
+	case localChanged && currentChanged:
+		if models.ProjectCommentsEqual(local, current) {
+			return models.CloneProjectComments(local), nil
+		}
+		return nil, &MergeConflict{
+			Kind:    MergeConflictProjectMetadata,
+			Field:   "comments",
+			Base:    projectCommentsSummary(base),
+			Local:   projectCommentsSummary(local),
+			Current: projectCommentsSummary(current),
+			Detail:  "project comments changed on both sides",
+		}
+	case localChanged:
+		return models.CloneProjectComments(local), nil
+	case currentChanged:
+		return models.CloneProjectComments(current), nil
+	default:
+		return models.CloneProjectComments(base), nil
+	}
+}
+
+// projectCommentsSummary describes one side of a comment conflict without
+// reproducing the prose. The identities are what a human resolving the bundle
+// needs; the bodies are already in the stored documents beside it.
+func projectCommentsSummary(comments []*models.ProjectComment) string {
+	if len(comments) == 0 {
+		return "no comments"
+	}
+	ids := make([]string, 0, len(comments))
+	for _, comment := range comments {
+		if comment == nil {
+			continue
+		}
+		ids = append(ids, comment.ID)
+	}
+	return fmt.Sprintf("%d comment(s): %s", len(ids), strings.Join(ids, " "))
 }
 
 // mergeScalarMetadata three-way merges a single string project-metadata field,

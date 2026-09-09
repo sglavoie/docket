@@ -161,7 +161,7 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	// The live writer, not a named schema version: a fresh Unfiled must be born
 	// at whatever version the workspace is current at, and this bootstrap is not
 	// a migration that gets to pin one.
-	document, err := storage.WriteTasksMarkdown(project.Name, nil)
+	document, err := storage.WriteProjectMarkdown(project)
 	if err != nil {
 		return storage.ArtifactChange{}, err
 	}

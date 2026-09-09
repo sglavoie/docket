@@ -34,7 +34,7 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-16 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-17 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
 itself nine layers, acyclic, and every concern belongs to exactly one:
@@ -82,7 +82,7 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
 written by the sigil `=` and narrowed by the facet `f=`, toggled on a row by
 that same root key, and it promotes an All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-16 uses generic `Task` headings, project-local ShortID, retained fields, the
+17 uses generic `Task` headings, project-local ShortID, retained fields, the
 stored `review` flag, optional single-valued task `Context`, and an optional
 `depends` list of outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
@@ -550,12 +550,23 @@ never takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-18 catalogs hold schema-16 task Markdown. That pairing is descriptive,
+Schema-19 catalogs hold schema-17 task Markdown. That pairing is descriptive,
 never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, v17
-lifts `review` off the tag list onto the stored flag, and v18 admits the
-`RESUME` block no existing task fills, so its rewrite is the marker line alone
-and it restages no lens.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18 validates each candidate first,
+lifts `review` off the tag list onto the stored flag, v18 admits the
+`RESUME` block no existing task fills, and v19 admits the `PROJECT-COMMENTS`
+block no existing project fills, so each of those two rewrites is the marker
+line alone and neither restages a lens.
+
+A project comment is a stored value — canonical lowercase UUID, non-blank text,
+non-zero instant — gated by `models.ValidateProjectComments` and carried
+detached on `Project.Comments` and `ProjectDocument.Comments`. Schema 17 stores
+it in an optional `PROJECT-COMMENTS` block after the marker and before the first
+task heading, one `<!-- project-comment: UUID RFC3339Nano -->` header per entry,
+bodies under the shared prose escaping, instants in UTC, order creation time
+then identity, block omitted when empty. `WriteProjectMarkdown` renders the
+complete project and is what every production rewrite site spells; there is no
+name-plus-task-list renderer to fall back to.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
@@ -579,6 +590,11 @@ uniqueness is audited there for that reason: two concurrent creations each mint
 the next free number against a document that has not seen the other. An
 invariant the canonical writer enforces belongs in that audit, or the losing
 machine gets an error naming no bundle.
+
+Project comments merge as one whole collection: a one-sided change is adopted,
+identical changes coalesce, any other divergence is a
+`MergeConflictProjectMetadata` conflict on `comments` whose summaries name
+identities, never prose. Deliberately coarser than the task merge beside it.
 
 No migration rewrites `.tt/conflicts/`, so a bundle's documents stay frozen at
 the schema that recorded them: undecodable is allowed, unresolvable is not. A
