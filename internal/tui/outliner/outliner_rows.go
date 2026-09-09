@@ -458,31 +458,32 @@ const (
 
 // outlinerRow represents a single flattened row for rendering.
 type OutlinerRow struct {
-	Task               *models.Task
-	Prefix             string
-	Breadcrumb         string                    // Ancestor path for tasks promoted across a section boundary.
-	HasVisibleChildren bool                      // Children rendered in this row's section-local tree.
-	IsSectionHeader    bool                      // True if this row is a section header (not a task)
-	IsComputedHeader   bool                      // True for a computed-mode grouping header such as a due-date bucket
-	IsProjectHeader    bool                      // True if this row is a synthetic, cursorable project sub-header (not a task)
-	IsPinnedSection    bool                      // True for the synthetic Pinned header and every promoted task row beneath it
-	IsTodaySection     bool                      // True for the synthetic Today header and every explicit Today task row beneath it
-	IsNextSection      bool                      // True for the synthetic Next header and every explicit Next task row beneath it
-	PromotedTag        string                    // Canonical promoted workflow tag for synthetic header/project/task rows
-	SectionName        string                    // Section name for header rows
-	SectionCount       int                       // Number of tasks in this section
-	StateGroup         models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
-	CollapseKey        string                    // Stable identity for shared or project-owned grouping headers
-	ProjectID          string                    // Project that owns task/project-header rows; empty for shared section headers
-	IsSeparator        bool                      // True if this row is a non-navigable horizontal rule between blocks
-	OverdueCount       int                       // Overdue tasks inside the group a project header names
-	TodayCount         int                       // Today-planned tasks inside the group a project header names
-	IsChecklistItem    bool                      // True for one expanded checklist item beneath its owner task row
-	ChecklistIndex     int                       // Position of the item inside the owner task's checklist
-	ChecklistDone      bool                      // Ticked state of the item this row names
-	MatchSource        MatchSource               // Field that produced this search hit; matchSourceNone on every ordinary row
-	IsNoteRow          bool                      // True for one note from the search projection's notes tier
-	NoteRow            notes.NoteRowIdentity     // Workspace identity of the note an IsNoteRow row names
+	Task                   *models.Task
+	Prefix                 string
+	Breadcrumb             string                    // Ancestor path for tasks promoted across a section boundary.
+	HasVisibleChildren     bool                      // Children rendered in this row's section-local tree.
+	IsSectionHeader        bool                      // True if this row is a section header (not a task)
+	IsComputedHeader       bool                      // True for a computed-mode grouping header such as a due-date bucket
+	IsProjectHeader        bool                      // True if this row is a synthetic, cursorable project sub-header (not a task)
+	IsFocusedProjectHeader bool                      // True for the one header a focused projection leads with: project identity, no fold
+	IsPinnedSection        bool                      // True for the synthetic Pinned header and every promoted task row beneath it
+	IsTodaySection         bool                      // True for the synthetic Today header and every explicit Today task row beneath it
+	IsNextSection          bool                      // True for the synthetic Next header and every explicit Next task row beneath it
+	PromotedTag            string                    // Canonical promoted workflow tag for synthetic header/project/task rows
+	SectionName            string                    // Section name for header rows
+	SectionCount           int                       // Number of tasks in this section
+	StateGroup             models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
+	CollapseKey            string                    // Stable identity for shared or project-owned grouping headers
+	ProjectID              string                    // Project that owns task/project-header rows; empty for shared section headers
+	IsSeparator            bool                      // True if this row is a non-navigable horizontal rule between blocks
+	OverdueCount           int                       // Overdue tasks inside the group a project header names
+	TodayCount             int                       // Today-planned tasks inside the group a project header names
+	IsChecklistItem        bool                      // True for one expanded checklist item beneath its owner task row
+	ChecklistIndex         int                       // Position of the item inside the owner task's checklist
+	ChecklistDone          bool                      // Ticked state of the item this row names
+	MatchSource            MatchSource               // Field that produced this search hit; matchSourceNone on every ordinary row
+	IsNoteRow              bool                      // True for one note from the search projection's notes tier
+	NoteRow                notes.NoteRowIdentity     // Workspace identity of the note an IsNoteRow row names
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a
@@ -518,6 +519,17 @@ func (r OutlinerRow) IsNavigable() bool {
 // only.
 func (r OutlinerRow) IsHeaderRow() bool {
 	return r.IsSectionHeader || r.IsProjectHeader
+}
+
+// isCollapsibleHeader reports whether a header row owns a fold. Every header
+// does except the focused-project header, which carries project identity and no
+// collapse state at all: it names the projection the user is already inside, so
+// folding it would fold the whole outline out from under them. It is the one
+// read that separates the two, so h/l, the p toggle, and the fold-restoring
+// walk cannot disagree about which headers have a key. Its EffectiveCollapseKey
+// is empty by construction, and nothing may write that key.
+func (r OutlinerRow) IsCollapsibleHeader() bool {
+	return r.IsHeaderRow() && !r.IsFocusedProjectHeader
 }
 
 // collapseKey returns the effective key for collapsedSections lookups.

@@ -165,6 +165,13 @@ type EntityContext struct {
 	// the scope on every row, section headers included, so an operation that acts
 	// on the project as a whole reads this flag instead.
 	HasProjectHeaderCursor bool
+	// HasFocusedProjectHeaderCursor narrows the flag above to the one header a
+	// focused projection leads with, which names the project the Outliner is
+	// already scoped to. Every project operation reads HasProjectHeaderCursor and
+	// applies there unchanged; only the operations that would move somewhere —
+	// opening that project's scope above all — read this one to refuse, so a key
+	// is silent rather than advertising a move to where the cursor already is.
+	HasFocusedProjectHeaderCursor bool
 	// HasNoteCursor reports that the cursor rests on a row of the search
 	// projection's notes tier. A note is not an entity the operation grammar
 	// resolves — it carries no project or task ID — so an empty entity is the

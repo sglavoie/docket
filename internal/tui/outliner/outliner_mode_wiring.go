@@ -73,9 +73,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.openChildCounts = query.OpenChildCounts(scope)
 	if m.ShowsRankedList() {
 		m.buildSearchProjectionRows()
-		m.expandChecklistRows()
-		m.pruneInvisibleSelections()
-		m.ClampCursor()
+		m.finalizeModeRows()
 		return
 	}
 	// Only the flat list has a notes tier, so the payloads it retained die with
@@ -84,6 +82,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 
 	mode, ok := chrome.OutlinerModeByID(m.PrimaryMode)
 	if !ok {
+		m.finalizeModeRows()
 		return
 	}
 
@@ -111,13 +110,49 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	case chrome.RowStrategyRecent:
 		m.appendFilteredModeSections(BuildRecentModeSections(input), pinned.projected, input.TaskFilter)
 	default:
+		m.finalizeModeRows()
 		return
 	}
 	m.separatePinnedSection(pinnedBoundary)
 	m.attributeNarrowingMatches(narrowing)
+	m.finalizeModeRows()
+}
+
+// finalizeModeRows is the single row-finalization seam every buildCanonicalModeRows
+// exit passes through — the ranked-search branch, the two defensive early
+// returns, and the ordinary tail alike. Whatever a mode strategy emitted, the
+// projection is closed the same way: checklist items expand under their owners,
+// a focused projection gains its one project header above everything, selections
+// drop the rows that are no longer visible, and the cursor lands inside the
+// result. The header is prepended after the body is built so that every index a
+// strategy computed while emitting — the pinned boundary above all — still names
+// the row it was taken from.
+func (m *OutlinerModel) finalizeModeRows() {
 	m.expandChecklistRows()
+	m.prependFocusedProjectHeader()
 	m.pruneInvisibleSelections()
 	m.ClampCursor()
+}
+
+// prependFocusedProjectHeader puts one actionable project header above the
+// content of a focused projection, in both single-project forms: a direct
+// project model and an explicit project scope. It is emitted from the resolved
+// owner rather than from the rows, so an empty mode, a query that matches
+// nothing, a lens, and a subtree focus all keep it — the header is context for
+// the projection, not a search result inside it. An unresolvable scope owner
+// emits nothing at all, so a missing project is never dressed up as an empty
+// one.
+func (m *OutlinerModel) prependFocusedProjectHeader() {
+	project := m.FocusedProjectHeaderOwner()
+	if project == nil {
+		return
+	}
+	header := OutlinerRow{
+		IsProjectHeader:        true,
+		IsFocusedProjectHeader: true,
+		ProjectID:              project.ID,
+	}
+	m.Rows = slices.Insert(m.Rows, 0, header)
 }
 
 // earliestDeferWake returns the soonest instant at which a still-pending

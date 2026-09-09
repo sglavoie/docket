@@ -450,7 +450,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// the UUID and CreatedAt across an edit is stated with them because an edit
 	// that mints either is a different comment to the merge. The mechanism lives
 	// in docs/architecture/operation-grammar.md.
-	const budget = 37340
+	//
+	// Eighteenth raise, 37340 to 38284, for the one header a focused project
+	// leads with. 944 bytes buy four rules a reader would otherwise have to
+	// rediscover from a bug. The first is that this row is not a group header:
+	// giving it a collapse key folds the whole projection out from under the
+	// cursor, and `IsCollapsibleHeader` exists so `h`/`l`, `p`, the fold walk,
+	// and the glyph cannot disagree about which headers own a key. The second is
+	// the finalization seam: the four `buildCanonicalModeRows` exits used to each
+	// finish their own rows, so a header appended to the normal tail alone is
+	// missing from ranked search and from the two early returns, which reads as
+	// an intermittent header rather than a missed branch. The third is that the
+	// insert happens after the body, because `pinnedBoundary` and the narrowing
+	// attribution are absolute indices into the rows already emitted. The fourth
+	// is that an empty projection is decided by `HasContentRows` and not by the
+	// row count, which is now never zero where the header exists — the same
+	// mistake would silently retire every empty-state explanation. The mechanism
+	// lives in docs/architecture/tui-architecture.md.
+	const budget = 38284
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

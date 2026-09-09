@@ -576,7 +576,11 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			hints = append(hints, chrome.OptionalGuidanceHints(10, "↑/↓ recall query")...)
 		}
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
-	case len(m.Rows) == 0:
+	// A focused projection with nothing in it still carries its project header,
+	// so emptiness is asked of the content rather than of the row count. The
+	// explanation and the way out of it are what the user needs there; the
+	// header's own actions stay in `?` help and its action sheet.
+	case !m.HasContentRows():
 		return m.emptyGuidance(), true
 	case m.MultiSelectMode:
 		return m.multiSelectGuidance(), true
@@ -712,6 +716,10 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 		}
 	}
 	switch {
+	case row.IsFocusedProjectHeader:
+		// The one header with no fold advertises no fold key. Everything below it
+		// is still foldable on its own row, so the outline loses nothing by this
+		// row staying silent about h and l.
 	case zoomed:
 		hints = append(hints, chrome.NewGuidanceHint("Esc unzoom", 1, true))
 	case m.IsSectionRowCollapsed(row):

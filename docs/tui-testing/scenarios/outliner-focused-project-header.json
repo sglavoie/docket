@@ -1,0 +1,65 @@
+{
+  "name": "outliner-focused-project-header",
+  "fixture": "project-mix",
+  "size": "100x30",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "assert", "label": "unscoped, a project is a foldable group with a size", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+
+    { "type": "key", "label": "focus the project that holds work", "key": "P" },
+    { "type": "assert", "assert": "contains", "value": "Select Project" },
+    { "type": "assert", "assert": "contains", "value": "Mix Active Delivery" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Mix Active Delivery · All" },
+    { "type": "assert", "label": "the group gave way to one header carrying the project alone", "assert": "contains", "value": "[mix-active-delivery]" },
+    { "type": "assert", "assert": "not_contains", "value": "[mix-active-delivery] (" },
+    { "type": "assert", "label": "the project's work is still listed under it", "assert": "contains", "value": "Mix rollout plan" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the focus lands on content, not on the header above it", "key": "h" },
+    { "type": "assert", "label": "so h walks the ordinary section fold ladder", "assert": "not_contains", "value": "Mix rollout plan" },
+    { "type": "assert", "label": "and folds nothing of the project header above it", "assert": "contains", "value": "[mix-active-delivery]" },
+    { "type": "key", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
+
+    { "type": "key", "label": "Home puts the cursor on the header itself", "key": "home" },
+    { "type": "assert", "label": "which advertises the project acts and no fold key", "assert": "contains", "value": "e project" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "not_contains", "value": "h/Left collapse" },
+    { "type": "key", "label": "and h on it folds nothing at all", "key": "h" },
+    { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
+    { "type": "key", "label": "Enter has nowhere to open from the scope it names", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Mix Active Delivery · All" },
+
+    { "type": "key", "label": "the header is a project row, so the comments panel opens on it", "key": ";" },
+    { "type": "assert", "assert": "contains", "value": "Mix Active Delivery" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "leave the focus", "key": "esc" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+
+    { "type": "key", "label": "now focus the project that holds nothing", "key": "P" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "quiet" },
+    { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
+    { "type": "assert", "label": "an empty project keeps its header as context", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "label": "with the ordinary explanation printed beneath it", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the header holds at the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the empty projection's only row is still the project's own", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Project Actions: Mix Quiet Planning" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -187,6 +187,20 @@ never a per-mode copy. Each grouping surface owns a disjoint `CollapsedSections`
 namespace, since it is never cleared on a mode change; grouping never reorders a
 mode's primary sort.
 
+That kernel still suppresses both single-project forms, which instead lead with
+one `IsFocusedProjectHeader` row over the owner `FocusedProjectHeaderOwner`
+resolves — `m.Project`, else the scoped project, else nothing, so an unavailable
+owner is never a fabricated empty project. `finalizeModeRows` is the one seam
+every `buildCanonicalModeRows` exit takes, ranked and early returns included,
+and it inserts that header after the body so no emitted index moves.
+`IsCollapsibleHeader` is the row's one consequence: its collapse key is empty,
+`SetSectionRowCollapsed` refuses to write one, and it draws no fold glyph and no
+counts and takes no `h`/`l`, `p`, or `Enter`. Every other project operation
+keeps reading `HasProjectHeaderCursor`, so `e`, `#`, `*`, `C`, `;`, and `Space`
+answer there unchanged. `HasContentRows`, never the row count, decides an empty
+projection, and the empty state paints that header above the existing
+explanation.
+
 All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing. It
 admits open, undeferred work untouched for at least 90 days. `fs` is
 unavailable in Recent; entry clears only Stale: `Stale filter cleared: Recent

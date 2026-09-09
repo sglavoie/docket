@@ -220,7 +220,9 @@ func (m *OutlinerModel) enclosingCollapseKeys(index int) []string {
 	for i := index - 1; i >= 0 && (!haveSection || !haveProject); i-- {
 		row := m.Rows[i]
 		switch {
-		case row.IsProjectHeader && !haveProject:
+		// The focused-project header folds nothing, so it can hide nothing and is
+		// not one of the two headers this walk has to reopen.
+		case row.IsProjectHeader && row.IsCollapsibleHeader() && !haveProject:
 			haveProject = true
 		case row.IsSectionHeader && !haveSection:
 			haveSection = true

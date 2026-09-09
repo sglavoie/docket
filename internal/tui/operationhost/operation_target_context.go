@@ -59,9 +59,12 @@ func (c *Controller) CommandContext(shell Shell) operation.CommandContext {
 	ctx.Entity.HasSectionHeaderCursor = shell.CursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
 	_, ctx.Entity.HasNoteCursor = shell.CursorNoteIdentity()
-	// Peek hangs under an Outliner row, so only an Outliner has one to page.
+	// Peek hangs under an Outliner row, so only an Outliner has one to page. The
+	// focused-project header is an Outliner row kind for the same reason: no
+	// other surface can hold one.
 	if out := shell.ActiveOutliner(); out != nil {
 		ctx.Peek = out.PeekCommandContext()
+		ctx.Entity.HasFocusedProjectHeaderCursor = out.CursorNamesFocusedProjectHeader()
 	}
 
 	if selected, ok := shell.ActiveView().(operationSelectionProvider); ok {

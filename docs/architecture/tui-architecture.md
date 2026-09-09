@@ -113,15 +113,46 @@ mutually exclusive with Today, and Backlog clears planning, so it can only
 appear in Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a
 second bare count.
 
+A focused projection carries one more project header, and it is a different kind
+of row. `appendProjectGroupHeader` still suppresses the per-group headers for
+both single-project forms — a direct `m.Project` and an explicit scope — because
+the group would repeat the scope on every section. What replaces them is a
+single row built in `prependFocusedProjectHeader` from the owner
+`FocusedProjectHeaderOwner()` resolves, inserted at index 0 by
+`finalizeModeRows`. `finalizeModeRows` is the one seam every
+`buildCanonicalModeRows` exit passes through — the ranked-search branch, the two
+defensive early returns, and the ordinary tail — so the header cannot be present
+in six modes and missing in the seventh, and the insert happens after the body
+is built so the pinned boundary and every other index a strategy computed still
+names its own row. The owner comes from the loaded population, so a scope whose
+project is gone emits nothing rather than a fabricated empty project.
+
+`IsFocusedProjectHeader` is what tells that row from a group header, and
+`IsCollapsibleHeader()` is the one predicate derived from it. Its
+`EffectiveCollapseKey()` is empty by construction and `SetSectionRowCollapsed`
+refuses to write an empty key, so the row owns no fold: it renders no arrow and
+no `(N)`, `h`/`l` are silent on it, `p` passes it over, and `Enter` refuses in
+both `ActivateGroupAtCursor` and the `Open Project` descriptor, which reads
+`HasFocusedProjectHeaderCursor`. Every other project operation reads
+`HasProjectHeaderCursor` and is unchanged, which is what makes Edit Project,
+Project Tags, Pin Project, Add Comment, Comments, and the project action sheet
+reach the focused project from that row. It is not a task row, so task counts,
+selection ranges, review candidates, and every task-only mutation pass it by.
+The empty state draws it too: `HasContentRows()` — not the
+row count — is what decides that a projection is empty, and
+`renderOutlinerEmptyState` paints the header above the existing explanation at
+full width, since one row can never overflow the window.
+
 `n`/`N` step the cursor between grouping headers, and their stop set is
 `IsHeaderRow()` — section headers and project headers both — because the header
 kind is not uniform across modes: All, Due, and Recent emit section headers
 while Inbox, Backlog, Today, and Next group by project only, so a section-only
-stop set would leave the keys dead in four of the seven modes. That predicate is
-the same one `h`/`l` fold on and the same one the header guidance reads. The
-walk wraps at either end, and a projection holding no header at all — a
-project-scoped view or the flat ranked list — reports so through
-`OperationHandlerResult.Status` rather than leaving the key silent.
+stop set would leave the keys dead in four of the seven modes. `h`/`l` and the
+`p` toggle narrow that to `IsCollapsibleHeader()`, since the focused-project
+header is a stop without a fold. The walk wraps at either end, and a projection
+holding no header at all — the flat ranked list outside a focused project —
+reports so through `OperationHandlerResult.Status` rather than leaving the key
+silent.
 
 There are three fold axes and therefore three bulk keys: `s` for section
 headers, `p` for project group headers, `t` for task subtrees. Each is one

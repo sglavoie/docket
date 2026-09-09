@@ -58,7 +58,12 @@ func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *
 	}
 }
 
-func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
+// TestPrimaryAllFocusedProjectLeadsWithOneHeader is the focused-scope round
+// trip. Entering a project drops its redundant per-group headers and gains the
+// one focused header above the content it still shows; leaving restores the
+// cross-project grouping unchanged, which is the half this test has always
+// locked.
+func TestPrimaryAllFocusedProjectLeadsWithOneHeader(t *testing.T) {
 	alpha := primaryRowsProject(
 		"alpha",
 		primaryRowsTask("alpha-progress", models.StateDoing),
@@ -78,13 +83,21 @@ func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
 	}
 
 	outliner.PushProjectScope(alpha.ID)
+	assertSoleFocusedProjectHeader(t, outliner, alpha.ID, "all")
+	// The push seats the cursor on the first row of content rather than on the
+	// header it just inserted: the header is reachable above, not where a focus
+	// lands when there is work to look at.
+	if outliner.Cursor == 0 {
+		t.Fatal("focusing a project with content parked the cursor on its header")
+	}
 
 	sectionCount := 0
 	taskCount := 0
 	for _, row := range outliner.Rows {
 		switch {
-		case row.IsProjectHeader:
+		case row.IsProjectHeader && !row.IsFocusedProjectHeader:
 			t.Fatalf("focused project rendered redundant project header: %+v", row)
+		case row.IsProjectHeader:
 		case row.IsSectionHeader:
 			sectionCount++
 		case row.IsTaskRow():

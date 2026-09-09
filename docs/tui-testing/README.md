@@ -249,6 +249,7 @@ The committed suite exercises the product contracts directly:
 | Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
 | Single-row `Space` menu, and the `&`/`;` keys that emptied it | `outliner-space-action-catalog.json` |
 | The same `Space` resolving to the project sheet on a header, and the enumerated project delete under one undo | `outliner-project-header-actions.json`, `outliner-project-delete-undo.json` |
+| The one non-collapsible header a focused project leads with: no count, no fold key, the project acts reachable from it, an empty project keeping it above the explanation, and the cross-project grouping restored by the scope pop | `outliner-focused-project-header.json` |
 | Every entity surface's footer and `Space` sheet at the 60x20 minimum | `outliner-multiselect-minimum-layout.json`, `project-hub-minimum-layout.json`, `global-notes-resize-minimum-layout.json`, `task-attachments-minimum-layout.json`, `task-comments-minimum-layout.json` |
 | Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
 | Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `internal/tui/textgrammar_consumer_contract_test.go`, `internal/tui/quick_edit_test.go`, `internal/tui/outline_editor_test.go` |

@@ -16,7 +16,7 @@ var flatGroupingModes = []chrome.OutlinerModeID{chrome.ModeInbox, chrome.ModeBac
 // projectGroupCollapseKey returns the fold key one project's group declares.
 func projectGroupCollapseKey(m *OutlinerModel, projectID string) string {
 	for _, row := range m.Rows {
-		if row.IsProjectHeader && row.ProjectID == projectID {
+		if row.IsProjectHeader && row.IsCollapsibleHeader() && row.ProjectID == projectID {
 			return row.EffectiveCollapseKey()
 		}
 	}
@@ -61,7 +61,12 @@ func TestFlatModesPlacePinnedProjectGroupsFirst(t *testing.T) {
 	}
 }
 
-func TestFlatModeProjectHeadersDisappearInSingleProjectScopes(t *testing.T) {
+// TestFlatModeProjectGroupsGiveWayToOneFocusedHeader locks both halves of the
+// single-project rule at once: the redundant per-group headers still disappear,
+// and the one focused-project header takes their place at the top of the
+// projection. Both single-project forms are covered, because an explicit scope
+// and a direct project model reach that header by different routes.
+func TestFlatModeProjectGroupsGiveWayToOneFocusedHeader(t *testing.T) {
 	for _, mode := range flatGroupingModes {
 		t.Run(string(mode), func(t *testing.T) {
 			fixture := newGroupingFixture(t, mode)
@@ -75,6 +80,7 @@ func TestFlatModeProjectHeadersDisappearInSingleProjectScopes(t *testing.T) {
 			if headers, _ := projectGroupHeaders(scoped); len(headers) != 0 {
 				t.Fatalf("%s focused on one project rendered redundant headers %v", mode, headers)
 			}
+			assertSoleFocusedProjectHeader(t, scoped, fixture.alpha.ID, mode)
 
 			single := NewOutlinerModel(fixture.alpha, nil, nil)
 			single.SelectOutlinerMode(mode)
@@ -84,6 +90,7 @@ func TestFlatModeProjectHeadersDisappearInSingleProjectScopes(t *testing.T) {
 			if headers, _ := projectGroupHeaders(single); len(headers) != 0 {
 				t.Fatalf("%s single-project Outliner rendered redundant headers %v", mode, headers)
 			}
+			assertSoleFocusedProjectHeader(t, single, fixture.alpha.ID, mode)
 		})
 	}
 }

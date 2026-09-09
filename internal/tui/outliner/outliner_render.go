@@ -307,9 +307,18 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	badge := theme.ProjectColorStyle(project).
 		Bold(true).
 		Render("[" + projectSlug + "]")
-	indicator := theme.IconExpanded
-	if m.IsSectionRowCollapsed(row) {
+	// The focused-project header owns no fold, so it shows no glyph at all: a
+	// blank of the same single column keeps its badge on the column every row
+	// below it uses, and nothing invites an h/l that would fold the whole
+	// outline. It also carries no group size, which row.SectionCount already
+	// leaves at zero.
+	indicator := " "
+	switch {
+	case row.IsFocusedProjectHeader:
+	case m.IsSectionRowCollapsed(row):
 		indicator = theme.IconCollapsed
+	default:
+		indicator = theme.IconExpanded
 	}
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
@@ -516,7 +525,7 @@ func (m *OutlinerModel) RenderOutlinerTreeContent(width int) string {
 	if menu := m.renderOutlinerMenuDropdown(width); menu != "" {
 		return m.renderOutlinerMenuFrame(width, menu)
 	}
-	if len(m.Rows) == 0 {
+	if !m.HasContentRows() {
 		return m.renderOutlinerEmptyState(width)
 	}
 
@@ -781,8 +790,43 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	if dropdown := m.renderSearchAutocompleteDropdown(width); dropdown != "" {
 		b.WriteString(dropdown + "\n")
 	}
+	// A focused projection keeps its project header when it holds no content, in
+	// the same place and drawn by the same renderer as when it does: the header is
+	// context for the projection, and the explanation below belongs under it. One
+	// row cannot overflow the window, so this state needs no viewport and takes
+	// the full width — the scrollbar column the row path subtracts is never
+	// reserved here.
+	if header, ok := m.focusedProjectHeaderRow(); ok {
+		b.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
+		b.WriteString("\n")
+	}
 	b.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
 	return b.String()
+}
+
+// focusedProjectHeaderRow names the focused-project header the current
+// projection leads with, if it has one. It reads the rows rather than resolving
+// the owner again so that the empty state cannot draw a header the row pipeline
+// declined to build.
+func (m *OutlinerModel) focusedProjectHeaderRow() (OutlinerRow, bool) {
+	if len(m.Rows) > 0 && m.Rows[0].IsFocusedProjectHeader {
+		return m.Rows[0], true
+	}
+	return OutlinerRow{}, false
+}
+
+// hasContentRows reports whether the projection holds anything the user could
+// act on beyond the focused-project header. It is what separates "this project
+// is empty" from "there are rows": the header is always present in a focused
+// projection, so a bare length test would claim content that is not there and
+// suppress the explanation the empty state owes the user.
+func (m *OutlinerModel) HasContentRows() bool {
+	for _, row := range m.Rows {
+		if !row.IsFocusedProjectHeader {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *OutlinerModel) OutlinerEmptyMessage() string {

@@ -41,6 +41,7 @@ func (m *OutlinerModel) OperationCommandContext() operation.CommandContext {
 	// Archived guard, which only the fallback fills.
 	ctx.Entity.HasSectionHeaderCursor = m.CursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
+	ctx.Entity.HasFocusedProjectHeaderCursor = m.CursorNamesFocusedProjectHeader()
 	_, ctx.Entity.HasNoteCursor = m.CursorNoteIdentity()
 	ctx.Peek = m.PeekCommandContext()
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()

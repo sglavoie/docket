@@ -167,12 +167,73 @@ func projectGroupHeaders(m *OutlinerModel) ([]string, map[string]int) {
 	var ids []string
 	counts := make(map[string]int)
 	for _, row := range m.Rows {
-		if row.IsProjectHeader {
+		// Group headers only. A focused projection leads with a project header that
+		// groups nothing and folds nothing, and counting it here would make every
+		// grouping assertion read as if the group came back.
+		if row.IsProjectHeader && row.IsCollapsibleHeader() {
 			ids = append(ids, row.ProjectID)
 			counts[row.ProjectID] = row.SectionCount
 		}
 	}
 	return ids, counts
+}
+
+// rowForTaskID finds one task row by the task it carries, so an assertion about
+// that row survives any header the projection puts above it.
+func rowForTaskID(m *OutlinerModel, taskID string) (OutlinerRow, bool) {
+	for _, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.ID == taskID {
+			return row, true
+		}
+	}
+	return OutlinerRow{}, false
+}
+
+// assertSoleFocusedProjectHeader is the whole scoped-header contract in one
+// call: exactly one focused header, leading the projection, naming the focused
+// project, carrying no fold key and no group count, and excluded from the task
+// rows. label names the case under test so a table's failure says which row it
+// came from.
+func assertSoleFocusedProjectHeader(t *testing.T, m *OutlinerModel, projectID string, label any) {
+	t.Helper()
+	rows, indexes := focusedProjectHeaders(m)
+	if len(rows) != 1 {
+		t.Fatalf("%v focused headers = %d, want exactly one", label, len(rows))
+	}
+	header := rows[0]
+	if indexes[0] != 0 {
+		t.Fatalf("%v focused header sits at row %d, want the top of the projection", label, indexes[0])
+	}
+	if header.ProjectID != projectID {
+		t.Fatalf("%v focused header project = %q, want %q", label, header.ProjectID, projectID)
+	}
+	if !header.IsProjectHeader {
+		t.Fatalf("%v focused header is not a project header: %+v", label, header)
+	}
+	if header.IsCollapsibleHeader() || header.EffectiveCollapseKey() != "" {
+		t.Fatalf("%v focused header owns a fold key %q", label, header.EffectiveCollapseKey())
+	}
+	if header.SectionCount != 0 || header.OverdueCount != 0 || header.TodayCount != 0 {
+		t.Fatalf("%v focused header carries group counts: %+v", label, header)
+	}
+	if header.IsTaskRow() {
+		t.Fatalf("%v focused header counts as a task row", label)
+	}
+}
+
+// focusedProjectHeaders returns the focused-project header rows and the index
+// each sits at, which is the assertion pair every scoped test needs: there is
+// exactly one and it leads the projection.
+func focusedProjectHeaders(m *OutlinerModel) ([]OutlinerRow, []int) {
+	var rows []OutlinerRow
+	var indexes []int
+	for index, row := range m.Rows {
+		if row.IsFocusedProjectHeader {
+			rows = append(rows, row)
+			indexes = append(indexes, index)
+		}
+	}
+	return rows, indexes
 }
 
 func newGroupingFixture(t *testing.T, mode chrome.OutlinerModeID) groupingFixture {

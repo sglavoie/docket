@@ -49,6 +49,19 @@ func (m *OutlinerModel) CursorProjectHeaderProject() *models.Project {
 	return m.crossResolveProject(row.ProjectID)
 }
 
+// cursorNamesFocusedProjectHeader is the one read of the focused-project
+// header's row kind, shared by the Outliner's own command context and the
+// shell's, so the key that dispatches and the footer that advertises it cannot
+// disagree about which project header the cursor is on. Every project operation
+// keeps answering here through CursorProjectHeaderProject; this only says which
+// kind of header answered.
+func (m *OutlinerModel) CursorNamesFocusedProjectHeader() bool {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return false
+	}
+	return m.Rows[m.Cursor].IsFocusedProjectHeader
+}
+
 func (m *OutlinerModel) setStatus(msg string) { m.SetStatus(msg) }
 
 func (m *OutlinerModel) TaskIdentityForRow(row OutlinerRow) taskref.TaskIdentity {

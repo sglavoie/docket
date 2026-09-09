@@ -54,8 +54,15 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("ranked list rows = %v, want the scoped open rows %v", got, want)
 	}
-	if outliner.Rows[1].Breadcrumb != "Ordinary parent ›" {
-		t.Fatalf("child breadcrumb = %q, want preserved ancestor context", outliner.Rows[1].Breadcrumb)
+	// The scoped projection leads with its focused-project header, so the child is
+	// found by identity rather than by a row number that header would shift.
+	assertSoleFocusedProjectHeader(t, outliner, alpha.ID, "ranked")
+	childRow, found := rowForTaskID(outliner, child.ID)
+	if !found {
+		t.Fatal("ranked list dropped the child row")
+	}
+	if childRow.Breadcrumb != "Ordinary parent ›" {
+		t.Fatalf("child breadcrumb = %q, want preserved ancestor context", childRow.Breadcrumb)
 	}
 
 	// The deferred task is reachable from the same list, but only because the

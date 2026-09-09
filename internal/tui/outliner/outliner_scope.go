@@ -78,6 +78,24 @@ func (m *OutlinerModel) IsProjectScoped() bool {
 	return m.Project == nil && m.Scope.scoped()
 }
 
+// focusedProjectHeaderOwner names the project a focused projection's one header
+// belongs to, covering both single-project forms: a direct project model, which
+// isProjectScoped deliberately excludes, and an explicit project scope. It
+// resolves a scope through scopedProject, so an owner the population no longer
+// holds resolves to nil and emits no header rather than a fabricated empty
+// project. It returns nil in an unscoped workspace, so a mode that happens to
+// project one project's tasks still gets ordinary group headers and no focused
+// one.
+func (m *OutlinerModel) FocusedProjectHeaderOwner() *models.Project {
+	if m == nil {
+		return nil
+	}
+	if m.Project != nil {
+		return m.Project
+	}
+	return m.ScopedProject()
+}
+
 // scopeChainNames returns the active project focus name. The scope model admits
 // one base (All or a context) plus at most one project focus, so the chrome can
 // never render a nested project chain.
@@ -261,7 +279,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string, retainParked bool) {
 	m.resetViewScrollOffset()
 	m.Population.Invalidate()
 	m.CrossProjectRebuildRows()
-	m.ClampCursor()
+	m.seatCursorAtProjectionTop()
 }
 
 // popProjectScope restores the captured base scope. It reports whether a focus
@@ -492,7 +510,24 @@ func (m *OutlinerModel) FocusSubtreeAtCursor() bool {
 	m.Cursor = 0
 	m.ViewScrollOffset = 0
 	m.RebuildRows()
+	m.seatCursorAtProjectionTop()
 	return true
+}
+
+// seatCursorAtProjectionTop puts the cursor on the first row of a projection
+// that was just rebuilt from scratch, skipping the focused-project header when
+// content follows it. It is called only where the cursor was deliberately reset
+// to the top — a scope push and a subtree focus — and never on an ordinary
+// rebuild, where the header is present on both sides of the pass and every
+// captured index already counts it. The header is still where the cursor lands
+// when the projection holds nothing else, which is what keeps an empty project
+// reachable.
+func (m *OutlinerModel) seatCursorAtProjectionTop() {
+	m.Cursor = 0
+	if len(m.Rows) > 1 && m.Rows[0].IsFocusedProjectHeader {
+		m.Cursor = 1
+	}
+	m.ClampCursor()
 }
 
 // focusParentAtCursor widens Focus by exactly one level, keeping the cursor on
@@ -698,7 +733,11 @@ func (m *OutlinerModel) ActivateGroupAtCursor() bool {
 		return false
 	}
 	row := m.Rows[m.Cursor]
-	if !row.IsProjectHeader || row.ProjectID == "" {
+	// The focused-project header names the scope the Outliner is already in, so
+	// Enter there has nowhere to go. It refuses here as well as in the
+	// descriptor's applicability, so the key is silent rather than reporting a
+	// scope push that pushed nothing.
+	if !row.IsProjectHeader || row.IsFocusedProjectHeader || row.ProjectID == "" {
 		return false
 	}
 	m.PushProjectScope(row.ProjectID)

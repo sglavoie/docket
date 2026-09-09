@@ -31,7 +31,14 @@ and deferred work stay hidden unless a filter explicitly asks for them.
 
 Every mode groups its tasks by project when you are looking at more than one
 project. A project group is a foldable `[slug] (count)` header; focus a single
-project and the headers disappear because the header line already names it.
+project and those per-group headers give way to one `[slug]` header at the top
+of the projection. That one is context rather than a group: it carries no fold
+arrow and no count, `h` and `l` do nothing on it, and `Enter` has nowhere to go
+because you are already inside that project. What it does carry is the project
+itself, so `e`, `#`, `*`, `C`, `;`, and `Space` all act on the focused project
+from that row. It stays there in every mode and in ranked search, and it
+stays there when the mode, a query, a lens, or a subtree focus leaves nothing to
+list — the explanation of why the view is empty is printed underneath it.
 Project groups put pinned projects first and then sort alphabetically, and that
 header order stays the same across sections and modes. Tasks inside a group keep
 hierarchy, the parent marker, and the mode's own sort; `J`/`K` never move a

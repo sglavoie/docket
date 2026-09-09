@@ -237,7 +237,10 @@ func (m *OutlinerModel) VisibleSectionHeaders() []OutlinerRow {
 func (m *OutlinerModel) VisibleProjectGroupHeaders() []OutlinerRow {
 	headers := make([]OutlinerRow, 0)
 	for _, row := range m.Rows {
-		if row.IsProjectHeader {
+		// The focused-project header is a project header without a fold, so p
+		// passes it over: in a focused projection it is the only one, and p stays
+		// unavailable there rather than toggling nothing.
+		if row.IsProjectHeader && row.IsCollapsibleHeader() {
 			headers = append(headers, row)
 		}
 	}
@@ -286,7 +289,10 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (Ou
 // both kinds serves the section toggle, the project toggle, and the zoom alike.
 func (m *OutlinerModel) moveCursorToHeaderKey(key string) {
 	for i, row := range m.Rows {
-		if row.IsHeaderRow() && row.EffectiveCollapseKey() == key {
+		// Only a header that owns a fold can be named by one: the focused-project
+		// header's key is empty, and an empty key must not become a seat every
+		// unmatched seek lands on.
+		if row.IsCollapsibleHeader() && row.EffectiveCollapseKey() == key {
 			m.Cursor = i
 			return
 		}
@@ -342,7 +348,15 @@ func (m *OutlinerModel) ClearAllFolds() bool {
 	return true
 }
 
+// setSectionRowCollapsed is the single write of a header row's fold, so it is
+// also the single place the one header that owns no fold is refused. The
+// focused-project header's EffectiveCollapseKey is empty, and an empty key is
+// not a namespace: writing it would make one nameless fold that every future
+// keyless header would share.
 func (m *OutlinerModel) SetSectionRowCollapsed(row OutlinerRow, collapsed bool) {
+	if !row.IsCollapsibleHeader() {
+		return
+	}
 	m.Folds.setSection(row.EffectiveCollapseKey(), collapsed)
 }
 
@@ -475,7 +489,10 @@ func (m *OutlinerModel) CollapseOrMoveToParent() bool {
 	}
 	row := m.Rows[m.Cursor]
 	if row.IsHeaderRow() {
-		if m.IsZoomedSectionRow(row) || m.IsSectionRowCollapsed(row) {
+		// h says nothing on the focused-project header: it names the projection the
+		// cursor is already inside, so the only outline it could fold is the whole
+		// one.
+		if !row.IsCollapsibleHeader() || m.IsZoomedSectionRow(row) || m.IsSectionRowCollapsed(row) {
 			return false
 		}
 		m.SetSectionRowCollapsed(row, true)
@@ -532,7 +549,9 @@ func (m *OutlinerModel) ExpandAtCursor() bool {
 	}
 	row := m.Rows[m.Cursor]
 	if row.IsHeaderRow() {
-		if !m.IsSectionRowCollapsed(row) {
+		// l is silent on the focused-project header for the same reason h is: it
+		// carries no collapse state either way.
+		if !row.IsCollapsibleHeader() || !m.IsSectionRowCollapsed(row) {
 			return false
 		}
 		m.SetSectionRowCollapsed(row, false)

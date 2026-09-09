@@ -564,7 +564,9 @@ func TestEscUnwindsTheRestoredNarrowingsInOrder(t *testing.T) {
 	env := newRelationLifecycleEnv(t)
 	env.armScope(t)
 
-	env.press(t, "home", "enter")
+	// A focused scope leads with its project header, which takes no Enter, so the
+	// walk steps off it onto the first section header below.
+	env.press(t, "home", "n", "enter")
 	if !env.outliner().Focus.Zoom.Active() {
 		t.Fatal("Enter on a section header did not zoom it")
 	}

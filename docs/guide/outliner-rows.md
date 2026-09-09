@@ -173,7 +173,9 @@ its own row; a leaf still reports `No children to focus`, with the jump already
 made. A query that is only narrowing the mode's own lanes has nothing to leave,
 so `Enter` there is the ordinary zoom.
 `Enter` is that same zoom-in act on the two header rows. On a project sub-header
-it scopes the Outliner to that project. On a section header it narrows the mode
+it scopes the Outliner to that project — except on the `[slug]` header a focused
+project leads with, which names the scope you are already in and so takes no
+`Enter` and no fold. On a section header it narrows the mode
 to that one section: `Enter` on `Next` in All shows the Next lane for every
 project, and in a single-project scope shows only that project's. A collapsed
 section zooms open without disturbing its fold, and the title carries a

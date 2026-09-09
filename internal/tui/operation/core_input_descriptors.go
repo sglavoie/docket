@@ -33,6 +33,22 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 	}
 }
 
+// openProjectApplicability is Enter's project branch: it answers on a project
+// group header and on nothing else, which it establishes by ruling out every
+// other row kind Enter can land on. The focused-project header is one of those:
+// it names the scope the Outliner is already in, so Open Project has nowhere to
+// open, and refusing here rather than no-opping in the handler is what keeps the
+// footer from offering Enter on the one row where it does nothing.
+func openProjectApplicability(ctx CommandContext) bool {
+	return CoreOutlinerApplicability(ctx) &&
+		!ctx.Selection.Visual &&
+		!ctx.Entity.HasChecklistCursor &&
+		!ctx.Entity.HasSectionHeaderCursor &&
+		!ctx.Entity.HasFocusedProjectHeaderCursor &&
+		!ctx.Entity.HasNoteCursor &&
+		!CurrentTaskIdentity(ctx).Valid()
+}
+
 func CoreInputOperationDescriptors() []OperationDescriptor {
 	core := func(
 		id OperationID,
@@ -186,14 +202,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"focus project",
 		"scope to project",
 	)
-	activateGroup.Applicability = func(ctx CommandContext) bool {
-		return CoreOutlinerApplicability(ctx) &&
-			!ctx.Selection.Visual &&
-			!ctx.Entity.HasChecklistCursor &&
-			!ctx.Entity.HasSectionHeaderCursor &&
-			!ctx.Entity.HasNoteCursor &&
-			!CurrentTaskIdentity(ctx).Valid()
-	}
+	activateGroup.Applicability = openProjectApplicability
 	// The notes tier's rows name nothing the entity grammar resolves, so a note
 	// row reads as an empty entity and would otherwise land on Open Project. It
 	// is the fourth Enter act rather than a branch inside one of the other three,
