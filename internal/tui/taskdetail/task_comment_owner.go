@@ -54,6 +54,8 @@ func (o *taskCommentOwner) Entries() []CommentEntry {
 	}
 	entries := make([]CommentEntry, 0, len(o.task.Comments))
 	for _, comment := range o.task.Comments {
+		// No ID: a task comment is stored positionally and carries no identity, so the
+		// panel keeps addressing these rows by index exactly as it always has.
 		entries = append(entries, CommentEntry{Text: comment.Text, CreatedAt: comment.CreatedAt})
 	}
 	return entries
@@ -66,25 +68,29 @@ func (o *taskCommentOwner) ExternalAddHeader() string {
 	return fmt.Sprintf("# New comment on #%d: %s\n\n<!-- Enter the comment text below. -->\n\n", o.task.ShortID, o.task.Title)
 }
 
-func (o *taskCommentOwner) ExternalEditHeader(index int) string {
+func (o *taskCommentOwner) ExternalEditHeader(ref CommentRef) string {
 	if o.task == nil {
 		return "# Comment\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n"
 	}
 	return fmt.Sprintf(
 		"# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n",
-		index, o.task.ShortID, o.task.Title)
+		ref.Index, o.task.ShortID, o.task.Title)
 }
 
 func (o *taskCommentOwner) Add(text string) tea.Cmd {
 	return o.coordinator.AddComment(o.identity(), text)
 }
 
-func (o *taskCommentOwner) Edit(index int, text string) tea.Cmd {
-	return o.coordinator.EditComment(o.identity(), index, text)
+// Edit and Remove read the reference's index alone. The application layer's task
+// comment mutations are indexed and bounds-checked, and a task comment has no
+// identity to address instead, so this adapter deliberately keeps the positional
+// contract rather than pretending to a precondition it cannot enforce.
+func (o *taskCommentOwner) Edit(ref CommentRef, text string) tea.Cmd {
+	return o.coordinator.EditComment(o.identity(), ref.Index, text)
 }
 
-func (o *taskCommentOwner) Remove(index int) tea.Cmd {
-	return o.coordinator.RemoveComment(o.identity(), index)
+func (o *taskCommentOwner) Remove(ref CommentRef) tea.Cmd {
+	return o.coordinator.RemoveComment(o.identity(), ref.Index)
 }
 
 // Reload re-resolves the task pointer inside its project, which a committed

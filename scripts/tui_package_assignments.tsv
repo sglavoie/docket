@@ -656,6 +656,7 @@ primary_view_shared.go	query	L2	assigned
 priority_picker.go	chrome	L1	assigned
 project_bulk_operations.go	projecthub	L7	assigned
 project_bulk_operations_shell.go	tui	L8	receiver:AppModel
+project_comment_owner.go	taskdetail	L7	receiver:projectCommentOwner
 project_creator.go	projecthub	L7	receiver:ProjectCreatorModel
 project_editor.go	projecthub	L7	receiver:ProjectEditorModel
 project_hub.go	projecthub	L7	receiver:ProjectHubModel

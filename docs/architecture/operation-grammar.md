@@ -54,14 +54,41 @@ already named its project — would otherwise edit the one scoped project from a
 section header or an empty projection. Add project comment is the second
 operation behind that same narrowing, for the same reason and on the same terms:
 `C` is a root key too, and a quick comment that borrowed the sole scoped project
-from a section header would write to a project the user never pointed at. The set
-is a set rather than a special case so a third root key aimed at a project header
-declares itself there instead of restating the guard. `validateOutlinerOperationOnePath`
+from a section header would write to a project the user never pointed at. Project comments is the third,
+and the reason the set is a set rather than a special case: `;` is a root key on
+the same terms, so it declares itself in that map instead of restating the
+guard. `validateOutlinerOperationOnePath`
 therefore reads the manifests concatenated, and each sheet projects only its own,
 which is what keeps a project row out of the task menu and the reverse. Unarchive
 project is absent from the Outliner manifest for a different reason than Open
 project: an Outliner project header is drawn from `TaskWorkspaceProjects()`,
 which is non-archived by definition, so applicability could never admit the row.
+
+What `;` opens on a project header is the Comments panel itself, bound to a
+second `CommentOwner` rather than to a second panel. The adapter is the whole
+seam: the presentation, the grammar, the confirmations, and the three commits
+are the task panel's, and everything a project comment does differently lives in
+`projectCommentOwner`. Two things do. The entries are projected newest first,
+which is the reverse of the canonical storage order, so the row a user opens the
+panel for is the top one; and because presentation no longer agrees with
+position, every mutation crosses the seam as a `CommentRef` carrying the stored
+comment id and the text the panel read there. `internal/app` re-resolves both
+against a fresh snapshot before it writes, so a comment that moved, changed, or
+disappeared since the editor opened is refused by name instead of rewritten by
+index, and an edit that is admitted rewrites `Text` alone — the UUID and
+`CreatedAt` are what the merge reconciles by, so neither may move. The task
+adapter keeps its positional contract unchanged, because `models.Comment` has no
+identity to address.
+
+The adapter holds a project id and a resolver rather than a project pointer. A
+committed transaction replaces the shell's in-memory project objects, so an
+owner that kept the pointer it was mounted with would draw a discarded copy and
+comment on it; `Reload` re-resolves by identity and reports presence alone, which
+is what lets an archived or parked owner stay readable while `internal/app`
+refuses the write with a reason. The project path commits through `runBatch`, so
+`commentCommitCorrelation` reads `BatchTransactionResultMsg` as well as
+`TransactionResultMsg` — without that, the shell's post-commit reload would name
+no project and re-read the state the commit had just replaced.
 
 Footers do not follow the strategy everywhere, and the difference is
 deliberate. The Outliner and the Project Hub rank their bindings and project the

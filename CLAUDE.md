@@ -160,12 +160,13 @@ Transient input overlays are exempt: composer, project editor/creator, text
 editor, operation text prompt, tag/date add modes, list picker adapter, and the
 outline error and help viewers. They are modal value entry, not grammars.
 
-`*`, `#`, `C`, `e`, and `Space` are the shared keys, the cursor deciding: task or
-project pin, task or project tags, task or project comment, checklist-item or
-task or project edit, and checklist, project, or task actions. Keep each set
+`*`, `#`, `C`, `;`, `e`, and `Space` are the shared keys, the cursor deciding:
+task or project pin, task or project tags, task or project comment, task or
+project comment panel, checklist-item or task or project edit, and checklist,
+project, or task actions. Keep each set
 distinct so the footer and `?` help carry honest labels; never branch one
-descriptor's target source on runtime context. Edit project and Add project
-comment narrow to an Outliner project header through
+descriptor's target source on runtime context. Edit project, Add project
+comment, and Project comments narrow to an Outliner project header through
 `outlinerProjectOperationTargetsHeader`: the sole-scope fallback is the Hub's,
 where the row already named its project.
 
@@ -337,11 +338,22 @@ key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 `b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
 
 `;` opens the panel that reads, edits, reorders, and deletes comments and `C`
-only appends one from the list; both commit through `Service.AddComment` under
+only appends one from the list; on a task both commit through
+`Service.AddComment` under
 the one limit `taskdetail.CommentCharLimit` states. That popup is the multiline
 `TextEntry()` provider, so `Enter` writes a newline, `Ctrl+S` saves, `Esc`
 confirms a discard the prompt draws in its own box, and the prompt emits one
 submission until a refusal restores its text.
+
+On a project header both keys answer for the project, through a second
+`CommentOwner` over that same panel and never a second panel. A project comment
+is addressed by its stored id and the text the panel read, never by row: the
+list is newest first, `internal/app` re-resolves both against a fresh snapshot,
+and a comment that moved, changed, or vanished is refused rather than rewritten.
+Editing preserves the UUID and `CreatedAt`. The adapter resolves its project by
+identity on every reload, so a rename, a park, or a committed replacement of the
+in-memory object changes nothing about who the panel is for; an archived owner
+stays readable and refuses the mutation, and no refusal costs a draft.
 
 `D` repeats one task through a fresh expanded-composer draft titled Repeat Task.
 `internal/app` prepares that draft read-only and the composer preset carries it

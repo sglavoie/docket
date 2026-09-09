@@ -42,6 +42,7 @@ func ProjectOperationDescriptors() []operation.OperationDescriptor {
 			descriptor(operation.OperationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
 			operation.ValueProviderProjectTags,
 		),
+		descriptor(operation.OperationProjectComments, "Project comments", "Read, edit, and delete this project's comments", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project comment panel", "read project comments"),
 		operation.WithValueProvider(
 			descriptor(operation.OperationProjectAddComment, "Add project comment", "Append one comment to this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "comment on project", "project comment"),
 			operation.ValueProviderProjectComment,
@@ -151,6 +152,11 @@ var ProjectOperationRequirements = map[operation.OperationID]ProjectOperationReq
 	// hides a project rather than sealing it, and Unfiled is protected against
 	// lifecycle changes, not against content.
 	operation.OperationProjectAddComment: {RequireActive: true},
+	// Opening the panel carries the same lifecycle requirement the append does, so
+	// the two halves of `C`/`;` cannot disagree about which projects accept
+	// comments. An archived project's comments are read through the document, not
+	// through a surface whose every mutation would be refused.
+	operation.OperationProjectComments: {RequireActive: true},
 	// Deleting carries no lifecycle requirement on purpose: an archived project
 	// stays deletable, so archiving is a step toward removal rather than a state
 	// that traps the project in the catalog.

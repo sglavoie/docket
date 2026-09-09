@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // This file owns the project-comment use cases. A project comment is not a task
@@ -27,6 +28,178 @@ type ProjectCommentResult struct {
 	Revision string
 	// TransactionID is the workspace transaction the commit was recorded under.
 	TransactionID string
+}
+
+// ProjectCommentTarget names the single comment an edit or a removal addresses,
+// and the text the caller believed it held.
+//
+// It is an identity plus a precondition, never a position: a project's comments
+// are re-sorted on every write and presented newest-first, so a list index names
+// a different comment after any concurrent change. Original is what makes the
+// request idempotent-safe rather than merely well-addressed — a comment edited
+// under the user by another surface, an undo, or another machine's merge is
+// refused instead of being overwritten by a change the user aimed at text they
+// were no longer looking at.
+type ProjectCommentTarget struct {
+	// ProjectID is the project that owns the comment.
+	ProjectID string
+	// CommentID is the comment's stored identity.
+	CommentID string
+	// Original is the text the caller last read for that comment.
+	Original string
+}
+
+// resolvedProjectComment is one re-resolved mutation target: the project as the
+// fresh snapshot holds it, the immutable base document and revision that commit
+// must be checked against, and the addressed comment itself.
+//
+// The comment is carried as a value rather than a position on purpose. The
+// collection is rebuilt detached before every commit, and a position measured
+// against the snapshot would have to survive that rebuild to stay correct, so the
+// mutations re-find their comment by identity in the collection they are about to
+// write instead.
+type resolvedProjectComment struct {
+	project  *models.Project
+	base     *storage.ProjectDocument
+	revision string
+	comment  *models.ProjectComment
+}
+
+// resolveProjectCommentTarget re-resolves one target against a fresh snapshot.
+//
+// Every precondition is measured here, against that snapshot alone: a caller
+// hands in what it read, never a pointer it captured, so a project renamed,
+// parked, archived, undone, or replaced wholesale in memory since the panel
+// mounted is judged by what the workspace holds now.
+func (s *Service) resolveProjectCommentTarget(target ProjectCommentTarget) (resolvedProjectComment, error) {
+	projectID := strings.TrimSpace(target.ProjectID)
+	if projectID == "" {
+		return resolvedProjectComment{}, invalidInput("project", "id is required")
+	}
+	commentID := strings.TrimSpace(target.CommentID)
+	if commentID == "" {
+		return resolvedProjectComment{}, invalidInput("comment", "id is required")
+	}
+	original, err := normalizeCommentText(target.Original)
+	if err != nil {
+		return resolvedProjectComment{}, invalidInput("comment", "original text is required")
+	}
+	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return resolvedProjectComment{}, err
+	}
+	project := snap.ProjectByID(projectID)
+	if project == nil {
+		return resolvedProjectComment{}, fmt.Errorf("%w: %s", ErrProjectNotFound, projectID)
+	}
+	if project.Archived {
+		return resolvedProjectComment{}, invalidInput("project", "project is archived; restore it to change comments")
+	}
+	base := snap.Document(project.ID)
+	if base == nil {
+		return resolvedProjectComment{}, fmt.Errorf("app: project %s has no immutable base document", project.ID)
+	}
+	var found *models.ProjectComment
+	for _, comment := range project.Comments {
+		if comment != nil && comment.ID == commentID {
+			found = comment
+			break
+		}
+	}
+	if found == nil {
+		return resolvedProjectComment{}, invalidInput("comment", "comment is no longer on this project")
+	}
+	if found.Text != original {
+		return resolvedProjectComment{}, invalidInput("comment", "comment changed since it was read; reopen it and try again")
+	}
+	return resolvedProjectComment{
+		project:  project,
+		base:     base,
+		revision: snap.Revision(project.ID),
+		comment:  found,
+	}, nil
+}
+
+// commitProjectComments stages one rebuilt collection on the resolved project
+// and commits it as the single ChangeSet the caller's undo entry covers. The
+// collection is cloned by the caller before it is handed in, so the snapshot's
+// own comments are never aliased by the one this commit renders.
+func (s *Service) commitProjectComments(
+	resolved resolvedProjectComment,
+	merged []*models.ProjectComment,
+	commentID, undoAction string,
+) (ProjectCommentResult, error) {
+	models.SortProjectComments(merged)
+	if err := models.ValidateProjectComments(merged); err != nil {
+		return ProjectCommentResult{}, invalidInput("comment", err.Error())
+	}
+	project := resolved.project
+	project.Comments = merged
+
+	outcome, err := s.commitProjects([]projectCommit{{
+		project:          project,
+		expectedRevision: resolved.revision,
+		base:             resolved.base,
+		tasksUntouched:   true,
+	}}, undoAction, project.Name)
+	if err != nil {
+		return ProjectCommentResult{}, err
+	}
+	return ProjectCommentResult{
+		ProjectID:     project.ID,
+		CommentID:     commentID,
+		Revision:      revisionAt(outcome.results, 0),
+		TransactionID: transactionIDAt(outcome.results, 0),
+	}, nil
+}
+
+// EditProjectComment replaces one project comment's text in place, preserving
+// its minted identity and its creation instant.
+//
+// The instant is deliberately not refreshed: CreatedAt is immutable in the merge
+// audit, which refuses a moved instant even when both sides moved it alike, so
+// rewriting it here would turn every edit into a conflict the next time two
+// machines meet. An edit that resolves to the text already stored is still
+// committed, exactly as a task comment edit is, because the two entry points must
+// not disagree about what a no-op save means.
+func (s *Service) EditProjectComment(target ProjectCommentTarget, text string) (ProjectCommentResult, error) {
+	trimmed, err := normalizeCommentText(text)
+	if err != nil {
+		return ProjectCommentResult{}, err
+	}
+	resolved, err := s.resolveProjectCommentTarget(target)
+	if err != nil {
+		return ProjectCommentResult{}, err
+	}
+	existing := resolved.comment
+	if err = models.ValidateProjectComment(existing.ID, trimmed, existing.CreatedAt); err != nil {
+		return ProjectCommentResult{}, invalidInput("comment", err.Error())
+	}
+	merged := models.CloneProjectComments(resolved.project.Comments)
+	for _, comment := range merged {
+		if comment.ID == existing.ID {
+			comment.Text = trimmed
+		}
+	}
+	return s.commitProjectComments(resolved, merged, existing.ID, "Edit Project Comment")
+}
+
+// RemoveProjectComment deletes one project comment. It measures the same
+// preconditions an edit does, so a comment that moved or changed under the user
+// is refused rather than deleted by the position a stale list drew it at.
+func (s *Service) RemoveProjectComment(target ProjectCommentTarget) (ProjectCommentResult, error) {
+	resolved, err := s.resolveProjectCommentTarget(target)
+	if err != nil {
+		return ProjectCommentResult{}, err
+	}
+	commentID := resolved.comment.ID
+	var merged []*models.ProjectComment
+	for _, comment := range models.CloneProjectComments(resolved.project.Comments) {
+		if comment.ID != commentID {
+			merged = append(merged, comment)
+		}
+	}
+	return s.commitProjectComments(resolved, merged, commentID, "Remove Project Comment")
 }
 
 // AddProjectComment appends one timestamped comment to a project and commits it
@@ -79,28 +252,9 @@ func (s *Service) AddProjectComment(projectID, text string) (ProjectCommentResul
 		return ProjectCommentResult{}, invalidInput("comment", err.Error())
 	}
 	// The collection is rebuilt detached so the snapshot's own comments are never
-	// aliased by the one this commit renders, then sorted into the canonical order
-	// the document is written in.
+	// aliased by the one this commit renders; commitProjectComments sorts it into
+	// the canonical order the document is written in.
 	merged := append(models.CloneProjectComments(project.Comments), comment)
-	models.SortProjectComments(merged)
-	if err = models.ValidateProjectComments(merged); err != nil {
-		return ProjectCommentResult{}, invalidInput("comment", err.Error())
-	}
-	project.Comments = merged
-
-	outcome, err := s.commitProjects([]projectCommit{{
-		project:          project,
-		expectedRevision: snap.Revision(project.ID),
-		base:             base,
-		tasksUntouched:   true,
-	}}, "Add Project Comment", project.Name)
-	if err != nil {
-		return ProjectCommentResult{}, err
-	}
-	return ProjectCommentResult{
-		ProjectID:     project.ID,
-		CommentID:     comment.ID,
-		Revision:      revisionAt(outcome.results, 0),
-		TransactionID: transactionIDAt(outcome.results, 0),
-	}, nil
+	resolved := resolvedProjectComment{project: project, base: base, revision: snap.Revision(project.ID)}
+	return s.commitProjectComments(resolved, merged, comment.ID, "Add Project Comment")
 }

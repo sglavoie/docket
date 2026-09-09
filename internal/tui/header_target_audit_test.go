@@ -123,6 +123,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.filter.tags":                 "target-free",
 	"tui.project.actions":             "project",
 	"tui.project.add-comment":         "project",
+	"tui.project.comments":            "project",
 	"tui.project.set-tags":            "project",
 	"tui.scope.pin-project":           "project",
 	"tui.scope.rename-project":        "project",

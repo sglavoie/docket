@@ -245,7 +245,6 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"~": operation.OperationTaskReferences,
 		"%": operation.OperationTaskMoveToProject,
 		"&": operation.OperationTaskAttachments,
-		";": operation.OperationTaskComments,
 		// r is not shared either: only a task carries a resume note, so the key
 		// never asks what the cursor names.
 		"r": operation.OperationTaskSetResumeNote,
@@ -298,10 +297,11 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"#": {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
 		"*": {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
 		// C is the shifted write to the comment panel's read: ; opens comments and
-		// C appends one without leaving the list. The read stays task-only; the
-		// write learned the project header, because a project now carries comments
-		// of its own and they are a different record through a different use case.
+		// C appends one without leaving the list. Both learned the project header,
+		// because a project now carries comments of its own; they stay two
+		// descriptors because they are two records through two use cases.
 		"C": {operation.OperationTaskAddComment, operation.OperationProjectAddComment},
+		";": {operation.OperationTaskComments, operation.OperationProjectComments},
 		"e": {
 			operation.OperationChecklistEditItem, operation.OperationScopeRenameProject,
 			operation.OperationCoreEdit,

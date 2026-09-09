@@ -34,11 +34,13 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 			"`~` Set Dependencies",
 		"a leading `No parent (project root)` row that does what `>0` does",
 		"the destination mints its own `#N` numbers for every task it receives",
-		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
-			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
-		"`C` appends one comment to whatever the cursor names — the task, or the project a " +
-			"group header names — without opening that panel, in a multiline popup where " +
-			"`Enter` starts a new line and `Ctrl+S` saves",
+		"`&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of " +
+			"whatever the cursor names — the task, or the project a group header names — the two " +
+			"capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
+		"`C` appends one comment to the same two things without opening that panel, in a " +
+			"multiline popup where `Enter` starts a new line and `Ctrl+S` saves",
+		"`;` on a project group header opens that same panel over the project's own comments",
+		"a comment you edit or delete is the one you were looking at rather than the row it sat on",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
 		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +

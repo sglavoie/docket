@@ -13,8 +13,29 @@ import (
 // these entries in display order, so the panel can neither reach past its
 // adapter into a task pointer nor learn which kind of entity it is drawing.
 type CommentEntry struct {
+	// ID is the owner's stable identity for the comment, or empty when the owner
+	// stores its comments positionally. The panel treats it as the addressing key
+	// whenever it is present, so selection survives a list that reorders and a
+	// mutation names a comment rather than a row.
+	ID        string
 	Text      string
 	CreatedAt time.Time
+}
+
+// CommentRef names the comment one mutation addresses. It carries all three of
+// the things the panel knows about a row, because owners disagree about which of
+// them is authoritative: an owner with identities addresses by ID and treats
+// Index as a hint, while a positional owner has only Index.
+//
+// Original is the text the panel last read there, and it is a precondition
+// rather than a convenience. The list can be re-sorted, reloaded, or changed by
+// another surface between the moment an editor opens and the moment it saves, so
+// an owner that can check it refuses a changed target instead of applying the
+// user's replacement to text they were no longer looking at.
+type CommentRef struct {
+	Index    int
+	ID       string
+	Original string
 }
 
 // CommentOwnerTitle is the panel header, split the way chrome's task-scoped
@@ -55,18 +76,18 @@ type CommentOwner interface {
 	// opens with. The panel appends the seeded text.
 	ExternalAddHeader() string
 
-	// ExternalEditHeader is the same preamble for the entry at index.
-	ExternalEditHeader(index int) string
+	// ExternalEditHeader is the same preamble for the referenced entry.
+	ExternalEditHeader(ref CommentRef) string
 
 	// Add commits new comment text.
 	Add(text string) tea.Cmd
 
-	// Edit commits replacement text for the entry at index, preserving its
+	// Edit commits replacement text for the referenced entry, preserving its
 	// creation timestamp.
-	Edit(index int, text string) tea.Cmd
+	Edit(ref CommentRef, text string) tea.Cmd
 
-	// Remove commits the removal of the entry at index.
-	Remove(index int) tea.Cmd
+	// Remove commits the removal of the referenced entry.
+	Remove(ref CommentRef) tea.Cmd
 
 	// Reload re-resolves the owner against the workspace after a commit replaced
 	// the in-memory objects, and reports false when the owner is gone.

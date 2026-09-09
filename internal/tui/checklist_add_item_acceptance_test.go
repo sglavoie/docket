@@ -31,21 +31,6 @@ func checklistFixtureApp(t *testing.T) (*UITestDriver, *uitestWorkspace, *outlin
 	return driver, workspace, view
 }
 
-// seatCursorOnTaskTitled parks the Outliner cursor on the task row naming title.
-// Walking the real projection rather than counting key presses is what keeps the
-// assertion about the row kind instead of about how many `j`s the fixture
-// happens to need.
-func seatCursorOnTaskTitled(t *testing.T, view *outliner.OutlinerModel, title string) {
-	t.Helper()
-	for index, row := range view.Rows {
-		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
-			view.Cursor = index
-			return
-		}
-	}
-	t.Fatalf("no task row titled %q in the projection", title)
-}
-
 // TestChecklistAddItemAppliesFromEveryOwnerRowAndNoOther is the applicability
 // half of the acceptance: `c` has to answer from a task whose checklist is
 // empty, from one whose checklist is populated, and from a nested child, while
@@ -304,17 +289,6 @@ func TestChecklistAddItemRetriesTheRetainedItem(t *testing.T) {
 				t.Fatalf("one undo left the checklist at %q, want the %q it started from", got, committed)
 			}
 		})
-	}
-}
-
-// runChecklistActions replays actions through the production driver and fails
-// the test on the first one the app refuses to accept.
-func runChecklistActions(t *testing.T, driver *UITestDriver, actions []UITestAction) {
-	t.Helper()
-	for index, action := range actions {
-		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
-			t.Fatalf("action %d (%s %q): %v", index, action.Type, action.Key+action.Text, err)
-		}
 	}
 }
 

@@ -13,7 +13,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
-| Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete; `C` appends one comment to whatever the cursor names — the task, or the project a group header names — without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
+| Content | `&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of whatever the cursor names — the task, or the project a group header names — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete; `C` appends one comment to the same two things without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both; each copies the whole visual selection, in displayed order, as one write |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
@@ -257,6 +257,21 @@ is added, edited, or removed is answerable without leaving the panel, and the
 list rebuilds around what came back. `?` lists that grammar
 rather than the Outliner's, and both it and `u` stay literal characters while a
 comment is being typed.
+
+`;` on a project group header opens that same panel over the project's own
+comments. Everything the panel does for a task it does here — expand, add, edit
+inline or in the external editor, copy one or all, and the `Space` sheet's
+confirming Delete — and `u` and `Ctrl+R` still answer for the mutation. Two
+things read differently. The list runs newest first, because a project's
+comments are a running log and the last line is the one you opened the panel
+for. And a comment you edit or delete is the one you were looking at rather than
+the row it sat on: if it was rewritten or removed from somewhere else while your
+editor was open, the save is refused, your text stays in front of you, and
+nothing else in the list is touched. Editing keeps the comment's original
+timestamp. The panel follows the project itself, so renaming it, parking it, or
+committing a change from another surface leaves the panel reading the same
+project rather than a stale copy; archiving it leaves the comments readable and
+refuses the change, naming the reason.
 
 `C` on a project group header writes a comment onto the project instead, in the
 same popup under the same 2,000-character bound: `Enter` starts a new line,

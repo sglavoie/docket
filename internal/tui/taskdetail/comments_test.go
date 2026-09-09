@@ -132,7 +132,7 @@ func TestCommentsEditAppliesOnlyAfterTheCommitConfirmsAndKeepsTheTimestamp(t *te
 	created := task.Comments[0].CreatedAt
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 	model.EditTextInput.SetValue("edited text")
 
 	cmd := model.saveEditedComment()
@@ -268,7 +268,7 @@ func TestCommentsRefusedEditKeepsTheDraftAndTheStoredText(t *testing.T) {
 	project, task := commentsFixture(t, "stored")
 	model := newRefusingCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 	model.EditTextInput.SetValue("refused replacement")
 
 	if _, ok := settle(t, model, model.saveEditedComment()).(CommentMutationFailedMsg); !ok {
@@ -372,13 +372,13 @@ func TestCommentsRenderEditModeOOB(t *testing.T) {
 	project, task := commentsFixture(t, "only comment")
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 
 	// Simulate external deletion of all comments
 	task.Comments = nil
 	model.RefreshAfterReload()
 
-	// View() must not panic when editIndex is out of bounds
+	// View() must not panic when the edited comment is gone
 	view := model.View()
 	if view.Content == "" {
 		t.Fatal("expected non-empty view output")
@@ -389,7 +389,7 @@ func TestCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	project, task := commentsFixture(t, "only comment")
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 
 	// Simulate external deletion of all comments
 	task.Comments = nil
@@ -397,7 +397,7 @@ func TestCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	// Must not panic; should cancel edit mode and return an error cmd
 	cmd := model.editCommentInExternalEditorFromEditMode()
 	if cmd == nil {
-		t.Fatal("expected non-nil error command when editIndex is out of bounds")
+		t.Fatal("expected non-nil error command when the edited comment is gone")
 	}
 	if model.EditMode {
 		t.Fatal("expected editMode to be canceled when comment was deleted externally")
@@ -408,7 +408,7 @@ func TestCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	project, task := commentsFixture(t, "original")
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 	model.EditTextInput.SetValue("edited text")
 
 	// Simulate external deletion of all comments
@@ -417,7 +417,7 @@ func TestCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	// saveEditedComment should detect OOB and return error cmd
 	cmd := model.saveEditedComment()
 	if cmd == nil {
-		t.Fatal("expected non-nil error command when editIndex is out of bounds")
+		t.Fatal("expected non-nil error command when the edited comment is gone")
 	}
 	if model.EditMode {
 		t.Fatal("expected editMode to be canceled when comment was deleted externally")
@@ -432,7 +432,7 @@ func TestCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testing.T)
 	}
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
-	model.editIndex = 0
+	model.editRef, _ = model.commentRefAt(0)
 	// User opens edit; textarea is populated with the stored value but trims on input.
 	model.EditTextInput.SetValue("hello world")
 
@@ -478,7 +478,7 @@ func TestCommentsPanelReadsItsOwnerRatherThanATaskPointer(t *testing.T) {
 	if refTask != task || refProject != project {
 		t.Fatal("the panel's task ref no longer comes from its owner")
 	}
-	if got := owner.ExternalAddHeader(); got == "" || got == owner.ExternalEditHeader(0) {
+	if got := owner.ExternalAddHeader(); got == "" || got == owner.ExternalEditHeader(CommentRef{}) {
 		t.Fatalf("the owner's editor preambles do not distinguish add from edit: %q", got)
 	}
 }

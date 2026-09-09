@@ -40,8 +40,12 @@ type commentMutation struct {
 	kind  commentMutationKind
 	owner string
 	token uint64
-	index int
+	ref   CommentRef
 	text  string
+	// priorIDs is the identity set the list held when an add was submitted, and
+	// is nil for the other two kinds. It is what lets the confirmed add find the
+	// row it created without knowing whether this owner prepends or appends.
+	priorIDs map[string]bool
 }
 
 // commentMutationTokens mints those tokens. It is process-wide rather than
@@ -53,11 +57,10 @@ var commentMutationTokens atomic.Uint64
 // the model: it returns this value instead, and the panel decides what the
 // edited text means where every other state change is already made.
 type commentEditorFinishedMsg struct {
-	owner    string
-	kind     commentMutationKind
-	index    int
-	original string
-	text     string
+	owner string
+	kind  commentMutationKind
+	ref   CommentRef
+	text  string
 }
 
 // adaptCommentCommit runs an owner's coordinator command inline and adapts its
@@ -75,10 +78,7 @@ func adaptCommentCommit(owner string, token uint64, commit tea.Cmd, success func
 		if msg, ok := outcome.(coordinator.TransactionErrorMsg); ok {
 			return CommentMutationFailedMsg{Owner: owner, Token: token, Err: msg.Err}
 		}
-		transactionID, projectID := "", ""
-		if result, ok := outcome.(coordinator.TransactionResultMsg); ok {
-			transactionID, projectID = result.Result.TransactionID, result.Result.ProjectID
-		}
+		transactionID, projectID := commentCommitCorrelation(outcome)
 		switch msg := success().(type) {
 		case CommentAddedMsg:
 			msg.Owner, msg.Token, msg.ProjectID, msg.TransactionID = owner, token, projectID, transactionID
@@ -95,14 +95,41 @@ func adaptCommentCommit(owner string, token uint64, commit tea.Cmd, success func
 	}
 }
 
+// commentCommitCorrelation reads the transaction and project identity out of
+// whichever committed outcome an owner's coordinator reports.
+//
+// The two shapes are not interchangeable and both are live here: a task comment
+// commits one task and reports TransactionResultMsg, while a project comment
+// commits a project and reports the batch result every project-scoped mutation
+// uses. Reading only the first would leave the project path with an empty
+// project id, and the shell's post-commit reload would then re-read the very
+// state the commit replaced.
+func commentCommitCorrelation(outcome tea.Msg) (transactionID, projectID string) {
+	switch result := outcome.(type) {
+	case coordinator.TransactionResultMsg:
+		return result.Result.TransactionID, result.Result.ProjectID
+	case coordinator.BatchTransactionResultMsg:
+		if len(result.TouchedProjectIDs) > 0 {
+			projectID = result.TouchedProjectIDs[0]
+		}
+		return result.TransactionID, projectID
+	default:
+		return "", ""
+	}
+}
+
 // beginCommentMutation records the submission the returned command commits. The
 // panel keeps the user's draft and selection exactly as they are: nothing about
 // a comment changes on screen until the transaction confirms, so a refusal has
 // something to restore and a repository-backed model is never edited in place.
-func (m *CommentsModel) beginCommentMutation(kind commentMutationKind, index int, text string, commit func() tea.Cmd, success func() tea.Msg) tea.Cmd {
+func (m *CommentsModel) beginCommentMutation(kind commentMutationKind, ref CommentRef, text string, commit func() tea.Cmd, success func() tea.Msg) tea.Cmd {
 	token := commentMutationTokens.Add(1)
 	owner := m.ownerKey()
-	m.pending = &commentMutation{kind: kind, owner: owner, token: token, index: index, text: text}
+	pending := &commentMutation{kind: kind, owner: owner, token: token, ref: ref, text: text}
+	if kind == commentMutationAdd {
+		pending.priorIDs = m.currentCommentIDs()
+	}
+	m.pending = pending
 	return adaptCommentCommit(owner, token, commit(), success)
 }
 
@@ -169,14 +196,14 @@ func (m *CommentsModel) saveComment() tea.Cmd {
 }
 
 func (m *CommentsModel) submitAdd(text string) tea.Cmd {
-	return m.beginCommentMutation(commentMutationAdd, 0, text,
+	return m.beginCommentMutation(commentMutationAdd, CommentRef{}, text,
 		func() tea.Cmd { return m.owner.Add(text) },
 		func() tea.Msg { return CommentAddedMsg{} })
 }
 
-func (m *CommentsModel) submitEdit(index int, text string) tea.Cmd {
-	return m.beginCommentMutation(commentMutationEdit, index, text,
-		func() tea.Cmd { return m.owner.Edit(index, text) },
+func (m *CommentsModel) submitEdit(ref CommentRef, text string) tea.Cmd {
+	return m.beginCommentMutation(commentMutationEdit, ref, text,
+		func() tea.Cmd { return m.owner.Edit(ref, text) },
 		func() tea.Msg { return CommentEditedMsg{} })
 }
 
@@ -187,21 +214,29 @@ func (m *CommentsModel) executeDelete() tea.Cmd {
 	if !m.resyncEntries() {
 		return ownerGoneCmd()
 	}
-	index := m.Cursor
-	if index < 0 || index >= len(m.entries) {
+	ref, ok := m.commentRefAt(m.Cursor)
+	if !ok {
 		m.clampCursor()
 		return func() tea.Msg { return status.ErrorMsg{Err: errors.New("failed to remove comment")} }
 	}
 	m.Err = nil
-	return m.beginCommentMutation(commentMutationRemove, index, "",
-		func() tea.Cmd { return m.owner.Remove(index) },
+	return m.beginCommentMutation(commentMutationRemove, ref, "",
+		func() tea.Cmd { return m.owner.Remove(ref) },
 		func() tea.Msg { return CommentDeletedMsg{} })
 }
 
+// startEditComment opens the editor over the row under the cursor and freezes
+// the reference it was opened on, identity and original text included. That
+// reference is what the save is measured against, so a list that reorders or
+// reloads underneath the open editor cannot redirect the change.
 func (m *CommentsModel) startEditComment() tea.Cmd {
+	ref, ok := m.commentRefAt(m.Cursor)
+	if !ok {
+		return nil
+	}
 	m.EditMode = true
-	m.editIndex = m.Cursor
-	m.EditTextInput.SetValue(m.entries[m.Cursor].Text)
+	m.editRef = ref
+	m.EditTextInput.SetValue(ref.Original)
 	m.EditTextInput.Focus()
 	return textarea.Blink
 }
@@ -221,12 +256,13 @@ func (m *CommentsModel) saveEditedComment() tea.Cmd {
 	if !m.resyncEntries() {
 		return ownerGoneCmd()
 	}
-	if m.editIndex >= len(m.entries) {
+	ref, ok := m.refreshRef(m.editRef)
+	if !ok {
 		m.cancelEditMode()
 		return commentDeletedExternallyCmd()
 	}
 	m.Err = nil
-	return m.submitEdit(m.editIndex, text)
+	return m.submitEdit(ref, text)
 }
 
 // completeCommentMutation applies the success state a confirmed transaction
@@ -244,7 +280,7 @@ func (m *CommentsModel) completeCommentMutation(owner string, token uint64) {
 	switch pending.kind {
 	case commentMutationAdd:
 		m.cancelAddMode()
-		m.Cursor = max(len(m.entries)-1, 0)
+		m.selectAddedComment(pending.priorIDs)
 	case commentMutationEdit:
 		m.cancelEditMode()
 		m.clampCursor()
@@ -254,6 +290,20 @@ func (m *CommentsModel) completeCommentMutation(owner string, token uint64) {
 		}
 		m.clampCursor()
 	}
+}
+
+// selectAddedComment lands the cursor on the row a confirmed add created. It
+// finds it by the identity that was not in the list when the add was submitted,
+// because an owner is free to present its newest comment first; only an owner
+// with no identities at all falls back to the last row, where its appends land.
+func (m *CommentsModel) selectAddedComment(prior map[string]bool) {
+	for i, entry := range m.entries {
+		if entry.ID != "" && !prior[entry.ID] {
+			m.Cursor = i
+			return
+		}
+	}
+	m.Cursor = max(len(m.entries)-1, 0)
 }
 
 // failCommentMutation restores the draft a refused commit was carrying. The
@@ -277,7 +327,7 @@ func (m *CommentsModel) failCommentMutation(msg CommentMutationFailedMsg) tea.Cm
 	case commentMutationEdit:
 		m.AddMode = false
 		m.EditMode = true
-		m.editIndex = pending.index
+		m.editRef = pending.ref
 		m.EditTextInput.SetValue(pending.text)
 		m.EditTextInput.Focus()
 		return textarea.Blink
@@ -308,19 +358,20 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 		m.Err = nil
 		return m.submitAdd(msg.text)
 	case commentMutationEdit:
-		if msg.text == msg.original {
+		if msg.text == msg.ref.Original {
 			m.cancelEditMode()
 			return nil
 		}
 		if !m.resyncEntries() {
 			return ownerGoneCmd()
 		}
-		if msg.index >= len(m.entries) {
+		ref, ok := m.refreshRef(msg.ref)
+		if !ok {
 			m.cancelEditMode()
 			return commentDeletedExternallyCmd()
 		}
 		m.Err = nil
-		return m.submitEdit(msg.index, msg.text)
+		return m.submitEdit(ref, msg.text)
 	case commentMutationRemove:
 		return nil
 	}
@@ -337,15 +388,14 @@ func (m *CommentsModel) editInExternalEditor() tea.Cmd {
 	if !m.resyncEntries() {
 		return ownerGoneCmd()
 	}
-	index := m.Cursor
-	if index < 0 || index >= len(m.entries) {
+	ref, ok := m.commentRefAt(m.Cursor)
+	if !ok {
 		m.clampCursor()
 		return commentDeletedExternallyCmd()
 	}
-	original := m.entries[index].Text
 	owner := m.ownerKey()
-	return m.editCommentWithExternalEditor(m.owner.ExternalEditHeader(index)+original, true, func(newText string) tea.Msg {
-		return commentEditorFinishedMsg{owner: owner, kind: commentMutationEdit, index: index, original: original, text: newText}
+	return m.editCommentWithExternalEditor(m.owner.ExternalEditHeader(ref)+ref.Original, true, func(newText string) tea.Msg {
+		return commentEditorFinishedMsg{owner: owner, kind: commentMutationEdit, ref: ref, text: newText}
 	})
 }
 
@@ -370,16 +420,15 @@ func (m *CommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	if !m.resyncEntries() {
 		return ownerGoneCmd()
 	}
-	if m.editIndex >= len(m.entries) {
+	ref, ok := m.refreshRef(m.editRef)
+	if !ok {
 		m.cancelEditMode()
 		return commentDeletedExternallyCmd()
 	}
-	index := m.editIndex
-	original := m.entries[index].Text
 	owner := m.ownerKey()
-	content := m.owner.ExternalEditHeader(index) + strings.TrimSpace(m.EditTextInput.Value())
+	content := m.owner.ExternalEditHeader(ref) + strings.TrimSpace(m.EditTextInput.Value())
 	return m.editCommentWithExternalEditor(content, true, func(newText string) tea.Msg {
-		return commentEditorFinishedMsg{owner: owner, kind: commentMutationEdit, index: index, original: original, text: newText}
+		return commentEditorFinishedMsg{owner: owner, kind: commentMutationEdit, ref: ref, text: newText}
 	})
 }
 

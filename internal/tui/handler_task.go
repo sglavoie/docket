@@ -82,6 +82,9 @@ func (m *AppModel) handleTaskViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case taskdetail.ShowTaskCommentsMsg:
 		return m.handleShowTaskComments(msg)
 
+	case taskdetail.ShowProjectCommentsMsg:
+		return m.handleShowProjectComments(msg)
+
 	}
 	return false, nil
 }
@@ -92,6 +95,25 @@ func (m *AppModel) handleShowTaskComments(msg taskdetail.ShowTaskCommentsMsg) (b
 		return true, nil
 	}
 	owner := taskdetail.NewTaskCommentOwner(msg.Task, msg.Project, m.secondaryFeatures.Subview)
+	view := taskdetail.NewCommentsPanel(owner, "")
+	view.SetOperationDispatch(m.dispatchOperationKey)
+	return m.showViewInit(presentation.ViewTaskComments, view)
+}
+
+// handleShowProjectComments mounts the same Comments panel over a project.
+//
+// The owner is handed the shell's project resolver rather than the project the
+// message carried, because a committed transaction replaces the in-memory
+// project object: the panel must survive its own writes, an undo, a rename, and
+// a tag change, and it can only do that by re-reading the identity it was opened
+// on. The resolver reads the shell's stable project cache, which is every
+// project the catalog holds, so a parked project stays reachable here exactly as
+// it is everywhere else.
+func (m *AppModel) handleShowProjectComments(msg taskdetail.ShowProjectCommentsMsg) (bool, tea.Cmd) {
+	if msg.Project == nil {
+		return true, nil
+	}
+	owner := taskdetail.NewProjectCommentOwner(msg.Project, m.projectByID, m.secondaryFeatures.ProjectComment)
 	view := taskdetail.NewCommentsPanel(owner, "")
 	view.SetOperationDispatch(m.dispatchOperationKey)
 	return m.showViewInit(presentation.ViewTaskComments, view)

@@ -15,6 +15,14 @@ type ShowTaskCommentsMsg struct {
 	Project *models.Project
 }
 
+// ShowProjectCommentsMsg opens the same comments view over a project. It is a
+// second message rather than a nullable field on the task one because the two
+// carry different owners: the shell builds a different adapter for each, and a
+// message that could name both would let a handler mount a panel on neither.
+type ShowProjectCommentsMsg struct {
+	Project *models.Project
+}
+
 // CloseTaskCommentsMsg closes the comments view.
 type CloseTaskCommentsMsg struct{ route.PopViewMsg }
 

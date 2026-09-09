@@ -70,15 +70,16 @@ func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 }
 
 func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
-	if m.editIndex >= len(m.entries) {
+	index := m.indexOfRef(m.editRef)
+	if index < 0 {
 		b.WriteString(theme.ValidationErrorStyle.Render("Comment was deleted externally."))
 		b.WriteString("\n\n")
 		spec, ok := m.guidanceSpec()
 		b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
-	entry := m.entries[m.editIndex]
-	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
+	entry := m.entries[index]
+	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", index)))
 	b.WriteString("\n")
 	b.WriteString(theme.MutedStyle.Render(chrome.FormatTimestampLabeled("Created", entry.CreatedAt)))
 	b.WriteString("\n\n")

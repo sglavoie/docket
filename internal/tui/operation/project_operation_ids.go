@@ -28,6 +28,12 @@ const (
 	// keep two honest labels, exactly as the tag and pin pairs do.
 	OperationProjectAddComment OperationID = "tui.project.add-comment"
 
+	// OperationProjectComments opens the Comments panel over a project. It stands
+	// to OperationProjectAddComment exactly as OperationTaskComments stands to
+	// OperationTaskAddComment: `C` writes one comment without leaving the list,
+	// while `;` opens the surface that reads, edits, reorders nothing, and deletes.
+	OperationProjectComments OperationID = "tui.project.comments"
+
 	// OperationProjectActions is the Outliner's Space on a project group header.
 	// It lives in the tui.project.* namespace because it names a project, and
 	// apart from the Hub's own sheet operation because the two surfaces offer

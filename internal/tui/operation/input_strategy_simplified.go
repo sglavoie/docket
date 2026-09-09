@@ -85,7 +85,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			// correspondence the other keyed sigils do: the character that writes an
 			// attachment or a comment on a capture line opens that panel on a row.
 			{OperationID: OperationTaskAttachments, Keys: []string{"&"}, DisplayKey: "&", FooterRank: 14, FooterLabel: "attachments"},
-			{OperationID: OperationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 15, FooterLabel: "comments"},
+			{OperationID: OperationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 15, FooterLabel: "comments", SharedKey: true},
+			// `;` reads comments on whatever the cursor names, on the same terms as the
+			// `C` pair below it: a project header opens the project's own comments
+			// through its own descriptor rather than through one that branches on
+			// runtime context. It takes no second footer rank, because the rank above
+			// already advertises the key.
+			{OperationID: OperationProjectComments, Keys: []string{";"}, DisplayKey: ";", SharedKey: true},
 			// Enter zooms in on whatever the cursor names. The four acts carry
 			// different targets and different vocabularies, so they stay four
 			// descriptors with four honest labels rather than one that branches on

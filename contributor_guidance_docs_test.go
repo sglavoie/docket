@@ -432,7 +432,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// set, so a third root key aimed at a project header declares itself in
 	// `outlinerProjectOperationTargetsHeader` instead of restating the check. The
 	// mechanism lives in docs/architecture/operation-grammar.md.
-	const budget = 36574
+	//
+	// Seventeenth raise, 36574 to 37340, for `;` joining `C` on the project header
+	// and for what the project half of that panel is held to. 766 bytes buy three
+	// rules that are silent when guessed wrong. The first is that the second owner
+	// is an adapter over the one panel rather than a second panel, which is the
+	// decision a reader is most likely to undo: a project comments surface reads
+	// like a sibling of the task one, and building it that way forks the grammar,
+	// the footer, and the delete confirmation. The second is that a project
+	// comment is addressed by id and by the text the panel read, and that the list
+	// runs newest first — those two are a pair, because reversing the display is
+	// exactly what makes an index-addressed mutation rewrite the wrong comment,
+	// and the failure is invisible: it commits. The third is that the adapter
+	// re-resolves its project by identity on every reload, which a reader holding
+	// a `*models.Project` has no reason to expect until a commit replaces the
+	// object and the panel is silently commenting on a discarded one. Preserving
+	// the UUID and CreatedAt across an edit is stated with them because an edit
+	// that mints either is a different comment to the merge. The mechanism lives
+	// in docs/architecture/operation-grammar.md.
+	const budget = 37340
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -462,11 +480,11 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"direct key and confirms first",
 		"The Outliner project-header sheet is Archive and Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
-		"`*`, `#`, `C`, `e`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
-			"task or project tags, task or project comment, checklist-item or task or project edit, " +
-			"and checklist, project, or task actions",
-		"Edit project and Add project comment narrow to an Outliner project header through " +
-			"`outlinerProjectOperationTargetsHeader`",
+		"`*`, `#`, `C`, `;`, `e`, and `Space` are the shared keys, the cursor deciding: task or " +
+			"project pin, task or project tags, task or project comment, task or project comment panel, " +
+			"checklist-item or task or project edit, and checklist, project, or task actions",
+		"Edit project, Add project comment, and Project comments narrow to an Outliner project " +
+			"header through `outlinerProjectOperationTargetsHeader`",
 		"Add Item also answers from the owner task's row, since an empty checklist has no item row",
 		"Its reveal rides `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing",
 		"`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and commits it " +
@@ -513,8 +531,12 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
 		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +
-			"only appends one from the list; both commit through `Service.AddComment` under " +
-			"the one limit `taskdetail.CommentCharLimit` states",
+			"only appends one from the list; on a task both commit through `Service.AddComment` " +
+			"under the one limit `taskdetail.CommentCharLimit` states",
+		"On a project header both keys answer for the project, through a second `CommentOwner` " +
+			"over that same panel and never a second panel",
+		"A project comment is addressed by its stored id and the text the panel read, never by row",
+		"The adapter resolves its project by identity on every reload",
 		"That popup is the multiline `TextEntry()` provider, so `Enter` writes a newline, " +
 			"`Ctrl+S` saves, `Esc` confirms a discard the prompt draws in its own box, and " +
 			"the prompt emits one submission until a refusal restores its text",

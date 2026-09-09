@@ -264,8 +264,12 @@ func (m *CommentsModel) HasSelection() bool {
 	return len(m.entries) > 0 && m.Cursor >= 0 && m.Cursor < len(m.entries)
 }
 
+// hasUnsavedEditChanges compares the buffer with the text the editor was opened
+// on rather than with whatever the list now holds at that position. What the user
+// stands to lose is the difference from what they started editing, and that is
+// true whether or not the underlying list moved while they typed.
 func (m *CommentsModel) hasUnsavedEditChanges() bool {
-	return m.editIndex < len(m.entries) && strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.entries[m.editIndex].Text)
+	return strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.editRef.Original)
 }
 
 func (m *CommentsModel) BeginAddMode() tea.Cmd {

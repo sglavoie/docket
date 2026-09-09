@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // projectOperationApplicability composes the entity-shape check with the same
@@ -66,17 +67,18 @@ var projectOperationsOwningTheirRefusal = map[operation.OperationID]bool{
 var outlinerProjectHeaderOperations = map[operation.OperationID]bool{
 	operation.OperationScopeRenameProject: true,
 	operation.OperationProjectAddComment:  true,
+	operation.OperationProjectComments:    true,
 }
 
 // outlinerProjectOperationTargetsHeader narrows the root-key project operations
-// to an actual Outliner project header. `e` and `C` are root keys there, so the
+// to an actual Outliner project header. `e`, `C`, and `;` are root keys there, so the
 // cursor is the only thing that says which project the user meant:
 // ProjectOperationApplicable's sole-scope fallback is right for a Hub row that
 // named its project and wrong for a key press from a section header, a checklist
-// row, or an empty projection, where it would silently edit or comment on the
-// one scoped project. The narrowing belongs to those two alone — the Hub keeps
-// the fallback, and every other project operation keeps the applicability it
-// had.
+// row, or an empty projection, where it would silently edit, comment on, or open
+// the comments of the one scoped project. The narrowing belongs to those three
+// alone — the Hub keeps the fallback, and every other project operation keeps the
+// applicability it had.
 func outlinerProjectOperationTargetsHeader(id operation.OperationID, ctx operation.CommandContext) bool {
 	if !outlinerProjectHeaderOperations[id] || !operation.CoreOutlinerApplicability(ctx) {
 		return true
@@ -205,6 +207,8 @@ func (c *Controller) projectOperationMessage(id operation.OperationID, project *
 		return projecthub.ProjectDeleteRequestMsg{Project: project}
 	case operation.OperationScopeOpenProjectNote:
 		return notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
+	case operation.OperationProjectComments:
+		return taskdetail.ShowProjectCommentsMsg{Project: project}
 	default:
 		return nil
 	}

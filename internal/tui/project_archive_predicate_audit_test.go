@@ -26,6 +26,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/app/activity.go:completionActivityFromSnapshot":                      "availability: completion activity mirrors the base task workspace population",
 	"internal/app/notes_port.go:ProjectLocationPrecondition":                       "lifecycle: a note transaction refuses an owner archived since the snapshot",
 	"internal/app/project_comments.go:AddProjectComment":                           "lifecycle: an archived project refuses a new comment; parked owners and Unfiled write like any other project",
+	"internal/app/project_comments.go:resolveProjectCommentTarget":                 "lifecycle: an archived project refuses an edit or a removal on the same terms an add is refused; the panel stays readable",
 	"internal/app/task_repeat.go:PrepareTaskRepeatDraft":                           "lifecycle: an archived project cannot receive the repeated task, so the draft is refused before it opens; parked destinations are admitted",
 	"internal/config/domain.go:validate":                                           "lifecycle: protected Unfiled can never be archived",
 	"internal/config/domain_catalog_projects.go:RepairSystemUnfiledProject":        "lifecycle: protected Unfiled can never be archived",

@@ -40,9 +40,11 @@ type CommentsModel struct {
 	AddMode   bool
 	TextInput textarea.Model
 
-	// Edit mode
+	// Edit mode. editRef is the comment the open editor was opened on, captured
+	// when it opened: the list can reorder or reload while the editor is up, so
+	// the row the user started from is a stored reference and never the cursor.
 	EditMode      bool
-	editIndex     int
+	editRef       CommentRef
 	EditTextInput textarea.Model
 
 	// Expanded view mode (show full comment)
@@ -109,13 +111,100 @@ func (m *CommentsModel) ownerKey() string {
 	return m.owner.Key()
 }
 
-// reloadEntries re-projects the owner's comments into the panel's own list.
+// reloadEntries re-projects the owner's comments into the panel's own list and
+// keeps the cursor on the comment it was on.
+//
+// Selection follows identity wherever the owner supplies one, because a project's
+// comments are presented newest first and a new comment therefore arrives at the
+// top: an index-preserving cursor would silently slide onto a neighbor every
+// time the list grew. An owner whose entries carry no identity keeps the index,
+// which is the only thing it has.
 func (m *CommentsModel) reloadEntries() {
 	if m.owner == nil {
 		m.entries = nil
 		return
 	}
+	selected := m.selectedCommentID()
 	m.entries = m.owner.Entries()
+	m.restoreSelection(selected)
+}
+
+// selectedCommentID names the comment under the cursor, or "" when there is no
+// row or the owner stores no identities.
+func (m *CommentsModel) selectedCommentID() string {
+	if m.Cursor < 0 || m.Cursor >= len(m.entries) {
+		return ""
+	}
+	return m.entries[m.Cursor].ID
+}
+
+// restoreSelection puts the cursor back on one identity. A comment that is gone
+// leaves the cursor where it was, so a deletion settles by position and the
+// caller's clamp decides the rest.
+func (m *CommentsModel) restoreSelection(id string) {
+	if id == "" {
+		return
+	}
+	for i, entry := range m.entries {
+		if entry.ID == id {
+			m.Cursor = i
+			return
+		}
+	}
+}
+
+// commentRefAt names the entry at one position for a mutation: its identity when
+// the owner has one, and the text the panel is currently showing there.
+func (m *CommentsModel) commentRefAt(index int) (CommentRef, bool) {
+	if index < 0 || index >= len(m.entries) {
+		return CommentRef{}, false
+	}
+	entry := m.entries[index]
+	return CommentRef{Index: index, ID: entry.ID, Original: entry.Text}, true
+}
+
+// indexOfRef resolves a stored reference against the list as it stands now,
+// returning -1 when the comment it names is gone. An identified comment is found
+// by identity wherever it has moved to; a positional one can only be
+// bounds-checked, which is exactly what the task panel has always done.
+func (m *CommentsModel) indexOfRef(ref CommentRef) int {
+	if ref.ID != "" {
+		for i, entry := range m.entries {
+			if entry.ID == ref.ID {
+				return i
+			}
+		}
+		return -1
+	}
+	if ref.Index < 0 || ref.Index >= len(m.entries) {
+		return -1
+	}
+	return ref.Index
+}
+
+// refreshRef re-points a reference at the row its comment now occupies. It
+// reports false when the comment is gone, which is the one refusal every edit
+// path shares.
+func (m *CommentsModel) refreshRef(ref CommentRef) (CommentRef, bool) {
+	index := m.indexOfRef(ref)
+	if index < 0 {
+		return CommentRef{}, false
+	}
+	ref.Index = index
+	return ref, true
+}
+
+// currentCommentIDs is the identity set the list holds right now. An add records
+// it so the confirmed commit can land the cursor on whichever row is new, rather
+// than on a position that assumes where the owner appends.
+func (m *CommentsModel) currentCommentIDs() map[string]bool {
+	ids := make(map[string]bool, len(m.entries))
+	for _, entry := range m.entries {
+		if entry.ID != "" {
+			ids[entry.ID] = true
+		}
+	}
+	return ids
 }
 
 // clampCursor keeps the cursor inside the list it points into.
@@ -177,7 +266,7 @@ func (m *CommentsModel) OnExit() {
 	m.AddMode = false
 	m.EditMode = false
 	m.ExpandedView = false
-	m.editIndex = 0
+	m.editRef = CommentRef{}
 	m.pending = nil
 	m.TextInput.Reset()
 	m.EditTextInput.Reset()
