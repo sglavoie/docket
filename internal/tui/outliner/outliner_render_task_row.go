@@ -652,9 +652,9 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 	return chrome.ZebraLine(line, rowWidth, rowIndex)
 }
 
-// InlinePeekLinesForRow is the page of the row's detail document that is on
-// screen. The document itself, its page geometry, and the remembered page live
-// in inline_peek_document.go and inline_peek_paging.go; this is the seam the
+// InlinePeekLinesForRow is the window onto the row's detail document that is on
+// screen. The document itself, its window geometry, and the remembered offset
+// live in inline_peek_document.go and inline_peek_paging.go; this is the seam the
 // renderer and the viewport measurement below it share.
 func (m *OutlinerModel) InlinePeekLinesForRow(
 	row OutlinerRow,
@@ -666,15 +666,15 @@ func (m *OutlinerModel) InlinePeekLinesForRow(
 		return nil
 	}
 	doc := m.inlinePeekDocumentForRow(row, indent, rowWidth, colLayout)
-	return doc.Lines(m.peekPageForRow(row, doc))
+	return doc.Lines(m.peekOffsetForRow(row, doc))
 }
 
 // inlinePeekLineCount measures the Peek height ComputeOutlinerViewport must
 // reserve. It reconstructs the row's real indent and substitutes the worst-case
 // column layout, because the title continuation sits outside the paged budget
 // and a measurement that assumed neither would diverge without bound on a deep
-// row. It counts the same page the render draws: both call Lines, so a page
-// that is reserved and a page that is painted cannot disagree.
+// row. It counts the same window the render draws: both call Lines, so a height
+// that is reserved and a window that is painted cannot disagree.
 func (m *OutlinerModel) inlinePeekLineCount(row OutlinerRow, width int) int {
 	width = max(width, 1)
 	indent := inlinePeekIndentForRow(row)

@@ -25,6 +25,8 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 		OperationCoreGotoTaskProject,
 		OperationCoreGotoRelation,
 		OperationCorePeek,
+		OperationCorePeekHalfPageDown,
+		OperationCorePeekHalfPageUp,
 		OperationCorePeekPageDown,
 		OperationCorePeekPageUp:
 		return true
@@ -93,36 +95,60 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Entity.HasChecklistCursor &&
 			CurrentTaskIdentity(ctx).Valid()
 	}
-	// The two paging keys are Peek's own, not the list's: Ctrl+D and Ctrl+U keep
-	// the cursor, and a pane that scrolls beside a list has to say which of the
-	// two a key moves. They name a task target for the same reason Peek does —
-	// the document belongs to the row under the cursor — and they are applicable
-	// only while that document is on screen with somewhere to go, so the footer
-	// never offers a page turn that does nothing.
+	// The four scrolling keys are Peek's own while a Peek is on screen: a pane
+	// that scrolls beside a list has to say which of the two a key moves, and the
+	// pane the reader is looking at is the honest answer. They name a task target
+	// for the same reason Peek does — the document belongs to the row under the
+	// cursor — and every one of them is applicable on the visible document alone.
+	// Ctrl+D and Ctrl+U share their keys with the list's own half page, so
+	// applicability is what hands the press to the pane; were it narrowed to a
+	// window with somewhere to go, the key at the end of a document would fall
+	// through to the sibling binding and jump the cursor instead. Whether a
+	// movement is worth offering is a separate question, and PeekContext's two
+	// direction fields are where the footer asks it.
+	visiblePeek := func(ctx CommandContext) bool {
+		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible
+	}
+	peekHalfPageDown := withTaskTarget(core(
+		OperationCorePeekHalfPageDown,
+		"Scroll Peek Down",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"half page peek down",
+		"more task detail",
+	))
+	peekHalfPageDown.Applicability = visiblePeek
+	peekHalfPageUp := withTaskTarget(core(
+		OperationCorePeekHalfPageUp,
+		"Scroll Peek Up",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"half page peek up",
+		"previous task detail",
+	))
+	peekHalfPageUp.Applicability = visiblePeek
 	peekPageDown := withTaskTarget(core(
 		OperationCorePeekPageDown,
 		"Page Peek Down",
 		OperationCategoryNavigation,
 		TargetCardinalityOne,
 		OperationRiskReadOnly,
-		"scroll peek down",
-		"more task detail",
+		"full page peek down",
+		"next peek page",
 	))
-	peekPageDown.Applicability = func(ctx CommandContext) bool {
-		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible && ctx.Peek.CanPageDown
-	}
+	peekPageDown.Applicability = visiblePeek
 	peekPageUp := withTaskTarget(core(
 		OperationCorePeekPageUp,
 		"Page Peek Up",
 		OperationCategoryNavigation,
 		TargetCardinalityOne,
 		OperationRiskReadOnly,
-		"scroll peek up",
-		"previous task detail",
+		"full page peek up",
+		"previous peek page",
 	))
-	peekPageUp.Applicability = func(ctx CommandContext) bool {
-		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible && ctx.Peek.CanPageUp
-	}
+	peekPageUp.Applicability = visiblePeek
 	focusSubtree := withTaskTarget(core(
 		OperationCoreFocusSubtree,
 		"Focus Subtree",
@@ -288,6 +314,8 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		activateGroup,
 		openNote,
 		peek,
+		peekHalfPageDown,
+		peekHalfPageUp,
 		peekPageDown,
 		peekPageUp,
 		core(OperationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),

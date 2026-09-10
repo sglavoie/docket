@@ -199,13 +199,18 @@ dates line reading
 attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
 list, the task's context, and its tags. Every one of those is shown whole. Long
 text wraps rather than being cut off, and nothing is dropped to make room for
-something else: Peek shows five rows at a time and `Ctrl+F` and `Ctrl+B` page
-through the rest. Each turn keeps one row of the last page for continuity, and
-while there is more than a page a row at the bottom reads `12 above · 7 below` so
-you always know how much is out of sight. Those two keys are offered only when
-Peek is open and that direction can actually move. The page you turn to is
-remembered while you stay on the task and resets by itself when you move to
-another task, the detail changes, or the terminal is resized.
+something else: Peek shows five rows at a time and `Ctrl+D` and `Ctrl+U` scroll
+through the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page
+at a time. Every move keeps at least one row of what you were reading, the two
+step sizes mix freely, and the last one stops at the end of the detail rather
+than running past it. While there is more than a window's worth, a row at the
+bottom reads `12 above · 7 below` so you always know how much is out of sight.
+The footer offers a key only when that direction can actually move, but all four
+belong to an open Peek: pressing one at the end of the detail does nothing rather
+than moving the outline underneath. `PgDn` and `PgUp` still move the outline,
+open Peek or not. Where you scrolled to is remembered while you stay on the task
+and resets by itself when you move to another task, the detail changes, or the
+terminal is resized.
 
 Both reference lists are read-only wherever Peek is open, and
 both carry their own count. `Dependencies` names what this task stores, in the

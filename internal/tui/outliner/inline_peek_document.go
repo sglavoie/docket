@@ -26,11 +26,16 @@ const (
 	// row is on screen. The counter is only drawn when there is something off
 	// screen to count, so an unpaged document keeps the whole budget.
 	inlinePeekPagedRows = inlinePeekBodyRows - 1
-	// inlinePeekPageOverlap keeps one content row on both sides of a page
-	// boundary, which is what makes a page turn readable: the row that ended the
-	// last page leads the next one, so a wrapped sentence is never split across a
-	// keystroke with nothing in common between the two halves.
-	inlinePeekPageOverlap = 1
+	// inlinePeekHalfPageRows and inlinePeekFullPageRows are the two distances a
+	// scroll travels. Both are counted in content rows rather than in pages, so
+	// the window stops wherever the arithmetic lands instead of on a boundary the
+	// document imposed. A full page leaves one content row on screen across the
+	// move, which is what makes the jump readable: the row that ended the last
+	// window leads the next one, so a wrapped sentence is never split across a
+	// keystroke with nothing in common between the two halves. A half page is the
+	// shorter step the same keys mean over every list in the product.
+	inlinePeekHalfPageRows = 2
+	inlinePeekFullPageRows = inlinePeekPagedRows - 1
 	// inlinePeekTitleRows caps the title continuation alone. The continuation is
 	// header rather than body — it completes what the row clipped — so it sits
 	// outside the paged budget and outside its paging.
@@ -52,8 +57,8 @@ type inlinePeekDocument struct {
 	// on screen.
 	Body []string
 	// Fingerprint identifies the content the body was built from, independent of
-	// the width it was wrapped to. It is what lets a stored page survive a
-	// re-render and fall back to the first page when the detail, the reference
+	// the width it was wrapped to. It is what lets a stored offset survive a
+	// re-render and fall back to the top when the detail, the reference
 	// population, or the task itself changed.
 	Fingerprint string
 
@@ -69,39 +74,29 @@ func (doc inlinePeekDocument) Paged() bool {
 	return len(doc.Body) > inlinePeekBodyRows
 }
 
-func (doc inlinePeekDocument) pageStep() int {
-	return max(inlinePeekPagedRows-inlinePeekPageOverlap, 1)
-}
-
-// PageCount is how many pages the body occupies, always at least one.
-func (doc inlinePeekDocument) PageCount() int {
-	if !doc.Paged() {
-		return 1
-	}
-	remaining := len(doc.Body) - inlinePeekPagedRows
-	step := doc.pageStep()
-	return 1 + (remaining+step-1)/step
-}
-
-// ClampPage bounds a page index to the document. Every reader goes through it,
-// so a page remembered from a longer document narrows to the last page here
-// rather than slicing past the end.
-func (doc inlinePeekDocument) ClampPage(page int) int {
-	return min(max(page, 0), doc.PageCount()-1)
-}
-
-// pageStart is the first body row of a page. The last page is pinned to the end
-// of the body rather than left short, so the final rows are always full.
-func (doc inlinePeekDocument) pageStart(page int) int {
+// MaxOffset is the last content row the window may start on. The window is
+// always full rather than short at the end of the document, so the final offset
+// is pinned to the body's end and an unpaged document has the single offset
+// zero.
+func (doc inlinePeekDocument) MaxOffset() int {
 	if !doc.Paged() {
 		return 0
 	}
-	return min(doc.ClampPage(page)*doc.pageStep(), len(doc.Body)-inlinePeekPagedRows)
+	return len(doc.Body) - inlinePeekPagedRows
 }
 
-// Lines renders one page: the whole header, the page's slice of the body, and,
-// when anything is off screen, the counter row that says exactly how much.
-func (doc inlinePeekDocument) Lines(page int) []string {
+// ClampOffset bounds a content-row offset to the document. Every reader goes
+// through it, so an offset remembered against a longer body narrows to the end
+// here rather than slicing past it.
+func (doc inlinePeekDocument) ClampOffset(offset int) int {
+	return min(max(offset, 0), doc.MaxOffset())
+}
+
+// Lines renders the window at one content-row offset: the whole header, the
+// content rows under it, and, when anything is off screen, the counter row that
+// says exactly how much. It is the only way to either the drawn window or its
+// height, so a render and a measurement cannot disagree about what is on screen.
+func (doc inlinePeekDocument) Lines(offset int) []string {
 	if len(doc.Header) == 0 && len(doc.Body) == 0 {
 		return nil
 	}
@@ -110,15 +105,16 @@ func (doc inlinePeekDocument) Lines(page int) []string {
 	if !doc.Paged() {
 		return append(lines, doc.Body...)
 	}
-	start := doc.pageStart(page)
+	start := doc.ClampOffset(offset)
 	end := start + inlinePeekPagedRows
 	lines = append(lines, doc.Body[start:end]...)
 	return append(lines, doc.counterLine(start, len(doc.Body)-end))
 }
 
-// counterLine spends the reserved row on exact counts rather than a page
-// ordinal: what a reader needs to know is how much detail is still unread in
-// each direction, and a page number only answers that after arithmetic.
+// counterLine spends the reserved row on exact counts rather than an ordinal:
+// what a reader needs to know is how much detail is still unread in each
+// direction, and a page number only answers that after arithmetic — the more so
+// once a window can stop between two pages.
 func (doc inlinePeekDocument) counterLine(above, below int) string {
 	counts := fmt.Sprintf("%d above · %d below", above, below)
 	return doc.indent + theme.MutedStyle.Render(textfit.TruncateIntentional(counts, doc.width, "…"))

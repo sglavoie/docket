@@ -261,9 +261,9 @@ func TestInlinePeekTitleContinuationIsHeaderRatherThanBody(t *testing.T) {
 		t.Fatalf("continuation is not the first Peek row:\n%s", ansi.Strip(strings.Join(rendered, "\n")))
 	}
 
-	// The continuation is still the first row on the last page: header does not
-	// scroll out from under the body it heads.
-	last := doc.Lines(doc.PageCount() - 1)
+	// The continuation is still the first row at the end of the document: header
+	// does not scroll out from under the body it heads.
+	last := doc.Lines(doc.MaxOffset())
 	if !strings.HasPrefix(ansi.Strip(last[0]), overflow) {
 		t.Fatalf("the continuation paged away:\n%s", ansi.Strip(strings.Join(last, "\n")))
 	}

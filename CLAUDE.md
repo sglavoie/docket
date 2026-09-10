@@ -153,7 +153,7 @@ One key is one act on every entity surface:
 | `y`/`Y` `J`/`K` `*` `#` `=` `R` | copy · reorder · pin · tags · review · acknowledge |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
-| `b` `Ctrl+F`/`Ctrl+B` | Peek · page it |
+| `b` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · scroll it · page it |
 | `Space` | menu: destructive and rare operations only |
 
 Transient input overlays are exempt: composer, project editor/creator, text
@@ -278,20 +278,24 @@ whole-line authority on every other list surface.
 
 Row and Peek budget:
 
-- `inlinePeekDocument` separates the whole detail from the page of it on screen,
-  and `Lines` is the only way to either, so render and measurement cannot
+- `inlinePeekDocument` separates the whole detail from the window of it on
+  screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;
   `inlinePeekBodyRows` bounds visibility alone and the counter row spends one of
   those rows. Body order is resume, description, dates, attachments, comment
   count, `Dependencies`/`Dependents`, context, tags; place a new section
   deliberately. Peek holds no checklist line; title continuation and parent are
-  header, so they sit outside every page. A reference target is named nowhere
+  header, so they sit outside the window. A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
-- Peek's page is session-only, keyed by task identity, document fingerprint, and
-  terminal size; nothing else resets it. `peekPageForRow` is pure and `PagePeek`
-  the only writer, so no render moves a page. `Ctrl+F`/`Ctrl+B` turn it with one
-  content row of overlap, offered only where `PeekCommandContext` says it moves.
+- Peek's window is one content-row offset, session-only, keyed by typed Peek
+  owner, document fingerprint, and terminal size; nothing else resets it.
+  `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
+  the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`
+  three, both clamped to the document end. `PeekContext.Visible` is consumption
+  and `CanPage*` availability: a visible task Peek swallows all four keys at
+  either boundary and over a body too short to move, while only the hints read
+  what can move. `PgDn`/`PgUp` stay the cursor's alone.
 - `VisualWidthOverflow` must subtract the same ellipsis column as
   `TruncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an

@@ -52,8 +52,19 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
 			{OperationID: OperationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
 			{OperationID: OperationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
-			{OperationID: OperationCoreCursorPageUp, Keys: []string{"ctrl+u", "pgup"}, DisplayKey: "Ctrl+U/PgUp"},
-			{OperationID: OperationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn"},
+			// Ctrl+U and Ctrl+D are the half page of whatever the reader is looking
+			// at: the detail pane while a Peek is on screen, the list otherwise. The
+			// two meanings are two descriptors on one shared path, Peek first because
+			// resolution takes the first applicable binding, and Peek's is applicable
+			// on a visible document alone so the pane keeps the key at both ends of
+			// its body. PgUp and PgDn are deliberately not on that path: they stay the
+			// list's own spelling, so the outline is still reachable by keyboard with
+			// a Peek open, which is the whole reason the aliases are declared apart
+			// from the Ctrl pair rather than beside it.
+			{OperationID: OperationCorePeekHalfPageUp, Keys: []string{"ctrl+u"}, DisplayKey: "Ctrl+U", SharedKey: true},
+			{OperationID: OperationCoreCursorPageUp, Keys: []string{"ctrl+u", "pgup"}, DisplayKey: "Ctrl+U/PgUp", SharedKey: true},
+			{OperationID: OperationCorePeekHalfPageDown, Keys: []string{"ctrl+d"}, DisplayKey: "Ctrl+D", SharedKey: true},
+			{OperationID: OperationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn", SharedKey: true},
 			{OperationID: OperationCoreJumpBackward, Keys: []string{"ctrl+o"}, DisplayKey: "Ctrl+O"},
 			{OperationID: OperationCoreJumpForward, Keys: []string{"ctrl+i"}, DisplayKey: "Ctrl+I"},
 			{OperationID: OperationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
@@ -103,12 +114,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open note", SharedKey: true},
 			{OperationID: OperationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
 			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 10, FooterLabel: "peek"},
-			// Ctrl+F/B page the detail document rather than the list, exactly as
-			// they do beside the Hub's preview: Ctrl+D/U own the list cursor here,
-			// and the pane scrolls independently of the rows it hangs under. Neither
-			// carries a FooterRank — the Peek guidance advertises them where a body
-			// can actually move, and a rank would spend a column on a key that is
-			// inert on every other row.
+			// Ctrl+F/B page the detail document a whole window at a time, exactly as
+			// they do beside the Hub's preview, and they own their keys outright
+			// rather than sharing them: the list has no full page of its own to
+			// disambiguate against. Neither carries a FooterRank — the Peek guidance
+			// advertises them where a body can actually move, and a rank would spend
+			// a column on a key that is inert on every other row.
 			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
 			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 10, FooterLabel: "search"},

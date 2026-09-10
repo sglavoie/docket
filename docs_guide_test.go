@@ -93,7 +93,7 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"`Enter` focuses the cursor task's descendants",
 		"`Shift+Enter` widens in the other direction",
 		"`b` toggles a session-only Peek directly beneath the cursor task",
-		"`Ctrl+F` and `Ctrl+B` page\nthrough the rest",
+		"`Ctrl+D` and `Ctrl+U` scroll\nthrough the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page\nat a time",
 		"Entering multi-select closes Peek",
 		"`v` toggles the cursor task in or out of the selection",
 		"`V` starts a fresh inclusive range at the cursor",

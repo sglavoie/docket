@@ -587,11 +587,14 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	case m.PeekMode:
 		peekKey := m.peekOperationKey(operation.OperationCorePeek, peekDisplayKey)
 		hints := chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek")
-		// The paging keys are offered only in the direction the document can
-		// actually move, which is the same fact their descriptors are applicable
-		// under: a detail that fits its budget advertises no page turn at all.
-		if paging := m.peekPagingHintLabels(); len(paging) > 0 {
-			hints = append(hints, chrome.OptionalGuidanceHints(9, paging...)...)
+		// The four scrolling keys are offered only in the direction the document
+		// can actually move: a detail that fits its budget advertises no movement
+		// at all. Their descriptors are applicable on a wider fact — a visible
+		// Peek — because consuming a key at the end of a document is what keeps the
+		// press off the list cursor underneath, and an inert offer is not the same
+		// thing as an inert key.
+		if scrolling := m.peekScrollHints(); len(scrolling) > 0 {
+			hints = append(hints, scrolling...)
 		}
 		return chrome.GuidanceSpec{
 			Hints: append(hints,

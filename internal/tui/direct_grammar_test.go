@@ -228,8 +228,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"k": operation.OperationCoreCursorUp, "up": operation.OperationCoreCursorUp,
 		"home": operation.OperationCoreCursorTop,
 		"G":    operation.OperationCoreCursorBottom, "end": operation.OperationCoreCursorBottom,
-		"ctrl+u": operation.OperationCoreCursorPageUp, "pgup": operation.OperationCoreCursorPageUp,
-		"ctrl+d": operation.OperationCoreCursorPageDown, "pgdown": operation.OperationCoreCursorPageDown,
+		// PgUp and PgDn are the list's half page and nothing else's, which is what
+		// keeps the outline reachable while a Peek holds the Ctrl pair; the Ctrl
+		// pair itself is shared below.
+		"pgup": operation.OperationCoreCursorPageUp, "pgdown": operation.OperationCoreCursorPageDown,
 		"ctrl+o": operation.OperationCoreJumpBackward, "ctrl+i": operation.OperationCoreJumpForward,
 		"ctrl+l": operation.OperationCoreFocusLatest,
 		"ctrl+p": operation.OperationCoreSelectPinned,
@@ -258,8 +260,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"b":      operation.OperationCorePeek,
 		"ctrl+f": operation.OperationCorePeekPageDown,
 		"ctrl+b": operation.OperationCorePeekPageUp,
-		"/":      operation.OperationCoreScopeSearch,
-		"v":      operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
+		// The half page is shared with the list below; the full page is not,
+		// because the list has no full page of its own to disambiguate against.
+		"/": operation.OperationCoreScopeSearch,
+		"v": operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
 		"ctrl+a": operation.OperationCoreSelectAll,
 		"P":      operation.OperationCoreSelectProject,
 		"\\":     operation.OperationCoreNamedLenses,
@@ -292,10 +296,14 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// ask whether the cursor names a task or a project; e and Space ask the same
 	// question with a third answer, the checklist row; the rest ask whether it
 	// names a checklist item, and the checklist meaning is listed first because
-	// resolution takes the first applicable binding.
+	// resolution takes the first applicable binding. The Ctrl half-page pair is
+	// the one entry a cursor does not settle: it asks whether a detail pane is on
+	// screen, and Peek is listed first for the same reason the checklist is.
 	shared := map[string][]operation.OperationID{
-		"#": {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
-		"*": {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
+		"ctrl+u": {operation.OperationCorePeekHalfPageUp, operation.OperationCoreCursorPageUp},
+		"ctrl+d": {operation.OperationCorePeekHalfPageDown, operation.OperationCoreCursorPageDown},
+		"#":      {operation.OperationTaskSetTags, operation.OperationProjectSetTags},
+		"*":      {operation.OperationTaskTogglePin, operation.OperationScopePinProject},
 		// C is the shifted write to the comment panel's read: ; opens comments and
 		// C appends one without leaving the list. Both learned the project header,
 		// because a project now carries comments of its own; they stay two

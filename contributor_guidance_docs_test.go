@@ -467,7 +467,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// row count, which is now never zero where the header exists — the same
 	// mistake would silently retire every empty-state explanation. The mechanism
 	// lives in docs/architecture/tui-architecture.md.
-	const budget = 38284
+	//
+	// Nineteenth raise, 38284 to 38596, for the two step sizes Peek now scrolls
+	// by. 312 bytes buy three rules whose absence is silent rather than loud. The
+	// first is that the remembered position is a content-row offset and not a
+	// page ordinal: two distances share one window, and a reader who restores the
+	// ordinal reintroduces boundaries the document imposed, which is exactly the
+	// state where mixing the two keys cannot reach some lines. The second is that
+	// consumption and availability are different questions — a visible Peek eats
+	// all four keys, including at both ends, while only the footer reads what can
+	// move. Deriving applicability from `CanPage*` instead reads as the tidier
+	// rule and is a bug: a shared binding that declines falls through to the next
+	// owner, so the outline scrolls under a Peek the user was reading. The third
+	// is the corollary that keeps that fallthrough available where it is wanted —
+	// `PgDn`/`PgUp` are sole-owner paths and stay the cursor's. The owner key
+	// being typed rather than a bare task identity is stated with them because it
+	// is the seam a project-header Peek takes. The mechanism lives in
+	// docs/architecture/search-filters-and-sorting.md.
+	const budget = 38596
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -522,8 +539,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"Arming stays in the one deferred closure in `AppModel.Update`",
 		"The interactive TUI ignores an inherited `NO_COLOR`",
 		"A value provider is exactly one of `TextEntry()`",
-		"`inlinePeekDocument` separates the whole detail from the page of it on screen",
-		"`peekPageForRow` is pure and `PagePeek` the only writer, so no render moves a page",
+		"`inlinePeekDocument` separates the whole detail from the window of it on screen",
+		"`peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves\nthe window",
 		"`VisualWidthOverflow` must subtract the same ellipsis column as `TruncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",

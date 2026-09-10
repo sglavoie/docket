@@ -1,0 +1,74 @@
+{
+  "name": "outliner-peek-scrolling",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "land on the task whose detail will outgrow one window", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "assert", "label": "the cursor names the task the detail belongs to", "assert": "contains", "value": "Add password validation" },
+    { "type": "key", "label": "a resume note near the stored limit is what forces the scrolling", "key": "r" },
+    { "type": "text", "text": "RESUMESTART w001 w002 w003 w004 w005 w006 w007 w008 w009 w010 w011 w012 w013 w014 w015 w016 w017 w018 w019 w020 w021 w022 w023 w024 w025 w026 w027 w028 w029 w030 w031 w032 w033 w034 w035 w036 w037 w038 w039 w040 w041 w042 w043 RESUMEEND" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "open Peek on the overlong detail", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Ctrl+D moves the window two content rows rather than a whole page", "key": "ctrl+d" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 1 below" },
+    { "type": "assert", "label": "the cursor task is still the one Peek belongs to", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "a second half step lands short of a page boundary and clamps to the end", "key": "ctrl+d" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Tags: #backend #security" },
+
+    { "type": "key", "label": "at the end the key is consumed rather than falling through to the outline", "key": "ctrl+d" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "Ctrl+U comes back the same two rows", "key": "ctrl+u" },
+    { "type": "assert", "assert": "contains", "value": "1 above · 2 below" },
+
+    { "type": "key", "label": "a full page composes with the half step instead of snapping to its own grid", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "key", "key": "ctrl+b" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 3 below" },
+
+    { "type": "key", "label": "and the top consumes the backward keys too", "key": "ctrl+u" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "assert": "contains", "value": "Resume: RESUMESTART" },
+
+    { "type": "key", "label": "read two rows in again", "key": "ctrl+d" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 1 below" },
+
+    { "type": "key", "label": "an overlay takes the keys ahead of Peek", "key": "?" },
+    { "type": "assert", "assert": "not_contains", "value": "2 above · 1 below" },
+    { "type": "key", "key": "ctrl+d" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "label": "and Peek is exactly where it was left", "assert": "contains", "value": "2 above · 1 below" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "entering a visual selection closes Peek", "key": "v" },
+    { "type": "assert", "label": "so there is no window left for the keys to answer for", "assert": "not_contains", "value": "2 above · 1 below" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leaving the selection and reopening Peek", "key": "esc" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "label": "restores the reading position, which only the three key axes reset", "assert": "contains", "value": "2 above · 1 below" },
+
+    { "type": "key", "label": "the page keys still move the outline, Peek open or not", "key": "pgdown" },
+    { "type": "assert", "label": "so the cursor left the task whose note this was", "assert": "not_contains", "value": "RESUMESTART" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

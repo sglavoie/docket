@@ -275,6 +275,18 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if out, ok := m.outlinerPrimary(); ok {
 			out.TogglePeek()
 		}
+	// The four scrolling keys reach here whenever a Peek is on screen, including
+	// at the end of a document, and a move that cannot happen is a deliberate
+	// no-op: the press was spent on the pane the reader is looking at rather than
+	// falling through to the list cursor underneath.
+	case operation.OperationCorePeekHalfPageDown:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.HalfPagePeek(1)
+		}
+	case operation.OperationCorePeekHalfPageUp:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.HalfPagePeek(-1)
+		}
 	case operation.OperationCorePeekPageDown:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.PagePeek(1)

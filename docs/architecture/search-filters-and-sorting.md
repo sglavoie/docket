@@ -190,7 +190,8 @@ Outliner rows omit short task IDs.
 
 `zt`, `zz`, and `zb` move the window under the cursor and leave the cursor
 alone, the one scroll family beside the list-relative `gg`/`G` and the half-page
-`Ctrl+U`/`Ctrl+D` that move the cursor instead. They read the window the last
+`Ctrl+U`/`Ctrl+D` that move the cursor instead — or, while a Peek is open over
+the cursor task, that pane. They read the window the last
 render drew, cached on `LastViewport` by `ComputeOutlinerViewport`, which is the
 single window authority and the one place a render moves `ViewScrollOffset`: a
 key handler that recomputed the window would re-derive it from a different
@@ -291,7 +292,7 @@ The five-line budget is a bound on what is visible, not on what Peek holds,
 because `ComputeOutlinerViewport` subtracts the Peek height plus a guard row from
 an already-tight one. `inlinePeekDocument` is that split: `Body` is every detail
 row the task has, wrapped to the pane and complete, and `inlinePeekBodyRows` (5)
-decides only how many of them are on screen at a time. `Lines(page)` is the one
+decides only how many of them are on screen at a time. `Lines(offset)` is the one
 way to either, so the height the viewport reserves and the height the renderer
 draws are the same number by construction rather than by two agreeing
 calculations.
@@ -299,25 +300,41 @@ calculations.
 Body order is resume, description, dates, attachment names, comment count, the
 two reference lists, context, and tags. Order is the whole of what
 `inlinePeekBodySections` decides: nothing competes for room any more, because
-room is the page's problem. A new section still takes a deliberate position, but
-what it costs is a page turn rather than the line beneath it.
+room is the window's problem. A new section still takes a deliberate position,
+but what it costs is a scroll rather than the line beneath it.
 
-Paging is `Ctrl+F` and `Ctrl+B`, the same pair every other pageable body on the
-product answers to, with `inlinePeekPageOverlap` (1) content row carried across
-each boundary so a wrapped sentence is never split between two keystrokes with
-nothing in common. A paged document reserves one of its five rows for the
-counter, which names how many body rows sit above and below the page rather than
-a page ordinal; an unpaged one spends the whole budget on content. The last page
-is pinned to the end of the body, so it is full rather than short.
+The window is a content-row offset rather than a page ordinal, which is what lets
+two step sizes share one model: `Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`
+(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (3), and `scrollPeek`
+clamps whatever they add. Three of a paged document's four content rows is a full
+page carrying one row across the boundary, so a wrapped sentence is never split
+between two keystrokes with nothing in common; the half step keeps two. Neither
+lands on a boundary the document imposed, so mixing them reaches every line.
+`ClampOffset` pins the last window to the end of the body, so it is full rather
+than short, and a paged document reserves one of its five rows for the counter,
+which names how many body rows sit above and below the window; an unpaged one
+spends the whole budget on content.
 
-The page itself is session-only and lives in `peekPageState`, keyed by task
-identity, the width-independent `Fingerprint` of the document, and the terminal
-size. `peekPageForRow` is pure: a key mismatch reads as the first page, so
-changing task, editing the detail, gaining or losing a reference, and resizing
-each reset paging without any writer having to notice, and a redraw preserves a
-manual turn. `PagePeek` is the only writer. `PeekCommandContext` is the single
-fact behind the descriptors' applicability and the footer hints, so a page turn
-that cannot move is neither offered nor accepted.
+The offset itself is session-only and lives in `peekOffsetState`, keyed by an
+`inlinePeekOwner` — a kind plus that kind's identity — the width-independent
+`Fingerprint` of the document, and the terminal size. The owner is typed rather
+than a bare task identity because a project header's detail would share this
+arithmetic and these four keys: a second kind adds itself to
+`inlinePeekOwnerKind` and to `peekCursorDocument`, and every reset rule below
+keeps working. `peekOffsetForRow` is pure: a key mismatch reads as the top of the
+document, so changing owner, editing the detail, gaining or losing a reference,
+and resizing each reset scrolling without any writer having to notice, and a
+redraw preserves a manual scroll. `scrollPeek` is the only writer.
+
+`PeekCommandContext` answers consumption and availability separately, because
+they differ at exactly the boundary. `Visible` is consumption and is the whole of
+the four descriptors' applicability: a visible task Peek swallows all four keys
+at either end and over a body too short to move, since a shared binding that
+declines falls through to the next one and the outline would scroll under a Peek
+the user was trying to read. `CanPageDown`/`CanPageUp` are availability and are
+read by the footer hints alone, so a key that cannot move is still eaten but
+never advertised. Only `ctrl+d`/`ctrl+u` carry both owners; `pgdown`/`pgup` stay
+sole-owner paths, which is what keeps the outline pageable with a Peek open.
 
 The reference lists sit above tags because Peek is the only surface that names a
 reference at all — the row carries `~S/N`, and there is no panel behind it the
