@@ -76,6 +76,51 @@ func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 // honestly under the same heading.
 const orphanedEditDraftNotice = "This comment is no longer in the list. Your unsaved text is kept below; Esc discards it."
 
+// recoveredDraftNotice heads the block that shows a draft the composer above it
+// cannot hold in full. It says the two things a reader needs before they decide
+// what to do: the box is not the whole of their text, and the whole of it is
+// still there and is what a save will write.
+const recoveredDraftNotice = "The box above cannot show all of this draft. The complete text is kept and is what a save writes:"
+
+// recoveredDraftExcerptRows bounds that block, because a recovered draft is
+// unbounded by construction and the panel below it still has to be readable.
+const recoveredDraftExcerptRows = 6
+
+// renderRecoveredDraft draws the part of a retained draft the composer is not
+// showing. It is the only place the text beyond the textarea's own limits
+// reaches the screen, so a reader can confirm their work survived rather than
+// take the panel's word for it.
+func (m *CommentsModel) renderRecoveredDraft(b *strings.Builder) {
+	text, ok := m.lossyRetainedDraft()
+	if !ok {
+		return
+	}
+	width := max(m.Width()-4, 1)
+	b.WriteString(theme.ValidationErrorStyle.Render(recoveredDraftNotice))
+	b.WriteString("\n")
+	for _, row := range recoveredDraftExcerpt(text, width) {
+		b.WriteString(theme.MutedStyle.Render(textfit.TruncateIntentional(row, width, "…")))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+}
+
+// recoveredDraftExcerpt bounds the retained text to a fixed number of rows while
+// keeping its end on screen. What the composer dropped is the tail, so an
+// excerpt that elided the tail would prove nothing to the reader it exists for;
+// the beginning is kept too, so the excerpt is recognizable as their own text.
+func recoveredDraftExcerpt(text string, width int) []string {
+	rows := textfit.WrapText(text, width)
+	if len(rows) <= recoveredDraftExcerptRows {
+		return rows
+	}
+	const headRows = 2
+	tail := rows[len(rows)-(recoveredDraftExcerptRows-headRows-1):]
+	excerpt := append([]string{}, rows[:headRows]...)
+	excerpt = append(excerpt, fmt.Sprintf("... %d more line(s) ...", len(rows)-headRows-len(tail)))
+	return append(excerpt, tail...)
+}
+
 func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	index := m.indexOfRef(m.editRef)
 	if index < 0 {
@@ -90,6 +135,7 @@ func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString(m.EditTextInput.View())
 	b.WriteString("\n\n")
 	m.renderMessages(b)
+	m.renderRecoveredDraft(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
@@ -111,6 +157,7 @@ func (m *CommentsModel) renderOrphanedEditMode(b *strings.Builder) tea.View {
 	b.WriteString(m.EditTextInput.View())
 	b.WriteString("\n\n")
 	m.renderMessages(b)
+	m.renderRecoveredDraft(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
@@ -123,6 +170,7 @@ func (m *CommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(m.TextInput.View())
 	b.WriteString("\n\n")
 	m.renderMessages(b)
+	m.renderRecoveredDraft(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())

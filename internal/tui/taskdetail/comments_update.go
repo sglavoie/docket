@@ -329,12 +329,19 @@ func (m *CommentsModel) ExpandSelectedComment() {
 	}
 }
 
+// cancelAddMode and cancelEditMode close a composer and drop the copy of its
+// draft the panel was holding for it. These are the only two routes that reach
+// that copy, and both are deliberate: the discard confirmation answers yes, or a
+// commit confirms and there is nothing left to recover. A refusal, a reload, and
+// a refresh all leave it exactly where it is.
 func (m *CommentsModel) cancelAddMode() {
 	m.AddMode = false
 	m.TextInput.Reset()
+	m.forgetRetainedDraft(commentMutationAdd)
 }
 
 func (m *CommentsModel) cancelEditMode() {
 	m.EditMode = false
 	m.EditTextInput.Reset()
+	m.forgetRetainedDraft(commentMutationEdit)
 }

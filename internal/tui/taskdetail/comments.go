@@ -47,6 +47,13 @@ type CommentsModel struct {
 	editRef       CommentRef
 	EditTextInput textarea.Model
 
+	// recovered is the draft the open composer is showing, held exactly as it
+	// arrived. It is nil for text the user typed here, because a textarea can
+	// always give typed text back; it is set whenever a draft reached the panel
+	// from somewhere the textarea cannot faithfully hold — an external editor's
+	// buffer, or a submission coming back from a refused commit.
+	recovered *draftRecovery
+
 	// deleteRef is the comment an open delete confirmation was opened on, frozen
 	// the moment the question appeared for the same reason editRef is frozen: the
 	// list can reload or reorder while the prompt is on screen, and a removal
@@ -319,6 +326,7 @@ func (m *CommentsModel) OnExit() {
 	m.EditMode = false
 	m.ExpandedView = false
 	m.editRef = CommentRef{}
+	m.recovered = nil
 	m.forgetDeleteConfirmation()
 	m.pending = nil
 	m.TextInput.Reset()

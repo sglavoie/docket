@@ -198,7 +198,7 @@ func (m *CommentsModel) saveComment() tea.Cmd {
 	if m.refuseWhilePending() {
 		return nil
 	}
-	text := strings.TrimSpace(m.TextInput.Value())
+	text := m.submissionText(commentMutationAdd, m.TextInput.Value())
 	if text == "" {
 		m.Err = errors.New("comment text cannot be empty")
 		return nil
@@ -287,7 +287,7 @@ func (m *CommentsModel) saveEditedComment() tea.Cmd {
 	if m.refuseWhilePending() {
 		return nil
 	}
-	text := strings.TrimSpace(m.EditTextInput.Value())
+	text := m.submissionText(commentMutationEdit, m.EditTextInput.Value())
 	if text == "" {
 		m.Err = errors.New("comment text cannot be empty")
 		return nil
@@ -347,6 +347,10 @@ func (m *CommentsModel) selectAddedComment(prior map[string]bool) {
 // failCommentMutation restores the draft a refused commit was carrying. The
 // stored comments never moved, so there is nothing to roll back — only the
 // user's text to put back in front of them, in the composer that owns it.
+//
+// It restores through the same two seating helpers the capture path uses, so the
+// submitted text is retained verbatim here too: a commit that carried more than
+// the composer can hold must not come back smaller than it went out.
 func (m *CommentsModel) failCommentMutation(msg CommentMutationFailedMsg) tea.Cmd {
 	if !m.ownsPending(msg.Owner, msg.Token) {
 		return nil
@@ -357,17 +361,10 @@ func (m *CommentsModel) failCommentMutation(msg CommentMutationFailedMsg) tea.Cm
 
 	switch pending.kind {
 	case commentMutationAdd:
-		m.EditMode = false
-		m.AddMode = true
-		m.TextInput.SetValue(pending.text)
-		m.TextInput.Focus()
+		m.retainAddDraft(pending.text)
 		return textarea.Blink
 	case commentMutationEdit:
-		m.AddMode = false
-		m.EditMode = true
-		m.editRef = pending.ref
-		m.EditTextInput.SetValue(pending.text)
-		m.EditTextInput.Focus()
+		m.retainEditDraft(pending.ref, pending.text)
 		return textarea.Blink
 	case commentMutationRemove:
 		return nil
@@ -422,16 +419,40 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 	return nil
 }
 
-// retainAddDraft and retainEditDraft seat an external editor's text in the
-// composer that owns it. They are the capture half of that recovery: whichever
-// way the submission then goes, the text is somewhere the View draws and the
-// discard grammar can reach. A confirmed commit closes the composer through
-// completeCommentMutation, so the capture costs a successful edit nothing.
+// draftRecovery is one comment draft held verbatim beside the composer showing
+// it, which is the only way the panel can promise to give it back.
+//
+// The composer is not that copy and cannot be made into one: its textarea
+// rewrites tabs as spaces and stops accepting runes at CommentCharLimit, both of
+// which are right for something being typed and wrong for something being
+// recovered. An external editor's temporary file is already deleted by the time
+// its result reaches the panel, so for that route this field holds the only
+// complete copy of the user's work in the process.
+type draftRecovery struct {
+	// kind names the composer the text belongs to, so an add draft can never be
+	// submitted as an edit or recovered under one.
+	kind commentMutationKind
+	// text is the draft exactly as it arrived — no limit, no sanitization.
+	text string
+	// seated is what the composer holds once that text has been put into it.
+	// While the two still agree, the user has not touched the composer and the
+	// verbatim text is what a save writes; once they diverge, the user is editing
+	// and the composer is theirs.
+	seated string
+}
+
+// retainAddDraft and retainEditDraft seat a draft in the composer that owns it
+// and record the verbatim text beside it. They are the capture half of that
+// recovery: whichever way the submission then goes, the whole text is somewhere
+// the View draws, a save can still write, and the discard grammar can reach. A
+// confirmed commit closes the composer through completeCommentMutation, so the
+// capture costs a successful edit nothing.
 func (m *CommentsModel) retainAddDraft(text string) {
 	m.EditMode = false
 	m.AddMode = true
 	m.TextInput.SetValue(text)
 	m.TextInput.Focus()
+	m.recovered = &draftRecovery{kind: commentMutationAdd, text: text, seated: m.TextInput.Value()}
 }
 
 func (m *CommentsModel) retainEditDraft(ref CommentRef, text string) {
@@ -440,6 +461,61 @@ func (m *CommentsModel) retainEditDraft(ref CommentRef, text string) {
 	m.editRef = ref
 	m.EditTextInput.SetValue(text)
 	m.EditTextInput.Focus()
+	m.recovered = &draftRecovery{kind: commentMutationEdit, text: text, seated: m.EditTextInput.Value()}
+}
+
+// retainedDraftText is the verbatim draft being held for one composer.
+func (m *CommentsModel) retainedDraftText(kind commentMutationKind) (string, bool) {
+	if m.recovered == nil || m.recovered.kind != kind {
+		return "", false
+	}
+	return m.recovered.text, true
+}
+
+// forgetRetainedDraft drops the held copy when its composer closes. Only an
+// explicit discard, a confirmed commit, and leaving the panel reach it, which is
+// what makes the retention outlast every refusal and every reload in between.
+func (m *CommentsModel) forgetRetainedDraft(kind commentMutationKind) {
+	if m.recovered != nil && m.recovered.kind == kind {
+		m.recovered = nil
+	}
+}
+
+// submissionText is the text a save from one composer commits.
+//
+// Typed input is trimmed the way it always has been. A retained draft the user
+// has not touched is written exactly as it arrived instead, because the composer
+// value beside it may be a truncated, tab-flattened rendering of it — submitting
+// that on a retry would quietly persist the damage the retention exists to
+// prevent. Editing the composer hands authority back to it, since the text on
+// screen is then the text the user means.
+func (m *CommentsModel) submissionText(kind commentMutationKind, composer string) string {
+	if text, ok := m.retainedDraftText(kind); ok && m.recovered.seated == composer {
+		return text
+	}
+	return strings.TrimSpace(composer)
+}
+
+// composerValue is what the textarea for one kind is currently showing.
+func (m *CommentsModel) composerValue(kind commentMutationKind) string {
+	if kind == commentMutationAdd {
+		return m.TextInput.Value()
+	}
+	return m.EditTextInput.Value()
+}
+
+// lossyRetainedDraft is the retained draft whose composer is not showing all of
+// it, and is what the recovery block in the View exists to draw. A draft the
+// composer holds in full needs no second rendering: it is already on screen,
+// editable, and identical.
+func (m *CommentsModel) lossyRetainedDraft() (string, bool) {
+	if m.recovered == nil {
+		return "", false
+	}
+	if m.recovered.text == m.composerValue(m.recovered.kind) {
+		return "", false
+	}
+	return m.recovered.text, true
 }
 
 // editInExternalEditor opens the comment under the cursor in the user's editor.
@@ -471,7 +547,7 @@ func (m *CommentsModel) addCommentInExternalEditor() tea.Cmd {
 		return m.refuse(errCommentOwnerGone)
 	}
 	owner := m.ownerKey()
-	content := m.owner.ExternalAddHeader() + strings.TrimSpace(m.TextInput.Value())
+	content := m.owner.ExternalAddHeader() + m.submissionText(commentMutationAdd, m.TextInput.Value())
 	return m.editCommentWithExternalEditor(content, false, func(newText string) tea.Msg {
 		return commentEditorFinishedMsg{owner: owner, kind: commentMutationAdd, text: newText}
 	})
@@ -493,7 +569,7 @@ func (m *CommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		return m.refuse(errCommentDeletedExternally)
 	}
 	owner := m.ownerKey()
-	content := m.owner.ExternalEditHeader(ref) + strings.TrimSpace(m.EditTextInput.Value())
+	content := m.owner.ExternalEditHeader(ref) + m.submissionText(commentMutationEdit, m.EditTextInput.Value())
 	return m.editCommentWithExternalEditor(content, true, func(newText string) tea.Msg {
 		return commentEditorFinishedMsg{owner: owner, kind: commentMutationEdit, ref: ref, text: newText}
 	})
