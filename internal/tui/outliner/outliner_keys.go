@@ -580,7 +580,15 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	// so emptiness is asked of the content rather than of the row count. The
 	// explanation and the way out of it are what the user needs there; the
 	// header's own actions stay in `?` help and its action sheet.
-	case !m.HasContentRows():
+	//
+	// A Peek drawn under that header is the exception, and it is asked as the
+	// scrolling descriptors ask it — a pane on screen, not the mode flag — so a
+	// header the population cannot resolve still falls through to the cause. The
+	// pane is the innermost thing on screen and the one Esc puts down first, so
+	// naming the empty state's recovery key here would promise an act the first
+	// press is not doing. Closing the pane restores this branch and its cause
+	// unchanged.
+	case !m.HasContentRows() && !m.PeekCommandContext().Visible:
 		return m.emptyGuidance(), true
 	case m.MultiSelectMode:
 		return m.multiSelectGuidance(), true
