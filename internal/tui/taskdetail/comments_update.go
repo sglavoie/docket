@@ -131,7 +131,7 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
-			if strings.TrimSpace(m.TextInput.Value()) != "" {
+			if m.hasUnsavedAddText() {
 				m.Confirm.Show("discard-add", "Discard comment?")
 				return m, nil
 			}
@@ -277,12 +277,50 @@ func (m *CommentsModel) HasSelection() bool {
 	return len(m.entries) > 0 && m.Cursor >= 0 && m.Cursor < len(m.entries)
 }
 
-// hasUnsavedEditChanges compares the buffer with the text the editor was opened
-// on rather than with whatever the list now holds at that position. What the user
-// stands to lose is the difference from what they started editing, and that is
-// true whether or not the underlying list moved while they typed.
+// recoverableDraftTexts names every copy of one composer's draft that closing it
+// would destroy: the textarea's own value, and the verbatim copy the panel is
+// holding beside it while a recovered draft is outstanding.
+//
+// The two are not interchangeable, which is the whole reason the second one
+// exists. The box is a quick-entry textarea — it stops at CommentCharLimit and
+// rewrites tabs as four spaces — so seating a recovered draft into it can land on
+// exactly the text the user was replacing, or on nothing but whitespace, while
+// the copy beside it still holds work that exists nowhere else in the process.
+// A discard guard reading the box alone would then answer a question about the
+// wrong string and drop the right one without asking.
+func (m *CommentsModel) recoverableDraftTexts(kind commentMutationKind) []string {
+	composer := m.composerValue(kind)
+	if text, ok := m.retainedDraftText(kind); ok && text != composer {
+		return []string{composer, text}
+	}
+	return []string{composer}
+}
+
+// hasUnsavedAddText reports whether closing the add composer would cost the user
+// text. A blank box is not an empty draft: what the panel retained behind it may
+// be a truncation away from text a save would still write.
+func (m *CommentsModel) hasUnsavedAddText() bool {
+	for _, text := range m.recoverableDraftTexts(commentMutationAdd) {
+		if strings.TrimSpace(text) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasUnsavedEditChanges compares everything the panel can still recover with the
+// text the editor was opened on rather than with whatever the list now holds at
+// that position. What the user stands to lose is the difference from what they
+// started editing, and that is true whether or not the underlying list moved
+// while they typed, and whether or not the composer is showing all of it.
 func (m *CommentsModel) hasUnsavedEditChanges() bool {
-	return strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.editRef.Original)
+	original := strings.TrimSpace(m.editRef.Original)
+	for _, text := range m.recoverableDraftTexts(commentMutationEdit) {
+		if strings.TrimSpace(text) != original {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *CommentsModel) BeginAddMode() tea.Cmd {
