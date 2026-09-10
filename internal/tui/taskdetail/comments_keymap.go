@@ -60,6 +60,13 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("ctrl+s", "Save comment", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Ctrl+S"), keymap.WithGate(inputMode)),
 		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(inputMode)),
 		keymap.Bind("shift+enter", "Insert newline", "Actions", keymap.WithFooter(4, "newline", false), keymap.WithFooterKey("Shift+Enter"), keymap.WithGate(inputMode)),
+		// Ranked last of the five input keys because it is the one a reader only
+		// needs when a save is refused — and ranked at all because that is the
+		// moment it has to be findable: a draft the panel cannot write and the
+		// composer cannot show in full is reachable through this key alone, so it
+		// is advertised wherever text is being written rather than only where it
+		// has already been rescued.
+		keymap.Bind("ctrl+x", "Write draft to a file", "Actions", keymap.WithFooter(5, "to file", false), keymap.WithFooterKey("Ctrl+X"), keymap.WithGate(inputMode)),
 		keymap.Bind("esc", "Cancel comment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inputMode)),
 		keymap.Bind("enter", "Close expanded comment", "Navigation", keymap.WithFooter(1, "close", true), keymap.WithFooterKey("Enter"), keymap.WithGate(expandedMode)),
 		keymap.Bind("esc", "Close expanded comment", "Navigation", keymap.WithFooter(2, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(expandedMode)),

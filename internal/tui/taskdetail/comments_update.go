@@ -111,6 +111,9 @@ func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.saveEditedComment()
 		case "ctrl+e":
 			return m, m.editCommentInExternalEditorFromEditMode()
+		case "ctrl+x":
+			m.exportDraft()
+			return m, nil
 		case "shift+enter":
 			m.EditTextInput.InsertString("\n")
 			return m, nil
@@ -138,6 +141,9 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.saveComment()
 		case "ctrl+e":
 			return m, m.addCommentInExternalEditor()
+		case "ctrl+x":
+			m.exportDraft()
+			return m, nil
 		case "shift+enter":
 			m.TextInput.InsertString("\n")
 			return m, nil

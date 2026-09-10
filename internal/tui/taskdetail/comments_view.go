@@ -86,6 +86,13 @@ const recoveredDraftNotice = "The box above cannot show all of this draft. The c
 // unbounded by construction and the panel below it still has to be readable.
 const recoveredDraftExcerptRows = 6
 
+// recoveredDraftExportHint closes that block with the way out of it. The excerpt
+// above proves the draft survived; it cannot show the middle of a long one, and
+// a draft whose comment or project is gone cannot be saved at all — so the block
+// that admits the box is not showing everything is exactly where the key that
+// hands the whole of it back has to be named.
+const recoveredDraftExportHint = "Ctrl+X writes the complete draft to a file."
+
 // renderRecoveredDraft draws the part of a retained draft the composer is not
 // showing. It is the only place the text beyond the textarea's own limits
 // reaches the screen, so a reader can confirm their work survived rather than
@@ -102,7 +109,8 @@ func (m *CommentsModel) renderRecoveredDraft(b *strings.Builder) {
 		b.WriteString(theme.MutedStyle.Render(textfit.TruncateIntentional(row, width, "…")))
 		b.WriteString("\n")
 	}
-	b.WriteString("\n")
+	b.WriteString(theme.MutedStyle.Render(recoveredDraftExportHint))
+	b.WriteString("\n\n")
 }
 
 // recoveredDraftExcerpt bounds the retained text to a fixed number of rows while
@@ -136,6 +144,7 @@ func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	m.renderMessages(b)
 	m.renderRecoveredDraft(b)
+	m.renderStatusMessage(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
@@ -158,6 +167,7 @@ func (m *CommentsModel) renderOrphanedEditMode(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	m.renderMessages(b)
 	m.renderRecoveredDraft(b)
+	m.renderStatusMessage(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())
@@ -171,6 +181,7 @@ func (m *CommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString("\n\n")
 	m.renderMessages(b)
 	m.renderRecoveredDraft(b)
+	m.renderStatusMessage(b)
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 	return tea.NewView(b.String())

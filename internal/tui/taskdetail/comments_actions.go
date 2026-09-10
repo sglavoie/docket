@@ -496,6 +496,46 @@ func (m *CommentsModel) submissionText(kind commentMutationKind, composer string
 	return strings.TrimSpace(composer)
 }
 
+// draftExportStatusPrefix heads the line naming the file a draft was written to.
+// It is a constant because the path is the whole point of the act: the panel
+// tells the user where their text is, and that sentence is the only thing
+// standing between a recovered draft and a user who can open it.
+const draftExportStatusPrefix = "Draft written to "
+
+// exportDraft writes the draft the open composer is holding to a file of its own
+// and names that file on screen.
+//
+// It is the one act in this panel that asks the owner for nothing. A draft whose
+// comment was deleted or whose project disappeared can be saved nowhere, and the
+// composer showing it is a quick-entry box that stops at CommentCharLimit and
+// rewrites tabs — so the interior of a long recovered draft is held by the
+// process and reachable by nobody, the recovery block above it being an excerpt
+// rather than the text. Writing a file is what makes the whole of it the user's
+// again while the reason it could not be saved stays exactly where it was: no
+// owner is resolved, no mutation is submitted, no comment is stored, and the
+// composer, the retained copy, and the refusal on screen are all left alone.
+//
+// The bytes are the ones a save would commit, through the same submissionText
+// authority rule, so the file and the panel can never disagree about what the
+// draft is.
+func (m *CommentsModel) exportDraft() {
+	kind := commentMutationAdd
+	if m.EditMode {
+		kind = commentMutationEdit
+	}
+	text := m.submissionText(kind, m.composerValue(kind))
+	if text == "" {
+		m.Err = errors.New("there is no draft text to write")
+		return
+	}
+	path, err := external.CreateTempFileWithContent(text, "tt-comment-draft-", ".md")
+	if err != nil {
+		m.Err = fmt.Errorf("failed to write the draft: %w", err)
+		return
+	}
+	m.SetStatus(draftExportStatusPrefix + path)
+}
+
 // composerValue is what the textarea for one kind is currently showing.
 func (m *CommentsModel) composerValue(kind commentMutationKind) string {
 	if kind == commentMutationAdd {

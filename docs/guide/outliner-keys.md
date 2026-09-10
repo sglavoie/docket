@@ -285,6 +285,15 @@ and the reason rather than dropping either. A parked project takes comments like
 any other, and so does Unfiled. Saving leaves Peek exactly as you left it, open
 or closed, and `u` takes the comment back the way it takes back anything else.
 
+Text that comes back from the external editor can be longer than the composer
+will hold: the box stops at 2,000 characters and writes tabs as spaces, so when
+a save is refused the panel keeps the editor's exact result beside it and shows
+the end of that result under the box. `Ctrl+X` writes the complete draft — every
+character, interior tabs included — to a file of its own and names the path on
+screen. It asks the comment's owner for nothing, so it answers just as well when
+the comment was deleted or the project is gone, and it writes nothing else: the
+refusal, your text, and the stored comments are all exactly where they were.
+
 Both panels and All Notes move the way every other list does: `j`/`k` or arrows
 step one row, and `gg`/`Home` and `G`/`End` reach the first and last. A `g` you
 do not complete is abandoned silently and does not swallow the key after it, so
