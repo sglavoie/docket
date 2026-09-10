@@ -37,7 +37,7 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	for key, description := range map[string]string{
 		"Enter":       "Focus Subtree",
 		"Shift+Enter": "Focus Parent",
-		"b":           "Toggle Task Peek",
+		"b":           "Toggle Peek",
 	} {
 		found := false
 		for _, item := range help {

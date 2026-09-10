@@ -23,8 +23,20 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 		OperationCoreFocusSubtree,
 		OperationCoreFocusParent,
 		OperationCoreGotoTaskProject,
-		OperationCoreGotoRelation,
-		OperationCorePeek,
+		OperationCoreGotoRelation:
+		return true
+	default:
+		return false
+	}
+}
+
+// CoreInputOperationRequiresPeekTarget names the delegated core operations that
+// need a row with a detail document behind it. They are the task requirement's
+// sibling rather than a member of it: Peek reads two entity kinds, so a project
+// header answers these five and refuses every other task key on the same row.
+func CoreInputOperationRequiresPeekTarget(id OperationID) bool {
+	switch id { //nolint:exhaustive // Only Peek and its four scrolling keys are listed.
+	case OperationCorePeek,
 		OperationCorePeekHalfPageDown,
 		OperationCorePeekHalfPageUp,
 		OperationCorePeekPageDown,
@@ -33,6 +45,13 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 	default:
 		return false
 	}
+}
+
+// CommandContextNamesPeekTarget answers whether the cursor names something Peek
+// can draw. It is the one predicate behind the descriptor's applicability and
+// the delegated handler's refusal, so a key that is offered is a key that acts.
+func CommandContextNamesPeekTarget(ctx CommandContext) bool {
+	return CurrentTaskIdentity(ctx).Valid() || ctx.Entity.HasProjectHeaderCursor
 }
 
 // openProjectApplicability is Enter's project branch: it answers on a project
@@ -80,26 +99,37 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		}
 		return descriptor
 	}
-	peek := withTaskTarget(core(
+	// Peek and its four scrolling keys read the focused entity rather than a task:
+	// the pane draws a task's detail and a project header's alike, so the target
+	// source has to name whichever row the cursor is on. Navigation is what makes
+	// that safe — the resolver refuses a non-task entity to a task-category
+	// descriptor, and these five mutate nothing in either kind.
+	withEntityTarget := func(descriptor OperationDescriptor) OperationDescriptor {
+		descriptor.TargetSource = OperationTargetCurrentEntity
+		return descriptor
+	}
+	peek := withEntityTarget(core(
 		OperationCorePeek,
-		"Toggle Task Peek",
+		"Toggle Peek",
 		OperationCategoryNavigation,
 		TargetCardinalityOne,
 		OperationRiskReadOnly,
 		"peek task",
+		"peek project",
 		"task preview",
+		"project preview",
 	))
 	peek.Applicability = func(ctx CommandContext) bool {
 		return CoreOutlinerApplicability(ctx) &&
 			!ctx.Selection.Visual &&
 			!ctx.Entity.HasChecklistCursor &&
-			CurrentTaskIdentity(ctx).Valid()
+			CommandContextNamesPeekTarget(ctx)
 	}
 	// The four scrolling keys are Peek's own while a Peek is on screen: a pane
 	// that scrolls beside a list has to say which of the two a key moves, and the
-	// pane the reader is looking at is the honest answer. They name a task target
-	// for the same reason Peek does — the document belongs to the row under the
-	// cursor — and every one of them is applicable on the visible document alone.
+	// pane the reader is looking at is the honest answer. They name an entity
+	// target for the same reason Peek does — the document belongs to the row under
+	// the cursor — and every one of them is applicable on the visible document alone.
 	// Ctrl+D and Ctrl+U share their keys with the list's own half page, so
 	// applicability is what hands the press to the pane; were it narrowed to a
 	// window with somewhere to go, the key at the end of a document would fall
@@ -109,7 +139,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 	visiblePeek := func(ctx CommandContext) bool {
 		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible
 	}
-	peekHalfPageDown := withTaskTarget(core(
+	peekHalfPageDown := withEntityTarget(core(
 		OperationCorePeekHalfPageDown,
 		"Scroll Peek Down",
 		OperationCategoryNavigation,
@@ -119,7 +149,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"more task detail",
 	))
 	peekHalfPageDown.Applicability = visiblePeek
-	peekHalfPageUp := withTaskTarget(core(
+	peekHalfPageUp := withEntityTarget(core(
 		OperationCorePeekHalfPageUp,
 		"Scroll Peek Up",
 		OperationCategoryNavigation,
@@ -129,7 +159,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"previous task detail",
 	))
 	peekHalfPageUp.Applicability = visiblePeek
-	peekPageDown := withTaskTarget(core(
+	peekPageDown := withEntityTarget(core(
 		OperationCorePeekPageDown,
 		"Page Peek Down",
 		OperationCategoryNavigation,
@@ -139,7 +169,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"next peek page",
 	))
 	peekPageDown.Applicability = visiblePeek
-	peekPageUp := withTaskTarget(core(
+	peekPageUp := withEntityTarget(core(
 		OperationCorePeekPageUp,
 		"Page Peek Up",
 		OperationCategoryNavigation,

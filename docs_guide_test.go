@@ -92,7 +92,8 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"a row whose open children are all placed somewhere else ends with `›N`",
 		"`Enter` focuses the cursor task's descendants",
 		"`Shift+Enter` widens in the other direction",
-		"`b` toggles a session-only Peek directly beneath the cursor task",
+		"`b` toggles a session-only Peek directly beneath the cursor row, " +
+			"whether that row is a task or a project header",
 		"`Ctrl+D` and `Ctrl+U` scroll\nthrough the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page\nat a time",
 		"Entering multi-select closes Peek",
 		"`v` toggles the cursor task in or out of the selection",

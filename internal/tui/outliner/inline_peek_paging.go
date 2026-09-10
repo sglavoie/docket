@@ -11,29 +11,46 @@ import (
 )
 
 // inlinePeekOwnerKind names what kind of thing a remembered offset belongs to.
-// Peek draws a task's document today, and a task identity is what tells one
-// document from another; the kind travels beside it so a second kind of
-// document — a project header's, which would share this window arithmetic and
-// these four keys rather than grow its own — can key the same slot without two
-// owners that happen to carry equal identities ever reading each other's offset.
+// Peek draws two documents — a task's and a project header's — and each kind's
+// own identity is what tells one document of that kind from another. The kind
+// travels beside the identity so the two populations cannot collide: a task
+// owner and a project owner are never the same owner however their identity
+// fields happen to compare.
 type inlinePeekOwnerKind uint8
 
 const (
 	inlinePeekOwnerNone inlinePeekOwnerKind = iota
 	inlinePeekOwnerTask
+	inlinePeekOwnerProject
 )
 
 // inlinePeekOwner is the typed identity half of the key, and the extension point
-// a second document kind takes: it adds its kind and its own identity field
+// a further document kind takes: it adds its kind and its own identity field
 // here, teaches peekCursorDocument to build its document, and every reset rule
 // below keeps working with nothing else changed.
 type inlinePeekOwner struct {
 	kind inlinePeekOwnerKind
 	task taskref.TaskIdentity
+	// project is the catalog identity rather than the row's collapse key, which
+	// is what makes the several headers one project can hold at once — All emits
+	// a group per state section — one owner: a page turn under one of them is the
+	// same page under the others, because they are the same project's detail.
+	project string
 }
 
 func taskPeekOwner(identity taskref.TaskIdentity) inlinePeekOwner {
 	return inlinePeekOwner{kind: inlinePeekOwnerTask, task: identity}
+}
+
+// projectPeekOwner names the project a header row stands for. A header with no
+// identity resolves no project and therefore draws no document, so it takes the
+// unwritten owner rather than an owner every other anonymous header would agree
+// with.
+func projectPeekOwner(projectID string) inlinePeekOwner {
+	if projectID == "" {
+		return inlinePeekOwner{}
+	}
+	return inlinePeekOwner{kind: inlinePeekOwnerProject, project: projectID}
 }
 
 // sameAs answers whether two owners are the same document's. An owner naming no
@@ -44,7 +61,14 @@ func (owner inlinePeekOwner) sameAs(other inlinePeekOwner) bool {
 	if owner.kind == inlinePeekOwnerNone || other.kind == inlinePeekOwnerNone {
 		return false
 	}
-	return owner.kind == other.kind && owner.task == other.task
+	return owner.kind == other.kind && owner.task == other.task && owner.project == other.project
+}
+
+// rowSupportsPeek names the rows that carry a detail document. Every reader of a
+// Peek — the render, the measurement, the offset key, and the four scrolling
+// keys — asks here, so none of them can admit a row another one refuses.
+func rowSupportsPeek(row OutlinerRow) bool {
+	return row.IsTaskRow() || row.IsProjectHeader
 }
 
 // inlinePeekOffsetKey is what a remembered offset is remembered for. Peek's
@@ -92,14 +116,29 @@ func inlinePeekIndentForRow(row OutlinerRow) string {
 // inlinePeekDocumentForRow builds the complete detail document for one row.
 // Every reader — the renderer, the viewport measurement, and the two paging
 // keys — comes through here, so none of them can be looking at a different
-// document than the others.
+// document than the others. The row's kind picks the builder, and the project
+// header takes the branch first: it is not a task row, and a task row is never a
+// header.
 func (m *OutlinerModel) inlinePeekDocumentForRow(
 	row OutlinerRow,
 	indent string,
 	rowWidth int,
 	colLayout *chrome.ColumnLayout,
 ) inlinePeekDocument {
-	if m == nil || !row.IsTaskRow() {
+	if m == nil {
+		return inlinePeekDocument{}
+	}
+	if row.IsProjectHeader {
+		// The row's own project identity, not the view's: a cross-project group
+		// header names a project the scoped model may not be, and resolving through
+		// the scope would draw the wrong project's comments under it.
+		return inlinePeekProjectDocumentFor(inlinePeekProjectOptions{
+			Project: m.projectByGroupID(row.ProjectID),
+			Indent:  indent,
+			Width:   rowWidth,
+		})
+	}
+	if !row.IsTaskRow() {
 		return inlinePeekDocument{}
 	}
 	index := m.dependencyIndex()
@@ -117,11 +156,20 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 
 func (m *OutlinerModel) inlinePeekOffsetKey(row OutlinerRow, doc inlinePeekDocument) inlinePeekOffsetKey {
 	return inlinePeekOffsetKey{
-		owner:       taskPeekOwner(m.rowIdentity(row)),
+		owner:       m.peekOwnerForRow(row),
 		fingerprint: doc.Fingerprint,
 		width:       m.Width(),
 		height:      m.Height(),
 	}
+}
+
+// peekOwnerForRow types the row the offset belongs to, on the same split
+// inlinePeekDocumentForRow builds it on.
+func (m *OutlinerModel) peekOwnerForRow(row OutlinerRow) inlinePeekOwner {
+	if row.IsProjectHeader {
+		return projectPeekOwner(row.ProjectID)
+	}
+	return taskPeekOwner(m.rowIdentity(row))
 }
 
 // peekOffsetForRow resolves the content row a row's Peek starts at. It is pure,
@@ -149,19 +197,25 @@ func (m *OutlinerModel) peekRenderWidth() int {
 }
 
 // peekCursorDocument is the document the scrolling keys act on, or false when
-// there is none: Peek closed, a cursor off the rows, or a row that is not a
-// task. PeekMode alone is not enough — it survives the cursor moving onto a
-// header, where Peek draws nothing to page.
+// there is none: Peek closed, a cursor off the rows, or a row that owns no
+// document. PeekMode alone is not enough — it survives the cursor moving onto a
+// section header or a note row, where Peek draws nothing to page.
 func (m *OutlinerModel) peekCursorDocument() (OutlinerRow, inlinePeekDocument, bool) {
 	if m == nil || !m.PeekMode || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return OutlinerRow{}, inlinePeekDocument{}, false
 	}
 	row := m.Rows[m.Cursor]
-	if !row.IsTaskRow() {
+	if !rowSupportsPeek(row) {
 		return OutlinerRow{}, inlinePeekDocument{}, false
 	}
 	width := m.peekRenderWidth()
 	doc := m.inlinePeekDocumentForRow(row, inlinePeekIndentForRow(row), width, chrome.WorstCaseColumnLayout(width))
+	// A header naming a project the population no longer holds draws nothing, and
+	// nothing on screen is nothing to page: the four keys belong to the list again
+	// rather than being swallowed by a pane that is not there.
+	if doc.Empty() {
+		return OutlinerRow{}, inlinePeekDocument{}, false
+	}
 	return row, doc, true
 }
 

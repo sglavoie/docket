@@ -1,0 +1,62 @@
+{
+  "name": "outliner-project-peek-focused-header",
+  "fixture": "project-mix",
+  "size": "100x30",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+
+    { "type": "key", "label": "scope onto the project that holds nothing", "key": "P" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "quiet" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "one focused header leads the empty projection", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+
+    { "type": "key", "label": "b opens the same pane over the focused header form", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "label": "and the empty-state explanation is clipped, not overrun", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "which holds at the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 30 },
+
+    { "type": "key", "label": "a comment long enough to outrun the window", "key": "C" },
+    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "text", "text": "Planning stays parked until the delivery project clears its rollout backlog, and the quarter's remaining capacity is spoken for by the migration work, so nothing here is scheduled and nothing here is blocked; revisit once the rollout plan has shipped and the team has room to pick this up again." },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Planning stays parked until" },
+    { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
+
+    { "type": "assert", "label": "a body taller than the window reserves its counter row", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Ctrl+F pages the pane, not the list", "key": "ctrl+f" },
+    { "type": "assert", "assert": "not_contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Ctrl+U walks back half a page", "key": "ctrl+u" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "ctrl+b" },
+    { "type": "assert", "label": "and the top of the document is the top again", "assert": "contains", "value": "0 above ·" },
+    { "type": "key", "label": "Ctrl+D travels the shorter distance", "key": "ctrl+d" },
+    { "type": "assert", "assert": "not_contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "restart", "label": "relaunching reads the comment back from durable state" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "command", "label": "scope back onto the same project", "command": "outliner root" },
+    { "type": "key", "key": "P" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "quiet" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "a fresh launch opens with no pane", "assert": "not_contains", "value": "Planning stays parked until" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Planning stays parked until" },
+    { "type": "assert", "label": "and a fresh window starts at the top", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

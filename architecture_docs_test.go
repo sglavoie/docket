@@ -159,7 +159,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`~` is the fourth of the set and the only one that preselects",
 		"both halves of the diff resolve against one snapshot and land in one transaction " +
 			"with one undo entry",
-		"It carries no checklist line",
+		"A task Peek carries no checklist line",
 		"`inlinePeekDocument` is that split",
 		"the height the viewport reserves and the height the renderer draws are the same number",
 		"The Outliner remains full-width at every supported terminal size",
@@ -170,7 +170,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`Enter` pushes a project-qualified Focus frame",
 		"`Esc` restores one frame at a time",
 		"`Shift+Enter` widens by exactly one level",
-		"`b` toggles a session-only, project-qualified Peek below the cursor task",
+		"`b` toggles a session-only, project-qualified Peek below the cursor row",
 		"`Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`\n(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (3)",
 		"Entering visual selection disables Peek",
 		"### Sorting axis",

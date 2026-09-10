@@ -282,11 +282,22 @@ one mode, so it unwinds after the Focus stacks and before the project scope that
 owns the mode.
 
 `b` toggles a session-only, project-qualified Peek below the cursor
-task. Peek follows cursor, mode, and scope navigation. It carries no checklist
-line, because checklist items are rows and restating them would spend the
-tightest budget in the Outliner on content already on screen, while the task
-row's progress badge covers the folded case. Entering visual selection disables
-Peek.
+row. Peek follows cursor, mode, and scope navigation. `rowSupportsPeek` is the
+one answer to which rows own a document — task rows and project headers — and the
+render, the measurement, the offset key, and the four scrolling keys all ask
+there, so none of them can admit a row another one refuses. A task Peek carries
+no checklist line, because checklist items are rows and restating them would
+spend the tightest budget in the Outliner on content already on screen, while the
+task row's progress badge covers the folded case. Entering visual selection
+disables Peek.
+
+The key is one descriptor over `OperationTargetCurrentEntity` rather than a pair
+branching on the cursor, because Peek is one act whatever the row names. That is
+why the five IDs are absent from `CoreInputOperationRequiresTask`, whose
+descriptors are wrapped in `!CommandContextNamesNonTaskEntity`:
+`CoreInputOperationRequiresPeekTarget` and `CommandContextNamesPeekTarget` are
+their sibling requirement instead, so a section, note, or checklist row refuses
+by name rather than leaving the key silently dead.
 
 The five-line budget is a bound on what is visible, not on what Peek holds,
 because `ComputeOutlinerViewport` subtracts the Peek height plus a guard row from
@@ -318,17 +329,19 @@ spends the whole budget on content.
 The offset itself is session-only and lives in `peekOffsetState`, keyed by an
 `inlinePeekOwner` — a kind plus that kind's identity — the width-independent
 `Fingerprint` of the document, and the terminal size. The owner is typed rather
-than a bare task identity because a project header's detail would share this
-arithmetic and these four keys: a second kind adds itself to
-`inlinePeekOwnerKind` and to `peekCursorDocument`, and every reset rule below
-keeps working. `peekOffsetForRow` is pure: a key mismatch reads as the top of the
+than a bare task identity because the project header's detail shares this
+arithmetic and these four keys: `inlinePeekOwnerProject` carries the project
+identity beside `inlinePeekOwnerTask`'s `taskref.TaskIdentity`, so the two
+populations can never be the same owner however their identity strings compare,
+and a third kind would add itself the same way with every reset rule below
+unchanged. `peekOffsetForRow` is pure: a key mismatch reads as the top of the
 document, so changing owner, editing the detail, gaining or losing a reference,
 and resizing each reset scrolling without any writer having to notice, and a
 redraw preserves a manual scroll. `scrollPeek` is the only writer.
 
 `PeekCommandContext` answers consumption and availability separately, because
 they differ at exactly the boundary. `Visible` is consumption and is the whole of
-the four descriptors' applicability: a visible task Peek swallows all four keys
+the four descriptors' applicability: a visible Peek swallows all four keys
 at either end and over a body too short to move, since a shared binding that
 declines falls through to the next one and the outline would scroll under a Peek
 the user was trying to read. `CanPageDown`/`CanPageUp` are availability and are
@@ -354,6 +367,71 @@ row of its own and none is elided or counted in place of being named. Both are
 read-only: they carry no key, no
 selection, and no mutation, and the expanded task form is create-only, so no
 surface edits a reference except the grammar.
+
+#### The project header's document
+
+`inlinePeekProjectDocumentFor` is Peek's second document kind. It shares
+`inlinePeekDocument` whole — the same window arithmetic, the same counter row,
+the same four keys — and owns only what a project has to say. Both header forms
+take it: the cross-project group header a multi-project mode draws above each
+project's rows, and the single `IsFocusedProjectHeader` row a single-project
+projection leads with. `inlinePeekDocumentForRow` dispatches on `IsProjectHeader`
+first, since a header is never a task row.
+
+The project is resolved through `projectByGroupID` from the row's own
+`ProjectID`, never through the view's scope: a cross-project header names a
+project the scoped model is not, and resolving through the scope would draw the
+wrong project's comments under the right project's header — a mistake that
+commits nothing and is therefore invisible. A header whose project the population
+no longer holds resolves nothing, and the builder returns the zero document;
+`inlinePeekDocument.Empty` is what tells `peekCursorDocument` there is no pane on
+screen, so the four keys belong to the list again rather than being swallowed by
+one that is not there.
+
+The name is header rather than body, because the header row spends its width on
+the slug badge, the group size, and the pressure chips and never draws the name
+at all. It goes through `inlinePeekBoundedTitleRows`, the same bounded
+title-continuation policy a long task title takes, now one implementation serving
+both kinds. Its key still travels in the fingerprint, which is what makes a
+rename a different document.
+
+Body order is description, tags, then comments. The comment section is appended
+unconditionally rather than through the `add` helper the other two take: a
+project with nothing stored still owes the reader `No comments yet.`, which is
+also what keeps every resolvable header's document non-empty. Bodies read newest
+first, matching the `;` panel — storage keeps them oldest first because that
+order is canonical and byte-stable, and reversing for a reader touches nothing
+stored. Each entry is a muted `chrome.FormatTimestampBracket` stamp followed by
+the body wrapped two columns in and left unpainted, so a comment reads as text
+under its date rather than as one more dimmed metadata line. Nothing is elided:
+the page is what bounds a project with a hundred comments, exactly as it bounds a
+task with a long description.
+
+The fingerprint keys stored values alone — `id@RFC3339Nano:text` per comment —
+never the rendered stamp, whose relative half drifts on the minute tick and would
+otherwise throw a reader back to the top mid-page. A rename, a description or tag
+edit, and any comment addition, edit, deletion, or moved instant each change it
+and reset the window; a reload, a re-render, and a switch between the two header
+forms do not.
+
+The owner is the project's catalog identity, not the header's collapse key. All
+emits one header per state section, so one project can have several header rows
+at once; keying on the row would make a page turn under one of them a different
+window under the next. `projectPeekOwner("")` is the unwritten owner, which
+matches nothing, so two anonymous headers never agree.
+
+Task Peek is unchanged by all of this, comment count included: a task's comments
+have the `;` panel standing behind their count, and a project header carries no
+count at all because the row has no column for one.
+
+The empty projection is the one place the pane is not reserved by
+`ComputeOutlinerViewport`, because that path never calls it: a focused header
+over `No tasks yet.` was one row that could not overflow, and a Peek beneath it
+can. `clipBlockToRows` is that path's whole height authority. It keeps the rows
+`ContentHeight` has left once the explanation below has been paid for, so the
+header itself always survives and the pane gives up its tail instead of the
+window. An empty project is exactly the header a reader parks on, so the state is
+worth the one measurement rather than a refusal to draw.
 
 Two blocks sit outside that budget, both because the row deliberately elided them
 and Peek is the surface whose job is to show what the row had no width for.

@@ -484,7 +484,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// being typed rather than a bare task identity is stated with them because it
 	// is the seam a project-header Peek takes. The mechanism lives in
 	// docs/architecture/search-filters-and-sorting.md.
-	const budget = 38596
+	// Twentieth raise, 38596 to 39371, for Peek's second document kind. 775 bytes
+	// buy three rules that are silent when guessed wrong. The first is how `b` is
+	// shared, which is not how any other shared key is shared: `*`, `#`, `C`, and
+	// `;` are two descriptors branching on the cursor, and copying that pattern
+	// here mints a second Peek descriptor, a second footer label, and two windows
+	// over one pane. Peek is one act over `OperationTargetCurrentEntity` instead,
+	// and the gate that keeps it off a section, note, or checklist row has to be
+	// named or the next reader reintroduces the task-only requirement that made
+	// the key silently dead on a header. The second is that the document resolves
+	// the row's own `ProjectID` and not the view's: a cross-project group header
+	// names a project the scoped model is not, and resolving through the scope
+	// draws the wrong project's comments under the right project's header, which
+	// commits nothing and is therefore never caught. The third is that the owner
+	// is the project identity rather than the header's collapse key — All emits
+	// one header per state section, so keying on the row makes a page turn under
+	// one of them a different window under the next, and only a reader who
+	// scrolled and then moved would ever see it. The mechanism lives in
+	// docs/architecture/tui-architecture.md.
+	const budget = 39371
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

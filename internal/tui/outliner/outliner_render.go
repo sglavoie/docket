@@ -340,11 +340,15 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	}
 	content = appendProjectHeaderPressure(content, row, rowWidth-lipgloss.Width(gutter))
 
+	line := chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 	if selected {
-		return outlinerCursorRow(gutter, content, rowWidth, paint)
+		line = outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	// A header row says almost nothing about the project it names — a slug, a
+	// count, and what is urgent inside. Peek is where the rest of it is readable,
+	// on the same key and under the same cursor rule as a task's.
+	return m.appendInlinePeek(line, row, rowIndex, rowWidth, nil)
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a
@@ -792,16 +796,36 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	}
 	// A focused projection keeps its project header when it holds no content, in
 	// the same place and drawn by the same renderer as when it does: the header is
-	// context for the projection, and the explanation below belongs under it. One
-	// row cannot overflow the window, so this state needs no viewport and takes
-	// the full width — the scrollbar column the row path subtracts is never
+	// context for the projection, and the explanation below belongs under it. It
+	// takes the full width — the scrollbar column the row path subtracts is never
 	// reserved here.
+	//
+	// The header alone cannot overflow the window, but the Peek an empty project
+	// is exactly the place to open can. There is no viewport on this path to
+	// reserve against, so the block is clipped to the rows left over once the
+	// explanation below it has been paid for; the header itself always survives.
 	if header, ok := m.focusedProjectHeaderRow(); ok {
-		b.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
+		spent := strings.Count(b.String(), "\n")
+		rendered := m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0)
+		b.WriteString(clipBlockToRows(rendered, max(m.ContentHeight()-spent-1, 1)))
 		b.WriteString("\n")
 	}
 	b.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
 	return b.String()
+}
+
+// clipBlockToRows keeps the first rows lines of an already-rendered block. It is
+// the empty state's only height authority: every other surface measures through
+// ComputeOutlinerViewport, which this path deliberately never calls.
+func clipBlockToRows(block string, rows int) string {
+	if rows <= 0 {
+		return ""
+	}
+	lines := strings.Split(block, "\n")
+	if len(lines) <= rows {
+		return block
+	}
+	return strings.Join(lines[:rows], "\n")
 }
 
 // focusedProjectHeaderRow names the focused-project header the current
@@ -869,7 +893,7 @@ func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int)
 	// drive a negative window slice.
 	visibleRows := max(m.ContentHeight()-extraFooterLines, 1)
 
-	if m.PeekMode && m.Cursor >= 0 && m.Cursor < len(m.Rows) && m.Rows[m.Cursor].IsTaskRow() {
+	if m.PeekMode && m.Cursor >= 0 && m.Cursor < len(m.Rows) && rowSupportsPeek(m.Rows[m.Cursor]) {
 		// The shell footer may wrap to three lines at minimum width while views
 		// retain the standard two-line size budget. Reserve one guard row so a
 		// Peek attached to the last visible task is never the line shell clipping

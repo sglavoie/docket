@@ -192,7 +192,8 @@ reports `No parent to focus`. Inside Focus it climbs one level from the focus
 root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
-`b` toggles a session-only Peek directly beneath the cursor task. Peek
+`b` toggles a session-only Peek directly beneath the cursor row, whether that row
+is a task or a project header. On a task, Peek
 follows navigation and reads, in this order: the resume note, the description, a
 dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
@@ -208,9 +209,22 @@ bottom reads `12 above · 7 below` so you always know how much is out of sight.
 The footer offers a key only when that direction can actually move, but all four
 belong to an open Peek: pressing one at the end of the detail does nothing rather
 than moving the outline underneath. `PgDn` and `PgUp` still move the outline,
-open Peek or not. Where you scrolled to is remembered while you stay on the task
-and resets by itself when you move to another task, the detail changes, or the
-terminal is resized.
+open Peek or not. Where you scrolled to is remembered while you stay on the same
+row and resets by itself when you move to another task or project, the detail
+changes, or the terminal is resized.
+
+On a project header — the group header a cross-project mode draws above each
+project's tasks, and the single header a project-scoped or focused view leads
+with — the same key opens the same pane over the project instead. It reads the
+project's full name above the body, then its description, its tags, and every
+comment it has, newest first, each under a `[2026-03-03 09:30] 6 days ago` stamp.
+A project with no comments yet says `No comments yet.` rather than showing
+nothing, so the key always answers on a header. Everything is shown whole and the
+same four keys page through it, exactly as on a task. A project shown under
+several headers at once — All draws one per state section — is one detail behind
+all of them, so where you scrolled to under one is where you are under the next.
+A task's Peek is unchanged: its comments stay a count, because `;` is the panel
+that reads them.
 
 Both reference lists are read-only wherever Peek is open, and
 both carry their own count. `Dependencies` names what this task stores, in the

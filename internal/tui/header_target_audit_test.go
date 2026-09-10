@@ -73,11 +73,11 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.notes":                  "target-free",
 	"tui.core.open-note":              "target-free",
 	"tui.core.outline-editor":         "target-free",
-	"tui.core.peek":                   "reject",
-	"tui.core.peek-half-page-down":    "reject",
-	"tui.core.peek-half-page-up":      "reject",
-	"tui.core.peek-page-down":         "reject",
-	"tui.core.peek-page-up":           "reject",
+	"tui.core.peek":                   "project",
+	"tui.core.peek-half-page-down":    "project",
+	"tui.core.peek-half-page-up":      "project",
+	"tui.core.peek-page-down":         "project",
+	"tui.core.peek-page-up":           "project",
 	"tui.core.previous-header":        "target-free",
 	"tui.core.previous-work-mode":     "target-free",
 	"tui.core.query-readout":          "target-free",
@@ -291,7 +291,9 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 		{"E"},
 		{"ctrl+e"},
 		{"shift+enter"},
-		{"b"},
+		// b is absent for the same reason e is: a header answers it. Peek reads a
+		// project header's detail as readily as a task's, so from here the key opens
+		// the pane rather than refusing.
 		{">"},
 		{"<"},
 		{"%"},

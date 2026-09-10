@@ -170,6 +170,12 @@ comment, and Project comments narrow to an Outliner project header through
 `outlinerProjectOperationTargetsHeader`: the sole-scope fallback is the Hub's,
 where the row already named its project.
 
+`b` and its four scrolling keys are shared differently, and must stay so: one
+descriptor over `OperationTargetCurrentEntity`, because Peek is one act — show
+this row's detail — however the row answers. `CommandContextNamesPeekTarget`
+gates them, so a section, note, or checklist row refuses by name instead of
+doing nothing.
+
 Checklist rules:
 
 - Checklist rows own their mutations, so the checklist is absent from the task
@@ -288,12 +294,18 @@ Row and Peek budget:
   header, so they sit outside the window. A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
+- Both project header forms Peek through `inlinePeekProjectDocumentFor` over the
+  row's own `ProjectID`, never the view's: name as header, then description,
+  tags, and every stored comment newest first, with `No comments yet.` for none,
+  so a header always has a document and an unresolved one has none.
+  `projectPeekOwner` is that project identity, so All's several headers for one
+  project share one window. Task Peek keeps its comment count.
 - Peek's window is one content-row offset, session-only, keyed by typed Peek
   owner, document fingerprint, and terminal size; nothing else resets it.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
   the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`
   three, both clamped to the document end. `PeekContext.Visible` is consumption
-  and `CanPage*` availability: a visible task Peek swallows all four keys at
+  and `CanPage*` availability: a visible Peek swallows all four keys at
   either boundary and over a body too short to move, while only the hints read
   what can move. `PgDn`/`PgUp` stay the cursor's alone.
 - `VisualWidthOverflow` must subtract the same ellipsis column as

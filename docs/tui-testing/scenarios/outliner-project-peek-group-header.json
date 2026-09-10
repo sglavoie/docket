@@ -1,0 +1,63 @@
+{
+  "name": "outliner-project-peek-group-header",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "step onto the first cross-project group header", "key": "n" },
+    { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "assert": "not_contains", "value": "Client Alpha" },
+
+    { "type": "key", "label": "b opens Peek over the project the header names", "key": "b" },
+    { "type": "assert", "label": "Peek leads with the stored name the row abbreviated", "assert": "contains", "value": "Client Alpha" },
+    { "type": "assert", "label": "an empty project still has something to say", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "label": "and no neighbouring project was read into it", "assert": "not_contains", "value": "Client Beta" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "C on that same header writes a project comment", "key": "C" },
+    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "text", "text": "Kickoff moved to Monday morning" },
+    { "type": "key", "label": "a body of its own newlines, which the pane spends a row each on", "key": "enter" },
+    { "type": "text", "text": "Room four is booked" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Project Comment: Client Alpha" },
+
+    { "type": "assert", "label": "the open pane refreshed onto the comment it just gained", "assert": "contains", "value": "Kickoff moved to Monday morning" },
+    { "type": "assert", "label": "both of its lines, on a row each", "assert": "contains", "value": "Room four is booked" },
+    { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "moving onto the project's task hands Peek to the task", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "so the project's comment is no longer what is shown", "assert": "not_contains", "value": "Kickoff moved to Monday morning" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and coming back re-reads the project", "key": "k" },
+    { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
+
+    { "type": "resize", "label": "the pane holds at the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "folding the group keeps the header and its pane together", "key": "h" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "l" },
+
+    { "type": "key", "label": "undo takes the comment back and the pane says so", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "assert": "not_contains", "value": "Kickoff moved to Monday morning" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc closes the pane before it unwinds anything else", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha]" }
+  ]
+}

@@ -226,20 +226,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(row OutlinerRow, selected bool, ro
 
 	line := applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 
-	if m.PeekMode && rowIndex == m.Cursor {
-		var b strings.Builder
-		b.WriteString(line)
-		// Peek belongs to the selected task but is not another tree node. Preserve
-		// the nesting width for alignment without repeating connector glyphs.
-		indent := inlinePeekIndentForRow(row)
-		for _, previewLine := range m.InlinePeekLinesForRow(row, indent, width, colLayout) {
-			b.WriteString("\n")
-			b.WriteString(previewLine)
-		}
-		return b.String()
-	}
-
-	return line
+	return m.appendInlinePeek(line, row, rowIndex, width, colLayout)
 }
 
 // rowIdentity resolves a row's project-qualified task identity, supplying the
@@ -662,11 +649,40 @@ func (m *OutlinerModel) InlinePeekLinesForRow(
 	rowWidth int,
 	colLayout *chrome.ColumnLayout,
 ) []string {
-	if m == nil || !row.IsTaskRow() {
+	if m == nil || !rowSupportsPeek(row) {
 		return nil
 	}
 	doc := m.inlinePeekDocumentForRow(row, indent, rowWidth, colLayout)
 	return doc.Lines(m.peekOffsetForRow(row, doc))
+}
+
+// appendInlinePeek draws a row's Peek window beneath the row itself. Both row
+// kinds that own a document come through here, so the pane attaches on the same
+// terms wherever it appears: only under the cursor, only while Peek is open, and
+// only when the document has something to say.
+func (m *OutlinerModel) appendInlinePeek(
+	line string,
+	row OutlinerRow,
+	rowIndex int,
+	width int,
+	colLayout *chrome.ColumnLayout,
+) string {
+	if m == nil || !m.PeekMode || rowIndex != m.Cursor {
+		return line
+	}
+	// Peek belongs to the selected row but is not another tree node. Preserve the
+	// nesting width for alignment without repeating connector glyphs.
+	peekLines := m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width, colLayout)
+	if len(peekLines) == 0 {
+		return line
+	}
+	var b strings.Builder
+	b.WriteString(line)
+	for _, peekLine := range peekLines {
+		b.WriteString("\n")
+		b.WriteString(peekLine)
+	}
+	return b.String()
 }
 
 // inlinePeekLineCount measures the Peek height ComputeOutlinerViewport must

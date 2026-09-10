@@ -68,6 +68,13 @@ type inlinePeekDocument struct {
 	width int
 }
 
+// Empty reports whether the document has nothing to draw at all. A row whose
+// subject could not be resolved produces one, and it is what tells the four
+// scrolling keys that no pane is on screen to consume them.
+func (doc inlinePeekDocument) Empty() bool {
+	return len(doc.Header) == 0 && len(doc.Body) == 0
+}
+
 // Paged reports whether the body outgrows its budget. Nothing below the
 // threshold reserves a counter row, so a short document keeps all five.
 func (doc inlinePeekDocument) Paged() bool {
@@ -97,7 +104,7 @@ func (doc inlinePeekDocument) ClampOffset(offset int) int {
 // says exactly how much. It is the only way to either the drawn window or its
 // height, so a render and a measurement cannot disagree about what is on screen.
 func (doc inlinePeekDocument) Lines(offset int) []string {
-	if len(doc.Header) == 0 && len(doc.Body) == 0 {
+	if doc.Empty() {
 		return nil
 	}
 	lines := make([]string, 0, len(doc.Header)+inlinePeekBodyRows)
@@ -257,13 +264,9 @@ func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int)
 		return nil
 	}
 
-	wrapped := textfit.WrapText(overflow, width)
+	wrapped := inlinePeekBoundedTitleRows(overflow, width)
 	if len(wrapped) == 0 {
 		return nil
-	}
-	if len(wrapped) > inlinePeekTitleRows {
-		wrapped = wrapped[:inlinePeekTitleRows]
-		wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
 	}
 
 	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
@@ -272,6 +275,25 @@ func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int)
 		lines = append(lines, indent+style.Render(textfit.TruncateIntentional(line, width, "…")))
 	}
 	return lines
+}
+
+// inlinePeekBoundedTitleRows is the bounded title-continuation policy, one
+// implementation for both document kinds: wrap to the pane, keep at most
+// inlinePeekTitleRows of it, and end a truncated run on an ellipsis that says so.
+// It is deliberately the only thing in Peek that elides — the header completes
+// what a row clipped, and a heading long enough to fill the pane by itself would
+// leave no room for the body it heads.
+func inlinePeekBoundedTitleRows(text string, width int) []string {
+	if text == "" || width <= 0 {
+		return nil
+	}
+	wrapped := textfit.WrapText(text, width)
+	if len(wrapped) <= inlinePeekTitleRows {
+		return wrapped
+	}
+	wrapped = wrapped[:inlinePeekTitleRows]
+	wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
+	return wrapped
 }
 
 // inlinePeekDatesLine names the task clock the row has no width for: how long

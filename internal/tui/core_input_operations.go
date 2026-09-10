@@ -82,6 +82,14 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		!operation.CurrentTaskIdentity(invocation.Context).Valid() {
 		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
 	}
+	// Peek's five keys read a task or a project header, so they refuse on the rows
+	// that name neither — a section header, a note, a checklist item — for the same
+	// reason the task keys refuse on a header: a delegated binding bypasses target
+	// resolution, and an unmet requirement would otherwise be a silent no-op.
+	if operation.CoreInputOperationRequiresPeekTarget(invocation.Descriptor.ID) &&
+		!operation.CommandContextNamesPeekTarget(invocation.Context) {
+		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
+	}
 
 	var message tea.Msg
 	var err error

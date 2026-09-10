@@ -120,12 +120,24 @@ func (m *OutlinerModel) TogglePeek() {
 		m.PeekMode = false
 		return
 	}
-	if task, _ := m.GetTaskRef(); task == nil {
+	if !m.cursorRowSupportsPeek() {
 		return
 	}
 	// Keep the scroll offset: the viewport clamp then scrolls the minimum needed
 	// to fit Peek, instead of snapping the cursor to the last visible row.
 	m.PeekMode = true
+}
+
+// cursorRowSupportsPeek reports whether the cursor rests on a row that owns a
+// detail document. It is the toggle's whole gate, and it reads the same
+// rowSupportsPeek the render and the measurement do, so the key cannot open a
+// pane those two would then decline to draw. The operation grammar answers the
+// same question one layer up, off the command context rather than the rows.
+func (m *OutlinerModel) cursorRowSupportsPeek() bool {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return false
+	}
+	return rowSupportsPeek(m.Rows[m.Cursor])
 }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
