@@ -189,7 +189,18 @@ func (m *OutlinerModel) peekOffsetForRow(row OutlinerRow, doc inlinePeekDocument
 // peekRenderWidth is the width the last render gave a row. The scrolling keys
 // read it rather than recomputing a window: ComputeOutlinerViewport is the single
 // window authority, and it has already run for the frame the user is looking at.
+//
+// The empty projection is the one frame that never reaches that authority.
+// renderOutlinerEmptyState returns before it, drawing the focused header — and
+// the Peek hanging off it — at the full width, so LastViewport still names
+// whatever frame last held rows, at whatever size the terminal was then. Reading
+// it there would build the keys a document of another width, whose end is not
+// the end of the one on screen. The branch is the same HasContentRows the render
+// branches on, so the two cannot disagree about which path drew.
 func (m *OutlinerModel) peekRenderWidth() int {
+	if !m.HasContentRows() {
+		return max(m.Width(), 1)
+	}
 	if width := m.LastViewport.rowWidth; width > 0 {
 		return width
 	}
