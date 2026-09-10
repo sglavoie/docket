@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -49,6 +50,34 @@ const (
 	helperMutationReview  = "review"
 	helperMutationCreate  = "create"
 
+	// helperProjectEnv names the project a project-scoped role mutates, and
+	// helperProjectCommentEnv which of the three project-comment calls it makes.
+	// The selector is a second variable rather than another helperMutationEnv
+	// value because the two roles have to be able to race each other: a mixed
+	// pair sets both, and each role reads only its own.
+	//
+	// helperTargetEnv addresses the existing comment an edit or a removal
+	// rewrites. It carries the comment's current text and not its identity: a
+	// comment's UUID is minted by the seed, so naming one would mean passing a
+	// value through a file, while the text is something the gate script, the seed,
+	// and the in-suite race can all spell.
+	helperProjectEnv        = "TT_HELPER_PROJECT"
+	helperProjectCommentEnv = "TT_HELPER_PROJECT_COMMENT"
+	helperTargetEnv         = "TT_HELPER_TARGET_TEXT"
+
+	helperProjectCommentAdd    = "add"
+	helperProjectCommentEdit   = "edit"
+	helperProjectCommentRemove = "remove"
+
+	// helperSeedCommentA and helperSeedCommentB are the two project comments the
+	// seed writes onto the race project, so an edit or a removal has something to
+	// address that neither machine had to create first. A helper that minted its
+	// own target would put an extra write into the document its partner is about
+	// to read, and the pair would be racing over that write instead of the one
+	// under test — the same reason the seed carries the review flags.
+	helperSeedCommentA = "Kickoff notes live in the shared drive"
+	helperSeedCommentB = "The vendor contract review is booked for the 12th"
+
 	// helperRenameTag is the one vocabulary the seeded workspace carries, so the
 	// gate never has to pass a name the seed and the rename both have to agree on.
 	helperRenameTag = "work"
@@ -67,6 +96,12 @@ const (
 	helperBarrierTimeout = 60 * time.Second
 	helperPollInterval   = 10 * time.Millisecond
 )
+
+// helperSeedCommentInstant is the moment the two seeded project comments were
+// created at. It is a fixed date rather than the clock so the canonical order
+// the merge sorts by is the order written here, and so a document seeded twice
+// in one gate run cannot differ in a way no assertion names.
+var helperSeedCommentInstant = time.Date(2026, time.January, 5, 9, 0, 0, 0, time.UTC)
 
 // helperEnvironment is one helper process's whole view of the workspace: the
 // same manager, runtime, ledger and service the running TUI builds, over a data
@@ -229,6 +264,14 @@ func seedCrossMachineWorkspace(workspace *uitestWorkspace) (*models.Project, err
 		vendor.ApplyWorkflowState(models.StateBacklog)
 		vendor.Tags = []string{helperRenameTag}
 		vendor.Review = true
+
+		// Two project comments so an edit and a removal each have a target that
+		// was already on disk before either machine started. They are inert for
+		// every other role: nothing reads a project comment unless it was asked to.
+		p.Comments = []*models.ProjectComment{
+			{ID: uuid.New().String(), Text: helperSeedCommentA, CreatedAt: helperSeedCommentInstant},
+			{ID: uuid.New().String(), Text: helperSeedCommentB, CreatedAt: helperSeedCommentInstant.Add(time.Hour)},
+		}
 	})
 	if err != nil {
 		return nil, fmt.Errorf("seed %s: %w", helperRaceProjectName, err)
@@ -377,7 +420,7 @@ func helperCommitNewProject(t *testing.T, env helperEnvironment, name string) {
 // a pair released before the call would prove only that both processes had found
 // a task: one of them could still read, commit and exit before the other read
 // anything, and the "race" would be two sequential writes. Held at
-// app.TaskCommitBarrier, both processes are demonstrably holding the same
+// app.CommitBarrier, both processes are demonstrably holding the same
 // document version with nothing yet written, which is what the revision each one
 // publishes says.
 func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
@@ -505,6 +548,147 @@ func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
 	helperRecord(t, "committed")
 }
 
+// TestCrossMachineHelperAppliesProjectCommentMutation is the project-scoped
+// sibling of the task-mutation role: two machines adding, editing, or deleting
+// comments on one project, each held at the same commit seam its partner is.
+//
+// It is a role of its own rather than a fourth TT_HELPER_MUTATION value for two
+// reasons. A project comment names no task, so it resolves its target through a
+// comment identity rather than a locator and its barrier target carries no task
+// id at all. And the two roles have to be able to be the two sides of one race —
+// a project comment and a task edit rewriting one tasks.md is a hazard neither
+// role can express alone — which they could not be if selecting one meant not
+// selecting the other.
+//
+// The three calls differ in what a refusal has to prove. An addition and an edit
+// each introduce text, so the claim is that a refused one left that text nowhere;
+// a removal introduces none, so the claim is that the comment it addressed is
+// still there, checked by identity rather than by text because the machine that
+// beat it may have been an edit.
+func TestCrossMachineHelperAppliesProjectCommentMutation(t *testing.T) {
+	env := openHelperWorkspace(t)
+	kind := helperEnv(t, helperProjectCommentEnv)
+	projectID := helperProjectID(t, env, helperEnv(t, helperProjectEnv))
+	text := strings.TrimSpace(os.Getenv(helperTextEnv))
+
+	switch kind {
+	case helperProjectCommentAdd:
+		defer helperHoldAtCommit(t, "Add Project Comment")()
+		if _, err := env.service.AddProjectComment(projectID, text); err != nil {
+			helperRefusedWithoutWriting(t, env, projectID, "AddProjectComment", text, err)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			return helperProjectCommentCount(t, env, projectID, text) == 1
+		})
+	case helperProjectCommentEdit:
+		target := helperProjectCommentTarget(t, env, projectID, helperEnv(t, helperTargetEnv))
+		defer helperHoldAtCommit(t, "Edit Project Comment")()
+		if _, err := env.service.EditProjectComment(target, text); err != nil {
+			helperRefusedWithoutWriting(t, env, projectID, "EditProjectComment", text, err)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			stored := helperProjectCommentByID(t, env, projectID, target.CommentID)
+			return stored != nil && stored.Text == text
+		})
+	case helperProjectCommentRemove:
+		target := helperProjectCommentTarget(t, env, projectID, helperEnv(t, helperTargetEnv))
+		defer helperHoldAtCommit(t, "Remove Project Comment")()
+		if _, err := env.service.RemoveProjectComment(target); err != nil {
+			helperRequireStored(t, kind, func() bool {
+				return helperProjectCommentByID(t, env, projectID, target.CommentID) != nil
+			})
+			helperRecordRefusal(t, "RemoveProjectComment", err)
+			return
+		}
+		helperRequireStored(t, kind, func() bool {
+			return helperProjectCommentByID(t, env, projectID, target.CommentID) == nil
+		})
+	default:
+		t.Fatalf("%s=%q names no project-comment mutation", helperProjectCommentEnv, kind)
+	}
+	helperRecord(t, "committed")
+}
+
+// helperProjectID finds one project by name. A name is what the gate script and
+// the seed can both spell; the identity is minted by the seed.
+func helperProjectID(t *testing.T, env helperEnvironment, name string) string {
+	t.Helper()
+	for _, project := range env.workspace.Runtime.AvailableProjects() {
+		if project.Name == name {
+			return project.ID
+		}
+	}
+	t.Fatalf("no project named %q in %s", name, env.dataDir)
+	return ""
+}
+
+// helperStoredProjectComments reads one project's comments back off disk, for
+// the same reason every other stored claim reloads: the question is what the
+// bytes say after the other machine's write merged into them.
+func helperStoredProjectComments(t *testing.T, env helperEnvironment, projectID string) []*models.ProjectComment {
+	t.Helper()
+	loaded := helperReloadProject(t, env, projectID)
+	if loaded == nil {
+		return nil
+	}
+	return loaded.Comments
+}
+
+func helperProjectCommentByID(t *testing.T, env helperEnvironment, projectID, commentID string) *models.ProjectComment {
+	t.Helper()
+	for _, comment := range helperStoredProjectComments(t, env, projectID) {
+		if comment != nil && comment.ID == commentID {
+			return comment
+		}
+	}
+	return nil
+}
+
+// helperProjectCommentCount is how "exactly once" is asserted. A merge that kept
+// two machines' additions is correct; a merge that kept one of them twice is the
+// duplication an identity-keyed reconciliation exists to prevent, and counting is
+// the only way to tell the two apart from the outside.
+func helperProjectCommentCount(t *testing.T, env helperEnvironment, projectID, text string) int {
+	t.Helper()
+	count := 0
+	for _, comment := range helperStoredProjectComments(t, env, projectID) {
+		if comment != nil && comment.Text == text {
+			count++
+		}
+	}
+	return count
+}
+
+// helperProjectCommentTarget addresses one stored comment by its current text,
+// resolving the identity and the precondition the application layer re-checks.
+// It is read before the barrier is installed, so the target is the document as it
+// stood before either machine moved.
+func helperProjectCommentTarget(t *testing.T, env helperEnvironment, projectID, text string) app.ProjectCommentTarget {
+	t.Helper()
+	for _, comment := range helperStoredProjectComments(t, env, projectID) {
+		if comment != nil && comment.Text == text {
+			return app.ProjectCommentTarget{ProjectID: projectID, CommentID: comment.ID, Original: comment.Text}
+		}
+	}
+	t.Fatalf("no project comment %q on project %s", text, projectID)
+	return app.ProjectCommentTarget{}
+}
+
+// helperRefusedWithoutWriting classifies a refusal only after proving it left
+// nothing behind. A conflict that recorded a bundle and still wrote half its
+// document would satisfy every outcome check the gate makes, so the absence is
+// asserted here — inside the process that was refused — rather than inferred.
+func helperRefusedWithoutWriting(t *testing.T, env helperEnvironment, projectID, call, unwritten string, err error) {
+	t.Helper()
+	if count := helperProjectCommentCount(t, env, projectID, unwritten); count != 0 {
+		helperRecord(t, "lost: a refused project comment wrote its text anyway")
+		t.Fatalf("%s was refused with %v but left %q on disk %d time(s)", call, err, unwritten, count)
+	}
+	helperRecordRefusal(t, call, err)
+}
+
 // helperHoldAtCommit installs the shared commit barrier for one undo action and
 // returns the deferred removal. Filtering on the action is what lets a role
 // whose mutation opens more than one transaction — or a process that reconciles
@@ -513,7 +697,7 @@ func helperHoldAtCommit(t *testing.T, undoAction string) func() {
 	t.Helper()
 	ready := strings.TrimSpace(os.Getenv(helperReadyEnv))
 	proceed := helperEnv(t, helperGoEnv)
-	app.TaskCommitBarrier = func(action string, _ app.TaskLocator, expectedRevision string) {
+	app.CommitBarrier = func(action string, _ app.CommitBarrierTarget, expectedRevision string) {
 		if action != undoAction {
 			return
 		}
@@ -522,7 +706,7 @@ func helperHoldAtCommit(t *testing.T, undoAction string) func() {
 		}
 		helperAwait(t, proceed)
 	}
-	return func() { app.TaskCommitBarrier = nil }
+	return func() { app.CommitBarrier = nil }
 }
 
 // helperRecordRefusal classifies the three refusals a losing machine may
@@ -636,12 +820,19 @@ func helperStoredTaskTitled(t *testing.T, env helperEnvironment, projectID, titl
 
 // TestCrossMachineHelperUsesMigratedWorkspace is the new-schema half of the
 // migration fixture: it opens a workspace an older binary minted and a current
-// one migrated, and then uses the field that migration admitted. Writing a
-// resume note and reading the RESUME block back out of the bytes is what proves
-// the migrated workspace is not merely readable but current.
+// one migrated, and then uses the two blocks that migration admitted. Writing a
+// resume note and a project comment and reading both back out of the bytes is
+// what proves the migrated workspace is not merely readable but current.
+//
+// Both blocks are written here rather than in two roles because they are the
+// same claim about the same document at two levels: RESUME is a task-level block
+// the v18 marker bump admitted and PROJECT-COMMENTS is the document-level block
+// v19 admitted, and a migration that produced a document able to carry one and
+// not the other would pass a check that named only one of them.
 func TestCrossMachineHelperUsesMigratedWorkspace(t *testing.T) {
 	env := openHelperWorkspace(t)
 	note := helperEnv(t, helperNoteEnv)
+	comment := helperEnv(t, helperTextEnv)
 	if schema := env.workspace.Runtime.Catalog().SchemaVersion; schema != config.CurrentConfigVersion {
 		t.Fatalf("migrated catalog schema = %d, want %d", schema, config.CurrentConfigVersion)
 	}
@@ -654,6 +845,21 @@ func TestCrossMachineHelperUsesMigratedWorkspace(t *testing.T) {
 		t.Fatalf("stored resume note = %q, want %q", stored, note)
 	}
 
+	// The comment is reread through the loader rather than taken from the result,
+	// because the claim is that the migrated document round-trips the block: a
+	// write whose bytes no reader could parse back would report success here.
+	written, err := env.service.AddProjectComment(locator.ProjectID, comment)
+	if err != nil {
+		t.Fatalf("AddProjectComment on a migrated workspace: %v", err)
+	}
+	stored := helperProjectCommentByID(t, env, locator.ProjectID, written.CommentID)
+	if stored == nil {
+		t.Fatalf("the project comment written to a migrated workspace did not read back")
+	}
+	if stored.Text != comment {
+		t.Fatalf("stored project comment = %q, want %q", stored.Text, comment)
+	}
+
 	project := env.workspace.Runtime.GetProject(locator.ProjectID)
 	if project == nil {
 		t.Fatalf("the migrated catalog has no project %s", locator.ProjectID)
@@ -662,8 +868,10 @@ func TestCrossMachineHelperUsesMigratedWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read %s: %v", filepath.Base(project.Path), err)
 	}
-	if !strings.Contains(string(raw), "<!-- RESUME -->") {
-		t.Fatalf("migrated tasks.md carries no RESUME block:\n%s", raw)
+	for _, block := range []string{"<!-- RESUME -->", "<!-- PROJECT-COMMENTS -->"} {
+		if !strings.Contains(string(raw), block) {
+			t.Fatalf("migrated tasks.md carries no %s block:\n%s", block, raw)
+		}
 	}
 	helperRecord(t, fmt.Sprintf("schema %d", config.CurrentConfigVersion))
 }

@@ -161,20 +161,22 @@ Ctrl+O/Ctrl+I                    older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 Ctrl+P                           Select Pinned Project
 gp                               the cursor task's project, in All
-a/A e/E Ctrl+E O                 capture and edit
+g~ gc                            a related task, and the conflict browser
+a/A e/E Ctrl+E O D               capture, edit, and repeat
 $i $b $n $t $g $w $p $m $d $c    workflow chord
-!0-3 @ # *                       metadata
+!0-3 @ # * = r R                 metadata, review, resume note, acknowledge
 [ ] > < % J K Ctrl+J Ctrl+K      structure
-& ;                              attachments and comments panels
+& ; C ~                          attachments, comments, add comment, references
 y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter b              Focus, widen focus, and Peek
 Ctrl+F/Ctrl+B                    page the open Peek
-x                                tick the checklist item under the cursor
+c x                              add and tick checklist items
+M Ctrl+M                         pin the menu bar, open it for one act
 P Q \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
-f!0-3 f$ fc f# fr f@ fh fs f* fx filters
+f!0-3 f@ fa f$ f# fc f= fh f~ fs f* fx  filters
 F# Fp FP Fa FA Fx                project population filters
-o@ o! oc ou ot ox                sort axis
+o@ o! oc ou ot ox or             sort axis
 ```
 
 The metadata keys are the capture sigils themselves: `@` opens the one picker
@@ -183,11 +185,12 @@ both tags and the task context, so neither `@@` nor `##` is a key sequence. `&`
 and `;` are the last two sigils to become keys, and the only pair that opens a
 panel rather than a picker: `&link` and `;comment;` write at capture time, and
 on a row the same characters open the Attachments and Comments panels that own
-add, reorder, unlink, and delete. The
-old standalone `b` and `d` actions and comma state prefix are intentionally
-unbound, as are `c`, `m`, `w`, `:`, `C`, and `Ctrl+Esc`. `t`, `P`, and `R` are
-live again with different acts: the subtree fold, Select Project, and Mark
-Reviewed.
+add, reorder, unlink, and delete. `C` and `;` are the same pair once more on a
+project header, where both answer for the project rather than for a task. The
+old standalone `d` action and comma state prefix are intentionally unbound, as
+are `m`, `w`, `:`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, and `R` are
+live again with different acts: Peek, Add Checklist Item, the subtree fold,
+Select Project, and Mark Reviewed.
 
 The presentation grammar is also part of the scenario contract. Full-screen
 titles stay on one row and carry the workspace pulse; browse guidance uses one
@@ -272,6 +275,7 @@ The committed suite exercises the product contracts directly:
 | Outline editing refusing both structural sigils as competing parentage channels | `outline-editor-guard.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | The same `b` over a project: both header forms, the empty project's `No comments yet.`, a comment refreshing the open pane, undo taking it back, the window paged with `Ctrl+F`/`Ctrl+B` and `Ctrl+D`/`Ctrl+U`, and the pane handed between a project and a task owner | `outliner-project-peek-group-header.json`, `outliner-project-peek-focused-header.json` |
+| One run over a project's whole comment life: `C` and `;` answering for an empty project's focused header, the panel editing and deleting through the identity the row carries, `u`/`Ctrl+R` reaching the ledger from inside it, the Peek window paged by both pairs, the same `;` handing a task its own comments, and a relaunch reading the collection back | `project-comments-panel-integration.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | The session-only query ring recalled with `↑`/`↓` inside the `/` input, its draft restored on the way back, and nothing surviving a relaunch | `outliner-search-history-recall.json` |
 | Named lenses: the `\` picker, its two action rows at the narrowest width, the three starters, the `1`-`9` quick-apply ordinals and their precedence under a typed digit, save/rename/replace/delete, lens-query narrowing, exact Escape restoration, retained scope, and the literal backslash inside text input | `named-lens-picker-open.json`, `named-lens-apply-starters.json`, `named-lens-ordinal-apply.json`, `named-lens-save-and-manage.json`, `named-lens-query-narrowing.json`, `named-lens-escape-restoration.json`, `named-lens-scope-retention.json`, `named-lens-from-search-results.json`, `named-lens-empty-state.json`, `named-lens-literal-backslash.json` |

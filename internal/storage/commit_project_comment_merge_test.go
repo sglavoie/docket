@@ -169,6 +169,74 @@ func TestCommitMerge_DivergentCommentEditsRecordAConflictAndWriteNothing(t *test
 	}
 }
 
+// newLedgeredCommentEnv builds a commit environment whose transactions are
+// recorded in a workspace ledger. The merge-only tests deliberately commit
+// without one; an undo test cannot, and both undo tests below have to be looking
+// at the same ledger wiring or they would be proving different things.
+func newLedgeredCommentEnv(t *testing.T) (mergeCommitEnv, *WorkspaceLedger) {
+	t.Helper()
+	dataDir := t.TempDir()
+	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger).
+		WithConflictStore(store)
+	return mergeCommitEnv{svc: svc, store: store, dataDir: dataDir}, ledger
+}
+
+// TestCommitMerge_UndoingALocalCommentKeepsTheRemoteAddition is the sharper half
+// of the ledger contract, and the one a project comment is the first mutation to
+// reach: the undone commit is itself a comment addition, so the entry being taken
+// back and the comment that must survive it are the same kind of thing.
+//
+// Undo restores the bytes the commit replaced. Those bytes are the merged
+// document's predecessor — the remote machine's — not the local machine's own
+// pre-merge draft, which never existed on disk and does not name the remote
+// comment at all. Restoring that draft would take a comment this machine never
+// saw off the disk, and no surface would ever report it: the local user would see
+// their own comment disappear, which is what they asked for, and the other
+// machine's along with it, which they did not.
+func TestCommitMerge_UndoingALocalCommentKeepsTheRemoteAddition(t *testing.T) {
+	env, ledger := newLedgeredCommentEnv(t)
+	project := env.project("p1", "Comments", "comments")
+
+	base := env.commitDoc(t, project, commentTestDoc(
+		[]*models.ProjectComment{mergeComment(mergeCommentIDA, "the first note", 0)},
+		commentAnchor()), "", nil)
+
+	// The remote machine comments first and lands.
+	env.commitDoc(t, project, commentTestDoc([]*models.ProjectComment{
+		mergeComment(mergeCommentIDA, "the first note", 0),
+		mergeComment(mergeCommentIDC, "added on the remote machine", 2*time.Hour),
+	}, commentAnchor()), base.Revision, base)
+
+	// The local machine, still holding the pre-race base, adds its own.
+	local := projectFromDocument(project, commentTestDoc([]*models.ProjectComment{
+		mergeComment(mergeCommentIDA, "the first note", 0),
+		mergeComment(mergeCommentIDB, "added on the local machine", time.Hour),
+	}, commentAnchor()))
+	if _, err := env.svc.Commit(ChangeSet{
+		Project: local, ExpectedRevision: base.Revision, Base: base,
+		UndoAction: "Add Project Comment", UndoContext: project.Name,
+	}); err != nil {
+		t.Fatalf("Commit a concurrent project comment: %v", err)
+	}
+	assertCommentIDs(t, loadCommentDoc(t, project).Comments, mergeCommentIDA, mergeCommentIDB, mergeCommentIDC)
+
+	if _, err := ledger.Undo(GlobalScope()); err != nil {
+		t.Fatalf("Undo: %v", err)
+	}
+	undone := loadCommentDoc(t, project)
+	assertCommentIDs(t, undone.Comments, mergeCommentIDA, mergeCommentIDC)
+	if got := commentTextByID(t, undone.Comments, mergeCommentIDC); got != "added on the remote machine" {
+		t.Fatalf("undoing the local comment rewrote the remote one: %q", got)
+	}
+
+	if _, err := ledger.Redo(GlobalScope()); err != nil {
+		t.Fatalf("Redo: %v", err)
+	}
+	assertCommentIDs(t, loadCommentDoc(t, project).Comments, mergeCommentIDA, mergeCommentIDB, mergeCommentIDC)
+}
+
 // TestCommitMerge_UndoAndRedoPreserveAnAcceptedRemoteComment covers the ledger
 // side of a merged commit. Undo restores the bytes the commit replaced, which
 // are the remote machine's — so a comment the merge accepted from remote must
@@ -176,12 +244,8 @@ func TestCommitMerge_DivergentCommentEditsRecordAConflictAndWriteNothing(t *test
 // whose undo restored the local writer's pre-merge document would delete a
 // comment that machine never saw.
 func TestCommitMerge_UndoAndRedoPreserveAnAcceptedRemoteComment(t *testing.T) {
-	dataDir := t.TempDir()
-	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger).
-		WithConflictStore(store)
-	env := mergeCommitEnv{svc: svc, store: store, dataDir: dataDir}
+	env, ledger := newLedgeredCommentEnv(t)
+	svc := env.svc
 	project := env.project("p1", "Comments", "comments")
 
 	base := env.commitDoc(t, project, commentTestDoc(

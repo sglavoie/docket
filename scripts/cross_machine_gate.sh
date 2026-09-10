@@ -61,6 +61,23 @@ report_skip() {
 	skips=$((skips + 1))
 }
 
+# report_same_schema is the verdict for an older binary that turns out to already
+# support the schema under test.
+#
+# Unpinned it is an honest skip: the default ref is the newest tag reachable from
+# HEAD, which may well already be newer than the last schema bump, and there is
+# then genuinely nothing to refuse or to migrate. Pinned through
+# TT_OLD_BINARY_REF it is a failure, because naming a ref is a claim that it
+# predates the schema under test — and a case that reported green while proving
+# nothing is exactly how a release ships an unexercised migration.
+report_same_schema() {
+	if [ -n "${TT_OLD_BINARY_REF:-}" ]; then
+		report_fail "$1 (TT_OLD_BINARY_REF pins a ref that must predate the current schema)"
+		return
+	fi
+	report_skip "$1"
+}
+
 # machine_home_count counts the machine.json files under one simulated home, so a
 # test can prove a machine wrote its own machine-local state and only its own.
 machine_home_count() {
@@ -97,6 +114,16 @@ mint_workspace() {
 	mkdir -p "$1" "$2"
 	HOME="$2" "$current_binary" doctor --data-dir "$1" >"$3" 2>&1
 }
+
+# The seed's own vocabulary, mirrored from internal/tui/cross_machine_helper_test.go:
+# the project every race is fought over, the document it lives in, and the two
+# project comments an edit or a removal addresses. They are spelled here because
+# the helper roles take them as input — a role that minted its own target would be
+# racing over a write it had just made itself rather than over the seed.
+race_project_name="Delivery"
+race_document_path="projects/delivery/tasks.md"
+seeded_comment_a="Kickoff notes live in the shared drive"
+seeded_comment_b="The vendor contract review is booked for the 12th"
 
 # seed_workspace fills a workspace with the two projects and the one shared tag
 # every helper role reads. The seed is a helper role rather than a fixture
@@ -312,7 +339,7 @@ case_three() {
 			report_fail "the older binary named the newer schema but still exited 0"
 			return
 		fi
-		report_skip "tt at $ref already supports the current schema, so there is nothing to refuse"
+		report_same_schema "tt at $ref already supports the current schema, so there is nothing to refuse"
 		return
 	fi
 	if ! grep -q "newer than supported" "$work_dir/case3-old.log"; then
@@ -551,7 +578,7 @@ case_six() {
 	fi
 	current_marker=$(task_schema_marker "$reference")
 	if [ "$minted_marker" = "$current_marker" ]; then
-		report_skip "tt at $ref already writes the current task schema, so there is nothing to migrate"
+		report_same_schema "tt at $ref already writes the current task schema, so there is nothing to migrate"
 		return
 	fi
 
@@ -578,17 +605,30 @@ case_six() {
 		return
 	fi
 	note="resumed on a workspace an older binary minted"
+	# The comment is written by the same helper run, because the two fields the
+	# migration admitted arrive at one document and a workspace that carried one
+	# but refused the other would still pass a run that only wrote the note.
+	comment="commented on a workspace an older binary minted"
 	if ! TT_HELPER_DATA_DIR="$shared" TT_HELPER_RESULT_FILE="$work_dir/case6-use.txt" \
 		TT_HELPER_TASK_TITLE="Draft the migration plan" TT_HELPER_RESUME_NOTE="$note" \
+		TT_HELPER_TEXT="$comment" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperUsesMigratedWorkspace$' \
 		>"$work_dir/case6-use.log" 2>&1; then
-		report_fail "the migrated workspace could not carry a resume note (see $work_dir/case6-use.log)"
+		report_fail "the migrated workspace could not carry a resume note and a project comment (see $work_dir/case6-use.log)"
 		return
 	fi
-	if ! grep -qF "$note" "$shared/projects/delivery/tasks.md"; then
+	migrated_document="$shared/$race_document_path"
+	if ! grep -qF "$note" "$migrated_document"; then
 		report_fail "the resume note written to the migrated workspace is not on disk"
 		return
 	fi
+	# The helper already reread its comment through the service; this reads the
+	# same claim off the bytes, so a comment held only in memory cannot pass.
+	require_comment_occurrences case6 "$migrated_document" "$comment" 1 || return
+	# Three: the two the seed wrote after the migration, plus the one the helper
+	# added and read back. Counting them all is what proves the block the upgrade
+	# admitted accumulates rather than being rewritten to hold the newest entry.
+	require_stored_comment_count case6 "$migrated_document" 3 || return
 
 	# And the workspace the migration produced is one the older binary now refuses,
 	# which is the refusal case's contract asserted where the schema actually moved.
@@ -600,7 +640,7 @@ case_six() {
 		report_fail "tt at $ref did not refuse the workspace it minted and this binary migrated (see $work_dir/case6-old-again.log)"
 		return
 	fi
-	report_pass "a workspace minted at $ref migrates, carries a resume note, and is then refused by $ref"
+	report_pass "a workspace minted at $ref migrates, carries a resume note and project comments, and is then refused by $ref"
 }
 
 # --- Case 7: two machines applying the release's new mutations at once --------
@@ -624,28 +664,47 @@ case_six() {
 #
 # It echoes "<outcome_a>|<outcome_b>" on success and nothing on failure, having
 # already reported the failure itself.
-race_two_helpers() {
-	tag=$1
+start_race_helper() {
+	side=$1
 	role=$2
-	title_a=$3
-	title_b=$4
-	shift 4
-	# The remaining arguments are extra environment assignments, applied to both
-	# roles. Passing them through `env` rather than inline keeps one spelling for
-	# a role that takes no extras and a role that takes several.
+	title=$3
+	text=$4
+	target=$5
+	extra=$6
+	shift 6
+	# The remaining arguments are extra environment assignments applied to both
+	# roles; $extra is this side's own, prepended so a mixed race can hand each
+	# machine a different selector. Passing them through `env` rather than inline
+	# keeps one spelling for a role that takes no extras and a role that takes
+	# several, and an empty $extra contributes no argument at all — `env` would
+	# read one as a program name.
+	if [ -n "$extra" ]; then
+		set -- "$extra" "$@"
+	fi
+	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-$side" \
+		TT_HELPER_GO_FILE="$work_dir/$tag-go" TT_HELPER_RESULT_FILE="$work_dir/$tag-$side.txt" \
+		TT_HELPER_TASK_TITLE="$title" TT_HELPER_PROJECT="$helper_project" \
+		env "$@" TT_HELPER_TEXT="$text" TT_HELPER_TARGET_TEXT="$target" \
+		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-$side.log" 2>&1 &
+}
+
+# race_two_roles is the general form: two named roles over one document, each
+# with its own title, text and comment target. Two different roles are not a
+# variation on the shape but the only way to reach one hazard — a project comment
+# and a task edit rewriting one tasks.md — so the fork is written once and the
+# same-role spelling below is what every earlier case still calls.
+race_two_roles() {
+	tag=$1
+	role_a=$2
+	role_b=$3
+	title_a=$4
+	title_b=$5
+	shift 5
 	proceed="$work_dir/$tag-go"
 
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-a" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/$tag-a.txt" \
-		TT_HELPER_TASK_TITLE="$title_a" \
-		env "$@" TT_HELPER_TEXT="$helper_text_a" \
-		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-a.log" 2>&1 &
+	start_race_helper a "$role_a" "$title_a" "$helper_text_a" "$helper_target_a" "$helper_extra_a" "$@"
 	pid_a=$!
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-b" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/$tag-b.txt" \
-		TT_HELPER_TASK_TITLE="$title_b" \
-		env "$@" TT_HELPER_TEXT="$helper_text_b" \
-		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-b.log" 2>&1 &
+	start_race_helper b "$role_b" "$title_b" "$helper_text_b" "$helper_target_b" "$helper_extra_b" "$@"
 	pid_b=$!
 
 	if ! await_file "$work_dir/$tag-ready-a" || ! await_file "$work_dir/$tag-ready-b"; then
@@ -692,6 +751,14 @@ race_two_helpers() {
 	return 0
 }
 
+# race_two_helpers is the same-role spelling: one role forked twice.
+race_two_helpers() {
+	tag=$1
+	role=$2
+	shift 2
+	race_two_roles "$tag" "$role" "$role" "$@"
+}
+
 # require_clean_workspace is the shared tail of every race case: nothing
 # quarantined, and the shipped maintenance command still calls the workspace
 # healthy. A race that merged incorrectly but left plausible bytes is exactly
@@ -717,6 +784,14 @@ prepare_race_workspace() {
 	tag=$1
 	shared="$work_dir/$tag/workspace"
 	home_mint="$work_dir/$tag/home-mint"
+	# The per-side race inputs are reset here rather than defaulted at the fork,
+	# so a case that does not set one is racing over the seed rather than over
+	# whatever the previous case left in the variable.
+	helper_project="$race_project_name"
+	helper_target_a=""
+	helper_target_b=""
+	helper_extra_a=""
+	helper_extra_b=""
 	if ! mint_workspace "$shared" "$home_mint" "$work_dir/$tag-mint.log"; then
 		report_fail "$tag: could not mint the workspace (see $work_dir/$tag-mint.log)"
 		return 1
@@ -832,6 +907,246 @@ case_seven_creations() {
 	report_pass "two machines create into one document; the refused one is recorded and completes on retry ($outcome_a / $outcome_b)"
 }
 
+# --- Case 8: two machines commenting on one project ---------------------------
+#
+# A project comment lives in the same tasks.md a task does, so it carries the
+# same lost-update hazard — but nothing about how it is reconciled follows from
+# case 7 passing. A task is merged field by field against a heading the document
+# already names; a comment collection is merged by minted identity against a
+# block that may not exist yet, and the five ways two machines can collide over
+# one collection resolve by five different rules.
+#
+# So there are five cases. Two additions and two edits to different comments must
+# all land, because the identities differ and independent writes never collide.
+# Two rewrites of one comment, and a rewrite against a deletion, must each be
+# refused whole with the divergence recorded against the comment rather than
+# against a task nobody touched. And a project comment racing a task comment is
+# the one hazard neither axis can reach alone: two machines rewriting one
+# document along two axes that have to reconcile independently.
+
+# require_comment_occurrences asserts a text appears exactly the expected number
+# of times in one document. "Exactly once" is the claim an identity-keyed merge
+# owes and a presence check cannot make: a merge that kept one machine's addition
+# twice would satisfy every other assertion here.
+require_comment_occurrences() {
+	occ_tag=$1
+	occ_document=$2
+	occ_text=$3
+	occ_want=$4
+	occ_found=$(grep -cF "$occ_text" "$occ_document" 2>/dev/null || true)
+	[ -n "$occ_found" ] || occ_found=0
+	if [ "$occ_found" -ne "$occ_want" ]; then
+		report_fail "$occ_tag: '$occ_text' appears $occ_found time(s) in $occ_document, want $occ_want"
+		return 1
+	fi
+	return 0
+}
+
+# require_stored_comment_count counts the block's per-entry header lines, which
+# is how many comments the document holds regardless of what any of them say.
+require_stored_comment_count() {
+	cnt_tag=$1
+	cnt_document=$2
+	cnt_want=$3
+	cnt_found=$(grep -c '<!-- project-comment: ' "$cnt_document" 2>/dev/null || true)
+	[ -n "$cnt_found" ] || cnt_found=0
+	if [ "$cnt_found" -ne "$cnt_want" ]; then
+		report_fail "$cnt_tag: $cnt_document holds $cnt_found project comment(s), want $cnt_want"
+		return 1
+	fi
+	return 0
+}
+
+# require_recorded_comment_conflict proves a refusal left evidence and that the
+# evidence names the comment. A refused commit that recorded nothing would leave
+# `tt conflict` with nothing to list, and one recorded as a task conflict would
+# have it naming a task title nobody edited.
+require_recorded_comment_conflict() {
+	cf_tag=$1
+	cf_field=$2
+	if [ -z "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+		report_fail "$cf_tag: a refused project comment recorded no conflict bundle"
+		return 1
+	fi
+	if ! grep -rq "$cf_field" "$shared/.tt/conflicts" 2>/dev/null; then
+		report_fail "$cf_tag: the recorded bundle does not name a $cf_field divergence"
+		return 1
+	fi
+	return 0
+}
+
+# require_one_refused_comment is the outcome shape of the two races the merge
+# cannot resolve, and it sets $landed_text and $refused_text so the caller can
+# read the document without knowing which machine won.
+require_one_refused_comment() {
+	ref_tag=$1
+	ref_a=$2
+	ref_b=$3
+	case "$ref_a$ref_b" in
+	*conflicted:*) ;;
+	*)
+		report_fail "$ref_tag: a collision over one comment recorded no conflict: $ref_a / $ref_b"
+		return 1
+		;;
+	esac
+	if [ "$ref_a" = "committed" ]; then
+		landed_text=$helper_text_a
+		refused_text=$helper_text_b
+	elif [ "$ref_b" = "committed" ]; then
+		landed_text=$helper_text_b
+		refused_text=$helper_text_a
+	else
+		report_fail "$ref_tag: neither machine committed: $ref_a / $ref_b"
+		return 1
+	fi
+	return 0
+}
+
+case_eight_additions() {
+	tag=case8-add
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_PROJECT_COMMENT=add
+	helper_extra_b=TT_HELPER_PROJECT_COMMENT=add
+	helper_text_a="Machine A logged the migration review"
+	helper_text_b="Machine B heard back from the vendor"
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesProjectCommentMutation "" "") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	if [ "$outcome_a" != "committed" ] || [ "$outcome_b" != "committed" ]; then
+		report_fail "$tag: independent additions must both land: $outcome_a / $outcome_b"
+		return
+	fi
+
+	document="$shared/$race_document_path"
+	require_comment_occurrences "$tag" "$document" "$helper_text_a" 1 || return
+	require_comment_occurrences "$tag" "$document" "$helper_text_b" 1 || return
+	require_stored_comment_count "$tag" "$document" 4 || return
+	require_clean_workspace "$tag" || return
+	report_pass "two machines add project comments and each survives exactly once ($outcome_a / $outcome_b)"
+}
+
+case_eight_distinct_edits() {
+	tag=case8-edit
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=TT_HELPER_PROJECT_COMMENT=edit
+	helper_target_a="$seeded_comment_a"
+	helper_target_b="$seeded_comment_b"
+	helper_text_a="Kickoff notes moved to the team wiki"
+	helper_text_b="The contract review slipped to the 19th"
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesProjectCommentMutation "" "") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	if [ "$outcome_a" != "committed" ] || [ "$outcome_b" != "committed" ]; then
+		report_fail "$tag: edits to different comments must both land: $outcome_a / $outcome_b"
+		return
+	fi
+
+	document="$shared/$race_document_path"
+	require_comment_occurrences "$tag" "$document" "$helper_text_a" 1 || return
+	require_comment_occurrences "$tag" "$document" "$helper_text_b" 1 || return
+	require_comment_occurrences "$tag" "$document" "$seeded_comment_a" 0 || return
+	require_comment_occurrences "$tag" "$document" "$seeded_comment_b" 0 || return
+	require_stored_comment_count "$tag" "$document" 2 || return
+	require_clean_workspace "$tag" || return
+	report_pass "two machines edit different project comments and both edits land ($outcome_a / $outcome_b)"
+}
+
+case_eight_rival_edits() {
+	tag=case8-rival
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=TT_HELPER_PROJECT_COMMENT=edit
+	helper_target_a="$seeded_comment_a"
+	helper_target_b="$seeded_comment_a"
+	helper_text_a="Kickoff notes moved to the team wiki"
+	helper_text_b="Kickoff notes are in the shared drive still"
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesProjectCommentMutation "" "") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	require_one_refused_comment "$tag" "$outcome_a" "$outcome_b" || return
+
+	document="$shared/$race_document_path"
+	require_comment_occurrences "$tag" "$document" "$landed_text" 1 || return
+	require_comment_occurrences "$tag" "$document" "$refused_text" 0 || return
+	require_stored_comment_count "$tag" "$document" 2 || return
+	require_recorded_comment_conflict "$tag" '"comment.text"' || return
+	require_clean_workspace "$tag" || return
+	report_pass "two rewrites of one project comment leave the winner's text and a recorded conflict ($outcome_a / $outcome_b)"
+}
+
+case_eight_edit_versus_delete() {
+	tag=case8-delete
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=TT_HELPER_PROJECT_COMMENT=remove
+	helper_target_a="$seeded_comment_a"
+	helper_target_b="$seeded_comment_a"
+	helper_text_a="Kickoff notes moved to the team wiki"
+	helper_text_b=""
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesProjectCommentMutation "" "") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	case "$outcome_a$outcome_b" in
+	*conflicted:*) ;;
+	*)
+		report_fail "$tag: an edit against a deletion recorded no conflict: $outcome_a / $outcome_b"
+		return
+		;;
+	esac
+
+	# Both survivors are legitimate and they leave different documents, so the
+	# assertion is per winner: the edit landing keeps two comments and its own new
+	# text, the deletion landing keeps one and neither machine's text.
+	document="$shared/$race_document_path"
+	if [ "$outcome_a" = "committed" ]; then
+		require_comment_occurrences "$tag" "$document" "$helper_text_a" 1 || return
+		require_stored_comment_count "$tag" "$document" 2 || return
+	else
+		require_comment_occurrences "$tag" "$document" "$helper_text_a" 0 || return
+		require_comment_occurrences "$tag" "$document" "$seeded_comment_a" 0 || return
+		require_stored_comment_count "$tag" "$document" 1 || return
+	fi
+	require_recorded_comment_conflict "$tag" '"comment"' || return
+	require_clean_workspace "$tag" || return
+	report_pass "an edit and a deletion of one project comment settle on one winner and a recorded conflict ($outcome_a / $outcome_b)"
+}
+
+# case_eight_comment_versus_task is the mixed race, and the only one here that
+# forks two different roles. The comment collection and the task list are merged
+# by separate rules inside one document, so neither write may cost the other —
+# and a single-axis race, however many times it is repeated, cannot say so.
+case_eight_comment_versus_task() {
+	tag=case8-mixed
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_PROJECT_COMMENT=add
+	helper_extra_b=TT_HELPER_MUTATION=comment
+	helper_text_a="Machine A logged the migration review"
+	helper_text_b="Machine B checked this against the vendor thread"
+
+	outcomes=$(race_two_roles "$tag" \
+		TestCrossMachineHelperAppliesProjectCommentMutation \
+		TestCrossMachineHelperAppliesTaskMutation \
+		"" "Review the vendor contract") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	if [ "$outcome_a" != "committed" ] || [ "$outcome_b" != "committed" ]; then
+		report_fail "$tag: a project comment and a task comment must both land: $outcome_a / $outcome_b"
+		return
+	fi
+
+	document="$shared/$race_document_path"
+	require_comment_occurrences "$tag" "$document" "$helper_text_a" 1 || return
+	require_comment_occurrences "$tag" "$document" "$helper_text_b" 1 || return
+	require_stored_comment_count "$tag" "$document" 3 || return
+	require_clean_workspace "$tag" || return
+	report_pass "a project comment and a task comment land together in one document ($outcome_a / $outcome_b)"
+}
+
 # snapshot_workspace writes a sorted path/size/checksum listing of every file
 # under a workspace, which is what "byte-identical" is checked against.
 snapshot_workspace() {
@@ -849,6 +1164,11 @@ case_six
 case_seven_comments
 case_seven_reviews
 case_seven_creations
+case_eight_additions
+case_eight_distinct_edits
+case_eight_rival_edits
+case_eight_edit_versus_delete
+case_eight_comment_versus_task
 
 echo
 if [ "$failures" -gt 0 ]; then

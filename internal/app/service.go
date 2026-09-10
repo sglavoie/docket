@@ -161,7 +161,7 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 // pair of side-effect kinds projectCommit does for a multi-project transaction.
 func (s *Service) commitProjectWithSideEffects(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
 	applyPostMutationHooks(ref.Project)
-	awaitCommitBarrier(ref, expectedRevision, undoAction)
+	awaitTaskCommitBarrier(ref, expectedRevision, undoAction)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,

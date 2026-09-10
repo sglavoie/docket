@@ -136,6 +136,12 @@ func (s *Service) commitProjectComments(
 	project := resolved.project
 	project.Comments = merged
 
+	// The barrier is spent here rather than inside commitProjects, which serves
+	// multi-project transactions too: this is the last instant at which the
+	// snapshot, the resolved comment, and the revision the commit is guarded by
+	// are all fixed and nothing has been written, which is exactly the state a
+	// two-machine race has to hold both processes in.
+	awaitProjectCommitBarrier(project.ID, resolved.revision, undoAction)
 	outcome, err := s.commitProjects([]projectCommit{{
 		project:          project,
 		expectedRevision: resolved.revision,
