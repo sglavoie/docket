@@ -39,11 +39,20 @@ type CloseTaskCommentsMsg struct{ route.PopViewMsg }
 // for every other committed mutation, which these messages replace.
 
 // CommentAddedMsg signals a comment was added.
+//
+// CommentID is the identity the commit minted, for the owners that mint one. It
+// is carried rather than rediscovered because the reloaded list the panel then
+// projects holds every writer's additions: a comment that arrived from another
+// surface, another machine, or an undo during the pending window is new to this
+// panel too, so novelty cannot tell them apart and only the committed identity
+// names the row this add created. It is empty for a positional owner, which
+// stores no identity for anyone to carry.
 type CommentAddedMsg struct {
 	Owner         string
 	Token         uint64
 	ProjectID     string
 	TransactionID string
+	CommentID     string
 }
 
 // CommentDeletedMsg signals a comment was deleted.

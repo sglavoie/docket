@@ -24,13 +24,13 @@ func (m *CommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentEditorFinishedMsg:
 		return m, m.applyCommentEditorResult(msg)
 	case CommentAddedMsg:
-		m.completeCommentMutation(msg.Owner, msg.Token)
+		m.completeCommentMutation(msg.Owner, msg.Token, msg.CommentID)
 		return m, nil
 	case CommentEditedMsg:
-		m.completeCommentMutation(msg.Owner, msg.Token)
+		m.completeCommentMutation(msg.Owner, msg.Token, "")
 		return m, nil
 	case CommentDeletedMsg:
-		m.completeCommentMutation(msg.Owner, msg.Token)
+		m.completeCommentMutation(msg.Owner, msg.Token, "")
 		return m, nil
 	case CommentMutationFailedMsg:
 		return m, m.failCommentMutation(msg)

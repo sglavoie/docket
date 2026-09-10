@@ -189,6 +189,12 @@ type BatchTransactionResultMsg struct {
 	// cross-project move leaves every one of them naming a project the task no
 	// longer lives in.
 	ClearSelectionTaskLocators []app.TaskLocator
+	// CommentID is the project comment the batch committed, and is set only by
+	// the project-comment mutations, which are the only ones that address a
+	// minted identity. It is what lets a surface point at the comment it just
+	// wrote instead of inferring it from a reloaded list, where another writer's
+	// addition is indistinguishable from this one.
+	CommentID string
 	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
 	// descendants). Nil for non-delete mutations.
 }

@@ -239,19 +239,6 @@ func (m *CommentsModel) forgetDeleteConfirmation() {
 	m.deleteRef = nil
 }
 
-// currentCommentIDs is the identity set the list holds right now. An add records
-// it so the confirmed commit can land the cursor on whichever row is new, rather
-// than on a position that assumes where the owner appends.
-func (m *CommentsModel) currentCommentIDs() map[string]bool {
-	ids := make(map[string]bool, len(m.entries))
-	for _, entry := range m.entries {
-		if entry.ID != "" {
-			ids[entry.ID] = true
-		}
-	}
-	return ids
-}
-
 // clampCursor keeps the cursor inside the list it points into.
 func (m *CommentsModel) clampCursor() {
 	if m.Cursor >= len(m.entries) {

@@ -42,10 +42,6 @@ type commentMutation struct {
 	token uint64
 	ref   CommentRef
 	text  string
-	// priorIDs is the identity set the list held when an add was submitted, and
-	// is nil for the other two kinds. It is what lets the confirmed add find the
-	// row it created without knowing whether this owner prepends or appends.
-	priorIDs map[string]bool
 }
 
 // commentMutationTokens mints those tokens. It is process-wide rather than
@@ -67,7 +63,8 @@ type commentEditorFinishedMsg struct {
 // outcome back to this panel's message contract: a rejected transaction becomes
 // the correlated CommentMutationFailedMsg, and a committed one resolves to the
 // success message stamped with the same correlation plus the transaction ID the
-// shell's `u undo` toast is keyed on and the project ID its reload needs.
+// shell's `u undo` toast is keyed on, the project ID its reload needs, and — for
+// an add — the comment identity the commit minted.
 //
 // It sits here rather than beside SubviewCoordinator because the four comment
 // messages it stamps are this surface's vocabulary, which the coordinator layer
@@ -78,10 +75,11 @@ func adaptCommentCommit(owner string, token uint64, commit tea.Cmd, success func
 		if msg, ok := outcome.(coordinator.TransactionErrorMsg); ok {
 			return CommentMutationFailedMsg{Owner: owner, Token: token, Err: msg.Err}
 		}
-		transactionID, projectID := commentCommitCorrelation(outcome)
+		transactionID, projectID, commentID := commentCommitCorrelation(outcome)
 		switch msg := success().(type) {
 		case CommentAddedMsg:
 			msg.Owner, msg.Token, msg.ProjectID, msg.TransactionID = owner, token, projectID, transactionID
+			msg.CommentID = commentID
 			return msg
 		case CommentDeletedMsg:
 			msg.Owner, msg.Token, msg.ProjectID, msg.TransactionID = owner, token, projectID, transactionID
@@ -95,8 +93,8 @@ func adaptCommentCommit(owner string, token uint64, commit tea.Cmd, success func
 	}
 }
 
-// commentCommitCorrelation reads the transaction and project identity out of
-// whichever committed outcome an owner's coordinator reports.
+// commentCommitCorrelation reads the transaction, project, and comment identity
+// out of whichever committed outcome an owner's coordinator reports.
 //
 // The two shapes are not interchangeable and both are live here: a task comment
 // commits one task and reports TransactionResultMsg, while a project comment
@@ -104,17 +102,21 @@ func adaptCommentCommit(owner string, token uint64, commit tea.Cmd, success func
 // uses. Reading only the first would leave the project path with an empty
 // project id, and the shell's post-commit reload would then re-read the very
 // state the commit replaced.
-func commentCommitCorrelation(outcome tea.Msg) (transactionID, projectID string) {
+//
+// The comment identity comes from the second shape alone, because it is the only
+// one whose owner mints one. A task comment reports no identity here for the
+// same reason it stores none: it is addressed by position all the way down.
+func commentCommitCorrelation(outcome tea.Msg) (transactionID, projectID, commentID string) {
 	switch result := outcome.(type) {
 	case coordinator.TransactionResultMsg:
-		return result.Result.TransactionID, result.Result.ProjectID
+		return result.Result.TransactionID, result.Result.ProjectID, ""
 	case coordinator.BatchTransactionResultMsg:
 		if len(result.TouchedProjectIDs) > 0 {
 			projectID = result.TouchedProjectIDs[0]
 		}
-		return result.TransactionID, projectID
+		return result.TransactionID, projectID, result.CommentID
 	default:
-		return "", ""
+		return "", "", ""
 	}
 }
 
@@ -125,11 +127,7 @@ func commentCommitCorrelation(outcome tea.Msg) (transactionID, projectID string)
 func (m *CommentsModel) beginCommentMutation(kind commentMutationKind, ref CommentRef, text string, commit func() tea.Cmd, success func() tea.Msg) tea.Cmd {
 	token := commentMutationTokens.Add(1)
 	owner := m.ownerKey()
-	pending := &commentMutation{kind: kind, owner: owner, token: token, ref: ref, text: text}
-	if kind == commentMutationAdd {
-		pending.priorIDs = m.currentCommentIDs()
-	}
-	m.pending = pending
+	m.pending = &commentMutation{kind: kind, owner: owner, token: token, ref: ref, text: text}
 	return adaptCommentCommit(owner, token, commit(), success)
 }
 
@@ -318,7 +316,11 @@ func (m *CommentsModel) saveEditedComment() tea.Cmd {
 // completeCommentMutation applies the success state a confirmed transaction
 // earns: the list is re-projected from the owner (never patched in place), the
 // composer that produced the change closes, and the cursor follows the act.
-func (m *CommentsModel) completeCommentMutation(owner string, token uint64) {
+//
+// committedID is the identity the commit minted, which only an add reports and
+// only an owner with identities has one for. The other two acts address a
+// comment that already existed, so they carry nothing here.
+func (m *CommentsModel) completeCommentMutation(owner string, token uint64, committedID string) {
 	if !m.ownsPending(owner, token) {
 		return
 	}
@@ -330,7 +332,7 @@ func (m *CommentsModel) completeCommentMutation(owner string, token uint64) {
 	switch pending.kind {
 	case commentMutationAdd:
 		m.cancelAddMode()
-		m.selectAddedComment(pending.priorIDs)
+		m.selectAddedComment(committedID)
 	case commentMutationEdit:
 		m.cancelEditMode()
 		m.clampCursor()
@@ -342,18 +344,32 @@ func (m *CommentsModel) completeCommentMutation(owner string, token uint64) {
 	}
 }
 
-// selectAddedComment lands the cursor on the row a confirmed add created. It
-// finds it by the identity that was not in the list when the add was submitted,
-// because an owner is free to present its newest comment first; only an owner
-// with no identities at all falls back to the last row, where its appends land.
-func (m *CommentsModel) selectAddedComment(prior map[string]bool) {
+// selectAddedComment lands the cursor on the row a confirmed add created,
+// addressing it by the identity the commit reported and by nothing else.
+//
+// Position, text, and novelty are all wrong here, and novelty is the one that
+// looks right: the list is re-projected after the commit, so a comment another
+// surface, another machine, or an undo added during the pending window is new to
+// this panel too. Selecting the first unseen row would then aim every next
+// read, copy, edit, and delete at somebody else's comment on the strength of a
+// successful local add. An identity that is no longer in the list — removed
+// again in the same window — moves the cursor nowhere rather than guessing at a
+// replacement.
+//
+// An owner that mints no identity reports none, and its appends land on the last
+// row, which is where the cursor goes for it.
+func (m *CommentsModel) selectAddedComment(committedID string) {
+	if committedID == "" {
+		m.Cursor = max(len(m.entries)-1, 0)
+		return
+	}
 	for i, entry := range m.entries {
-		if entry.ID != "" && !prior[entry.ID] {
+		if entry.ID == committedID {
 			m.Cursor = i
 			return
 		}
 	}
-	m.Cursor = max(len(m.entries)-1, 0)
+	m.clampCursor()
 }
 
 // failCommentMutation restores the draft a refused commit was carrying. The

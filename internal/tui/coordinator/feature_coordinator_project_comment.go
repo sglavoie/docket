@@ -74,20 +74,34 @@ func (c ProjectCommentCoordinator) Remove(target app.ProjectCommentTarget, proje
 // commit is the one shape the three project-comment mutations report in, so an
 // identity-less or revision-less commit is caught the same way whichever act
 // produced it.
+//
+// It builds the batch result here rather than through runBatch because the
+// committed comment identity is reported alongside the transaction, and that is
+// the one thing about a project-comment commit no reader can recompute: a list
+// reloaded after the commit holds every writer's additions, so a surface that
+// had to guess which row it created could land on somebody else's. runBatch's
+// tuple has no place for it, and widening that tuple would ask every other
+// batch to carry a comment identity it never has.
 func (c ProjectCommentCoordinator) commit(
 	action, projectName, summary string,
 	mutate func() (app.ProjectCommentResult, error),
 ) tea.Cmd {
-	return runBatch(action, func() ([]string, string, string, error) {
+	return func() tea.Msg {
 		res, err := mutate()
 		if err != nil {
-			return nil, "", "", err
+			return TransactionErrorMsg{Err: err}
 		}
 		if res.CommentID == "" || res.Revision == "" {
-			return nil, "", "", fmt.Errorf(
+			return TransactionErrorMsg{Err: fmt.Errorf(
 				"project comment on %s committed without an identity or revision", projectName,
-			)
+			)}
 		}
-		return []string{res.ProjectID}, summary, res.TransactionID, nil
-	})
+		return BatchTransactionResultMsg{
+			Action:            action,
+			TouchedProjectIDs: []string{res.ProjectID},
+			Summary:           summary,
+			TransactionID:     res.TransactionID,
+			CommentID:         res.CommentID,
+		}
+	}
 }
