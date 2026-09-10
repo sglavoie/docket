@@ -294,6 +294,18 @@ screen. It asks the comment's owner for nothing, so it answers just as well when
 the comment was deleted or the project is gone, and it writes nothing else: the
 refusal, your text, and the stored comments are all exactly where they were.
 
+A comment already in the workspace can outrun the box the same way, so opening
+one with `e` is treated the same. If it is longer than 2,000 characters or
+carries interior tabs, the box becomes a read-only preview of the stored comment
+rather than a buffer for it: the whole comment is kept beside it, the end of it
+is shown under the box, and `Ctrl+S`, `Ctrl+E`, and `Ctrl+X` each carry every
+character of it. Saving without typing anything writes the comment back exactly
+as it was. A press that would have changed the preview is refused and says so —
+the part of the comment you cannot see is not something a keystroke over the
+part you can see is asking to discard — so `Ctrl+E` is the way to edit one, and
+it opens the whole comment in the external editor. A comment the box does hold
+whole is none of this: it edits inline the way it always has.
+
 Both panels and All Notes move the way every other list does: `j`/`k` or arrows
 step one row, and `gg`/`Home` and `G`/`End` reach the first and last. A `g` you
 do not complete is abandoned silently and does not swallow the key after it, so

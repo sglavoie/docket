@@ -262,15 +262,27 @@ func (m *CommentsModel) executeDelete() tea.Cmd {
 // the reference it was opened on, identity and original text included. That
 // reference is what the save is measured against, so a list that reorders or
 // reloads underneath the open editor cannot redirect the change.
+//
+// The stored text is seated through the same retention a recovered draft takes,
+// because a comment already in the workspace can be longer than CommentCharLimit
+// or carry interior tabs: the external editor writes both and the application
+// layer stores both, so the quick-entry box the panel opens over one is not
+// always able to show it. Handing the box's rendering of such a comment back to
+// a save would persist a truncation and a tab flattening as if the user had made
+// them, against a precondition still naming the whole original — the one shape in
+// which an accepted commit destroys text nobody ever saw. So the verbatim
+// original is kept beside the box and the box becomes a read-only preview of it
+// for exactly as long as it cannot hold the whole thing.
+//
+// A comment the box does take whole is untouched by this: the seating matches, so
+// nothing is previewed, no recovery block is drawn, and the first keystroke hands
+// authority straight back to the box the way it always has.
 func (m *CommentsModel) startEditComment() tea.Cmd {
 	ref, ok := m.commentRefAt(m.Cursor)
 	if !ok {
 		return nil
 	}
-	m.EditMode = true
-	m.editRef = ref
-	m.EditTextInput.SetValue(ref.Original)
-	m.EditTextInput.Focus()
+	m.retainEditDraft(ref, ref.Original)
 	return textarea.Blink
 }
 
@@ -424,10 +436,14 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 //
 // The composer is not that copy and cannot be made into one: its textarea
 // rewrites tabs as spaces and stops accepting runes at CommentCharLimit, both of
-// which are right for something being typed and wrong for something being
-// recovered. An external editor's temporary file is already deleted by the time
-// its result reaches the panel, so for that route this field holds the only
-// complete copy of the user's work in the process.
+// which are right for something being typed and wrong for something that arrived
+// whole. Three routes put text there the box cannot vouch for — an external
+// editor's buffer, a submission coming back from a refused commit, and the stored
+// comment an inline edit is opened over — and the first two have no other copy at
+// all, the editor's temporary file being deleted before its result ever reaches
+// the panel. The third does still exist in the workspace, which is precisely why
+// it has to be held: a save measured against the whole original would otherwise
+// be allowed to overwrite it with the part of it the box could show.
 type draftRecovery struct {
 	// kind names the composer the text belongs to, so an add draft can never be
 	// submitted as an edit or recovered under one.
@@ -447,6 +463,11 @@ type draftRecovery struct {
 // the View draws, a save can still write, and the discard grammar can reach. A
 // confirmed commit closes the composer through completeCommentMutation, so the
 // capture costs a successful edit nothing.
+//
+// Every route that puts text into a composer it did not type goes through one of
+// these two, opening an inline edit included. Seating a textarea and recording
+// what it took are one act, so there is no order in which a composer holds text
+// the panel has not measured itself against.
 func (m *CommentsModel) retainAddDraft(text string) {
 	m.EditMode = false
 	m.AddMode = true

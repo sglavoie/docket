@@ -359,7 +359,16 @@ func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
 // the copy beside it still holds work that exists nowhere else in the process.
 // A discard guard reading the box alone would then answer a question about the
 // wrong string and drop the right one without asking.
+//
+// A previewed draft is the one case where the box is not a second copy at all
+// but a rendering of the first, since every press that would change it is undone
+// by restoreDraftPreview. Counting it there would ask about a truncation the user
+// never made — which is exactly what opening an inline edit over a comment too
+// long or too tabbed for the box produces, before they have touched anything.
 func (m *CommentsModel) recoverableDraftTexts(kind commentMutationKind) []string {
+	if text, previewed := m.heldDraftPreview(kind); previewed {
+		return []string{text}
+	}
 	composer := m.composerValue(kind)
 	if text, ok := m.retainedDraftText(kind); ok && text != composer {
 		return []string{composer, text}

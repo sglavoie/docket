@@ -51,7 +51,8 @@ type CommentsModel struct {
 	// arrived. It is nil for text the user typed here, because a textarea can
 	// always give typed text back; it is set whenever a draft reached the panel
 	// from somewhere the textarea cannot faithfully hold — an external editor's
-	// buffer, or a submission coming back from a refused commit.
+	// buffer, a submission coming back from a refused commit, or the stored
+	// comment an inline edit was opened over.
 	recovered *draftRecovery
 
 	// previewRefusalStamp is the status generation the read-only refusal was
