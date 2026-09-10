@@ -145,7 +145,7 @@ func assertDraftExportSurvivesTargetLoss(
 	if view := panelText(t, model); strings.Contains(view, exportDraftMiddle) {
 		t.Fatalf("the middle of the draft is already on screen, so this case proves nothing about recovering it:\n%s", view)
 	}
-	assertVisible(t, model, recoveredDraftExportHint)
+	assertVisible(t, model, recoveredDraftReadOnlyHint)
 
 	// Every press names a file of its own, so a later one that quietly did nothing
 	// cannot pass by handing back the file an earlier one wrote.

@@ -115,12 +115,19 @@ func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.exportDraft()
 			return m, nil
 		case "shift+enter":
+			if m.refuseDraftPreviewEdit(commentMutationEdit) {
+				return m, nil
+			}
 			m.EditTextInput.InsertString("\n")
 			return m, nil
 		}
 	}
 
+	before := m.EditTextInput.Value()
 	m.EditTextInput, cmd = m.EditTextInput.Update(msg)
+	if m.restoreDraftPreview(commentMutationEdit, before) {
+		return m, nil
+	}
 	return m, cmd
 }
 
@@ -145,12 +152,19 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.exportDraft()
 			return m, nil
 		case "shift+enter":
+			if m.refuseDraftPreviewEdit(commentMutationAdd) {
+				return m, nil
+			}
 			m.TextInput.InsertString("\n")
 			return m, nil
 		}
 	}
 
+	before := m.TextInput.Value()
 	m.TextInput, cmd = m.TextInput.Update(msg)
+	if m.restoreDraftPreview(commentMutationAdd, before) {
+		return m, nil
+	}
 	return m, cmd
 }
 
@@ -275,6 +289,49 @@ func (m *CommentsModel) HandledKeys() []string {
 
 func (m *CommentsModel) HasSelection() bool {
 	return len(m.entries) > 0 && m.Cursor >= 0 && m.Cursor < len(m.entries)
+}
+
+// draftPreviewReadOnlyStatus answers a press that would have changed a preview.
+// It says what the box is and names both ways out of it, because the alternative
+// to editing here is not "do without": the whole draft is one key from an editor
+// and one key from a file.
+const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft: Ctrl+E edits it, Ctrl+X writes it to a file."
+
+// restoreDraftPreview undoes a press that changed a previewed draft's box and
+// says why. It is the read-only rule itself.
+//
+// A preview is a rendering of text the panel is holding, not the text: the box
+// stopped at CommentCharLimit and rewrote every tab, so the runes past the limit
+// and the interior tabs are on nobody's screen. Letting an ordinary edit stand
+// would hand the box authority over a save — and with it the power to drop, in
+// silence, every character the user never saw. Deleting one visible character is
+// not an instruction to do that, so the press is refused rather than obeyed, and
+// the two acts that do replace the whole draft say so before they run.
+//
+// The check is after the fact on purpose: the textarea's own keymap decides
+// which presses change text, and asking it by running the press keeps cursor
+// movement, scrolling, and selection working inside a box the user can still
+// read.
+func (m *CommentsModel) restoreDraftPreview(kind commentMutationKind, before string) bool {
+	if m.composerValue(kind) == before {
+		return false
+	}
+	if !m.refuseDraftPreviewEdit(kind) {
+		return false
+	}
+	m.setComposerValue(kind, before)
+	return true
+}
+
+// refuseDraftPreviewEdit reports the read-only refusal for the presses that
+// change a composer without going through its Update — and is what
+// restoreDraftPreview asks whether this composer is previewing at all.
+func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
+	if _, previewed := m.heldDraftPreview(kind); !previewed {
+		return false
+	}
+	m.SetStatus(draftPreviewReadOnlyStatus)
+	return true
 }
 
 // recoverableDraftTexts names every copy of one composer's draft that closing it

@@ -472,6 +472,42 @@ func (m *CommentsModel) retainedDraftText(kind commentMutationKind) (string, boo
 	return m.recovered.text, true
 }
 
+// heldDraftPreview is a retained draft the composer showing it could not take
+// whole, which is the state the composer stops being a buffer in.
+//
+// The seating is what decides it: a draft that went into the textarea unchanged
+// is on screen in full and the box is the user's ordinary editor for it, while
+// one the box truncated or flattened is being previewed rather than held. The
+// difference matters to every reader of a draft, because in the second case what
+// the panel writes, exports, and asks about is the copy beside the box and not
+// the box — and the keys that would edit the box are refused for exactly that
+// reason.
+func (m *CommentsModel) heldDraftPreview(kind commentMutationKind) (string, bool) {
+	if m.recovered == nil || m.recovered.kind != kind || m.recovered.text == m.recovered.seated {
+		return "", false
+	}
+	return m.recovered.text, true
+}
+
+// showsDraftPreview reports whether the open composer is previewing a kept draft
+// rather than holding an editable one. The keymap reads it, because a footer
+// offering to insert a newline into a box that refuses the press describes a
+// grammar the panel does not have.
+func (m *CommentsModel) showsDraftPreview() bool {
+	_, held := m.heldDraftPreview(m.openComposerKind())
+	return held
+}
+
+// openComposerKind names the composer a press or an act is addressed to. Only
+// one is ever open, and Update routes edit before add, so the two answers cannot
+// disagree.
+func (m *CommentsModel) openComposerKind() commentMutationKind {
+	if m.EditMode {
+		return commentMutationEdit
+	}
+	return commentMutationAdd
+}
+
 // forgetRetainedDraft drops the held copy when its composer closes. Only an
 // explicit discard, a confirmed commit, and leaving the panel reach it, which is
 // what makes the retention outlast every refusal and every reload in between.
@@ -483,14 +519,24 @@ func (m *CommentsModel) forgetRetainedDraft(kind commentMutationKind) {
 
 // submissionText is the text a save from one composer commits.
 //
-// Typed input is trimmed the way it always has been. A retained draft the user
-// has not touched is written exactly as it arrived instead, because the composer
-// value beside it may be a truncated, tab-flattened rendering of it — submitting
-// that on a retry would quietly persist the damage the retention exists to
-// prevent. Editing the composer hands authority back to it, since the text on
-// screen is then the text the user means.
+// Typed input is trimmed the way it always has been. A retained draft is written
+// exactly as it arrived instead, because the composer value beside it may be a
+// truncated, tab-flattened rendering of it — submitting that on a retry would
+// quietly persist the damage the retention exists to prevent.
+//
+// A preview keeps that authority unconditionally, and the box is read-only for
+// as long as it does: the runes past the limit and the interior tabs are on
+// nobody's screen, so an ordinary press over the visible part is not consent to
+// drop them, and the only routes that end the retention say so first. A draft
+// the composer did take whole is a different case — every rune of it is on
+// screen and editable, so typing hands authority back to the box, which is then
+// showing exactly what the user means.
 func (m *CommentsModel) submissionText(kind commentMutationKind, composer string) string {
-	if text, ok := m.retainedDraftText(kind); ok && m.recovered.seated == composer {
+	text, ok := m.retainedDraftText(kind)
+	if !ok {
+		return strings.TrimSpace(composer)
+	}
+	if _, previewed := m.heldDraftPreview(kind); previewed || m.recovered.seated == composer {
 		return text
 	}
 	return strings.TrimSpace(composer)
@@ -519,10 +565,7 @@ const draftExportStatusPrefix = "Draft written to "
 // authority rule, so the file and the panel can never disagree about what the
 // draft is.
 func (m *CommentsModel) exportDraft() {
-	kind := commentMutationAdd
-	if m.EditMode {
-		kind = commentMutationEdit
-	}
+	kind := m.openComposerKind()
 	text := m.submissionText(kind, m.composerValue(kind))
 	if text == "" {
 		m.Err = errors.New("there is no draft text to write")
@@ -544,18 +587,31 @@ func (m *CommentsModel) composerValue(kind commentMutationKind) string {
 	return m.EditTextInput.Value()
 }
 
-// lossyRetainedDraft is the retained draft whose composer is not showing all of
+// setComposerValue writes one textarea back. It exists for the read-only
+// preview, which is enforced by undoing whatever a press did rather than by
+// naming the presses that do something: the textarea's own grammar decides which
+// keys change text, and a list of them kept here would be a second copy of it.
+func (m *CommentsModel) setComposerValue(kind commentMutationKind, text string) {
+	if kind == commentMutationAdd {
+		m.TextInput.SetValue(text)
+		return
+	}
+	m.EditTextInput.SetValue(text)
+}
+
+// lossyRetainedDraft is the retained draft whose composer could not take all of
 // it, and is what the recovery block in the View exists to draw. A draft the
 // composer holds in full needs no second rendering: it is already on screen,
 // editable, and identical.
+//
+// It reads the seating rather than the box the way every other preview question
+// does, so the block and the read-only rule can never disagree about which state
+// the composer is in.
 func (m *CommentsModel) lossyRetainedDraft() (string, bool) {
 	if m.recovered == nil {
 		return "", false
 	}
-	if m.recovered.text == m.composerValue(m.recovered.kind) {
-		return "", false
-	}
-	return m.recovered.text, true
+	return m.heldDraftPreview(m.recovered.kind)
 }
 
 // editInExternalEditor opens the comment under the cursor in the user's editor.
