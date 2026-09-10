@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // This file is the integration half of project comments: not whether one
@@ -40,16 +43,65 @@ func openProjectCommentsDraft(t *testing.T, driver *UITestDriver, draft string) 
 	assertDraftIntact(t, driver, draft)
 }
 
+// openProjectCommentEditDraft commits one comment and then leaves an unsaved edit
+// of it open, which is the other draft a refresh can land under. It is the harder
+// one to keep: the add composer only holds text nobody has ever stored, while this
+// buffer is a replacement for something that exists, and the panel has to be able
+// to say so without either writing it or throwing it away.
+func openProjectCommentEditDraft(t *testing.T, driver *UITestDriver, draft string) {
+	t.Helper()
+	seatCursorOnProjectHeader(t, driver.App().crossOutliner)
+	runChecklistActions(t, driver, []UITestAction{
+		{Type: UITestActionKey, Key: ";"},
+		{Type: UITestActionKey, Key: "a"},
+		{Type: UITestActionText, Text: seededProjectComment},
+		{Type: UITestActionKey, Key: "ctrl+s"},
+		{Type: UITestActionWait},
+		{Type: UITestActionKey, Key: "e"},
+	})
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if !panel.EditMode {
+		t.Fatalf("e did not open the edit composer over the committed comment:\n%s", driver.Render())
+	}
+	panel.EditTextInput.SetValue(draft)
+	assertDraftIntact(t, driver, draft)
+}
+
+// seededProjectComment is the one comment the edit case rewrites. It is committed
+// through the panel's own keys, so what the edit draft replaces is a comment the
+// stored document really holds.
+const seededProjectComment = "Committed before the removal"
+
+// panelDraft reads whichever composer the panel has open. One accessor serves both
+// drafts because what the user can still reach is the buffer of the composer that
+// is on screen, and a panel with neither open has no draft left to lose.
+func panelDraft(panel *taskdetail.CommentsModel) (string, bool) {
+	switch {
+	case panel.AddMode:
+		return panel.TextInput.Value(), true
+	case panel.EditMode:
+		return panel.EditTextInput.Value(), true
+	default:
+		return "", false
+	}
+}
+
 // assertDraftIntact is the claim every refresh owes: the panel is still the one
-// the user was typing into, holding exactly the text they typed.
+// the user was typing into, it is still drawing their text, and the text is
+// exactly what they typed. The rendered half is not redundant — a composer that
+// holds the buffer and stops painting it is a draft the user cannot reach.
 func assertDraftIntact(t *testing.T, driver *UITestDriver, draft string) {
 	t.Helper()
 	panel := mountedProjectCommentsPanel(t, driver.App())
-	if !panel.AddMode {
+	got, open := panelDraft(panel)
+	if !open {
 		t.Fatalf("the panel is not holding a draft:\n%s", driver.Render())
 	}
-	if got := panel.TextInput.Value(); got != draft {
+	if got != draft {
 		t.Fatalf("draft = %q, want the untouched %q", got, draft)
+	}
+	if screen := driver.Render(); !strings.Contains(screen, draft) {
+		t.Fatalf("the panel holds the draft but does not draw it:\n%s", screen)
 	}
 }
 
@@ -71,12 +123,40 @@ func externalProjectCommentWriter(t *testing.T, workspace *uitestWorkspace) *app
 }
 
 // refreshUnderThePanel runs the one fan-out every committed mutation ends in,
-// which is also the only path that can dismiss an open panel. It reports whether
-// the shell asked to leave, so a case can tell "still readable" from "the owner
-// is gone" without reading the panel's internals.
-func refreshUnderThePanel(t *testing.T, driver *UITestDriver) bool {
+// which is also the only path that can dismiss an open panel, and then delivers
+// everything it queued.
+//
+// The delivery is the point. A refresh that wants the panel gone says so with a
+// command carrying BackMsg, and the pop happens when the shell handles that
+// message: a case that stopped at the returned slice would be reading a panel that
+// is on its way out as though it had stayed. Running the commands through the shell
+// is what makes the route afterwards the answer.
+func refreshUnderThePanel(t *testing.T, driver *UITestDriver) {
 	t.Helper()
-	return driver.App().refreshTaskViews(true, false) != nil
+	for _, cmd := range driver.App().refreshTaskViews(true, false) {
+		runSession2AppCommand(t, driver.App(), cmd)
+	}
+}
+
+// assertPanelIsStillMounted reads that answer. Only the route can give it: a
+// popped panel leaves its model behind intact, so its own fields say nothing about
+// whether the user can still see it.
+func assertPanelIsStillMounted(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
+		t.Fatalf("the refresh left the route on %s, want the Comments panel:\n%s", got, driver.Render())
+	}
+}
+
+// removeProjectFromShell drops one project out of the live catalog the panel's
+// adapter resolves through, which is what a committed delete — or an archive whose
+// reload no longer lists it — leaves behind for an open panel.
+func removeProjectFromShell(shell *AppModel, projectID string) {
+	for id, project := range shell.domain.projects {
+		if project != nil && project.ID == projectID {
+			delete(shell.domain.projects, id)
+		}
+	}
 }
 
 // TestProjectCommentsPanelKeepsItsDraftAcrossAnExternalRefresh is the case the
@@ -97,9 +177,8 @@ func TestProjectCommentsPanelKeepsItsDraftAcrossAnExternalRefresh(t *testing.T) 
 	}
 
 	driver.App().reloadCrossProjectOutlinerProject(owner.ID)
-	if refreshUnderThePanel(t, driver) {
-		t.Fatal("an external comment dismissed the panel")
-	}
+	refreshUnderThePanel(t, driver)
+	assertPanelIsStillMounted(t, driver)
 
 	assertDraftIntact(t, driver, draft)
 	if got := panelCommentTexts(mountedProjectCommentsPanel(t, driver.App())); !reflect.DeepEqual(
@@ -120,15 +199,16 @@ func TestProjectCommentsPanelKeepsItsDraftAcrossAnExternalRefresh(t *testing.T) 
 }
 
 // TestProjectCommentsPanelKeepsItsDraftWhenTheOwnerChanges walks the three
-// remaining ways the workspace moves under an open draft. A rename and an
-// archival both leave the panel readable, so both must leave the draft alone; a
-// deletion is the one that ends the panel, and it must still write nothing.
+// remaining ways the workspace moves under an open draft. A rename, an archival,
+// and a deletion all leave the panel where it is, because what the user has typed
+// is only reachable there: the first two also leave the owner writable or refusing
+// on its own terms, and the third refuses every write while still owing them the
+// text and the reason.
 func TestProjectCommentsPanelKeepsItsDraftWhenTheOwnerChanges(t *testing.T) {
 	for _, testCase := range []struct {
 		name     string
 		draft    string
 		perturb  func(t *testing.T, shell *AppModel, owner *models.Project)
-		leaving  bool
 		expects  string
 		refusing bool
 	}{
@@ -161,13 +241,13 @@ func TestProjectCommentsPanelKeepsItsDraftWhenTheOwnerChanges(t *testing.T) {
 			name:  "deleted under the panel",
 			draft: "Typed before the deletion",
 			perturb: func(_ *testing.T, shell *AppModel, owner *models.Project) {
-				for id, project := range shell.domain.projects {
-					if project != nil && project.ID == owner.ID {
-						delete(shell.domain.projects, id)
-					}
-				}
+				removeProjectFromShell(shell, owner.ID)
 			},
-			leaving: true,
+			// The owner is gone rather than merely unwritable, so the panel names that
+			// instead of the project: the draft is still the user's, and the sentence
+			// beside it is what says why nothing will accept it.
+			expects:  "no longer available",
+			refusing: true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -180,18 +260,8 @@ func TestProjectCommentsPanelKeepsItsDraftWhenTheOwnerChanges(t *testing.T) {
 			}
 			testCase.perturb(t, driver.App(), owner)
 
-			if leaving := refreshUnderThePanel(t, driver); leaving != testCase.leaving {
-				t.Fatalf("the refresh asked to leave = %v, want %v", leaving, testCase.leaving)
-			}
-			if testCase.leaving {
-				// A dismissed panel is the shell's decision, not a write: the draft
-				// was never a comment and must not have become one on the way out.
-				if got := projectCommentsOnDisk(t, workspace); len(got) != 0 {
-					t.Fatalf("a dismissed draft still stored %+v", got)
-				}
-				return
-			}
-
+			refreshUnderThePanel(t, driver)
+			assertPanelIsStillMounted(t, driver)
 			assertDraftIntact(t, driver, testCase.draft)
 			if !strings.Contains(driver.Render(), testCase.expects) {
 				t.Fatalf("the panel does not name %q:\n%s", testCase.expects, driver.Render())
@@ -200,17 +270,136 @@ func TestProjectCommentsPanelKeepsItsDraftWhenTheOwnerChanges(t *testing.T) {
 				return
 			}
 
-			// An archived owner stays readable and refuses the write, and the
-			// refusal is what must not cost the draft either.
+			// An unwritable owner — archived, or gone outright — stays readable and
+			// refuses the write, and the refusal is what must not cost the draft either.
 			runChecklistActions(t, driver, []UITestAction{
 				{Type: UITestActionKey, Key: "ctrl+s"},
 				{Type: UITestActionWait},
 			})
 			if got := projectCommentsOnDisk(t, workspace); len(got) != 0 {
-				t.Fatalf("an archived owner still stored %+v", got)
+				t.Fatalf("a refused owner still stored %+v", got)
 			}
 			assertDraftIntact(t, driver, testCase.draft)
 		})
+	}
+}
+
+// TestProjectCommentsPanelRetainsDraftAfterOwnerRemoval is the removal case in
+// full, and it is the one refresh that used to end the panel outright.
+//
+// A committed delete leaves the shell holding a catalog the panel's project is not
+// in, and the refresh that follows every commit is what the panel learns it from.
+// Nobody asked for anything at that moment, so there is no refusal to report and
+// nothing on screen to explain a pop: the view is simply gone, the discard question
+// the composer owes is never asked, and the buffer goes with it. The two drafts
+// below are therefore held to all three halves at once — the panel is still
+// reachable, it still draws the exact text, and it says why that text will not be
+// written — while the document keeps saying exactly what it said before.
+//
+// The keys pressed after the refresh are part of that claim rather than extra
+// coverage. The shell also unwinds to the Outliner root when the project it has
+// loaded goes missing, and it does that on the next keystroke, so a draft the
+// refresh kept but the following Ctrl+S threw away would be kept for nothing.
+func TestProjectCommentsPanelRetainsDraftAfterOwnerRemoval(t *testing.T) {
+	for _, testCase := range []struct {
+		name   string
+		draft  string
+		open   func(t *testing.T, driver *UITestDriver, draft string)
+		stored []string
+	}{
+		{
+			name:  "add_draft",
+			draft: "Typed into the add composer",
+			open:  openProjectCommentsDraft,
+		},
+		{
+			name:   "edit_draft",
+			draft:  seededProjectComment + ", rewritten",
+			open:   openProjectCommentEditDraft,
+			stored: []string{seededProjectComment},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			driver, workspace, _ := addCommentFixtureApp(t)
+			testCase.open(t, driver, testCase.draft)
+			assertStoredCommentTexts(t, workspace, "before the removal", testCase.stored)
+
+			owner := driver.App().projectByID(projectCommentFixtureSlug)
+			if owner == nil {
+				t.Fatal("the fixture project is not in the shell cache")
+			}
+			removeProjectFromShell(driver.App(), owner.ID)
+
+			refreshUnderThePanel(t, driver)
+			assertPanelIsStillMounted(t, driver)
+			assertDraftIntact(t, driver, testCase.draft)
+			assertMissingOwnerReported(t, driver)
+			// Reading the removed owner is not resolving it: the catalog the shell
+			// serves must still be missing the project the panel is drawing.
+			if resolved := driver.App().projectByID(projectCommentFixtureSlug); resolved != nil {
+				t.Fatalf("the refresh put the removed project back: %+v", resolved)
+			}
+			assertStoredCommentTexts(t, workspace, "the refresh", testCase.stored)
+
+			// Saving is refused for the same reason, and the refusal costs neither the
+			// draft nor the document.
+			runChecklistActions(t, driver, []UITestAction{
+				{Type: UITestActionKey, Key: "ctrl+s"},
+				{Type: UITestActionWait},
+			})
+			assertPanelIsStillMounted(t, driver)
+			assertDraftIntact(t, driver, testCase.draft)
+			assertMissingOwnerReported(t, driver)
+			assertStoredCommentTexts(t, workspace, "a refused save", testCase.stored)
+
+			// And the draft still leaves the one way a draft leaves: Esc asks, and only
+			// the answer discards it.
+			runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "esc"}})
+			panel := mountedProjectCommentsPanel(t, driver.App())
+			if !panel.IsConfirmActive() {
+				t.Fatalf("Esc over the retained draft did not ask before discarding it:\n%s", driver.Render())
+			}
+			runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "y"}})
+			if _, open := panelDraft(mountedProjectCommentsPanel(t, driver.App())); open {
+				t.Fatalf("a confirmed discard kept the composer:\n%s", driver.Render())
+			}
+			assertStoredCommentTexts(t, workspace, "a confirmed discard", testCase.stored)
+		})
+	}
+}
+
+// assertMissingOwnerReported holds the half a dismissal used to swallow: the panel
+// carries the missing-owner refusal and the user can read it beside their text.
+// The wording is the panel's own, so the assertion asks the model for it rather
+// than restating a sentence that lives in another package.
+func assertMissingOwnerReported(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if panel.Err == nil {
+		t.Fatalf("the panel reports no refusal for the removed owner:\n%s", driver.Render())
+	}
+	if !strings.Contains(panel.Err.Error(), "no longer available") {
+		t.Fatalf("the refusal %q does not name the missing owner", panel.Err)
+	}
+	if screen := driver.Render(); !strings.Contains(screen, panel.Err.Error()) {
+		t.Fatalf("the refusal %q is not on screen:\n%s", panel.Err, screen)
+	}
+}
+
+// assertStoredCommentTexts names the stored collection by text in stored order.
+// Not a count: a draft that landed and a comment that was rewritten both keep the
+// count the document already had.
+func assertStoredCommentTexts(t *testing.T, workspace *uitestWorkspace, after string, want []string) {
+	t.Helper()
+	stored := projectCommentsOnDisk(t, workspace)
+	got := make([]string, 0, len(stored))
+	for _, comment := range stored {
+		if comment != nil {
+			got = append(got, comment.Text)
+		}
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("after %s the stored comments are %q, want %q", after, got, want)
 	}
 }
 

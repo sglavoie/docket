@@ -213,3 +213,76 @@ func TestProjectCommentDraftSurvivesTargetLoss(t *testing.T) {
 		assertStoredComments(t, project, "Older", "Newer")
 	})
 }
+
+// TestProjectCommentPanelRefreshKeepsADraftOverARemovedOwner is the same promise
+// against the one caller that can end the panel rather than refuse a write.
+//
+// A refresh is not a refusal: nobody asked for anything, so the shell reads the
+// return value and pops the view when the owner is gone — no discard question, no
+// error, no way back to the buffer. That is the right answer for a panel the user
+// is only reading and the wrong one for a panel they are typing into, so the
+// answer is the draft's presence, and the missing owner is reported where the
+// draft is rather than only implied by a list that stopped moving.
+func TestProjectCommentPanelRefreshKeepsADraftOverARemovedOwner(t *testing.T) {
+	t.Run("add_draft", func(t *testing.T) {
+		model, project := removedOwnerPanel(t)
+		model.BeginAddMode()
+		model.TextInput.SetValue(retainedDraft)
+
+		if !model.RefreshAfterReload() {
+			t.Fatal("the refresh asked the shell to dismiss a panel holding an add draft")
+		}
+		if !model.AddMode || model.TextInput.Value() != retainedDraft {
+			t.Fatalf("the refresh cost the draft: adding=%v buffer=%q", model.AddMode, model.TextInput.Value())
+		}
+		assertVisible(t, model, retainedDraft, errCommentOwnerGone.Error())
+		assertStoredComments(t, project, "Older", "Newer")
+
+		// And the write is still refused, because staying readable is not the same as
+		// becoming writable: the owner is gone either way.
+		refusal := refusalText(t, model.saveComment())
+		if !strings.Contains(refusal, "no longer available") {
+			t.Fatalf("refusal = %q, want it to name the missing owner", refusal)
+		}
+		assertStoredComments(t, project, "Older", "Newer")
+		assertVisible(t, model, retainedDraft, errCommentOwnerGone.Error())
+	})
+
+	t.Run("edit_draft", func(t *testing.T) {
+		model, project := removedOwnerPanel(t)
+		model.Cursor = 0
+		model.startEditComment()
+		model.EditTextInput.SetValue(retainedDraft)
+
+		if !model.RefreshAfterReload() {
+			t.Fatal("the refresh asked the shell to dismiss a panel holding an edit draft")
+		}
+		if !model.EditMode || model.EditTextInput.Value() != retainedDraft {
+			t.Fatalf("the refresh cost the draft: editing=%v buffer=%q", model.EditMode, model.EditTextInput.Value())
+		}
+		assertVisible(t, model, retainedDraft, errCommentOwnerGone.Error())
+		assertStoredComments(t, project, "Older", "Newer")
+
+		// The draft leaves the way any other unsaved edit does, and only that way.
+		model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+		if !model.IsConfirmActive() {
+			t.Fatal("Esc over the retained draft did not ask before discarding it")
+		}
+		model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+		if model.EditMode || model.EditTextInput.Value() != "" {
+			t.Fatalf("a confirmed discard kept the composer: editing=%v buffer=%q",
+				model.EditMode, model.EditTextInput.Value())
+		}
+		assertStoredComments(t, project, "Older", "Newer")
+	})
+
+	t.Run("no_draft", func(t *testing.T) {
+		model, _ := removedOwnerPanel(t)
+
+		// Nothing is being typed, so there is nothing the dismissal can take: the
+		// shell's own answer to a vanished owner stands.
+		if model.RefreshAfterReload() {
+			t.Fatal("a browsing panel over a removed owner refused to be dismissed")
+		}
+	})
+}

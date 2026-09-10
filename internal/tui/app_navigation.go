@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -56,11 +57,21 @@ func (m *AppModel) getActiveNotesView() *notes.NotesViewModel {
 // stale pointer and resets to the global Outliner root with a status message.
 // Returns handled=true with every command needed to present and load the
 // fallback Outliner.
+//
+// An open Comments composer defers that reset, because the reset is a route
+// unwind: it drops the panel without the discard question the composer owes,
+// and the buffer it drops is the only copy of what the user typed. Waiting
+// costs nothing, since every comment mutation re-resolves its own owner and
+// refuses a gone one, so a deferred reset can never let a write through; the
+// next keystroke after the composer closes performs it.
 func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	if m.currentProject == nil {
 		return false, nil
 	}
 	if m.projectByID(m.currentProject.ID) != nil {
+		return false, nil
+	}
+	if m.commentComposerHoldsUnsavedText() {
 		return false, nil
 	}
 	m.currentProject = nil
@@ -70,6 +81,19 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	cmd = tea.Batch(presentationCmd, routeCmd)
 	m.setInfoStatus("Project was removed — returning to the Outliner")
 	return true, cmd
+}
+
+// commentComposerHoldsUnsavedText reports whether the view on screen is the
+// Comments panel with an add or edit draft open. It names that one surface
+// rather than asking every view whether it holds text: a form whose save could
+// still reach storage must not outlive the project it was opened on, while this
+// panel's every write is already refused by its own owner check.
+func (m *AppModel) commentComposerHoldsUnsavedText() bool {
+	if m.currentView() != presentation.ViewTaskComments {
+		return false
+	}
+	panel, ok := m.activeView().(*taskdetail.CommentsModel)
+	return ok && panel.HasTextInput()
 }
 
 // currentView returns the current view type.

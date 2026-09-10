@@ -250,15 +250,35 @@ func (m *CommentsModel) clampCursor() {
 }
 
 // RefreshAfterReload re-resolves the owner and re-projects its comments after a
-// commit replaced the workspace objects, reporting false when the owner is gone
-// so the shell can dismiss the panel. It touches no input state: a reload must
-// never cost the user a draft they are still typing.
+// commit replaced the workspace objects. It reports whether the panel is still
+// worth showing, because the shell dismisses it when the answer is no. It touches
+// no draft: a reload must never cost the user text they are still typing.
 func (m *CommentsModel) RefreshAfterReload() bool {
 	if m.owner == nil || !m.owner.Reload() {
-		return false
+		return m.keepDraftOverMissingOwner()
 	}
 	m.reloadEntries()
 	m.clampCursor()
+	return true
+}
+
+// keepDraftOverMissingOwner answers that question for an owner the workspace no
+// longer holds, and it is the one case where "gone" does not mean "leave".
+//
+// A panel with no composer open has nothing left to offer, so it reports the
+// dismissal the shell acts on. A panel holding an add or edit draft reports the
+// missing owner instead and stays, because that buffer is the only copy of the
+// user's text there is: the shell's dismissal pops the view outright, without the
+// discard question every other exit from a composer asks, so leaving here would
+// silently destroy work the user never agreed to lose. Installing the refusal is
+// what makes the reason visible beside the draft rather than only inferable from
+// a list that stopped changing; the write itself is still refused when they save,
+// by the same precondition that refuses any mutation against a gone owner.
+func (m *CommentsModel) keepDraftOverMissingOwner() bool {
+	if !m.HasTextInput() {
+		return false
+	}
+	m.Err = errCommentOwnerGone
 	return true
 }
 
