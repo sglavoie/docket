@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/app"
@@ -14,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // The helpers below mirror the shell's own copies in
@@ -122,6 +125,64 @@ func newTestCommentsPanel(task *models.Task, project *models.Project) *CommentsM
 func newRefusingCommentsPanel(task *models.Task, project *models.Project) *CommentsModel {
 	owner := NewTaskCommentOwner(task, project, newTestSecondaryCoordinators().Subview)
 	return NewCommentsPanel(owner, "")
+}
+
+// The project-comment scaffolding below lives here rather than beside any one of
+// its cases because too many files read it: a shared helper declared in a
+// test-bearing file is what tui_shared_test_helper_home_test.go refuses, and this
+// is the home it names.
+
+const (
+	olderCommentID = "11111111-2222-3333-4444-555555555555"
+	newerCommentID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
+)
+
+// projectCommentsFixture builds a project inside a real directory carrying two
+// comments in canonical storage order, oldest first. The panel is expected to
+// draw them the other way round, which is exactly what makes an index an unsafe
+// address here.
+func projectCommentsFixture(t *testing.T) *models.Project {
+	t.Helper()
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	created := time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	project.Comments = []*models.ProjectComment{
+		{ID: olderCommentID, Text: "Older", CreatedAt: created},
+		{ID: newerCommentID, Text: "Newer", CreatedAt: created.Add(time.Hour)},
+	}
+	return project
+}
+
+// refusalText runs a refusal command once and names the error it reported,
+// failing when the command committed something instead. Running it a second time
+// would submit whatever it carries twice, so the outcome is read from a single
+// invocation.
+func refusalText(t *testing.T, cmd tea.Cmd) string {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("the refused act produced no command at all")
+	}
+	outcome := cmd()
+	msg, ok := outcome.(status.ErrorMsg)
+	if !ok {
+		t.Fatalf("the refused act resolved to %T, want a refusal", outcome)
+	}
+	if msg.Err == nil {
+		t.Fatal("the refusal named no error")
+	}
+	return msg.Err.Error()
+}
+
+// saveExternalChange writes a change made by another surface so the application
+// layer's fresh snapshot can see it. Mutating the in-memory project alone is
+// invisible to a mutation, which re-resolves its target from storage.
+func saveExternalChange(t *testing.T, project *models.Project) {
+	t.Helper()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
 }
 
 // fakeAttachmentMutator records the application use cases the attachments panel

@@ -12,29 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
-const (
-	olderCommentID = "11111111-2222-3333-4444-555555555555"
-	newerCommentID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
-)
-
-// projectCommentsFixture builds a project inside a real directory carrying two
-// comments in canonical storage order, oldest first. The panel is expected to
-// draw them the other way round, which is exactly what makes an index an unsafe
-// address here.
-func projectCommentsFixture(t *testing.T) *models.Project {
-	t.Helper()
-	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
-	if err != nil {
-		t.Fatalf("NewProject: %v", err)
-	}
-	created := time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
-	project.Comments = []*models.ProjectComment{
-		{ID: olderCommentID, Text: "Older", CreatedAt: created},
-		{ID: newerCommentID, Text: "Newer", CreatedAt: created.Add(time.Hour)},
-	}
-	return project
-}
-
 // newTestProjectCommentsPanel mounts the shared panel over the project adapter,
 // with commits reaching a real application service seeded with that project and
 // a resolver that answers by identity, which is what the shell supplies.

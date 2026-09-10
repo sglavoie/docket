@@ -8,8 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // answerDeleteConfirmation presses one key against an open confirmation the way
@@ -22,36 +20,6 @@ func answerDeleteConfirmation(t *testing.T, model *CommentsModel, key rune) tea.
 	}
 	_, cmd := model.Update(tea.KeyPressMsg{Code: key, Text: string(key)})
 	return cmd
-}
-
-// refusalText runs a refusal command once and names the error it reported,
-// failing when the command committed something instead. Running it a second time
-// would submit whatever it carries twice, so the outcome is read from a single
-// invocation.
-func refusalText(t *testing.T, cmd tea.Cmd) string {
-	t.Helper()
-	if cmd == nil {
-		t.Fatal("the confirmed delete produced no command at all")
-	}
-	outcome := cmd()
-	msg, ok := outcome.(status.ErrorMsg)
-	if !ok {
-		t.Fatalf("the confirmed delete resolved to %T, want a refusal", outcome)
-	}
-	if msg.Err == nil {
-		t.Fatal("the refusal named no error")
-	}
-	return msg.Err.Error()
-}
-
-// saveExternalChange writes a change made by another surface so the application
-// layer's fresh snapshot can see it. Mutating the in-memory project alone is
-// invisible to a mutation, which re-resolves its target from storage.
-func saveExternalChange(t *testing.T, project *models.Project) {
-	t.Helper()
-	if err := storage.SaveProject(project); err != nil {
-		t.Fatalf("SaveProject: %v", err)
-	}
 }
 
 // TestProjectCommentDeleteConfirmationRetainsTarget holds the whole of the
