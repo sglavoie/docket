@@ -17,6 +17,17 @@ import (
 // promise different lengths.
 const CommentCharLimit = 2000
 
+// addComposerRows and editComposerRows are the heights the two composers are
+// drawn at wherever the panel has room for them, and composerMinRows the floor
+// they shrink to where it does not. The floor exists because a composer is the
+// one part of the panel that cannot yield entirely: a box with no rows is
+// indistinguishable from a lost draft.
+const (
+	addComposerRows  = 4
+	editComposerRows = 6
+	composerMinRows  = 2
+)
+
 // CommentsModel displays and manages one owner's comments. It reaches the
 // commented entity only through its CommentOwner, so the same panel serves any
 // owner an adapter exists for and none of its rendering, navigation, or
@@ -95,14 +106,14 @@ func NewCommentsPanel(owner CommentOwner, editor string) *CommentsModel {
 	ti := textarea.New()
 	ti.Placeholder = "Enter comment text..."
 	ti.CharLimit = CommentCharLimit
-	ti.SetHeight(4)
+	ti.SetHeight(addComposerRows)
 	ti.ShowLineNumbers = false
 	theme.ApplyThemedTextarea(&ti)
 
 	editTi := textarea.New()
 	editTi.Placeholder = "Edit comment text..."
 	editTi.CharLimit = CommentCharLimit
-	editTi.SetHeight(6)
+	editTi.SetHeight(editComposerRows)
 	editTi.ShowLineNumbers = false
 	theme.ApplyThemedTextarea(&editTi)
 

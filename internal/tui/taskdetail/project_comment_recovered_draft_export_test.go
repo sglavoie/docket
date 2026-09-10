@@ -184,15 +184,10 @@ func assertExportedDraft(t *testing.T, model *CommentsModel, written map[string]
 
 	deliverToPanel(t, model, ctrlX)
 	view := panelText(t, model)
-	start := strings.Index(view, draftExportStatusPrefix)
-	if start < 0 {
+	if !strings.Contains(view, strings.TrimSpace(draftExportStatusPrefix)) {
 		t.Fatalf("the panel never named a file for the draft:\n%s", view)
 	}
-	line := view[start+len(draftExportStatusPrefix):]
-	if end := strings.IndexByte(line, '\n'); end >= 0 {
-		line = line[:end]
-	}
-	path := strings.TrimSpace(line)
+	path := exportedDraftPathFromView(view)
 	if path == "" {
 		t.Fatalf("the panel named an empty path for the draft:\n%s", view)
 	}

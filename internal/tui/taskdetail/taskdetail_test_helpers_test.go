@@ -309,6 +309,35 @@ func panelText(t *testing.T, model *CommentsModel) string {
 	return ansi.Strip(model.View().Content)
 }
 
+// exportedDraftPathFromView reassembles the file the panel is naming on screen.
+//
+// The status is laid out at the panel's content width like every other sentence
+// it writes, so a generated temporary path sits on one row in a wide panel and on
+// several in a narrow one. What the user reads is the whole path either way, and
+// a reader that stopped at the first newline would take the first row for the
+// whole of it and open a file that does not exist. Rows are joined without a
+// separator because a path carries no spaces: the only break in it is the one the
+// wrap put there.
+func exportedDraftPathFromView(view string) string {
+	marker := strings.TrimSpace(draftExportStatusPrefix)
+	start := strings.Index(view, marker)
+	if start < 0 {
+		return ""
+	}
+	var path strings.Builder
+	for _, line := range strings.Split(view[start+len(marker):], "\n") {
+		piece := strings.TrimSpace(line)
+		if piece == "" && path.Len() == 0 {
+			continue
+		}
+		if piece == "" || strings.ContainsAny(piece, "─━") {
+			break
+		}
+		path.WriteString(piece)
+	}
+	return path.String()
+}
+
 // assertVisible fails when the rendered panel is missing something the user needs
 // on screen — their own text, or the reason the panel refused to write it.
 func assertVisible(t *testing.T, model *CommentsModel, want ...string) {

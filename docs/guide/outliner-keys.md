@@ -301,6 +301,14 @@ screen. It asks the comment's owner for nothing, so it answers just as well when
 the comment was deleted or the project is gone, and it writes nothing else: the
 refusal, your text, and the stored comments are all exactly where they were.
 
+A short terminal cannot hold all of that at once, and what it drops is chosen
+rather than cropped. The excerpt under the box shrinks and then goes, and the
+sentence explaining it goes after that; what stays at every size is the refusal,
+the line saying the box is a preview and that `Ctrl+X` writes the whole draft,
+the keys along the bottom, and the path a `Ctrl+X` already spent. None of it is
+about the draft itself — the complete text is kept whatever the terminal is doing
+— and `Esc` still discards it and nothing else does.
+
 A comment already in the workspace can outrun the box the same way, so opening
 one with `e` is treated the same. If it is longer than 2,000 characters or
 carries interior tabs, the box becomes a read-only preview of the stored comment

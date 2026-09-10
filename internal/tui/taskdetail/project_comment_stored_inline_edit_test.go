@@ -192,15 +192,10 @@ func assertStoredCommentExports(t *testing.T, model *CommentsModel, want string)
 	t.Helper()
 	deliverToPanel(t, model, ctrlX)
 	view := panelText(t, model)
-	start := strings.Index(view, draftExportStatusPrefix)
-	if start < 0 {
+	if !strings.Contains(view, strings.TrimSpace(draftExportStatusPrefix)) {
 		t.Fatalf("Ctrl+X named no file for the stored comment:\n%s", view)
 	}
-	line := view[start+len(draftExportStatusPrefix):]
-	if end := strings.IndexByte(line, '\n'); end >= 0 {
-		line = line[:end]
-	}
-	path := strings.TrimSpace(line)
+	path := exportedDraftPathFromView(view)
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("the file Ctrl+X named cannot be read: %v", err)

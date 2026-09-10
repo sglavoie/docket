@@ -180,15 +180,10 @@ func discardTheDraft(t *testing.T, model *CommentsModel) {
 func exportedDraftPath(t *testing.T, model *CommentsModel, when string) string {
 	t.Helper()
 	view := panelText(t, model)
-	start := strings.Index(view, draftExportStatusPrefix)
-	if start < 0 {
+	if !strings.Contains(view, strings.TrimSpace(draftExportStatusPrefix)) {
 		t.Fatalf("%s: the panel is naming no file for the draft:\n%s", when, view)
 	}
-	line := view[start+len(draftExportStatusPrefix):]
-	if end := strings.IndexByte(line, '\n'); end >= 0 {
-		line = line[:end]
-	}
-	path := strings.TrimSpace(line)
+	path := exportedDraftPathFromView(view)
 	if path == "" {
 		t.Fatalf("%s: the panel named an empty path for the draft:\n%s", when, view)
 	}
