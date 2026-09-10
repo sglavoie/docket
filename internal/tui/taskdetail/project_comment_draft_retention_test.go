@@ -1,12 +1,10 @@
 package taskdetail
 
 import (
-	"slices"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -15,40 +13,6 @@ import (
 // survive the composer's own wrapping at the width these tests render at, so a
 // missing draft is a missing draft rather than a line break.
 const retainedDraft = "the replacement nobody else has"
-
-// panelText renders the panel and strips styling. The buffer alone is not the
-// contract here: the defect this file locks is a composer that held the draft and
-// stopped drawing it, so every assertion reads what a user would see.
-func panelText(t *testing.T, model *CommentsModel) string {
-	t.Helper()
-	return ansi.Strip(model.View().Content)
-}
-
-// assertVisible fails when the rendered panel is missing something the user needs
-// on screen — their own text, or the reason the panel refused to write it.
-func assertVisible(t *testing.T, model *CommentsModel, want ...string) {
-	t.Helper()
-	view := panelText(t, model)
-	for _, fragment := range want {
-		if !strings.Contains(view, fragment) {
-			t.Fatalf("the panel does not show %q:\n%s", fragment, view)
-		}
-	}
-}
-
-// assertStoredComments names the stored collection by text in stored order, which
-// is what says a refusal wrote nothing: not a smaller count, not a different
-// count, but the same comments saying the same things.
-func assertStoredComments(t *testing.T, project *models.Project, want ...string) {
-	t.Helper()
-	got := make([]string, 0, len(project.Comments))
-	for _, comment := range project.Comments {
-		got = append(got, comment.Text)
-	}
-	if !slices.Equal(got, want) {
-		t.Fatalf("stored comments = %q, want %q", got, want)
-	}
-}
 
 // removedOwnerPanel mounts the project panel over a resolver that answers
 // nothing, so the project is gone the way a delete or an archive-and-reload makes

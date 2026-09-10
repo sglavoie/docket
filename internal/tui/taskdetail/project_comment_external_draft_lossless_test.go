@@ -43,31 +43,6 @@ func losslessDraftCases() []losslessDraftCase {
 	}
 }
 
-// assertRecoverable names the exact text the panel is still holding for one
-// composer. This is the contract itself: not "something survived" and not "the
-// buffer is non-empty", but the editor's bytes, unchanged.
-func assertRecoverable(t *testing.T, model *CommentsModel, kind commentMutationKind, want string) {
-	t.Helper()
-	got, ok := model.retainedDraftText(kind)
-	if !ok {
-		t.Fatalf("the panel is holding no recoverable draft at all")
-	}
-	if got != want {
-		t.Fatalf("recoverable draft lost %d rune(s) and differs from the editor's result:\ngot  %q\nwant %q",
-			len([]rune(want))-len([]rune(got)), tailOf(got), tailOf(want))
-	}
-}
-
-// tailOf keeps a failure message readable when the texts under comparison are
-// thousands of runes long; the end is where they differ.
-func tailOf(text string) string {
-	runes := []rune(text)
-	if len(runes) <= 60 {
-		return text
-	}
-	return "..." + string(runes[len(runes)-60:])
-}
-
 // assertRecoveryUIShowsTail reads the rendered panel and requires the sentinel to
 // appear below the recovery notice, not merely somewhere on screen. The composer
 // draws the head of the draft on its own, so a sentinel found anywhere would be
@@ -82,16 +57,6 @@ func assertRecoveryUIShowsTail(t *testing.T, model *CommentsModel) {
 	if !strings.Contains(view[notice:], externalDraftSentinel) {
 		t.Fatalf("the recovery block does not reach the end of the draft:\n%s", view[notice:])
 	}
-}
-
-// deliverToPanel hands the panel one message the way the shell does and returns
-// whatever it asked for in reply, so every step below — the editor's result and
-// the key presses alike — runs through Update's own routing rather than calling
-// the handler underneath it.
-func deliverToPanel(t *testing.T, model *CommentsModel, msg tea.Msg) tea.Cmd {
-	t.Helper()
-	_, cmd := model.Update(msg)
-	return cmd
 }
 
 // discardRetainedDraft spends the one grammar that may drop a recovered draft:
@@ -195,12 +160,6 @@ func TestProjectCommentExternalDraftRetentionIsLossless(t *testing.T) {
 			})
 		}
 	})
-}
-
-// editorResult is the message the external editor's command goroutine returns,
-// addressed to the mounted owner.
-func editorResult(model *CommentsModel, kind commentMutationKind, ref CommentRef, text string) commentEditorFinishedMsg {
-	return commentEditorFinishedMsg{owner: model.ownerKey(), kind: kind, ref: ref, text: text}
 }
 
 // assertRetainedThroughRefusals runs the shared tail of every case: the state

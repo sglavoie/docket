@@ -296,9 +296,11 @@ func (m *CommentsModel) HasSelection() bool {
 // open, because the alternative to editing here is not "do without": the whole
 // draft is one key from a file whatever else has happened to its target.
 //
-// The editor is the other way out and it is not always open, so the sentence
-// naming it is appended from draftEditorGuidance — the same one the recovery
-// block above the composer is closed with.
+// It is the whole of what the refusal stores, and that is deliberate: this
+// sentence is true in every state the panel can reach afterwards. The editor is
+// the other way out and it is not always open, so the sentence naming it is
+// appended at render by statusEditorGuidance — the same draftEditorGuidance the
+// recovery block above the composer is closed with.
 const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft; Ctrl+X writes the whole of it to a file."
 
 // restoreDraftPreview undoes a press that changed a previewed draft's box and
@@ -330,11 +332,19 @@ func (m *CommentsModel) restoreDraftPreview(kind commentMutationKind, before str
 // refuseDraftPreviewEdit reports the read-only refusal for the presses that
 // change a composer without going through its Update — and is what
 // restoreDraftPreview asks whether this composer is previewing at all.
+//
+// A status message is sticky, so what it stores has to stay true for as long as
+// it is on screen. The target a refused draft still had when the box turned a
+// keystroke away can be deleted or taken away a moment later, and nothing about
+// that loss rewrites a line already written. So only the unconditional half is
+// stored; the stamp beside it is what lets the render recognize this line later
+// and recompute the rest against the state it is being drawn in.
 func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
 	if _, previewed := m.heldDraftPreview(kind); !previewed {
 		return false
 	}
-	m.SetStatus(draftPreviewReadOnlyStatus + m.draftEditorGuidance(kind))
+	m.SetStatus(draftPreviewReadOnlyStatus)
+	m.previewRefusalStamp = m.StatusStamp()
 	return true
 }
 

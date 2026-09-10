@@ -244,8 +244,35 @@ func (m *CommentsModel) renderStatusMessage(b *strings.Builder) {
 	if m.StatusMessage == "" {
 		return
 	}
-	b.WriteString(theme.MutedStyle.Render(m.StatusMessage))
+	b.WriteString(theme.MutedStyle.Render(m.StatusMessage + m.statusEditorGuidance()))
 	b.WriteString("\n")
+}
+
+// statusEditorGuidance is the state-dependent half of the read-only refusal, and
+// is empty for every other status line.
+//
+// The refusal outlives the state it was written in. A draft the box turned a
+// keystroke away from may still have had its comment and its project at that
+// moment and lose either a moment later — to a delete on another surface, to the
+// project going away — and a sticky line written before that would go on naming
+// an editor the key has since stopped opening, beside a recovery block that had
+// already recomputed and said the opposite. So the workspace-dependent sentence
+// is not stored at all: it is asked again here, from the same
+// draftEditorGuidance the block above the composer is closed with, every time the
+// line is drawn.
+//
+// Two things narrow it, and both are about not speaking out of turn. The status
+// generation says this line is still the refusal rather than something written
+// after it, which is what leaves an exported draft's path — the one status a user
+// has to be able to read character for character — exactly as it was written. And
+// the composer must still be previewing a kept draft, because a sentence about
+// what to do with that draft means nothing once it has been committed or
+// discarded.
+func (m *CommentsModel) statusEditorGuidance() string {
+	if m.previewRefusalStamp != m.StatusStamp() || !m.showsDraftPreview() {
+		return ""
+	}
+	return m.draftEditorGuidance(m.openComposerKind())
 }
 
 func (m *CommentsModel) renderCommentEntry(index int, entry CommentEntry, maxLen int) string {

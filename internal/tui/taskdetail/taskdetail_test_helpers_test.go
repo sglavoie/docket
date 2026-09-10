@@ -3,6 +3,7 @@ package taskdetail
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -297,4 +298,116 @@ func assertFitsWithin(t *testing.T, rendered string, width, height int) {
 				width, ansi.Strip(line), w, ansi.Strip(rendered))
 		}
 	}
+}
+
+// panelText renders the panel and strips styling. The buffer alone is not the
+// contract for any of its readers: the defect they lock is a composer that held
+// the draft and stopped drawing it, so every assertion reads what a user would
+// see.
+func panelText(t *testing.T, model *CommentsModel) string {
+	t.Helper()
+	return ansi.Strip(model.View().Content)
+}
+
+// assertVisible fails when the rendered panel is missing something the user needs
+// on screen — their own text, or the reason the panel refused to write it.
+func assertVisible(t *testing.T, model *CommentsModel, want ...string) {
+	t.Helper()
+	view := panelText(t, model)
+	for _, fragment := range want {
+		if !strings.Contains(view, fragment) {
+			t.Fatalf("the panel does not show %q:\n%s", fragment, view)
+		}
+	}
+}
+
+// assertStoredComments names the stored collection by text in stored order, which
+// is what says a refusal wrote nothing: not a smaller count, not a different
+// count, but the same comments saying the same things.
+func assertStoredComments(t *testing.T, project *models.Project, want ...string) {
+	t.Helper()
+	got := make([]string, 0, len(project.Comments))
+	for _, comment := range project.Comments {
+		got = append(got, comment.Text)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("stored comments = %q, want %q", got, want)
+	}
+}
+
+// newTestProjectCommentsPanel mounts the shared panel over the project adapter,
+// with commits reaching a real application service seeded with that project and
+// a resolver that answers by identity, which is what the shell supplies.
+func newTestProjectCommentsPanel(t *testing.T, project *models.Project) (*CommentsModel, *models.Project) {
+	t.Helper()
+	coordinators := newTestSecondaryCoordinators(project)
+	return newProjectCommentsPanel(project, coordinators.ProjectComment, func(id string) *models.Project {
+		if project.ID == id {
+			return project
+		}
+		return nil
+	}), project
+}
+
+func newProjectCommentsPanel(
+	project *models.Project,
+	comments coordinator.ProjectCommentCoordinator,
+	resolve func(string) *models.Project,
+) *CommentsModel {
+	return NewCommentsPanel(NewProjectCommentOwner(project, resolve, comments), "")
+}
+
+// assertRecoverable names the exact text the panel is still holding for one
+// composer. This is the contract itself: not "something survived" and not "the
+// buffer is non-empty", but the editor's bytes, unchanged.
+func assertRecoverable(t *testing.T, model *CommentsModel, kind commentMutationKind, want string) {
+	t.Helper()
+	got, ok := model.retainedDraftText(kind)
+	if !ok {
+		t.Fatalf("the panel is holding no recoverable draft at all")
+	}
+	if got != want {
+		t.Fatalf("recoverable draft lost %d rune(s) and differs from the editor's result:\ngot  %q\nwant %q",
+			len([]rune(want))-len([]rune(got)), tailOf(got), tailOf(want))
+	}
+}
+
+// tailOf keeps a failure message readable when the texts under comparison are
+// thousands of runes long; the end is where they differ.
+func tailOf(text string) string {
+	runes := []rune(text)
+	if len(runes) <= 60 {
+		return text
+	}
+	return "..." + string(runes[len(runes)-60:])
+}
+
+// deliverToPanel hands the panel one message the way the shell does and returns
+// whatever it asked for in reply, so every step a test takes — an external
+// editor's result and a key press alike — runs through Update's own routing
+// rather than calling the handler underneath it.
+func deliverToPanel(t *testing.T, model *CommentsModel, msg tea.Msg) tea.Cmd {
+	t.Helper()
+	_, cmd := model.Update(msg)
+	return cmd
+}
+
+// editorResult is the message the external editor's command goroutine returns,
+// addressed to the mounted owner.
+func editorResult(model *CommentsModel, kind commentMutationKind, ref CommentRef, text string) commentEditorFinishedMsg {
+	return commentEditorFinishedMsg{owner: model.ownerKey(), kind: kind, ref: ref, text: text}
+}
+
+// settle runs one panel command and feeds whatever it resolved to back through
+// Update, the way the shell's delegation does. Every commit-aware transition
+// happens there, so a test that only inspected the command would be asserting
+// half the behavior.
+func settle(t *testing.T, model *CommentsModel, cmd tea.Cmd) tea.Msg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("expected a commit command")
+	}
+	msg := cmd()
+	model.Update(msg)
+	return msg
 }

@@ -54,6 +54,15 @@ type CommentsModel struct {
 	// buffer, or a submission coming back from a refused commit.
 	recovered *draftRecovery
 
+	// previewRefusalStamp is the status generation the read-only refusal was
+	// written at, and is the whole of what says the line on screen is still that
+	// refusal. Every other status the panel writes takes a generation of its own
+	// through SetStatus, so an exported draft's path — or a copy, or a
+	// double-submission refusal — displaces the refusal simply by being written,
+	// and is then printed exactly as it was written. Zero is no refusal: the
+	// first SetStatus a panel ever performs lands on generation one.
+	previewRefusalStamp uint64
+
 	// deleteRef is the comment an open delete confirmation was opened on, frozen
 	// the moment the question appeared for the same reason editRef is frozen: the
 	// list can reload or reorder while the prompt is on screen, and a removal

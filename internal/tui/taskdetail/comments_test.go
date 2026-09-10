@@ -28,20 +28,6 @@ func commentsFixture(t *testing.T, texts ...string) (*models.Project, *models.Ta
 	return project, task
 }
 
-// settle runs one panel command and feeds whatever it resolved to back through
-// Update, the way the shell's delegation does. Every commit-aware transition
-// happens there, so a test that only inspected the command would be asserting
-// half the behavior.
-func settle(t *testing.T, model *CommentsModel, cmd tea.Cmd) tea.Msg {
-	t.Helper()
-	if cmd == nil {
-		t.Fatal("expected a commit command")
-	}
-	msg := cmd()
-	model.Update(msg)
-	return msg
-}
-
 func TestCommentsAddHoldsTheDraftUntilTheCommitConfirms(t *testing.T) {
 	project, task := commentsFixture(t)
 	model := newTestCommentsPanel(task, project)

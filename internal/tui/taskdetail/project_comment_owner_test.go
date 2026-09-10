@@ -12,28 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
-// newTestProjectCommentsPanel mounts the shared panel over the project adapter,
-// with commits reaching a real application service seeded with that project and
-// a resolver that answers by identity, which is what the shell supplies.
-func newTestProjectCommentsPanel(t *testing.T, project *models.Project) (*CommentsModel, *models.Project) {
-	t.Helper()
-	coordinators := newTestSecondaryCoordinators(project)
-	return newProjectCommentsPanel(project, coordinators.ProjectComment, func(id string) *models.Project {
-		if project.ID == id {
-			return project
-		}
-		return nil
-	}), project
-}
-
-func newProjectCommentsPanel(
-	project *models.Project,
-	comments coordinator.ProjectCommentCoordinator,
-	resolve func(string) *models.Project,
-) *CommentsModel {
-	return NewCommentsPanel(NewProjectCommentOwner(project, resolve, comments), "")
-}
-
 // TestProjectCommentOwnerPresentsNewestFirst holds the one presentation
 // difference between the two adapters. Storage keeps comments oldest first
 // because that order is canonical; the panel opens on the newest.
