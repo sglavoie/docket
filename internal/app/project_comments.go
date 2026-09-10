@@ -45,7 +45,9 @@ type ProjectCommentTarget struct {
 	ProjectID string
 	// CommentID is the comment's stored identity.
 	CommentID string
-	// Original is the text the caller last read for that comment.
+	// Original is the text the caller last read for that comment, byte for byte.
+	// It is a precondition rather than input to normalize: the stored text is
+	// compared to it verbatim, so a caller hands back exactly what it read.
 	Original string
 }
 
@@ -80,8 +82,14 @@ func (s *Service) resolveProjectCommentTarget(target ProjectCommentTarget) (reso
 	if commentID == "" {
 		return resolvedProjectComment{}, invalidInput("comment", "id is required")
 	}
-	original, err := normalizeCommentText(target.Original)
-	if err != nil {
+	// The precondition is checked for presence and then left alone. Trimming it
+	// would compare a normalized reading of what the caller read against text the
+	// schema-17 writer and reader preserve byte for byte: a stored "  note  " and
+	// an exact Original would be refused as changed with no way to reopen out of
+	// it, while a stale "  note  " read against a stored "note" would be accepted
+	// as unchanged. Newly supplied replacement text is a separate contract and is
+	// still normalized where it is accepted.
+	if strings.TrimSpace(target.Original) == "" {
 		return resolvedProjectComment{}, invalidInput("comment", "original text is required")
 	}
 	snap, err := s.repo.Snapshot()
@@ -109,7 +117,7 @@ func (s *Service) resolveProjectCommentTarget(target ProjectCommentTarget) (reso
 	if found == nil {
 		return resolvedProjectComment{}, invalidInput("comment", "comment is no longer on this project")
 	}
-	if found.Text != original {
+	if found.Text != target.Original {
 		return resolvedProjectComment{}, invalidInput("comment", "comment changed since it was read; reopen it and try again")
 	}
 	return resolvedProjectComment{
