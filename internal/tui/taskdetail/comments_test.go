@@ -396,17 +396,22 @@ func TestCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	model := newTestCommentsPanel(task, project)
 	model.EditMode = true
 	model.editRef, _ = model.commentRefAt(0)
+	model.EditTextInput.SetValue("replacement in progress")
 
 	// Simulate external deletion of all comments
 	task.Comments = nil
 
-	// Must not panic; should cancel edit mode and return an error cmd
+	// Must not panic; the launch is refused and the composer keeps the draft. The
+	// comment it belonged to is gone, so this buffer is the only copy of the
+	// replacement there is and closing over it would be the loss the refusal exists
+	// to prevent.
 	cmd := model.editCommentInExternalEditorFromEditMode()
 	if cmd == nil {
 		t.Fatal("expected non-nil error command when the edited comment is gone")
 	}
-	if model.EditMode {
-		t.Fatal("expected editMode to be canceled when comment was deleted externally")
+	if !model.EditMode || model.EditTextInput.Value() != "replacement in progress" {
+		t.Fatalf("a refused editor launch lost the draft: editing=%v buffer=%q",
+			model.EditMode, model.EditTextInput.Value())
 	}
 }
 
@@ -420,13 +425,30 @@ func TestCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	// Simulate external deletion of all comments
 	task.Comments = nil
 
-	// saveEditedComment should detect OOB and return error cmd
+	// saveEditedComment should detect OOB and return an error cmd without spending
+	// the draft: the row is gone, so the buffer is all that is left of the edit.
 	cmd := model.saveEditedComment()
 	if cmd == nil {
 		t.Fatal("expected non-nil error command when the edited comment is gone")
 	}
-	if model.EditMode {
-		t.Fatal("expected editMode to be canceled when comment was deleted externally")
+	if !model.EditMode || model.EditTextInput.Value() != "edited text" {
+		t.Fatalf("a refused save lost the draft: editing=%v buffer=%q",
+			model.EditMode, model.EditTextInput.Value())
+	}
+
+	// Discarding it is the user's own act, and it is the ordinary one: Esc over
+	// changed text asks first, and only the answer resets the buffer.
+	model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if !model.IsConfirmActive() {
+		t.Fatal("Esc over a retained draft did not ask before discarding it")
+	}
+	if model.EditTextInput.Value() != "edited text" {
+		t.Fatalf("the discard question already spent the draft: %q", model.EditTextInput.Value())
+	}
+	model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+	if model.EditMode || model.EditTextInput.Value() != "" {
+		t.Fatalf("a confirmed discard kept the composer: editing=%v buffer=%q",
+			model.EditMode, model.EditTextInput.Value())
 	}
 }
 

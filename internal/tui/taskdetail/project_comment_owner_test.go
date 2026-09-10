@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -267,8 +269,13 @@ func TestProjectCommentPanelRefusesAChangedTargetWithoutLosingTheDraft(t *testin
 }
 
 // TestProjectCommentPanelRefusesAVanishedTarget holds the other precondition: a
-// comment deleted underneath an open editor closes it with a named refusal
-// instead of rewriting whichever comment now occupies the row.
+// comment deleted underneath an open editor refuses the save by name instead of
+// rewriting whichever comment now occupies the row.
+//
+// The composer stays open over that refusal. Nothing can put the vanished comment
+// back, so the buffer is the only copy of the replacement in the process, and a
+// refusal that reset it would take the user's work as the price of protecting the
+// list. Discarding it stays an explicit act.
 func TestProjectCommentPanelRefusesAVanishedTarget(t *testing.T) {
 	model, project := newTestProjectCommentsPanel(t, projectCommentsFixture(t))
 	model.Cursor = 0
@@ -276,15 +283,30 @@ func TestProjectCommentPanelRefusesAVanishedTarget(t *testing.T) {
 	model.EditTextInput.SetValue("mine")
 
 	project.Comments = project.Comments[:1]
-	cmd := model.saveEditedComment()
-	if cmd == nil {
-		t.Fatal("expected a refusal command")
+	refusal := refusalText(t, model.saveEditedComment())
+	if !strings.Contains(refusal, "deleted externally") {
+		t.Fatalf("refusal = %q, want it to name the vanished target", refusal)
 	}
-	if model.EditMode {
-		t.Fatal("the editor stayed open over a comment that is gone")
+	if !model.EditMode || model.EditTextInput.Value() != "mine" {
+		t.Fatalf("a refused save lost the draft: editing=%v buffer=%q", model.EditMode, model.EditTextInput.Value())
 	}
 	if project.Comments[0].Text != "Older" {
 		t.Fatalf("the surviving comment was rewritten: %+v", project.Comments)
+	}
+
+	// The retained draft is discarded the ordinary way and only the ordinary way:
+	// Esc asks, and the answer is what spends it.
+	model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if !model.IsConfirmActive() {
+		t.Fatal("Esc over a retained draft did not ask before discarding it")
+	}
+	model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+	if model.EditMode || model.EditTextInput.Value() != "" {
+		t.Fatalf("a confirmed discard kept the composer: editing=%v buffer=%q",
+			model.EditMode, model.EditTextInput.Value())
+	}
+	if len(project.Comments) != 1 || project.Comments[0].Text != "Older" {
+		t.Fatalf("the discard disturbed stored comments: %+v", project.Comments)
 	}
 }
 

@@ -69,19 +69,43 @@ func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	return tea.NewView(b.String())
 }
 
+// orphanedEditDraftNotice heads a composer whose comment left the list. It says
+// both things a reader needs at once — the comment is gone, and the text below is
+// still theirs — and it says them without repeating whichever refusal renderMessages
+// is about to print, so a save, an editor launch, and a bare reload each read
+// honestly under the same heading.
+const orphanedEditDraftNotice = "This comment is no longer in the list. Your unsaved text is kept below; Esc discards it."
+
 func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	index := m.indexOfRef(m.editRef)
 	if index < 0 {
-		b.WriteString(theme.ValidationErrorStyle.Render("Comment was deleted externally."))
-		b.WriteString("\n\n")
-		spec, ok := m.guidanceSpec()
-		b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
-		return tea.NewView(b.String())
+		return m.renderOrphanedEditMode(b)
 	}
 	entry := m.entries[index]
 	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", index)))
 	b.WriteString("\n")
 	b.WriteString(theme.MutedStyle.Render(chrome.FormatTimestampLabeled("Created", entry.CreatedAt)))
+	b.WriteString("\n\n")
+	theme.ApplyThemedTextarea(&m.EditTextInput)
+	b.WriteString(m.EditTextInput.View())
+	b.WriteString("\n\n")
+	m.renderMessages(b)
+	spec, ok := m.guidanceSpec()
+	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
+	return tea.NewView(b.String())
+}
+
+// renderOrphanedEditMode draws the composer over a comment the list no longer
+// holds. The draft is the whole point of the branch: the comment it was opened on
+// is gone, so this buffer is the only copy of the user's replacement, and hiding
+// the textarea to report that would take the work away at the moment it became
+// irreplaceable. There is no timestamp and no row number to head it with — both
+// belonged to the entry that left — so the notice takes their place and the
+// discard grammar stays exactly the one the ordinary composer offers.
+func (m *CommentsModel) renderOrphanedEditMode(b *strings.Builder) tea.View {
+	b.WriteString(theme.FieldLabelFocusedStyle.Render("Edit Comment:"))
+	b.WriteString("\n")
+	b.WriteString(theme.ValidationErrorStyle.Render(orphanedEditDraftNotice))
 	b.WriteString("\n\n")
 	theme.ApplyThemedTextarea(&m.EditTextInput)
 	b.WriteString(m.EditTextInput.View())

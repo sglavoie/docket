@@ -163,27 +163,32 @@ func (m *CommentsModel) resyncEntries() bool {
 	return true
 }
 
-// ownerGoneCmd refuses a mutation whose entity disappeared. It leaves every
-// draft alone: the user's unsaved text is the only copy of it there is.
-func ownerGoneCmd() tea.Cmd {
-	return func() tea.Msg {
-		return status.ErrorMsg{Err: errors.New("the commented item is no longer available")}
-	}
-}
+// These are the three refusals a comment mutation can earn before it is ever
+// submitted. They are values rather than commands because each is reported
+// twice: installed on the panel, where the composer paints it beside the draft
+// it protected, and handed to the shell, whose status line names it too. A
+// refusal only the shell hears is a refusal that arrives beside unsaved text
+// with nothing on screen to explain it.
+var (
+	// errCommentOwnerGone refuses a mutation whose entity disappeared.
+	errCommentOwnerGone = errors.New("the commented item is no longer available")
+	// errCommentDeletedExternally refuses one whose target left the list.
+	errCommentDeletedExternally = errors.New("comment was deleted externally")
+	// errCommentChangedExternally refuses one whose target is still there but no
+	// longer says what the user read. It is the panel's own copy of the
+	// precondition the project use cases enforce, and it is what protects an owner
+	// whose comments carry no identity for the application layer to check.
+	errCommentChangedExternally = errors.New("comment changed since it was read; reopen it and try again")
+)
 
-func commentDeletedExternallyCmd() tea.Cmd {
+// refuse reports a refusal on both routes and leaves every draft alone: the
+// user's unsaved text is the only copy of it there is, so a refused act closes no
+// composer and resets no buffer. Every pre-submission refusal goes through here,
+// which is what keeps that promise in one place instead of at nine call sites.
+func (m *CommentsModel) refuse(err error) tea.Cmd {
+	m.Err = err
 	return func() tea.Msg {
-		return status.ErrorMsg{Err: errors.New("comment was deleted externally")}
-	}
-}
-
-// commentChangedExternallyCmd refuses a mutation whose target is still there but
-// no longer says what the user read. It is the panel's own copy of the
-// precondition the project use cases enforce, and it is what protects an owner
-// whose comments carry no identity for the application layer to check.
-func commentChangedExternallyCmd() tea.Cmd {
-	return func() tea.Msg {
-		return status.ErrorMsg{Err: errors.New("comment changed since it was read; reopen it and try again")}
+		return status.ErrorMsg{Err: err}
 	}
 }
 
@@ -199,7 +204,7 @@ func (m *CommentsModel) saveComment() tea.Cmd {
 		return nil
 	}
 	if !m.resyncEntries() {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	m.Err = nil
 	return m.submitAdd(text)
@@ -236,16 +241,16 @@ func (m *CommentsModel) executeDelete() tea.Cmd {
 		return nil
 	}
 	if !m.resyncEntries() {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	target, ok := m.refreshRef(ref)
 	if !ok {
 		m.clampCursor()
-		return commentDeletedExternallyCmd()
+		return m.refuse(errCommentDeletedExternally)
 	}
 	if m.entries[target.Index].Text != ref.Original {
 		m.clampCursor()
-		return commentChangedExternallyCmd()
+		return m.refuse(errCommentChangedExternally)
 	}
 	m.Err = nil
 	return m.beginCommentMutation(commentMutationRemove, target, "",
@@ -272,6 +277,12 @@ func (m *CommentsModel) startEditComment() tea.Cmd {
 // saveEditedComment submits the edit composer's text against the row it was
 // opened on. The composer stays open until the commit confirms, so a refusal
 // still holds the user's replacement.
+//
+// A target that vanished is refused the same way, and the composer stays open for
+// it too. The comment the user was rewriting is gone, so the buffer is now the
+// only copy of their replacement anywhere: closing the editor to report the
+// refusal would destroy exactly the work the refusal exists to protect. It stays
+// on screen until the user discards it themselves.
 func (m *CommentsModel) saveEditedComment() tea.Cmd {
 	if m.refuseWhilePending() {
 		return nil
@@ -282,12 +293,11 @@ func (m *CommentsModel) saveEditedComment() tea.Cmd {
 		return nil
 	}
 	if !m.resyncEntries() {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	ref, ok := m.refreshRef(m.editRef)
 	if !ok {
-		m.cancelEditMode()
-		return commentDeletedExternallyCmd()
+		return m.refuse(errCommentDeletedExternally)
 	}
 	m.Err = nil
 	return m.submitEdit(ref, text)
@@ -369,6 +379,12 @@ func (m *CommentsModel) failCommentMutation(msg CommentMutationFailedMsg) tea.Cm
 // It runs in Update, so this is where the pending state is recorded and where an
 // abandoned editor — the panel moved to another owner while it was open — is
 // dropped rather than applied to whatever is mounted now.
+//
+// The returned text is seated in a composer before the owner or the target is
+// resolved, because the temporary file it came from is already deleted by then:
+// once this function has the string, nothing else in the process does. A refusal
+// after the capture leaves the user looking at their own text; a refusal before
+// it would leave them looking at a list with the work they just did nowhere.
 func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) tea.Cmd {
 	if msg.owner != m.ownerKey() || m.pending != nil {
 		return nil
@@ -379,10 +395,10 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 			m.cancelAddMode()
 			return nil
 		}
+		m.retainAddDraft(msg.text)
 		if !m.resyncEntries() {
-			return ownerGoneCmd()
+			return m.refuse(errCommentOwnerGone)
 		}
-		m.TextInput.SetValue(msg.text)
 		m.Err = nil
 		return m.submitAdd(msg.text)
 	case commentMutationEdit:
@@ -390,13 +406,13 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 			m.cancelEditMode()
 			return nil
 		}
+		m.retainEditDraft(msg.ref, msg.text)
 		if !m.resyncEntries() {
-			return ownerGoneCmd()
+			return m.refuse(errCommentOwnerGone)
 		}
 		ref, ok := m.refreshRef(msg.ref)
 		if !ok {
-			m.cancelEditMode()
-			return commentDeletedExternallyCmd()
+			return m.refuse(errCommentDeletedExternally)
 		}
 		m.Err = nil
 		return m.submitEdit(ref, msg.text)
@@ -404,6 +420,26 @@ func (m *CommentsModel) applyCommentEditorResult(msg commentEditorFinishedMsg) t
 		return nil
 	}
 	return nil
+}
+
+// retainAddDraft and retainEditDraft seat an external editor's text in the
+// composer that owns it. They are the capture half of that recovery: whichever
+// way the submission then goes, the text is somewhere the View draws and the
+// discard grammar can reach. A confirmed commit closes the composer through
+// completeCommentMutation, so the capture costs a successful edit nothing.
+func (m *CommentsModel) retainAddDraft(text string) {
+	m.EditMode = false
+	m.AddMode = true
+	m.TextInput.SetValue(text)
+	m.TextInput.Focus()
+}
+
+func (m *CommentsModel) retainEditDraft(ref CommentRef, text string) {
+	m.AddMode = false
+	m.EditMode = true
+	m.editRef = ref
+	m.EditTextInput.SetValue(text)
+	m.EditTextInput.Focus()
 }
 
 // editInExternalEditor opens the comment under the cursor in the user's editor.
@@ -414,12 +450,12 @@ func (m *CommentsModel) editInExternalEditor() tea.Cmd {
 		return nil
 	}
 	if !m.resyncEntries() {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	ref, ok := m.commentRefAt(m.Cursor)
 	if !ok {
 		m.clampCursor()
-		return commentDeletedExternallyCmd()
+		return m.refuse(errCommentDeletedExternally)
 	}
 	owner := m.ownerKey()
 	return m.editCommentWithExternalEditor(m.owner.ExternalEditHeader(ref)+ref.Original, true, func(newText string) tea.Msg {
@@ -432,7 +468,7 @@ func (m *CommentsModel) addCommentInExternalEditor() tea.Cmd {
 		return nil
 	}
 	if m.owner == nil {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	owner := m.ownerKey()
 	content := m.owner.ExternalAddHeader() + strings.TrimSpace(m.TextInput.Value())
@@ -441,17 +477,20 @@ func (m *CommentsModel) addCommentInExternalEditor() tea.Cmd {
 	})
 }
 
+// editCommentInExternalEditorFromEditMode hands the open composer's buffer to the
+// external editor. A vanished target refuses the launch and keeps the composer
+// open for the same reason a refused save does: the buffer is the only copy of the
+// replacement, and there is nowhere else for it to go.
 func (m *CommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	if m.refuseWhilePending() {
 		return nil
 	}
 	if !m.resyncEntries() {
-		return ownerGoneCmd()
+		return m.refuse(errCommentOwnerGone)
 	}
 	ref, ok := m.refreshRef(m.editRef)
 	if !ok {
-		m.cancelEditMode()
-		return commentDeletedExternallyCmd()
+		return m.refuse(errCommentDeletedExternally)
 	}
 	owner := m.ownerKey()
 	content := m.owner.ExternalEditHeader(ref) + strings.TrimSpace(m.EditTextInput.Value())
