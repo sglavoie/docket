@@ -291,11 +291,15 @@ func (m *CommentsModel) HasSelection() bool {
 	return len(m.entries) > 0 && m.Cursor >= 0 && m.Cursor < len(m.entries)
 }
 
-// draftPreviewReadOnlyStatus answers a press that would have changed a preview.
-// It says what the box is and names both ways out of it, because the alternative
-// to editing here is not "do without": the whole draft is one key from an editor
-// and one key from a file.
-const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft: Ctrl+E edits it, Ctrl+X writes it to a file."
+// draftPreviewReadOnlyStatus opens the answer to a press that would have changed
+// a preview. It says what the box is and names the way out of it that is always
+// open, because the alternative to editing here is not "do without": the whole
+// draft is one key from a file whatever else has happened to its target.
+//
+// The editor is the other way out and it is not always open, so the sentence
+// naming it is appended from draftEditorGuidance — the same one the recovery
+// block above the composer is closed with.
+const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft; Ctrl+X writes the whole of it to a file."
 
 // restoreDraftPreview undoes a press that changed a previewed draft's box and
 // says why. It is the read-only rule itself.
@@ -330,7 +334,7 @@ func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
 	if _, previewed := m.heldDraftPreview(kind); !previewed {
 		return false
 	}
-	m.SetStatus(draftPreviewReadOnlyStatus)
+	m.SetStatus(draftPreviewReadOnlyStatus + m.draftEditorGuidance(kind))
 	return true
 }
 

@@ -86,13 +86,18 @@ const recoveredDraftNotice = "The box above cannot show all of this draft. The c
 // unbounded by construction and the panel below it still has to be readable.
 const recoveredDraftExcerptRows = 6
 
-// recoveredDraftReadOnlyHint closes that block with what the box above it is and
-// the two ways out of it. The excerpt proves the draft survived; it cannot show
-// the middle of a long one, and a draft whose comment or project is gone cannot
-// be saved at all — so the block that admits the box is not showing everything is
-// exactly where the keys that hand the whole of it back have to be named, and
-// where the box has to say that it is a preview rather than a buffer.
-const recoveredDraftReadOnlyHint = "The box is a read-only preview: Ctrl+E edits this draft, Ctrl+X writes it to a file."
+// recoveredDraftReadOnlyHint opens the line that closes that block: what the box
+// above it is, and the one way out of it that depends on nothing. The excerpt
+// proves the draft survived; it cannot show the middle of a long one, and a
+// draft whose comment or project is gone cannot be saved at all — so the block
+// that admits the box is not showing everything is exactly where the keys that
+// hand the whole of it back have to be named, and where the box has to say that
+// it is a preview rather than a buffer.
+//
+// Writing a file is the half that is true in every state, because it asks the
+// workspace for nothing. The editor half is not, so it is appended from
+// draftEditorGuidance rather than stated here.
+const recoveredDraftReadOnlyHint = "The box is a read-only preview; Ctrl+X writes the whole draft to a file."
 
 // renderRecoveredDraft draws the part of a retained draft the composer is not
 // showing. It is the only place the text beyond the textarea's own limits
@@ -110,8 +115,14 @@ func (m *CommentsModel) renderRecoveredDraft(b *strings.Builder) {
 		b.WriteString(theme.MutedStyle.Render(textfit.TruncateIntentional(row, width, "…")))
 		b.WriteString("\n")
 	}
-	b.WriteString(theme.MutedStyle.Render(recoveredDraftReadOnlyHint))
-	b.WriteString("\n\n")
+	// Wrapped, unlike the notice above it: this line is the only one in the block
+	// whose length depends on the panel's state, so the width it is drawn at is
+	// the one thing that cannot be assumed about it.
+	for _, row := range textfit.WrapText(recoveredDraftReadOnlyHint+m.draftEditorGuidance(m.openComposerKind()), width) {
+		b.WriteString(theme.MutedStyle.Render(row))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 }
 
 // recoveredDraftExcerpt bounds the retained text to a fixed number of rows while

@@ -98,15 +98,27 @@ func (o *taskCommentOwner) Remove(ref CommentRef) tea.Cmd {
 // from the resolved task, so a stale pointer would otherwise keep addressing an
 // object the workspace has already discarded.
 func (o *taskCommentOwner) Reload() bool {
-	if o.project == nil || o.task == nil {
-		return false
-	}
-	task := o.project.GetTaskByID(o.task.ID)
+	task := o.resolveTask()
 	if task == nil {
 		return false
 	}
 	o.task = task
 	return true
+}
+
+// Available reports that same presence without adopting the result, so the panel
+// can name what a key would do without a render re-pointing the adapter.
+func (o *taskCommentOwner) Available() bool {
+	return o.resolveTask() != nil
+}
+
+// resolveTask is the one resolution rule both answers read, so "gone" cannot mean
+// one thing to a reload and another to the guidance beside a draft.
+func (o *taskCommentOwner) resolveTask() *models.Task {
+	if o.project == nil || o.task == nil {
+		return nil
+	}
+	return o.project.GetTaskByID(o.task.ID)
 }
 
 func (o *taskCommentOwner) TaskRef() (*models.Task, *models.Project) {

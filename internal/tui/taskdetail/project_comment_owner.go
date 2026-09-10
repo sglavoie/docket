@@ -146,15 +146,28 @@ func (o *projectCommentOwner) projectName() string {
 // message naming the reason, which is what keeps unsaved text in front of the
 // user instead of dismissing the panel out from under it.
 func (o *projectCommentOwner) Reload() bool {
-	if o.projectID == "" || o.resolve == nil {
-		return false
-	}
-	project := o.resolve(o.projectID)
+	project := o.resolveProject()
 	if project == nil {
 		return false
 	}
 	o.project = project
 	return true
+}
+
+// Available reports that same presence without adopting the result, so the panel
+// can name what a key would do without a render changing which project it is
+// drawing.
+func (o *projectCommentOwner) Available() bool {
+	return o.resolveProject() != nil
+}
+
+// resolveProject is the one resolution rule both answers read, so "gone" cannot
+// mean one thing to a reload and another to the guidance beside a draft.
+func (o *projectCommentOwner) resolveProject() *models.Project {
+	if o.projectID == "" || o.resolve == nil {
+		return nil
+	}
+	return o.resolve(o.projectID)
 }
 
 // TaskRef contributes nothing: this owner is not a task and must not lend the

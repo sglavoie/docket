@@ -498,6 +498,57 @@ func (m *CommentsModel) showsDraftPreview() bool {
 	return held
 }
 
+// draftEditorRouteHint and draftEditorRouteUnavailableHint are what the panel
+// adds about Ctrl+E wherever it explains that a composer has become a read-only
+// preview. There is one string per state and both are shared by the recovery
+// block and the refusal status, because those two are the same claim printed in
+// two places: if they could disagree, one of them would still be advertising an
+// act the other had already withdrawn.
+const (
+	draftEditorRouteHint            = " Ctrl+E opens it in an external editor."
+	draftEditorRouteUnavailableHint = " Ctrl+E needs a target this draft no longer has."
+)
+
+// draftEditorGuidance is that sentence for one composer, and it is the whole
+// reason the availability below is asked at all.
+//
+// A retained draft is the state in which the panel has the least to offer and
+// says the most: the box under it cannot be edited, the save has already been
+// refused, and the two keys named are all that is left. Naming a key that
+// answers with a refusal spends the user's one remaining move on nothing, so the
+// editor half is written from what that key would actually do and the export
+// half — which needs nothing from the workspace — is stated unconditionally
+// beside it.
+func (m *CommentsModel) draftEditorGuidance(kind commentMutationKind) string {
+	if m.externalDraftEditorAvailable(kind) {
+		return draftEditorRouteHint
+	}
+	return draftEditorRouteUnavailableHint
+}
+
+// externalDraftEditorAvailable reports whether Ctrl+E over the composer showing
+// a kept draft could still reach an editor.
+//
+// It asks exactly what that key's own route asks and nothing more. The add
+// editor needs an owner to head its buffer with; the edit editor needs both an
+// owner the workspace still holds and the comment the composer was opened on,
+// and refuses before creating a buffer when either is gone. A retained draft
+// outlives both — that is the case the retention exists for — so this is the one
+// question the guidance beside it cannot assume the answer to.
+//
+// The list it measures the comment against is the panel's own, which is the last
+// one it could read: the guidance speaks for what is on screen, and a row the
+// user can still see is a row Ctrl+E will still resolve.
+func (m *CommentsModel) externalDraftEditorAvailable(kind commentMutationKind) bool {
+	if m.owner == nil {
+		return false
+	}
+	if kind == commentMutationAdd {
+		return true
+	}
+	return m.owner.Available() && m.indexOfRef(m.editRef) >= 0
+}
+
 // openComposerKind names the composer a press or an act is addressed to. Only
 // one is ever open, and Update routes edit before add, so the two answers cannot
 // disagree.

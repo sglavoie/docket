@@ -93,6 +93,16 @@ type CommentOwner interface {
 	// the in-memory objects, and reports false when the owner is gone.
 	Reload() bool
 
+	// Available asks that same question and answers it without adopting the
+	// resolution, so a render may ask it. The panel needs it because it tells the
+	// user which of its acts are still open to them, and the one act that needs a
+	// live owner — handing a draft to an external editor — is refused for a gone
+	// one: guidance that could not read presence would have to either promise
+	// that act unconditionally or drop it, and both are wrong beside a draft the
+	// user is trying to rescue. An adapter answers it from the same resolution
+	// Reload performs, which is what keeps the two from disagreeing.
+	Available() bool
+
 	// TaskRef answers the shell's task-ref provider seam, which reads the
 	// mounted view for the task the user is looking at. An owner that is not a
 	// task returns nothing rather than borrowing one.
