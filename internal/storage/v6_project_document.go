@@ -238,7 +238,11 @@ func scanTaskDocumentFrame(content string, schema int, label string, allowProjec
 		line := strings.TrimSuffix(scanner.Text(), "\r")
 		// The block is read before any other rule, blank lines included: its bodies
 		// are prose that may spell anything the escaping does not reserve, so a
-		// comment line must never be measured against the header grammar.
+		// comment line must never be measured against the header grammar. What the
+		// escaping does reserve — a raw comment marker, and therefore a nested
+		// opener, a near-miss delimiter, or a malformed second entry header — is
+		// refused by ParseProjectCommentsBlock, which every collected line reaches
+		// below. Duplicating that rule here would give the interior two authorities.
 		if inComments {
 			if line == format.ProjectCommentsEndLine {
 				parsed, err := format.ParseProjectCommentsBlock(commentLines)

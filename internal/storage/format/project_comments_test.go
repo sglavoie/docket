@@ -136,6 +136,13 @@ func TestParseProjectCommentsBlockRefusesShapesTheWriterCannotProduce(t *testing
 		"trailing header text":          {header + " extra", "note"},
 		"blank body":                    {header},
 		"duplicate id":                  {header, "one", header, "two"},
+		// The interior is as strict as the first position. Every one of these
+		// lines is raw markup the writer escapes, so absorbing it as body text
+		// would reclassify a header or a delimiter into the comment above it.
+		"near-miss second header": {header, "note",
+			"<!-- project-comment: " + blockCommentIDB + " -->", "swallowed"},
+		"nested block opener": {header, "note", ProjectCommentsStartLine, "swallowed"},
+		"near-miss closer":    {header, "note", "<!--/PROJECT-COMMENTS-->", "swallowed"},
 		// An empty collection writes no delimiters at all, so a bare pair is not a
 		// document this codec produced.
 		"empty block": nil,

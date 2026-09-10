@@ -81,9 +81,9 @@ func WriteProjectCommentsBlock(records []ProjectCommentRecord) (string, error) {
 
 // ParseProjectCommentsBlock decodes the lines between the two delimiters, which
 // the caller has already consumed. A block whose first line is not an entry
-// header, whose identity or timestamp is unreadable, or whose text is blank is
-// refused rather than repaired: every shape this accepts is one
-// WriteProjectCommentsBlock can produce.
+// header, whose identity or timestamp is unreadable, whose text is blank, or
+// whose body spells raw comment markup is refused rather than repaired: every
+// shape this accepts is one WriteProjectCommentsBlock can produce.
 //
 // An empty block is one of those refusals. WriteProjectCommentsBlock writes no
 // delimiters at all for an empty collection, so a document carrying a pair with
@@ -106,6 +106,9 @@ func ParseProjectCommentsBlock(lines []string) ([]ProjectCommentRecord, error) {
 		i++
 		start := i
 		for i < len(lines) && projectCommentHeaderRegex.FindStringSubmatch(lines[i]) == nil {
+			if err := rejectRawCommentMarkup(match[1], lines[i]); err != nil {
+				return nil, err
+			}
 			i++
 		}
 		records = append(records, ProjectCommentRecord{
@@ -118,6 +121,28 @@ func ParseProjectCommentsBlock(lines []string) ([]ProjectCommentRecord, error) {
 		return nil, err
 	}
 	return records, nil
+}
+
+// rejectRawCommentMarkup refuses one body line that spells markup this codec
+// escapes. escapeBlockText rewrites every "<!--" and "-->" a comment body
+// contains, so a raw one between two entry headers is not text this writer
+// produced: it is a near-miss entry header, a nested block opener, or a
+// malformed closing delimiter. Absorbing one as prose is worse than refusing
+// it, because the next canonical rewrite would escape the marker and thereby
+// reclassify the apparent entry or block permanently. The exact delimiter and
+// the exact entry header are the only raw markup the block admits, and both are
+// read before this line ever is.
+//
+// This is the interior authority for the whole block: the document frame hands
+// every collected line here, so the rule lives in one place rather than being
+// half-spelled by the scanner as well.
+func rejectRawCommentMarkup(id, line string) error {
+	for _, markup := range []string{"<!--", "-->"} {
+		if strings.Contains(line, markup) {
+			return fmt.Errorf("project comment %s body spells raw comment markup %q", id, line)
+		}
+	}
+	return nil
 }
 
 // ValidateProjectCommentRecords holds the stored records to the domain's own
