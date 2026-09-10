@@ -240,8 +240,25 @@ func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int
 
 }
 
+// renderStatusMessage prints the panel's sticky status line, unless that line is
+// a read-only refusal whose state has since ended.
+//
+// Sticky is right for everything else the panel says: an exported draft's path
+// has to stay on screen precisely because the user needs it after the draft is
+// gone, and a refusal to save has to outlast the press that earned it. A refusal
+// about what the box in front of you is is the one kind that cannot, because the
+// box in front of you changes. Discarding a kept draft, committing it, or a save
+// answering all leave the panel in a state the sentence is simply wrong about —
+// browsing a list with no composer at all, or typing into a new and perfectly
+// editable one — and none of them writes a status of its own to displace it. So
+// the line is measured here rather than cleared at each of those exits: the
+// record says whether the line is still the refusal, the panel says whether the
+// refusal is still true, and a line that is neither is not drawn.
 func (m *CommentsModel) renderStatusMessage(b *strings.Builder) {
 	if m.StatusMessage == "" {
+		return
+	}
+	if m.readOnlyRefusalOnScreen() && !m.readOnlyRefusalStillHolds() {
 		return
 	}
 	b.WriteString(theme.MutedStyle.Render(m.StatusMessage + m.statusEditorGuidance()))
@@ -261,15 +278,17 @@ func (m *CommentsModel) renderStatusMessage(b *strings.Builder) {
 // draftEditorGuidance the block above the composer is closed with, every time the
 // line is drawn.
 //
-// Two things narrow it, and both are about not speaking out of turn. The status
-// generation says this line is still the refusal rather than something written
-// after it, which is what leaves an exported draft's path — the one status a user
-// has to be able to read character for character — exactly as it was written. And
-// the composer must still be previewing a kept draft, because a sentence about
+// Three things narrow it, and all three are about not speaking out of turn. The
+// status generation says this line is still the refusal rather than something
+// written after it, which is what leaves an exported draft's path — the one status
+// a user has to be able to read character for character — exactly as it was
+// written. The refusal must be the preview one, because the other read-only state
+// is a submission in flight and the keys this sentence names are keys it bounces.
+// And the composer must still be previewing a kept draft, because a sentence about
 // what to do with that draft means nothing once it has been committed or
 // discarded.
 func (m *CommentsModel) statusEditorGuidance() string {
-	if m.previewRefusalStamp != m.StatusStamp() || !m.showsDraftPreview() {
+	if !m.readOnlyRefusal.preview || !m.readOnlyRefusalOnScreen() || !m.readOnlyRefusalStillHolds() {
 		return ""
 	}
 	return m.draftEditorGuidance(m.openComposerKind())

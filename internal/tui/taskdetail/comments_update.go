@@ -324,20 +324,65 @@ func (m *CommentsModel) composerReadOnly() bool {
 	return m.pending != nil || m.showsDraftPreview()
 }
 
+// readOnlyRefusalRecord is the sticky line refuseComposerEdit last wrote, kept so
+// the render can ask two questions about it that only the present can answer.
+//
+// stamp is the status generation it landed on, and is what says the line is still
+// this refusal rather than something written over it. Every other status the panel
+// writes takes a generation of its own through SetStatus, so an exported draft's
+// path — or a copy, or a double-submission refusal — displaces the refusal simply
+// by being written and is then printed exactly as it was written. Zero is no
+// refusal, because the first SetStatus a panel ever performs lands on generation
+// one.
+//
+// preview says which of the two read-only states wrote it. The two do not end the
+// same way and only one of them earns the editor sentence, so a single stamp
+// cannot stand for both.
+type readOnlyRefusalRecord struct {
+	stamp   uint64
+	preview bool
+}
+
 // refuseComposerEdit is the read-only rule for the open composer and the whole of
 // it: the one question every route that could change text asks, answered in the
 // order the two states nest.
 //
-// A pending submission is the temporary one and names itself, and it is
-// deliberately not stamped as the preview refusal: the keys that sentence would
-// advertise are the ones a pending mutation already bounces, so appending guidance
-// about them would name a route this very state has closed.
+// A pending submission is the temporary one and names itself. It is recorded as
+// the refusal on screen like the other, and deliberately not as the preview one:
+// the keys that sentence would advertise are the ones a pending mutation already
+// bounces, so appending guidance about them would name a route this very state has
+// closed.
 func (m *CommentsModel) refuseComposerEdit(kind commentMutationKind) bool {
 	if m.pending != nil {
 		m.SetStatus(pendingSubmissionReadOnlyStatus)
+		m.readOnlyRefusal = readOnlyRefusalRecord{stamp: m.StatusStamp()}
 		return true
 	}
 	return m.refuseDraftPreviewEdit(kind)
+}
+
+// readOnlyRefusalOnScreen reports whether the sticky status line is still the
+// refusal the composer wrote rather than a message written after it.
+func (m *CommentsModel) readOnlyRefusalOnScreen() bool {
+	return m.readOnlyRefusal.stamp == m.StatusStamp()
+}
+
+// readOnlyRefusalStillHolds reports whether the state that refusal named is the
+// state the panel is in now.
+//
+// A refusal is a sentence about the present — this box cannot be typed into, and
+// here is what to do instead — so it stops being a stale line and starts being a
+// false one the moment its state ends. A kept draft ends by being discarded or
+// committed, and either way the sentence promising to write it to a file names
+// text the panel no longer has; a submission ends by answering, and the composer
+// the user opens next is an ordinary editable one that a line calling it read-only
+// simply misdescribes. Neither is displaced by a later status, because there is no
+// later status: nothing about ending a draft writes one.
+func (m *CommentsModel) readOnlyRefusalStillHolds() bool {
+	if m.readOnlyRefusal.preview {
+		return m.showsDraftPreview()
+	}
+	return m.pending != nil
 }
 
 // restoreReadOnlyComposer undoes a press that changed a read-only composer's box
@@ -378,14 +423,15 @@ func (m *CommentsModel) restoreReadOnlyComposer(kind commentMutationKind, before
 // it is on screen. The target a refused draft still had when the box turned a
 // keystroke away can be deleted or taken away a moment later, and nothing about
 // that loss rewrites a line already written. So only the unconditional half is
-// stored; the stamp beside it is what lets the render recognize this line later
-// and recompute the rest against the state it is being drawn in.
+// stored; the record beside it is what lets the render recognize this line later
+// and measure the rest — the editor sentence, and whether to print the line at
+// all — against the state it is being drawn in.
 func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
 	if _, previewed := m.heldDraftPreview(kind); !previewed {
 		return false
 	}
 	m.SetStatus(draftPreviewReadOnlyStatus)
-	m.previewRefusalStamp = m.StatusStamp()
+	m.readOnlyRefusal = readOnlyRefusalRecord{stamp: m.StatusStamp(), preview: true}
 	return true
 }
 
