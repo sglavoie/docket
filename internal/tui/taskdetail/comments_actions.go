@@ -177,6 +177,16 @@ func commentDeletedExternallyCmd() tea.Cmd {
 	}
 }
 
+// commentChangedExternallyCmd refuses a mutation whose target is still there but
+// no longer says what the user read. It is the panel's own copy of the
+// precondition the project use cases enforce, and it is what protects an owner
+// whose comments carry no identity for the application layer to check.
+func commentChangedExternallyCmd() tea.Cmd {
+	return func() tea.Msg {
+		return status.ErrorMsg{Err: errors.New("comment changed since it was read; reopen it and try again")}
+	}
+}
+
 // saveComment submits the add composer's text. The composer stays open with the
 // text in it until the commit confirms.
 func (m *CommentsModel) saveComment() tea.Cmd {
@@ -207,21 +217,39 @@ func (m *CommentsModel) submitEdit(ref CommentRef, text string) tea.Cmd {
 		func() tea.Msg { return CommentEditedMsg{} })
 }
 
+// executeDelete commits the removal the confirmation was opened on, addressing
+// the reference that confirmation froze rather than the cursor.
+//
+// The question and its answer are separated by however long the user looks at
+// the prompt, and a commit, an undo, or another machine can land in that gap. So
+// the frozen target is re-resolved here and the removal is refused when the
+// comment it named is gone or when its text is no longer the text the user was
+// shown: a neighbor that slid into the row is a different comment, and deleting
+// it would be a destructive change nobody confirmed. Answering the question
+// spends it, whatever the outcome.
 func (m *CommentsModel) executeDelete() tea.Cmd {
+	ref, confirmed := m.spendDeleteConfirmation()
+	if !confirmed {
+		return nil
+	}
 	if m.refuseWhilePending() {
 		return nil
 	}
 	if !m.resyncEntries() {
 		return ownerGoneCmd()
 	}
-	ref, ok := m.commentRefAt(m.Cursor)
+	target, ok := m.refreshRef(ref)
 	if !ok {
 		m.clampCursor()
-		return func() tea.Msg { return status.ErrorMsg{Err: errors.New("failed to remove comment")} }
+		return commentDeletedExternallyCmd()
+	}
+	if m.entries[target.Index].Text != ref.Original {
+		m.clampCursor()
+		return commentChangedExternallyCmd()
 	}
 	m.Err = nil
-	return m.beginCommentMutation(commentMutationRemove, ref, "",
-		func() tea.Cmd { return m.owner.Remove(ref) },
+	return m.beginCommentMutation(commentMutationRemove, target, "",
+		func() tea.Cmd { return m.owner.Remove(target) },
 		func() tea.Msg { return CommentDeletedMsg{} })
 }
 

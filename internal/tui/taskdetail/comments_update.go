@@ -79,6 +79,13 @@ func (m *CommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
+			// A key that dismissed the prompt answered the question, so a frozen
+			// delete target it did not confirm is dropped here rather than waiting
+			// for some later prompt to overwrite it. Any other key was blocked by the
+			// dialog, which is still up, and the target it named still stands.
+			if !m.Confirm.IsActive() {
+				m.forgetDeleteConfirmation()
+			}
 			m.ClearError()
 			return m, nil
 		}
@@ -301,10 +308,19 @@ func (m *CommentsModel) CopySelectedCommentText() {
 	}
 }
 
+// ConfirmDeleteSelectedComment asks about the comment under the cursor and
+// freezes it in the same act. The row number in the prompt is what the user is
+// looking at; the frozen reference is what the answer will address.
 func (m *CommentsModel) ConfirmDeleteSelectedComment() {
-	if m.HasSelection() && !m.refuseWhilePending() {
-		m.Confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.Cursor))
+	if !m.HasSelection() || m.refuseWhilePending() {
+		return
 	}
+	ref, ok := m.commentRefAt(m.Cursor)
+	if !ok {
+		return
+	}
+	m.armDeleteConfirmation(ref)
+	m.Confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.Cursor))
 }
 
 func (m *CommentsModel) ExpandSelectedComment() {

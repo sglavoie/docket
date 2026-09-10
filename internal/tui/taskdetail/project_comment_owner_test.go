@@ -142,6 +142,7 @@ func TestProjectCommentPanelDeletesTheCommentUnderTheCursorByIdentity(t *testing
 	model, project := newTestProjectCommentsPanel(t, projectCommentsFixture(t))
 	model.Cursor = 0
 
+	model.ConfirmDeleteSelectedComment()
 	if _, ok := settle(t, model, model.executeDelete()).(CommentDeletedMsg); !ok {
 		t.Fatal("the delete commit did not resolve to CommentDeletedMsg")
 	}

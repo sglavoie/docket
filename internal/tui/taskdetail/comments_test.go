@@ -105,6 +105,7 @@ func TestCommentsDeleteAppliesOnlyAfterTheCommitConfirms(t *testing.T) {
 	model := newTestCommentsPanel(task, project)
 	model.Cursor = 1
 
+	model.ConfirmDeleteSelectedComment()
 	cmd := model.executeDelete()
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeDelete")
@@ -199,6 +200,10 @@ func TestConvertedDecisionCommentIsFullyEditableThroughComments(t *testing.T) {
 func TestCommentsRefuseASecondSubmissionWhileOneIsPending(t *testing.T) {
 	project, task := commentsFixture(t, "stored")
 	model := newTestCommentsPanel(task, project)
+	// A delete confirmation frozen before the add was submitted is the only way a
+	// removal can still be answered while a mutation is pending, since opening one
+	// afterwards is refused by the same gate.
+	model.ConfirmDeleteSelectedComment()
 	model.AddMode = true
 	model.TextInput.SetValue("first press")
 
@@ -289,6 +294,7 @@ func TestCommentsRefusedDeleteKeepsTheStoredComment(t *testing.T) {
 	project, task := commentsFixture(t, "stored")
 	model := newRefusingCommentsPanel(task, project)
 
+	model.ConfirmDeleteSelectedComment()
 	if _, ok := settle(t, model, model.executeDelete()).(CommentMutationFailedMsg); !ok {
 		t.Fatal("a refused delete did not resolve to CommentMutationFailedMsg")
 	}

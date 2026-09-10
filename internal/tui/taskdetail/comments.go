@@ -47,6 +47,14 @@ type CommentsModel struct {
 	editRef       CommentRef
 	EditTextInput textarea.Model
 
+	// deleteRef is the comment an open delete confirmation was opened on, frozen
+	// the moment the question appeared for the same reason editRef is frozen: the
+	// list can reload or reorder while the prompt is on screen, and a removal
+	// resolved from the cursor at the moment the user answers would delete
+	// whichever comment had slid under it. It is nil when no confirmation is
+	// outstanding, so a delete can never fall back to a position.
+	deleteRef *CommentRef
+
 	// Expanded view mode (show full comment)
 	ExpandedView bool
 
@@ -194,6 +202,30 @@ func (m *CommentsModel) refreshRef(ref CommentRef) (CommentRef, bool) {
 	return ref, true
 }
 
+// armDeleteConfirmation freezes the comment a delete confirmation is being
+// asked about, so the answer applies to what the question named.
+func (m *CommentsModel) armDeleteConfirmation(ref CommentRef) {
+	m.deleteRef = &ref
+}
+
+// spendDeleteConfirmation takes that frozen reference and forgets it in the same
+// act, because one confirmation authorizes exactly one removal. It reports false
+// when no confirmation is outstanding, which is what keeps a delete from ever
+// resolving a target of its own.
+func (m *CommentsModel) spendDeleteConfirmation() (CommentRef, bool) {
+	if m.deleteRef == nil {
+		return CommentRef{}, false
+	}
+	ref := *m.deleteRef
+	m.deleteRef = nil
+	return ref, true
+}
+
+// forgetDeleteConfirmation drops a frozen target the user did not confirm.
+func (m *CommentsModel) forgetDeleteConfirmation() {
+	m.deleteRef = nil
+}
+
 // currentCommentIDs is the identity set the list holds right now. An add records
 // it so the confirmed commit can land the cursor on whichever row is new, rather
 // than on a position that assumes where the owner appends.
@@ -267,6 +299,7 @@ func (m *CommentsModel) OnExit() {
 	m.EditMode = false
 	m.ExpandedView = false
 	m.editRef = CommentRef{}
+	m.forgetDeleteConfirmation()
 	m.pending = nil
 	m.TextInput.Reset()
 	m.EditTextInput.Reset()
