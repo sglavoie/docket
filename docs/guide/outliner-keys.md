@@ -285,6 +285,13 @@ and the reason rather than dropping either. A parked project takes comments like
 any other, and so does Unfiled. Saving leaves Peek exactly as you left it, open
 or closed, and `u` takes the comment back the way it takes back anything else.
 
+Saving is not instantaneous, and the composer stays in front of you while it
+runs: your text is held there until the transaction answers, so a refusal has
+something to give back. For that moment the box is read-only. A key that would
+change it is turned away and says so, because nothing typed after `Ctrl+S` could
+survive either answer — a confirmed save closes the composer, and a refused one
+puts back exactly what was sent.
+
 Text that comes back from the external editor can be longer than the composer
 will hold: the box stops at 2,000 characters and writes tabs as spaces, so when
 a save is refused the panel keeps the editor's exact result beside it and shows

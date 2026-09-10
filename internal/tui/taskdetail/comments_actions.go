@@ -660,7 +660,7 @@ func (m *CommentsModel) composerValue(kind commentMutationKind) string {
 }
 
 // setComposerValue writes one textarea back. It exists for the read-only
-// preview, which is enforced by undoing whatever a press did rather than by
+// composer, which is enforced by undoing whatever a press did rather than by
 // naming the presses that do something: the textarea's own grammar decides which
 // keys change text, and a list of them kept here would be a second copy of it.
 func (m *CommentsModel) setComposerValue(kind commentMutationKind, text string) {

@@ -115,7 +115,7 @@ func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.exportDraft()
 			return m, nil
 		case "shift+enter":
-			if m.refuseDraftPreviewEdit(commentMutationEdit) {
+			if m.refuseComposerEdit(commentMutationEdit) {
 				return m, nil
 			}
 			m.EditTextInput.InsertString("\n")
@@ -125,7 +125,7 @@ func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	before := m.EditTextInput.Value()
 	m.EditTextInput, cmd = m.EditTextInput.Update(msg)
-	if m.restoreDraftPreview(commentMutationEdit, before) {
+	if m.restoreReadOnlyComposer(commentMutationEdit, before) {
 		return m, nil
 	}
 	return m, cmd
@@ -152,7 +152,7 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.exportDraft()
 			return m, nil
 		case "shift+enter":
-			if m.refuseDraftPreviewEdit(commentMutationAdd) {
+			if m.refuseComposerEdit(commentMutationAdd) {
 				return m, nil
 			}
 			m.TextInput.InsertString("\n")
@@ -162,7 +162,7 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	before := m.TextInput.Value()
 	m.TextInput, cmd = m.TextInput.Update(msg)
-	if m.restoreDraftPreview(commentMutationAdd, before) {
+	if m.restoreReadOnlyComposer(commentMutationAdd, before) {
 		return m, nil
 	}
 	return m, cmd
@@ -303,8 +303,45 @@ func (m *CommentsModel) HasSelection() bool {
 // recovery block above the composer is closed with.
 const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft; Ctrl+X writes the whole of it to a file."
 
-// restoreDraftPreview undoes a press that changed a previewed draft's box and
-// says why. It is the read-only rule itself.
+// pendingSubmissionReadOnlyStatus is the answer to a press that would have
+// changed a composer whose text has already been handed to a commit.
+//
+// The submitted string is what the transaction is measured against and what a
+// refusal puts back, so text accepted after the submission belongs to neither
+// outcome: a success closes the composer and a failure reseats what was sent, and
+// both would carry the newer keystrokes off with them. The window is one commit
+// long and the box stays readable inside it, so the press is turned away while it
+// still can be rather than accepted into a buffer no outcome will keep.
+const pendingSubmissionReadOnlyStatus = "Saving this comment; the draft cannot be edited until the save answers."
+
+// composerReadOnly reports whether the open composer is showing text the user
+// cannot change through it. Two states say so and the keymap treats them alike,
+// because the row it gates offers to type into the box: a kept draft the box can
+// only preview, and a submission the panel is still waiting on. refuseComposerEdit
+// answers the same two questions in the same order and adds the reason, so the
+// footer and the refusal cannot describe different grammars.
+func (m *CommentsModel) composerReadOnly() bool {
+	return m.pending != nil || m.showsDraftPreview()
+}
+
+// refuseComposerEdit is the read-only rule for the open composer and the whole of
+// it: the one question every route that could change text asks, answered in the
+// order the two states nest.
+//
+// A pending submission is the temporary one and names itself, and it is
+// deliberately not stamped as the preview refusal: the keys that sentence would
+// advertise are the ones a pending mutation already bounces, so appending guidance
+// about them would name a route this very state has closed.
+func (m *CommentsModel) refuseComposerEdit(kind commentMutationKind) bool {
+	if m.pending != nil {
+		m.SetStatus(pendingSubmissionReadOnlyStatus)
+		return true
+	}
+	return m.refuseDraftPreviewEdit(kind)
+}
+
+// restoreReadOnlyComposer undoes a press that changed a read-only composer's box
+// and says why. It is the enforcement of that rule itself.
 //
 // A preview is a rendering of text the panel is holding, not the text: the box
 // stopped at CommentCharLimit and rewrote every tab, so the runes past the limit
@@ -314,24 +351,28 @@ const draftPreviewReadOnlyStatus = "Read-only preview of the kept draft; Ctrl+X 
 // not an instruction to do that, so the press is refused rather than obeyed, and
 // the two acts that do replace the whole draft say so before they run.
 //
+// A composer whose text is in flight is refused here for the mirror-image reason:
+// the box would keep the change and no outcome of the commit would, so obeying the
+// press is what loses it.
+//
 // The check is after the fact on purpose: the textarea's own keymap decides
 // which presses change text, and asking it by running the press keeps cursor
 // movement, scrolling, and selection working inside a box the user can still
 // read.
-func (m *CommentsModel) restoreDraftPreview(kind commentMutationKind, before string) bool {
+func (m *CommentsModel) restoreReadOnlyComposer(kind commentMutationKind, before string) bool {
 	if m.composerValue(kind) == before {
 		return false
 	}
-	if !m.refuseDraftPreviewEdit(kind) {
+	if !m.refuseComposerEdit(kind) {
 		return false
 	}
 	m.setComposerValue(kind, before)
 	return true
 }
 
-// refuseDraftPreviewEdit reports the read-only refusal for the presses that
-// change a composer without going through its Update — and is what
-// restoreDraftPreview asks whether this composer is previewing at all.
+// refuseDraftPreviewEdit reports the read-only refusal for a kept draft the
+// composer showing it cannot hold — and is what refuseComposerEdit asks whether
+// this composer is previewing at all.
 //
 // A status message is sticky, so what it stores has to stay true for as long as
 // it is on screen. The target a refused draft still had when the box turned a
@@ -362,7 +403,7 @@ func (m *CommentsModel) refuseDraftPreviewEdit(kind commentMutationKind) bool {
 //
 // A previewed draft is the one case where the box is not a second copy at all
 // but a rendering of the first, since every press that would change it is undone
-// by restoreDraftPreview. Counting it there would ask about a truncation the user
+// by restoreReadOnlyComposer. Counting it there would ask about a truncation the user
 // never made — which is exactly what opening an inline edit over a comment too
 // long or too tabbed for the box produces, before they have touched anything.
 func (m *CommentsModel) recoverableDraftTexts(kind commentMutationKind) []string {

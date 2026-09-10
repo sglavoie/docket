@@ -14,7 +14,7 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 	addMode := func() bool { return m.AddMode && !m.Confirm.IsActive() }
 	editMode := func() bool { return m.EditMode && !m.Confirm.IsActive() }
 	inputMode := func() bool { return addMode() || editMode() }
-	editableInput := func() bool { return inputMode() && !m.showsDraftPreview() }
+	editableInput := func() bool { return inputMode() && !m.composerReadOnly() }
 	expandedMode := func() bool { return m.ExpandedView && !m.Confirm.IsActive() }
 	saveLabel := "save"
 	if m.Err != nil {
@@ -60,11 +60,13 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("esc", "Close panel", "Navigation", keymap.WithFooter(9, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("ctrl+s", "Save comment", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Ctrl+S"), keymap.WithGate(inputMode)),
 		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(inputMode)),
-		// Gated off a previewed draft, which is the one composer state that refuses
-		// it: the box is then a read-only rendering of text the panel is holding, so
-		// a footer offering to type into it would advertise a press that answers with
-		// a refusal. Ctrl+S, Ctrl+E, Ctrl+X, and Esc all still mean what they say
-		// there, which is why this is the only row that narrows.
+		// Gated off a read-only composer, which is the one state that refuses it: the
+		// box is then either a rendering of a draft the panel is holding or a copy of
+		// text a commit has already been handed, and a footer offering to type into it
+		// would advertise a press that answers with a refusal. Ctrl+S, Ctrl+E, Ctrl+X,
+		// and Esc all still mean what they say there — a pending submission answers
+		// three of them with its own refusal rather than with silence — which is why
+		// this is the only row that narrows.
 		keymap.Bind("shift+enter", "Insert newline", "Actions", keymap.WithFooter(4, "newline", false), keymap.WithFooterKey("Shift+Enter"), keymap.WithGate(editableInput)),
 		// Ranked last of the five input keys because it is the one a reader only
 		// needs when a save is refused — and ranked at all because that is the
