@@ -427,7 +427,7 @@ func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 	env := openHelperWorkspace(t)
 	note := helperEnv(t, helperNoteEnv)
 	locator := helperTaskLocator(t, env, helperEnv(t, helperTitleEnv))
-	defer helperHoldAtCommit(t, "Set Resume Note")()
+	defer helperHoldAtCommit(t, "Set Resume Note", locator.ProjectID, locator.TaskID)()
 
 	result, err := env.service.SetResumeNote(locator, note)
 	if err != nil {
@@ -472,7 +472,7 @@ func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
 	switch kind {
 	case helperMutationComment:
 		locator := helperTaskLocator(t, env, title)
-		defer helperHoldAtCommit(t, "Add Comment")()
+		defer helperHoldAtCommit(t, "Add Comment", locator.ProjectID, locator.TaskID)()
 		if _, err := env.service.AddComment(locator, text); err != nil {
 			helperRecordRefusal(t, "AddComment", err)
 			return
@@ -485,7 +485,7 @@ func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
 		})
 	case helperMutationReview:
 		locator := helperTaskLocator(t, env, title)
-		defer helperHoldAtCommit(t, "Mark Reviewed")()
+		defer helperHoldAtCommit(t, "Mark Reviewed", locator.ProjectID, locator.TaskID)()
 		if _, err := env.service.MarkReviewed(locator); err != nil {
 			helperRecordRefusal(t, "MarkReviewed", err)
 			return
@@ -506,7 +506,9 @@ func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
 			})
 			return err
 		}
-		release := helperHoldAtCommit(t, "Add Task")
+		// No task axis: the identity this commit will carry is minted by the
+		// commit the barrier is holding, so the project is all a caller can name.
+		release := helperHoldAtCommit(t, "Add Task", project, "")
 		err := create()
 		// Released before the retry rather than deferred: the retry is a second
 		// commit of the same undo action, and a barrier still installed would hold
@@ -573,7 +575,7 @@ func TestCrossMachineHelperAppliesProjectCommentMutation(t *testing.T) {
 
 	switch kind {
 	case helperProjectCommentAdd:
-		defer helperHoldAtCommit(t, "Add Project Comment")()
+		defer helperHoldAtCommit(t, "Add Project Comment", projectID, "")()
 		if _, err := env.service.AddProjectComment(projectID, text); err != nil {
 			helperRefusedWithoutWriting(t, env, projectID, "AddProjectComment", text, err)
 			return
@@ -583,7 +585,7 @@ func TestCrossMachineHelperAppliesProjectCommentMutation(t *testing.T) {
 		})
 	case helperProjectCommentEdit:
 		target := helperProjectCommentTarget(t, env, projectID, helperEnv(t, helperTargetEnv))
-		defer helperHoldAtCommit(t, "Edit Project Comment")()
+		defer helperHoldAtCommit(t, "Edit Project Comment", projectID, "")()
 		if _, err := env.service.EditProjectComment(target, text); err != nil {
 			helperRefusedWithoutWriting(t, env, projectID, "EditProjectComment", text, err)
 			return
@@ -594,7 +596,7 @@ func TestCrossMachineHelperAppliesProjectCommentMutation(t *testing.T) {
 		})
 	case helperProjectCommentRemove:
 		target := helperProjectCommentTarget(t, env, projectID, helperEnv(t, helperTargetEnv))
-		defer helperHoldAtCommit(t, "Remove Project Comment")()
+		defer helperHoldAtCommit(t, "Remove Project Comment", projectID, "")()
 		if _, err := env.service.RemoveProjectComment(target); err != nil {
 			helperRequireStored(t, kind, func() bool {
 				return helperProjectCommentByID(t, env, projectID, target.CommentID) != nil
@@ -689,16 +691,27 @@ func helperRefusedWithoutWriting(t *testing.T, env helperEnvironment, projectID,
 	helperRecordRefusal(t, call, err)
 }
 
-// helperHoldAtCommit installs the shared commit barrier for one undo action and
-// returns the deferred removal. Filtering on the action is what lets a role
+// helperHoldAtCommit installs the shared commit barrier for one undo action on
+// one target and returns the deferred removal. Filtering is what lets a role
 // whose mutation opens more than one transaction — or a process that reconciles
-// something on the way past — be held at exactly the write under test.
-func helperHoldAtCommit(t *testing.T, undoAction string) func() {
+// something on the way past — be held at exactly the write under test: the
+// action names which mutation, the project names which document that mutation is
+// about to rewrite, and the task names which row inside it. Each axis is skipped
+// when the caller leaves it empty, which is how a creation — whose task has no
+// identity until the commit that mints it — and a project comment, which names
+// no task at all, are held on the axes they can actually spell.
+func helperHoldAtCommit(t *testing.T, undoAction, projectID, taskID string) func() {
 	t.Helper()
 	ready := strings.TrimSpace(os.Getenv(helperReadyEnv))
 	proceed := helperEnv(t, helperGoEnv)
-	app.CommitBarrier = func(action string, _ app.CommitBarrierTarget, expectedRevision string) {
+	app.CommitBarrier = func(action, heldProject, heldTask, expectedRevision string) {
 		if action != undoAction {
+			return
+		}
+		if projectID != "" && heldProject != projectID {
+			return
+		}
+		if taskID != "" && heldTask != taskID {
 			return
 		}
 		if ready != "" {
