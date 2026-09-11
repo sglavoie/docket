@@ -134,7 +134,7 @@ func runExpandedReadCase(t *testing.T, size expandedReadSize) {
 	assertExpandedReadAtEnd(t, driver, size, "j")
 
 	// Back up the same way, which has to give the body back a second time — a
-	// reader that only travelled forward would have proven half a window.
+	// reader that only traveled forward would have proven half a window.
 	seen = expandedReadWalk(t, driver, size, "k")
 	assertExpandedReadMarkersSeen(t, seen, size, "k")
 	assertExpandedReadAtTop(t, driver, size, "k")
@@ -331,7 +331,7 @@ func assertExpandedReadMarkersSeen(t *testing.T, seen map[string]bool, size expa
 		missing = append(missing, expandedReadTailMarker)
 	}
 	if len(missing) > 0 {
-		t.Fatalf("travelling the comment with %s at %s never showed %s", key, size.name, strings.Join(missing, ", "))
+		t.Fatalf("traveling the comment with %s at %s never showed %s", key, size.name, strings.Join(missing, ", "))
 	}
 }
 

@@ -1,6 +1,7 @@
 package taskdetail
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -126,7 +127,9 @@ func assertEditorKeyAnswersAsPromised(
 	composer := model.composerValue(kind)
 	// The refusal that stranded the draft is still on screen and is still true, so
 	// what the control asserts is that the press added no second one — not that the
-	// panel is reporting nothing at all.
+	// panel is reporting nothing at all. The comparison goes through errors.Is so a
+	// refusal that merely wrapped the stranding one would still read as the same
+	// claim rather than as a new one.
 	stranded := model.Err
 	cmd := deliverToPanel(t, model, ctrlE)
 
@@ -137,7 +140,7 @@ func assertEditorKeyAnswersAsPromised(
 		if msg, refused := cmd().(status.ErrorMsg); refused {
 			t.Fatalf("Ctrl+E was refused with %v while the panel described the route as open", msg.Err)
 		}
-		if model.Err != stranded {
+		if !errors.Is(model.Err, stranded) {
 			t.Fatalf("the panel reports %v after a launch it said was available", model.Err)
 		}
 	} else {

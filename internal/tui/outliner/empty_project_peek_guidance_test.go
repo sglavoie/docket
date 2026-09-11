@@ -223,6 +223,214 @@ func peekGuidanceMovementCount(m *OutlinerModel, spec chrome.GuidanceSpec) int {
 	return count
 }
 
+// emptyStatePeekRecovery is the empty state's own recovery hints. None of them
+// may appear while a pane is open, because none of them is what the next press
+// does.
+var emptyStatePeekRecovery = []string{"a capture", "Esc clear search", "fx clear filters", "Esc return"}
+
+// forEachPeekGuidanceSize runs one case body at both supported terminals under
+// the size's own subtest name, which is what keeps every claim below a statement
+// about a specific terminal rather than about whichever one ran last.
+func forEachPeekGuidanceSize(t *testing.T, run func(t *testing.T, width, height int)) {
+	t.Helper()
+	for _, size := range peekGuidanceSizes {
+		t.Run(size.name, func(t *testing.T) { run(t, size.width, size.height) })
+	}
+}
+
+// assertLongCommentPeekGuidance walks the one fixture whose window has three
+// distinct places to stand and holds the footer at each: the top offers the way
+// forward alone, the middle every direction the window has, and the bottom the
+// way back alone. Both close keys survive all three.
+func assertLongCommentPeekGuidance(t *testing.T, width, height int) {
+	t.Helper()
+	outliner := peekGuidanceOutliner(t,
+		peekGuidanceProject("empty", peekGuidanceLongComment(), false), width, height, "")
+	outliner.PeekMode = true
+
+	row, doc, ok := outliner.peekCursorDocument()
+	if !ok {
+		t.Fatal("the focused header drew no Peek document")
+	}
+	if doc.MaxOffset() <= inlinePeekHalfPageRows {
+		t.Fatalf("the fixture pages to offset %d, so a half page has no middle to land on",
+			doc.MaxOffset())
+	}
+
+	// The top: forward alone, alongside both close keys.
+	spec := peekGuidanceSpec(t, outliner, "top")
+	assertPeekCloseGuidance(t, outliner, spec, "top")
+	assertPeekMovementGuidance(t, outliner, spec, "top")
+	if peek := outliner.PeekCommandContext(); !peek.CanPageDown || peek.CanPageUp {
+		t.Fatalf("top context = %+v, want the way forward alone", peek)
+	}
+	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "top")
+
+	// The middle: every direction the window has, which is all four.
+	if !outliner.HalfPagePeek(1) {
+		t.Fatal("the pane would not move off the top")
+	}
+	spec = peekGuidanceSpec(t, outliner, "middle")
+	assertPeekCloseGuidance(t, outliner, spec, "middle")
+	assertPeekMovementGuidance(t, outliner, spec, "middle")
+	if got := peekGuidanceMovementCount(outliner, spec); got != 4 {
+		t.Fatalf("the middle offered %d movements, want all four: %v",
+			got, peekGuidanceEntries(spec))
+	}
+	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "middle")
+
+	// The bottom: the way back alone.
+	for outliner.PagePeek(1) { //nolint:revive // Reaching the end is the point of the loop.
+	}
+	if got := outliner.peekOffsetForRow(row, doc); got != doc.MaxOffset() {
+		t.Fatalf("the walk settled at offset %d, want the end %d", got, doc.MaxOffset())
+	}
+	spec = peekGuidanceSpec(t, outliner, "bottom")
+	assertPeekCloseGuidance(t, outliner, spec, "bottom")
+	assertPeekMovementGuidance(t, outliner, spec, "bottom")
+	if peek := outliner.PeekCommandContext(); peek.CanPageDown || !peek.CanPageUp {
+		t.Fatalf("bottom context = %+v, want the way back alone", peek)
+	}
+	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "bottom")
+}
+
+// filteredEmptyPeekQuery matches nothing in the fixture, so the projection it
+// produces is empty because of the search rather than because of the project.
+const filteredEmptyPeekQuery = "zzzznomatchzzzz"
+
+// assertFilteredEmptyPeekGuidance is the case where two recoveries claim one
+// key: a search hid every row, so the closed footer names Esc for the query,
+// and an open pane takes that same Esc first. The footer has to follow the
+// press, and the press has to leave the query alone.
+func assertFilteredEmptyPeekGuidance(t *testing.T, width, height int) {
+	t.Helper()
+	outliner := peekGuidanceOutliner(t,
+		peekGuidanceProject("filtered", peekGuidanceLongComment(), true), width, height, filteredEmptyPeekQuery)
+	if got := outliner.ClassifyEmptyCause(); got != outlinerEmptySearch {
+		t.Fatalf("empty cause = %d, want the search that hid every row", got)
+	}
+	before := peekGuidanceSpec(t, outliner, "before Peek")
+	if !strings.Contains(strings.Join(peekGuidanceEntries(before), " | "), "Esc clear search") {
+		t.Fatalf("the search-empty footer = %v, want it to name clearing the search",
+			peekGuidanceEntries(before))
+	}
+
+	// With the pane open Esc belongs to the pane, and the footer has to say
+	// so rather than repeating the query's recovery key.
+	outliner.PeekMode = true
+	spec := peekGuidanceSpec(t, outliner, "with Peek")
+	assertPeekCloseGuidance(t, outliner, spec, "with Peek")
+	assertPeekMovementGuidance(t, outliner, spec, "with Peek")
+	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "with Peek")
+
+	// And the first press does what the footer just said, spending itself on
+	// the pane and leaving the query where it was.
+	if !listsurface.RunEscCascade(outliner.EscSteps()) {
+		t.Fatal("the Esc cascade spent nothing")
+	}
+	if outliner.PeekMode {
+		t.Fatal("the first Esc left the pane open")
+	}
+	if got := outliner.SearchQuery(); got != filteredEmptyPeekQuery {
+		t.Fatalf("the first Esc left the query as %q, want %q retained", got, filteredEmptyPeekQuery)
+	}
+	if !outliner.HasSearchProjection() {
+		t.Fatal("the first Esc dropped the search projection")
+	}
+
+	// Closed, the cause is the footer's subject again.
+	after := peekGuidanceSpec(t, outliner, "after Peek")
+	entries := strings.Join(peekGuidanceEntries(after), " | ")
+	if !strings.Contains(entries, "Esc clear search") {
+		t.Errorf("the restored footer = %v, want it to describe clearing the search", entries)
+	}
+	if strings.Contains(entries, "close Peek") {
+		t.Errorf("the restored footer = %v, want it to stop naming a pane that is closed", entries)
+	}
+	assertPeekFooterRenders(t, after, width, []string{"close Peek"}, "after Peek")
+}
+
+// assertShortCommentPeekGuidance is the immovable pane: a body that fits offers
+// no direction at all, and still names both keys that put it down.
+func assertShortCommentPeekGuidance(t *testing.T, width, height int) {
+	t.Helper()
+	outliner := peekGuidanceOutliner(t,
+		peekGuidanceProject("short", "Short note.", false), width, height, "")
+	outliner.PeekMode = true
+
+	if _, doc, ok := outliner.peekCursorDocument(); !ok || doc.Paged() {
+		t.Fatalf("the fixture pages (ok=%v), so it is not the immovable pane this covers", ok)
+	}
+	spec := peekGuidanceSpec(t, outliner, "short")
+	assertPeekCloseGuidance(t, outliner, spec, "short")
+	assertPeekMovementGuidance(t, outliner, spec, "short")
+	if got := peekGuidanceMovementCount(outliner, spec); got != 0 {
+		t.Fatalf("an immovable pane offered %d movements: %v", got, peekGuidanceEntries(spec))
+	}
+	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "short")
+}
+
+// closedPeekGuidanceCase is one empty projection with no pane drawn, named by
+// the cause it is empty for and the recovery that cause earns.
+type closedPeekGuidanceCase struct {
+	name     string
+	project  *models.Project
+	query    string
+	cause    outlinerEmptyCause
+	required string
+}
+
+// closedPeekGuidanceCases are the two ways the same header ends up over nothing.
+func closedPeekGuidanceCases() []closedPeekGuidanceCase {
+	return []closedPeekGuidanceCase{
+		{
+			name:     "no_tasks",
+			project:  peekGuidanceProject("empty", peekGuidanceLongComment(), false),
+			cause:    outlinerEmptyNoTasks,
+			required: "a capture",
+		},
+		{
+			name:     "hidden_by_search",
+			project:  peekGuidanceProject("filtered", peekGuidanceLongComment(), true),
+			query:    filteredEmptyPeekQuery,
+			cause:    outlinerEmptySearch,
+			required: "Esc clear search",
+		},
+	}
+}
+
+// assertClosedPeekGuidance is the other half of the contract: with no pane on
+// screen the footer names no pane at all, and the single required entry is the
+// recovery the emptiness itself earns.
+func assertClosedPeekGuidance(t *testing.T, test closedPeekGuidanceCase, width, height int) {
+	t.Helper()
+	outliner := peekGuidanceOutliner(t, test.project, width, height, test.query)
+	if outliner.PeekMode {
+		t.Fatal("the fixture opened a pane this case is about not having")
+	}
+	if got := outliner.ClassifyEmptyCause(); got != test.cause {
+		t.Fatalf("empty cause = %d, want %d", got, test.cause)
+	}
+
+	spec := peekGuidanceSpec(t, outliner, test.name)
+	entries := peekGuidanceEntries(spec)
+	joined := strings.Join(entries, " | ")
+	if strings.Contains(joined, "Peek") {
+		t.Errorf("closed-Peek guidance = %v, want no pane named", entries)
+	}
+	if !strings.Contains(joined, test.required) {
+		t.Errorf("closed-Peek guidance = %v, want the causal recovery %q",
+			entries, test.required)
+	}
+	for _, hint := range spec.Hints {
+		if hint.Required && chrome.GuidanceHintText(hint) != test.required {
+			t.Errorf("required entry = %q, want the causal %q alone",
+				chrome.GuidanceHintText(hint), test.required)
+		}
+	}
+	assertPeekFooterRenders(t, spec, width, []string{"close Peek"}, test.name)
+}
+
 // TestEmptyProjectPeekGuidanceMatchesVisiblePane is the claim the empty state
 // used to break: the pane a reader is looking at is the pane the footer is
 // about. ContextualGuidance answered emptiness before it ever asked whether a
@@ -233,190 +441,24 @@ func peekGuidanceMovementCount(m *OutlinerModel, spec chrome.GuidanceSpec) int {
 // than of the row count alone, so the same header exposes the same controls
 // whether or not tasks are listed beneath it.
 func TestEmptyProjectPeekGuidanceMatchesVisiblePane(t *testing.T) {
-	// The empty state's own recovery hints. None of them may appear while a pane
-	// is open, because none of them is what the next press does.
-	emptyStateRecovery := []string{"a capture", "Esc clear search", "fx clear filters", "Esc return"}
-
 	t.Run("empty_long", func(t *testing.T) {
-		for _, size := range peekGuidanceSizes {
-			t.Run(size.name, func(t *testing.T) {
-				outliner := peekGuidanceOutliner(t,
-					peekGuidanceProject("empty", peekGuidanceLongComment(), false), size.width, size.height, "")
-				outliner.PeekMode = true
-
-				row, doc, ok := outliner.peekCursorDocument()
-				if !ok {
-					t.Fatal("the focused header drew no Peek document")
-				}
-				if doc.MaxOffset() <= inlinePeekHalfPageRows {
-					t.Fatalf("the fixture pages to offset %d, so a half page has no middle to land on",
-						doc.MaxOffset())
-				}
-
-				// The top: forward alone, alongside both close keys.
-				spec := peekGuidanceSpec(t, outliner, "top")
-				assertPeekCloseGuidance(t, outliner, spec, "top")
-				assertPeekMovementGuidance(t, outliner, spec, "top")
-				if peek := outliner.PeekCommandContext(); !peek.CanPageDown || peek.CanPageUp {
-					t.Fatalf("top context = %+v, want the way forward alone", peek)
-				}
-				assertPeekFooterRenders(t, spec, size.width, emptyStateRecovery, "top")
-
-				// The middle: every direction the window has, which is all four.
-				if !outliner.HalfPagePeek(1) {
-					t.Fatal("the pane would not move off the top")
-				}
-				spec = peekGuidanceSpec(t, outliner, "middle")
-				assertPeekCloseGuidance(t, outliner, spec, "middle")
-				assertPeekMovementGuidance(t, outliner, spec, "middle")
-				if got := peekGuidanceMovementCount(outliner, spec); got != 4 {
-					t.Fatalf("the middle offered %d movements, want all four: %v",
-						got, peekGuidanceEntries(spec))
-				}
-				assertPeekFooterRenders(t, spec, size.width, emptyStateRecovery, "middle")
-
-				// The bottom: the way back alone.
-				for outliner.PagePeek(1) { //nolint:revive // Reaching the end is the point of the loop.
-				}
-				if got := outliner.peekOffsetForRow(row, doc); got != doc.MaxOffset() {
-					t.Fatalf("the walk settled at offset %d, want the end %d", got, doc.MaxOffset())
-				}
-				spec = peekGuidanceSpec(t, outliner, "bottom")
-				assertPeekCloseGuidance(t, outliner, spec, "bottom")
-				assertPeekMovementGuidance(t, outliner, spec, "bottom")
-				if peek := outliner.PeekCommandContext(); peek.CanPageDown || !peek.CanPageUp {
-					t.Fatalf("bottom context = %+v, want the way back alone", peek)
-				}
-				assertPeekFooterRenders(t, spec, size.width, emptyStateRecovery, "bottom")
-			})
-		}
+		forEachPeekGuidanceSize(t, assertLongCommentPeekGuidance)
 	})
 
 	t.Run("filtered_empty", func(t *testing.T) {
-		const query = "zzzznomatchzzzz"
-		for _, size := range peekGuidanceSizes {
-			t.Run(size.name, func(t *testing.T) {
-				outliner := peekGuidanceOutliner(t,
-					peekGuidanceProject("filtered", peekGuidanceLongComment(), true), size.width, size.height, query)
-				if got := outliner.ClassifyEmptyCause(); got != outlinerEmptySearch {
-					t.Fatalf("empty cause = %d, want the search that hid every row", got)
-				}
-				before := peekGuidanceSpec(t, outliner, "before Peek")
-				if !strings.Contains(strings.Join(peekGuidanceEntries(before), " | "), "Esc clear search") {
-					t.Fatalf("the search-empty footer = %v, want it to name clearing the search",
-						peekGuidanceEntries(before))
-				}
-
-				// With the pane open Esc belongs to the pane, and the footer has to say
-				// so rather than repeating the query's recovery key.
-				outliner.PeekMode = true
-				spec := peekGuidanceSpec(t, outliner, "with Peek")
-				assertPeekCloseGuidance(t, outliner, spec, "with Peek")
-				assertPeekMovementGuidance(t, outliner, spec, "with Peek")
-				assertPeekFooterRenders(t, spec, size.width, emptyStateRecovery, "with Peek")
-
-				// And the first press does what the footer just said, spending itself on
-				// the pane and leaving the query where it was.
-				if !listsurface.RunEscCascade(outliner.EscSteps()) {
-					t.Fatal("the Esc cascade spent nothing")
-				}
-				if outliner.PeekMode {
-					t.Fatal("the first Esc left the pane open")
-				}
-				if got := outliner.SearchQuery(); got != query {
-					t.Fatalf("the first Esc left the query as %q, want %q retained", got, query)
-				}
-				if !outliner.HasSearchProjection() {
-					t.Fatal("the first Esc dropped the search projection")
-				}
-
-				// Closed, the cause is the footer's subject again.
-				after := peekGuidanceSpec(t, outliner, "after Peek")
-				entries := strings.Join(peekGuidanceEntries(after), " | ")
-				if !strings.Contains(entries, "Esc clear search") {
-					t.Errorf("the restored footer = %v, want it to describe clearing the search", entries)
-				}
-				if strings.Contains(entries, "close Peek") {
-					t.Errorf("the restored footer = %v, want it to stop naming a pane that is closed", entries)
-				}
-				assertPeekFooterRenders(t, after, size.width, []string{"close Peek"}, "after Peek")
-			})
-		}
+		forEachPeekGuidanceSize(t, assertFilteredEmptyPeekGuidance)
 	})
 
 	t.Run("empty_short", func(t *testing.T) {
-		for _, size := range peekGuidanceSizes {
-			t.Run(size.name, func(t *testing.T) {
-				outliner := peekGuidanceOutliner(t,
-					peekGuidanceProject("short", "Short note.", false), size.width, size.height, "")
-				outliner.PeekMode = true
-
-				if _, doc, ok := outliner.peekCursorDocument(); !ok || doc.Paged() {
-					t.Fatalf("the fixture pages (ok=%v), so it is not the immovable pane this covers", ok)
-				}
-				spec := peekGuidanceSpec(t, outliner, "short")
-				assertPeekCloseGuidance(t, outliner, spec, "short")
-				assertPeekMovementGuidance(t, outliner, spec, "short")
-				if got := peekGuidanceMovementCount(outliner, spec); got != 0 {
-					t.Fatalf("an immovable pane offered %d movements: %v", got, peekGuidanceEntries(spec))
-				}
-				assertPeekFooterRenders(t, spec, size.width, emptyStateRecovery, "short")
-			})
-		}
+		forEachPeekGuidanceSize(t, assertShortCommentPeekGuidance)
 	})
 
 	t.Run("closed_peek", func(t *testing.T) {
-		for _, test := range []struct {
-			name     string
-			project  *models.Project
-			query    string
-			cause    outlinerEmptyCause
-			required string
-		}{
-			{
-				name:     "no_tasks",
-				project:  peekGuidanceProject("empty", peekGuidanceLongComment(), false),
-				cause:    outlinerEmptyNoTasks,
-				required: "a capture",
-			},
-			{
-				name:     "hidden_by_search",
-				project:  peekGuidanceProject("filtered", peekGuidanceLongComment(), true),
-				query:    "zzzznomatchzzzz",
-				cause:    outlinerEmptySearch,
-				required: "Esc clear search",
-			},
-		} {
+		for _, test := range closedPeekGuidanceCases() {
 			t.Run(test.name, func(t *testing.T) {
-				for _, size := range peekGuidanceSizes {
-					t.Run(size.name, func(t *testing.T) {
-						outliner := peekGuidanceOutliner(t, test.project, size.width, size.height, test.query)
-						if outliner.PeekMode {
-							t.Fatal("the fixture opened a pane this case is about not having")
-						}
-						if got := outliner.ClassifyEmptyCause(); got != test.cause {
-							t.Fatalf("empty cause = %d, want %d", got, test.cause)
-						}
-
-						spec := peekGuidanceSpec(t, outliner, test.name)
-						entries := peekGuidanceEntries(spec)
-						joined := strings.Join(entries, " | ")
-						if strings.Contains(joined, "Peek") {
-							t.Errorf("closed-Peek guidance = %v, want no pane named", entries)
-						}
-						if !strings.Contains(joined, test.required) {
-							t.Errorf("closed-Peek guidance = %v, want the causal recovery %q",
-								entries, test.required)
-						}
-						for _, hint := range spec.Hints {
-							if hint.Required && chrome.GuidanceHintText(hint) != test.required {
-								t.Errorf("required entry = %q, want the causal %q alone",
-									chrome.GuidanceHintText(hint), test.required)
-							}
-						}
-						assertPeekFooterRenders(t, spec, size.width, []string{"close Peek"}, test.name)
-					})
-				}
+				forEachPeekGuidanceSize(t, func(t *testing.T, width, height int) {
+					assertClosedPeekGuidance(t, test, width, height)
+				})
 			})
 		}
 	})
