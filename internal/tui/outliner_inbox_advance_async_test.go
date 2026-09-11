@@ -16,7 +16,7 @@ import (
 // inboxAsyncEnv wires the whole asynchronous mutation chain over a real Inbox
 // projection: executor, committed batch, in-memory refresh, and the disk reload
 // that lands last. These tests exist because that chain, not the synchronous
-// planning path, is what $d, $c, $w, $g and every bulk sweep travel.
+// planning path, is what wd, wc, ww, wg and every bulk sweep travel.
 type inboxAsyncEnv struct {
 	env      *appBulkPickerEnv
 	model    *AppModel
@@ -103,9 +103,9 @@ func (e *inboxAsyncEnv) identity(t *testing.T, projectIndex int, taskID string) 
 	return taskref.TaskIdentity{}
 }
 
-// TestInboxAsyncDoneAdvancesAcrossAProjectGroupHeader is the reconciliation: $d
+// TestInboxAsyncDoneAdvancesAcrossAProjectGroupHeader is the reconciliation: wd
 // travels the asynchronous route and must land exactly where Session 1's
-// synchronous $b lands from the same row — the first task of the next group,
+// synchronous wb lands from the same row — the first task of the next group,
 // never that group's header.
 func TestInboxAsyncDoneAdvancesAcrossAProjectGroupHeader(t *testing.T) {
 	alphaOne := newBulkPickerTestTask(t, 1, "alpha one")

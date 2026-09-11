@@ -16,7 +16,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "start it, so every open child of the story now sits in Doing", "key": "$" },
+    { "type": "key", "label": "start it, so every open child of the story now sits in Doing", "key": "w" },
     { "type": "key", "key": "g" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },

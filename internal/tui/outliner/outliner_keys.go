@@ -856,7 +856,7 @@ func (m *OutlinerModel) DecoratePendingChordHint(path []string, hint operation.C
 			if filter.Priority > 0 {
 				hint.Label = "priority:" + strings.ToLower(models.PriorityName(filter.Priority)) + "+"
 			}
-		case "$":
+		case "w":
 			if filter.HasStateFilter() {
 				hint.Label = fmt.Sprintf("states:%d", len(filter.States.Values()))
 			}

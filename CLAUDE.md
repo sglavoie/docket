@@ -362,9 +362,9 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `d`, `m`, `w`, `:`, `Ctrl+Esc`, `H`, `L`, and the
+The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
-key is the only reverse route. Done is `$d` alone and no `d` alias may return.
+key is the only reverse route. Done is `wd` alone and no `d` alias may return.
 `b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
 
 `;` opens the panel that reads, edits, reorders, and deletes comments and `C`
@@ -410,12 +410,14 @@ expanding no fold, changing no lens, loading no project, and never wrapping, and
 otherwise holds the source and reports that none remain. A refusal advances
 nothing; undo takes the mutation back and leaves the cursor.
 
-Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
+Root `w`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
 section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
-`Q` is the query readout. A facet carrying a sigil answers to that sigil, so
-pinned is `f*`, references are `f~`, review is `f=`, and the letters `fp` and
-`fr` stay retired. A picker row is the canonical
+`Q` is the query readout. `w` is the workflow chord and the one keyboard route
+that does not spell its sigil: `$` is typed and pressed nowhere, and `f$` is
+retired with it. Every other facet carrying a sigil answers to that sigil, so
+pinned is `f*`, references are `f~`, review is `f=`; states follow the chord to
+`fw`, and the letters `fp` and `fr` stay retired. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
 `?deferred` — and `AcceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.
@@ -426,7 +428,7 @@ switch, since the push captures the frame `Esc` restores.
 `>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and
 `[`, which own no sigil. `*pin` is not a second route to `*`.
 
-An abandoned chord prefix warns, naming the path it left (`$q is not a workflow
+An abandoned chord prefix warns, naming the path it left (`wq is not a workflow
 action`); an unbound root key is silent. A modifier or lock key pressed alone is
 not a keystroke and never abandons one.
 

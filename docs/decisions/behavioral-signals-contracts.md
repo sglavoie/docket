@@ -66,7 +66,7 @@ completion age to `fa` and leaving `f#` to tags alone.
 | `f!0`, `f!1`, `f!2`, `f!3` | priority threshold: clear, high, medium+, low+ |
 | `f@` | due date |
 | `fa` | completion age |
-| `f$` | workflow states |
+| `fw` | workflow states (this row read `f$` when the decision was taken) |
 | `f#` | tags |
 | `fc` | task contexts |
 | `f=` | Review flag (this row read `fr` when the decision was taken) |

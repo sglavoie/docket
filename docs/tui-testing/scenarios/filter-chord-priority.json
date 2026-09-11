@@ -6,7 +6,7 @@
     { "type": "key", "label": "hold the filter prefix", "key": "f" },
     { "type": "assert", "assert": "contains", "value": "! priority threshold" },
     { "type": "assert", "assert": "contains", "value": "@ due" },
-    { "type": "assert", "assert": "contains", "value": "$ states" },
+    { "type": "assert", "assert": "contains", "value": "w states" },
     { "type": "assert", "assert": "contains", "value": "# tags" },
     { "type": "assert", "assert": "contains", "value": "x clear all" },
     { "type": "assert", "assert": "no_layout_issues" },

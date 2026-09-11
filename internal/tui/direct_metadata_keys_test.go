@@ -25,13 +25,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"!", "0"}, want: operation.OperationTaskSetPriority, value: 0},
 		{path: []string{"!", "1"}, want: operation.OperationTaskSetPriority, value: 1},
 		{path: []string{"!", "3"}, want: operation.OperationTaskSetPriority, value: 3},
-		{path: []string{"$", "i"}, want: operation.OperationTaskSetState, value: models.StateInbox},
-		{path: []string{"$", "g"}, want: operation.OperationTaskSetState, value: models.StateDoing},
-		{path: []string{"$", "w"}, want: operation.OperationTaskSetState, value: models.StateWaiting},
-		{path: []string{"$", "p"}, want: operation.OperationTaskSetState, value: models.StatePaused},
-		{path: []string{"$", "m"}, want: operation.OperationTaskSetState, value: models.StateSomeday},
-		{path: []string{"$", "d"}, want: operation.OperationTaskSetState, value: models.StateDone},
-		{path: []string{"$", "c"}, want: operation.OperationTaskSetState, value: models.StateCanceled},
+		{path: []string{"w", "i"}, want: operation.OperationTaskSetState, value: models.StateInbox},
+		{path: []string{"w", "g"}, want: operation.OperationTaskSetState, value: models.StateDoing},
+		{path: []string{"w", "w"}, want: operation.OperationTaskSetState, value: models.StateWaiting},
+		{path: []string{"w", "p"}, want: operation.OperationTaskSetState, value: models.StatePaused},
+		{path: []string{"w", "m"}, want: operation.OperationTaskSetState, value: models.StateSomeday},
+		{path: []string{"w", "d"}, want: operation.OperationTaskSetState, value: models.StateDone},
+		{path: []string{"w", "c"}, want: operation.OperationTaskSetState, value: models.StateCanceled},
 	}
 
 	for _, preset := range presets {
@@ -71,9 +71,9 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		path []string
 		want operation.OperationID
 	}{
-		{path: []string{"$", "b"}, want: operation.OperationCoreBacklog},
-		{path: []string{"$", "n"}, want: operation.OperationCoreNext},
-		{path: []string{"$", "t"}, want: operation.OperationCoreToday},
+		{path: []string{"w", "b"}, want: operation.OperationCoreBacklog},
+		{path: []string{"w", "n"}, want: operation.OperationCoreNext},
+		{path: []string{"w", "t"}, want: operation.OperationCoreToday},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		binding, descriptor, resolution := model.operations.Registry.InputBindingForSequence(
@@ -90,7 +90,8 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	}
 
 	// The two unpresetable metadata keys keep the existing pickers. This file is
-	// scoped to the metadata grammar — `!`, `$`, `@`, `#` — which is why the
+	// scoped to the metadata keys — `!`, `w`, `@`, `#`, the workflow chord named
+	// by the letter it is pressed with rather than the `$` it writes — which is why the
 	// relationship keys `>`, `<`, and `~` are absent rather than forgotten: each
 	// opens a picker proved in its own file, `~` in
 	// operation_task_reference_picker_test.go. Adding a relationship key here
@@ -166,9 +167,9 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 	t.Run("state prefix shows every action and dispatches a transition", func(t *testing.T) {
 		app := newApp(t)
-		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '$', Text: "$"})
+		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd != nil {
-			t.Fatalf("$ = handled %v cmd %T; want a pending prefix", handled, cmd)
+			t.Fatalf("w = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
 		row := pendingChordHintRowForTest(app)
 		for _, want := range []string{
@@ -190,7 +191,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 		handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd == nil {
-			t.Fatalf("$w = handled %v cmd %T; want the waiting transition", handled, cmd)
+			t.Fatalf("ww = handled %v cmd %T; want the waiting transition", handled, cmd)
 		}
 	})
 

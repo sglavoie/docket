@@ -4,7 +4,7 @@
   "size": "99x35",
   "actions": [
     { "type": "key", "label": "open the state filter picker", "key": "f" },
-    { "type": "key", "key": "$" },
+    { "type": "key", "key": "w" },
     { "type": "assert", "assert": "contains", "value": "Filter by State" },
     { "type": "assert", "assert": "contains", "value": "keep matching tasks" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -20,7 +20,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel a reopened picker without touching the filter", "key": "f" },
-    { "type": "key", "key": "$" },
+    { "type": "key", "key": "w" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "$inbox" },

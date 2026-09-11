@@ -31,9 +31,12 @@ back. A letter earns a place beside `Enter` and `Shift+Enter`, which zoom and
 widen, better than a modifier does. `R` is a seventh: it marks the cursor task
 reviewed and moves to the next candidate, the capital beside the `=` that flags
 one.
-`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is
-the scroll chord prefix. `$` joins them as a chord prefix rather than a key of
-its own. Select Project holds the same line: `n` no longer creates a project,
+`d` is unbound: Done stays `wd` alone, `@` answers both dates, and root `z` is
+the scroll chord prefix. `w` joins them as a chord prefix rather than a key of
+its own, and `$` left the keyboard entirely when the workflow chord took that
+letter: the sigil is still what you type on every mutation surface, but there is
+no root `$` and no `f$`, and neither is kept as an alias. Select Project holds
+the same line: `n` no longer creates a project,
 `A` no longer clears a selection, and bare `g` is the go-to prefix rather than
 cursor-top, so all three are silent there. All Notes retired `s`, `r`, `m`, `n`,
 and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, and freed `v` rather than
@@ -53,10 +56,10 @@ the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet; all
 three are silent there, because a comment may not stay one press from deletion
 while a task cannot be deleted that way. One rule covers that whole inventory.
 Pressing an unfinished chord and then a key it does not offer names the path you
-left, as `$q is not a workflow action`; pressing a key that was never bound does
+left, as `wq is not a workflow action`; pressing a key that was never bound does
 nothing and says nothing, because it never promised anything.
 Review answers to `=` on every surface: the sigil `=review` writes the flag in a
 capture line, the `=` key toggles it on a row, and the `f=` facet narrows by it.
 The letter `fr` that facet once answered to is retired. `$review` stays a
-rejected destination, so no `$` terminal could honor it: a destination is
+rejected destination, so no workflow terminal could honor it: a destination is
 singular, and a task flagged for review still has a lifecycle state.

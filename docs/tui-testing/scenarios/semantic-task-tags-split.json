@@ -13,7 +13,7 @@
     { "type": "assert", "label": "the locked precedence is stated even with no semantic row", "assert": "contains", "value": "bug › question" },
     { "type": "assert", "label": "the filter picker wraps the complete explanation inline", "assert": "contains", "value": "highest one a task" },
     { "type": "assert", "assert": "contains", "value": "carries colors its title." },
-    { "type": "assert", "assert": "contains", "value": "$ workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },

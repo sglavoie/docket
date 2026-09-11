@@ -265,7 +265,7 @@ stays 09:00 across both daylight-saving transitions instead of drifting to 10:00
 or 08:00.
 
 One operation may chain into a second one by following its committed command with
-an `OperationValueRequestMsg`, which is how `$w` asks for the check-back date it
+an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
 has just made relevant. `withWaitingCheckBackStep` runs the set-state command,
 and only a committed result — the `transactionCommitted` gate — is followed
 through `tea.Sequence` by the value request for
@@ -311,10 +311,10 @@ because the unwinding calls restore captured frames that reinstate one another's
 state, and that read is what lets the strip name the axes it cleared or answer
 `Already at the launch view`.
 
-`$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
+`w`, `z`, `f`, `F`, and `o` are the other root prefixes. `w` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound
-rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
-other retired root key — `m`, `w`, `:`, the comma state
+rather than aliasing `wd`; `z` is the scroll chord and never means defer. Every
+other retired root key — `m`, `$`, `:`, the comma state
 prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
 `t`, `P`, `c`, `C`, `b`, and `R` left that list by an explicit decision rather
@@ -465,10 +465,16 @@ Pin's key is its sigil: `*` on an existing row does what `*pin` does in the
 capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
 violation, because that rule governs which task operations reach the `Space`
 menu, not whether an attribute is also expressible in the text grammar: `!`, `@`,
-`#`, and the `$` chord are the sigils that say the same things.
+`#`, and the workflow chord are the sigils that say the same things.
 
-Every keyed capture sigil binds the character it is written with: `!` and `$` as
-chord prefixes, `#`, `@`, `*`, `=`, `%`, `>`, `<`, `~`, `&`, and `;` as root keys.
+Every keyed capture sigil but one binds the character it is written with: `!` as
+a chord prefix, `#`, `@`, `*`, `=`, `%`, `>`, `<`, `~`, `&`, and `;` as root keys.
+`$destination` is the exception, and the only one: its chord is `w`, because ten
+lifecycle and planning destinations are the most-pressed chord of the daily loop
+and an unshifted letter is worth more there than the correspondence is.
+`grammarSigilKeyboardSpelling` names that one rename as data, and the rename
+costs `$` its root key and `f$` its facet — the states facet follows the chord to
+`fw` so one axis keeps one keyboard spelling.
 `&` and `;` are the only pair that opens a panel rather than a picker, because the
 panel already owns add, reorder, unlink, and delete.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
@@ -566,7 +572,7 @@ only route to Delete Item.
 
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
-through, and the miss sets a warning status such as `$q is not a workflow
+through, and the miss sets a warning status such as `wq is not a workflow
 action`. An unbound root key stays silent because it never showed a
 which-key row, and a key the cursor's entity turned off keeps its own target
 rejection sentence instead. A chord prefix whose whole subtree that entity turned
@@ -576,7 +582,7 @@ that could not complete.
 A modifier or lock key pressed by itself is not a keystroke and never reaches the
 grammar. `isModifierOnlyKeyPress` drops it in the one switch where key events
 enter the app, beside the key-release swallow, so the Shift a chord's own second
-key requires — `f#`, `f!`, `f$`, `F#`, `o@`, `g@` — cannot resolve as that second
+key requires — `f#`, `f!`, `f~`, `F#`, `o@`, `g@` — cannot resolve as that second
 key, and no view has to know the terminal reports it. The app requests no
 keyboard enhancement beyond the disambiguation Bubble Tea already negotiates:
 a richer Kitty flag set is what made a terminal report those presses at all, and

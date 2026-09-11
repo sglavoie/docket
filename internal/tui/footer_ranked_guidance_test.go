@@ -91,7 +91,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// act the map lists; the four hints the rendered row is held to below are
 	// ahead of it, so the bar's rank buys its place without costing a required one.
 	wantWorkflow := []string{
-		"$ workflow", "! priority", "@ date", "# tags/context", "Space actions",
+		"w workflow", "! priority", "@ date", "# tags/context", "Space actions",
 		"M menu", "v select", "a capture", "Enter focus", "b peek", "/ search", "? help",
 	}
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {

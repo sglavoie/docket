@@ -502,7 +502,19 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// one of them a different window under the next, and only a reader who
 	// scrolled and then moved would ever see it. The mechanism lives in
 	// docs/architecture/tui-architecture.md.
-	const budget = 39371
+	// Twenty-first raise, 39371 to 39561, for the workflow chord's move off `$`.
+	// 190 bytes buy three rules that are silent when guessed wrong. The first is
+	// that `w` is the one keyboard route not spelled like its sigil: every other
+	// route spells one, so a reader who finds the correspondence broken fixes it
+	// by binding `$` back, and the exception has to be stated where the rule is.
+	// The second is that `$` is typed and pressed nowhere — a compatibility alias
+	// is the obvious kindness and it is what keeps two vocabularies alive, which
+	// is the same reason `d` and `m` are named above. The third is that the states
+	// facet follows the chord to `fw` rather than the sigil to `f$`: the facet rule
+	// in the next sentence makes `fw` look like the violation to repair, and
+	// repairing it splits one axis across a letter and a sigil. The mechanism lives
+	// in docs/architecture/operation-grammar.md.
+	const budget = 39561
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -579,7 +591,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `d`, `m`, `w`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
 		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +
@@ -592,9 +604,14 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"That popup is the multiline `TextEntry()` provider, so `Enter` writes a newline, " +
 			"`Ctrl+S` saves, `Esc` confirms a discard the prompt draws in its own box, and " +
 			"the prompt emits one submission until a refusal restores its text",
-		"Done is `$d` alone and no `d` alias may return",
-		"Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +
+		"Done is `wd` alone and no `d` alias may return",
+		"Root `w`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +
 			"and cursor-top is `gg` or `Home`",
+		"`w` is the workflow chord and the one keyboard route that does not spell its sigil: " +
+			"`$` is typed and pressed nowhere, and `f$` is retired with it",
+		"Every other facet carrying a sigil answers to that sigil, so pinned is `f*`, " +
+			"references are `f~`, review is `f=`; states follow the chord to `fw`, and the " +
+			"letters `fp` and `fr` stay retired",
 		"`s`, `p`, and `t` fold the section, project, and task axes; `P` is Select Project",
 		"`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and `[`, " +
 			"which own no sigil",

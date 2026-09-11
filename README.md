@@ -129,9 +129,9 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `gi` moves to Inbox for triage.
-3. `$` opens the shared workflow chord, the sigil the grammar already uses for a
-   destination.
-4. `$b`, `$n`, and `$t` organize work; `$g` starts it and `$d` completes it.
+3. `w` opens the workflow chord over the ten destinations the `$destination`
+   sigil names.
+4. `wb`, `wn`, and `wt` organize work; `wg` starts it and `wd` completes it.
 5. Direct metadata keys handle priority, state, dates, tags, and pin.
 6. `Space` opens the occasional task tools.
 
@@ -147,7 +147,7 @@ and the rare.
 | --- | --- |
 | `Tab` `g` `Enter` `Esc` | cycle modes · go to a mode · zoom in · unwind one rung |
 | `a` `A` `e` `E` `Ctrl+E` | capture · child · inline edit · description · external editor |
-| `$` | the workflow chord: `$i` `$b` `$n` `$t` `$g` `$w` `$p` `$m` `$d` `$c` |
+| `w` | the workflow chord: `wi` `wb` `wn` `wt` `wg` `ww` `wp` `wm` `wd` `wc` |
 | `!` `@` `#` `*` | priority · due and defer · tags and context · pin |
 | `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |

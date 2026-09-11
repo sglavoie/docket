@@ -71,7 +71,7 @@ func (env *stateTransitionFeedbackEnv) focusTask(t *testing.T, taskID string) {
 
 func (env *stateTransitionFeedbackEnv) completeSelection(t *testing.T) {
 	t.Helper()
-	if err := env.driver.SendKey("$"); err != nil {
+	if err := env.driver.SendKey("w"); err != nil {
 		t.Fatalf("send state prefix: %v", err)
 	}
 	if len(env.driver.App().operations.Chord) == 0 {
@@ -83,7 +83,7 @@ func (env *stateTransitionFeedbackEnv) completeSelection(t *testing.T) {
 	env.driver.drain()
 	env.driver.Wait(stateTransitionFeedbackSettleTimeout)
 	if err := env.driver.App().feedback.err; err != nil {
-		t.Fatalf("$d failed: %v", err)
+		t.Fatalf("wd failed: %v", err)
 	}
 }
 

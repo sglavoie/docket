@@ -163,7 +163,7 @@ Ctrl+P                           Select Pinned Project
 gp                               the cursor task's project, in All
 g~ gc                            a related task, and the conflict browser
 a/A e/E Ctrl+E O D               capture, edit, and repeat
-$i $b $n $t $g $w $p $m $d $c    workflow chord
+wi wb wn wt wg ww wp wm wd wc    workflow chord
 !0-3 @ # * = r R                 metadata, review, resume note, acknowledge
 [ ] > < % J K Ctrl+J Ctrl+K      structure
 & ; C ~                          attachments, comments, add comment, references
@@ -174,7 +174,7 @@ Ctrl+F/Ctrl+B                    page the open Peek
 c x                              add and tick checklist items
 M Ctrl+M                         pin the menu bar, open it for one act
 P Q \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
-f!0-3 f@ fa f$ f# fc f= fh f~ fs f* fx  filters
+f!0-3 f@ fa fw f# fc f= fh f~ fs f* fx  filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox or             sort axis
 ```
@@ -188,9 +188,10 @@ on a row the same characters open the Attachments and Comments panels that own
 add, reorder, unlink, and delete. `C` and `;` are the same pair once more on a
 project header, where both answer for the project rather than for a task. The
 old standalone `d` action and comma state prefix are intentionally unbound, as
-are `m`, `w`, `:`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, and `R` are
+are `m`, `$`, `:`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, `R`, and `w` are
 live again with different acts: Peek, Add Checklist Item, the subtree fold,
-Select Project, and Mark Reviewed.
+Select Project, Mark Reviewed, and the workflow chord. The workflow chord is the
+one key that does not spell its sigil: `$destination` is typed, `w` is pressed.
 
 The presentation grammar is also part of the scenario contract. Full-screen
 titles stay on one row and carry the workspace pulse; browse guidance uses one
@@ -236,7 +237,7 @@ The committed suite exercises the product contracts directly:
 | Contract | Representative scenarios |
 | --- | --- |
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
-| Inbox triage through the unified `$` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
+| Inbox triage through the unified `w` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
 | The Inbox-only cursor advance: crossing a project group header, landing on a promoted child, and holding still under undo | `inbox-triage-advance-across-project-groups.json`, `inbox-triage-advance-promotes-children.json`, `inbox-triage-undo-does-not-advance.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
@@ -293,7 +294,7 @@ The committed suite exercises the product contracts directly:
 | Semantic task tag split, seeded in `#` and usage-derived in `f#`, which narrows tags alone | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
 | Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
-| Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
+| Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
 | Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `internal/tui/theme/semantic_tag_title_style_test.go` |
 | Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `internal/tui/outliner/tag_chip_style_test.go` |

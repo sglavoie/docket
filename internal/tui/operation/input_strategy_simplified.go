@@ -209,23 +209,35 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationTaskSetPriority, Sequence: []string{"!", "1"}, DisplayKey: "!0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},
 			{OperationID: OperationTaskSetPriority, Sequence: []string{"!", "2"}, DisplayKey: "!0-3", HintLabel: "medium", PresetValue: 2, HasPresetValue: true},
 			{OperationID: OperationTaskSetPriority, Sequence: []string{"!", "3"}, DisplayKey: "!0-3", HintLabel: "low", PresetValue: 3, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "i"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
-			{OperationID: OperationCoreBacklog, Sequence: []string{"$", "b"}, DisplayKey: "$b", HintLabel: "backlog"},
-			{OperationID: OperationCoreNext, Sequence: []string{"$", "n"}, DisplayKey: "$n", HintLabel: "next"},
-			{OperationID: OperationCoreToday, Sequence: []string{"$", "t"}, DisplayKey: "$t", HintLabel: "today"},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "g"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "doing", PresetValue: models.StateDoing, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "w"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "p"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "m"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "d"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "done", PresetValue: models.StateDone, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"$", "c"}, DisplayKey: "$i/g/w/p/m/d/c", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
+			// Workflow is the one chord whose prefix is a letter rather than the
+			// sigil its terminals write. `$` stays the destination sigil on every
+			// typed surface, but these ten acts are the most-pressed chord of the
+			// daily loop and a shifted key on the number row is the wrong home for
+			// them; `w` is the unshifted initial of the word the chord is named
+			// after, and the sigil grammar had already retired it. The trade is
+			// made once, here, and the states facet below follows the keyboard
+			// rather than the sigil so `w` and `fw` still read as one family.
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "i"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "inbox", PresetValue: models.StateInbox, HasPresetValue: true},
+			{OperationID: OperationCoreBacklog, Sequence: []string{"w", "b"}, DisplayKey: "wb", HintLabel: "backlog"},
+			{OperationID: OperationCoreNext, Sequence: []string{"w", "n"}, DisplayKey: "wn", HintLabel: "next"},
+			{OperationID: OperationCoreToday, Sequence: []string{"w", "t"}, DisplayKey: "wt", HintLabel: "today"},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "g"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "doing", PresetValue: models.StateDoing, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "waiting", PresetValue: models.StateWaiting, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "paused", PresetValue: models.StatePaused, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", PresetValue: models.StateSomeday, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", PresetValue: models.StateDone, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", PresetValue: models.StateCanceled, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "0"}, DisplayKey: "f!0-3", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "1"}, DisplayKey: "f!0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "2"}, DisplayKey: "f!0-3", HintLabel: "medium+", PresetValue: 2, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "3"}, DisplayKey: "f!0-3", HintLabel: "low+", PresetValue: 3, HasPresetValue: true},
 			{OperationID: OperationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due/deferred"},
 			{OperationID: OperationFilterCompletionAge, Sequence: []string{"f", "a"}, DisplayKey: "fa", HintLabel: "completion age"},
-			{OperationID: OperationFilterStates, Sequence: []string{"f", "$"}, DisplayKey: "f$", HintLabel: "states"},
+			// The states facet is the stated exception to spelling a second key
+			// like the sigil it narrows: the workflow chord above took the letter
+			// w, and a facet over the same axis has to answer to the same key or
+			// the two halves stop reading as one family. f$ is retired outright.
+			{OperationID: OperationFilterStates, Sequence: []string{"f", "w"}, DisplayKey: "fw", HintLabel: "states"},
 			{OperationID: OperationFilterTags, Sequence: []string{"f", "#"}, DisplayKey: "f#", HintLabel: "tags"},
 			// Context is declared immediately after tags so the which-key row
 			// reads tags then contexts, which is the order the two sigils teach.
@@ -284,7 +296,7 @@ func SimplifiedInputStrategy() InputStrategy {
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 2, FooterLabel: "priority"},
-			{Sequence: []string{"$"}, HintLabel: "workflow", FooterRank: 1, FooterLabel: "workflow"},
+			{Sequence: []string{"w"}, HintLabel: "workflow", FooterRank: 1, FooterLabel: "workflow"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "!"}, HintLabel: "priority threshold"},
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},

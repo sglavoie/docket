@@ -11,7 +11,7 @@
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
     { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "the workflow chord names the owner, not the item", "key": "$" },
+    { "type": "key", "label": "the workflow chord names the owner, not the item", "key": "w" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
     { "type": "assert", "label": "no which-key row opened", "assert": "not_contains", "value": "b backlog" },
 

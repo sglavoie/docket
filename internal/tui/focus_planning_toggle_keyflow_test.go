@@ -21,7 +21,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	t.Run("outliner queue toggle restores state and order index", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
 
-		app = sendAppKey(app, syntheticKey('$'))
+		app = sendAppKey(app, syntheticKey('w'))
 		app = sendAppKey(app, syntheticKey('n'))
 		assertQueueKeyFlow(t, app, task.ID, true)
 
@@ -35,7 +35,7 @@ func TestPlanningToggleUndoRedoKeyFlow(t *testing.T) {
 	t.Run("global outliner daily-plan toggle restores plan entry", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
 
-		app = sendAppKey(app, syntheticKey('$'))
+		app = sendAppKey(app, syntheticKey('w'))
 		app = sendAppKey(app, syntheticKey('t'))
 		assertTodayKeyFlow(t, app, task.ID, true)
 

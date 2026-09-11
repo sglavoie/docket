@@ -94,7 +94,7 @@
 
     { "type": "key", "label": "land on the bucket's only task", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "label": "complete it so the zoomed section empties", "key": "$" },
+    { "type": "key", "label": "complete it so the zoomed section empties", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "assert", "label": "an emptied zoom stays put instead of unwinding under the user", "assert": "contains", "value": "Section: Today" },
     { "type": "assert", "assert": "contains", "value": "No tasks are left in this section. Press Esc to return." },

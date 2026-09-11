@@ -81,7 +81,7 @@ func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
 	assertOwnsStatus("transient status", "task saved")
 	app.feedback.message = ""
 
-	app.operations.Chord = []string{"$"}
+	app.operations.Chord = []string{"w"}
 	app.feedback.message = "hidden status"
 	assertOwnsStatus("pending chord", "Esc cancel")
 	app.operations.Chord = nil

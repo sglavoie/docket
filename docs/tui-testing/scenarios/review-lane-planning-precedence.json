@@ -19,14 +19,14 @@
     { "type": "assert", "label": "the review flag draws exactly one row", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "hold the workflow prefix", "key": "$" },
+    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "plan the flagged task into Next", "key": "n" },
     { "type": "wait" },
     { "type": "assert", "label": "planning moves the row instead of copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "label": "Next outranks the review flag, emptying the lane", "assert": "not_contains", "value": "@ Review" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "hold the workflow prefix", "key": "$" },
+    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "leave Next again", "key": "n" },
     { "type": "wait" },
     { "type": "assert", "label": "the flag was never mutated, so Review reclaims the row", "assert": "contains", "value": "@ Review" },

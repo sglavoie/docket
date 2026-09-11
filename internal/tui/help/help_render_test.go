@@ -12,15 +12,15 @@ import (
 func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 	strategy := operation.SimplifiedInputStrategy()
 	key := operation.DisplayKeysForOperation(strategy, operation.OperationTaskSetState)
-	if !strings.HasPrefix(key, "$") {
-		t.Fatalf("Set State key = %q, want the $ chord prefix", key)
+	if !strings.HasPrefix(key, "w") {
+		t.Fatalf("Set State key = %q, want the w chord prefix", key)
 	}
 	for _, binding := range strategy.Bindings {
 		if binding.OperationID != operation.OperationTaskSetState || len(binding.Sequence) != 2 {
 			continue
 		}
 		if letter := binding.Sequence[1]; !strings.Contains(key, letter) {
-			t.Fatalf("Set State key %q omits the $%s terminal", key, letter)
+			t.Fatalf("Set State key %q omits the w%s terminal", key, letter)
 		}
 	}
 
@@ -35,22 +35,27 @@ func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 		lines := strings.Split(ansi.Strip(m.renderContent()), "\n")
 
 		keyLines := make([]string, 0, 1)
-		sigilLines := 0
+		// A wrapped chord splits at one of the slashes between its terminals, so
+		// counting the lines carrying a slash is what proves it stayed whole: the
+		// only other item here spells itself !0-3, which has none. The retired
+		// spelling could count its own unique `$`; `w` is an ordinary letter that
+		// also appears in the prose beside the column.
+		fragmentLines := 0
 		for _, line := range lines {
 			if strings.Contains(line, key) {
 				keyLines = append(keyLines, line)
 			}
-			if strings.Contains(line, "$") {
-				sigilLines++
+			if strings.Contains(line, "/") {
+				fragmentLines++
 			}
 		}
 		if len(keyLines) != 1 {
 			t.Fatalf("width %d: %d lines carry the whole %q chord, want 1:\n%s",
 				width, len(keyLines), key, strings.Join(lines, "\n"))
 		}
-		if sigilLines != 1 {
-			t.Errorf("width %d: %d lines carry a $ token, want the chord unsplit on 1:\n%s",
-				width, sigilLines, strings.Join(lines, "\n"))
+		if fragmentLines != 1 {
+			t.Errorf("width %d: %d lines carry a chord fragment, want the chord unsplit on 1:\n%s",
+				width, fragmentLines, strings.Join(lines, "\n"))
 		}
 		if !strings.Contains(keyLines[0], key+"  S") {
 			t.Errorf("width %d: chord line %q does not open the description", width, keyLines[0])

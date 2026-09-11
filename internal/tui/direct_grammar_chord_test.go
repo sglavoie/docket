@@ -73,7 +73,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	got := make(map[string]terminal)
 	gotOrder := make([]string, 0, 10)
 	for _, binding := range strategy.Bindings {
-		if len(binding.Sequence) != 2 || binding.Sequence[0] != "$" {
+		if len(binding.Sequence) != 2 || binding.Sequence[0] != "w" {
 			continue
 		}
 		key := binding.Sequence[1]
@@ -85,12 +85,12 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 			display:   binding.DisplayKey,
 		}
 	}
-	const stateSpelling = "$i/g/w/p/m/d/c"
+	const stateSpelling = "wi/g/w/p/m/d/c"
 	want := map[string]terminal{
 		"i": {operation: operation.OperationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
-		"b": {operation: operation.OperationCoreBacklog, display: "$b"},
-		"n": {operation: operation.OperationCoreNext, display: "$n"},
-		"t": {operation: operation.OperationCoreToday, display: "$t"},
+		"b": {operation: operation.OperationCoreBacklog, display: "wb"},
+		"n": {operation: operation.OperationCoreNext, display: "wn"},
+		"t": {operation: operation.OperationCoreToday, display: "wt"},
 		"g": {operation: operation.OperationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
 		"w": {operation: operation.OperationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
 		"p": {operation: operation.OperationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
@@ -106,7 +106,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	}
 	for key, terminal := range want {
 		if !reflect.DeepEqual(got[key], terminal) {
-			t.Errorf("$%s = %+v, want %+v", key, got[key], terminal)
+			t.Errorf("w%s = %+v, want %+v", key, got[key], terminal)
 		}
 	}
 	for _, binding := range strategy.Bindings {

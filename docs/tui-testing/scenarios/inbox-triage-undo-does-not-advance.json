@@ -7,7 +7,7 @@
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
-    { "type": "key", "label": "open workflow actions", "key": "$" },
+    { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "triage the first task to Backlog", "key": "b" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Backlog: Alpha intake ready for triage · u undo" },
     { "type": "key", "label": "peek at the row the advance landed on", "key": "b" },

@@ -155,7 +155,7 @@ func TestFooterFlashArmsOnViewStatusLine(t *testing.T) {
 func TestSetWarningStatusRecordsWarningSeverity(t *testing.T) {
 	app := flashTestApp(t)
 
-	app.setWarningStatus("$q is not a workflow action")
+	app.setWarningStatus("wq is not a workflow action")
 
 	if app.feedback.severity != flashWarning {
 		t.Fatalf("feedback.severity = %v, want flashWarning", app.feedback.severity)
@@ -315,7 +315,7 @@ func TestStatusBarDividerCarriesFlashAppearanceOnEveryPath(t *testing.T) {
 	app.feedback.message = "task saved"
 	assertDivider("status message")
 
-	app.operations.Chord = []string{"$"}
+	app.operations.Chord = []string{"w"}
 	assertDivider("pending chord")
 	app.operations.Chord = nil
 

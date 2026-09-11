@@ -184,7 +184,7 @@ func TestSearchFacetsGateCandidatesBeforeScoringAndAndWithTheSigils(t *testing.T
 }
 
 // TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo proves terminal admission
-// is one rule read through one accessor: `f$done` reveals completed work with no
+// is one rule read through one accessor: `fw` Done reveals completed work with no
 // `$done` sigil typed because the facets are part of the query, while a
 // nonterminal state facet leaves the default exclusion in place.
 func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
@@ -197,21 +197,21 @@ func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
 	// The facet applies rather than refusing, which is the composition itself.
 	if status := applyFilterForComposition(t, outlinerView,
 		operation.OperationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state(s)" {
-		t.Fatalf("f$done status under search = %q, want the applied facet's own sentence", status)
+		t.Fatalf("fw Done status under search = %q, want the applied facet's own sentence", status)
 	}
 	if !outlinerView.AdmitsTerminalPopulation() {
-		t.Fatal("f$done did not open the terminal population")
+		t.Fatal("fw Done did not open the terminal population")
 	}
 	if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"finished"}) {
-		t.Fatalf("search under f$done = %v, want the completed auth task alone", got)
+		t.Fatalf("search under fw Done = %v, want the completed auth task alone", got)
 	}
 
 	applyFilterForComposition(t, outlinerView, operation.OperationFilterStates, []string{string(models.StateBacklog)})
 	if outlinerView.AdmitsTerminalPopulation() {
-		t.Fatal("f$backlog opened the terminal population")
+		t.Fatal("fw Backlog opened the terminal population")
 	}
 	if got := searchVisibleTaskIDs(outlinerView); slices.Contains(got, "finished") {
-		t.Fatalf("search under f$backlog = %v, want completed work excluded again", got)
+		t.Fatalf("search under fw Backlog = %v, want completed work excluded again", got)
 	}
 }
 

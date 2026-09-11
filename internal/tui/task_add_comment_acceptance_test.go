@@ -441,7 +441,7 @@ func TestAddCommentReachesATerminalTask(t *testing.T) {
 	seatCursorOnTaskTitled(t, view, checklistFixturePlainTitle)
 
 	runChecklistActions(t, driver, []UITestAction{
-		{Type: UITestActionKey, Key: "$"},
+		{Type: UITestActionKey, Key: "w"},
 		{Type: UITestActionKey, Key: "d"},
 		{Type: UITestActionWait},
 		// Recent admits terminal work, so it is where a completed task still has
@@ -454,7 +454,7 @@ func TestAddCommentReachesATerminalTask(t *testing.T) {
 	view = driver.App().crossOutliner
 	seatCursorOnTaskTitled(t, view, checklistFixturePlainTitle)
 	if task := projectedTaskTitled(t, view, checklistFixturePlainTitle); !task.IsInState(models.StateDone) {
-		t.Fatalf("$d left %q in state %q", task.Title, task.State())
+		t.Fatalf("wd left %q in state %q", task.Title, task.State())
 	}
 
 	runChecklistActions(t, driver, []UITestAction{

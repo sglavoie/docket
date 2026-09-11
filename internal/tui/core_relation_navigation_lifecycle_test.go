@@ -214,7 +214,7 @@ func TestMutationsWhileVisitingLeaveTheReturnResolvingAgainstCurrentData(t *test
 		{
 			name: "completion",
 			mutate: func(t *testing.T, env *relationLifecycleEnv) {
-				env.settle(t, "$", "d")
+				env.settle(t, "w", "d")
 			},
 			verify: func(t *testing.T, env *relationLifecycleEnv) {
 				if got := env.task(t, env.targetProjectID, env.targetID).State(); got != models.StateDone {

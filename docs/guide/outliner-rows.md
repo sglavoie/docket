@@ -82,7 +82,7 @@ Waiting rather than from the last time anything touched it, so recording a chase
 in the comments does not reset how long the work has been blocked. If it also
 carries a due date, that date is the check-back, so the row replaces the plain
 date with `check <age>` counting down to chasing it, `check today`, or an
-overdue `check +<age>`. Moving a task to Waiting with `$w` therefore asks for the
+overdue `check +<age>`. Moving a task to Waiting with `ww` therefore asks for the
 check-back date immediately; `Esc` there declines the date and the Waiting move
 still stands.
 

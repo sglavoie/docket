@@ -43,7 +43,7 @@ name; nothing else does, in either presentation.
 | Keys | Effect |
 | --- | --- |
 | `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
-| `f$` | Pick workflow states with OR semantics, including terminal states |
+| `fw` | Pick workflow states with OR semantics, including terminal states; it follows the `w` workflow chord rather than the `$destination` sigil it narrows, and `f$` is retired |
 | `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`; `e` renames or merges the tag under the cursor |
 | `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none; `e` renames or merges the context under the cursor |
@@ -464,7 +464,7 @@ since that list is not the mode's order to begin with.
 
 For intentional cleanup, use `fa` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
-`Space` → Delete. Use `f$` afterwards to narrow to Done or Canceled alone.
+`Space` → Delete. Use `fw` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
 the entire deletion is one undoable transaction.
 

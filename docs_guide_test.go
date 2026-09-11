@@ -26,9 +26,10 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, " +
 			"`D` repeat the cursor task as a new draft, `e` edits whatever the cursor names",
-		"`$` opens the workflow chord",
-		"`$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing",
-		"`$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled",
+		"`w` opens the workflow chord over the ten destinations the `$destination` capture sigil names",
+		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
+		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
+		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin",
 		"`[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, " +
 			"`~` Set Dependencies",
@@ -130,7 +131,9 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"Repeated `##context` names union",
 		"`%slug` inside a query, and the scope a lens saves all answer the",
 		"which projects exist to be looked at at all, archived and parked included",
-		"`f$` | Pick workflow states with OR semantics",
+		"`fw` | Pick workflow states with OR semantics, including terminal states; " +
+			"it follows the `w` workflow chord rather than the `$destination` sigil it narrows, " +
+			"and `f$` is retired",
 		"`f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`",
 		"`fc` | Pick task contexts with OR semantics, since a task carries at most one",
 		"`fa` | Pick completed at least 7, 30, or 90 local-calendar days ago",
@@ -366,9 +369,11 @@ func TestGuideDocumentsRetiredKeyInventory(t *testing.T) {
 			"the list, the write beside the read `;` already opens",
 		"`b` is a sixth: it toggles Peek",
 		"`R` is a seventh: it marks the cursor task reviewed and moves to the next candidate",
-		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
-		"`$` joins them as a chord prefix rather than a key of its own",
-		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",
+		"`d` is unbound: Done stays `wd` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
+		"`w` joins them as a chord prefix rather than a key of its own, and `$` left the keyboard " +
+			"entirely when the workflow chord took that letter: the sigil is still what you type on " +
+			"every mutation surface, but there is no root `$` and no `f$`, and neither is kept as an alias",
+		"`wq is not a workflow action`; pressing a key that was never bound does nothing and says nothing",
 		"`n` no longer creates a project, `A` no longer clears a selection, and bare `g` is the go-to prefix " +
 			"rather than cursor-top, so all three are silent there",
 		"All Notes retired `s`, `r`, `m`, `n`, and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, " +

@@ -413,7 +413,7 @@ func TestResumeNoteKeyReachesEveryStateAndPreservesTheWorkflow(t *testing.T) {
 	// Today is planning rather than lifecycle, so it is the membership a note
 	// most plausibly disturbs.
 	env.focusTask(t, env.doingID)
-	env.press(t, "$", "t")
+	env.press(t, "w", "t")
 	env.driver.Wait(resumeNoteSettleTimeout)
 	if !env.inToday(env.doingID) {
 		t.Fatal("the fixture task never reached Today")
@@ -460,7 +460,7 @@ func TestResumeNoteKeyReachesEveryStateAndPreservesTheWorkflow(t *testing.T) {
 	// the note is the user's to clear, so pausing does not collect one and
 	// starting or finishing does not discard one.
 	env.press(t, "g", "a")
-	for _, transition := range [][]string{{"$", "p"}, {"$", "g"}, {"$", "d"}} {
+	for _, transition := range [][]string{{"w", "p"}, {"w", "g"}, {"w", "d"}} {
 		env.focusTask(t, env.doingID)
 		env.press(t, transition...)
 		env.driver.Wait(resumeNoteSettleTimeout)

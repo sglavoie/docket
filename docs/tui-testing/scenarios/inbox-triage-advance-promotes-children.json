@@ -11,7 +11,7 @@
     { "type": "key", "label": "onto the second project group header", "key": "j" },
     { "type": "key", "label": "onto the nested Inbox parent", "key": "j" },
     { "type": "assert", "label": "the child is still nested under the parent", "assert": "contains", "value": "Beta intake parent awaiting triage" },
-    { "type": "key", "label": "open workflow actions", "key": "$" },
+    { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "triage the nested parent to Backlog", "key": "b" },
     { "type": "assert", "label": "the status names the departing parent", "assert": "status_contains", "value": "Move to Backlog: Beta intake parent awaiting triage · u undo" },
     { "type": "assert", "label": "the surviving child was promoted into the parent's place", "assert": "contains", "value": "[triage-beta] (2)" },

@@ -206,7 +206,7 @@ func (c *Controller) NewFilterCompletionAgePicker(shell Shell,
 	)
 }
 
-// newFilterStatesPicker is the f$ multi-select picker over the canonical
+// newFilterStatesPicker is the fw multi-select picker over the canonical
 // workflow states, seeded from the active state filter facet.
 func (c *Controller) NewFilterStatesPicker(shell Shell,
 	request operation.OperationExecutionRequest,

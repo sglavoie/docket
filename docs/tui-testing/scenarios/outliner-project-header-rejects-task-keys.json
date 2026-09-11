@@ -7,9 +7,9 @@
     { "type": "key", "label": "step onto the Doing project header", "key": "j" },
     { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "the workflow chord has no task here", "key": "$" },
+    { "type": "key", "label": "the workflow chord has no task here", "key": "w" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
-    { "type": "assert", "label": "the footer never offers the chord", "assert": "not_contains", "value": "$ workflow" },
+    { "type": "assert", "label": "the footer never offers the chord", "assert": "not_contains", "value": "w workflow" },
     { "type": "assert", "label": "no which-key row opened", "assert": "not_contains", "value": "b backlog" },
 
     { "type": "key", "key": "!" },

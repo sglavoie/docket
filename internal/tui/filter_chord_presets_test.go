@@ -239,7 +239,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		}
 	})
 
-	t.Run("f$ states", func(t *testing.T) {
+	t.Run("fw states", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		set, err := models.NewWorkflowStateSet(models.StateWaiting)
 		if err != nil {
@@ -248,13 +248,13 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		app.crossOutliner.Filter.SetStateFilter(set)
 		adoptFilterCarriers(app.crossOutliner)
 
-		cmd := pressFilterChord(t, app, "f$")
+		cmd := pressFilterChord(t, app, "fw")
 		if cmd == nil {
-			t.Fatal("f$ produced no value-request command")
+			t.Fatal("fw produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
 		if app.operations.ValuePicker == nil || app.operations.ValuePicker.Provider() != operation.ValueProviderFilterStates {
-			t.Fatalf("f$ did not open the states picker: %#v", app.operations.ValuePicker)
+			t.Fatalf("fw did not open the states picker: %#v", app.operations.ValuePicker)
 		}
 		selected := app.operations.ValuePicker.Surface().SelectedIDs()
 		if len(selected) != 1 || selected[0] != "state:waiting" {

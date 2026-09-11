@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open the filter chord", "key": "f" },
-    { "type": "key", "label": "pick workflow states", "key": "$" },
+    { "type": "key", "label": "pick workflow states", "key": "w" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },

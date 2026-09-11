@@ -112,7 +112,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 
 	// Send the two-key direct chord without draining the prefix timeout between
 	// strokes, matching interactive keyboard timing.
-	if err := driver.SendKey("$"); err != nil {
+	if err := driver.SendKey("w"); err != nil {
 		t.Fatalf("send state prefix: %v", err)
 	}
 	if len(driver.App().operations.Chord) == 0 {

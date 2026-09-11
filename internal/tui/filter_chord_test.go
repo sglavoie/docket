@@ -24,7 +24,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"! priority threshold",
 		"a completion age",
 		"@ due",
-		"$ states",
+		"w states",
 		"# tags",
 		"c contexts",
 		"= review",
@@ -71,7 +71,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"! priority:high+", "$ states:2", "a completed:90d+", "@ ?deferred",
+		"! priority:high+", "w states:2", "a completed:90d+", "@ ?deferred",
 		"# tags:2", "c contexts:2", "= review:on", "h hierarchy:parent", "s stale:on",
 		"x clear:8",
 	} {

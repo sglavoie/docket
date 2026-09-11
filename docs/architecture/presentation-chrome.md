@@ -312,14 +312,14 @@ identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the stored `Review` flag, after
 Doing. Claim order and draw order are different things: the Review lane draws
 after Doing, but claims a row only after Pinned, Today, and Next have taken
-theirs. A deliberate planning commitment outranks a descriptive flag, so `$n` on
+theirs. A deliberate planning commitment outranks a descriptive flag, so `wn` on
 a flagged row visibly moves it into Next rather than appearing to copy it.
 The projection does not change lifecycle or planning. The flag is a boolean on
 the task beside `Pinned`, written by the `=` sigil on all four grammar surfaces,
 toggled on a row by that same character as a root key, and narrowed by the `f=`
 facet. What it still has no key for is being entered as a destination: `$review`
 is rejected — a destination is a singleton and a flagged task keeps its lifecycle
-state — and a `$r` terminal would contradict the parser. `ApplyReview` stores no instant of its own, unlike `ApplyPinned`, whose
+state — and a `wr` terminal would contradict the parser. `ApplyReview` stores no instant of its own, unlike `ApplyPinned`, whose
 `PinnedAt` orders the pinned section; nothing reads when a task was flagged, so
 a timestamp would be a field with no reader.
 

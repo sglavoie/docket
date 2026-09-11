@@ -20,7 +20,7 @@
     { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
     { "type": "assert", "label": "the project the hop left is out of scope", "assert": "not_contains", "value": "Renew passport" },
 
-    { "type": "key", "label": "complete the task the visit landed on", "key": "$" },
+    { "type": "key", "label": "complete the task the visit landed on", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Done" },

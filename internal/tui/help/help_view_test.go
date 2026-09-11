@@ -24,7 +24,7 @@ func newTabbedHelpModel(t *testing.T) *HelpViewModel {
 	t.Helper()
 	m := NewHelpViewModel([]operation.HelpItem{
 		{Key: "j", Description: "Move down", Category: "Navigate"},
-		{Key: "$d", Description: "Complete", Category: "Status"},
+		{Key: "wd", Description: "Complete", Category: "Status"},
 	}, "Outliner")
 	m.SetSize(90, 24)
 	if len(m.categories) < 2 {
