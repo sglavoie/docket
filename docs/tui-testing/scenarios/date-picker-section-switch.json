@@ -1,0 +1,63 @@
+{
+  "name": "date-picker-section-switch",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "Tab is the Outliner's next-mode key before the picker borrows it", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
+
+    { "type": "key", "label": "open the one date picker", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "label": "the picker opens in Due whatever the task defers to", "assert": "contains", "value": "a set due date" },
+    { "type": "assert", "assert": "contains", "value": "Tab switch field" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cross into the defer section", "key": "tab" },
+    { "type": "assert", "label": "the one typed-date key now writes the other field", "assert": "contains", "value": "a set defer date" },
+    { "type": "assert", "label": "switching is not choosing: the picker is still up", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and back again", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "a set due date" },
+
+    { "type": "key", "label": "narrow both sections at once", "key": "/" },
+    { "type": "key", "key": "m" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "h" },
+    { "type": "key", "label": "apply the search", "key": "enter" },
+    { "type": "key", "label": "start from the first surviving row", "key": "home" },
+    { "type": "assert", "assert": "contains", "value": "In one month" },
+    { "type": "assert", "assert": "contains", "value": "For one month" },
+    { "type": "assert", "assert": "contains", "value": "a set due date" },
+    { "type": "key", "label": "the switch lands on a row the search left on screen", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "a set defer date" },
+    { "type": "assert", "label": "the query is the picker's, not the switch's, to clear", "assert": "contains", "value": "month" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the search back to both whole sections", "key": "/" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "label": "narrow to a word only the due section carries", "key": "/" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "d" },
+    { "type": "key", "key": "a" },
+    { "type": "key", "key": "y" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "start from the first surviving row", "key": "home" },
+    { "type": "key", "label": "there is nowhere in Defer to go", "key": "tab" },
+    { "type": "assert", "assert": "status_contains", "value": "No matching Defer values" },
+    { "type": "assert", "label": "a refused switch leaves the cursor where it was", "assert": "contains", "value": "a set due date" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the picker without writing a date", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due or Defer" },
+    { "type": "assert", "label": "Tab never reached the Outliner, so the mode is untouched", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

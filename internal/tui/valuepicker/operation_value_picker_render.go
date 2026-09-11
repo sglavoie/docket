@@ -76,6 +76,16 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		keymap.Bind("esc", "Unwind value picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
+	if model.sectionedDatePicker() {
+		// Crossing between the two fields is navigation rather than an action, so
+		// it is bound here rather than through `add`, which speaks for the Actions
+		// category. The hint is optional, so it can never displace Enter or Esc.
+		km.Entries = append(km.Entries, keymap.Bind(
+			"tab", "Switch between the Due and Defer sections", "Navigation",
+			keymap.WithGate(func() bool { return !searching && count > 0 }),
+			keymap.WithFooter(3, "switch field", false), keymap.WithFooterKey("Tab"),
+		))
+	}
 	add := func(key, description, label string, rank int, gate keymap.Gate) {
 		options := []keymap.BindOption{
 			keymap.WithGate(gate), keymap.WithFooter(rank, label, false),
@@ -104,7 +114,10 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		})
 	}
 	if model.provider.DateEntry() {
-		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
+		// The noun is the active-field guidance: one binding writes whichever field
+		// the cursor's row names, so the hint has to say which one that is now.
+		noun := model.dateEntryNoun()
+		add("a", "Type a specific "+noun, "set "+noun, 4, func() bool { return !searching })
 	}
 	if vocabularyRenameProvider(model.provider) {
 		add("e", "Rename or merge this "+model.vocabularyRenameNoun(), "rename", 5, func() bool {
@@ -182,11 +195,18 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	}
 	explainerBlock := strings.Join(explainers, "\n\n")
 
+	guidance, _ := model.GuidanceSpec()
+	guidanceText := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
+
 	listHeight := min(max(len(model.surface.Rows()), 6), 15)
 	if height > 0 {
-		// Halo, frame, title, search, search/list gap, and footer consume nine
-		// rows. A present explainer adds its own rows plus one separating row.
-		reservedRows := 9
+		// Halo, frame, title, search, and the search/list gap consume eight rows.
+		// The footer is measured rather than assumed to be one, so a picker that
+		// earns a second guidance row — an active field to name beside the keys
+		// that move between them — takes that row out of the list instead of out
+		// of the terminal. A present explainer adds its own rows plus one
+		// separating row.
+		reservedRows := 8 + lipgloss.Height(guidanceText)
 		if explainerBlock != "" {
 			reservedRows += 1 + lipgloss.Height(explainerBlock)
 		}
@@ -213,12 +233,13 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		titleText += ": " + textfit.TruncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
-	guidance, _ := model.GuidanceSpec()
+	// The rendered footer is the one the budget above reserved for, so the two
+	// cannot disagree about how many rows the guidance costs.
 	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
+		guidanceText,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }

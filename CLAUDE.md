@@ -274,7 +274,14 @@ A value provider is exactly one of `TextEntry()` (a separate overlay),
 `TagEntry()` or `DateEntry()` (inline add modes), or a plain list. A value the
 presets cannot express belongs in an inline mode on that picker, never a
 standalone form. `@` is the one date picker over both fields, so the cursor's
-defer section, not a provider method, lets `+Nh` parse.
+defer section, not a provider method, lets `+Nh` parse. That cursor is the
+active field and the only one: read it off the row's own date payload, never a
+second section index. It opens in Due on the due field alone — a preset, else
+Due's Clear row — and opening writes nothing. `Tab` crosses to the other field's
+first match, disabled rows included, since reading a row's field and committing
+it are different questions, and it is consumed on every picker, so a one-section
+picker is inert rather than leaking it. The overlay reserves the guidance it
+rendered, never a fixed row count.
 
 `outlinerCursorRow` marks the cursor row in its first column and trailing fill
 alone, not its content and not the gutter between; only a flash widens it. Each

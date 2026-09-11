@@ -246,11 +246,23 @@ preset names, `dateListItemID` namespaces every row by its field.
 `ValueProviderDueDate` is the due-only projection of the same presets, built
 from the same namespace so one resolver answers either list.
 
+The cursor's row is the active field, and it is the only thing that is. Reading
+which field a row writes and deciding whether that row may be committed are two
+separate questions, answered by two functions in
+`operation_date_picker_sections.go`: `dateRowField` unwraps the row's own
+`OperationDateValue` and reports `Deferred` for any row that carries one, while
+`dateSectionUnderCursor` adds the activation gate and returns
+`ErrListItemDisabled` with the row's stated reason. Navigation and guidance ask
+the first, `a` and Enter the second, which is what lets a terminal task's
+disabled defer rows stay reachable and self-explaining while still refusing to
+be written. No second section index is kept: there is nothing for the cursor to
+drift out of step with.
+
 Narrowing the inline mode is therefore a cursor question rather than a provider
 question, which is why `instantEntry()` cannot be a `ValueProviderID` method:
-`dateSectionUnderCursor` reads the highlighted row, and only a defer row builds
-the adder with `NewInstantDateAdder`, whose `allowsTime` is what makes `+Nh`
-parse there and be refused by name where a calendar day is stored. The same flag
+only a defer row builds the adder with `NewInstantDateAdder`, whose `allowsTime`
+is what makes `+Nh` parse there and be refused by name where a calendar day is
+stored. The same flag
 passes `deferred` to `operationDatePresets`, which is what puts the three hour
 rows and the morning row on the defer section alone. A terminal task carries
 `deferRefusalReason` on its defer rows only, so the existing
@@ -263,6 +275,38 @@ against a value parsed from disk. The morning row names 09:00 in the target
 calendar day's location rather than nine hours after that day's midnight, so it
 stays 09:00 across both daylight-saving transitions instead of drifting to 10:00
 or 08:00.
+
+Which row the combined picker opens on is the due field's business alone.
+`operation_value_picker_factory.go` reads `CommonTaskDate` for due only, and
+`OperationDateSelectedID` maps that to a due preset or, failing one, to
+`DateListItemID(false, "clear")`. The cursor can sit in one section, that
+section is always Due, so deferral agreement can neither move the highlight nor
+withhold it: a selection sharing a deadline but not a hide-until still opens on
+the deadline it shares, and an absent, mixed, or non-preset due date opens on
+Due's Clear row, which is where the list would open anyway. The highlight is a
+starting point, not a selection — opening writes nothing and leaves
+`SelectedIDs` empty.
+
+`Tab` and `Shift+Tab` cross between the sections. `switchDateSection` walks
+`Matches()` for the first row whose `dateRowField` disagrees with the cursor's,
+so the switch lands on a row the current search left on screen, disabled rows
+included. Nothing to land on leaves cursor and query untouched and returns a
+status naming the section through `DateSectionLabel`, the one authority for
+both field names, which the section headers and the `a` hint also spell. The
+browse `switch key` block consumes both keys on every picker, so a picker with
+one section is inert rather than leaking `Tab` down to the Outliner's mode key;
+search editing and the typed-date input claim their keys first, so neither
+switches.
+
+The switch and the active field are ordinary gated `keymap` entries, not a
+second chrome path: `switch field` is an optional Navigation hint at rank 3, and
+`dateEntryNoun` writes `set due date` or `set defer date` into the existing `a`
+hint. Because that can grow the footer, `RenderWithin` renders the guidance
+before budgeting and reserves `8 + lipgloss.Height(guidanceText)` rows rather
+than a fixed nine, so a wrapped footer costs a list row instead of a terminal
+row, and the string it measured is the one it passes to `RenderOverlayBox`.
+`fitRequiredGuidanceSegments` still protects Enter and Esc, so the optional hint
+can only ever be the one dropped.
 
 One operation may chain into a second one by following its committed command with
 an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it

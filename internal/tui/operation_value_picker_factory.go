@@ -104,12 +104,17 @@ func (m *AppModel) newOperationValuePicker(
 			selected,
 		)
 	case operation.ValueProviderDate:
-		selected := []listsurface.ListItemID(nil)
+		// The opening cursor reads the due field and nothing else. The picker
+		// always starts in Due, so agreement about the deferral cannot move it and
+		// must not be able to withhold it either: a selection sharing a due preset
+		// but not a deferral still opens on that preset. A selection that disagrees
+		// about due has no shared value to name, which is the same answer as no due
+		// date at all — Due's Clear row.
 		due, dueShared := valuepicker.CommonTaskDate(refs, false)
-		deferred, deferShared := valuepicker.CommonTaskDate(refs, true)
-		if dueShared && deferShared {
-			selected = valuepicker.OperationDateSelectedID(due, deferred)
+		if !dueShared {
+			due = nil
 		}
+		selected := valuepicker.OperationDateSelectedID(due)
 		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,

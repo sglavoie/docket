@@ -514,7 +514,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// in the next sentence makes `fw` look like the violation to repair, and
 	// repairing it splits one axis across a letter and a sigil. The mechanism lives
 	// in docs/architecture/operation-grammar.md.
-	const budget = 39561
+	// Twenty-second raise, 39561 to 40095, for the combined date picker's two
+	// fields. 534 bytes buy four rules that are silent when guessed wrong. The
+	// first is that the active field is the cursor's row and nothing else: a
+	// section index kept beside the cursor is the obvious implementation and it
+	// drifts, so the guidance names one field while `a` writes the other and
+	// nothing refuses. The second is that the opening highlight reads due alone —
+	// coupling it to deferral agreement reads as symmetry and instead withholds a
+	// highlight the selection does share, since the cursor can only sit in the one
+	// section the picker always opens in. The third is that reading a row's field
+	// and committing it are different questions, which is what keeps a terminal
+	// task's disabled defer rows reachable: fusing them makes `Tab` skip the rows
+	// whose stated reason is the only thing explaining the refusal. The fourth is
+	// that `Tab` is consumed on every picker — a picker with one section that
+	// declines instead leaks the key to the Outliner's mode change under an open
+	// overlay. The measured guidance budget is named with them because it is what
+	// lets the field name grow the footer without eating a terminal row. The
+	// mechanism lives in docs/architecture/operation-grammar.md.
+	const budget = 40095
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

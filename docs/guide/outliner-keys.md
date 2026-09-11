@@ -22,13 +22,26 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
 Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until
 tomorrow, For one week, and For one month. The row you commit decides which
-field is written, and the cursor opens in the due section, so a due date is one
-`Enter` away.
+field is written, and the cursor always opens in the due section, so a due date
+is one `Enter` away. Where in that section it opens is the due date's business
+alone: on the preset the task's own due date names, or — when there is no due
+date, when a selection disagrees about it, or when it is a date no preset
+reproduces — on DUE's own Clear row. A deferral never moves that cursor, so a
+selection sharing a deadline but not a hide-until still opens on the deadline
+they share. Opening the picker writes nothing either way.
+`Tab` and `Shift+Tab` cross to the other section, landing on its first row that
+the current search left on screen; when the search left it none, the cursor and
+the query stay put and the status says which section could not be reached. The
+footer names the field you are in — `a set due date` or `a set defer date` —
+which is the field `a` types into and the one `Enter` commits.
 Tomorrow morning is 09:00 on the local wall clock, on daylight-saving transition
 days too. A preset is highlighted as the current value only when it is
 reproducible from the clock alone, so the three hour rows never highlight. On a
 terminal task the defer rows are disabled and say so rather than disappearing,
-and the due rows stay reachable beside them.
+and the due rows stay reachable beside them; `Tab` still crosses onto those
+disabled rows, which is how their reason gets read, and they keep refusing `a`
+and `Enter`. The Waiting check-back picker asks for a deadline alone, so it has
+one section and no switch.
 
 Inside the `@` picker, `a` opens a typed-date input for any date the relative
 presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`, `next mon`,

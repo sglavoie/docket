@@ -1,7 +1,6 @@
 package valuepicker
 
 import (
-	"fmt"
 	"time"
 	"unicode/utf8"
 
@@ -101,24 +100,6 @@ func NewOperationValuePickerModel(
 		model.dateAdder = chrome.NewDateAdder()
 	}
 	return model, nil
-}
-
-// dateSectionUnderCursor reports whether the cursor sits on a defer row, and
-// refuses when that row is disabled so the inline mode cannot type past a
-// refusal the preset rows already carry.
-func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
-	item, ok := model.surface.CurrentItem()
-	if !ok {
-		return false, listsurface.ErrListItemNotFound
-	}
-	if !item.Enabled() {
-		return false, fmt.Errorf("%w: %s", listsurface.ErrListItemDisabled, item.DisabledReason)
-	}
-	value, ok := item.Data.(operation.OperationDateValue)
-	if !ok {
-		return false, listsurface.ErrListItemNotFound
-	}
-	return value.Deferred, nil
 }
 
 //nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.
@@ -222,6 +203,14 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		model.surface.MoveCursor(-1)
 	case "down", "j", "ctrl+n":
 		model.surface.MoveCursor(1)
+	case "tab", "shift+tab":
+		// The two sections are a pair, so there is only one other field to reach
+		// and both directions name it. The key is consumed either way: a picker
+		// this does not apply to must not leak Tab back to the surface underneath,
+		// where it would change the Outliner's mode out from under the overlay.
+		if model.sectionedDatePicker() {
+			return nil, false, model.switchDateSection()
+		}
 	case "home", "g":
 		model.surface.MoveCursorToStart()
 	case "end", "G":

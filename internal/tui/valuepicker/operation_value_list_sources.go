@@ -109,6 +109,17 @@ func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, di
 	return items
 }
 
+// DateSectionLabel names one of the two fields. The section headers, the
+// active-field guidance, and the refusal a section switch reports all spell the
+// field through this one function, so no surface can invent a second name for
+// it.
+func DateSectionLabel(deferred bool) string {
+	if deferred {
+		return "Defer"
+	}
+	return "Due"
+}
+
 // OperationDateListSource is the one picker `@` opens. Due rows come first
 // because a deadline is the commoner answer, and deferReason disables the whole
 // defer section when a resolved task cannot be deferred, which leaves due
@@ -119,8 +130,8 @@ func OperationDateListSource(deferReason string) listsurface.ListSource {
 	return listsurface.ListSource{
 		Items: items,
 		Categories: []listsurface.ListCategory{
-			{ID: dateListCategoryDue, Label: "Due"},
-			{ID: dateListCategoryDefer, Label: "Defer"},
+			{ID: dateListCategoryDue, Label: DateSectionLabel(false)},
+			{ID: dateListCategoryDefer, Label: DateSectionLabel(true)},
 		},
 	}
 }
@@ -269,15 +280,15 @@ func DueDateSelectedID(date *time.Time) []listsurface.ListItemID {
 	return RelativeDateSelectedID(date, false)
 }
 
-// OperationDateSelectedID highlights the row the task's own values name. Due
-// wins when both fields are set, because the cursor can only sit in one section
-// and the due section is the one the list opens on.
-func OperationDateSelectedID(due, deferred *time.Time) []listsurface.ListItemID {
-	if due != nil {
-		return RelativeDateSelectedID(due, false)
-	}
-	if deferred != nil {
-		return RelativeDateSelectedID(deferred, true)
+// OperationDateSelectedID highlights the row the combined picker opens on. The
+// due field alone decides it: the cursor can only sit in one section, that
+// section is always Due, and a stored deferral is therefore never what draws it
+// somewhere else. A due date no preset reproduces names no row, so the cursor
+// falls to Due's Clear row, which is where the list opens anyway — the highlight
+// is a starting point, not a selection, and opening the picker writes nothing.
+func OperationDateSelectedID(due *time.Time) []listsurface.ListItemID {
+	if selected := DueDateSelectedID(due); len(selected) > 0 {
+		return selected
 	}
 	return []listsurface.ListItemID{DateListItemID(false, "clear")}
 }
