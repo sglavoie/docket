@@ -24,12 +24,18 @@ const (
 	TaskOperationSetState             TaskOperation = "set_state"
 	TaskOperationSetPriority          TaskOperation = "set_priority"
 	TaskOperationSetDueDate           TaskOperation = "set_due_date"
-	TaskOperationSetDefer             TaskOperation = "set_defer"
-	TaskOperationSetTags              TaskOperation = "set_tags"
-	TaskOperationToggleTag            TaskOperation = "toggle_tag"
-	TaskOperationSetPinned            TaskOperation = "set_pinned"
-	TaskOperationToggleReview         TaskOperation = "toggle_review"
-	TaskOperationSetDependencies      TaskOperation = "set_dependencies"
+	// TaskOperationStepDueDate walks every target's deadline one calendar place
+	// along the deadline sequence. It is not a spelling of SetDueDate: one step
+	// resolves a different destination per target — a date, today with its Today
+	// planning, or no deadline at all — so it owns its own single-snapshot
+	// calculation and reports what each target's deadline actually became.
+	TaskOperationStepDueDate     TaskOperation = "step_due_date"
+	TaskOperationSetDefer        TaskOperation = "set_defer"
+	TaskOperationSetTags         TaskOperation = "set_tags"
+	TaskOperationToggleTag       TaskOperation = "toggle_tag"
+	TaskOperationSetPinned       TaskOperation = "set_pinned"
+	TaskOperationToggleReview    TaskOperation = "toggle_review"
+	TaskOperationSetDependencies TaskOperation = "set_dependencies"
 	// TaskOperationRenameTaskName renames or merges one tag or context across the
 	// whole workspace. It is the one operation here that carries no targets: its
 	// scope is every unarchived project, resolved by a strict census rather than
@@ -52,7 +58,11 @@ type TaskOperationRequest struct {
 	// planning intent in the same transaction. Interactive TUI due-date gestures
 	// set it only when Date is today's calendar date.
 	PlanForToday bool
-	Tags         []string
+	// DueStep carries the deadline-stepping intent of TaskOperationStepDueDate.
+	// Its zero value names no direction, so every other operation leaves it alone
+	// and a step request that forgot to set one is refused rather than defaulted.
+	DueStep DueStepRequest
+	Tags    []string
 	// TagPatch switches SetTags from replacement semantics to the tri-state
 	// bulk editor's add/remove patch. Membership for tags in neither set is
 	// retained independently on every target.
@@ -95,6 +105,11 @@ type TaskOperationResult struct {
 	TouchedProjectIDs []string
 	TransactionID     string
 	Clipboard         *TaskClipboardProjection
+	// DueSteps is populated by TaskOperationStepDueDate alone, one entry per
+	// resolved target in resolution order. It is committed evidence: a caller
+	// updates its own remembered state from the deadlines this transaction
+	// replaced and wrote, never by re-reading a row the commit may have moved.
+	DueSteps []DueStepOutcome
 }
 
 // ExecuteTaskOperation is the one application path for daily Outliner task
@@ -169,6 +184,9 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 			result, err = s.BulkSetDueDate(req.Targets, *req.Date)
 		}
 		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationStepDueDate:
+		return s.stepDueDates(req.Targets, req.DueStep)
 
 	case TaskOperationSetDefer:
 		result, err := s.BulkDefer(req.Targets, req.Date)

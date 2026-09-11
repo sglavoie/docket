@@ -65,3 +65,23 @@ func awaitTaskCommitBarrier(ref TaskRef, expectedRevision, undoAction string) {
 func awaitProjectCommitBarrier(projectID, expectedRevision, undoAction string) {
 	awaitCommitBarrier(projectID, "", expectedRevision, undoAction)
 }
+
+// awaitBulkCommitBarrier is the multi-target spelling, for a mutation that
+// resolved a whole selection against one snapshot and is about to commit every
+// project it touched as one transaction. It names each resolved target in turn,
+// guarded by that target's own project revision, because an installed barrier
+// filters on project and task: a multi-project request must be able to say which
+// document it is holding, and a single seam naming only the first one would let
+// the second project's guard slip past unobserved. The nil check is kept here so
+// ordinary execution walks no selection at all.
+func awaitBulkCommitBarrier(refs []TaskRef, snap Snapshot, undoAction string) {
+	if CommitBarrier == nil || snap == nil {
+		return
+	}
+	for _, ref := range refs {
+		if ref.Project == nil {
+			continue
+		}
+		awaitTaskCommitBarrier(ref, snap.Revision(ref.Project.ID), undoAction)
+	}
+}
