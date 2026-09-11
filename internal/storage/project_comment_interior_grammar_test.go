@@ -137,7 +137,7 @@ func TestProjectCommentInteriorGrammarIsStrict(t *testing.T) {
 
 	// The control: every marker above, written as ordinary comment text through
 	// the canonical writer, survives both readers exactly — including the
-	// neighbours it sits between, which is what proves nothing was absorbed.
+	// neighbors it sits between, which is what proves nothing was absorbed.
 	t.Run("escaped_literals", func(t *testing.T) {
 		hostile := strings.Join([]string{
 			format.ProjectCommentsStartLine,

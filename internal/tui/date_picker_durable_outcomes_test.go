@@ -158,10 +158,11 @@ func newFrozenSelectionDateEnv(
 }
 
 // reopen replaces the spent picker with one built over the tasks as they now
-// stand, which is what the shell does between two operations.
-func (e *durableDatePickerEnv) reopen(t *testing.T, provider operation.ValueProviderID) {
+// stand, so a second keystroke in one test reads the durable state the first
+// one left.
+func (e *durableDatePickerEnv) reopen(t *testing.T) {
 	t.Helper()
-	e.picker = reopenDatePicker(t, e.datePickerShortcutEnv, provider)
+	e.picker = reopenDatePicker(t, e.datePickerShortcutEnv)
 }
 
 // storedTask reads one target back out of its own project's tasks.md.
@@ -174,17 +175,19 @@ func (e *durableDatePickerEnv) storedTask(t *testing.T, index int) *models.Task 
 	return stored
 }
 
-// plannedToday reports whether the durable planning domain still names one
-// target in Today, project-qualified the way the collection stores it.
-func (e *durableDatePickerEnv) plannedToday(t *testing.T, index int) bool {
+// plannedToday reports whether the durable planning domain still names the
+// first target in Today, project-qualified the way the collection stores it.
+// Today membership is what a single keystroke writes or gives up, so the
+// question is always asked about the one task that keystroke was aimed at.
+func (e *durableDatePickerEnv) plannedToday(t *testing.T) bool {
 	t.Helper()
 	planning, err := e.env.mgr.DomainCoordinator().LoadPlanning()
 	if err != nil {
 		t.Fatalf("load planning: %v", err)
 	}
-	project := e.env.projects[e.owners[index]]
+	project := e.env.projects[e.owners[0]]
 	for _, item := range planning.GetToday() {
-		if item.TaskID == e.tasks[index].ID && item.ProjectID == project.ID {
+		if item.TaskID == e.tasks[0].ID && item.ProjectID == project.ID {
 			return true
 		}
 	}
@@ -236,7 +239,7 @@ func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testin
 	if stored.DueDate == nil || !stored.DueDate.Equal(today) {
 		t.Fatalf("`t` stored due date %v, want today %s", stored.DueDate, today)
 	}
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("`t` set a deadline for today without planning the task for today")
 	}
 
@@ -244,7 +247,7 @@ func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testin
 	if stored := env.storedTask(t, 0); stored.DueDate != nil {
 		t.Fatalf("undo left the due date %s standing", stored.DueDate)
 	}
-	if env.plannedToday(t, 0) {
+	if env.plannedToday(t) {
 		t.Fatal("undo took the due date back and left the Today membership behind")
 	}
 
@@ -252,7 +255,7 @@ func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testin
 	if stored := env.storedTask(t, 0); stored.DueDate == nil || !stored.DueDate.Equal(today) {
 		t.Fatalf("redo restored due date %v, want today %s", stored.DueDate, today)
 	}
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("redo restored the due date without the Today membership it was committed with")
 	}
 }
@@ -267,11 +270,11 @@ func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {
 	env := newDurableDatePickerEnv(t, operation.ValueProviderDate, []*models.Task{task})
 
 	env.press(t, "t")
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("setup did not plan the task for today")
 	}
 
-	env.reopen(t, operation.ValueProviderDate)
+	env.reopen(t)
 	env.crossField(t, false)
 	env.press(t, "m")
 
@@ -285,7 +288,7 @@ func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {
 	if got := stored.State(); got != models.StateBacklog {
 		t.Fatalf("deferred task is %s, want the deferral's Backlog", got)
 	}
-	if env.plannedToday(t, 0) {
+	if env.plannedToday(t) {
 		t.Fatal("a task hidden until tomorrow is still planned for today")
 	}
 
@@ -295,7 +298,7 @@ func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {
 	if stored.DeferredUntil != nil {
 		t.Fatalf("undo left the deferral %s standing", stored.DeferredUntil)
 	}
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("undo took the deferral back without restoring the Today membership it removed")
 	}
 }
@@ -307,19 +310,19 @@ func TestClearingADueDateLeavesTheTodayMembershipStanding(t *testing.T) {
 		t, operation.ValueProviderDate, []*models.Task{newBulkPickerTestTask(t, 1, "planned and undated")},
 	)
 	env.press(t, "t")
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("setup did not plan the task for today")
 	}
 	before := env.storedTask(t, 0).State()
 
-	env.reopen(t, operation.ValueProviderDate)
+	env.reopen(t)
 	env.press(t, "0")
 
 	stored := env.storedTask(t, 0)
 	if stored.DueDate != nil {
 		t.Fatalf("`0` in the due field left due date %s standing", stored.DueDate)
 	}
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("clearing the deadline also unplanned the task, which is a second axis")
 	}
 	if got := stored.State(); got != before {
@@ -341,7 +344,7 @@ func TestClearingADeferralPreservesTheLifecycleTheDeferralLeft(t *testing.T) {
 		t.Fatalf("setup deferral = %v in %s, want a deferral in Backlog", stored.DeferredUntil, stored.State())
 	}
 
-	env.reopen(t, operation.ValueProviderDate)
+	env.reopen(t)
 	env.crossField(t, false)
 	env.press(t, "0")
 
@@ -352,14 +355,14 @@ func TestClearingADeferralPreservesTheLifecycleTheDeferralLeft(t *testing.T) {
 	if got := stored.State(); got != models.StateBacklog {
 		t.Fatalf("clearing the deferral moved the task to %s, want the Backlog it was left in", got)
 	}
-	if env.plannedToday(t, 0) {
+	if env.plannedToday(t) {
 		t.Fatal("clearing a deferral planned the task for today")
 	}
 
 	// A revealed task is plannable again, which is the point of clearing.
-	env.reopen(t, operation.ValueProviderDate)
+	env.reopen(t)
 	env.press(t, "t")
-	if !env.plannedToday(t, 0) {
+	if !env.plannedToday(t) {
 		t.Fatal("a task whose deferral was cleared cannot be planned for today")
 	}
 }
@@ -457,7 +460,7 @@ func TestACrossProjectPresetKeyCommitsTheFrozenSelectionAfterTheCursorMoves(t *t
 	week := util.StartOfDay(time.Now()).AddDate(0, 0, 7)
 	first := newBulkPickerTestTask(t, 1, "first project")
 	second := newBulkPickerTestTask(t, 1, "second project")
-	bystander := newBulkPickerTestTask(t, 2, "unselected neighbour")
+	bystander := newBulkPickerTestTask(t, 2, "unselected neighbor")
 	// The selection is the first two seeded tasks, one per project; the bystander
 	// shares the second project and is only ever under the cursor.
 	env, view := newFrozenSelectionDateEnv(

@@ -202,7 +202,7 @@ func TestTheClearShortcutReachesOnlyTheFieldUnderTheCursor(t *testing.T) {
 	clearDue := newDatePickerShortcutEnv(t, operation.ValueProviderDate)
 	clearDue.press(t, "m")
 
-	clearDue.picker = reopenDatePicker(t, clearDue, operation.ValueProviderDate)
+	clearDue.picker = reopenDatePicker(t, clearDue)
 	if _, _, result := clearDue.picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyTab}); result != nil {
 		t.Fatalf("tab into the defer field = %#v", result)
 	}
@@ -213,7 +213,7 @@ func TestTheClearShortcutReachesOnlyTheFieldUnderTheCursor(t *testing.T) {
 	}
 	deferral := *stored.DeferredUntil
 
-	clearDue.picker = reopenDatePicker(t, clearDue, operation.ValueProviderDate)
+	clearDue.picker = reopenDatePicker(t, clearDue)
 	clearDue.press(t, "0")
 	stored = clearDue.stored(t)
 	if stored.DueDate != nil {
@@ -223,7 +223,7 @@ func TestTheClearShortcutReachesOnlyTheFieldUnderTheCursor(t *testing.T) {
 		t.Fatalf("`0` in the due field moved the deferral to %v, want %s", stored.DeferredUntil, deferral)
 	}
 
-	clearDue.picker = reopenDatePicker(t, clearDue, operation.ValueProviderDate)
+	clearDue.picker = reopenDatePicker(t, clearDue)
 	if _, _, result := clearDue.picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyTab}); result != nil {
 		t.Fatalf("tab into the defer field = %#v", result)
 	}
@@ -235,17 +235,18 @@ func TestTheClearShortcutReachesOnlyTheFieldUnderTheCursor(t *testing.T) {
 
 // A committed picker is spent, so the next key needs a fresh one over the task
 // as it now stands — which is also what the shell does between two operations.
+// It reopens the combined picker specifically: the due-only projection is a
+// chained step the executor opens for itself, never one a test reopens by hand.
 func reopenDatePicker(
 	t *testing.T,
 	env *datePickerShortcutEnv,
-	provider operation.ValueProviderID,
 ) *valuepicker.OperationValuePickerModel {
 	t.Helper()
 	request := env.picker.ExecutionRequest()
 	picker, err := env.model.newOperationValuePicker(operation.OperationExecutionRequest{
 		ID:      request.ID,
 		Context: request.Context,
-	}, provider)
+	}, operation.ValueProviderDate)
 	if err != nil {
 		t.Fatalf("reopening the picker: %v", err)
 	}

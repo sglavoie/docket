@@ -17,7 +17,7 @@ import (
 )
 
 // dateValueFrom unwraps the payload a committed picker emits, asserting on the
-// way that the frozen execution request travelled untouched.
+// way that the frozen execution request traveled untouched.
 func dateValueFrom(t *testing.T, result tea.Msg) operation.OperationDateValue {
 	t.Helper()
 	selected, ok := result.(operation.OperationValueSelectedMsg)
