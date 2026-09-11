@@ -7,10 +7,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 	"github.com/sglavoie/tt/internal/util"
@@ -60,6 +62,41 @@ func newDatePickerShortcutEnv(t *testing.T, provider operation.ValueProviderID) 
 // through the executor the shell would hand the message to.
 func (e *datePickerShortcutEnv) press(t *testing.T, key string) {
 	t.Helper()
+	e.pressBatch(t, key)
+}
+
+// pressBatch is press for the callers that need the committed batch itself.
+// Which projects one keystroke touched is the only evidence that a selection
+// spanning two of them was committed as one transaction.
+func (e *datePickerShortcutEnv) pressBatch(
+	t *testing.T,
+	key string,
+) coordinator.BatchTransactionResultMsg {
+	t.Helper()
+	return runBatchResult(t, e.selectCmd(t, key))
+}
+
+// pressRefusal is press for the keys the application layer must refuse. It
+// returns the refusal so a caller can hold it to naming the reason, and it
+// fails the test if the transaction committed instead.
+func (e *datePickerShortcutEnv) pressRefusal(t *testing.T, key string) error {
+	t.Helper()
+	msg := e.selectCmd(t, key)()
+	failure, ok := msg.(coordinator.TransactionErrorMsg)
+	if !ok {
+		t.Fatalf("%q committed instead of refusing: %#v", key, msg)
+	}
+	if failure.Err == nil {
+		t.Fatalf("%q refused with no error", key)
+	}
+	return failure.Err
+}
+
+// selectCmd presses one key, requires the picker to answer with a value, and
+// resumes the frozen request through the one invocation pipeline. The returned
+// command is the transaction: nothing is written until it runs.
+func (e *datePickerShortcutEnv) selectCmd(t *testing.T, key string) tea.Cmd {
+	t.Helper()
 	_, dismissed, result := e.picker.HandleKey(tea.KeyPressMsg{Code: rune(key[0]), Text: key})
 	if !dismissed {
 		t.Fatalf("%q left the picker open: %#v", key, result)
@@ -79,7 +116,36 @@ func (e *datePickerShortcutEnv) press(t *testing.T, key string) {
 	if !ok {
 		t.Fatalf("%q produced %T, want an OperationCommandResultMsg", key, outcome.Message)
 	}
-	runBatchResult(t, command.Cmd)
+	return command.Cmd
+}
+
+// pressRefusedRow presses a key whose row the picker itself refuses. The
+// refusal is the picker's own status and the picker stays open, so no request
+// reaches the executor and there is nothing to roll back.
+func (e *datePickerShortcutEnv) pressRefusedRow(t *testing.T, key string) string {
+	t.Helper()
+	_, dismissed, result := e.picker.HandleKey(tea.KeyPressMsg{Code: rune(key[0]), Text: key})
+	if dismissed {
+		t.Fatalf("%q closed the picker instead of refusing: %#v", key, result)
+	}
+	message, ok := result.(status.StatusMsg)
+	if !ok {
+		t.Fatalf("%q answered with %#v, want a refusal status", key, result)
+	}
+	return string(message)
+}
+
+// crossField moves to the other date field. Crossing is a move rather than a
+// choice, so the picker stays open and nothing is committed.
+func (e *datePickerShortcutEnv) crossField(t *testing.T, shift bool) {
+	t.Helper()
+	msg := tea.KeyPressMsg{Code: tea.KeyTab}
+	if shift {
+		msg.Mod = tea.ModShift
+	}
+	if _, dismissed, result := e.picker.HandleKey(msg); dismissed || result != nil {
+		t.Fatalf("crossing fields dismissed=%v result=%#v", dismissed, result)
+	}
 }
 
 func (e *datePickerShortcutEnv) stored(t *testing.T) *models.Task {

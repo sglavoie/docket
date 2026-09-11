@@ -131,3 +131,10 @@ func (e *appBulkPickerEnv) undo(t *testing.T) {
 		t.Fatalf("ledger undo: %v", err)
 	}
 }
+
+func (e *appBulkPickerEnv) redo(t *testing.T) {
+	t.Helper()
+	if _, err := e.ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("ledger redo: %v", err)
+	}
+}
