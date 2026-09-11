@@ -8,9 +8,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// RenderScrollbar returns a viewportHeight-line string of ░/█ characters
-// representing the scroll position. Returns "" when content fits (no scroll
-// needed). Thumb height is proportional (viewportHeight²/totalItems, min 1).
+// RenderScrollbar returns a viewportHeight-line string of ▐ characters, with
+// thumb and track colors filling the right half of each cell. Returns "" when
+// content fits (no scroll needed). Thumb height is proportional
+// (viewportHeight²/totalItems, min 1).
 // Thumb position maps scrollOffset linearly to the track range.
 func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 	if totalItems <= viewportHeight || viewportHeight <= 0 {
@@ -37,9 +38,9 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 			b.WriteByte('\n')
 		}
 		if i >= thumbTop && i < thumbTop+thumbHeight {
-			b.WriteString(theme.ScrollbarThumbStyle.Render("█"))
+			b.WriteString(theme.ScrollbarThumbStyle.Render("▐"))
 		} else {
-			b.WriteString(theme.ScrollbarTrackStyle.Render("░"))
+			b.WriteString(theme.ScrollbarTrackStyle.Render("▐"))
 		}
 	}
 	return b.String()

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestRenderScrollbar_ContentFits(t *testing.T) {
@@ -44,7 +45,7 @@ func TestRenderScrollbar_MinThumbSize(t *testing.T) {
 
 	thumbCount := 0
 	for _, line := range lines {
-		if strings.Contains(line, "█") {
+		if line == theme.ScrollbarThumbStyle.Render("▐") {
 			thumbCount++
 		}
 	}
@@ -57,7 +58,7 @@ func TestRenderScrollbar_ThumbAtTop(t *testing.T) {
 	result := RenderScrollbar(20, 10, 0)
 	lines := strings.Split(result, "\n")
 	// First line should be thumb (at top position)
-	if !strings.Contains(lines[0], "█") {
+	if lines[0] != theme.ScrollbarThumbStyle.Render("▐") {
 		t.Errorf("expected thumb at top when scrollOffset=0, first line: %q", lines[0])
 	}
 }
@@ -66,7 +67,7 @@ func TestRenderScrollbar_ThumbAtBottom(t *testing.T) {
 	result := RenderScrollbar(20, 10, 10) // scrollOffset = totalItems - viewportHeight
 	lines := strings.Split(result, "\n")
 	// Last line should be thumb
-	if !strings.Contains(lines[len(lines)-1], "█") {
+	if lines[len(lines)-1] != theme.ScrollbarThumbStyle.Render("▐") {
 		t.Errorf("expected thumb at bottom when at max scroll, last line: %q", lines[len(lines)-1])
 	}
 }
@@ -79,7 +80,7 @@ func TestRenderScrollbar_ThumbInMiddle(t *testing.T) {
 	firstThumb := -1
 	lastThumb := -1
 	for i, line := range lines {
-		if strings.Contains(line, "█") {
+		if line == theme.ScrollbarThumbStyle.Render("▐") {
 			if firstThumb == -1 {
 				firstThumb = i
 			}
@@ -99,7 +100,7 @@ func TestRenderScrollbar_ViewportOne(t *testing.T) {
 	if len(lines) != 1 {
 		t.Errorf("expected 1 line for viewport=1, got %d", len(lines))
 	}
-	if !strings.Contains(lines[0], "█") {
+	if lines[0] != theme.ScrollbarThumbStyle.Render("▐") {
 		t.Errorf("expected thumb on the single line")
 	}
 }
