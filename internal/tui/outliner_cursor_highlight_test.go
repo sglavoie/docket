@@ -327,7 +327,7 @@ func TestCursorFlashWidensTheMark(t *testing.T) {
 	if !strings.Contains(line, backgroundParams(t, theme.ColorFlashDimBg)) {
 		t.Fatalf("flashing cursor row kept the resting trailing fill:\n%q", line)
 	}
-	if strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
+	if theme.ColorCursorBarBg != theme.ColorFlashBg && strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
 		t.Fatalf("flashing cursor row painted the resting bar color too:\n%q", line)
 	}
 	if strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {

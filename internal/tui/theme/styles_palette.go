@@ -35,10 +35,10 @@ var (
 	ColorViewSomeday     = lipgloss.Color("#9d7cd8")
 	ColorSelectedFg      = lipgloss.Color("#c0caf5")
 	ColorSelectedTextFg  = lipgloss.Color("#c0caf5") // dark-theme default; set by ApplyTheme
-	ColorCursorBarBg     = lipgloss.Color("#e0e3eb") // derived: lightenHex("#33467c", 0.85)
+	ColorCursorBarBg     = lipgloss.Color("#ffffff") // derived: lightenHex("#33467c", 1.0)
 	ColorCursorBarFg     = lipgloss.Color("#000000") // the dark theme's own paper
 	ColorFlashBg         = lipgloss.Color("#ffffff") // derived: lightenHex("#33467c", 1.0)
-	ColorSelectedDimBg   = lipgloss.Color("#0b0e19") // derived: darkenHex("#33467c", 0.8)
+	ColorSelectedDimBg   = lipgloss.Color("#000000") // pure black resting cursor trail
 	ColorFlashDimBg      = lipgloss.Color("#333333") // derived: darkenHex("#ffffff", 0.8)
 	ColorLightGray       = lipgloss.Color("#8f98c7")
 	ColorSubtleBorder    = lipgloss.Color("#565f89")

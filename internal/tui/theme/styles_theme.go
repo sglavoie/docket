@@ -19,10 +19,10 @@ const zebraBackgroundDarkenFactor = 0.08
 // Darkening keeps a color's chroma, so a light theme reads a moderate step as a
 // distinct dark block; lightening washes chroma out, so the same step on a dark
 // theme lands on a mid gray that a row full of colored titles and badges already
-// out-shouts. A dark bar therefore goes most of the way to white, which is what
+// out-shouts. A dark bar therefore goes all the way to white, which is what
 // makes it the brightest thing on the row rather than one more bright thing.
 const (
-	cursorBarDarkFactor  = 0.85
+	cursorBarDarkFactor  = 1.0
 	cursorBarLightFactor = 0.55
 
 	// A flash is the same mark spent wider rather than recolored, so its color
@@ -114,6 +114,8 @@ func ApplyTheme(tc ThemeConfig) {
 	if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
 	} else {
+		// The resting dark cursor trail is pure black; the flash keeps its tint.
+		ColorSelectedDimBg = lipgloss.Color("#000000")
 		ColorSelectedTextFg = lipgloss.Color("#c0caf5")
 	}
 
