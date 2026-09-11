@@ -40,7 +40,7 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 		want int
 	}{
 		{key: "t", want: cursor},
-		{key: "z", want: cursor - windowMiddleIndex(height)},
+		{key: "z", want: cursor - (height-1)/2},
 		{key: "b", want: cursor - height + 1},
 	} {
 		out.Cursor = cursor

@@ -21,6 +21,7 @@ type GuidanceHint struct {
 	Label    string
 	Priority int
 	Required bool
+	Dimmed   bool // The action currently has no effect; it remains discoverable.
 }
 
 // GuidanceSpec describes the persistent controls for one interaction state.
@@ -161,6 +162,7 @@ type guidanceSegment struct {
 	Key      string
 	Label    string
 	Verbatim string
+	Dimmed   bool
 }
 
 func (segment guidanceSegment) text() string {
@@ -182,9 +184,9 @@ func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
 	key := strings.TrimSpace(segment.Key)
 	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
 		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
-		return guidanceSegment{Key: key, Label: label}
+		return guidanceSegment{Key: key, Label: label, Dimmed: segment.Dimmed}
 	}
-	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
+	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width), Dimmed: segment.Dimmed}
 }
 
 func guidanceLineText(segments []guidanceSegment) string {
@@ -231,7 +233,7 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	candidates := make([]candidate, 0, len(spec.Hints))
 	selected := make(map[int]bool, len(spec.Hints))
 	for index, hint := range spec.Hints {
-		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
+		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label), Dimmed: hint.Dimmed}
 		if segment.text() == "" {
 			continue
 		}
@@ -343,6 +345,9 @@ func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) []
 // renderGuidanceSegment colors the keystroke apart from its action so the key
 // carries the scan weight. Supplemental state text names no key and stays muted.
 func renderGuidanceSegment(segment guidanceSegment) string {
+	if segment.Dimmed {
+		return theme.DimStyle.Render(segment.text())
+	}
 	if segment.Verbatim != "" {
 		return theme.HelpStyle.Render(segment.Verbatim)
 	}

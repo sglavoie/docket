@@ -179,7 +179,7 @@ func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 		operation.InputStrategySimplified,
 		m.operations.Chord,
 		ctx,
-		m.crossOutliner.DecoratePendingChordHint,
+		m.crossOutliner.PendingChordHintDecorator(ctx),
 	)
 	if len(hints) == 0 {
 		return chrome.GuidanceSpec{}, false
@@ -197,6 +197,7 @@ func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome
 			Key:      hint.Key,
 			Label:    hint.Label,
 			Priority: index + 1,
+			Dimmed:   hint.Dimmed,
 		})
 	}
 	spec.Hints = append(spec.Hints, chrome.GuidanceHint{

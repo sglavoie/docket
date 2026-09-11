@@ -81,6 +81,12 @@ chords may use two. Required commit and cancellation controls survive before
 optional hints. Transient pickers and action sheets own their local guidance
 while leaving the host title and workspace pulse visible.
 
+Pending chord hints dim both the key and label when an action would currently
+do nothing or be refused: for example, conflicts when none are outstanding,
+an already-selected mode or priority, an unavailable workflow transition, or
+clearing empty filters or sort settings. Emphasis is recomputed on every render;
+dimmed shortcuts remain usable. Toggles and Recent's refresh stay prominent.
+
 The Outliner's own feedback — a focus notice, or a line such as
 `Latest activity: …` — renders in a status strip pinned directly above the
 footer, introduced by a dim thin divider. The strip never floats mid-screen on a

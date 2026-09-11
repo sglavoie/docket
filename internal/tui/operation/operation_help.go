@@ -204,8 +204,9 @@ func DisplayKeysForOperation(strategy InputStrategy, operationID OperationID) st
 
 // ChordHint is one which-key entry: the single next key and what it does.
 type ChordHint struct {
-	Key   string
-	Label string
+	Key    string
+	Label  string
+	Dimmed bool
 }
 
 // ChordHintsForPrefix returns the which-key entries for a pending chord prefix
@@ -225,7 +226,7 @@ type ChordHintDecorator func(path []string, hint ChordHint) ChordHint
 
 // DecoratedChordHintsForPrefix is the state-aware form of
 // ChordHintsForPrefix. The registry still decides which entries exist; the
-// caller may only decorate the projected label with effective runtime state.
+// caller may decorate the projected label and emphasis with runtime state.
 func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 	id InputStrategyID,
 	prefix []string,

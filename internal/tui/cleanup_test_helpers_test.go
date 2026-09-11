@@ -25,7 +25,7 @@ func pendingChordHintRowForTest(m *AppModel) string {
 		operation.InputStrategySimplified,
 		m.operations.Chord,
 		ctx,
-		m.crossOutliner.DecoratePendingChordHint,
+		m.crossOutliner.PendingChordHintDecorator(ctx),
 	)
 	parts := []string{strings.Join(m.operations.Chord, "") + "…"}
 	for _, hint := range hints {

@@ -12,6 +12,32 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+func TestDimmedGuidancePreservesTextPackingAndClippedStyle(t *testing.T) {
+	spec := GuidanceSpec{Rows: 2, Hints: []GuidanceHint{
+		{Key: "c", Label: "conflicts", Required: true, Dimmed: true},
+		{Key: "Esc", Label: "cancel", Required: true},
+	}}
+	for _, width := range []int{1, 5, 12, 40} {
+		plain := strings.Join(GuidanceLines(spec, width), "\n")
+		rendered := RenderGuidanceText(spec, width)
+		if ansi.Strip(rendered) != plain || lipgloss.Width(rendered) > width {
+			t.Fatalf("width %d: rendered %q does not preserve %q within budget", width, rendered, plain)
+		}
+		segments := guidanceSegmentLines(spec, width)
+		first := segments[0][0]
+		if !first.Dimmed || !strings.Contains(rendered, theme.DimStyle.Render(first.text())) {
+			t.Fatalf("width %d: dimmed styling lost: %q", width, rendered)
+		}
+		for i := range spec.Hints {
+			spec.Hints[i].Dimmed = false
+		}
+		if got := strings.Join(GuidanceLines(spec, width), "\n"); got != plain {
+			t.Fatalf("dimming changed packing at width %d: %q != %q", width, got, plain)
+		}
+		spec.Hints[0].Dimmed = true
+	}
+}
+
 func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
 	spec := GuidanceSpec{
 		Hints: []GuidanceHint{

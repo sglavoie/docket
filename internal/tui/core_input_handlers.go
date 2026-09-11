@@ -218,10 +218,6 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	return cmd
 }
 
-// windowMiddleIndex is the offset of the middle row inside a window of the given
-// height. zz reads it to decide where "middle" is.
-func windowMiddleIndex(height int) int { return (height - 1) / 2 }
-
 // viewScrollAnchor names where in the window zt/zz/zb park the cursor's row.
 type viewScrollAnchor int
 
@@ -241,20 +237,15 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.Operati
 	if !ok || out == nil {
 		return operation.OperationHandlerResult{}
 	}
-	start, end := out.VisibleRowWindow()
-	if start >= end {
-		return operation.OperationHandlerResult{}
-	}
-	height := end - start
-	desired := out.Cursor
+	id := operation.OperationCoreScrollCursorTop
 	switch anchor {
 	case viewScrollAnchorMiddle:
-		desired -= windowMiddleIndex(height)
+		id = operation.OperationCoreScrollCursorMiddle
 	case viewScrollAnchorBottom:
-		desired -= height - 1
+		id = operation.OperationCoreScrollCursorBottom
 	case viewScrollAnchorTop:
 	}
-	out.ViewScrollOffset = min(max(desired, 0), max(len(out.Rows)-height, 0))
+	out.ViewScrollOffset = out.CursorScrollOffset(id)
 	return operation.OperationHandlerResult{}
 }
 
