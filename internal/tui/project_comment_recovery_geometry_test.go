@@ -2,6 +2,7 @@ package tui
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -126,11 +127,14 @@ func TestProjectCommentRecoveryFitsShellViewport(t *testing.T) {
 			},
 		},
 		{
-			// The add composer over a vanished owner. Nothing retains a lossy add
-			// draft — the retention points all seat text the box already holds —
-			// so what is proven here is the other half of the contract: a refusal
-			// and an export destination both stay on screen, and the file holds
-			// the draft the panel is authoritative for, byte for byte.
+			// The add composer over a vanished owner, with only what the user
+			// typed into the box: the composer capped the text on the way in, so
+			// the panel is authoritative for exactly what it can show and the
+			// recovery block has nothing to explain. What is proven here is the
+			// other half of the contract — a refusal and an export destination
+			// both stay on screen, and the file holds the draft the panel is
+			// authoritative for, byte for byte. The lossy add draft is the state
+			// only an editor can produce, and it has its own test below.
 			name:    "missing_owner_add",
 			refusal: "no longer available",
 			seat: func(t *testing.T, driver *UITestDriver, draft string) string {
@@ -193,6 +197,113 @@ func TestProjectCommentRecoveryFitsShellViewport(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestProjectCommentRecoveredAddRecoveryFitsShellViewport is the same contract
+// for the one state the cases above cannot reach by typing.
+//
+// An add composer caps what it accepts, so a draft it cannot hold never gets in
+// through the keyboard. It gets in through the external editor: Ctrl+E hands the
+// composer to $VISUAL, the user writes as much as they like, and what comes back
+// is retained whole before anything is checked. If the project went away while
+// the editor had the terminal, that retained draft is text no surface in the
+// workspace holds and the box on screen cannot show — the one case where losing
+// the export line loses the work itself.
+//
+// So this drives the real editor round trip through the real panel, takes the
+// owner away in the gap the editor is up, and then asks the composed frame the
+// same questions: does it fit, does it still say why the save failed and how to
+// rescue the draft, and does the file it names hold the editor's result rather
+// than the box's copy of it.
+func TestProjectCommentRecoveredAddRecoveryFitsShellViewport(t *testing.T) {
+	draft := recoveryGeometryDraft()
+	testCase := recoveryGeometryCase{
+		name:    "recovered_add",
+		lossy:   true,
+		refusal: "no longer available",
+		seat:    seatRecoveryGeometryRecoveredAdd,
+	}
+
+	for _, size := range recoveryGeometrySizes {
+		t.Run(size.name, func(t *testing.T) {
+			runRecoveryGeometryCase(t, testCase, size, draft)
+		})
+	}
+}
+
+// seatRecoveryGeometryRecoveredAdd walks the production path: open the add
+// composer, hand it to an editor that writes the long draft, lose the project
+// while that editor holds the terminal, and let the result come back to a panel
+// whose owner is gone. The retention runs before the refusal does, which is what
+// leaves a draft on screen that nothing else in the workspace holds.
+func seatRecoveryGeometryRecoveredAdd(t *testing.T, driver *UITestDriver, draft string) string {
+	t.Helper()
+	seatCursorOnProjectHeader(t, driver.App().crossOutliner)
+	runChecklistActions(t, driver, []UITestAction{
+		{Type: UITestActionKey, Key: ";"},
+		{Type: UITestActionKey, Key: "a"},
+	})
+	if panel := mountedProjectCommentsPanel(t, driver.App()); !panel.AddMode {
+		t.Fatalf("a did not open the add composer:\n%s", driver.Render())
+	}
+	useRecoveryGeometryEditor(t, draft)
+
+	// The press is dispatched and deliberately not drained: what it produced is
+	// the editor launch, and the harness runs that in the runtime's place so the
+	// workspace can change between the editor exiting and its result arriving.
+	if err := driver.SendKey("ctrl+e"); err != nil {
+		t.Fatalf("ctrl+e: %v", err)
+	}
+	finished := driver.runPendingExternalEditor(t)
+	removeRecoveryGeometryOwner(t, driver)
+	driver.dispatch(finished)
+	driver.drain()
+
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if !panel.AddMode {
+		t.Fatalf("the editor's result closed the add composer:\n%s", driver.Render())
+	}
+	if panel.Err == nil || !strings.Contains(panel.Err.Error(), "no longer available") {
+		t.Fatalf("the panel did not refuse the vanished owner (err %v):\n%s", panel.Err, driver.Render())
+	}
+	// The box is the lossy half by construction, and saying so here is what keeps
+	// the file assertion honest: the bytes this case demands are the editor's, and
+	// they are bytes the composer provably does not hold.
+	seated, _ := panelDraft(panel)
+	if seated == draft {
+		t.Fatal("the composer took the whole editor result, so this case proves nothing about a draft it cannot hold")
+	}
+	if strings.Contains(seated, recoveryGeometryTailMarker) {
+		t.Fatalf("the composer holds the tail marker, so the draft under test is not past its limit:\n%q", recoveryGeometryTailOf(seated))
+	}
+	return draft
+}
+
+// useRecoveryGeometryEditor points the panel's external editor at a script that
+// writes the draft into the buffer it is handed, which is what a user typing the
+// whole thing into their editor and saving does. The panel is constructed with no
+// configured editor, so $VISUAL is the production route to it; both variables are
+// set because either one is what a real environment would have supplied.
+//
+// The script appends rather than replaces so the header the panel wrote stays
+// where the parser expects it, and the draft arrives as the bytes below the
+// marker — tabs, accents, and tail included.
+func useRecoveryGeometryEditor(t *testing.T, draft string) {
+	t.Helper()
+	dir := t.TempDir()
+	draftPath := filepath.Join(dir, "editor-result.txt")
+	if strings.ContainsAny(draftPath, "'\"\\ ") {
+		t.Fatalf("the fixture path %q cannot be spelled in a shell script", draftPath)
+	}
+	if err := os.WriteFile(draftPath, []byte(draft), 0o600); err != nil {
+		t.Fatalf("writing the editor's result: %v", err)
+	}
+	script := filepath.Join(dir, "editor.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\ncat '"+draftPath+"' >> \"$1\"\n"), 0o700); err != nil {
+		t.Fatalf("writing the editor script: %v", err)
+	}
+	t.Setenv("VISUAL", script)
+	t.Setenv("EDITOR", script)
 }
 
 // runRecoveryGeometryCase is one case at one terminal size, start to finish: a
