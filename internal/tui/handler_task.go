@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -207,7 +208,41 @@ func (m *AppModel) handleCommentEdited(msg taskdetail.CommentEditedMsg) (bool, t
 // re-reads the pre-commit copy the shell still holds.
 func (m *AppModel) committedCommentViewCmd(projectID string, msg tea.Msg) tea.Cmd {
 	m.reloadProjectByID(projectID)
+	return m.commentOutcomeCmd(msg)
+}
+
+// commentOutcomeCmd hands one comment outcome to the panel that submitted it
+// rather than to whatever presentation happens to be on top.
+//
+// The submitting panel is not always the current view when its own commit
+// answers. `?` raises Help, and Help is an overlay, so the panel underneath is
+// still mounted, still holding the pending submission, and still the only model
+// that can settle it. Delegating to the current view would hand the outcome to
+// Help, which has no use for it; the panel would then keep refusing every later
+// add, edit, and delete with the duplicate-submission refusal, because nothing
+// else clears pending — RefreshAfterReload deliberately does not. Owner and token
+// still decide whether the panel keeps what arrives, so a dismissed panel and a
+// replacement owner drop a stale outcome exactly as they did before.
+//
+// The fallback is not vestigial: `C` on an Outliner row commits an add with no
+// panel mounted at all, and the Outliner consumes that message to rebuild its
+// rows.
+func (m *AppModel) commentOutcomeCmd(msg tea.Msg) tea.Cmd {
+	if m.commentsPanelMounted() {
+		return m.viewNav.views.Update(presentation.ViewTaskComments, msg)
+	}
 	return m.delegateToCurrentView(msg)
+}
+
+// commentsPanelMounted reports whether the Comments panel is still on the route,
+// covered or not. The registry alone cannot answer it: popping a view leaves its
+// model registered, so a panel the user walked away from would go on collecting
+// outcomes the current view is owed.
+func (m *AppModel) commentsPanelMounted() bool {
+	if m.viewNav.views == nil || !m.viewNav.views.Has(presentation.ViewTaskComments) {
+		return false
+	}
+	return slices.Contains(m.presentationPath(), presentation.ViewTaskComments)
 }
 
 // handleCommentMutationFailed routes a refused comment commit back to the panel
@@ -216,7 +251,7 @@ func (m *AppModel) committedCommentViewCmd(projectID string, msg tea.Msg) tea.Cm
 // user's draft back in front of them; a panel that has since moved on drops it.
 func (m *AppModel) handleCommentMutationFailed(msg taskdetail.CommentMutationFailedMsg) tea.Cmd {
 	m.feedback.err = msg.Err
-	return tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
+	return tea.Batch(m.commentOutcomeCmd(msg), status.StatusTimeout(5*time.Second))
 }
 
 func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMsg) tea.Cmd {
