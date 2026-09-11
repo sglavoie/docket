@@ -43,6 +43,20 @@ disabled rows, which is how their reason gets read, and they keep refusing `a`
 and `Enter`. The Waiting check-back picker asks for a deadline alone, so it has
 one section and no switch.
 
+Every preset row prints the key that applies it immediately, in a muted column
+before its label, and pressing that key commits the row exactly as `Enter` on it
+would. The two fields keep separate keyboards, because a shortcut means whatever
+the section you are in says it means. DUE binds `0` Clear, `t` Today, `m`
+Tomorrow, `w` In one week, `n` In one month. DEFER binds `0` Clear defer, `1`,
+`4`, and `8` for those hour offsets, `9` Tomorrow morning, `m` Until tomorrow,
+`w` For one week, `n` For one month. So `@m` is tomorrow's deadline, `@` `Tab`
+`4` hides the task for four hours, and `t` in the defer section does nothing at
+all — a deferral has no Today. Where a row sits in the list never changes what
+its key means, so a search that reorders the rows leaves the keyboard alone; a
+search that filters a preset off screen says it is filtered out rather than
+applying whatever is left, and a disabled row gives the same reason it gives
+`Enter`. While you are typing a search or a specific date, the keys are text.
+
 Inside the `@` picker, `a` opens a typed-date input for any date the relative
 presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`, `next mon`,
 or `dec 15`. The due input also accepts an optional trailing `HH:MM` clock time

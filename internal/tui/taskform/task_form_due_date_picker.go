@@ -19,19 +19,32 @@ type TaskFormDueDatePickedMsg struct {
 	Date *time.Time
 }
 
+// The form's rows are named by the shared preset identity rather than by a key
+// of their own, so the key this picker prints and answers to is the one the
+// Outliner's due section prints and answers to. The order, the labels, and the
+// day arithmetic below stay the form's: this list is a draft editor, and it
+// borrows the keyboard table without borrowing the other surface's vocabulary.
 type formDueDatePreset struct {
-	key         string
+	presetID    string
 	label       string
 	daysFromNow int
 	isClear     bool
 }
 
 var formDueDatePresets = []formDueDatePreset{
-	{key: "t", label: "today", daysFromNow: 0},
-	{key: "m", label: "tomorrow", daysFromNow: 1},
-	{key: "w", label: "+week", daysFromNow: 7},
-	{key: "n", label: "+month", daysFromNow: 30},
-	{key: "0", label: "clear", isClear: true},
+	{presetID: chrome.DatePresetToday, label: "today", daysFromNow: 0},
+	{presetID: chrome.DatePresetTomorrow, label: "tomorrow", daysFromNow: 1},
+	{presetID: chrome.DatePresetWeek, label: "+week", daysFromNow: 7},
+	{presetID: chrome.DatePresetMonth, label: "+month", daysFromNow: 30},
+	{presetID: chrome.DatePresetClear, label: "clear", isClear: true},
+}
+
+// key is the shortcut the shared table binds to this preset in the due field. An
+// unkeyed preset would be a row nothing reaches by key, which is why
+// TestFormDueDatePresetsAreAllKeyed refuses to let one exist.
+func (e formDueDatePreset) key() string {
+	key, _ := chrome.DatePresetKey(false, e.presetID)
+	return key
 }
 
 type formDueDatePicker struct {
@@ -91,7 +104,7 @@ func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 	default:
 		key := msg.String()
 		for _, e := range formDueDatePresets {
-			if key == e.key {
+			if key == e.key() {
 				return true, toMsg(e)
 			}
 		}
@@ -141,7 +154,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	var content strings.Builder
 	for i, e := range formDueDatePresets {
 		isCurrent := i == currentEntryIdx
-		keyHint := theme.MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
+		keyHint := theme.MutedStyle.Render(fmt.Sprintf("[%s]", e.key()))
 		currentMark := "  "
 		if isCurrent {
 			currentMark = "● "

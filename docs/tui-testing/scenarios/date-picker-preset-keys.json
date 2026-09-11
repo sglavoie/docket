@@ -1,0 +1,60 @@
+{
+  "name": "date-picker-preset-keys",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
+
+    { "type": "key", "label": "open the one date picker", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Triage support inbox" },
+    { "type": "assert", "label": "every row prints the key that applies it", "assert": "contains", "value": "t Today" },
+    { "type": "assert", "assert": "contains", "value": "m Tomorrow" },
+    { "type": "assert", "label": "the footer says the keys are live without repeating them", "assert": "contains", "value": "preset key pick" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cross into the defer field", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "a set defer date" },
+    { "type": "assert", "label": "the defer field keeps its own keyboard", "assert": "contains", "value": "9 Tomorrow morning" },
+    { "type": "key", "label": "a deferral has no Today, so `t` is silent here", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Triage support inbox" },
+    { "type": "assert", "label": "nothing was committed and the field did not move", "assert": "contains", "value": "a set defer date" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "back to due", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "a set due date" },
+    { "type": "key", "label": "an hour key never becomes a deadline", "key": "9" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "a set due date" },
+
+    { "type": "key", "label": "narrow to a row the tomorrow key does not name", "key": "/" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "d" },
+    { "type": "key", "key": "a" },
+    { "type": "key", "key": "y" },
+    { "type": "key", "label": "apply the search", "key": "enter" },
+    { "type": "key", "label": "a filtered-out preset is reported, not substituted", "key": "m" },
+    { "type": "assert", "assert": "status_contains", "value": "filtered out" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Triage support inbox" },
+    { "type": "assert", "label": "the query is still the picker's to clear", "assert": "contains", "value": "today" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the search back to both whole sections", "key": "/" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "label": "one key is the whole answer", "key": "m" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo takes a shortcut back like any other commit", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -298,10 +298,44 @@ one section is inert rather than leaking `Tab` down to the Outliner's mode key;
 search editing and the typed-date input claim their keys first, so neither
 switches.
 
+The preset shortcuts are one table in `chrome/date_preset_keys.go`, keyed by
+field and stable preset ID, and every reading of a key goes through it:
+`DatePresetKey` prints the hint, `DatePresetIDForKey` dispatches it, and
+`DatePresetShortcutKey` reports that a key belongs to either field. `chrome` is
+where it lives because the value picker and the creation form's own due picker
+both sit above that layer and must not each own a keyboard. The form keeps its
+order, its labels, and its day arithmetic and borrows the keys alone, so the two
+surfaces cannot drift apart on what `m` means without a red test.
+
+Rows carry their key in `ListItem.PrimaryMarker`, which the surface draws before
+the primary text and charges width for separately, and which query and ranking
+are already defined to skip — a hint is chrome, and typing `m` into the search
+box must not match every row bound to `m`. An unkeyed row pads the same width so
+the labels stay in one column.
+
+`handleDatePresetShortcut` is the dispatch, gated on `provider.DateEntry()` and
+placed after the search and typed-date handling and before the browse `switch
+key` block rather than inside its default arm. The position is load-bearing:
+`case "w", "s", "t", "c"` above that default already claims two of the due keys
+for semantic-tag category jumps, so a default-arm shortcut would never see `t`
+or `w`. The handler claims any key bound in *either* field, so a key the active
+field leaves unbound is structurally silent instead of falling through to a
+binding that means something else. It resolves the cursor's field with
+`dateFieldUnderCursor`, maps key to preset ID, moves with `SetCursorToID` — which
+searches the current matches alone, so a filtered-out preset is a miss and gets a
+status naming it — and then commits through `SelectedValue` and
+`OperationValueSelectedMsg` with the original request, which is the same path
+Enter takes. A disabled row therefore refuses with `SelectedValue`'s own
+`ErrListItemDisabled` reason and the picker stays open. Because the move lands on
+the row and the row's `OperationDateValue` was built when the list was, a
+shortcut commits the payload the row already held rather than recomputing a date
+at keypress time.
+
 The switch and the active field are ordinary gated `keymap` entries, not a
 second chrome path: `switch field` is an optional Navigation hint at rank 3, and
 `dateEntryNoun` writes `set due date` or `set defer date` into the existing `a`
-hint. Because that can grow the footer, `RenderWithin` renders the guidance
+hint. `preset key pick` joins them at rank 6, saying only that the keys are live,
+because which key is which is printed on the rows. Because that can grow the footer, `RenderWithin` renders the guidance
 before budgeting and reserves `8 + lipgloss.Height(guidanceText)` rows rather
 than a fixed nine, so a wrapped footer costs a list row instead of a terminal
 row, and the string it measured is the one it passes to `RenderOverlayBox`.

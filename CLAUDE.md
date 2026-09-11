@@ -280,7 +280,14 @@ second section index. It opens in Due on the due field alone — a preset, else
 Due's Clear row — and opening writes nothing. `Tab` crosses to the other field's
 first match, disabled rows included, since reading a row's field and committing
 it are different questions, and it is consumed on every picker, so a one-section
-picker is inert rather than leaking it. The overlay reserves the guidance it
+picker is inert rather than leaking it. A preset key is one `chrome` table read
+by field and preset ID, never a per-surface keyboard; the creation form borrows
+it and keeps its own order, labels, and arithmetic. It dispatches ahead of the
+browse grammar, which already claims `t` and `w`, and claims a key bound in
+either field so one unbound there is silent; it commits the row `SetCursorToID`
+lands on through the `SelectedValue` path `Enter` takes, so a filtered-out preset
+is a miss and a disabled one keeps its own reason. Its hint rides
+`PrimaryMarker`, never searchable text. The overlay reserves the guidance it
 rendered, never a fixed row count.
 
 `outlinerCursorRow` marks the cursor row in its first column and trailing fill

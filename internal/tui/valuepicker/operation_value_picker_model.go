@@ -169,6 +169,18 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		}
 	}
 
+	if model.provider.DateEntry() {
+		// The preset keys are resolved ahead of the browse grammar rather than in
+		// its default arm, because two of them are letters that arm already spells
+		// for another picker: `t` and `w` are tag-category jumps below, and falling
+		// through to them would leave `@t` and `@w` doing nothing here. Search
+		// editing and the typed-date input have already claimed their keys above, so
+		// a preset key can only ever reach this while the list is being browsed.
+		if result, dismiss, handled := model.handleDatePresetShortcut(key); handled {
+			return nil, dismiss, result
+		}
+	}
+
 	switch key {
 	case "esc":
 		return nil, true, operation.OperationValueCanceledMsg{}

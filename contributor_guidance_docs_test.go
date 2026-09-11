@@ -531,7 +531,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// overlay. The measured guidance budget is named with them because it is what
 	// lets the field name grow the footer without eating a terminal row. The
 	// mechanism lives in docs/architecture/operation-grammar.md.
-	const budget = 40095
+	// Twenty-third raise, 40095 to 40638, for the date picker's preset keys. 543
+	// bytes buy four rules that are silent when guessed wrong. The first is that
+	// the keyboard table lives one layer below both surfaces that read it: a key
+	// declared beside the rows it decorates is the obvious placement, and it lets
+	// the creation form and the Outliner picker disagree about what `m` means with
+	// nothing to fail. The second is the dispatch position — the browse grammar's
+	// default arm is where a shortcut belongs by precedent, and `t` and `w` never
+	// arrive there because the semantic-tag category jumps claim them above it, so
+	// two of the five due keys are simply dead and only on one provider. The third
+	// is that an unbound key is claimed anyway: letting it fall through reads as
+	// harmless and quietly hands `1` to whatever the browse grammar binds next.
+	// The fourth is that the hint rides `PrimaryMarker`, which is the one row field
+	// query and ranking skip — spelling the key into the label instead makes typing
+	// `m` match every row `m` applies. The mechanism lives in
+	// docs/architecture/operation-grammar.md.
+	const budget = 40638
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

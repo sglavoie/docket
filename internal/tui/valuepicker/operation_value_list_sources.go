@@ -2,13 +2,16 @@ package valuepicker
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -41,23 +44,41 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 	}
 	if deferred {
 		return []datePreset{
-			{id: "clear", label: "Clear defer", clear: true},
-			{id: "1h", label: "In 1 hour", value: hourOffset(1)},
-			{id: "4h", label: "In 4 hours", value: hourOffset(4)},
-			{id: "8h", label: "In 8 hours", value: hourOffset(8)},
-			{id: "morning", label: "Tomorrow morning", value: morning(1)},
-			{id: "tomorrow", label: "Until tomorrow", value: dayOffset(1)},
-			{id: "week", label: "For one week", value: dayOffset(7)},
-			{id: "month", label: "For one month", value: dayOffset(30)},
+			{id: chrome.DatePresetClear, label: "Clear defer", clear: true},
+			{id: chrome.DatePresetOneHour, label: "In 1 hour", value: hourOffset(1)},
+			{id: chrome.DatePresetFourHours, label: "In 4 hours", value: hourOffset(4)},
+			{id: chrome.DatePresetEightHours, label: "In 8 hours", value: hourOffset(8)},
+			{id: chrome.DatePresetMorning, label: "Tomorrow morning", value: morning(1)},
+			{id: chrome.DatePresetTomorrow, label: "Until tomorrow", value: dayOffset(1)},
+			{id: chrome.DatePresetWeek, label: "For one week", value: dayOffset(7)},
+			{id: chrome.DatePresetMonth, label: "For one month", value: dayOffset(30)},
 		}
 	}
 	return []datePreset{
-		{id: "clear", label: "Clear", clear: true},
-		{id: "today", label: "Today", value: dayOffset(0)},
-		{id: "tomorrow", label: "Tomorrow", value: dayOffset(1)},
-		{id: "week", label: "In one week", value: dayOffset(7)},
-		{id: "month", label: "In one month", value: dayOffset(30)},
+		{id: chrome.DatePresetClear, label: "Clear", clear: true},
+		{id: chrome.DatePresetToday, label: "Today", value: dayOffset(0)},
+		{id: chrome.DatePresetTomorrow, label: "Tomorrow", value: dayOffset(1)},
+		{id: chrome.DatePresetWeek, label: "In one week", value: dayOffset(7)},
+		{id: chrome.DatePresetMonth, label: "In one month", value: dayOffset(30)},
 	}
+}
+
+// datePresetKeyMarkerWidth is the one column the hint claims, plus its separating
+// space. Every preset in both fields is keyed, so the blank slot is only ever the
+// statement that this table stopped being total — the marker still holds the
+// column so the labels beside it stay in line.
+const datePresetKeyMarkerWidth = 2
+
+// datePresetKeyMarker draws one row's shortcut key. It rides PrimaryMarker
+// rather than the primary text or an alias, which is what keeps the hint out of
+// the query: a key tells you how to apply a row, and it is not a word the row
+// should answer a search by.
+func datePresetKeyMarker(deferred bool, presetID string) string {
+	key, ok := chrome.DatePresetKey(deferred, presetID)
+	if !ok {
+		return strings.Repeat(" ", datePresetKeyMarkerWidth)
+	}
+	return theme.MutedStyle.Render(key) + " "
 }
 
 // OperationDateSecondaryText names an instant the way a picker row and a search
@@ -100,6 +121,7 @@ func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, di
 			ID:             DateListItemID(deferred, preset.id),
 			CategoryID:     categoryID,
 			PrimaryText:    preset.label,
+			PrimaryMarker:  datePresetKeyMarker(deferred, preset.id),
 			SecondaryText:  secondary,
 			Aliases:        []string{preset.id, secondary},
 			DisabledReason: disabledReason,
