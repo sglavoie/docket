@@ -50,16 +50,113 @@ func (m *CommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
+// updateExpandedView is the reader's whole grammar: the two keys that close it
+// and the keys that move its window.
+//
+// The window exists because the panel is cropped to the terminal and a comment is
+// not. Before these keys the reader drew the entire body and the shell cut
+// whatever did not fit, which meant a long comment had a tail no key could reach
+// — including, at a short enough terminal, the line naming the keys that close
+// the reader. So every distance below is measured against the same window the
+// render draws, and each one is clamped rather than wrapped: the ends of a
+// comment are ends, not a cycle.
 func (m *CommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "esc", "enter":
-			m.ExpandedView = false
-		}
+	press, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return m, nil
+	}
+	key := press.String()
+	if m.completeExpandedTopChord(key) {
+		return m, nil
+	}
+
+	switch key {
+	case "esc", "enter":
+		m.closeExpandedView()
+	case "g":
+		m.pendingTopChord = true
+	case "j", "down":
+		m.scrollExpanded(1)
+	case "k", "up":
+		m.scrollExpanded(-1)
+	case "ctrl+d", "pgdown":
+		m.scrollExpanded(m.expandedScrollDistance(expandedHalfPage))
+	case "ctrl+u", "pgup":
+		m.scrollExpanded(-m.expandedScrollDistance(expandedHalfPage))
+	case "ctrl+f":
+		m.scrollExpanded(m.expandedScrollDistance(expandedFullPage))
+	case "ctrl+b":
+		m.scrollExpanded(-m.expandedScrollDistance(expandedFullPage))
+	case "home":
+		m.expandedOffset = 0
+	case "G", "end":
+		m.scrollExpandedToEnd()
 	}
 
 	return m, nil
+}
+
+// The two paging distances. A half page is half the window and a full page is
+// the window less one row, so paging forward and back leaves one line of what
+// was on screen and a reader never has to guess whether they skipped something.
+const (
+	expandedHalfPage = true
+	expandedFullPage = false
+)
+
+// closeExpandedView leaves the reader and forgets where it was. Reopening a
+// comment opens it at the top, because the press that opens one is Enter on a
+// row rather than a return to something suspended.
+func (m *CommentsModel) closeExpandedView() {
+	m.ExpandedView = false
+	m.expandedOffset = 0
+	m.pendingTopChord = false
+}
+
+// completeExpandedTopChord answers the second g of gg inside the reader. It is
+// the panel's browse chord spelled against the body instead of the list, which
+// is the same act — go to the beginning of what is in front of you — and an
+// abandoned prefix is silent here exactly as it is there.
+func (m *CommentsModel) completeExpandedTopChord(key string) bool {
+	if !m.pendingTopChord {
+		return false
+	}
+	m.pendingTopChord = false
+	if key != "g" {
+		return false
+	}
+	m.expandedOffset = 0
+	return true
+}
+
+// scrollExpanded is the only writer of the reader's offset, which is what keeps
+// a render from moving the window the reader put where it is.
+func (m *CommentsModel) scrollExpanded(rows int) {
+	if !m.HasSelection() {
+		return
+	}
+	m.expandedOffset = m.expandedReaderWindow().clamp(m.expandedOffset + rows)
+}
+
+func (m *CommentsModel) scrollExpandedToEnd() {
+	if !m.HasSelection() {
+		return
+	}
+	m.expandedOffset = m.expandedReaderWindow().maxOffset()
+}
+
+// expandedScrollDistance reads the distance off the window the frame is drawn
+// at, so a resized terminal pages by what it now shows rather than by a constant
+// taken against a size it no longer has.
+func (m *CommentsModel) expandedScrollDistance(half bool) int {
+	if !m.HasSelection() {
+		return 1
+	}
+	visible := m.expandedReaderWindow().visible
+	if half {
+		return max(visible/2, 1)
+	}
+	return max(visible-1, 1)
 }
 
 func (m *CommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -537,6 +634,7 @@ func (m *CommentsModel) ConfirmDeleteSelectedComment() {
 func (m *CommentsModel) ExpandSelectedComment() {
 	if m.HasSelection() {
 		m.ExpandedView = true
+		m.expandedOffset = 0
 	}
 }
 

@@ -13,24 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
-// addCommentFixtureApp launches the checklist fixture, which is the one that
-// carries every row kind `C` has to answer from or refuse: task rows with and
-// without children, checklist item rows, project group headers, and section
-// headers.
-func addCommentFixtureApp(t *testing.T) (*UITestDriver, *uitestWorkspace, *outliner.OutlinerModel) {
-	t.Helper()
-	driver, workspace, err := NewFixtureDriver(FixtureChecklist, 100, 35)
-	if err != nil {
-		t.Fatalf("fixture: %v", err)
-	}
-	t.Cleanup(func() { _ = workspace.Cleanup() })
-	view := driver.App().crossOutliner
-	if view == nil {
-		t.Fatal("fixture app has no Outliner")
-	}
-	return driver, workspace, view
-}
-
 // TestAddCommentAppliesOnTaskRowsAndNowhereElse is the applicability half. `C`
 // names one task, so a row that names none — a section, a project header, a
 // checklist item whose grammar belongs to the item — must refuse rather than

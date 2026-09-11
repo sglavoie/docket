@@ -79,8 +79,14 @@ type CommentsModel struct {
 	// outstanding, so a delete can never fall back to a position.
 	deleteRef *CommentRef
 
-	// Expanded view mode (show full comment)
-	ExpandedView bool
+	// Expanded view mode (show full comment). expandedOffset is the first body
+	// row that reader is showing, which is a row index into the rendered comment
+	// and not a page ordinal, so the one-row and paging distances compose instead
+	// of each snapping to a grid of its own. Only the scrolling keys write it; a
+	// render clamps a copy and leaves the field alone, so no redraw moves the
+	// window under the reader.
+	ExpandedView   bool
+	expandedOffset int
 
 	// Editor config
 	editor string
@@ -329,6 +335,7 @@ func (m *CommentsModel) OnExit() {
 	m.AddMode = false
 	m.EditMode = false
 	m.ExpandedView = false
+	m.expandedOffset = 0
 	m.editRef = CommentRef{}
 	m.recovered = nil
 	m.forgetDeleteConfirmation()

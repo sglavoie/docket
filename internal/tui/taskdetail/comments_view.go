@@ -17,19 +17,8 @@ func (m *CommentsModel) View() tea.View {
 		return tea.NewView("No comments to show")
 	}
 
-	// The owner splits its own title the way the task-scoped renderer needs it,
-	// which is the only place the shared presentation still mentions a task: an
-	// owner that is not one names itself entirely in the prefix.
-	title := m.owner.Title()
 	var b strings.Builder
-	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
-		title.Prefix,
-		title.Task,
-		"",
-		m.CurrentWorkspacePulse(),
-		m.Width(),
-		m.AccentColor()))
-	b.WriteString("\n\n")
+	b.WriteString(m.panelTitle())
 
 	if m.ExpandedView && m.HasSelection() {
 		return m.renderExpandedView(&b)
@@ -54,19 +43,133 @@ func (m *CommentsModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
-func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
-	entry := m.entries[m.Cursor]
-	timestamp := chrome.FormatTimestampBracket(entry.CreatedAt)
-	headerLabel := fmt.Sprintf("Comment [%d]", m.Cursor)
+// panelTitle is the one row every sub-state of this panel is drawn under, and it
+// is a function rather than an inline write because the expanded reader measures
+// the rows it has left against it. A header measured from a second spelling of
+// itself is a window that disagrees with the frame by however much the two
+// spellings drifted apart.
+//
+// The owner splits its own title the way the task-scoped renderer needs it,
+// which is the only place the shared presentation still mentions a task: an
+// owner that is not one names itself entirely in the prefix.
+func (m *CommentsModel) panelTitle() string {
+	title := m.owner.Title()
+	return chrome.RenderTaskScopedFullscreenTitleWithPulse(
+		title.Prefix,
+		title.Task,
+		"",
+		m.CurrentWorkspacePulse(),
+		m.Width(),
+		m.AccentColor()) + "\n\n"
+}
 
-	b.WriteString(theme.FieldLabelFocusedStyle.Render(headerLabel))
+// expandedReaderHeader names the comment the reader is open on. It sits between
+// the panel title and the body, and it never scrolls: the row number and the
+// timestamp are what say which comment this is, and a reader who has paged into
+// the middle of a long one needs that more than the reader who just opened it.
+func (m *CommentsModel) expandedReaderHeader() string {
+	entry := m.entries[m.Cursor]
+	var b strings.Builder
+	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Comment [%d]", m.Cursor)))
 	b.WriteString("\n")
-	b.WriteString(theme.MutedStyle.Render(timestamp))
+	b.WriteString(theme.MutedStyle.Render(chrome.FormatTimestampBracket(entry.CreatedAt)))
 	b.WriteString("\n\n")
-	b.WriteString(textfit.RenderMarkdown(entry.Text, max(m.Width()-4, 1)))
-	b.WriteString("\n\n")
+	return b.String()
+}
+
+// expandedReader is the whole geometry of the expanded comment: the header above
+// the body, the footer under it, the body's rendered rows, and how many of those
+// rows the terminal has room for.
+//
+// It is one value because the render and the scrolling keys both read it. A
+// window a key moves and a window a frame draws have to be the same window, and
+// the only way to guarantee that without a shared measurement is to take the
+// same one twice and hope.
+type expandedReader struct {
+	header  string
+	footer  string
+	lines   []string
+	visible int
+	// counted reports whether a row was reserved for the position line, which
+	// happens exactly when the body does not fit and the reader therefore has to
+	// be told where in it they are.
+	counted bool
+}
+
+// maxOffset is the last row the window may start at, so the final screenful is
+// full rather than short and a body that fits has exactly one legal offset.
+func (r expandedReader) maxOffset() int {
+	return max(len(r.lines)-r.visible, 0)
+}
+
+func (r expandedReader) clamp(offset int) int {
+	return min(max(offset, 0), r.maxOffset())
+}
+
+// expandedReaderVisibleRows splits the rows the shell will actually draw between
+// the comment and the position line under it.
+//
+// A body that fits spends nothing on a counter, because there is no position to
+// report. A body that does not gives up one row for it, since a reader who
+// cannot see the end of a comment has to be told there is one. The floor is one
+// content row: a terminal that short still shows the reader something they can
+// scroll rather than a counter over nothing.
+func expandedReaderVisibleRows(total, available int) (int, bool) {
+	if total <= 0 || available <= 0 {
+		return 0, false
+	}
+	if total <= available {
+		return total, false
+	}
+	if available == 1 {
+		return 1, false
+	}
+	return available - 1, true
+}
+
+// expandedReaderWindow measures the reader against the panel's own height, which
+// is the height the shell will crop it to. Everything above and below the body is
+// measured first because none of it is negotiable — the title says which entity
+// the panel is for, the header says which comment, and the footer names the keys
+// that move the body and close it — so what is left is the body's whole budget.
+func (m *CommentsModel) expandedReaderWindow() expandedReader {
+	reader := expandedReader{header: m.expandedReaderHeader()}
 	spec, ok := m.guidanceSpec()
-	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
+	reader.footer = renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
+	reader.lines = strings.Split(textfit.RenderMarkdown(m.entries[m.Cursor].Text, max(m.Width()-4, 1)), "\n")
+	available := taskToolAvailableRows(m.panelTitle()+reader.header, reader.footer, m.Height())
+	reader.visible, reader.counted = expandedReaderVisibleRows(len(reader.lines), available)
+	return reader
+}
+
+// expandedReaderPosition is the line that admits the body is longer than the
+// window. It leads with the rows on screen and the rows there are, because that
+// is the part a truncated line must not lose, and closes with the shortest
+// spelling of the keys that move it — the footer names all of them, but a reader
+// looking at a body that stops mid-sentence is looking here.
+func expandedReaderPosition(offset, visible, total int) string {
+	return fmt.Sprintf("lines %d-%d of %d · j/k scroll", offset+1, offset+visible, total)
+}
+
+// renderExpandedView draws the window of the comment the reader is on, never
+// more of it than the shell will show. The body is complete and the offset is
+// where the reader left it; nothing here writes that offset, so a redraw, a
+// reload, and a resize all leave the window where the last key press put it.
+func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
+	reader := m.expandedReaderWindow()
+	b.WriteString(reader.header)
+
+	offset := reader.clamp(m.expandedOffset)
+	for _, line := range reader.lines[offset : offset+reader.visible] {
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+	if reader.counted {
+		position := expandedReaderPosition(offset, reader.visible, len(reader.lines))
+		b.WriteString(theme.MutedStyle.Render(textfit.TruncateIntentional(position, m.proseWidth(), "…")))
+		b.WriteString("\n")
+	}
+	b.WriteString(reader.footer)
 	return tea.NewView(b.String())
 }
 

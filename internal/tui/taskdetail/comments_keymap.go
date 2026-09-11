@@ -78,5 +78,27 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("esc", "Cancel comment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inputMode)),
 		keymap.Bind("enter", "Close expanded comment", "Navigation", keymap.WithFooter(1, "close", true), keymap.WithFooterKey("Enter"), keymap.WithGate(expandedMode)),
 		keymap.Bind("esc", "Close expanded comment", "Navigation", keymap.WithFooter(2, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(expandedMode)),
+		// The reader's window. These are ranked immediately under the two closes
+		// because a comment too long for the terminal is the state this whole
+		// sub-view exists for, and a footer that shed them would leave a reader
+		// looking at a body that stops mid-sentence with nothing to press. Each pair
+		// is one row: the backward half is the forward half's mirror and spelling it
+		// twice would spend footer width on nothing.
+		keymap.Bind("j", "Scroll the comment", "Navigation", keymap.WithFooter(3, "scroll", false), keymap.WithFooterKey("j/k"), keymap.WithHelpKey("j/k"), keymap.WithGate(expandedMode)),
+		keymap.Bind("k", "Scroll the comment up", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("down", "Scroll the comment down", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("up", "Scroll the comment up", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("ctrl+d", "Scroll half a screen", "Navigation", keymap.WithFooter(4, "half page", false), keymap.WithFooterKey("Ctrl+D/Ctrl+U"), keymap.WithHelpKey("Ctrl+D/Ctrl+U"), keymap.WithGate(expandedMode)),
+		keymap.Bind("ctrl+u", "Scroll half a screen back", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("pgdown", "Scroll half a screen", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("pgup", "Scroll half a screen back", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		keymap.Bind("ctrl+f", "Page the comment", "Navigation", keymap.WithFooter(5, "page", false), keymap.WithFooterKey("Ctrl+F/Ctrl+B"), keymap.WithHelpKey("Ctrl+F/Ctrl+B"), keymap.WithGate(expandedMode)),
+		keymap.Bind("ctrl+b", "Page the comment back", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
+		// The ends of the body, spelled the way the ends of the list are. They take
+		// no footer rank: a reader who can scroll can reach either end, so these are
+		// the first thing a narrow footer should not have been spending width on.
+		keymap.Bind("home", "Jump to the first line", "Navigation", keymap.WithHelpKey("gg/Home"), keymap.WithGate(expandedMode)),
+		keymap.Bind("G", "Jump to the last line", "Navigation", keymap.WithHelpKey("G/End"), keymap.WithGate(expandedMode)),
+		keymap.Bind("end", "Jump to the last line", "Navigation", keymap.AsHidden(), keymap.WithGate(expandedMode)),
 	}}
 }

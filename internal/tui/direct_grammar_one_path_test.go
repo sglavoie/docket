@@ -172,7 +172,11 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 // keymaps are the only footer source, so nothing else notices when one promises
 // a key the strategy stopped binding. Modal keys are the exception and are named
 // here rather than waved through, because a composer's save and newline keys
-// exist only while its textarea has focus.
+// exist only while its textarea has focus, and the expanded reader's paging keys
+// only while a comment is open in it. Both sub-states take their whole key stream
+// from the panel's own Update, so the strategy is the wrong place to look for
+// them; what the list is guarding is that the footer never promises a key no
+// state dispatches.
 func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 	for _, surface := range []struct {
 		name     string
@@ -186,7 +190,7 @@ func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 			name:     "comments",
 			strategy: entityops.CommentsInputStrategy(),
 			keys:     (&taskdetail.CommentsModel{}).BuildKeyMap(),
-			modal:    []string{"ctrl+s", "ctrl+e", "ctrl+x", "shift+enter"},
+			modal:    []string{"ctrl+s", "ctrl+e", "ctrl+x", "shift+enter", "ctrl+d", "ctrl+f"},
 		},
 	} {
 		t.Run(surface.name, func(t *testing.T) {

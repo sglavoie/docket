@@ -6,12 +6,32 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
-// The two helpers below are what every driver-backed acceptance walk in this
-// package is built out of: seat the cursor on a named row, then replay a list of
-// actions through the production driver. They started beside the checklist
-// acceptance tests and kept their names when the comment surfaces began reading
-// them, so they live here rather than behind a test file whose move would
-// orphan five readers.
+// The helpers below are what every driver-backed acceptance walk in this
+// package is built out of: launch the fixture, seat the cursor on a named row,
+// then replay a list of actions through the production driver. They started
+// beside the checklist and comment acceptance tests and kept their names when
+// the other comment surfaces began reading them, so they live here rather than
+// behind a test file whose move would orphan their readers.
+
+// addCommentFixtureApp launches the checklist fixture, which is the one that
+// carries every row kind `C` has to answer from or refuse: task rows with and
+// without children, checklist item rows, project group headers, and section
+// headers. Every comment surface reached through the shell starts here, which is
+// why it sits beside the walk helpers rather than beside the `C` tests it was
+// written for.
+func addCommentFixtureApp(t *testing.T) (*UITestDriver, *uitestWorkspace, *outliner.OutlinerModel) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureChecklist, 100, 35)
+	if err != nil {
+		t.Fatalf("fixture: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+	view := driver.App().crossOutliner
+	if view == nil {
+		t.Fatal("fixture app has no Outliner")
+	}
+	return driver, workspace, view
+}
 
 // seatCursorOnTaskTitled parks the Outliner cursor on the task row naming title.
 // Walking the real projection rather than counting key presses is what keeps the

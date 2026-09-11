@@ -258,6 +258,15 @@ list rebuilds around what came back. `?` lists that grammar
 rather than the Outliner's, and both it and `u` stay literal characters while a
 comment is being typed.
 
+The expanded comment is a reader, not a wall of text: it shows as much of the
+body as the terminal has room for and scrolls the rest. `j`/`k` and the arrow
+keys move a line, `Ctrl+D`/`Ctrl+U` and `PgDn`/`PgUp` move half a screen,
+`Ctrl+F`/`Ctrl+B` move a screen, and `gg`/`Home` and `G`/`End` go to the ends. A
+line under the body counts where you are whenever there is more comment than
+window, and a comment short enough to fit shows no counter at all. `Enter` and
+`Esc` both close the reader and leave the cursor on the comment you were
+reading, which reopens at the top.
+
 `;` on a project group header opens that same panel over the project's own
 comments. Everything the panel does for a task it does here — expand, add, edit
 inline or in the external editor, copy one or all, and the `Space` sheet's
