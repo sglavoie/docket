@@ -9,44 +9,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
-
-// The checklist fixture is the right one for `C` on a project: it carries a
-// project group header, task rows, checklist item rows, and section headers, and
-// it holds exactly one project, so the sole-scope fallback that
-// outlinerProjectOperationTargetsHeader narrows has something to fall back onto
-// and a leak would be visible rather than latent.
-const projectCommentFixtureSlug = "checklist-delivery"
-
-// seatCursorOnProjectHeader parks the cursor on the fixture's project header,
-// which is the only row `C` may resolve a project from.
-func seatCursorOnProjectHeader(t *testing.T, view *outliner.OutlinerModel) {
-	t.Helper()
-	seatCursorOnRow(t, view, "project header", func(row outliner.OutlinerRow) bool {
-		return row.IsProjectHeader
-	})
-}
-
-// projectCommentsOnDisk reads the comments the canonical writer actually
-// persisted, rather than the ones the shell happens to be holding. A comment
-// that never reached tasks.md is not a comment.
-func projectCommentsOnDisk(t *testing.T, workspace *uitestWorkspace) []*models.ProjectComment {
-	t.Helper()
-	path := filepath.Join(workspace.DataDir, "projects", projectCommentFixtureSlug, "tasks.md")
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-	document, err := storage.ParseProjectDocument(string(content))
-	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
-	}
-	return document.Comments
-}
 
 // projectCommentsInShell reads the comments the reloaded shell is holding, which
 // is what proves the ordinary batch refresh reached this project rather than
