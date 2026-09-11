@@ -65,7 +65,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 
 		switch {
 		case row.IsSeparator:
-			rowBuilder.WriteString(chrome.RenderHorizontalDivider(viewport.rowWidth))
+			rowBuilder.WriteString(chrome.RenderHorizontalDivider(viewport.rowWidth, chrome.WithDividerColor(theme.ColorBorder)))
 		case row.IsSectionHeader:
 			rowBuilder.WriteString(m.RenderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsProjectHeader:
