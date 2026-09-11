@@ -85,10 +85,23 @@ committed transaction replaces the shell's in-memory project objects, so an
 owner that kept the pointer it was mounted with would draw a discarded copy and
 comment on it; `Reload` re-resolves by identity and reports presence alone, which
 is what lets an archived or parked owner stay readable while `internal/app`
-refuses the write with a reason. The project path commits through `runBatch`, so
-`commentCommitCorrelation` reads `BatchTransactionResultMsg` as well as
-`TransactionResultMsg` — without that, the shell's post-commit reload would name
-no project and re-read the state the commit had just replaced.
+refuses the write with a reason.
+
+The project path does not route through `runBatch`, which is the wrapper the
+other batch operations use and whose tuple has no place for a comment identity.
+`ProjectCommentCoordinator.commit` constructs `BatchTransactionResultMsg`
+directly and preserves the committed `CommentID`. That is what
+`commentCommitCorrelation` reads: it takes the transaction and project ids from
+either committed shape — `TransactionResultMsg` for a task comment, the batch
+result for a project one — and the comment identity from the batch shape alone,
+because it is the only one whose owner mints one. `adaptCommentCommit` then
+stamps that identity onto `CommentAddedMsg`, and `selectAddedComment` seats the
+cursor by it. Both halves are load-bearing: without the project id the shell's
+post-commit reload would name no project and re-read the state the commit had
+just replaced, and without the identity the panel would have to seat the cursor
+by position or by novelty on a list it re-projects after the commit — a list
+that holds every other writer's additions too, so a successful local add would
+aim the next read, copy, edit, and delete at somebody else's comment.
 
 Footers do not follow the strategy everywhere, and the difference is
 deliberate. The Outliner and the Project Hub rank their bindings and project the
