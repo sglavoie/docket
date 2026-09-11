@@ -84,6 +84,12 @@ type OutlinePlanResult struct {
 	Created []TaskResult
 	Updated []TaskResult
 	Deleted []TaskResult
+	// DueEdits names every dumped task whose deadline this buffer actually moved.
+	// The buffer is declarative — each line restates the deadline it was dumped
+	// with — so an explicit due instruction here is a changed deadline and
+	// nothing else: a title-only edit restates a deadline without naming one, and
+	// must not read as the user overriding it.
+	DueEdits []TaskLocator
 }
 
 // Summary is the one-line report an adapter shows after applying a buffer. It
@@ -219,10 +225,44 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 	revision := revisionAt(outcome.results, 0)
 	transactionID := transactionIDAt(outcome.results, 0)
 	return OutlinePlanResult{
-		Created: outlineTaskResults(project, created, revision, transactionID),
-		Updated: outlineTaskResults(project, updated, revision, transactionID),
-		Deleted: outlineTaskResults(project, deleted, revision, transactionID),
+		Created:  outlineTaskResults(project, created, revision, transactionID),
+		Updated:  outlineTaskResults(project, updated, revision, transactionID),
+		Deleted:  outlineTaskResults(project, deleted, revision, transactionID),
+		DueEdits: outlineDueEdits(before.ProjectByID(project.ID), project.ID, updated),
 	}, nil
+}
+
+// outlineDueEdits names the updated tasks whose deadline the buffer moved, by
+// comparing each one against the pre-apply clone the change partition is already
+// measured against. Comparing values rather than reading the line's own Due
+// field is what keeps the declarative buffer honest: every line carries a
+// deadline instruction, but only a changed deadline is the user naming one.
+func outlineDueEdits(baseProject *models.Project, projectID string, updated []*models.Task) []TaskLocator {
+	if baseProject == nil || len(updated) == 0 {
+		return nil
+	}
+	var edits []TaskLocator
+	for _, task := range updated {
+		if task == nil || task.ID == "" {
+			continue
+		}
+		previous := baseProject.GetTaskByID(task.ID)
+		if previous == nil || sameDueDate(previous.DueDate, task.DueDate) {
+			continue
+		}
+		edits = append(edits, TaskLocator{ProjectID: projectID, TaskID: task.ID})
+	}
+	return edits
+}
+
+// sameDueDate compares two optional deadlines as stored instants, so an absent
+// deadline matches only another absent one and a clock change counts as a move
+// even when the calendar date did not change.
+func sameDueDate(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
 }
 
 func outlineTaskResults(project *models.Project, tasks []*models.Task, revision, transactionID string) []TaskResult {

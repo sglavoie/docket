@@ -281,6 +281,11 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 		}
 	}
 
+	// The typed effect is folded in ahead of the no-op return, because an explicit
+	// due token is an override even when the deadline it names is the one the task
+	// already had: the edit committed nothing, and the clock it overrode is still
+	// no longer the user's intent.
+	m.dueClocks.ObserveCommit(msg.Result.TransactionID, taskLineEditDueEffect(msg.Result))
 	if !msg.Result.Changed {
 		m.setInfoStatus("No task changes")
 		return status.DefaultStatusTimeout()
@@ -293,6 +298,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
+	m.reconcileRememberedDueClocks()
 
 	recordedOrigin := false
 	var jumpCmd tea.Cmd

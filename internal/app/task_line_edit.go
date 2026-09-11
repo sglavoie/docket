@@ -85,6 +85,16 @@ type TaskLineEditResult struct {
 	AffectedProjectIDs   []string
 	TransactionID        string
 	Changed              bool
+	// DueEdited mirrors the request's DueSet: the edited line carried an explicit
+	// deadline instruction. It is intent, not effect, so a clear of a deadline
+	// that was already absent still reports true — a caller remembering a cleared
+	// wall clock has to hear that the user overrode it, and the resulting
+	// deadline cannot tell it apart from a line that never mentioned one.
+	DueEdited bool
+	// Moves is the committed source-to-destination address map of an edit that
+	// crossed a project boundary, every relocated descendant included. An edit
+	// that stayed in its project leaves it nil.
+	Moves []TaskAddressChange
 }
 
 // EditTaskLine applies every inline-text patch as one application transaction.
@@ -127,6 +137,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 			return TaskLineEditResult{}, editErr
 		}
 		committed = true
+		result.DueEdited = req.DueSet
 		return result, nil
 	}
 
@@ -169,6 +180,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 	}
 
 	result := taskLineEditResult(ref, "", false)
+	result.DueEdited = req.DueSet
 	if !changed && len(artifacts) == 0 {
 		committed = true
 		return result, nil
@@ -189,6 +201,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 	}
 	committed = true
 	result = taskLineEditResult(ref, committedResult.TransactionID, true)
+	result.DueEdited = req.DueSet
 	result.MovedDescendantCount = max(0, movedSubtreeSize-1)
 	return result, nil
 }

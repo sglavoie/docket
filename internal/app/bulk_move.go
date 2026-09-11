@@ -133,7 +133,7 @@ func (s *Service) BulkMoveToProject(locators []TaskLocator, destProjectID string
 	}
 	committed = true
 
-	return bulkMoveResult(roots, destination, snap, outcome, commits, destinationAt), nil
+	return bulkMoveResult(roots, destination, snap, outcome, commits, destinationAt, delta.moved), nil
 }
 
 // bulkMoveSources groups the canonical roots by source project, dropping the
@@ -296,6 +296,11 @@ func bulkMoveCommits(
 // revision. Roots collapsed into a selected ancestor are absent for the same
 // reason a duplicate locator is — the batch moved them exactly once, inside
 // someone else's subtree.
+//
+// Moves is the whole story the root list cannot tell: it names every relocated
+// task, the descendants that traveled inside a selected subtree included, at the
+// address it left and the address it landed on. A caller keying session state by
+// project-qualified identity re-addresses it from that map alone.
 func bulkMoveResult(
 	roots []TaskRef,
 	destination *models.Project,
@@ -303,10 +308,12 @@ func bulkMoveResult(
 	outcome groupedCommitOutcome,
 	commits []projectCommit,
 	destinationAt int,
+	moved map[models.TaskReference]models.TaskReference,
 ) BulkResult {
 	result := BulkResult{
 		Tasks:         make([]TaskResult, 0, len(roots)),
 		TransactionID: transactionIDAt(outcome.results, 0),
+		Moves:         taskAddressChanges(moved),
 	}
 	revision := revisionAt(outcome.results, destinationAt)
 	transactionID := transactionIDAt(outcome.results, destinationAt)

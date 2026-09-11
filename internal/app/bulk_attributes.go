@@ -128,7 +128,7 @@ func (s *Service) BulkSetPriority(locators []TaskLocator, priority int) (BulkRes
 // committing every touched project as ONE transaction. Use
 // BulkClearDueDate to remove a due date. Tasks may span projects.
 func (s *Service) BulkSetDueDate(locators []TaskLocator, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDate(locators, due)
+	return withDueEdits(s.bulkSetDueDate(locators, due))
 }
 
 // BulkSetDueDateAndPlanToday sets one due date and adds every target
@@ -136,7 +136,19 @@ func (s *Service) BulkSetDueDate(locators []TaskLocator, due time.Time) (BulkRes
 // interactive adapters whose "due today" gesture also carries explicit planning
 // intent; the ordinary due-date methods remain attribute-only.
 func (s *Service) BulkSetDueDateAndPlanToday(locators []TaskLocator, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDateAndPlanToday(locators, due)
+	return withDueEdits(s.bulkSetDueDateAndPlanToday(locators, due))
+}
+
+// withDueEdits names every task a committed bulk mutation gave an explicit
+// deadline instruction. It wraps the three due-date entry points rather than
+// reaching into the shared bulk machinery, because only the entry point knows
+// that the attribute it just wrote was the deadline.
+func withDueEdits(result BulkResult, err error) (BulkResult, error) {
+	if err != nil {
+		return BulkResult{}, err
+	}
+	result.DueEdits = taskResultLocators(result.Tasks)
+	return result, nil
 }
 
 func (s *Service) bulkSetDueDateAndPlanToday(locators []TaskLocator, due time.Time) (BulkResult, error) {
@@ -229,10 +241,10 @@ func (s *Service) bulkSetDueDate(locators []TaskLocator, due time.Time) (BulkRes
 // project, matching the idempotent single-task attribute mutations. Tasks may
 // span projects.
 func (s *Service) BulkClearDueDate(locators []TaskLocator) (BulkResult, error) {
-	return s.bulkAttribute(locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
+	return withDueEdits(s.bulkAttribute(locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = nil
 		t.UpdatedAt = s.clock.Now()
-	})
+	}))
 }
 
 // BulkDefer hides every selected task until the given date, or clears the

@@ -122,6 +122,10 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	)
 	result.MovedDescendantCount = max(0, len(move.MovedTasks)-1)
 	result.AffectedProjectIDs = []string{sourceRef.Project.ID, destination.ID}
+	// The same map the reference pass re-pointed the catalog with is what the
+	// caller re-addresses its own project-qualified session state from, so the
+	// edited root and every descendant that traveled inside it are named once.
+	result.Moves = taskAddressChanges(maintenance.Moved)
 	committed = true
 	return result, nil
 }

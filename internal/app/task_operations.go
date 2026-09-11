@@ -110,6 +110,16 @@ type TaskOperationResult struct {
 	// updates its own remembered state from the deadlines this transaction
 	// replaced and wrote, never by re-reading a row the commit may have moved.
 	DueSteps []DueStepOutcome
+	// DueEdits names every task this transaction gave an explicit deadline
+	// instruction — set or cleared — and is populated by TaskOperationSetDueDate
+	// alone. It is deliberately separate from DueSteps: a step is the sequence
+	// walking one place and reports where it landed, while an edit is the user
+	// naming a deadline outright and overrides whatever the caller remembered.
+	DueEdits []TaskLocator
+	// Moves carries the committed source-to-destination address map of an
+	// operation that relocated tasks between projects. Every operation that moves
+	// nothing leaves it nil.
+	Moves []TaskAddressChange
 }
 
 // ExecuteTaskOperation is the one application path for daily Outliner task
@@ -183,7 +193,16 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		} else {
 			result, err = s.BulkSetDueDate(req.Targets, *req.Date)
 		}
-		return bulkTaskOperationResult(result, err)
+		operationResult, err := bulkTaskOperationResult(result, err)
+		if err != nil {
+			return TaskOperationResult{}, err
+		}
+		// Naming a deadline outright is the explicit edit, so every committed
+		// target is reported as one — including the clear of a deadline that was
+		// already absent, which changed no field but still overrode whatever the
+		// caller was holding for that task.
+		operationResult.DueEdits = taskResultLocators(operationResult.Tasks)
+		return operationResult, nil
 
 	case TaskOperationStepDueDate:
 		return s.stepDueDates(req.Targets, req.DueStep)
@@ -278,6 +297,7 @@ func bulkTaskOperationResult(result BulkResult, err error) (TaskOperationResult,
 		Tasks:             result.Tasks,
 		TouchedProjectIDs: result.TouchedProjectIDs,
 		TransactionID:     result.TransactionID,
+		Moves:             result.Moves,
 	}, nil
 }
 

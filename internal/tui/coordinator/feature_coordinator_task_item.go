@@ -57,6 +57,11 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 			TouchedProjectIDs: result.TouchedProjectIDs,
 			Summary:           summary,
 			TransactionID:     result.TransactionID,
+			DueEffect: CommittedDueEffect{
+				Steps: result.DueSteps,
+				Edits: result.DueEdits,
+				Moves: result.Moves,
+			},
 		}
 	}
 }
@@ -272,6 +277,7 @@ func (c TaskItemCoordinator) SetDueDate(task taskref.TaskIdentity, due *time.Tim
 		}
 		return TransactionResultMsg{
 			Action: "Set Due Date", Result: res, PlanningChanged: planningChanged,
+			DueEffect: CommittedDueEffect{Edits: []app.TaskLocator{task.Locator()}},
 		}
 	}
 }
@@ -349,6 +355,7 @@ func (c TaskItemCoordinator) DeleteTask(task taskref.TaskIdentity, artifacts []s
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           msg,
 			TransactionID:     res.TransactionID,
+			DueEffect:         CommittedDueEffect{Removed: res.RemovedTaskLocators},
 		}
 	}
 }

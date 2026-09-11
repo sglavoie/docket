@@ -380,6 +380,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	}
 
 	removeOutlineBuffer(pending.path)
+	m.observeCommittedDueEffect(outlineTransactionID(result), outlinePlanDueEffect(result))
 	return tea.Batch(
 		m.setRecoveryFeedback(result.Summary(), outlineTransactionID(result), false),
 		func() tea.Msg { return status.SaveCompleteMsg{} },

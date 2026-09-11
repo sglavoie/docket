@@ -25,6 +25,11 @@ type DeleteResult struct {
 	// TouchedProjectIDs lists every project committed in the transaction.
 	TouchedProjectIDs []string
 	TransactionID     string
+	// RemovedTaskLocators names every task the subtree removal took with it, in
+	// sorted UUID order, within the one project that owned them. A caller holding
+	// project-qualified session state drops exactly these addresses; a delete is
+	// the one mutation after which re-reading the row can never answer anything.
+	RemovedTaskLocators []TaskLocator
 }
 
 // Delete permanently removes a task and its whole subtree, committing the removal
@@ -63,8 +68,9 @@ func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange)
 		return DeleteResult{}, err
 	}
 	return DeleteResult{
-		TouchedProjectIDs: touched,
-		TransactionID:     transactionID,
+		TouchedProjectIDs:   touched,
+		TransactionID:       transactionID,
+		RemovedTaskLocators: removedLocators,
 	}, nil
 }
 
@@ -189,6 +195,15 @@ type BulkResult struct {
 	TouchedProjectIDs []string
 	// TransactionID identifies the one atomic commit shared by every task.
 	TransactionID string
+	// Moves is the committed source-to-destination address map of a batch that
+	// relocated tasks between projects, descendants included. Every other bulk
+	// mutation leaves it nil, because nothing changed address.
+	Moves []TaskAddressChange
+	// DueEdits names every task this batch gave an explicit deadline instruction.
+	// It is intent rather than effect, so clearing a deadline that was already
+	// absent still names its task: a caller remembering a wall clock has to hear
+	// that the user overrode it, and the resulting deadline cannot say so.
+	DueEdits []TaskLocator
 }
 
 // deleteTasks removes every root's subtree from its source project, carries the

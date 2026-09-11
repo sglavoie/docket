@@ -195,8 +195,9 @@ type BatchTransactionResultMsg struct {
 	// wrote instead of inferring it from a reloaded list, where another writer's
 	// addition is indistinguishable from this one.
 	CommentID string
-	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
-	// descendants). Nil for non-delete mutations.
+	// DueEffect is the typed evidence this transaction carries about deadlines
+	// and task addresses, for the session clock memory (see TransactionResultMsg).
+	DueEffect CommittedDueEffect
 }
 
 // FinalizeStaleSelectionBatchResult clears exactly the project-qualified
@@ -253,6 +254,23 @@ func runBatch(action string, mutate func() ([]string, string, string, error)) te
 		}
 		return BatchTransactionResultMsg{
 			Action: action, TouchedProjectIDs: touched, Summary: summary, TransactionID: transactionID,
+		}
+	}
+}
+
+// runBatchWithDueEffect is runBatch for the mutations that also report typed
+// deadline evidence. The effect rides back from the same call that produced the
+// transaction, so the memory it feeds and the commit it describes can never come
+// from two different reads.
+func runBatchWithDueEffect(action string, mutate func() ([]string, string, string, CommittedDueEffect, error)) tea.Cmd {
+	return func() tea.Msg {
+		touched, summary, transactionID, effect, err := mutate()
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return BatchTransactionResultMsg{
+			Action: action, TouchedProjectIDs: touched, Summary: summary, TransactionID: transactionID,
+			DueEffect: effect,
 		}
 	}
 }

@@ -225,6 +225,7 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 	if m.crossOutliner != nil {
 		m.crossOutliner.SettleRelocationCursor()
 	}
+	m.observeCommittedDueEffect(msg.Result.TransactionID, msg.DueEffect)
 	m.revealCommittedChecklistItem(msg.RevealChecklistFor)
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
@@ -265,6 +266,7 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 	if m.crossOutliner != nil {
 		m.crossOutliner.SettleRelocationCursor()
 	}
+	m.observeCommittedDueEffect(msg.TransactionID, msg.DueEffect)
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
 	// selection intact for the user to retry.

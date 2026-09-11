@@ -157,6 +157,15 @@ type AppModel struct {
 	// themselves stay on AppModel. See task_mutation_controller.go.
 	taskMutation taskMutationController
 
+	// dueClocks is the session's memory of the wall clocks deadline stepping
+	// cleared, so stepping back out of unset restores the time a task had instead
+	// of inventing one. It is keyed by project-qualified task address and held
+	// here rather than on the Outliner because the transactions it listens to —
+	// bulk edits, inline and external editor saves, outline applies, ledger
+	// restores — are the shell's, not one surface's. Nothing about it is
+	// persisted: a restart starts empty. See due_clock_memory.go.
+	dueClocks coordinator.DueClockController
+
 	// vocabularyRename holds the frozen plan the two filter pickers' rename step
 	// is showing. It lives here rather than on the picker because a preview pins
 	// a whole workspace census, which is the shell's to hold and to release. See

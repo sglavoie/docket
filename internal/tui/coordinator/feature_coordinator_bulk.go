@@ -58,6 +58,7 @@ func (c BulkCoordinator) DeleteLocators(locators []app.TaskLocator, artifacts ..
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           fmt.Sprintf("Deleted %d task(s)", removedCount),
 			TransactionID:     res.TransactionID,
+			DueEffect:         CommittedDueEffect{Removed: res.RemovedTaskLocators},
 		}
 	}
 }
@@ -73,7 +74,7 @@ func (c BulkCoordinator) SetPriorityLocators(locators []app.TaskLocator, priorit
 }
 
 func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time.Time) tea.Cmd {
-	return runBatch("Bulk Set Due Date", func() ([]string, string, string, error) {
+	return runBatchWithDueEffect("Bulk Set Due Date", func() ([]string, string, string, CommittedDueEffect, error) {
 		var (
 			res app.BulkResult
 			err error
@@ -84,19 +85,21 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 			res, err = c.bulk.BulkSetDueDate(locators, due)
 		}
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", CommittedDueEffect{}, err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID,
+			CommittedDueEffect{Edits: res.DueEdits}, nil
 	})
 }
 
 func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cmd {
-	return runBatch("Bulk Clear Due Date", func() ([]string, string, string, error) {
+	return runBatchWithDueEffect("Bulk Clear Due Date", func() ([]string, string, string, CommittedDueEffect, error) {
 		res, err := c.bulk.BulkClearDueDate(locators)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", CommittedDueEffect{}, err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
+		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID,
+			CommittedDueEffect{Edits: res.DueEdits}, nil
 	})
 }
 
@@ -126,16 +129,16 @@ func (c BulkCoordinator) MoveToProjectLocators(
 	destProjectID string,
 	summary func(moved int) string,
 ) tea.Cmd {
-	return runBatch("Move to Project", func() ([]string, string, string, error) {
+	return runBatchWithDueEffect("Move to Project", func() ([]string, string, string, CommittedDueEffect, error) {
 		res, err := c.bulk.BulkMoveToProject(locators, destProjectID)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", CommittedDueEffect{}, err
 		}
 		text := ""
 		if summary != nil {
 			text = summary(len(res.Tasks))
 		}
-		return res.TouchedProjectIDs, text, res.TransactionID, nil
+		return res.TouchedProjectIDs, text, res.TransactionID, CommittedDueEffect{Moves: res.Moves}, nil
 	})
 }
 

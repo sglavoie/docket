@@ -372,6 +372,10 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	}
 	m.rebuildPlanningFromRuntime()
 	m.refreshLoadedTaskWorkspace()
+	// The entry's transaction ID is read only here, after the restore actually
+	// succeeded: a refused or failed restore changed no durable state and must
+	// leave the remembered clocks exactly as it found them.
+	m.observeRestoredDueClocks(entry.TransactionID, redo)
 	m.clearToggleHistory()
 	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
 	m.refreshProjectHubIfActive()
