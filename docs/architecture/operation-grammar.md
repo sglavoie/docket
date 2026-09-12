@@ -342,6 +342,61 @@ row, and the string it measured is the one it passes to `RenderOverlayBox`.
 `fitRequiredGuidanceSegments` still protects Enter and Esc, so the optional hint
 can only ever be the one dropped.
 
+`-` and `+` reach the same due field without opening anything. They are two
+registered operations, `tui.task.step-due-earlier` and
+`tui.task.step-due-later`, because one descriptor carrying a direction would have
+to branch its own label, and the footer and `?` help read that label as it
+stands. Neither declares a `Provider` — a step has no value to ask for — and
+neither takes a `FooterRank`: `@` already spends rank 3 on the date axis, and the
+menu bar and the generated help project from the registry regardless of rank.
+The keys are spelled as the characters a terminal produces. A keyboard without
+the enhanced protocols reports `+` as `+`; one with them reports the unshifted
+code with the shifted text beside it, and `Key.String()` prefers that text, so
+one binding answers both. A second `shift+=` spelling would be dead vocabulary
+that also shadows `=`, which is Toggle Review.
+
+`DueStepQueue` in `internal/tui/coordinator` is the serialization those keys
+need. The shell freezes each keypress into a `DueStepGesture` — direction, the
+project-qualified locators the cursor or the visual selection named, and the
+hidden-member count only the surface that froze the selection can know — and
+enqueues it. Exactly one gesture is in flight; the rest wait in arrival order.
+What the gesture deliberately does not carry is the deadline or the remembered
+clocks: `dispatchDueStepGesture` reads `RememberedClocks` when it dispatches, so
+the second press of a burst computes from the state the first press committed
+rather than from the row that was on screen when it was typed. Each gesture is
+its own `app.TaskOperationStepDueDate` transaction and its own undo entry; a
+burst is never coalesced, so four presses are four `u` presses back.
+
+A result returns inside `DueStepResultMsg`, stamped with the sequence the queue
+armed. The stamp is what distinguishes a late delivery from the current one. On
+a commit the successor is taken out of the queue first, the ordinary
+`handleBatchTransactionResult` reload and relocation run, and only then is the
+successor armed — otherwise that reload's own supersede check would cancel the
+chain the queue is draining. On a refusal the whole pending sequence is
+abandoned and counted, because the tail was frozen against a premise the
+application layer has just rejected; `DueStepRefusal` wraps the reason rather
+than restating it. Navigation retargets nothing, and a result is delivered
+wherever the user has gone, help overlay included.
+
+`supersedeDueStepsForEffect` is the one detach. It reads
+`CommittedDueEffect.Edits` and `Removed` and never `Steps`, so an explicit due
+edit, an outline apply, or a removal drops the queue while the queue's own
+commits do not; `observeRestoredDueClocks` detaches on a ledger undo or redo for
+the same reason. A detached gesture still commits and still reloads — the
+transaction happened — but its `DueEffect` is blanked on the way through, so a
+late step cannot write back clock memory that an explicit edit or a restore has
+already replaced.
+
+What the strip says is the outcome, not the gesture. The ledger entry's context
+is `+1 day`, which is what the undo browser should show and no answer at all to
+the press, so `BatchTransactionResultMsg.RecoveryContext` carries
+`DueStepSummary` — one task's landed deadline, or the changed and cleared counts
+with the hidden members named — and `setRecoveryFeedbackWithContext` prints it in
+the ledger context's place. The feedback controller records it beside the
+fallback text, so the re-render delayed origin feedback performs keeps saying the
+outcome instead of putting the gesture back. Every other caller passes no
+override and reads exactly as before.
+
 One operation may chain into a second one by following its committed command with
 an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
 has just made relevant. `withWaitingCheckBackStep` runs the set-state command,

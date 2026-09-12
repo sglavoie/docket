@@ -198,6 +198,12 @@ type BatchTransactionResultMsg struct {
 	// DueEffect is the typed evidence this transaction carries about deadlines
 	// and task addresses, for the session clock memory (see TransactionResultMsg).
 	DueEffect CommittedDueEffect
+	// RecoveryContext replaces the ledger entry's own context in the undoable
+	// toast. The deadline stepper is its one writer: what its ledger entry
+	// records is the gesture (`+1 day`), which is what the undo browser should
+	// say, while the press the user just made must be answered with the deadline
+	// it produced. An empty value leaves the ledger's context alone.
+	RecoveryContext string
 }
 
 // FinalizeStaleSelectionBatchResult clears exactly the project-qualified

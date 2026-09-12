@@ -285,7 +285,9 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 	// due token is an override even when the deadline it names is the one the task
 	// already had: the edit committed nothing, and the clock it overrode is still
 	// no longer the user's intent.
-	m.dueClocks.ObserveCommit(msg.Result.TransactionID, taskLineEditDueEffect(msg.Result))
+	lineEditEffect := taskLineEditDueEffect(msg.Result)
+	m.supersedeDueStepsForEffect(lineEditEffect)
+	m.dueClocks.ObserveCommit(msg.Result.TransactionID, lineEditEffect)
 	if !msg.Result.Changed {
 		m.setInfoStatus("No task changes")
 		return status.DefaultStatusTimeout()

@@ -128,7 +128,8 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if !m.feedback.correlates(msg.TransactionID, time.Now()) {
 			return true, nil
 		}
-		return true, m.setRecoveryFeedback(m.feedback.recoveryFallback, msg.TransactionID, true)
+		return true, m.setRecoveryFeedbackWithContext(
+			m.feedback.recoveryFallback, msg.TransactionID, m.feedback.recoveryContext, true)
 	default:
 		return false, nil
 	}
@@ -158,6 +159,8 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.handleTransactionResult(msg)
 	case coordinator.BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
+	case coordinator.DueStepResultMsg:
+		return true, m.handleDueStepResult(msg)
 	case coordinator.TransactionErrorMsg:
 		m.feedback.err = msg.Err
 		return true, status.StatusTimeout(5 * time.Second)
@@ -286,7 +289,7 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 		successMessage = m.feedback.message
 	}
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
-	feedbackCmd := m.setRecoveryFeedback(successMessage, msg.TransactionID, false)
+	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, msg.TransactionID, msg.RecoveryContext, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
 

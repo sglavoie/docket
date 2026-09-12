@@ -1,8 +1,13 @@
 package tui
 
 import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -12,15 +17,109 @@ import (
 // committed transaction, because the first is what the transaction says about
 // itself and the second is what the workspace says about everyone else.
 func (m *AppModel) observeCommittedDueEffect(transactionID string, effect coordinator.CommittedDueEffect) {
+	m.supersedeDueStepsForEffect(effect)
 	m.dueClocks.ObserveCommit(transactionID, effect)
 	m.reconcileRememberedDueClocks()
+}
+
+// supersedeDueStepsForEffect abandons queued deadline work whose premise this
+// transaction just replaced. It reads the same typed evidence the clock memory
+// does, and only the two kinds that replace a premise: an explicit due edit is
+// the user naming a deadline outright, which outranks a step queued against the
+// one it displaced, and a removal is an address no queued gesture can still
+// mean.
+//
+// Steps are deliberately absent from that test. Every gesture in a burst commits
+// through here, so treating a step as a supersede would have the queue cancel
+// its own successor on the first commit; a step is the queue's own evidence, not
+// evidence against it.
+func (m *AppModel) supersedeDueStepsForEffect(effect coordinator.CommittedDueEffect) {
+	if len(effect.Edits) == 0 && len(effect.Removed) == 0 {
+		return
+	}
+	m.dueSteps.Supersede()
+}
+
+// dispatchDueStepGesture turns one frozen gesture into its transaction.
+//
+// The remembered clocks are read here rather than at the keypress, and read
+// through the controller's one accessor, so a queued step sees the memory the
+// preceding step's commit wrote instead of the memory that existed when the key
+// was pressed. Nothing is written back: every clock write already happens on the
+// committed result.
+func (m *AppModel) dispatchDueStepGesture(gesture coordinator.DueStepGesture, sequence int) tea.Cmd {
+	capture := m.captureOutlinerRelocationForLocators(gesture.Targets)
+	request := app.TaskOperationRequest{
+		Operation: app.TaskOperationStepDueDate,
+		Targets:   gesture.Targets,
+		DueStep: app.DueStepRequest{
+			Direction:        gesture.Direction,
+			RememberedClocks: m.dueClocks.RememberedClocks(gesture.Targets),
+		},
+	}
+	return withDueStepSequence(withOutlinerRelocationCapture(
+		m.secondaryFeatures.TaskItem.StepDueDates(request, gesture.Hidden),
+		capture,
+	), sequence)
+}
+
+// withDueStepSequence stamps a dispatched gesture's result with the sequence the
+// queue armed it under. It wraps outside the relocation capture so the capture
+// still sees the bare coordinator result it knows how to stamp.
+func withDueStepSequence(cmd tea.Cmd, sequence int) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		return coordinator.DueStepResultMsg{Sequence: sequence, Inner: cmd()}
+	}
+}
+
+// handleDueStepResult delivers one dispatched gesture and, on success, arms the
+// next one behind it.
+//
+// A superseded delivery still commits and still reloads — the transaction
+// happened, and pretending otherwise would leave the shell showing stale rows —
+// but its typed effect is dropped, so a late result cannot write back clock
+// memory that an explicit edit or a ledger restore has already replaced. It also
+// arms nothing: the queue behind it went with the premise.
+//
+// The successor is armed after the reload rather than before it, so each step is
+// computed from a workspace the shell has already taken delivery of. Arming
+// after the reload is also what keeps the chain alive across the supersede check
+// above: a step's own commit runs that check, finds no explicit edit, and leaves
+// the queue standing.
+func (m *AppModel) handleDueStepResult(msg coordinator.DueStepResultMsg) tea.Cmd {
+	switch inner := msg.Inner.(type) {
+	case coordinator.BatchTransactionResultMsg:
+		next, hasNext, current := m.dueSteps.Settle(msg.Sequence)
+		if !current {
+			inner.DueEffect = coordinator.CommittedDueEffect{}
+		}
+		cmd := m.handleBatchTransactionResult(inner)
+		if !hasNext {
+			return cmd
+		}
+		return tea.Batch(cmd, m.dispatchDueStepGesture(next, m.dueSteps.Arm()))
+	case coordinator.TransactionErrorMsg:
+		dropped, _ := m.dueSteps.Abandon(msg.Sequence)
+		m.feedback.err = coordinator.DueStepRefusal(inner.Err, dropped)
+		return status.StatusTimeout(5 * time.Second)
+	default:
+		m.dueSteps.Abandon(msg.Sequence)
+		return func() tea.Msg { return msg.Inner }
+	}
 }
 
 // observeRestoredDueClocks takes clock memory back across one successful ledger
 // undo or redo. Reconciliation runs first and the delta second, so a deadline
 // the restore put back retires its remembered clock either way and the delta —
 // which knows what this exact transaction did — has the last word.
+// A restore also abandons queued deadline work outright: undo and redo move the
+// very deadlines a queued step was to be computed from, so the frozen tail has
+// lost its premise even when it names tasks the restore never touched.
 func (m *AppModel) observeRestoredDueClocks(transactionID string, redo bool) {
+	m.dueSteps.Supersede()
 	m.reconcileRememberedDueClocks()
 	m.dueClocks.ObserveRestore(transactionID, redo)
 }

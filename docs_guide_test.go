@@ -30,7 +30,11 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
 		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
 		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
-		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin",
+		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; " +
+			"`-` and `+` step the deadline one day earlier and one day later; " +
+			"`#` tags and context; `*` pin",
+		"earlier dates, yesterday, no deadline at all, today, tomorrow, later dates",
+		"`+` off yesterday, `-` off today",
 		"`[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, " +
 			"`~` Set Dependencies",
 		"a leading `No parent (project root)` row that does what `>0` does",

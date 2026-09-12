@@ -9,10 +9,16 @@ const (
 	OperationTaskSetState    OperationID = "tui.task.set-state"
 	OperationTaskSetPriority OperationID = "tui.task.set-priority"
 	OperationTaskSetDueDate  OperationID = "tui.task.set-due-date"
-	OperationTaskSetTags     OperationID = "tui.task.set-tags"
-	OperationTaskSetParent   OperationID = "tui.task.set-parent"
-	OperationTaskIndent      OperationID = "tui.task.indent"
-	OperationTaskOutdent     OperationID = "tui.task.outdent"
+	// The two deadline steps are separate IDs rather than one operation reading a
+	// direction off the key, because a descriptor's target source and label may
+	// never branch on runtime context: "earlier" and "later" are two acts, so they
+	// are two descriptors, two labels, and two help rows.
+	OperationTaskStepDueEarlier OperationID = "tui.task.step-due-earlier"
+	OperationTaskStepDueLater   OperationID = "tui.task.step-due-later"
+	OperationTaskSetTags        OperationID = "tui.task.set-tags"
+	OperationTaskSetParent      OperationID = "tui.task.set-parent"
+	OperationTaskIndent         OperationID = "tui.task.indent"
+	OperationTaskOutdent        OperationID = "tui.task.outdent"
 
 	// OperationTaskAdoptChildren is the `<child` sigil's key. It is a separate
 	// operation from set-parent because the sigil is repeatable and additive,

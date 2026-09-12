@@ -82,6 +82,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"date-picker-frozen-cross-project-selection.json",
 		"date-picker-hidden-selected-members.json",
 		"date-picker-narrow-resize-key-confinement.json",
+		"deadline-step-keys.json",
+		"deadline-step-bulk-hidden-narrow.json",
 		"waiting-check-back-transaction-boundary.json",
 		"project-header-pressure.json",
 		"project-header-pressure-narrow.json",

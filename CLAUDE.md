@@ -151,6 +151,7 @@ One key is one act on every entity surface:
 | `Enter` `a` `c` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · repeat · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` `R` | copy · reorder · pin · tags · review · acknowledge |
+| `@` `-`/`+` | due or defer · step that deadline a day earlier/later |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `b` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · scroll it · page it |
@@ -289,6 +290,26 @@ lands on through the `SelectedValue` path `Enter` takes, so a filtered-out prese
 is a miss and a disabled one keeps its own reason. Its hint rides
 `PrimaryMarker`, never searchable text. The overlay reserves the guidance it
 rendered, never a fixed row count.
+
+`-` and `+` step that same due field and open nothing, so they declare no
+provider and no `FooterRank`, and they are two descriptors because a label may
+not branch on a direction. They are spelled as the characters they produce: the
+shift pair still delivers that text, and a second spelling would shadow `=`.
+`DueStepQueue` is their one serialization — targets freeze at the keypress, one
+gesture runs at a time, and each reads `RememberedClocks` at dispatch rather than
+at the keypress, so a step is computed from the preceding committed state. One
+gesture is one transaction and one undo entry; they never coalesce, and a
+successor is armed only after its predecessor cleared
+`handleBatchTransactionResult`. A refusal abandons the pending sequence and names
+what went unexecuted; it never retries against different targets, and navigation
+never retargets queued work. `supersedeDueStepsForEffect` is the one detach,
+reading `CommittedDueEffect.Edits`/`Removed` and never `Steps`, so an explicit
+due edit or a ledger restore drops the queue while the chain's own commits do
+not; a detached result still reloads, with its `DueEffect` blanked so late
+delivery cannot resurrect superseded clock memory. A step's ledger context names
+the gesture, so its toast names the outcome instead through `RecoveryContext` —
+one deadline, or changed and cleared counts including hidden members — and a
+re-render of that same toast keeps it.
 
 `outlinerCursorRow` marks the cursor row in its first column and trailing fill
 alone, not its content and not the gutter between; only a flash widens it. Each

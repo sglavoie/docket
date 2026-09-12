@@ -166,6 +166,13 @@ type AppModel struct {
 	// persisted: a restart starts empty. See due_clock_memory.go.
 	dueClocks coordinator.DueClockController
 
+	// dueSteps serializes the deadline gestures the + and - keys record. It sits
+	// beside dueClocks for the same reason: a burst of keypresses is one chain of
+	// transactions, and only the shell sees both the keypress that freezes a
+	// gesture's targets and the committed result that releases the next one. See
+	// due_clock_memory.go.
+	dueSteps coordinator.DueStepQueue
+
 	// vocabularyRename holds the frozen plan the two filter pickers' rename step
 	// is showing. It lives here rather than on the picker because a preview pins
 	// a whole workspace census, which is the shell's to hold and to release. See

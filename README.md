@@ -149,6 +149,7 @@ and the rare.
 | `a` `A` `e` `E` `Ctrl+E` | capture · child · inline edit · description · external editor |
 | `w` | the workflow chord: `wi` `wb` `wn` `wt` `wg` `ww` `wp` `wm` `wd` `wc` |
 | `!` `@` `#` `*` | priority · due and defer · tags and context · pin |
+| `-` `+` | step the deadline one day earlier · one day later |
 | `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |
 | `/` `f` `F` `o` | search · row facets · which projects load · sort |

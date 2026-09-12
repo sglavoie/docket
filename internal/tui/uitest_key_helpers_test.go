@@ -26,6 +26,13 @@ func parseUITestKey(name string) (tea.KeyPressMsg, error) {
 		return tea.KeyPressMsg{}, fmt.Errorf("empty key name")
 	}
 
+	// A single rune is the key itself, checked before the modifier split so the
+	// one key whose name is the separator — `+`, which steps a deadline — can be
+	// spelled at all. Splitting it first yields two empty halves and an error.
+	if runes := []rune(name); len(runes) == 1 && runes[0] == '+' {
+		return tea.KeyPressMsg{Code: runes[0], Text: name}, nil
+	}
+
 	parts := strings.Split(name, "+")
 	base := parts[len(parts)-1]
 	mods := parts[:len(parts)-1]

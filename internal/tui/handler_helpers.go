@@ -178,6 +178,18 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 // unreadable, or superseded correlation degrades to the ordinary two-second
 // success status without leaving an undo callback armed.
 func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, originRecorded bool) tea.Cmd {
+	return m.setRecoveryFeedbackWithContext(successMessage, transactionID, "", originRecorded)
+}
+
+// setRecoveryFeedbackWithContext is that same toast with the committed outcome
+// named in place of the ledger entry's stored context. Only a mutation whose
+// ledger context describes the gesture rather than the result passes one, which
+// today is the deadline stepper alone; an empty override keeps the ledger's own
+// words, so every other caller reads exactly as before.
+func (m *AppModel) setRecoveryFeedbackWithContext(
+	successMessage, transactionID, contextOverride string,
+	originRecorded bool,
+) tea.Cmd {
 	transactionID = strings.TrimSpace(transactionID)
 	if transactionID == "" {
 		m.setSuccessStatus(successMessage)
@@ -188,9 +200,13 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 		m.setSuccessStatus(successMessage)
 		return status.DefaultStatusTimeout()
 	}
+	context := entry.Context
+	if override := strings.TrimSpace(contextOverride); override != "" {
+		context = override
+	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
-	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, entry.Context, originRecorded), undoCb)
-	m.feedback.correlate(transactionID, successMessage)
+	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, context, originRecorded), undoCb)
+	m.feedback.correlate(transactionID, successMessage, contextOverride)
 	return cmd
 }
 

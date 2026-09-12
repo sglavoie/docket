@@ -55,9 +55,12 @@ type feedbackController struct {
 	// transactionID correlates the active recovery toast with a committed
 	// workspace transaction, so delayed origin-history feedback cannot decorate
 	// a newer status; recoveryFallback is the plain success text that correlation
-	// degrades to.
+	// degrades to, and recoveryContext the outcome phrase — empty for every
+	// mutation whose ledger entry already names its own result — that a re-render
+	// of the same toast must keep saying.
 	transactionID    string
 	recoveryFallback string
+	recoveryContext  string
 
 	// seq is bumped by every status setter and is what the footer flash arms on;
 	// severity is the newest status text's severity. Clearing advances neither,
@@ -96,6 +99,7 @@ func (c *feedbackController) announce(message string, info bool, at time.Time) {
 	c.expiresAt = time.Time{}
 	c.transactionID = ""
 	c.recoveryFallback = ""
+	c.recoveryContext = ""
 }
 
 // recordSeverity advances the status generation the footer flash arms on. Only
@@ -113,11 +117,14 @@ func (c *feedbackController) armUndo(undoCb func() tea.Cmd, expiresAt time.Time)
 	c.expiresAt = expiresAt
 }
 
-// correlate ties the live toast to a committed transaction and records the plain
-// text a superseded correlation degrades to.
-func (c *feedbackController) correlate(transactionID, fallback string) {
+// correlate ties the live toast to a committed transaction and records both the
+// plain text a superseded correlation degrades to and the outcome phrase a
+// re-render of this same toast must keep, so delayed origin feedback rewrites
+// the decoration and never the answer.
+func (c *feedbackController) correlate(transactionID, fallback, context string) {
 	c.transactionID = transactionID
 	c.recoveryFallback = fallback
+	c.recoveryContext = context
 }
 
 // undoLive reports whether the inline undo is still offered at now.

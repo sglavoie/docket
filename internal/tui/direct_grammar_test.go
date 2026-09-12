@@ -274,6 +274,8 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, "ctrl+c": operation.OperationCoreQuit,
 		"tab": operation.OperationCoreNextWorkMode, "shift+tab": operation.OperationCorePreviousWorkMode,
 		"@": operation.OperationTaskSetDueDate,
+		"-": operation.OperationTaskStepDueEarlier,
+		"+": operation.OperationTaskStepDueLater,
 		// = is not shared: there is no project review flag for the cursor to
 		// disambiguate, so the key names a task and only a task.
 		"=": operation.OperationTaskToggleReview,

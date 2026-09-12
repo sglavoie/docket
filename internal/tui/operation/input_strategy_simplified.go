@@ -156,6 +156,16 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: OperationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
 			{OperationID: OperationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 3, FooterLabel: "date"},
+			// - and + step the deadline @ sets, one calendar day at a time, along the
+			// line earlier ↔ yesterday ↔ unset ↔ today ↔ tomorrow ↔ later. They are
+			// spelled as the characters they produce and nothing else: a terminal
+			// reporting shift+= for + still delivers "+" as the key's text, so a
+			// second shifted spelling would be dead vocabulary that also shadows the
+			// = review key. Neither carries a FooterRank — @ already spends one on
+			// the date axis, and the generated ? help and menu bar name both keys
+			// regardless of the footer ladder.
+			{OperationID: OperationTaskStepDueEarlier, Keys: []string{"-"}, DisplayKey: "-"},
+			{OperationID: OperationTaskStepDueLater, Keys: []string{"+"}, DisplayKey: "+"},
 			// # tags whatever the cursor names. The two operations carry different
 			// targets and different vocabularies, so they stay two descriptors with
 			// two honest labels rather than one that branches on runtime context.

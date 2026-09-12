@@ -10,7 +10,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `b` toggles Peek and `Ctrl+D`/`Ctrl+U` scroll an open one two rows at a time while `Ctrl+F`/`Ctrl+B` page it; all four belong to the open Peek, and `PgUp`/`PgDn` keep moving the outline regardless |
 | Capture and edit | `a` capture, `A` child, `c` add a checklist item to the cursor's task, `D` repeat the cursor task as a new draft, `e` edits whatever the cursor names — the task inline, the checklist item, or the project a group header names — `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord over the ten destinations the `$destination` capture sigil names: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date. The chord is the one place the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `-` and `+` step the deadline one day earlier and one day later; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of whatever the cursor names — the task, or the project a group header names — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete; `C` appends one comment to the same two things without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
@@ -66,6 +66,31 @@ at day's end. `+4h` and the other `+Nh` hour offsets parse only when the cursor
 sits in the defer section, because a deferral is an instant and a due date is a
 calendar day; the due section refuses them by name. Inside the `#` picker the
 same key adds a new tag, or a new context when the cursor sits on a context row.
+
+`-` and `+` move an existing deadline instead of opening anything. They walk one
+line — earlier dates, yesterday, no deadline at all, today, tomorrow, later dates
+— one calendar day per press, weekends and month ends included. No deadline sits
+between yesterday and today, so `+` on a task with no due date lands on today and
+`-` lands on yesterday, and you arrive back at no deadline from exactly one side:
+`+` off yesterday, `-` off today. A step onto today adds the task to Today the
+way `wt` would. A deadline that carries a clock time keeps it; a deadline you
+step off the line loses its clock, and pressing back toward it puts that clock
+back, because the time is remembered for the rest of the session. Setting a due
+date outright with `@` or an edit sigil replaces that memory, moving around the
+outline keeps it, and quitting drops it.
+
+Both keys take the whole visual selection, hidden members included, and commit it
+as one transaction and one undo entry per press: a burst of four presses is four
+steps to undo, in the order you typed them. Each press is frozen on the rows it
+named, so moving the cursor, changing the query, or watching a row relocate out
+of the filter while the save runs never redirects a step onto something else, and
+the presses apply one at a time, each from the deadline the previous one actually
+committed. One task reports the date it landed on; a selection reports how many
+deadlines were written, how many were cleared, and how many of them you could not
+see. A refused step stops the presses queued behind it and says how many never
+ran, rather than retrying them against whatever is on screen by then. On a
+section header, a project header, or a checklist row the keys refuse by name, and
+while you are typing anywhere they are ordinary text.
 
 `?` opens the generated key reference for the surface you are on, sectioned by
 the same categories the operations declare, with a **Capture & Edit Grammar**

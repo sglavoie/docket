@@ -546,7 +546,27 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// query and ranking skip — spelling the key into the label instead makes typing
 	// `m` match every row `m` applies. The mechanism lives in
 	// docs/architecture/operation-grammar.md.
-	const budget = 40638
+	// Twenty-fourth raise, 40638 to 42146, for deadline stepping's two keys. 1508
+	// bytes buy four rules that are silent when guessed wrong. The first is that
+	// the remembered clock is read at dispatch and not at the keypress: reading it
+	// where the targets are frozen is the obvious symmetry, and it makes the second
+	// press of a burst compute from the deadline the first press displaced rather
+	// than from the one it committed. The second is that a gesture is never
+	// coalesced — folding a burst into one transaction is the efficient-looking
+	// move and it silently turns four presses into one undo. The third is that the
+	// supersede reads `Edits`/`Removed` and never `Steps`: superseding on every
+	// committed due effect reads as the conservative choice and has the queue
+	// cancel its own successor on the first commit, so a burst applies once. The
+	// fourth is that a detached result still reloads with its `DueEffect` blanked —
+	// dropping the message instead leaves the shell rendering rows the transaction
+	// already changed, and delivering it whole lets a late step write back clock
+	// memory an explicit edit or a ledger restore has replaced. The fifth is that
+	// the toast names the outcome rather than the ledger's context — a step's
+	// ledger entry says `+1 day`, which is the right thing for the undo browser
+	// and no answer at all to the press, and the re-render delayed origin feedback
+	// runs would otherwise put the gesture back. The mechanism lives in
+	// docs/architecture/operation-grammar.md.
+	const budget = 42146
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

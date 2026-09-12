@@ -39,6 +39,9 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operation.OperationTaskMarkReviewed {
 		return m.executeTaskMarkReviewedOperation(invocation)
 	}
+	if direction, ok := dueStepDirectionForOperation(invocation.Descriptor.ID); ok {
+		return m.executeTaskStepDueDateOperation(invocation, direction)
+	}
 	if operationProjectsClipboard(invocation.Descriptor.ID) {
 		return m.executeTaskCopyOperation(invocation)
 	}
@@ -186,6 +189,60 @@ func (m *AppModel) executeTaskToggleReviewOperation(
 			"Toggle Review",
 			"",
 		), capture),
+	}}
+}
+
+// dueStepDirectionForOperation reads the direction off the descriptor rather
+// than off the key, which is what lets the two deadline steps stay two
+// descriptors with two labels while sharing one handler and one transaction
+// shape.
+func dueStepDirectionForOperation(id operation.OperationID) (app.DueStepDirection, bool) {
+	switch id {
+	case operation.OperationTaskStepDueEarlier:
+		return app.DueStepBackward, true
+	case operation.OperationTaskStepDueLater:
+		return app.DueStepForward, true
+	default:
+		return 0, false
+	}
+}
+
+// executeTaskStepDueDateOperation freezes one deadline gesture and hands it to
+// the queue. Freezing happens here, at the keypress, so the targets are the ones
+// the cursor or the visual selection named while the user was looking at them:
+// a rebuild, a filtered relocation, or a cursor move between this keypress and
+// the commit cannot retarget the work.
+//
+// Nothing is computed here. The direction is the whole argument, and the
+// deadline each step starts from is read at dispatch out of the state the
+// preceding gesture committed — which is also why a gesture that arrives while
+// one is in flight returns an empty result: it has been recorded, it will run,
+// and there is nothing to say about it yet.
+func (m *AppModel) executeTaskStepDueDateOperation(
+	invocation operation.OperationInvocation,
+	direction app.DueStepDirection,
+) operation.OperationHandlerResult {
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
+				"operation %s resolved an invalid task",
+				invocation.Descriptor.ID,
+			)}
+		}
+		locators = append(locators, target.Task.Locator())
+	}
+	gesture := coordinator.DueStepGesture{
+		Direction: direction,
+		Targets:   locators,
+		Hidden:    operationSelectionCounts(invocation.Context, len(locators)).Hidden,
+	}
+	sequence, dispatch := m.dueSteps.Enqueue(gesture)
+	if !dispatch {
+		return operation.OperationHandlerResult{}
+	}
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
+		Cmd: m.dispatchDueStepGesture(gesture, sequence),
 	}}
 }
 

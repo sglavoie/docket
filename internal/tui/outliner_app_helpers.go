@@ -187,6 +187,25 @@ func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.Resolve
 	return out.CaptureOutlinerRelocation(identities)
 }
 
+// captureOutlinerRelocationForLocators is the same capture taken from addresses
+// rather than from resolved operation targets. A queued deadline gesture is
+// dispatched long after its invocation is gone and holds only the locators it
+// froze, so it needs this door; nothing else does.
+func (m *AppModel) captureOutlinerRelocationForLocators(targets []app.TaskLocator) *outliner.OutlinerRelocationCapture {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return nil
+	}
+	identities := make([]taskref.TaskIdentity, 0, len(targets))
+	for _, target := range targets {
+		identity := taskref.FromLocator(target)
+		if identity.Valid() {
+			identities = append(identities, identity)
+		}
+	}
+	return out.CaptureOutlinerRelocation(identities)
+}
+
 // captureOutlinerReviewAdvance is the acknowledgement's capture: the ordinary
 // relocation snapshot plus the sequence of candidates the cursor may advance
 // onto. It is taken before the commit because the rows it reads are the ones the

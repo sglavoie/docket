@@ -99,7 +99,7 @@ func TestFeedbackControllerAnnounceReleasesThePreviousUndo(t *testing.T) {
 	var controller feedbackController
 	controller.announce("Task deleted · u undo", true, now)
 	controller.armUndo(func() tea.Cmd { return nil }, now.Add(UndoToastTimeout))
-	controller.correlate("txn-1", "Task deleted")
+	controller.correlate("txn-1", "Task deleted", "")
 	if !controller.undoLive(now) {
 		t.Fatal("an armed toast is live inside its window")
 	}
@@ -123,7 +123,7 @@ func TestFeedbackControllerCorrelatesOnlyTheLiveToast(t *testing.T) {
 	var controller feedbackController
 	controller.announce("Deleted 3 tasks · u undo", true, now)
 	controller.armUndo(func() tea.Cmd { return nil }, now.Add(UndoToastTimeout))
-	controller.correlate("txn-1", "Deleted 3 tasks")
+	controller.correlate("txn-1", "Deleted 3 tasks", "")
 
 	if !controller.correlates("txn-1", now) {
 		t.Fatal("the live toast correlates with the transaction it was recorded for")
