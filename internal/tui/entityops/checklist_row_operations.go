@@ -3,6 +3,7 @@ package entityops
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -41,6 +42,15 @@ func checklistAddItemApplicable(ctx operation.CommandContext) bool {
 		return false
 	}
 	return operation.CurrentTaskIdentity(ctx).Valid()
+}
+
+// checklistPromoteItemApplicable is the row gate every other item operation
+// uses, narrowed by one more question: a visual selection refuses it. Promotion
+// is a structural act, and a selection names task rows, so falling back to the
+// one checklist item under the cursor would answer a bulk gesture with a single
+// hidden conversion.
+func checklistPromoteItemApplicable(ctx operation.CommandContext) bool {
+	return checklistRowOperationApplicable(ctx) && !ctx.Selection.Visual
 }
 
 // ChecklistRowOperationDescriptors is the authoritative catalog of checklist
@@ -93,6 +103,12 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 				checklistAddItemApplicable,
 			),
 			operation.ValueProviderChecklistItem,
+		),
+		// Make Subtask declares no value provider and no confirmation: the item's
+		// own text is the child's title, so there is nothing left to ask.
+		withApplicability(
+			item(operation.OperationChecklistPromoteItem, "Make Subtask", "Convert this checklist item into a subtask", operation.OperationRiskMutation),
+			checklistPromoteItemApplicable,
 		),
 		item(operation.OperationChecklistActions, "Checklist Actions", "Open the checklist item action menu", operation.OperationRiskReadOnly),
 		item(operation.OperationChecklistDeleteItem, "Delete Item", "Remove this checklist item", operation.OperationRiskDestructive),
@@ -213,6 +229,13 @@ func (c *Controller) executeChecklistRowOperation(
 		return checklistCommandResult(coordinator.EditChecklistItem(identity, index, text))
 	case operation.OperationChecklistDeleteItem:
 		return checklistCommandResult(coordinator.RemoveChecklistItem(identity, index))
+	case operation.OperationChecklistPromoteItem:
+		// The whole ordered checklist is the item's identity at the application
+		// layer, so it is copied here, at the keypress, rather than re-read at
+		// commit time. A copy rather than the slice itself: the owner task stays
+		// loaded and a reload underneath would otherwise rewrite the frozen list
+		// the commit is checked against.
+		return checklistCommandResult(coordinator.PromoteChecklistItem(identity, index, slices.Clone(task.Checklist)))
 	case operation.OperationChecklistMoveDown:
 		if index == len(task.Checklist)-1 {
 			return operation.OperationHandlerResult{Err: errors.New("this item is already last")}

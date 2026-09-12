@@ -360,6 +360,28 @@ func (m *OutlinerModel) SetSectionRowCollapsed(row OutlinerRow, collapsed bool) 
 	m.Folds.setSection(row.EffectiveCollapseKey(), collapsed)
 }
 
+// ExpandAncestorsOfTask opens the task subtree folds between task and its
+// project root and touches nothing else, reporting whether any of them moved. It
+// is the narrow half of navigateToTask: a reveal that must leave the scope, the
+// mode, the query, the sections and every unrelated fold exactly as it found
+// them still owes its target an open branch, because a collapsed ancestor is the
+// one way a freshly committed child is missing from a projection that admits it.
+func (m *OutlinerModel) ExpandAncestorsOfTask(task *models.Task, projectID string) bool {
+	if m == nil || task == nil || projectID == "" {
+		return false
+	}
+	changed := false
+	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
+		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}
+		if m.IsExpanded(identity) {
+			continue
+		}
+		m.Folds.setNode(identity, true)
+		changed = true
+	}
+	return changed
+}
+
 func (m *OutlinerModel) MoveCursorToIdentity(identity taskref.TaskIdentity) bool {
 	for i, row := range m.Rows {
 		if !row.IsTaskRow() || row.Task == nil {

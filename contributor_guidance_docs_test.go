@@ -566,7 +566,27 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// and no answer at all to the press, and the re-render delayed origin feedback
 	// runs would otherwise put the gesture back. The mechanism lives in
 	// docs/architecture/operation-grammar.md.
-	const budget = 42146
+	// Twenty-fifth raise, 42146 to 42859, for promoting a checklist item on `S`.
+	// 713 bytes buy three rules that are silent when guessed wrong. The first is
+	// that the frozen checklist is what makes a repeated press safe: the obvious
+	// reading of "one item at a time" is a queue like the deadline keys', and
+	// building one here is both unnecessary and wrong, because the commit already
+	// refuses a list it no longer matches and a queue would instead retarget the
+	// second press onto whatever slid up into the row. The second is that the
+	// committed child reaches the view only through `RevealTaskFor` — every other
+	// reveal in the file resolves a row that still exists, so a reader following
+	// that precedent looks for the promoted item in a reloaded projection and finds
+	// the one thing the transaction deleted. The third is the shape of the reveal
+	// itself, which is the inverse of `revealTask` sitting next to it: that one
+	// rewrites mode and filters until the target is visible, and copying it here
+	// would throw away the user's view every time a done subtask lands under a
+	// query that hides done work. Naming what the reveal may not write, and that a
+	// hidden child is reported rather than chased, is what keeps the next reader
+	// from "fixing" the narrower one into the wider one. The key table cell and the
+	// direct-only clause ride along because the table is the inventory the one-act
+	// rule is enforced from. The mechanism lives in
+	// docs/architecture/tui-architecture.md.
+	const budget = 42859
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

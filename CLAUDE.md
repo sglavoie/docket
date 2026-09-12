@@ -148,7 +148,7 @@ One key is one act on every entity surface:
 
 | Keys | Act |
 | --- | --- |
-| `Enter` `a` `c` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · repeat · edit · body/external |
+| `Enter` `a` `c` `S` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · promote it · repeat · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` `R` | copy · reorder · pin · tags · review · acknowledge |
 | `@` `-`/`+` | due or defer · step that deadline a day earlier/later |
@@ -186,6 +186,15 @@ Checklist rules:
   no item row: `c` is one binding over both, refusing on section, project, and
   empty rows and under a visual selection. Its reveal rides
   `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing.
+- `S` promotes one item into a subtask, direct-only and never in that menu, and
+  refused under a visual selection. The complete ordered checklist is frozen at
+  the keypress and rechecked at commit, which is what refuses a second press
+  against the row the first one shifted rather than converting its neighbor. The
+  committed child rides `TransactionResultMsg.RevealTaskFor`, the one place a
+  view learns an identity the commit minted, and `revealCommittedTask` opens that
+  child's ancestor chain alone: scope, mode, query, sections, and every unrelated
+  fold stay as found, so a projection that hides the child names it and returns
+  to the owner instead of rewriting itself to show it.
 - Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability`
   field so an unconditional descriptor stays unconditional to `Register`.
 

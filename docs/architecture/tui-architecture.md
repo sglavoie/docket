@@ -368,14 +368,14 @@ read that installed it and the object standing there is that reading. A
 restoration is therefore the captured membership intersected with what is still
 offered and still readable.
 
-A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
-Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
-Checklist Actions, and Delete Item — registered in
+A checklist row owns ten operations of its own — Toggle Item, Edit Item, Move
+Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item, Make
+Subtask, Checklist Actions, and Delete Item — registered in
 `internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that
-apply under a checklist cursor, Add Item alone excepted. Eight of them answer a
-key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, and `Space`. Six of those
+apply under a checklist cursor, Add Item alone excepted. Nine of them answer a
+key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, and `Space`. Six of those
 reuse the key their task-row counterpart holds, which works because resolution
-takes the first applicable binding and the two are disjoint by cursor. Delete Item is the ninth and answers no key at all: it reaches the
+takes the first applicable binding and the two are disjoint by cursor. Delete Item is the tenth and answers no key at all: it reaches the
 user only from the `Space` menu that Checklist Actions opens, behind the
 executor's destructive confirmation. The refusal that keeps them disjoint is one
 predicate, `operationRefusedOnChecklistRow`, read by
@@ -409,6 +409,32 @@ committed item through `MoveCursorToChecklistItem`, the checklist counterpart of
 `MoveCursorToIdentity` that a row's owner-task pointer would otherwise leave one
 row short. A refused write never reaches it, so a failed append changes neither
 the fold map nor the cursor.
+
+Make Subtask is the one member of the family that destroys the row it acts on,
+and that is what shapes both of its ends. At the keypress the handler freezes the
+owner identity, the item index, and a copy of the complete ordered checklist, and
+hands all three to `SubviewCoordinator.PromoteChecklistItem`; the application
+layer compares that frozen list against the live one before it consumes
+anything, so a checklist edited, reordered or shortened in between refuses rather
+than converting a different item. A second `S` typed against the list the first
+one already changed is refused by that same comparison, which is why the key
+needs no queue of its own. At the other end there is no row left to reveal, so
+the committed child rides back on `TransactionResultMsg.RevealTaskFor` — the only
+place a view can learn an identity the commit itself minted.
+`AppModel.revealCommittedTask` reads it beside `RevealChecklistFor`, after the
+reload, and is deliberately narrower than `revealTask`: it opens the child's own
+ancestor chain through `OutlinerModel.ExpandAncestorsOfTask` and writes no scope,
+mode, query, section or unrelated fold. A projection that does not admit the
+child is therefore honored rather than rewritten — the cursor falls back to the
+owner and the status names the hidden child, saying so explicitly when a ticked
+item became a done subtask the view is hiding.
+
+`Make Subtask` is direct-only and absent from `checklistActionSheetOperations`,
+so the item menu stays Edit Item and Delete Item. It is the one checklist
+operation that also refuses under a visual selection, through
+`checklistPromoteItemApplicable`: promotion is structural, a selection names task
+rows, and `OperationTargetCurrentTask` would otherwise fall back to the single
+item under the cursor and answer a bulk gesture with one hidden conversion.
 
 That same decoration owns the other end. The value overlay closes before the
 append is executed, so a commit refused by an unwritable project or a moved

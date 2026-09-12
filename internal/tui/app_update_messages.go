@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -230,6 +232,10 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 	}
 	m.observeCommittedDueEffect(msg.Result.TransactionID, msg.DueEffect)
 	m.revealCommittedChecklistItem(msg.RevealChecklistFor)
+	m.revealCommittedTask(msg.RevealTaskFor, taskref.TaskIdentity{
+		ProjectID: msg.Result.ProjectID,
+		TaskID:    msg.Result.TaskID,
+	})
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
@@ -251,6 +257,51 @@ func (m *AppModel) revealCommittedChecklistItem(identity taskref.TaskIdentity) {
 	m.crossOutliner.Folds.SetChecklist(identity, true)
 	m.crossOutliner.RebuildRows()
 	m.crossOutliner.MoveCursorToChecklistItem(identity, len(task.Checklist)-1)
+}
+
+// revealCommittedTask seats the cursor on a task this transaction minted, named
+// by qualified identity because the row the gesture was made on no longer
+// exists: checklist promotion consumes the item it converts, so the child is the
+// only thing left to point at and only the commit knows what it is.
+//
+// It runs from the success message alone and after the reload, so the cursor
+// moves only once the child is really in a rebuilt projection. It opens the
+// branch that owns the child and nothing else — scope, mode, query, sections and
+// every unrelated fold are left as the user had them — which means the current
+// view may legitimately refuse to show the child. That is reported rather than
+// worked around: the cursor falls back to the owner, or to whatever the clamp
+// leaves under it, and the status names the child the user cannot see.
+func (m *AppModel) revealCommittedTask(identity, owner taskref.TaskIdentity) {
+	if m == nil || m.crossOutliner == nil || !identity.Valid() {
+		return
+	}
+	task, _ := m.taskAndProjectForIdentity(identity)
+	if task == nil {
+		return
+	}
+	out := m.crossOutliner
+	if out.ExpandAncestorsOfTask(task, identity.ProjectID) {
+		out.RebuildRows()
+	}
+	if out.MoveCursorToIdentity(identity) {
+		return
+	}
+	if owner.Valid() && owner != identity {
+		out.MoveCursorToIdentity(owner)
+	}
+	out.SetTransientStatus(hiddenCommittedTaskStatus(task))
+}
+
+// hiddenCommittedTaskStatus names a committed task the current view does not
+// admit. A promoted item that was already ticked becomes a done subtask, and
+// done work is hidden by default, so that case says so outright instead of
+// leaving the user to wonder whether anything was written at all.
+func hiddenCommittedTaskStatus(task *models.Task) string {
+	title := strings.TrimSpace(task.Title)
+	if task.IsTerminalState() {
+		return fmt.Sprintf("Subtask %q was created %s and is hidden by this view", title, task.State())
+	}
+	return fmt.Sprintf("Subtask %q was created and is hidden by this view", title)
 }
 
 // handleBatchTransactionResult routes a committed project-scoped or multi-task

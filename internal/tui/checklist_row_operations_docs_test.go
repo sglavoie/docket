@@ -68,7 +68,7 @@ func spelledOperationCount(t *testing.T, count int) string {
 	t.Helper()
 	words := []string{
 		"zero", "one", "two", "three", "four",
-		"five", "six", "seven", "eight", "nine",
+		"five", "six", "seven", "eight", "nine", "ten",
 	}
 	if count < 0 || count >= len(words) {
 		t.Fatalf("count %d is outside the range the documentation spells out", count)

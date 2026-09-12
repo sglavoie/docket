@@ -11,15 +11,16 @@ package operation
 // registry all name them, while only the shell registers them: an operation ID
 // is vocabulary the whole grammar reads, not a fact about who binds it.
 const (
-	OperationChecklistToggleItem OperationID = "tui.checklist.toggle-item"
-	OperationChecklistEditItem   OperationID = "tui.checklist.edit-item"
-	OperationChecklistMoveDown   OperationID = "tui.checklist.move-down"
-	OperationChecklistMoveUp     OperationID = "tui.checklist.move-up"
-	OperationChecklistMoveBottom OperationID = "tui.checklist.move-bottom"
-	OperationChecklistMoveTop    OperationID = "tui.checklist.move-top"
-	OperationChecklistAddItem    OperationID = "tui.checklist.add-item"
-	OperationChecklistActions    OperationID = "tui.checklist.actions"
-	OperationChecklistDeleteItem OperationID = "tui.checklist.delete-item"
+	OperationChecklistToggleItem  OperationID = "tui.checklist.toggle-item"
+	OperationChecklistEditItem    OperationID = "tui.checklist.edit-item"
+	OperationChecklistMoveDown    OperationID = "tui.checklist.move-down"
+	OperationChecklistMoveUp      OperationID = "tui.checklist.move-up"
+	OperationChecklistMoveBottom  OperationID = "tui.checklist.move-bottom"
+	OperationChecklistMoveTop     OperationID = "tui.checklist.move-top"
+	OperationChecklistAddItem     OperationID = "tui.checklist.add-item"
+	OperationChecklistPromoteItem OperationID = "tui.checklist.promote-item"
+	OperationChecklistActions     OperationID = "tui.checklist.actions"
+	OperationChecklistDeleteItem  OperationID = "tui.checklist.delete-item"
 )
 
 // ChecklistRowGrammar is the set of operations a checklist cursor owns. It is
@@ -27,15 +28,16 @@ const (
 // question — does this operation belong to the checklist row? — instead of a
 // per-key branch.
 var ChecklistRowGrammar = map[OperationID]bool{
-	OperationChecklistToggleItem: true,
-	OperationChecklistEditItem:   true,
-	OperationChecklistMoveDown:   true,
-	OperationChecklistMoveUp:     true,
-	OperationChecklistMoveBottom: true,
-	OperationChecklistMoveTop:    true,
-	OperationChecklistAddItem:    true,
-	OperationChecklistActions:    true,
-	OperationChecklistDeleteItem: true,
+	OperationChecklistToggleItem:  true,
+	OperationChecklistEditItem:    true,
+	OperationChecklistMoveDown:    true,
+	OperationChecklistMoveUp:      true,
+	OperationChecklistMoveBottom:  true,
+	OperationChecklistMoveTop:     true,
+	OperationChecklistAddItem:     true,
+	OperationChecklistPromoteItem: true,
+	OperationChecklistActions:     true,
+	OperationChecklistDeleteItem:  true,
 }
 
 // ChecklistRowRejectionMessage is the one sentence every refused operation

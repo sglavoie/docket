@@ -18,7 +18,7 @@ A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
-What a checklist row does own is nine operations of its own. Eight of them
+What a checklist row does own is ten operations of its own. Nine of them
 answer a key:
 
 | Key | Operation |
@@ -30,12 +30,13 @@ answer a key:
 | `Ctrl+J` | Move Item to Bottom — send it past every item below |
 | `Ctrl+K` | Move Item to Top — send it past every item above |
 | `c` | Add Item — append an item to this task's checklist |
+| `S` | Make Subtask — convert it into a subtask of the task that owns it |
 | `Space` | Checklist Actions — the item menu: Edit Item and Delete Item |
 
-Delete Item is the ninth and answers no key. It is reachable only from the
+Delete Item is the tenth and answers no key. It is reachable only from the
 `Space` menu and confirms before it removes anything.
 
-Add Item is the one of the nine that also answers from the owner task's own row,
+Add Item is the one of the ten that also answers from the owner task's own row,
 because a task with no checklist yet has no item row to press a key on. `c`
 therefore adds the first item and every item after it, from the task or from any
 of its items, and the prompt is the same single line either way: `Enter` saves,
@@ -44,6 +45,27 @@ checklist opens and the cursor lands on it, so pressing `c` again adds the next
 one. A refused write leaves the fold and the cursor exactly as they were and
 hands the item back: the prompt reopens on the text you typed, with the reason
 the save was refused, so `Enter` retries it once the problem is fixed.
+
+`S` promotes the item under the cursor: the item's own text becomes a new
+subtask of the task that owned it, and the item itself is gone. It asks nothing
+and confirms nothing, because the text you are looking at is the whole of the
+new task. An unticked item becomes a Backlog subtask; a ticked one becomes a
+subtask that is already done. Nothing else is copied down from the owner — no
+dates, no tags, no priority — and one press is one undo entry, so `u` puts the
+item back where it was.
+
+Once the promotion commits, the cursor moves to the new subtask, opening the
+branch it hangs under if that branch was folded. Nothing else about the view
+moves: the mode, the search, the filters, the project scope and every other fold
+stay exactly as they were, so a view that does not admit the new subtask simply
+does not show it. When that happens the cursor returns to the owner task and the
+status line names the subtask you cannot see — including when a ticked item
+became a done subtask and the view is hiding done work.
+
+Pressing `S` twice in a row never converts the neighbor. The whole checklist is
+frozen at the keypress and checked again at the commit, so the second press is
+measured against a list it no longer matches and is refused rather than applied
+to whatever item slid up into the row.
 
 Visual selection is one of the actions a checklist row refuses, because a
 selection names task rows. Entering it from a task row hides any open checklist
