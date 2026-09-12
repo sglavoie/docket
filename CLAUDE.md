@@ -318,7 +318,12 @@ not. Pending work and committed evidence are two invalidations: the tail always
 goes whole, while a detached result still reloads and `DueStepSupersession`
 narrows its `DueEffect.Steps` alone to the targets no supersession named.
 `SupersedeTargets` names an edit's or a removal's own; `Supersede` and an
-unrecorded delivery name every one. A step's ledger context names
+unrecorded delivery name every one. Remembered clocks reconcile at three moments
+and nowhere else: a committed effect, a ledger restore, and
+`adoptCrossProjectSnapshot`, the one seam an accepted cross-project load and a
+published lens both take, which is how a deadline no local effect named retires
+the clock it superseded while a rejected snapshot observes nothing. A step's
+ledger context names
 the gesture, so its toast names the outcome instead through `RecoveryContext` —
 one deadline, or changed and cleared counts including hidden members — and a
 re-render of that same toast keeps it.

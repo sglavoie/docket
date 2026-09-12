@@ -145,6 +145,13 @@ func (m *AppModel) observeRestoredDueClocks(transactionID string, redo bool) {
 // That is how a deadline written on another machine, or by any path that reports
 // no typed effect, retires the clock it superseded.
 //
+// Three callers reach it, and they are the three moments the shell's picture of
+// the workspace changes: a committed transaction, a ledger restore, and
+// adoptCrossProjectSnapshot taking delivery of an accepted external population.
+// The first two run against the workspace the commit left behind; the third is
+// the only one that can see a deadline no local effect ever named, and it is
+// what keeps a later gesture from spending a clock an external write superseded.
+//
 // It asks about the tasks memory speaks about rather than the tasks the view
 // shows, and a target the shell cannot resolve — filtered out is irrelevant
 // here, but parked, archived, or simply not loaded are not — says nothing about

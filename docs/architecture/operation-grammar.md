@@ -402,6 +402,29 @@ the queue has no record of. Only `Steps` is narrowed: `Edits`, `Removed`, and
 more than once before its result arrives accumulates every supersession it
 outlived.
 
+Supersession is about what a transaction may say. Reconciliation is the other
+direction: what the workspace says back. `reconcileRememberedDueClocks` walks the
+tasks memory still speaks about, not the rows on screen, and drops the clock of
+every one the shell can currently read that now carries a deadline — whoever gave
+it one. Three callers reach it, and they are the three moments the shell's
+picture of the workspace changes. `observeCommittedDueEffect` runs it after
+folding a commit in, `observeRestoredDueClocks` before applying a ledger delta,
+and `adoptCrossProjectSnapshot` after rewiring an accepted population into the
+project cache. Only the third can see a deadline no local effect ever named, so
+it is the one that answers for another machine's write; without it the deadline
+renders and the clock it replaced survives underneath, ready to be spent by the
+next `+`.
+
+That third call sits on the adoption rather than on either message that reaches
+it. `CrossProjectsLoadedMsg` and a published `LensProjectsLoadedMsg` both adopt
+through the same function, so one call covers both and a future population path
+inherits it. Hanging it off the adoption is also what keeps acceptance and
+observation the same question: every caller is already gated on the snapshot
+being current, so a superseded load — which installs nothing — retires nothing
+either, and the population still on its way remains the one that speaks for the
+workspace. A target the shell cannot resolve, parked or archived or simply not
+loaded, says nothing about its own deadline and keeps what was remembered for it.
+
 What the strip says is the outcome, not the gesture. The ledger entry's context
 is `+1 day`, which is what the undo browser should show and no answer at all to
 the press, so `BatchTransactionResultMsg.RecoveryContext` carries

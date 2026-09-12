@@ -60,6 +60,14 @@ func (m *AppModel) syncProjectCache() {
 // those stable pointers. Catalog snapshots intentionally contain metadata
 // only, so operations resolved through projectByID must adopt the disk-loaded
 // task trees before the Outliner exposes their rows.
+//
+// This is the one place an externally loaded task population becomes what the
+// shell reads, for both the cross-project load and a published lens, so it is
+// also where remembered deadline clocks are reconciled against it: a deadline
+// another machine wrote arrives through no committed effect of ours, and the
+// clock it superseded has to retire here rather than wait for a local gesture
+// to spend it. Every caller is already gated on the snapshot being accepted, so
+// a superseded load observes nothing.
 func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
 	if m == nil {
 		return
@@ -83,6 +91,10 @@ func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
 			m.currentProject = cached
 		}
 	}
+	// Reconcile after the rewiring, never before it: the clocks are checked
+	// against the tasks projectByID now answers with, which is the snapshot that
+	// was just adopted rather than the one it replaced.
+	m.reconcileRememberedDueClocks()
 }
 
 // parkedOwnerLabel names a project as parked when it carries the reserved tag,

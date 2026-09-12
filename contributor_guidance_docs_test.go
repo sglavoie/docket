@@ -602,7 +602,21 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// rule: a mover that can name its targets must, and one that cannot — a ledger
 	// restore, or a delivery the queue never armed — must name all of them. The
 	// mechanism lives in docs/architecture/operation-grammar.md.
-	const budget = 43073
+	// Twenty-seventh raise, 43073 to 43405, for naming where remembered clocks
+	// are reconciled. 332 bytes buy the rule that the three reconciliation
+	// moments are a closed set and that the third one is an adoption, not a
+	// message. The guidance already said a deadline written on another machine
+	// retires the clock it superseded, and left the reader to assume the reload
+	// that delivers it does the retiring; it did not, so an externally set
+	// deadline could sit on screen while a later `+` handed back a wall clock the
+	// workspace had already replaced — again a loss nothing reports. Naming
+	// `adoptCrossProjectSnapshot` rather than `CrossProjectsLoadedMsg` is the
+	// whole rule: the published lens reaches the same seam, so a future third
+	// population path inherits the reconciliation instead of needing a second
+	// copy of the check, and hanging it off acceptance is what keeps a superseded
+	// load from observing a workspace it never installed. The mechanism lives in
+	// docs/architecture/operation-grammar.md.
+	const budget = 43405
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
