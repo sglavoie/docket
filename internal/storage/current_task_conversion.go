@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // This file is the one crossing between the live models.Task graph and the
@@ -78,10 +79,12 @@ func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location
 		UpdatedAt: record.UpdatedAt, StateChangedAt: record.StateChangedAt,
 		CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 		Pinned:      record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
-		Review:          record.Review,
-		ResumeNote:      record.ResumeNote,
-		ChecklistOrigin: record.ChecklistOrigin,
-		Children:        []*models.Task{},
+		Review:            record.Review,
+		ResumeNote:        record.ResumeNote,
+		ChecklistOrigin:   record.ChecklistOrigin,
+		CheckInRepeatDays: record.CheckInRepeatDays,
+		LastReviewedAt:    cloneProjectDocumentTime(record.LastReviewedAt),
+		Children:          []*models.Task{},
 	}
 	if record.ParentID != "" {
 		parentID := record.ParentID
@@ -94,9 +97,9 @@ func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location
 	return task, nil
 }
 
-// applyCurrentTaskRecordSchedule resolves the two stored time values that are
+// applyCurrentTaskRecordSchedule resolves the three stored time values that are
 // spelled as text rather than as instants: the calendar due date with its
-// optional clock, and the deferral instant.
+// optional clock, the deferral instant, and the calendar check-in date.
 func applyCurrentTaskRecordSchedule(task *models.Task, record currentTaskRecord, location *time.Location) error {
 	var err error
 	if record.DueDate != "" {
@@ -109,6 +112,12 @@ func applyCurrentTaskRecordSchedule(task *models.Task, record currentTaskRecord,
 		task.DeferredUntil, err = parseProjectDocumentInstant(record.SnoozedUntil)
 		if err != nil {
 			return fmt.Errorf("live task %q deferral instant: %w", record.ID, err)
+		}
+	}
+	if record.NextCheckIn != "" {
+		task.NextCheckIn, err = parseProjectDocumentCheckInDate(record.NextCheckIn, location)
+		if err != nil {
+			return fmt.Errorf("live task %q check-in date: %w", record.ID, err)
 		}
 	}
 	return nil
@@ -204,7 +213,7 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 	base, dueTime := currentTaskBaseFieldsFromModel(task)
 	appendCurrentTaskRecordCollectionsFromModel(&base, task)
 
-	record := format.V17TaskRecord{V16TaskRecord: format.V16TaskRecord{
+	record := format.V18TaskRecord{V17TaskRecord: format.V17TaskRecord{V16TaskRecord: format.V16TaskRecord{
 		V15TaskRecord: format.V15TaskRecord{
 			V14TaskRecord: format.V14TaskRecord{
 				V13TaskRecord: format.V13TaskRecord{
@@ -222,6 +231,10 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 		},
 		ResumeNote: task.ResumeNote,
 	}, ChecklistOrigin: task.ChecklistOrigin,
+	},
+		NextCheckIn:       formatProjectDocumentCheckInDate(task.NextCheckIn),
+		CheckInRepeatDays: task.CheckInRepeatDays,
+		LastReviewedAt:    cloneProjectDocumentTime(task.LastReviewedAt),
 	}
 	for _, dependency := range task.Dependencies {
 		record.Dependencies = append(record.Dependencies, format.V14TaskDependency{
@@ -253,6 +266,15 @@ func validateModelForCurrentTaskSchema(task *models.Task) error {
 	}
 	if task.StateChangedAt.IsZero() {
 		return fmt.Errorf("live task writer refuses task %q without a state clock", task.ID)
+	}
+	// The schedule is measured against the model's own gate rather than against a
+	// second rule spelled here, so a check-in the editing surfaces refuse is a
+	// check-in this writer refuses, named the same way.
+	if err := models.ValidateCheckInSchedule(task.CheckIn()); err != nil {
+		return fmt.Errorf("live task writer refuses task %q check-in: %w", task.ID, err)
+	}
+	if task.LastReviewedAt != nil && task.LastReviewedAt.IsZero() {
+		return fmt.Errorf("live task writer refuses task %q review instant: a present value must be a real instant", task.ID)
 	}
 	return nil
 }
@@ -343,6 +365,50 @@ func parseProjectDocumentDueDate(dateValue, timeValue string, location *time.Loc
 	}
 	due := time.Date(day.Year(), day.Month(), day.Day(), clock.Hour(), clock.Minute(), 0, 0, location)
 	return &due, nil
+}
+
+// checkInDateLayout is the stored spelling of a check-in date, which is the
+// deadline's layout: one metadata line holding two date-valued fields that
+// disagreed about their format would be a grammar nobody could read by eye.
+const checkInDateLayout = "2006-01-02"
+
+// parseProjectDocumentCheckInDate resolves the stored check-in date as the
+// civil date it names. It deliberately does not go through
+// parseProjectDocumentDate: time.ParseInLocation hands time.Date a local
+// midnight the zone may not have, and its answer there is 23:00 on the day
+// before — the right instant under the wrong question, and a check-in read back
+// a day early. The components are read in UTC and the start of that date is
+// rebuilt in location, which is the same instant models.ValidateCheckInSchedule
+// measures a schedule against, so a stored date round-trips to the value that
+// wrote it. The due date's original behavior is deliberately left alone: a
+// deadline has a place to put a clock, so it is a different question.
+func parseProjectDocumentCheckInDate(value string, location *time.Location) (*time.Time, error) {
+	if location == nil {
+		location = time.Local
+	}
+	civil, err := time.ParseInLocation(checkInDateLayout, value, time.UTC)
+	if err != nil {
+		return nil, err
+	}
+	if civil.Format(checkInDateLayout) != value {
+		return nil, fmt.Errorf("check-in date %q is not a canonical %s value", value, checkInDateLayout)
+	}
+	day, err := util.StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), location)
+	if err != nil {
+		return nil, err
+	}
+	return &day, nil
+}
+
+// formatProjectDocumentCheckInDate writes a check-in date out as the calendar
+// day it falls on in its own location, empty for none. The date is read off the
+// value rather than converted to UTC first, because the stored value is the day
+// the schedule names and not the instant it happens to begin at.
+func formatProjectDocumentCheckInDate(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return value.Format(checkInDateLayout)
 }
 
 // parseProjectDocumentInstant reads a durable deferral value. The stored string

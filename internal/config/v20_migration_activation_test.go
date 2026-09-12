@@ -26,14 +26,14 @@ func TestV20MigrationPreservesTasksAndClearsOldUndo(t *testing.T) {
 		t.Fatal(err)
 	}
 	ledger := filepath.Join(UndoLedgerDir(root), "ledger.json")
-	if err := os.MkdirAll(filepath.Dir(ledger), DirPermissions); err != nil {
-		t.Fatal(err)
+	if mkdirErr := os.MkdirAll(filepath.Dir(ledger), DirPermissions); mkdirErr != nil {
+		t.Fatal(mkdirErr)
 	}
-	if err := os.WriteFile(ledger, []byte("old history"), FilePermissions); err != nil {
-		t.Fatal(err)
+	if writeErr := os.WriteFile(ledger, []byte("old history"), FilePermissions); writeErr != nil {
+		t.Fatal(writeErr)
 	}
-	if err := manager.MigrateWorkspaceToV20(); err != nil {
-		t.Fatal(err)
+	if migrateErr := manager.MigrateWorkspaceToV20(); migrateErr != nil {
+		t.Fatal(migrateErr)
 	}
 	after, err := os.ReadFile(path)
 	if err != nil {

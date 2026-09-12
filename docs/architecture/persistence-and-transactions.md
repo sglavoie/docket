@@ -193,7 +193,7 @@ recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-17 content. A stale writer is compared
+Project revisions hash canonical schema-19 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -209,6 +209,33 @@ uniqueness — the terminal/`CompletedAt`
 agreement checks, and project-local ShortID uniqueness, and anything it finds
 becomes an ordinary `MergeConflictInvariant` entry in the same retry-only
 bundle a competing edit would produce.
+
+The check-in is the one field group that is not merged field by field. `check_in`,
+`check_in_repeat`, and `reviewed` answer one question together, so
+`mergeCheckInUnit` adopts or refuses all three at once and the reflective loop
+skips them; they stay in `mergeableTaskFields` so every other reader still sees a
+complete field set. Merged separately they compose a schedule neither machine
+wrote: acknowledging a weekly check-in moves the date and stamps the review
+instant, rescheduling it moves the date and stamps nothing, and field by field
+those two diverge only on the date — so a per-field merge would keep one side's
+date beside the other's review instant and claim the task was answered on a day
+that produced a different next date. Independent title and description edits
+still merge beside a schedule only one side touched. Within the unit the three-way
+cases are the familiar ones, compared by instant rather than by representation, so
+two machines holding the same date in different locations coalesce instead of
+conflicting; a divergence is one `check_in` field conflict naming the whole
+schedule on every side, never one conflict per key.
+
+`auditMergedDocument` carries the matching whole-document invariant. Terminal
+work owes no reminder, so a completed task retaining a check-in is a
+`MergeConflictInvariant` on `check_in`, exactly as a terminal task disagreeing
+with `completed_at` is. Neither side wrote that state: it is composed by one
+machine finishing the task while the other schedules it, two edits that are
+field-wise clean and land on different fields, and without the audit the merge
+would publish a reminder that fires forever against work nobody can do. The
+`reviewed` instant is deliberately not audited that way, because it records what
+happened rather than what is owed, and a finished task keeps the record of having
+been reviewed.
 
 Project comments merge like tasks do, keyed by identity rather than by position.
 `mergeProjectComments` walks the union of the comment ids across the three sides

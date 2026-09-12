@@ -19,8 +19,19 @@ fi
 # grammar that compiles into it. It has no production caller until the capture
 # and search grammar is wired to it; delete this pattern in that session, once
 # internal/textgrammar imports the query.
+#
+# The same applies to the three check-in symbols below, which the storage
+# boundary does not reach. models.TaskNeedsAttention and
+# models.TaskAllowsExplicitReview answer which rows a surface may raise or
+# review, and util.ParseCheckInDate reads a typed check-in value; all three are
+# consumed by the review and capture surfaces rather than by persistence. Delete
+# these three patterns in the session that wires the check-in key and its sigil,
+# which is the session that gives them their first production caller.
 grep -v '^internal/testutil/' "$production_output" |
-	grep -v '^internal/models/query' >"$actionable_output" || true
+	grep -v '^internal/models/query' |
+	grep -v '^internal/models/task_review.go.*TaskNeedsAttention' |
+	grep -v '^internal/models/task_review.go.*TaskAllowsExplicitReview' |
+	grep -v '^internal/util/dates_calendar.go.*ParseCheckInDate' >"$actionable_output" || true
 if [ -s "$actionable_output" ]; then
 	echo "production dead code detected outside internal/testutil:" >&2
 	cat "$actionable_output" >&2

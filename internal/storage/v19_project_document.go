@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
 )
 
@@ -97,4 +98,38 @@ func V19ProjectDocumentFromV18(source V18ProjectDocument) V19ProjectDocument {
 		document.Tasks = append(document.Tasks, format.V18TaskRecord{V17TaskRecord: task})
 	}
 	return document
+}
+
+// SeedWaitingCheckInsV19 gives every Waiting task that already carries a
+// deadline a one-off check-in on that same calendar day, and changes nothing
+// else. It is the schema-19 boundary's one content edit, separate from the lift
+// above so the lift stays provably value-preserving and this stays the one place
+// a migrated value is minted.
+//
+// Waiting is the state that means "somebody else owes me something", so its
+// deadline is the day the wait is meant to be looked at again; copying it is a
+// reading of what the task already said rather than a new commitment. The copy
+// is a string copy of the canonical YYYY-MM-DD deadline, which is why the
+// deadline, its optional companion clock, both timestamps, the body, the
+// comments, and every other stored value are untouched: the deadline is never
+// read, converted, or rewritten, only duplicated into a key that was absent.
+//
+// The repeat stays off and no review instant is invented. A cadence and a
+// history are claims about how this task is worked and when it was last
+// answered; the migration knows neither, and a review instant it made up would
+// be indistinguishable afterwards from one a person earned.
+//
+// A task that already carries a check-in keeps it. Nothing at this boundary can
+// produce one, but a re-run over an already-seeded document has to be the
+// identity, which is what lets the migration be repeatable.
+func SeedWaitingCheckInsV19(document V19ProjectDocument) V19ProjectDocument {
+	seeded := V19ProjectDocument{ProjectName: document.ProjectName, Comments: document.Comments}
+	seeded.Tasks = make([]format.V18TaskRecord, 0, len(document.Tasks))
+	for _, task := range document.Tasks {
+		if task.State == string(models.StateWaiting) && task.NextCheckIn == "" && task.DueDate != "" {
+			task.NextCheckIn = task.DueDate
+		}
+		seeded.Tasks = append(seeded.Tasks, task)
+	}
+	return seeded
 }

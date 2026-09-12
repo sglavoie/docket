@@ -162,6 +162,8 @@ func cloneTask(task *models.Task) *models.Task {
 	taskCopy.Comments = clonePointerSlice(task.Comments)
 	taskCopy.Attachments = append([]models.Attachment{}, task.Attachments...)
 	taskCopy.DeferredUntil = clonePointer(task.DeferredUntil)
+	taskCopy.NextCheckIn = clonePointer(task.NextCheckIn)
+	taskCopy.LastReviewedAt = clonePointer(task.LastReviewedAt)
 	taskCopy.Checklist = append([]models.ChecklistItem{}, task.Checklist...)
 
 	taskCopy.Children = nil

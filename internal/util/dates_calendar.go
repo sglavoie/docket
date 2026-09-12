@@ -39,7 +39,7 @@ func AddCalendarDays(t time.Time, days int) (time.Time, error) {
 // refuses a date loc does not have. time.Date normalizes rather than fails, so
 // asking whether the date exists has to be a separate question from asking where
 // it starts: Pacific/Apia lost 2011-12-30 outright, every hour of it, and
-// normalizing there substitutes a neighbouring date with nothing downstream able
+// normalizing there substitutes a neighboring date with nothing downstream able
 // to tell.
 //
 // Existence is decided at noon, which no daylight-saving transition has ever
@@ -146,12 +146,12 @@ func ParseCheckInDate(input string) (time.Time, error) {
 	// zone may not have, and its answer in that case is 23:00 on the day before —
 	// the right instant under the wrong question, and a check-in stored a day early.
 	if civil, ok := parseExactDateIn(normalizeDateInput(datePart), time.UTC); ok {
-		day, err := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), time.Local)
-		if err != nil {
-			return time.Time{}, err
+		day, civilErr := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), time.Local)
+		if civilErr != nil {
+			return time.Time{}, civilErr
 		}
-		if err := ValidateStorableCalendarDate(day); err != nil {
-			return time.Time{}, err
+		if storableErr := ValidateStorableCalendarDate(day); storableErr != nil {
+			return time.Time{}, storableErr
 		}
 		return day, nil
 	}

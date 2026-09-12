@@ -241,15 +241,12 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
 
-// revealCommittedChecklistItem opens the owner's checklist and seats the cursor
-// on the item the transaction appended. It runs from the success message alone
-// and after the workspace refresh, so the fold and the cursor move only once the
-// committed item actually exists in a rebuilt projection; a refused append never
-// reaches here and leaves the outline exactly as it was.
-func (m *AppModel) revealCommittedChecklistItem(identity taskref.TaskIdentity) {
-	m.revealCommittedChecklistItemAt(identity, nil)
-}
-
+// revealCommittedChecklistItemAt opens the owner's checklist and seats the
+// cursor on the item the transaction appended. It runs from the success message
+// alone and after the workspace refresh, so the fold and the cursor move only
+// once the committed item actually exists in a rebuilt projection; a refused
+// append never reaches here and leaves the outline exactly as it was. A nil
+// inserted index means the append landed at the end.
 func (m *AppModel) revealCommittedChecklistItemAt(identity taskref.TaskIdentity, inserted *int) {
 	if m == nil || m.crossOutliner == nil || !identity.Valid() {
 		return

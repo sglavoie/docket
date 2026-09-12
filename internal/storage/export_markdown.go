@@ -301,6 +301,18 @@ func buildExportBadge(task *models.Task) string {
 		// offset of whichever machine wrote it, so the day is resolved locally.
 		parts = append(parts, "deferred until "+task.DeferredUntil.In(time.Local).Format("2006-01-02"))
 	}
+	// A check-in is stored as a calendar date rather than an instant, so it needs
+	// no zone resolution and is formatted as written. The repeat rides the same
+	// segment because a cadence without its next occurrence says nothing, and the
+	// review instant stays out of the badge entirely: the badge names what a task
+	// still owes, and a review is history.
+	if schedule := task.CheckIn(); schedule.Next != nil {
+		segment := "check-in " + schedule.Next.Format("2006-01-02")
+		if schedule.Repeats() {
+			segment += fmt.Sprintf(" every %dd", schedule.RepeatDays)
+		}
+		parts = append(parts, segment)
+	}
 
 	if len(parts) == 0 {
 		return ""

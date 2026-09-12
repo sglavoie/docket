@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestWriteProjectMarkdownClean_EmptyProject(t *testing.T) {
@@ -182,6 +183,44 @@ func TestWriteProjectMarkdownClean_DeferredUntil(t *testing.T) {
 	task.DeferredUntil = &elsewhere
 	if again := WriteProjectMarkdownClean(p); again != out {
 		t.Errorf("same instant in another location changed the badge:\n%q\nwant\n%q", again, out)
+	}
+}
+
+// TestWriteProjectMarkdownClean_CheckIn covers the other half of that decision
+// for the value that is a calendar date rather than an instant: nothing is
+// resolved into the reader's zone, because there is no time of day to resolve.
+// The repeat rides the same badge segment and the review instant stays out of
+// the badge, which is what keeps the export a statement of what a task still
+// owes rather than of what has already been done to it.
+func TestWriteProjectMarkdownClean_CheckIn(t *testing.T) {
+	task := mustTask("t1", 1, "Waiting on vendor")
+	task.Priority = 0
+	next, err := util.StartOfCalendarDate(2026, time.September, 1, time.UTC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewed := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+	task.NextCheckIn = &next
+	task.LastReviewedAt = &reviewed
+	p := newProject("CheckIn", task)
+
+	out := WriteProjectMarkdownClean(p)
+	if !strings.Contains(out, "[check-in 2026-09-01]") {
+		t.Errorf("expected a one-off check-in in the badge: %q", out)
+	}
+	if strings.Contains(out, "2026-08-20") {
+		t.Errorf("review history leaked into the badge: %q", out)
+	}
+
+	task.CheckInRepeatDays = 7
+	if repeating := WriteProjectMarkdownClean(p); !strings.Contains(repeating, "[check-in 2026-09-01 every 7d]") {
+		t.Errorf("expected the repeat beside its occurrence: %q", repeating)
+	}
+
+	task.NextCheckIn = nil
+	task.CheckInRepeatDays = models.CheckInRepeatOff
+	if none := WriteProjectMarkdownClean(p); strings.Contains(none, "check-in") {
+		t.Errorf("unscheduled task named a check-in: %q", none)
 	}
 }
 

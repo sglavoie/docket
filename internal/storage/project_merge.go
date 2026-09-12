@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -105,14 +106,35 @@ func buildMergeableTaskFields() []taskFieldDescriptor {
 		if name == "" {
 			name = field.Name
 		}
-		descriptors = append(descriptors, taskFieldDescriptor{index: i, jsonName: name})
+		descriptors = append(descriptors, taskFieldDescriptor{
+			index: i, jsonName: name, checkInUnit: checkInUnitFields[name],
+		})
 	}
 	return descriptors
+}
+
+// checkInUnitFields names the three persisted fields that answer one question
+// together: when this task is next meant to be looked at, how far acknowledging
+// moves that date, and when it was last answered. They stay in
+// mergeableTaskFields so tasksEqual and every other reader still sees a complete
+// field set; mergeTaskFields is the one place that skips them, because merging
+// them independently is what would compose a hybrid schedule.
+//
+// The names are the JSON tags rather than the Go field names, since the
+// descriptor's jsonName is what a conflict is reported under and a mismatch here
+// would silently fall back to the per-field path.
+var checkInUnitFields = map[string]bool{
+	"next_check_in":        true,
+	"check_in_repeat_days": true,
+	"last_reviewed_at":     true,
 }
 
 type taskFieldDescriptor struct {
 	index    int
 	jsonName string
+	// checkInUnit marks a field mergeTaskFields hands to mergeCheckInUnit rather
+	// than merging on its own.
+	checkInUnit bool
 }
 
 // MergeProjectDocuments performs a field-level three-way merge of a single
@@ -249,6 +271,9 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 
 	var conflicts []MergeConflict
 	for _, f := range mergeableTaskFields {
+		if f.checkInUnit {
+			continue
+		}
 		bField := bv.Field(f.index).Interface()
 		lField := lv.Field(f.index).Interface()
 		cField := cv.Field(f.index).Interface()
@@ -276,6 +301,10 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 	// state, and a later dependency edit must not reach back into an input.
 	merged.Dependencies = models.CloneTaskReferences(merged.Dependencies)
 
+	if unitConflict := mergeCheckInUnit(merged, base, local, current); unitConflict != nil {
+		conflicts = append(conflicts, *unitConflict)
+	}
+
 	// UpdatedAt describes the newest accepted mutation rather than an
 	// independently editable value. Taking the latest value is deterministic,
 	// commutative, and prevents two independent business edits from conflicting
@@ -289,6 +318,111 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 	}
 
 	return merged, conflicts
+}
+
+// taskCheckInUnit is the check-in trio read off one task as a single value: the
+// date the task is next owed, the cadence that moves it, and the instant it was
+// last answered. It exists only for the merge, which is the one place the three
+// have to be compared and adopted together.
+type taskCheckInUnit struct {
+	next           *time.Time
+	repeatDays     int
+	lastReviewedAt *time.Time
+}
+
+func checkInUnitOf(task *models.Task) taskCheckInUnit {
+	return taskCheckInUnit{
+		next:           task.NextCheckIn,
+		repeatDays:     task.CheckInRepeatDays,
+		lastReviewedAt: task.LastReviewedAt,
+	}
+}
+
+// equals compares two units by what they mean rather than by their in-memory
+// shape. Two pointers holding the same instant in different locations are the
+// same schedule, so they are compared with Equal; reflect.DeepEqual, which the
+// per-field path uses, would call that a divergent edit and conflict two machines
+// that agreed.
+func (u taskCheckInUnit) equals(other taskCheckInUnit) bool {
+	return u.repeatDays == other.repeatDays &&
+		sameOptionalInstant(u.next, other.next) &&
+		sameOptionalInstant(u.lastReviewedAt, other.lastReviewedAt)
+}
+
+func sameOptionalInstant(left, right *time.Time) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return left.Equal(*right)
+}
+
+// String renders the unit for a conflict bundle a person reads. All three values
+// appear even when only one diverged, because the conflict is about the schedule
+// as a whole and showing one line of it would suggest the other two were agreed.
+func (u taskCheckInUnit) String() string {
+	next := "none"
+	if u.next != nil {
+		next = u.next.Format("2006-01-02")
+	}
+	repeat := "off"
+	if u.repeatDays > models.CheckInRepeatOff {
+		repeat = fmt.Sprintf("every %dd", u.repeatDays)
+	}
+	reviewed := "never"
+	if u.lastReviewedAt != nil {
+		reviewed = u.lastReviewedAt.Format(time.RFC3339)
+	}
+	return fmt.Sprintf("check-in %s, repeat %s, reviewed %s", next, repeat, reviewed)
+}
+
+// mergeCheckInUnit merges the check-in date, its repeat, and the review instant
+// as one value, and is why a concurrent acknowledgement and a concurrent
+// reschedule cannot compose a schedule neither machine wrote.
+//
+// Merging the three independently would do exactly that: acknowledging a weekly
+// check-in moves the date forward and stamps the review instant, while
+// rescheduling moves the date and leaves the instant alone. Field by field, the
+// two sides diverge only on the date, so one side's date would be adopted beside
+// the other side's review instant — a hybrid claiming the task was answered on a
+// day that produced a different next date. Compared as a unit, the same pair is
+// one conflict a person resolves by choosing a schedule.
+//
+// Both sides making the same change still coalesces, and a side that left the
+// unit at base still loses to the side that changed it, so an ordinary edit to
+// an unrelated field never drags the schedule into a conflict.
+//
+// The adopted instants are cloned. The merged document becomes live state, and
+// SetCheckIn replaces these pointers rather than writing through them, but a
+// caller reaching into the merged task directly must still not be able to rewrite
+// the base or current document the merge read from.
+func mergeCheckInUnit(merged, base, local, current *models.Task) *MergeConflict {
+	baseUnit := checkInUnitOf(base)
+	localUnit := checkInUnitOf(local)
+	currentUnit := checkInUnitOf(current)
+
+	localChanged := !localUnit.equals(baseUnit)
+	currentChanged := !currentUnit.equals(baseUnit)
+
+	adopt := baseUnit
+	switch {
+	case localChanged && currentChanged:
+		if !localUnit.equals(currentUnit) {
+			conflict := fieldEditConflict(
+				mergedTitle(local, current), "check_in", baseUnit, localUnit, currentUnit,
+			)
+			return &conflict
+		}
+		adopt = localUnit
+	case localChanged:
+		adopt = localUnit
+	case currentChanged:
+		adopt = currentUnit
+	}
+
+	merged.NextCheckIn = models.CloneInstant(adopt.next)
+	merged.CheckInRepeatDays = adopt.repeatDays
+	merged.LastReviewedAt = models.CloneInstant(adopt.lastReviewedAt)
+	return nil
 }
 
 // auditMergedDocument re-runs the structural audit and state
@@ -352,6 +486,24 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 				TaskTitle: task.Title,
 				Field:     "completed_at",
 				Detail:    fmt.Sprintf("non-terminal state %q carries a completion timestamp", task.State()),
+			})
+		}
+		// State invariant: terminal work owes no check-in. The lifecycle clears the
+		// schedule the moment a task finishes, so a terminal task carrying one can
+		// only be composed here — one machine finishing the task while the other
+		// schedules or reschedules it. Field-wise both edits are clean and land on
+		// different fields, so without this the merge would keep a reminder that
+		// would fire forever against work nobody can do.
+		//
+		// The review instant is deliberately not audited: it is history rather than
+		// owed work, and a task finished after being reviewed keeps it on purpose.
+		if terminal && !task.CheckIn().IsEmpty() {
+			conflicts = append(conflicts, MergeConflict{
+				Kind:      MergeConflictInvariant,
+				TaskTitle: task.Title,
+				Field:     "check_in",
+				Detail: fmt.Sprintf("terminal state %q retains a check-in schedule (%s)",
+					task.State(), checkInUnitOf(task)),
 			})
 		}
 	}

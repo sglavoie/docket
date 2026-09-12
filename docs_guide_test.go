@@ -302,12 +302,19 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-17 Markdown and generic `Task` headings",
+		"schema-19 Markdown and generic `Task` headings",
 		"A project file may also hold comments that belong to the project itself rather than to " +
 			"any one task",
 		"Schema 19 upgrades task Markdown to schema 17 by adding the optional `PROJECT-COMMENTS` " +
 			"block",
 		"`pre-project-comments-v19-<UTC>.tar.gz`",
+		"Schema 21 upgrades task Markdown to schema 19 by adding the optional `check_in` date, " +
+			"its `check_in_repeat` cadence, and the `reviewed` instant",
+		"`pre-check-ins-v21-<UTC>.tar.gz`",
+		"A task may also carry a check-in: an optional `check_in` calendar date saying when you " +
+			"next mean to look at it",
+		"Finishing or canceling a task drops the date and the cadence, because terminal work owes " +
+			"nothing; the `reviewed` instant survives",
 		"A task may also hold one resume note, a single line of at most 240 characters",
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",

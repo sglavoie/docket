@@ -616,7 +616,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// copy of the check, and hanging it off acceptance is what keeps a superseded
 	// load from observing a workspace it never installed. The mechanism lives in
 	// docs/architecture/operation-grammar.md.
-	const budget = 43405
+	// Twenty-eighth raise, 43405 to 45435, for the check-in schedule. 2030 bytes
+	// buy three rules and one correction. The first is that the three stored
+	// values are one unit with one gate: split across surfaces they become a
+	// repeat with no occurrence, a calendar date silently carrying an hour, or a
+	// cadence counted from the date that was owed instead of the day the review
+	// happened, and each of those reads as a working schedule that fires on the
+	// wrong day. The second is that a reschedule is not an acknowledgement and a
+	// review instant is history: `SetCheckIn` leaving the state clock alone and
+	// `LastReviewedAt` surviving completion are what keep the workspace from ever
+	// claiming a task was answered on a day nobody answered it, which is also why
+	// the v21 seeding mints a date and nothing else. The third is that the merge
+	// takes the three together — the one exception to field-by-field merging in
+	// the whole document — because acknowledging and rescheduling differ only in
+	// the review instant, so a per-field merge composes a schedule neither machine
+	// wrote and no audit downstream can tell it from a real one. The correction is
+	// the schema pairing, which had drifted two boundaries behind the code. The
+	// mechanism lives in docs/architecture/migration.md and
+	// docs/architecture/persistence-and-transactions.md.
+	const budget = 45435
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

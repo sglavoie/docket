@@ -62,8 +62,8 @@ func (s *Service) MakeChecklistItem(req ChecklistDemotionRequest) (ChecklistDemo
 	if err != nil {
 		return ChecklistDemotionResult{}, err
 	}
-	if err := requireChecklistOnlyChild(snap, referenceDocuments, child); err != nil {
-		return ChecklistDemotionResult{}, err
+	if guardErr := requireChecklistOnlyChild(snap, referenceDocuments, child); guardErr != nil {
+		return ChecklistDemotionResult{}, guardErr
 	}
 	if s.planning == nil {
 		return ChecklistDemotionResult{}, invalidInput("planning", "planning state is unavailable")
@@ -108,21 +108,37 @@ func (s *Service) MakeChecklistItem(req ChecklistDemotionRequest) (ChecklistDemo
 			Path: census.CatalogPath, ExpectedRevision: census.CatalogRevision,
 		})
 	}
-	// An incoming reference can be added in any project. Guard the full read set,
-	// including projects with no document changes of their own.
+	commits[0].preconditions = checklistDemotionPreconditions(snap, referenceDocuments, census)
+	awaitTaskCommitBarrier(child, snap.Revision(child.Project.ID), checklistDemotionUndoAction)
+	outcome, err := s.commitProjects(commits, checklistDemotionUndoAction, fmt.Sprintf("#%d %s", child.Task.ShortID, child.Task.Title))
+	if err != nil {
+		return ChecklistDemotionResult{}, err
+	}
+	committed = true
+	return ChecklistDemotionResult{Parent: newTaskResult(TaskRef{Task: parent, Project: child.Project}, revisionAt(outcome.results, 0), transactionIDAt(outcome.results, 0)), Index: index}, nil
+}
+
+// checklistDemotionPreconditions guards the full read set rather than the one
+// project the demotion writes, because an incoming reference can be added in any
+// project: the snapshot's own projects, then any reference document outside it,
+// then any project the catalog census named that neither has seen.
+func checklistDemotionPreconditions(
+	snap Snapshot, documents []ReferenceDocument, census WorkspaceCensus,
+) []storage.ProjectRevisionPrecondition {
+	preconditions := make([]storage.ProjectRevisionPrecondition, 0, len(snap.Projects()))
 	guarded := make(map[string]bool)
 	for _, project := range snap.Projects() {
-		commits[0].preconditions = append(commits[0].preconditions, storage.ProjectRevisionPrecondition{
+		preconditions = append(preconditions, storage.ProjectRevisionPrecondition{
 			ProjectID: project.ID, ProjectName: project.Name, Path: project.Path,
 			ExpectedRevision: snap.Revision(project.ID),
 		})
 		guarded[project.ID] = true
 	}
-	for _, document := range referenceDocuments {
+	for _, document := range documents {
 		if document.Project == nil || guarded[document.Project.ID] {
 			continue
 		}
-		commits[0].preconditions = append(commits[0].preconditions, storage.ProjectRevisionPrecondition{
+		preconditions = append(preconditions, storage.ProjectRevisionPrecondition{
 			ProjectID: document.Project.ID, ProjectName: document.Project.Name, Path: document.Project.Path,
 			ExpectedRevision: document.Revision,
 		})
@@ -132,18 +148,27 @@ func (s *Service) MakeChecklistItem(req ChecklistDemotionRequest) (ChecklistDemo
 		if entry.Project == nil || guarded[entry.Project.ID] {
 			continue
 		}
-		commits[0].preconditions = append(commits[0].preconditions, storage.ProjectRevisionPrecondition{
+		preconditions = append(preconditions, storage.ProjectRevisionPrecondition{
 			ProjectID: entry.Project.ID, ProjectName: entry.Project.Name, Path: entry.Project.Path,
 			ExpectedRevision: entry.Revision,
 		})
 	}
-	awaitTaskCommitBarrier(child, snap.Revision(child.Project.ID), checklistDemotionUndoAction)
-	outcome, err := s.commitProjects(commits, checklistDemotionUndoAction, fmt.Sprintf("#%d %s", child.Task.ShortID, child.Task.Title))
-	if err != nil {
-		return ChecklistDemotionResult{}, err
-	}
-	committed = true
-	return ChecklistDemotionResult{Parent: newTaskResult(TaskRef{Task: parent, Project: child.Project}, revisionAt(outcome.results, 0), transactionIDAt(outcome.results, 0)), Index: index}, nil
+	return preconditions
+}
+
+// childCarriesUnretainableContent answers the whole loss question in one place.
+// A checklist item stores a title and a tick, so every other field a task can
+// carry is content the demotion would drop silently. The check-in pair and the
+// review instant are on this list for that reason: a scheduled child demoted
+// without them would stop raising a reminder nobody withdrew, and the review
+// history would vanish with no record that it had been answered.
+func childCarriesUnretainableContent(task *models.Task) bool {
+	return task.Description != "" || task.Priority != models.PriorityUnset ||
+		len(task.Tags) != 0 || task.Context != "" || task.DeferCount != 0 || task.DueDate != nil ||
+		task.Pinned || task.PinnedAt != nil || task.Review || task.ResumeNote != "" ||
+		len(task.Comments) != 0 || len(task.Attachments) != 0 || task.DeferredUntil != nil ||
+		!task.CheckIn().IsEmpty() || task.LastReviewedAt != nil ||
+		len(task.Checklist) != 0 || len(task.Dependencies) != 0
 }
 
 func requireChecklistOnlyChild(snap Snapshot, documents []ReferenceDocument, child TaskRef) error {
@@ -156,11 +181,7 @@ func requireChecklistOnlyChild(snap Snapshot, documents []ReferenceDocument, chi
 			return invalidInput("task", "a child with descendants cannot become a checklist item")
 		}
 	}
-	if task.Description != "" || task.Priority != models.PriorityUnset ||
-		len(task.Tags) != 0 || task.Context != "" || task.DeferCount != 0 || task.DueDate != nil ||
-		task.Pinned || task.PinnedAt != nil || task.Review || task.ResumeNote != "" ||
-		len(task.Comments) != 0 || len(task.Attachments) != 0 || task.DeferredUntil != nil ||
-		len(task.Checklist) != 0 || len(task.Dependencies) != 0 {
+	if childCarriesUnretainableContent(task) {
 		return invalidInput("task", "child has content a checklist item cannot retain")
 	}
 	projects := append([]*models.Project(nil), snap.Projects()...)

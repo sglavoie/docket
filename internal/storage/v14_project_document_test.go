@@ -26,8 +26,8 @@ func TestLiveProjectDocumentRoundTripsDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteCurrent: %v", err)
 	}
-	if !strings.Contains(content, schemaMarkerV18) {
-		t.Fatalf("live document is not schema 18:\n%s", content)
+	if !strings.Contains(content, schemaMarkerV19) {
+		t.Fatalf("live document is not the current schema:\n%s", content)
 	}
 	if !strings.Contains(content, "depends: project-beta:task-9;project-alpha:task-1") {
 		t.Fatalf("live document omitted the dependency list:\n%s", content)
@@ -60,7 +60,7 @@ func TestEmptyDependenciesLeaveLiveBytesUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render schema 13: %v", err)
 	}
-	if strings.Replace(content, schemaMarkerV18, schemaMarkerV13, 1) != v13 {
+	if strings.Replace(content, schemaMarkerV19, schemaMarkerV13, 1) != v13 {
 		t.Fatalf("live bytes differ from schema 13 beyond the marker\nlive: %s\nv13: %s", content, v13)
 	}
 }
@@ -116,9 +116,9 @@ func TestV14ProjectDocumentRejectsForeignSchemaMarker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	downgraded := strings.Replace(content, schemaMarkerV18, schemaMarkerV14, 1)
+	downgraded := strings.Replace(content, schemaMarkerV19, schemaMarkerV14, 1)
 	if _, err := ParseProjectDocument(downgraded); err == nil ||
-		!strings.Contains(err.Error(), "unsupported v18 task schema 14") {
+		!strings.Contains(err.Error(), "unsupported v19 task schema 14") {
 		t.Fatalf("ParseProjectDocument error = %v, want an unsupported-schema refusal", err)
 	}
 }

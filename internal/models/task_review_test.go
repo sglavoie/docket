@@ -93,7 +93,9 @@ func TestAcknowledgeReviewTouchesEvenAnUnflaggedTask(t *testing.T) {
 		t.Fatal("ApplyReview touched an unflagged task; the primitive under test would be redundant")
 	}
 
-	task.AcknowledgeReview(now)
+	if ackErr := task.AcknowledgeReview(now); ackErr != nil {
+		t.Fatalf("AcknowledgeReview: %v", ackErr)
+	}
 	if !task.UpdatedAt.Equal(now) {
 		t.Errorf("UpdatedAt = %v, want %v", task.UpdatedAt, now)
 	}
@@ -113,7 +115,9 @@ func TestAcknowledgeReviewLeavesTheStateClock(t *testing.T) {
 	stateChanged := now.AddDate(0, 0, -30)
 	task.StateChangedAt = stateChanged
 
-	task.AcknowledgeReview(now)
+	if ackErr := task.AcknowledgeReview(now); ackErr != nil {
+		t.Fatalf("AcknowledgeReview: %v", ackErr)
+	}
 
 	if task.Review {
 		t.Error("review flag survived the acknowledgement")

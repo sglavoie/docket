@@ -86,8 +86,8 @@ func ManagerPlanningArtifacts(mgr *config.Manager) app.PlanningArtifactBuilder {
 		if err != nil {
 			return nil, err
 		}
-		if err := requireUnplanned(planning, req.RequireAbsent); err != nil {
-			return nil, err
+		if guardErr := requireUnplanned(planning, req.RequireAbsent); guardErr != nil {
+			return nil, guardErr
 		}
 		changed := app.ReconcilePlanningState(planning, req)
 		if !changed && !req.GuardOnly {

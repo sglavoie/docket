@@ -111,7 +111,7 @@ func TestAddCalendarDaysRefusesAnAbsurdOffset(t *testing.T) {
 }
 
 // TestStartOfCalendarDateRefusesADateTheZoneSkipped is the hazard the whole
-// helper exists for: time.Date normalizes a nonexistent date into its neighbour
+// helper exists for: time.Date normalizes a nonexistent date into its neighbor
 // and nothing downstream can tell, so a caller that asked for a day the zone has
 // none of gets an error rather than a different day.
 func TestStartOfCalendarDateRefusesADateTheZoneSkipped(t *testing.T) {
@@ -119,7 +119,7 @@ func TestStartOfCalendarDateRefusesADateTheZoneSkipped(t *testing.T) {
 	if _, err := StartOfCalendarDate(2011, time.December, 30, apia); err == nil {
 		t.Fatal("Pacific/Apia accepted 2011-12-30, a date it skipped entirely")
 	}
-	// The neighbours it does have are still ordinary dates.
+	// The neighbors it does have are still ordinary dates.
 	for _, day := range []int{29, 31} {
 		if _, err := StartOfCalendarDate(2011, time.December, day, apia); err != nil {
 			t.Fatalf("2011-12-%d in Pacific/Apia: %v", day, err)
@@ -261,7 +261,7 @@ func TestParseCheckInDateResolvesAWrittenDateAsACivilDate(t *testing.T) {
 	if !IsStartOfCalendarDate(got) {
 		t.Fatalf("%s is not the start of its own calendar date", got)
 	}
-	// A date the zone has none of is refused rather than shifted onto a neighbour.
+	// A date the zone has none of is refused rather than shifted onto a neighbor.
 	apiaPrevious := time.Local
 	time.Local = mustLoadZone(t, "Pacific/Apia")
 	defer func() { time.Local = apiaPrevious }()

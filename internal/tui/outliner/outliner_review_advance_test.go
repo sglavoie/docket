@@ -56,7 +56,9 @@ func planReviewAcknowledgement(
 	if !capture.ReviewAdvance {
 		t.Fatal("PlanReviewAdvance left the capture an ordinary relocation")
 	}
-	task.AcknowledgeReview(time.Now())
+	if ackErr := task.AcknowledgeReview(time.Now()); ackErr != nil {
+		t.Fatalf("AcknowledgeReview: %v", ackErr)
+	}
 	return capture
 }
 
@@ -211,7 +213,9 @@ func TestReviewAdvanceSkipsASuccessorThatStoppedQualifying(t *testing.T) {
 
 	inboxCursorTo(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
-	answered.AcknowledgeReview(time.Now())
+	if ackErr := answered.AcknowledgeReview(time.Now()); ackErr != nil {
+		t.Fatalf("AcknowledgeReview: %v", ackErr)
+	}
 	requireNoExhaustionReported(t, settleReviewAcknowledgement(t, outliner, capture))
 
 	requireCursorRow(t, outliner, survivor.ID)

@@ -32,7 +32,9 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				want func() string
 			}{
 				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2"),
-					func() string { return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2")) }},
+					func() string {
+						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2"))
+					}},
 				{"today", today, "Today",
 					func() string { return theme.DueTodayStyle.Render(icons.Get("date") + " Today") }},
 				{"tomorrow", today.AddDate(0, 0, 1), "Tomorrow",

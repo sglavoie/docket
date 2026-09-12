@@ -393,11 +393,7 @@ func TestManagerV18MigrationRefusesANewerWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer := bytes.Replace(source, []byte("\"schema_version\": 18"), []byte("\"schema_version\": 21"), 1)
-	if bytes.Equal(newer, source) {
-		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
-	}
-	if err := os.WriteFile(catalogPath, newer, FilePermissions); err != nil {
+	if err := os.WriteFile(catalogPath, newerThanSupportedCatalog(t, source, V18ConfigSchemaVersion), FilePermissions); err != nil {
 		t.Fatal(err)
 	}
 	migrateErr := manager.MigrateWorkspaceToV18()

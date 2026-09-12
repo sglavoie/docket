@@ -5,10 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func demotionService(t *testing.T, owner, child *models.Task) (*fakeRepo, *app.Service) {
@@ -75,6 +77,16 @@ func TestMakeChecklistItemPlacementAndState(t *testing.T) {
 }
 
 func TestMakeChecklistItemRefusesLossAndStaleRow(t *testing.T) {
+	// A checklist item holds a title and a tick, so a check-in demoted with its
+	// task would stop raising a reminder nobody withdrew and a review instant would
+	// be lost with no record it was ever answered. Both are refusals rather than
+	// silent drops for that reason.
+	checkIn, err := util.StartOfCalendarDate(2026, time.September, 1, time.UTC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewed := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
+
 	for _, tc := range []struct {
 		name   string
 		mutate func(*models.Task, *models.Task)
@@ -83,6 +95,8 @@ func TestMakeChecklistItemRefusesLossAndStaleRow(t *testing.T) {
 		{"checklist", func(_, c *models.Task) { c.Checklist = []models.ChecklistItem{{Text: "nested"}} }},
 		{"no parent", func(_, c *models.Task) { c.ParentID = nil }},
 		{"working", func(_, c *models.Task) { c.WorkflowState = models.StateDoing }},
+		{"check-in", func(_, c *models.Task) { c.NextCheckIn = &checkIn; c.CheckInRepeatDays = 7 }},
+		{"review history", func(_, c *models.Task) { c.LastReviewedAt = &reviewed }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			owner := newTask("owner", 1, "Owner")

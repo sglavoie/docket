@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // These tests pin the live task format itself rather than any one feature of
@@ -29,6 +30,13 @@ var currentSchemaFixtureInstant = time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 // carries a non-zero value in every persisted models.Task field. The first task
 // exists only to be a parent, since a parent reference must resolve inside the
 // same document.
+//
+// It is a crossing fixture rather than a lifecycle-valid task: its job is to
+// prove that every stored field survives model→record→bytes→record→model, so it
+// sets values the lifecycle would never mint together. A terminal task carrying
+// a check-in schedule is the case in point — ApplyStateTransitionAt clears one
+// the moment a task finishes, and auditMergedDocument is where the combination
+// is refused, because a concurrent merge is the only thing that can compose it.
 func currentSchemaFixtureProject() *models.Project {
 	base := currentSchemaFixtureInstant
 	parentID := "task-parent"
@@ -36,6 +44,11 @@ func currentSchemaFixtureProject() *models.Project {
 	pinnedAt := base.Add(90 * time.Minute)
 	deferredUntil := time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)
 	dueDate := time.Date(2026, 8, 14, 9, 30, 0, 0, time.Local)
+	lastReviewedAt := base.Add(45 * time.Minute)
+	// A check-in is a calendar date, so it is built the way the model builds one:
+	// no zone has ever lost 2026-08-25, so the error cannot fire here, and reading
+	// the date back through the live path has to land on this exact instant.
+	nextCheckIn, _ := util.StartOfCalendarDate(2026, 8, 25, time.Local)
 
 	parent := &models.Task{
 		ID: parentID, ShortID: 1, Title: "Parent",
@@ -67,9 +80,12 @@ func currentSchemaFixtureProject() *models.Project {
 		Attachments: []models.Attachment{
 			{Filename: "notes.md", OriginalPath: "/tmp/notes.md", AddedAt: base},
 		},
-		DeferredUntil: &deferredUntil,
-		Checklist:     []models.ChecklistItem{{Text: "step one", Done: true}},
-		Dependencies:  []models.TaskReference{{ProjectID: "project-beta", TaskID: "task-9"}},
+		DeferredUntil:     &deferredUntil,
+		Checklist:         []models.ChecklistItem{{Text: "step one", Done: true}},
+		Dependencies:      []models.TaskReference{{ProjectID: "project-beta", TaskID: "task-9"}},
+		NextCheckIn:       &nextCheckIn,
+		CheckInRepeatDays: 7,
+		LastReviewedAt:    &lastReviewedAt,
 	}
 	return &models.Project{Name: "Fixture", Tasks: []*models.Task{parent, child}}
 }
@@ -87,30 +103,16 @@ func persistedTaskJSON(t *testing.T, task *models.Task) string {
 	return string(data)
 }
 
-// currentSchemaPendingFields names the persisted models.Task fields the live
-// schema does not carry yet, each with the schema that will carry it. A field
-// is listed here for exactly as long as its record codec exists beside the live
-// one without being selected: the check-in schedule and the review instant are
-// written and read by the schema-19 document (see
-// v19_project_document_test.go), and current_task_schema.go still selects
-// schema 18.
-//
-// The list is deliberately a hardcoded map rather than anything derived. It has
-// to be deleted by hand when the live schema advances, and until then it states
-// in one place which fields a live save silently drops, so the gap is a named
-// thing a reviewer can see rather than a round trip that quietly proves less
-// than it looks like it does.
-var currentSchemaPendingFields = map[string]string{
-	"NextCheckIn":       "schema 19",
-	"CheckInRepeatDays": "schema 19",
-	"LastReviewedAt":    "schema 19",
-}
-
 // TestCurrentTaskFixtureSetsEveryPersistedField is the tripwire that keeps the
 // round trip below honest. A field left at its zero value would round trip
 // trivially, so a new persisted field fails here until the fixture carries a
-// real value for it, or until it is named in currentSchemaPendingFields as one
-// the live schema cannot carry yet.
+// real value for it.
+//
+// There is deliberately no exemption list. One existed while the schema-19
+// record codec sat beside the live schema-18 one without being selected; the
+// change that advanced the live schema deleted it, because a named exemption
+// that outlives its reason is a round trip quietly proving less than it looks
+// like it does.
 func TestCurrentTaskFixtureSetsEveryPersistedField(t *testing.T) {
 	fixture := currentSchemaFixtureProject().Tasks[1]
 	value := reflect.ValueOf(*fixture)
@@ -118,16 +120,6 @@ func TestCurrentTaskFixtureSetsEveryPersistedField(t *testing.T) {
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		if strings.Split(field.Tag.Get("json"), ",")[0] == "-" {
-			continue
-		}
-		if schema, pending := currentSchemaPendingFields[field.Name]; pending {
-			if !value.Field(i).IsZero() {
-				t.Errorf(
-					"fixture sets %s, which %s carries and the live schema does not; "+
-						"drop it from currentSchemaPendingFields once the live schema advances",
-					field.Name, schema,
-				)
-			}
 			continue
 		}
 		if value.Field(i).IsZero() {
@@ -181,13 +173,13 @@ func TestCurrentTaskSchemaGoldenBytes(t *testing.T) {
 		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	const golden = "# Project: Fixture\n" +
-		"<!-- tt-schema: 18 -->\n" +
+		"<!-- tt-schema: 19 -->\n" +
 		"\n" +
 		"## Task: Parent\n" +
 		"<!-- id: task-parent, short_id: 1, state: backlog, priority: 0, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T12:00:00Z, state_changed: 2026-08-01T12:00:00Z -->\n" +
 		"\n" +
 		"### Task: Every persisted field\n" +
-		"<!-- id: task-child, short_id: 2, state: done, priority: 2, parent: task-parent, tags: alpha;beta, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T14:00:00Z, state_changed: 2026-08-01T13:00:00Z, completed: 2026-08-01T15:00:00Z, due: 2026-08-14, deferred: 2026-08-20T09:00:00Z, pinned: true, pinned_at: 2026-08-01T13:30:00Z, attachments: file|notes.md|%2Ftmp%2Fnotes.md|0|2026-08-01T12:00:00Z, checklist: 1|step+one, context: deep-work, defer_count: 3, due_time: 09:30, depends: project-beta:task-9, review: true -->\n" +
+		"<!-- id: task-child, short_id: 2, state: done, priority: 2, parent: task-parent, tags: alpha;beta, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T14:00:00Z, state_changed: 2026-08-01T13:00:00Z, completed: 2026-08-01T15:00:00Z, due: 2026-08-14, deferred: 2026-08-20T09:00:00Z, pinned: true, pinned_at: 2026-08-01T13:30:00Z, attachments: file|notes.md|%2Ftmp%2Fnotes.md|0|2026-08-01T12:00:00Z, checklist: 1|step+one, context: deep-work, defer_count: 3, due_time: 09:30, depends: project-beta:task-9, review: true, check_in: 2026-08-25, check_in_repeat: 7, reviewed: 2026-08-01T12:45:00Z -->\n" +
 		"<!-- checklist-origin: {\"project_id\":\"project-alpha\",\"task_id\":\"task-parent\",\"index\":3} -->\n" +
 		"<!-- RESUME -->\n" +
 		"waiting on the staging deploy\n" +

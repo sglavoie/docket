@@ -231,8 +231,10 @@ func TestTaskCheckInAccessorsAreDetached(t *testing.T) {
 	if read.Next == task.NextCheckIn {
 		t.Fatal("CheckIn returned the stored pointer")
 	}
+	// Only the pointer is rewritten here: RepeatDays is a plain int in a returned
+	// struct, so the language already answers for it, and writing it would assert
+	// nothing about the accessor.
 	*read.Next = checkInDay(2030, time.January, 1)
-	read.RepeatDays = 99
 	if !task.NextCheckIn.Equal(checkInDay(2026, time.March, 20)) || task.CheckInRepeatDays != 7 {
 		t.Fatalf("writing the read copy changed the task: %s/%d", task.NextCheckIn, task.CheckInRepeatDays)
 	}

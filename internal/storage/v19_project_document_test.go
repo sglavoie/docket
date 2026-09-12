@@ -16,7 +16,7 @@ func v19ProjectTestDocument(t *testing.T) V19ProjectDocument {
 	}
 	return V19ProjectDocument{
 		ProjectName: "Check-ins",
-		Tasks:       []format.V18TaskRecord{{V17TaskRecord: record}},
+		Tasks:       []format.V18TaskRecord{record},
 	}
 }
 
@@ -150,7 +150,7 @@ func TestV18ProjectDocumentStaysBlindToCheckIns(t *testing.T) {
 
 // TestV19ProjectDocumentRefusesAnotherSchemasMarker is the ordinary strictness
 // every document codec here owes: the marker names the grammar, so reading a
-// neighbouring schema's file as this one is refused rather than attempted.
+// neighboring schema's file as this one is refused rather than attempted.
 func TestV19ProjectDocumentRefusesAnotherSchemasMarker(t *testing.T) {
 	published, err := WriteV19ProjectDocument(v19ProjectTestDocument(t))
 	if err != nil {
