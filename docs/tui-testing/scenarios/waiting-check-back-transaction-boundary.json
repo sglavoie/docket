@@ -71,8 +71,8 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "contains", "value": "waiting now" },
-    { "type": "restart", "label": "153 days from the fixed clock is the typed date" },
-    { "type": "assert", "assert": "contains", "value": "[platform] Add password validation  ‹ #backend #security waiting now  check 153d" },
+    { "type": "restart", "label": "the typed date survives the relaunch as a check-back the row still names" },
+    { "type": "assert", "label": "the trailing day count is distance from today, so the row is matched up to it", "assert": "contains", "value": "[platform] Add password validation  ‹ #backend #security waiting now  check " },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

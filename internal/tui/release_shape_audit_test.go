@@ -47,13 +47,16 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 	}
 }
 
-// TestReleaseSchemaVersionsIncludeChecklistOrigin pins the task and catalog
-// boundaries that introduced the promoted checklist origin.
-func TestReleaseSchemaVersionsIncludeChecklistOrigin(t *testing.T) {
-	if got, want := storage.CurrentTaskSchemaVersion, 18; got != want {
+// TestReleaseSchemaVersionsIncludeCheckIns pins the live task and catalog
+// boundaries. The checklist origin arrived at task schema 18 and catalog schema
+// 20; the stored check-in lifted both one further, to task schema 19 and catalog
+// schema 21. Moving either number is a migration, not a refactor, so the pair is
+// spelled here rather than derived.
+func TestReleaseSchemaVersionsIncludeCheckIns(t *testing.T) {
+	if got, want := storage.CurrentTaskSchemaVersion, 19; got != want {
 		t.Errorf("live task Markdown is schema %d, want %d", got, want)
 	}
-	if got, want := config.CurrentConfigVersion, 20; got != want {
+	if got, want := config.CurrentConfigVersion, 21; got != want {
 		t.Errorf("the catalog is schema %d, want %d", got, want)
 	}
 }

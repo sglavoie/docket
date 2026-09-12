@@ -72,7 +72,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "b" },
     { "type": "wait" },
-    { "type": "assert", "label": "the finished member took the deadline too", "assert": "contains", "value": "due 2026-09-12" },
+    { "type": "assert", "label": "the finished member took the deadline too; the day itself is the Tomorrow preset's, so the detail line is matched up to the date rather than spelling a day that moves", "assert": "contains", "value": "updated now · due " },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
     { "type": "key", "label": "and one entry takes the whole batch back", "key": "u" },
@@ -80,7 +80,7 @@
     { "type": "assert", "assert": "not_contains", "value": "⊡ Tomorrow" },
     { "type": "key", "key": "b" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "due 2026-09-12" },
+    { "type": "assert", "label": "and the undo took it back off the detail line", "assert": "not_contains", "value": "updated now · due " },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

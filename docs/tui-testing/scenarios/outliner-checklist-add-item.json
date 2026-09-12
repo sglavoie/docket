@@ -11,14 +11,14 @@
     { "type": "key", "label": "move onto the task with no checklist", "key": "j" },
 
     { "type": "key", "label": "c offers the first item from a task row", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Esc abandons the prompt", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "a cancelled prompt writes no checklist at all", "assert": "not_contains", "value": "0/1" },
 
     { "type": "key", "label": "c again, this time committed", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "text", "text": "Confirm the archive location" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
@@ -28,7 +28,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the cursor is on the new item, so c appends the next one from there", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "text", "text": "Record the retirement date" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

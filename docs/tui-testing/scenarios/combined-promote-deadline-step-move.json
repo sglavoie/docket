@@ -8,7 +8,7 @@
     { "type": "key", "label": "onto its only task", "key": "j" },
 
     { "type": "key", "label": "c answers from the owner row, since an empty checklist has no item row", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "text", "text": "Confirm the cutover window" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -327,7 +328,7 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testin
 		t.Fatalf("doctor stderr = %q, want empty", stderr)
 	}
 	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
-		!strings.Contains(stdout, "[Migration] workspace schema 20 is current") ||
+		!strings.Contains(stdout, fmt.Sprintf("[Migration] workspace schema %d is current", config.CurrentConfigVersion)) ||
 		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
 		!strings.Contains(stdout, "[Migration] clean schema-6 workspace; no pre-v6 snapshot recorded") ||
 		!strings.Contains(stdout, "[Migration] clean schema-7 workspace; no pre-v7 snapshot recorded") ||

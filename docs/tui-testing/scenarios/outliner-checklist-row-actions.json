@@ -27,7 +27,7 @@
     { "type": "assert", "assert": "contains", "value": "[ ] Name the on-call owner" },
 
     { "type": "key", "label": "c appends a new item to this checklist", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "text", "text": "Verify the rollback drill" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

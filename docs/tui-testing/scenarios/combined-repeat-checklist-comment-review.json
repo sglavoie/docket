@@ -34,7 +34,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "c appends a fourth item to the checklist the repeat copied", "key": "c" },
-    { "type": "assert", "assert": "contains", "value": "Add Item" },
+    { "type": "assert", "assert": "contains", "value": "Add Checklist Item" },
     { "type": "text", "text": "Re-run the smoke pass" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
