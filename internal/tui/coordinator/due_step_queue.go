@@ -55,6 +55,72 @@ type DueStepQueue struct {
 	counter  int
 	inflight bool
 	pending  []DueStepGesture
+	// superseded records what each detached gesture's supersession invalidated,
+	// keyed by the sequence that gesture was stamped with. An entry lives only
+	// until that gesture's result is delivered, which always happens: every
+	// dispatch returns exactly one message.
+	superseded map[int]DueStepSupersession
+}
+
+// DueStepSupersession names the committed clock evidence one detach invalidated.
+//
+// A supersession that can name its targets — an explicit due edit or a removal
+// names the tasks it spoke for — invalidates those targets and nothing else, so
+// a gesture that cleared some other task's deadline still hands back the wall
+// clock it took away. One that cannot name them invalidates everything: a ledger
+// restore moves whatever the restored transaction moved, and a delivery the
+// queue has no record of is not accounted for at all.
+//
+// The zero value names nothing, which is what a gesture still in flight was
+// superseded by.
+type DueStepSupersession struct {
+	whole   bool
+	targets map[app.TaskLocator]struct{}
+}
+
+// Retain narrows one late result's typed effect to the evidence this
+// supersession left standing.
+//
+// Only `Steps` is narrowed, because only a step writes clock memory: `Edits` and
+// `Removed` forget a clock and `Moves` re-keys one, and neither can resurrect
+// the memory some later act replaced. A whole supersession keeps none of it,
+// which is the blanking a ledger restore has always done.
+func (s DueStepSupersession) Retain(effect CommittedDueEffect) CommittedDueEffect {
+	if s.whole {
+		return CommittedDueEffect{}
+	}
+	if len(s.targets) == 0 || len(effect.Steps) == 0 {
+		return effect
+	}
+	retained := effect
+	retained.Steps = nil
+	for _, outcome := range effect.Steps {
+		if _, invalidated := s.targets[outcome.Target]; invalidated {
+			continue
+		}
+		retained.Steps = append(retained.Steps, outcome)
+	}
+	return retained
+}
+
+// merge folds a second supersession into one already recorded. A detached
+// gesture can be superseded more than once before its result arrives, and each
+// supersession names evidence the ones before it did not.
+func (s DueStepSupersession) merge(other DueStepSupersession) DueStepSupersession {
+	if s.whole || other.whole {
+		return DueStepSupersession{whole: true}
+	}
+	if len(other.targets) == 0 {
+		return s
+	}
+	merged := make(map[app.TaskLocator]struct{}, len(s.targets)+len(other.targets))
+	for target := range s.targets {
+		merged[target] = struct{}{}
+	}
+	for target := range other.targets {
+		merged[target] = struct{}{}
+	}
+	return DueStepSupersession{targets: merged}
 }
 
 // Enqueue records one keypress. It returns the sequence to stamp the dispatch
@@ -124,22 +190,81 @@ func (q *DueStepQueue) Abandon(sequence int) (dropped int, current bool) {
 	return dropped, true
 }
 
-// Supersede abandons queued deadline work whose premise has moved. It detaches
-// the in-flight gesture — whose result, when it arrives, is then delivered and
-// reloaded but contributes no clock memory — and drops the tail with it.
+// Supersede abandons queued deadline work whose premise has moved, without
+// naming what moved it. It detaches the in-flight gesture — whose result, when
+// it arrives, is then delivered and reloaded but contributes no clock memory at
+// all — and drops the tail with it.
 //
-// It says nothing about what moved the premise, because every caller means the
-// same thing: some other committed transaction, ledger restore, or route change
-// happened between this queue being filled and being drained, so the "preceding
-// committed state" each queued step was to be computed from is no longer the one
-// the previous step left behind.
+// This is the form for a mover that cannot name the deadlines it touched: a
+// ledger restore puts back whatever the restored transaction wrote, so no target
+// of a detached gesture can be trusted to have kept its premise.
 func (q *DueStepQueue) Supersede() {
 	if q == nil {
 		return
 	}
+	q.detach(DueStepSupersession{whole: true})
+}
+
+// SupersedeTargets abandons the same queued work for a mover that does name its
+// deadlines: an explicit due edit or a removal replaced the premise of exactly
+// the tasks it spoke for.
+//
+// The pending tail goes whole either way — a queued step is computed from the
+// preceding committed state, and that state has moved whoever it moved — but the
+// committed clock evidence of the detached gesture survives for every target
+// this supersession left alone. Those two invalidations are separate questions:
+// one is about work that has not run, the other about a transaction that already
+// happened.
+func (q *DueStepQueue) SupersedeTargets(targets []app.TaskLocator) {
+	if q == nil {
+		return
+	}
+	named := make(map[app.TaskLocator]struct{}, len(targets))
+	for _, target := range targets {
+		named[target] = struct{}{}
+	}
+	q.detach(DueStepSupersession{targets: named})
+}
+
+// detach drops the pending tail and records what this supersession invalidated,
+// both about the gesture in flight and about every gesture detached earlier
+// whose result has still not arrived.
+func (q *DueStepQueue) detach(supersession DueStepSupersession) {
+	for sequence, recorded := range q.superseded {
+		q.superseded[sequence] = recorded.merge(supersession)
+	}
+	if q.inflight {
+		if q.superseded == nil {
+			q.superseded = make(map[int]DueStepSupersession)
+		}
+		q.superseded[q.sequence] = supersession
+	}
 	q.inflight = false
 	q.sequence = 0
 	q.pending = nil
+}
+
+// Superseded reports what invalidated the gesture stamped with this sequence,
+// and forgets the record: one dispatch delivers one result, so the answer is
+// wanted exactly once.
+//
+// A sequence still in flight was superseded by nothing. A sequence the queue has
+// no record of is wholly superseded rather than trusted — a delivery the queue
+// cannot account for must not write clock memory back — which is also the answer
+// a nil queue gives.
+func (q *DueStepQueue) Superseded(sequence int) DueStepSupersession {
+	if q == nil {
+		return DueStepSupersession{whole: true}
+	}
+	if q.inflight && sequence == q.sequence {
+		return DueStepSupersession{}
+	}
+	recorded, ok := q.superseded[sequence]
+	if !ok {
+		return DueStepSupersession{whole: true}
+	}
+	delete(q.superseded, sequence)
+	return recorded
 }
 
 // Pending is how many gestures are waiting behind the in-flight one.

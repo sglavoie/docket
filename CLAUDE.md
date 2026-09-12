@@ -314,8 +314,11 @@ what went unexecuted; it never retries against different targets, and navigation
 never retargets queued work. `supersedeDueStepsForEffect` is the one detach,
 reading `CommittedDueEffect.Edits`/`Removed` and never `Steps`, so an explicit
 due edit or a ledger restore drops the queue while the chain's own commits do
-not; a detached result still reloads, with its `DueEffect` blanked so late
-delivery cannot resurrect superseded clock memory. A step's ledger context names
+not. Pending work and committed evidence are two invalidations: the tail always
+goes whole, while a detached result still reloads and `DueStepSupersession`
+narrows its `DueEffect.Steps` alone to the targets no supersession named.
+`SupersedeTargets` names an edit's or a removal's own; `Supersede` and an
+unrecorded delivery name every one. A step's ledger context names
 the gesture, so its toast names the outcome instead through `RecoveryContext` —
 one deadline, or changed and cleared counts including hidden members — and a
 re-render of that same toast keeps it.

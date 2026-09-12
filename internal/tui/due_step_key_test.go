@@ -342,6 +342,45 @@ func TestDueStepDropsQueuedWorkAnExplicitEditSuperseded(t *testing.T) {
 	}
 }
 
+// TestDueStepKeepsTheClockAnUnrelatedEditNeverNamed is the other half of that
+// rule, and the half the queue alone cannot answer. The same explicit edit drops
+// the pending tail whatever it named — a queued step is computed from a
+// committed state the edit has moved — but a deadline typed on one task says
+// nothing about the wall clock another task's step just cleared. The step that
+// did commit keeps its own evidence, so stepping back out of unset hands the
+// clock back rather than inventing a date-only deadline.
+func TestDueStepKeepsTheClockAnUnrelatedEditNeverNamed(t *testing.T) {
+	env := newDueStepKeyEnv(t)
+	env.focusTask(t, env.timedID)
+
+	env.driver.dispatch(tea.KeyPressMsg{Code: '-', Text: "-"})
+	pending := env.driver.pendingCmd
+	env.driver.pendingCmd = nil
+	if pending == nil {
+		t.Fatal("- raised no transaction command")
+	}
+	env.driver.dispatch(tea.KeyPressMsg{Code: '-', Text: "-"})
+
+	// One explicit deadline on a task the outstanding steps never named.
+	env.focusTask(t, env.plainID)
+	env.press(t, "@", "t")
+	env.driver.Wait(dueStepSettleTimeout)
+	env.requireDue(t, env.plainID, dueStepDay(0, 0, 0).Format("2006-01-02"), "an explicit due edit")
+
+	env.driver.pendingCmd = pending
+	env.driver.drain()
+	env.driver.Wait(dueStepSettleTimeout)
+
+	env.requireDue(t, env.timedID, "", "the dispatched step")
+	if queued := env.driver.App().dueSteps.Pending(); queued != 0 {
+		t.Fatalf("%d deadline step(s) survived the edit that superseded the queue", queued)
+	}
+
+	env.focusTask(t, env.timedID)
+	env.step(t, "+")
+	env.requireDue(t, env.timedID, dueStepDay(0, 14, 30).Format("2006-01-02 15:04"), "stepping back out of unset")
+}
+
 // TestDueStepRefusesARowThatIsNotATask keeps the keys off the rows that answer
 // no deadline: a project header refuses by name instead of stepping whatever the
 // cursor last stood on.

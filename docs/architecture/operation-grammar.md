@@ -383,9 +383,24 @@ wherever the user has gone, help overlay included.
 edit, an outline apply, or a removal drops the queue while the queue's own
 commits do not; `observeRestoredDueClocks` detaches on a ledger undo or redo for
 the same reason. A detached gesture still commits and still reloads — the
-transaction happened — but its `DueEffect` is blanked on the way through, so a
-late step cannot write back clock memory that an explicit edit or a restore has
-already replaced.
+transaction happened — but what it may still say about clock memory is narrowed
+on the way through.
+
+Those are two invalidations, not one. Pending work goes whole whatever caused the
+detach, because a queued step is computed from a committed state that has just
+moved. Committed clock evidence is narrowed per target, by the
+`DueStepSupersession` the queue recorded against that gesture's sequence:
+`SupersedeTargets` carries the tasks an edit or a removal actually named, and
+`Superseded(sequence).Retain` drops those tasks' outcomes out of
+`DueEffect.Steps` and keeps the rest. A deadline typed on one task is no
+statement about the wall clock another task's step just cleared, so that task
+still hands its clock back when the user steps out of unset. `Supersede` is the
+form for a mover that names nothing — a ledger restore puts back whatever the
+restored transaction wrote — and it blanks the effect whole, as does a delivery
+the queue has no record of. Only `Steps` is narrowed: `Edits`, `Removed`, and
+`Moves` forget or re-key a clock and can never resurrect one. A gesture detached
+more than once before its result arrives accumulates every supersession it
+outlived.
 
 What the strip says is the outcome, not the gesture. The ledger entry's context
 is `+1 day`, which is what the undo browser should show and no answer at all to

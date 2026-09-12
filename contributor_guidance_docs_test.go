@@ -586,7 +586,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// direct-only clause ride along because the table is the inventory the one-act
 	// rule is enforced from. The mechanism lives in
 	// docs/architecture/tui-architecture.md.
-	const budget = 42859
+	// Twenty-sixth raise, 42859 to 43073, for splitting the deadline detach in
+	// two. 214 bytes buy two rules that are silent when guessed wrong. The first
+	// is that pending work and committed evidence are separate invalidations: the
+	// previous guidance said the tail drops and the `DueEffect` is blanked in one
+	// breath, which reads as one act, and treating it as one is what made an
+	// explicit deadline typed on any task discard the wall clock some other task's
+	// already-committed step had just cleared — a loss nothing reports, since the
+	// user only sees a date-only deadline several presses later. The second is
+	// which half of the effect a supersession may touch: narrowing `Steps` alone
+	// looks arbitrary beside `Edits`, `Removed`, and `Moves`, and narrowing those
+	// too strands memory at an address the task has left or keeps it alive for a
+	// task that is gone, because only a step ever writes a clock back. The two
+	// entry points are named because the difference between them is the whole
+	// rule: a mover that can name its targets must, and one that cannot — a ledger
+	// restore, or a delivery the queue never armed — must name all of them. The
+	// mechanism lives in docs/architecture/operation-grammar.md.
+	const budget = 43073
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

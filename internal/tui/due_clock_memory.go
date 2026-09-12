@@ -33,11 +33,21 @@ func (m *AppModel) observeCommittedDueEffect(transactionID string, effect coordi
 // through here, so treating a step as a supersede would have the queue cancel
 // its own successor on the first commit; a step is the queue's own evidence, not
 // evidence against it.
+//
+// The effect's own targets are handed over rather than dropped, because an edit
+// and the queue invalidate two different things. The pending tail goes whole —
+// it was to be computed from a committed state this transaction has moved — but
+// a gesture already committed is only overridden for the tasks this edit or
+// removal actually named. A deadline typed on one task says nothing about the
+// clock another task's step just cleared.
 func (m *AppModel) supersedeDueStepsForEffect(effect coordinator.CommittedDueEffect) {
 	if len(effect.Edits) == 0 && len(effect.Removed) == 0 {
 		return
 	}
-	m.dueSteps.Supersede()
+	targets := make([]app.TaskLocator, 0, len(effect.Edits)+len(effect.Removed))
+	targets = append(targets, effect.Edits...)
+	targets = append(targets, effect.Removed...)
+	m.dueSteps.SupersedeTargets(targets)
 }
 
 // dispatchDueStepGesture turns one frozen gesture into its transaction.
@@ -80,9 +90,14 @@ func withDueStepSequence(cmd tea.Cmd, sequence int) tea.Cmd {
 //
 // A superseded delivery still commits and still reloads — the transaction
 // happened, and pretending otherwise would leave the shell showing stale rows —
-// but its typed effect is dropped, so a late result cannot write back clock
-// memory that an explicit edit or a ledger restore has already replaced. It also
-// arms nothing: the queue behind it went with the premise.
+// and its typed effect is narrowed to what the supersession left standing, so a
+// late result cannot write back clock memory that an explicit edit or a ledger
+// restore has already replaced while a target neither of them named still keeps
+// the clock its own commit earned. It also arms nothing: the queue behind it
+// went with the premise.
+//
+// The supersession is read before the settle, because the settle is what stops
+// the delivered sequence from being the in-flight one.
 //
 // The successor is armed after the reload rather than before it, so each step is
 // computed from a workspace the shell has already taken delivery of. Arming
@@ -90,11 +105,12 @@ func withDueStepSequence(cmd tea.Cmd, sequence int) tea.Cmd {
 // above: a step's own commit runs that check, finds no explicit edit, and leaves
 // the queue standing.
 func (m *AppModel) handleDueStepResult(msg coordinator.DueStepResultMsg) tea.Cmd {
+	superseded := m.dueSteps.Superseded(msg.Sequence)
 	switch inner := msg.Inner.(type) {
 	case coordinator.BatchTransactionResultMsg:
 		next, hasNext, current := m.dueSteps.Settle(msg.Sequence)
 		if !current {
-			inner.DueEffect = coordinator.CommittedDueEffect{}
+			inner.DueEffect = superseded.Retain(inner.DueEffect)
 		}
 		cmd := m.handleBatchTransactionResult(inner)
 		if !hasNext {
