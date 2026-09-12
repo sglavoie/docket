@@ -234,6 +234,88 @@ func TestStepDueDateRefusesAClockDaylightSavingSkips(t *testing.T) {
 	}
 }
 
+// TestStepDueDateRefusesADateTheZoneSkipsEntirely is the second half of that
+// refusal, and the reason the calendar arithmetic is normalized in UTC: a zone
+// can lose a whole local date rather than one hour of it, so normalizing the
+// adjacent day in the task's own zone would hand the validation the surviving
+// neighbor and nothing could tell the requested destination never existed.
+// Pacific/Apia jumped from 2011-12-29 to 2011-12-31, so both steps into
+// 2011-12-30 must refuse the whole selection instead of landing on 2011-12-31.
+func TestStepDueDateRefusesADateTheZoneSkipsEntirely(t *testing.T) {
+	zone, err := time.LoadLocation("Pacific/Apia")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	cases := []struct {
+		name      string
+		from      int
+		direction app.DueStepDirection
+	}{
+		{"forward off the day before", 29, app.DueStepForward},
+		{"backward off the day after", 31, app.DueStepBackward},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			skipped := taskWithDue("skipped", 1, "Skipped", dueAt(zone, 2011, time.December, testCase.from, 14, 30))
+			untouched := taskWithDue("untouched", 2, "Untouched", dueAt(zone, 2012, time.January, 20, 9, 0))
+			before := dueString(skipped.DueDate)
+			env := newDueStepEnv(
+				time.Date(2012, time.January, 10, 12, 0, 0, 0, zone),
+				newProject("project", "Project", skipped, untouched),
+			)
+
+			_, stepErr := env.step(testCase.direction, nil, env.repo.loc(skipped.ID), env.repo.loc(untouched.ID))
+			if !errors.Is(stepErr, app.ErrInvalidInput) {
+				t.Fatalf("step error = %v, want ErrInvalidInput; landed %s", stepErr, dueString(skipped.DueDate))
+			}
+			if got := dueString(skipped.DueDate); got != before {
+				t.Fatalf("refused task deadline = %s, want it unchanged at %s", got, before)
+			}
+			if got := dueString(untouched.DueDate); got != "2012-01-20 09:00" {
+				t.Fatalf("companion deadline = %s, want the whole selection refused", got)
+			}
+			if len(env.repo.commits) != 0 {
+				t.Fatalf("commits = %d, want none", len(env.repo.commits))
+			}
+		})
+	}
+
+	// A date-only deadline has no clock to skip, so it is the case that proves the
+	// refusal reads the date rather than the wall time.
+	t.Run("a date-only deadline is refused on the date alone", func(t *testing.T) {
+		skipped := taskWithDue("dateonly", 1, "Date only", dueAt(zone, 2011, time.December, 29, 0, 0))
+		env := newDueStepEnv(
+			time.Date(2012, time.January, 10, 12, 0, 0, 0, zone),
+			newProject("project", "Project", skipped),
+		)
+
+		_, stepErr := env.step(app.DueStepForward, nil, env.repo.loc(skipped.ID))
+		if !errors.Is(stepErr, app.ErrInvalidInput) {
+			t.Fatalf("step error = %v, want ErrInvalidInput; landed %s", stepErr, dueString(skipped.DueDate))
+		}
+		if got := dueString(skipped.DueDate); got != "2011-12-29 00:00" {
+			t.Fatalf("refused task deadline = %s, want it unchanged", got)
+		}
+	})
+
+	// Every other day in that zone still steps, so the refusal is the missing date
+	// and not the zone.
+	t.Run("an ordinary day in that zone still steps", func(t *testing.T) {
+		ordinary := taskWithDue("ordinary", 1, "Ordinary", dueAt(zone, 2011, time.December, 31, 14, 30))
+		env := newDueStepEnv(
+			time.Date(2012, time.January, 10, 12, 0, 0, 0, zone),
+			newProject("project", "Project", ordinary),
+		)
+
+		if _, err := env.step(app.DueStepForward, nil, env.repo.loc(ordinary.ID)); err != nil {
+			t.Fatalf("step: %v", err)
+		}
+		if got := dueString(ordinary.DueDate); got != "2012-01-01 14:30" {
+			t.Fatalf("deadline = %s, want an ordinary dated step across the year boundary", got)
+		}
+	})
+}
+
 func TestStepDueDateRejectsMalformedRequests(t *testing.T) {
 	task := taskWithDue("target", 1, "Target", nil)
 	project := newProject("project", "Project", task)

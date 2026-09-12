@@ -78,11 +78,17 @@ func dayOf(t time.Time) calendarDay {
 
 // shift moves a calendar day by whole days through time.Date's own calendar
 // normalization, which is what carries a month, year, or leap-day boundary
-// correctly without ever adding a 24-hour duration to an instant. The probe is
-// taken at midday so the arithmetic cannot be disturbed by a zone that skips its
-// own midnight; the destination's real clock is applied and checked separately.
+// correctly without ever adding a 24-hour duration to an instant. It normalizes
+// in UTC and keeps c.loc untouched, so the answer is the date that was asked for
+// and nothing else: a zone can skip a whole local date — Pacific/Apia lost
+// 2011-12-30 outright, every hour of it — and normalizing there would quietly
+// substitute the surviving neighbor, leaving nothing downstream able to tell that
+// the requested destination never existed. Rebuilding an instant in c.loc is
+// materializeDueDate's job, and that is the one place a skipped date or a skipped
+// clock is refused.
 func (c calendarDay) shift(days int) calendarDay {
-	return dayOf(time.Date(c.year, c.month, c.day+days, 12, 0, 0, 0, c.loc))
+	year, month, day := time.Date(c.year, c.month, c.day+days, 0, 0, 0, 0, time.UTC).Date()
+	return calendarDay{year: year, month: month, day: day, loc: c.loc}
 }
 
 // sameDate compares two calendar days by date alone, which is what "this
@@ -135,9 +141,11 @@ func stepDueDate(in dueStepInput, direction DueStepDirection, reference calendar
 // materializeDueDate reconstructs one local instant from a calendar day and an
 // optional wall clock, and refuses everything the reconstruction cannot express.
 // time.Date normalizes rather than fails, so the only way to learn that a zone
-// skipped the requested clock — a spring-forward hour — or shifted the day is to
-// read the components back off the result and compare them with what was asked
-// for. The storage round trip is checked here too, before any task is touched.
+// skipped the requested clock — a spring-forward hour — or skipped the requested
+// date outright is to read the components back off the result and compare them
+// with what was asked for. Both comparisons are load-bearing, and both depend on
+// the caller naming the date it meant rather than one the zone already rewrote.
+// The storage round trip is checked here too, before any task is touched.
 func materializeDueDate(day calendarDay, clock *DueStepClock) (*time.Time, error) {
 	hour, minute := 0, 0
 	if clock != nil {
