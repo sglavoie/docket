@@ -79,6 +79,12 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 	if state.IsTerminal() {
 		completedAt := now
 		t.CompletedAt = &completedAt
+		// A finished task owes no further look, so completion and cancellation
+		// clear the check-in date and its repeat. Review history is not owed
+		// work and survives. Because the schedule is dropped here rather than on
+		// the way back out, reopening inherits nothing: an old cadence silently
+		// resuming months later is a reminder nobody asked for.
+		t.clearCheckInForTerminal()
 	} else {
 		t.CompletedAt = nil
 	}
@@ -133,20 +139,42 @@ func (t *Task) ApplyReview(review bool, now time.Time) bool {
 	return true
 }
 
-// AcknowledgeReview records that a task has been reviewed: the flag comes off
-// and the touch clock moves, unconditionally. It is not ApplyReview(false):
-// clearing a flag that is already clear changes nothing, but acknowledging a
-// stale or Waiting task that was never flagged is the whole point of the
-// operation, and what makes it an acknowledgement is that UpdatedAt moves.
+// AcknowledgeReview records that a task has been reviewed: the flag comes off,
+// the review history is stamped, and the touch clock moves, unconditionally. It
+// is not ApplyReview(false): clearing a flag that is already clear changes
+// nothing, but acknowledging a scheduled, stale, or Waiting task that was never
+// flagged is the whole point of the operation, and what makes it an
+// acknowledgement is that UpdatedAt moves.
+//
+// A scheduled task also has its check-in answered here, from the day the review
+// actually happened rather than from the date that was owed: a one-off check-in
+// is cleared and a repeating one is moved forward its own cadence. That is the
+// whole schedule effect, and it is computed before anything is written, so a
+// cadence that cannot land on a storable date leaves the task exactly as it was
+// instead of half-acknowledged.
 //
 // Nothing else is written. The lifecycle state and its clock, completion data,
-// dates, deferral, planning membership, pin, and resume note all survive, so a
-// Waiting task stays Waiting with its check-back date and its waiting age
-// intact. There is no review timestamp: UpdatedAt already says when, and a
-// second clock would be a field with no reader.
-func (t *Task) AcknowledgeReview(now time.Time) {
+// deadlines, deferral, planning membership, pin, and resume note all survive, so
+// a Waiting task stays Waiting with its check-back date and its waiting age
+// intact.
+func (t *Task) AcknowledgeReview(now time.Time) error {
+	next := t.NextCheckIn
+	if next != nil {
+		scheduled, err := NextCheckInAfter(now, t.CheckInRepeatDays)
+		if err != nil {
+			return err
+		}
+		next = scheduled
+	}
+	reviewedAt := now
+	t.LastReviewedAt = &reviewedAt
+	t.NextCheckIn = next
+	if next == nil {
+		t.CheckInRepeatDays = CheckInRepeatOff
+	}
 	t.Review = false
 	t.UpdatedAt = now
+	return nil
 }
 
 // Unpin removes the pinned status.

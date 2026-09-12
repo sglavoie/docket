@@ -87,10 +87,30 @@ func persistedTaskJSON(t *testing.T, task *models.Task) string {
 	return string(data)
 }
 
+// currentSchemaPendingFields names the persisted models.Task fields the live
+// schema does not carry yet, each with the schema that will carry it. A field
+// is listed here for exactly as long as its record codec exists beside the live
+// one without being selected: the check-in schedule and the review instant are
+// written and read by the schema-19 document (see
+// v19_project_document_test.go), and current_task_schema.go still selects
+// schema 18.
+//
+// The list is deliberately a hardcoded map rather than anything derived. It has
+// to be deleted by hand when the live schema advances, and until then it states
+// in one place which fields a live save silently drops, so the gap is a named
+// thing a reviewer can see rather than a round trip that quietly proves less
+// than it looks like it does.
+var currentSchemaPendingFields = map[string]string{
+	"NextCheckIn":       "schema 19",
+	"CheckInRepeatDays": "schema 19",
+	"LastReviewedAt":    "schema 19",
+}
+
 // TestCurrentTaskFixtureSetsEveryPersistedField is the tripwire that keeps the
 // round trip below honest. A field left at its zero value would round trip
 // trivially, so a new persisted field fails here until the fixture carries a
-// real value for it.
+// real value for it, or until it is named in currentSchemaPendingFields as one
+// the live schema cannot carry yet.
 func TestCurrentTaskFixtureSetsEveryPersistedField(t *testing.T) {
 	fixture := currentSchemaFixtureProject().Tasks[1]
 	value := reflect.ValueOf(*fixture)
@@ -98,6 +118,16 @@ func TestCurrentTaskFixtureSetsEveryPersistedField(t *testing.T) {
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		if strings.Split(field.Tag.Get("json"), ",")[0] == "-" {
+			continue
+		}
+		if schema, pending := currentSchemaPendingFields[field.Name]; pending {
+			if !value.Field(i).IsZero() {
+				t.Errorf(
+					"fixture sets %s, which %s carries and the live schema does not; "+
+						"drop it from currentSchemaPendingFields once the live schema advances",
+					field.Name, schema,
+				)
+			}
 			continue
 		}
 		if value.Field(i).IsZero() {

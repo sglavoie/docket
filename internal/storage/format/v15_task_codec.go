@@ -59,6 +59,14 @@ func WriteV15TaskMetadata(task V15TaskRecord) (string, error) {
 	if err := validateV15TaskRecord(task, false); err != nil {
 		return "", err
 	}
+	return wrapTaskMetadata(v15MetadataParts(task)), nil
+}
+
+// v15MetadataParts renders the schema-15 metadata fields in canonical order,
+// split from the writer above the way v6MetadataParts is split from its own, so
+// a later schema appending keys of its own spells this order once rather than
+// copying it. Nothing here decides how the parts are wrapped.
+func v15MetadataParts(task V15TaskRecord) []string {
 	extra := []string{"state_changed: " + formatV6Time(task.StateChangedAt)}
 	parts := taskMetadataParts(task.V6TaskRecord, deferInstant, extra)
 	if task.Context != "" {
@@ -76,7 +84,7 @@ func WriteV15TaskMetadata(task V15TaskRecord) (string, error) {
 	if task.Review {
 		parts = append(parts, v15ReviewMetadataKey+": "+v15ReviewTrue)
 	}
-	return wrapTaskMetadata(parts), nil
+	return parts
 }
 
 // ParseV15TaskMetadata strictly parses one schema-15 metadata comment.
@@ -85,6 +93,24 @@ func ParseV15TaskMetadata(comment string) (V15TaskRecord, error) {
 	if err != nil {
 		return V15TaskRecord{}, err
 	}
+	task, err := v15RecordFromMetadataValues(values)
+	if err != nil {
+		return V15TaskRecord{}, err
+	}
+	if err := validateV15TaskRecord(task, false); err != nil {
+		return V15TaskRecord{}, err
+	}
+	return task, nil
+}
+
+// v15RecordFromMetadataValues decodes the schema-15 metadata fields from the
+// already-split key/value pairs, the way v6RecordFromMetadataValues decodes the
+// shared ones. It is the kernel a later schema reuses to read the fields it
+// inherits, so the nesting from V6TaskRecord up to V15TaskRecord is spelled once
+// and the keys it names cannot drift from the ones v15MetadataParts writes. Its
+// errors keep saying "v15" for the same reason the v6 kernel keeps saying "v6":
+// the field it failed on belongs to that schema whoever is reading it.
+func v15RecordFromMetadataValues(values map[string]string) (V15TaskRecord, error) {
 	base, err := v6RecordFromMetadataValues(values, deferInstant)
 	if err != nil {
 		return V15TaskRecord{}, err
@@ -128,9 +154,6 @@ func ParseV15TaskMetadata(comment string) (V15TaskRecord, error) {
 			return V15TaskRecord{}, fmt.Errorf("parse v15 review: value must be %q when present, got %q", v15ReviewTrue, raw)
 		}
 		task.Review = true
-	}
-	if err := validateV15TaskRecord(task, false); err != nil {
-		return V15TaskRecord{}, err
 	}
 	return task, nil
 }

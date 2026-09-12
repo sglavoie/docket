@@ -237,8 +237,17 @@ func normalizeDateInput(input string) string {
 }
 
 func parseExactDate(input string) (time.Time, bool) {
+	return parseExactDateIn(input, time.Local)
+}
+
+// parseExactDateIn is parseExactDate with the location named, so a caller that
+// wants the civil date a spelling denotes rather than an instant in the local
+// zone can read the components out of a UTC parse. The layout list is shared
+// deliberately: two readers of the same spellings that disagreed about which
+// ones they accept would be two date grammars.
+func parseExactDateIn(input string, loc *time.Location) (time.Time, bool) {
 	for _, layout := range []string{DateFormat, "01/02/2006", "02.01.2006"} {
-		if date, err := time.ParseInLocation(layout, input, time.Local); err == nil {
+		if date, err := time.ParseInLocation(layout, input, loc); err == nil {
 			return date, true
 		}
 	}

@@ -79,6 +79,22 @@ type Task struct {
 	// Each entry is a durable project-qualified locator, so a cross-project
 	// target stays resolvable and a rename never rewrites an entry.
 	Dependencies []TaskReference `json:"dependencies,omitempty"`
+	// NextCheckIn is the calendar date this task is next scheduled to be looked
+	// at. It is a date and never an instant: a check-in arrives when its day
+	// arrives, so storing a clock would make the same schedule mean different
+	// things in two zones. Absent means no schedule, which is the only spelling
+	// of one; ValidateCheckInSchedule is its gate.
+	NextCheckIn *time.Time `json:"next_check_in,omitempty"`
+	// CheckInRepeatDays is how many calendar days a check-in moves forward when
+	// it is acknowledged. Zero is Off — the check-in happens once — and a
+	// non-zero value requires a date, because a repeat with nothing to repeat
+	// from is a schedule that can never fire.
+	CheckInRepeatDays int `json:"check_in_repeat_days,omitempty"`
+	// LastReviewedAt is the instant this task was last acknowledged. Unlike the
+	// check-in date it is a moment rather than a day, because it records
+	// something that happened rather than something owed. It is review history:
+	// completion clears the schedule and keeps this.
+	LastReviewedAt *time.Time `json:"last_reviewed_at,omitempty"`
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

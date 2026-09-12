@@ -33,6 +33,11 @@ func (s *Service) MarkReviewed(locator TaskLocator) (TaskResult, error) {
 		return TaskResult{}, invalidInput("task", "task is not awaiting review")
 	}
 	undoContext := fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title)
-	ref.Task.AcknowledgeReview(now)
+	// The acknowledgement also answers a scheduled check-in, and a cadence that
+	// cannot land on a storable date is refused before anything is written, so
+	// the task is left exactly as it was loaded rather than committed half done.
+	if err := ref.Task.AcknowledgeReview(now); err != nil {
+		return TaskResult{}, invalidInput("task", err.Error())
+	}
 	return s.commitProject(ref, revision, "Mark Reviewed", undoContext)
 }
