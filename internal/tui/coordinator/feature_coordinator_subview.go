@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -137,4 +138,38 @@ func (c SubviewCoordinator) MoveChecklistItem(task taskref.TaskIdentity, from, t
 		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to)
 		return res.Task, err
 	})
+}
+
+// PromoteChecklistItem converts the checklist item at index into a child task of
+// its owner as one transaction. checklist is the complete ordered list the
+// caller read when the gesture was made: it is frozen here rather than
+// re-resolved at commit time, so a checklist someone else edited, reordered, or
+// shortened in between refuses the promotion instead of consuming a different
+// item.
+//
+// It does not go through runTask because the committed child is the point. The
+// owner's own result drives the ordinary reload, and the minted identity rides
+// back on RevealTaskFor, which is the only place a view can learn it: the row
+// the gesture was made on no longer exists once the transaction lands.
+func (c SubviewCoordinator) PromoteChecklistItem(
+	task taskref.TaskIdentity, index int, checklist []models.ChecklistItem,
+) tea.Cmd {
+	return func() tea.Msg {
+		res, err := c.sub.PromoteChecklistItem(app.ChecklistPromotionRequest{
+			Owner:     task.Locator(),
+			Index:     index,
+			Checklist: checklist,
+		})
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return TransactionResultMsg{
+			Action: "Make Subtask",
+			Result: res.Owner,
+			RevealTaskFor: taskref.TaskIdentity{
+				ProjectID: res.Child.ProjectID,
+				TaskID:    res.Child.TaskID,
+			},
+		}
+	}
 }

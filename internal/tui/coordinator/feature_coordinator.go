@@ -111,6 +111,14 @@ type TransactionResultMsg struct {
 	// write resolves to TransactionErrorMsg and never carries it, which is what
 	// keeps a failed append from folding the outline open.
 	RevealChecklistFor taskref.TaskIdentity
+	// RevealTaskFor names a task this transaction minted that the primary view
+	// selects and reveals once the reload confirming it has landed. Checklist
+	// promotion is its one writer: the row the gesture was made on is gone
+	// afterwards, and the identity that replaced it exists only in the commit's
+	// own result, so a view cannot infer it from a reloaded projection. It is the
+	// zero identity on every other mutation, and a refused write resolves to
+	// TransactionErrorMsg and never carries it.
+	RevealTaskFor taskref.TaskIdentity
 	// DueEffect is the typed evidence this transaction carries about deadlines
 	// and task addresses, for the session clock memory. A mutation that touched
 	// neither leaves it empty; observing it is still what tells the memory a

@@ -155,6 +155,12 @@ type SubviewMutator interface {
 	ToggleChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)
 	ReorderChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
 	MoveChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
+	// PromoteChecklistItem converts one checklist item into a child task of its
+	// owner in one transaction. It is the one checklist method that does not take
+	// a bare index: a checklist item stores no identity, so the request carries
+	// the complete ordered checklist the panel read and the promotion is refused
+	// whole unless the owner still holds exactly that list.
+	PromoteChecklistItem(req app.ChecklistPromotionRequest) (app.ChecklistPromotionResult, error)
 }
 
 // Compile-time assurance that the production services satisfy every secondary
