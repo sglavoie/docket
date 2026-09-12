@@ -369,10 +369,10 @@ restoration is therefore the captured membership intersected with what is still
 offered and still readable.
 
 A checklist row owns ten operations of its own — Toggle Item, Edit Item, Move
-Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item, Make
+Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Checklist Item, Make
 Subtask, Checklist Actions, and Delete Item — registered in
 `internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that
-apply under a checklist cursor, Add Item alone excepted. Nine of them answer a
+apply under a checklist cursor, Add Checklist Item alone excepted. Nine of them answer a
 key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, and `Space`. Six of those
 reuse the key their task-row counterpart holds, which works because resolution
 takes the first applicable binding and the two are disjoint by cursor. Delete Item is the tenth and answers no key at all: it reaches the
@@ -389,7 +389,7 @@ operations individually, because the core family mixes navigation — which is h
 the cursor leaves the row and therefore stays — with operations that would reach
 through the item to the owner task whose pointer it carries.
 
-A checklist row exists only once the checklist does, which is why Add Item is the
+A checklist row exists only once the checklist does, which is why Add Checklist Item is the
 one member of the family that also answers from the owner task's own row: a task
 whose checklist is still empty has no item row for the row grammar to act on.
 `checklistAddItemApplicable` is that widening and nothing more — a checklist

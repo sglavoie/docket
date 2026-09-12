@@ -99,7 +99,7 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 		item(operation.OperationChecklistMoveTop, "Move Item to Top", "Send this item past every item above it", operation.OperationRiskMutation),
 		operation.WithValueProvider(
 			withApplicability(
-				item(operation.OperationChecklistAddItem, "Add Item", "Append an item to this task's checklist", operation.OperationRiskMutation),
+				item(operation.OperationChecklistAddItem, "Add Checklist Item", "Append an item to this task's checklist", operation.OperationRiskMutation),
 				checklistAddItemApplicable,
 			),
 			operation.ValueProviderChecklistItem,

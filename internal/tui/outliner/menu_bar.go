@@ -93,6 +93,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreCapture},
 				{OperationID: operation.OperationTaskNewChild, Label: "Capture Child"},
+				{OperationID: operation.OperationChecklistAddItem},
 				{OperationID: operation.OperationCoreEdit, Label: "Edit"},
 				{OperationID: operation.OperationCoreEditDescription, Label: "Description"},
 				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor"},

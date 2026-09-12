@@ -29,14 +29,14 @@ answer a key:
 | `K` | Move Item Up — swap it with the item above |
 | `Ctrl+J` | Move Item to Bottom — send it past every item below |
 | `Ctrl+K` | Move Item to Top — send it past every item above |
-| `c` | Add Item — append an item to this task's checklist |
+| `c` | Add Checklist Item — append an item to this task's checklist |
 | `S` | Make Subtask — convert it into a subtask of the task that owns it |
 | `Space` | Checklist Actions — the item menu: Edit Item and Delete Item |
 
 Delete Item is the tenth and answers no key. It is reachable only from the
 `Space` menu and confirms before it removes anything.
 
-Add Item is the one of the ten that also answers from the owner task's own row,
+Add Checklist Item is the one of the ten that also answers from the owner task's own row,
 because a task with no checklist yet has no item row to press a key on. `c`
 therefore adds the first item and every item after it, from the task or from any
 of its items, and the prompt is the same single line either way: `Enter` saves,

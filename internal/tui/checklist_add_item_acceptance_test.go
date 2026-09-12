@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
@@ -29,6 +30,44 @@ func checklistFixtureApp(t *testing.T) (*UITestDriver, *uitestWorkspace, *outlin
 		t.Fatal("fixture app has no Outliner")
 	}
 	return driver, workspace, view
+}
+
+func TestChecklistAddItemIsNamedInHelpAndTaskMenu(t *testing.T) {
+	driver, _, view := checklistFixtureApp(t)
+	seatCursorOnTaskTitled(t, view, checklistFixturePlainTitle)
+	app := driver.App()
+	registry := app.GetOperationRegistry()
+	ctx := app.operationCommandContext()
+
+	helpFound := false
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
+		if item.Key == "c" && item.Description == "Add Checklist Item" {
+			helpFound = true
+			break
+		}
+	}
+	if !helpFound {
+		t.Fatal("help does not name c as Add Checklist Item")
+	}
+
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
+	if !ok {
+		t.Fatal("simplified input strategy is not registered")
+	}
+	menus, err := outliner.ResolveMenuEntries(registry, strategy, ctx, outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true))
+	if err != nil {
+		t.Fatalf("resolve menus: %v", err)
+	}
+	taskMenu := menuWithID(t, menus, outliner.MenuIDTask)
+	for _, entry := range taskMenu.Entries {
+		if entry.OperationID == operation.OperationChecklistAddItem {
+			if entry.Label != "Add Checklist Item" || entry.Key != "c" {
+				t.Fatalf("checklist menu entry = %+v", entry)
+			}
+			return
+		}
+	}
+	t.Fatal("Task menu does not offer Add Checklist Item on a task row")
 }
 
 // TestChecklistAddItemAppliesFromEveryOwnerRowAndNoOther is the applicability

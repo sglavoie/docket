@@ -37,7 +37,9 @@ running anything, leaving the bar exactly as it was.
 
 A menu lists only what the cursor could do right now: an entry that does not
 apply is removed rather than greyed out, so the Task menu is shorter under a
-visual selection than without one. Modes and toggles carry a checkmark — the
+visual selection than without one. The Task menu offers **Add Checklist Item**
+(`c`) when the cursor names a task or one of its checklist items. Modes and
+toggles carry a checkmark — the
 active mode, whether the bar is kept — so a menu reads the state back instead
 of only offering to change it, and every row spells the key it is bound to.
 Those keys keep working while the menu is up: pressing one the open menu does
