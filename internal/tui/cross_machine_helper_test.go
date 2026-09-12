@@ -141,7 +141,12 @@ func openHelperWorkspace(t *testing.T) helperEnvironment {
 			Runtime:    runtime,
 			Manager:    manager,
 		},
-		service: newTUIAppService(dataDir, manager.RuntimeDependencies(), ledger),
+		// The planning builder is wired the way the composition root wires it. A
+		// mutation that reconciles Today — a deadline step landing on today is one —
+		// refuses outright without it, so a helper service missing it would report a
+		// refusal that had nothing to do with the race it was forked for.
+		service: newTUIAppService(dataDir, manager.RuntimeDependencies(), ledger).
+			WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager)),
 	}
 }
 
@@ -259,6 +264,19 @@ func seedCrossMachineWorkspace(workspace *uitestWorkspace) (*models.Project, err
 		// partner is about to read, and the pair would be racing over that write
 		// instead of over the one under test. A flag is inert for every other role.
 		plan.Review = true
+		// A checklist on the same task, for the same reason the flags and the
+		// comments are here: a promotion race has to be fought over items that were
+		// on disk before either machine started. A helper that appended its own item
+		// first would put an extra write into the document its partner is about to
+		// read, and the frozen-checklist identity the promotion is refused by would
+		// then be measuring that write rather than the race. Three items so a
+		// reorder has somewhere to move one to, and all three unchecked so a
+		// promotion lands in Backlog rather than Done.
+		plan.Checklist = []models.ChecklistItem{
+			{Text: helperSeedItemA},
+			{Text: helperSeedItemB},
+			{Text: helperSeedItemC},
+		}
 
 		vendor := newFixtureTask(p, helperRaceTitleB)
 		vendor.ApplyWorkflowState(models.StateBacklog)

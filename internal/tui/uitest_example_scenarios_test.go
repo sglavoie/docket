@@ -84,6 +84,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"date-picker-narrow-resize-key-confinement.json",
 		"deadline-step-keys.json",
 		"deadline-step-bulk-hidden-narrow.json",
+		"combined-promote-deadline-step-move.json",
 		"waiting-check-back-transaction-boundary.json",
 		"project-header-pressure.json",
 		"project-header-pressure-narrow.json",

@@ -509,16 +509,7 @@ func runCrossMachineRace(t *testing.T, roles []crossMachineRole) crossMachineRac
 		t.Fatalf("locate this test binary: %v", err)
 	}
 
-	workspace, err := newUITestWorkspace()
-	if err != nil {
-		t.Fatalf("newUITestWorkspace: %v", err)
-	}
-	t.Cleanup(func() { _ = workspace.Cleanup() })
-	project, err := seedCrossMachineWorkspace(workspace)
-	if err != nil {
-		t.Fatal(err)
-	}
-	openCrossMachineWorkspaceOnce(t, workspace.DataDir)
+	workspace, project := crossMachineWorkspace(t)
 
 	// The revision the document stands at before any process starts. Every helper
 	// must report it from inside the barrier: a helper reporting anything else

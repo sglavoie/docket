@@ -678,8 +678,15 @@ start_race_helper() {
 	# keeps one spelling for a role that takes no extras and a role that takes
 	# several, and an empty $extra contributes no argument at all — `env` would
 	# read one as a program name.
+	#
+	# $extra is split on whitespace deliberately: a checklist race hands each side
+	# a selector and a position, so one side's extras are a list rather than a
+	# single assignment. Every value carried this way is a token — a mode name, an
+	# index, a path — and anything with a space of its own travels in the text and
+	# title arguments instead.
 	if [ -n "$extra" ]; then
-		set -- "$extra" "$@"
+		# shellcheck disable=SC2086
+		set -- $extra "$@"
 	fi
 	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-$side" \
 		TT_HELPER_GO_FILE="$work_dir/$tag-go" TT_HELPER_RESULT_FILE="$work_dir/$tag-$side.txt" \
@@ -757,6 +764,75 @@ race_two_helpers() {
 	role=$2
 	shift 2
 	race_two_roles "$tag" "$role" "$role" "$@"
+}
+
+# race_interrupted_mutation is the deterministic-loser shape, and it exists for
+# the claims race_two_roles cannot make. That runner settles whichever way the
+# scheduler settles it, which is right for a symmetric hazard; but "the refused
+# machine staged nothing" is a claim about a loser, and a machine that might have
+# won cannot make it.
+#
+# So one machine is held at its barrier while the other runs to completion
+# unheld, and the held one is then released into a document it is guaranteed to
+# have missed. The writer is handed an empty ready file and a go file that
+# already exists, so it publishes no revision and waits for nobody; `env` applies
+# its arguments over the inherited assignments, which is what lets one fork
+# spelling serve both roles.
+#
+# It echoes the held machine's outcome on success and nothing on failure, having
+# already reported the failure itself.
+race_interrupted_mutation() {
+	tag=$1
+	held_role=$2
+	writer_role=$3
+	held_title=$4
+	writer_title=$5
+	shift 5
+	writer_proceed="$work_dir/$tag-writer-go"
+	echo "go" >"$writer_proceed"
+
+	start_race_helper a "$held_role" "$held_title" "$helper_text_a" "$helper_target_a" "$helper_extra_a" "$@"
+	pid_a=$!
+	if ! await_file "$work_dir/$tag-ready-a"; then
+		kill "$pid_a" >/dev/null 2>&1 || true
+		wait "$pid_a" >/dev/null 2>&1 || true
+		report_fail "$tag: the held helper never reached the barrier (see $work_dir/$tag-a.log)"
+		return 1
+	fi
+
+	start_race_helper b "$writer_role" "$writer_title" "$helper_text_b" "$helper_target_b" \
+		"$helper_extra_b TT_HELPER_READY_FILE= TT_HELPER_GO_FILE=$writer_proceed" "$@"
+	pid_b=$!
+	status_b=0
+	wait "$pid_b" || status_b=$?
+	outcome_b=$(helper_outcome "$work_dir/$tag-b.txt")
+	if [ "$status_b" -ne 0 ] || [ "$outcome_b" != "committed" ]; then
+		kill "$pid_a" >/dev/null 2>&1 || true
+		wait "$pid_a" >/dev/null 2>&1 || true
+		report_fail "$tag: the interrupting write exited $status_b reporting '$outcome_b' (see $work_dir/$tag-b.log)"
+		return 1
+	fi
+
+	echo "go" >"$work_dir/$tag-go"
+	status_a=0
+	wait "$pid_a" || status_a=$?
+	if [ "$status_a" -ne 0 ]; then
+		report_fail "$tag: the held machine exited $status_a (see $work_dir/$tag-a.log)"
+		return 1
+	fi
+	outcome_a=$(helper_outcome "$work_dir/$tag-a.txt")
+	case "$outcome_a" in
+	*lost* | failed:*)
+		report_fail "$tag: the held machine reported '$outcome_a'"
+		return 1
+		;;
+	"")
+		report_fail "$tag: the held machine reported nothing (see $work_dir/$tag-a.log)"
+		return 1
+		;;
+	esac
+	echo "$outcome_a"
+	return 0
 }
 
 # require_clean_workspace is the shared tail of every race case: nothing
@@ -1147,6 +1223,234 @@ case_eight_comment_versus_task() {
 	report_pass "a project comment and a task comment land together in one document ($outcome_a / $outcome_b)"
 }
 
+# --- Case 9: two machines stepping one deadline -------------------------------
+#
+# A deadline step is the first mutation here that commits under a strict read-set
+# precondition rather than under the merge-capable revision every case above
+# uses, and the difference is the whole case. A precondition is validated in a
+# phase of its own, ahead of the three-way merge, so a loser is refused before a
+# conflict bundle, a ledger entry or a staged byte exists. Case 7's creations
+# prove the other shape — a refusal that records a bundle and completes on retry
+# — and a gate that could not tell the two apart would let a precondition quietly
+# degrade into a merge with nothing going red.
+#
+# The two cases split by what they can claim. Two steps on one task settle either
+# way, so that one asserts the arithmetic: one refusal, one explicit retry, and a
+# workspace holding the second date rather than the first. The batch case is
+# deterministic, so it asserts the absences.
+
+# require_no_recorded_conflict is the precondition's own claim, and the exact
+# negation of require_recorded_comment_conflict. A refusal that left a bundle
+# behind reached the merge phase, which is the degradation this pair exists to
+# catch.
+require_no_recorded_conflict() {
+	nc_tag=$1
+	if [ -n "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+		report_fail "$nc_tag: a refusal that stages nothing recorded a conflict bundle"
+		return 1
+	fi
+	return 0
+}
+
+# require_deadline_count counts the stored due dates across the whole workspace.
+# They are counted rather than matched because the failure a deadline race can
+# actually produce is arithmetic: two reported successes describing one step
+# leave one date where there should be two, and a half-applied batch leaves one
+# where there should be none.
+require_deadline_count() {
+	dl_tag=$1
+	dl_want=$2
+	dl_found=$(grep -rho 'due: [0-9-]*' "$shared/projects" 2>/dev/null | wc -l | tr -d ' ')
+	[ -n "$dl_found" ] || dl_found=0
+	if [ "$dl_found" -ne "$dl_want" ]; then
+		report_fail "$dl_tag: the workspace holds $dl_found deadline(s), want $dl_want"
+		return 1
+	fi
+	return 0
+}
+
+case_nine_rival_steps() {
+	tag=case9-step
+	prepare_race_workspace "$tag" || return
+	helper_text_a=""
+	helper_text_b=""
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperStepsDueDate \
+		"Draft the migration plan" "Draft the migration plan" \
+		TT_HELPER_DUE_STEP=forward TT_HELPER_DUE_RETRY=1) || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	case "$outcome_a$outcome_b" in
+	*retried:*) ;;
+	*)
+		report_fail "$tag: no stale step was refused and retried: $outcome_a / $outcome_b"
+		return
+		;;
+	esac
+	if [ "$outcome_a" = "committed" ] && [ "$outcome_b" = "committed" ]; then
+		report_fail "$tag: both machines reported a committed step over one deadline"
+		return
+	fi
+
+	# The retry reports the deadline it stepped from and the one it stepped to,
+	# and it already refused to report a starting point the file did not hold. So
+	# the date it landed on is what separates two steps from two reports of one:
+	# the winner's date is where the retry started, and the workspace must hold
+	# the one it finished at.
+	if [ "$outcome_a" = "committed" ]; then
+		retried=$outcome_b
+	else
+		retried=$outcome_a
+	fi
+	landed=${retried##*>}
+	landed_day=${landed%% *}
+	require_deadline_count "$tag" 1 || return
+	if ! grep -q "due: $landed_day" "$shared/$race_document_path"; then
+		report_fail "$tag: the retry reported landing on $landed_day, which $race_document_path does not hold"
+		return
+	fi
+	require_no_recorded_conflict "$tag" || return
+	require_clean_workspace "$tag" || return
+	report_pass "a stale deadline step is refused and the explicit retry advances from the winner's date ($outcome_a / $outcome_b)"
+}
+
+# case_nine_batch_versus_write is the deterministic half. The batch spans two
+# projects and the interrupting write names a task in neither of the batch's own
+# selections, so nothing about the refusal is ambiguous: every date the batch
+# calculated, the planning artifact a step onto today would have rewritten, and
+# the ledger must all read exactly as the batch found them. The helper makes
+# those three claims from inside the losing process, before anybody writes again;
+# what is asserted here is the part that outlives it.
+case_nine_batch_versus_write() {
+	tag=case9-batch
+	prepare_race_workspace "$tag" || return
+	helper_extra_a="TT_HELPER_DUE_STEP=forward TT_HELPER_DUE_UNTOUCHED=1"
+	helper_extra_b=TT_HELPER_MUTATION=comment
+	helper_text_a=""
+	helper_text_b="Machine B checked this against the vendor thread"
+
+	outcome=$(race_interrupted_mutation "$tag" \
+		TestCrossMachineHelperStepsDueDate \
+		TestCrossMachineHelperAppliesTaskMutation \
+		"Draft the migration plan|Follow up with the support queue" \
+		"Review the vendor contract") || return
+	if [ "$outcome" != "expired" ]; then
+		report_fail "$tag: a batch racing a rewrite of one of its projects reported '$outcome', want the whole-batch refusal"
+		return
+	fi
+	require_deadline_count "$tag" 0 || return
+	require_no_recorded_conflict "$tag" || return
+	require_clean_workspace "$tag" || return
+	report_pass "an intervening write refuses a multi-project deadline batch whole, leaving no date, artifact or ledger entry ($outcome)"
+}
+
+# --- Case 10: two machines converting one checklist ---------------------------
+#
+# A checklist item carries no stored identity, so a promotion names the item by
+# freezing the whole ordered list at the keypress and rechecking it at commit.
+# That is what refuses a second press against the row the first one shifted, and
+# two machines are where it has to hold: an index alone would convert the
+# neighbour, and a promotion that half-applied would leave the item twice — once
+# as a checklist entry and once as a task — or leave a child with nothing removed.
+
+# The three items the seed writes onto the first race task, in both spellings the
+# document uses: a task heading carries the title verbatim, while a checklist
+# entry is escaped into the metadata line with its spaces as plus signs.
+seed_item_a="Collect the migration inventory"
+seed_item_a_listed="Collect+the+migration+inventory"
+seed_item_b="Name the rollback owner"
+seed_item_b_listed="Name+the+rollback+owner"
+
+# require_item_reads_once reads a conversion off the bytes. The item must read as
+# exactly one thing: a checklist entry where a promotion was refused, a task
+# heading where one landed. Two is a duplicated conversion and zero a child-only
+# commit that dropped the item on the way.
+require_item_reads_once() {
+	it_tag=$1
+	it_document=$2
+	it_title=$3
+	it_listed=$4
+	it_tasks=$(grep -oF "Task: $it_title" "$it_document" 2>/dev/null | wc -l | tr -d ' ')
+	it_items=$(grep -oF "$it_listed" "$it_document" 2>/dev/null | wc -l | tr -d ' ')
+	if [ $((it_tasks + it_items)) -ne 1 ]; then
+		report_fail "$it_tag: '$it_title' reads as $it_tasks task(s) and $it_items checklist item(s), want exactly one of either"
+		return 1
+	fi
+	return 0
+}
+
+# require_distinct_short_ids is case 7's claim asserted where a second way to
+# mint a task can reach it. A promotion creates a child, so two of them against
+# one document take the same next-free number.
+require_distinct_short_ids() {
+	si_tag=$1
+	si_document=$2
+	si_duplicates=$(grep -o 'short_id: [0-9]*' "$si_document" | sort | uniq -d)
+	if [ -n "$si_duplicates" ]; then
+		report_fail "$si_tag: two tasks answer to one short id ($si_duplicates)"
+		return 1
+	fi
+	return 0
+}
+
+case_ten_rival_promotions() {
+	tag=case10-rival
+	prepare_race_workspace "$tag" || return
+	helper_text_a=""
+	helper_text_b=""
+
+	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperPromotesChecklistItem \
+		"Draft the migration plan" "Draft the migration plan" \
+		TT_HELPER_CHECKLIST_INDEX=0) || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+	if [ "$outcome_a" = "committed" ] && [ "$outcome_b" = "committed" ]; then
+		report_fail "$tag: both machines reported converting one checklist item"
+		return
+	fi
+
+	document="$shared/$race_document_path"
+	require_item_reads_once "$tag" "$document" "$seed_item_a" "$seed_item_a_listed" || return
+	require_distinct_short_ids "$tag" "$document" || return
+	require_no_recorded_conflict "$tag" || return
+	require_clean_workspace "$tag" || return
+	report_pass "two machines promoting one checklist item convert it exactly once ($outcome_a / $outcome_b)"
+}
+
+# case_ten_promotion_versus_edit is the mixed shape, and the one that puts both
+# guards into one race: the promotion commits under the strict precondition and
+# the checklist edit under the ordinary merge-capable revision, over one list.
+# Each machine addresses a different item, so however the race settles both items
+# must still read once — and the item the promotion never named must never be the
+# one that moved.
+case_ten_promotion_versus_edit() {
+	tag=case10-edit
+	prepare_race_workspace "$tag" || return
+	helper_extra_a=TT_HELPER_CHECKLIST_INDEX=0
+	helper_extra_b="TT_HELPER_CHECKLIST=edit TT_HELPER_CHECKLIST_INDEX=1"
+	helper_text_a=""
+	helper_text_b="Name the rollback owner before Friday"
+
+	outcomes=$(race_two_roles "$tag" \
+		TestCrossMachineHelperPromotesChecklistItem \
+		TestCrossMachineHelperEditsChecklist \
+		"Draft the migration plan" "Draft the migration plan") || return
+	outcome_a=${outcomes%%|*}
+	outcome_b=${outcomes##*|}
+
+	document="$shared/$race_document_path"
+	require_item_reads_once "$tag" "$document" "$seed_item_a" "$seed_item_a_listed" || return
+	require_distinct_short_ids "$tag" "$document" || return
+	if [ "$outcome_b" = "committed" ]; then
+		require_item_reads_once "$tag" "$document" \
+			"$helper_text_b" "Name+the+rollback+owner+before+Friday" || return
+	else
+		require_item_reads_once "$tag" "$document" "$seed_item_b" "$seed_item_b_listed" || return
+	fi
+	require_clean_workspace "$tag" || return
+	report_pass "a promotion and an edit over one checklist leave each item exactly once ($outcome_a / $outcome_b)"
+}
+
 # snapshot_workspace writes a sorted path/size/checksum listing of every file
 # under a workspace, which is what "byte-identical" is checked against.
 snapshot_workspace() {
@@ -1169,6 +1473,10 @@ case_eight_distinct_edits
 case_eight_rival_edits
 case_eight_edit_versus_delete
 case_eight_comment_versus_task
+case_nine_rival_steps
+case_nine_batch_versus_write
+case_ten_rival_promotions
+case_ten_promotion_versus_edit
 
 echo
 if [ "$failures" -gt 0 ]; then
