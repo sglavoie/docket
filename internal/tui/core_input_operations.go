@@ -20,8 +20,8 @@ import (
 // coreInputOperationRefusesSearchProjection names the outliner navigation
 // operations whose projection the temporary search replacement owns, so they
 // refuse instead of reshaping a projection the user has not exited. The two
-// Focus jumps and Go to Task's Project are deliberately absent: leaving the
-// projection is what they are for, so they exit search onto the result instead.
+// Focus jumps and the task Go to jumps are deliberately absent: leaving the
+// projection is what they are for, so they exit search before navigating.
 func coreInputOperationRefusesSearchProjection(id operation.OperationID) bool {
 	if _, ok := operation.GotoModeOperations[id]; ok {
 		return true
@@ -193,6 +193,12 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreGotoTaskProject:
 		return m.coreGotoTaskProject(invocation.Targets)
+	case operation.OperationCoreGotoParentTask:
+		if out, ok := m.outlinerPrimary(); ok {
+			if !out.GoToParentTaskAtCursor() {
+				return operation.OperationHandlerResult{Status: "No parent task to go to"}
+			}
+		}
 	case operation.OperationCoreGotoRelation:
 		return m.coreGotoRelation(invocation.Targets)
 	case operation.OperationCoreCollapseParent:

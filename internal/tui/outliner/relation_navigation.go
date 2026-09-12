@@ -130,6 +130,13 @@ func (m *OutlinerModel) jumpToRelation(task *models.Task, project *models.Projec
 // widening them would make a jump reload the workspace. Only the row facets are
 // replaced, by the at most two predicates the target itself needs.
 func (m *OutlinerModel) revealRelationTarget(task *models.Task, project *models.Project) bool {
+	return m.revealTaskForNavigation(task, project, true)
+}
+
+// revealTaskForNavigation exposes a hidden task in All. A relationship hop
+// also enters the destination project's scope; a parent jump stays in the
+// current scope, because its parent belongs to the same project as the child.
+func (m *OutlinerModel) revealTaskForNavigation(task *models.Task, project *models.Project, scopeProject bool) bool {
 	identity := taskref.For(task, project)
 	if !identity.Valid() {
 		return false
@@ -151,13 +158,11 @@ func (m *OutlinerModel) revealRelationTarget(task *models.Task, project *models.
 			models.QueryOperatorPresent, "")
 	}
 	m.ReplaceFilterClauses(query.FilterQueryTaskFields(), clauses)
-	// The scope the hop is leaving may be an explicitly focused parked project,
-	// which is in the snapshot only because the user named it. A hop retains that
-	// exception rather than shedding it: the trail owes a return to this view, and
-	// a project unloaded on the way out is one reconcileProjectScope would read as
-	// gone on the way back. It is still shed by every ordinary way of leaving a
-	// focus, this hop's own return included.
-	m.pushProjectScopeRetainingParkedFocus(project.ID)
+	if scopeProject {
+		// A relationship hop retains an explicitly focused parked project: its
+		// return trail needs that project still loaded when Esc restores the origin.
+		m.pushProjectScopeRetainingParkedFocus(project.ID)
+	}
 	m.SelectOutlinerMode(chrome.ModeAll)
 	m.RebuildRows()
 	if index, found := m.RowIndexForTask(identity); found {

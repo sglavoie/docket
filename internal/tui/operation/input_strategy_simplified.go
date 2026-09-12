@@ -301,6 +301,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreGotoDue, Keys: []string{"6"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/6", HintLabel: "due"},
 			{OperationID: OperationCoreGotoRecent, Keys: []string{"7"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/7", HintLabel: "recent"},
 			{OperationID: OperationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project"},
+			{OperationID: OperationCoreGotoParentTask, Sequence: []string{"g", "P"}, DisplayKey: "gP", HintLabel: "parent task"},
 			// `~` is the reference sigil everywhere else, so the relationship walk
 			// spells itself the same way under the go-to chord.
 			{OperationID: OperationCoreGotoRelation, Sequence: []string{"g", "~"}, DisplayKey: "g~", HintLabel: "related task"},

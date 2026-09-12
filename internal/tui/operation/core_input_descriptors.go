@@ -22,6 +22,7 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 		OperationCoreNext,
 		OperationCoreFocusSubtree,
 		OperationCoreFocusParent,
+		OperationCoreGotoParentTask,
 		OperationCoreGotoTaskProject,
 		OperationCoreGotoRelation:
 		return true
@@ -204,6 +205,19 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"widen focus",
 	))
 	focusParent.Applicability = focusSubtree.Applicability
+	gotoParentTask := withTaskTarget(core(
+		OperationCoreGotoParentTask,
+		"Go to Parent Task",
+		OperationCategoryNavigation,
+		TargetCardinalityOne,
+		OperationRiskReadOnly,
+		"go parent task",
+		"jump to parent task",
+	))
+	gotoParentTask.Applicability = func(ctx CommandContext) bool {
+		return CoreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual && CurrentTaskIdentity(ctx).Valid()
+	}
 	gotoTaskProject := withTaskTarget(core(
 		OperationCoreGotoTaskProject,
 		"Go to Task's Project",
@@ -338,6 +352,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreReorderTop, "Reorder to Top", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		focusSubtree,
 		focusParent,
+		gotoParentTask,
 		gotoTaskProject,
 		gotoRelation,
 		zoomSection,

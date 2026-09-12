@@ -164,6 +164,50 @@ func (m *OutlinerModel) MoveCursorToProjectTask(taskID, projectID string) bool {
 	return false
 }
 
+// GoToParentTaskAtCursor moves from a child task to its immediate parent, or
+// from a checklist item to its owning task. A Focus root has no row, so the
+// jump first leaves that frame; a parent hidden by other narrowing is revealed
+// in the ordinary Outliner rather than leaving the cursor on the child.
+func (m *OutlinerModel) GoToParentTaskAtCursor() bool {
+	if m == nil || m.MultiSelectMode || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return false
+	}
+	row := m.Rows[m.Cursor]
+	if row.Task == nil || (!row.IsTaskRow() && !row.IsChecklistItem) {
+		return false
+	}
+	origin := m.TaskIdentityForRow(row)
+	task, project := m.TaskAndProjectForIdentity(origin)
+	if task == nil || project == nil {
+		return false
+	}
+	parent := task
+	if !row.IsChecklistItem {
+		parent = project.GetTaskByID(parentIDOf(task))
+	}
+	if parent == nil {
+		return false
+	}
+	identity := taskref.For(parent, project)
+	m.ClearSearch()
+	if m.MoveCursorToIdentity(identity) {
+		m.rebaseReloadTargetAfterRelocation()
+		return true
+	}
+	if root, focused := m.FocusRootIdentity(); focused && root == identity {
+		m.PopFocusLevel()
+		if m.MoveCursorToIdentity(identity) {
+			m.rebaseReloadTargetAfterRelocation()
+			return true
+		}
+	}
+	if !m.revealTaskForNavigation(parent, project, false) {
+		return false
+	}
+	m.rebaseReloadTargetAfterRelocation()
+	return true
+}
+
 func (m *OutlinerModel) StatusBarLabel() string {
 	if m.Project != nil {
 		return fmt.Sprintf("Outliner: %s", m.Project.Name)
