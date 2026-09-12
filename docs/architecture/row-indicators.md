@@ -68,8 +68,17 @@ Every due reading is a background badge rather than colored text, so a date
 reads as one bounded object in a row that already tints titles, tags, and
 context. `ClassifyDueDate`'s three tiers and `formatCheckBackIndicator`'s three
 tiers share the `makeDueBadgeStyle` family, which holds the section header's
-contrast contract — a tone-aware fill under a high-contrast foreground — while
-omitting bold, so bold stays the title's selection channel. The fills are
+contrast contract — a tone-aware fill under a high-contrast foreground. A tier
+passes that constructor one `dueBadgeTone`: the fill and the ink that reads on
+it, once per theme, plus whether the tier is emphasized. The overdue and today
+tiers are, and emphasis is a pair — bold, and ink pushed away from the fill
+rather than toward it, which is why the light fills are pale teals under
+near-black ink rather than the saturated mid-tones white text needed. Upcoming
+declares neither, so a deadline that has arrived reads as weight while one the
+user still has time for reads as tone. `TestDueBadgeInkContrastIsTieredInBothThemes`
+holds the emphasized pair to the enhanced ratio and the quiet tier strictly
+below both, and `TestEmphasizedDueBadgeInkFollowsThePaper` holds the direction so
+a repaint cannot invert a tier. The fills are
 curated dark/light pairs rather than palette derivations, so a palette override
 cannot mint an unreadable badge. They live in the teal band because the twelve
 `ViewMode` section fills already claim every other hue, and a chip that borrowed

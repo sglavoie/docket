@@ -113,6 +113,16 @@ mutually exclusive with Today, and Backlog clears planning, so it can only
 appear in Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a
 second bare count.
 
+Both also carry the due family's emphasis — `ProjectPressureOverdueStyle` and
+`ProjectPressureTodayStyle` are bold, so a folded group states its pressure at
+the weight the rows inside it would — but they borrow two different accents on
+purpose, and neither is a chip. Overdue takes the due family's own accent
+because it reports deadlines; today takes `StateGroupToday`'s, because it
+reports planning membership, which no deadline implies and which implies no
+deadline. One shared style would read as one fact counted twice. Both are
+foreground-only, so `appendProjectHeaderPressure` keeps measuring and degrading
+a suffix whose width the styles do not change.
+
 A focused projection carries one more project header, and it is a different kind
 of row. `appendProjectGroupHeader` still suppresses the per-group headers for
 both single-project forms — a direct `m.Project` and an explicit scope — because

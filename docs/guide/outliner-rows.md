@@ -124,9 +124,13 @@ text, so a date reads as one bounded object beside the titles, tags, and context
 badges that share the row. All three tiers are chips — overdue, today, and
 upcoming — and they share one hue that no section header uses, so a date is
 never mistaken for a section; urgency is carried by how saturated the fill is
-rather than by its hue. Under the cursor the chip
-flattens into the selection colors like every other colored segment, and under
-`--no-color` the fill drops away and the `⊡` glyph marks the date on its own.
+rather than by its hue. The two tiers that demand an answer — overdue and today
+— are also emphasized: they are bold, and their text is pushed away from the
+fill rather than toward it, so it is lighter than the chip in the dark theme and
+darker than it in the light one. An upcoming date stays quieter on both. Under
+the cursor the chip keeps its own colors like every other colored segment, and
+under `--no-color` the fill drops away, the bold survives, and the `⊡` glyph
+marks the date on its own.
 
 A Doing task similarly reads as `doing <age>`, measured from the moment it
 entered Doing rather than from its last touch. The neutral age remains beside a

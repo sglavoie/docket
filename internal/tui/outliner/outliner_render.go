@@ -358,13 +358,19 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 // carries a glyph so it cannot be mistaken for the bare group size beside it.
 // budget is the columns the content region has, which is the row width less the
 // gutter the cursor highlight owns.
+//
+// Both counts wear the same emphasis the rows' own deadline chips wear, because
+// a folded group hides exactly the rows that would have said it. They keep two
+// colors while doing so: OverdueCount is a deadline and takes the due family's
+// accent, TodayCount is durable Today membership and takes the Today group's, so
+// matching weight never turns a plan into a deadline.
 func appendProjectHeaderPressure(content string, row OutlinerRow, budget int) string {
 	var parts []string
 	if row.OverdueCount > 0 {
-		parts = append(parts, theme.PreviewWarningStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
+		parts = append(parts, theme.ProjectPressureOverdueStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
 	}
 	if row.TodayCount > 0 {
-		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
+		parts = append(parts, theme.ProjectPressureTodayStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
 		suffix := "  " + strings.Join(parts, theme.MutedStyle.Render(" · "))

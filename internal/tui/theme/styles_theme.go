@@ -66,6 +66,7 @@ func rebuildStyles() {
 	rebuildPriorityTitleStyles()
 	rebuildTagChipColors()
 	rebuildLensAccentStyles()
+	rebuildProjectPressureStyles()
 }
 
 // ApplyTheme rebuilds every active style from one maintained built-in theme.
@@ -269,18 +270,32 @@ func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
 		Padding(0, 1)
 }
 
+// dueBadgeTone is one due tier's complete curated pair: the fill and the ink
+// that reads on it, once per theme, plus whether the tier is emphasized. A tier
+// carries both halves because the two urgent tiers invert with the paper —
+// lighter ink on a dark theme, darker ink on a light one — so no single
+// foreground could serve the family the way makeViewModeStyle's does.
+type dueBadgeTone struct {
+	darkFill, darkInk   string
+	lightFill, lightInk string
+	emphasized          bool
+}
+
 // makeDueBadgeStyle creates a due-date chip with the section badge's contrast
-// contract: a tone-aware background under a high-contrast foreground. It omits
-// bold deliberately — chips carry no bold, so bold stays the title's selection
-// channel, exactly as TagChipStyle already holds.
-func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
-	bgStr, fgStr := darkHex, "#c0caf5"
+// contract: a tone-aware background under a high-contrast foreground. An
+// emphasized tier also takes bold, which is what carries a reached or passed
+// deadline through --no-color, where every fill drops away; a quiet tier stays
+// unbold, so weight still separates the deadline that is now from the one that
+// is later.
+func makeDueBadgeStyle(tone dueBadgeTone) lipgloss.Style {
+	fill, ink := tone.darkFill, tone.darkInk
 	if ActiveThemeName == "light" {
-		bgStr, fgStr = lightHex, "#ffffff"
+		fill, ink = tone.lightFill, tone.lightInk
 	}
 	return lipgloss.NewStyle().
-		Background(lipgloss.Color(bgStr)).
-		Foreground(lipgloss.Color(fgStr)).
+		Background(lipgloss.Color(fill)).
+		Foreground(lipgloss.Color(ink)).
+		Bold(tone.emphasized).
 		Padding(0, 1)
 }
 

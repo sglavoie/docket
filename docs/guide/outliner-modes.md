@@ -46,7 +46,11 @@ task across a project group.
 
 A project header also names the pressure its group holds, as `overdue 2` and
 `today 3` after the count, so folding the group does not hide what is urgent
-inside it. A Today group omits its own `today` count because every row there is
+inside it. Both counts are bold, at the same weight as a due-today or overdue
+date on a row, and they keep two hues because they answer two questions:
+`overdue` counts deadlines that have passed, `today` counts the tasks you
+planned for today, and a task can be either without being the other. A Today
+group omits its own `today` count because every row there is
 already planned for today. When the header is too narrow for the whole suffix
 the counts degrade rather than clip: `today` drops first, then `overdue`, so a
 count you can read is always the real number.

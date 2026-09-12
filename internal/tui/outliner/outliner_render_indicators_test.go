@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // This file covers one indicator at a time: what each signal spells, which
@@ -250,6 +251,44 @@ func TestCheckBackIndicatorCountsTowardChasing(t *testing.T) {
 			// stays honest because TrimSpace("") is "".
 			if got := strings.TrimSpace(ansi.Strip(formatCheckBackIndicator(task, now))); got != tc.want {
 				t.Fatalf("check-back = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A check-back is a due date read as a chase, so it draws the same three chips
+// and must inherit their emphasis rather than declare its own: a check-back that
+// has arrived is as loud as the deadline it came from, and one still days away
+// stays as quiet.
+func TestCheckBackIndicatorSharesTheDueChipEmphasis(t *testing.T) {
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+
+			cases := []struct {
+				name string
+				due  time.Time
+				want string
+			}{
+				{"overdue", now.AddDate(0, 0, -5), theme.OverdueStyle.Render("check +5d")},
+				{"today", now, theme.DueTodayStyle.Render("check today")},
+				{"upcoming", now.AddDate(0, 0, 3), theme.DueDateStyle.Render("check 3d")},
+			}
+			for _, tc := range cases {
+				due := tc.due
+				task := &models.Task{
+					ID:             "blocked",
+					Title:          "Blocked",
+					WorkflowState:  models.StateWaiting,
+					StateChangedAt: now.AddDate(0, 0, -1),
+					DueDate:        &due,
+				}
+				if got := formatCheckBackIndicator(task, now); got != tc.want {
+					t.Errorf("%s check-back = %q, want the due tier's own render %q", tc.name, got, tc.want)
+				}
 			}
 		})
 	}

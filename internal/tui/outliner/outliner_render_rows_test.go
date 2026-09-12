@@ -3,6 +3,7 @@ package outliner
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -10,6 +11,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // This file covers the segments a row reserves rather than earns: the context
@@ -76,6 +79,78 @@ func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 	quiet := ansi.Strip(appendProjectHeaderPressure(line, OutlinerRow{}, 60))
 	if quiet != line {
 		t.Fatalf("a group with no pressure wore a suffix: %q", quiet)
+	}
+}
+
+// A folded group hides the rows whose own chips would have said what is urgent
+// inside it, so the header says it at the same weight. The two counts still read
+// as two facts: the deadline count wears the due family's accent and the Today
+// count wears the plan's, and the header is where a shared weight could most
+// easily collapse them into one.
+func TestProjectHeaderPressureCountsCarryTheirEmphasis(t *testing.T) {
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	const line = "▾ [project] (4)"
+	row := OutlinerRow{OverdueCount: 2, TodayCount: 3}
+
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+
+			suffix := appendProjectHeaderPressure(line, row, 60)
+			overdue := theme.ProjectPressureOverdueStyle.Render("! overdue 2")
+			today := theme.ProjectPressureTodayStyle.Render("◷ today 3")
+			if !strings.Contains(suffix, overdue) {
+				t.Errorf("header dropped the overdue count's emphasis: %q", suffix)
+			}
+			if !strings.Contains(suffix, today) {
+				t.Errorf("header dropped the Today count's emphasis: %q", suffix)
+			}
+			if overdue == today {
+				t.Fatal("both pressure counts rendered alike, so a plan reads as a deadline")
+			}
+		})
+	}
+}
+
+// Under the cursor every color a row earned survives, so the chip a deadline
+// wears has to survive with it: flattening it there would hide the emphasis on
+// exactly the row the user is standing on.
+func TestSelectedRowKeepsItsDueChip(t *testing.T) {
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	due := util.StartOfDay(time.Now())
+	task := &models.Task{
+		ID:            "due-today",
+		Title:         "Answer the auditor",
+		WorkflowState: models.StateBacklog,
+		DueDate:       &due,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := OutlinerRow{Task: task, ProjectID: project.ID}
+
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+
+			chip := query.FormatDueDate(task)
+			if chip == "" {
+				t.Fatal("a task due today rendered no due chip")
+			}
+			for _, variant := range []struct {
+				name     string
+				selected bool
+			}{{"resting", false}, {"cursor", true}} {
+				line := outliner.RenderOutlinerTaskRow(row, variant.selected, 120, 120, 0, nil)
+				if !strings.Contains(line, chip) {
+					t.Errorf("%s row lost its due chip: %q", variant.name, line)
+				}
+				if got := lipgloss.Width(ansi.Strip(line)); got > 120 {
+					t.Errorf("%s row assembled %d columns", variant.name, got)
+				}
+			}
+		})
 	}
 }
 
