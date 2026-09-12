@@ -273,16 +273,20 @@ type dueClockWriter struct {
 }
 
 func (w *dueClockWriter) write(target app.TaskLocator, clock *app.DueStepClock) {
-	before := w.controller.lookup(target)
 	if index, ok := w.indexes[target]; ok {
-		before = w.changes[index].before
+		// The recorded before already holds what this transaction started from,
+		// so a repeat write moves the after alone.
 		w.changes[index].after = clock
 	} else {
 		if w.indexes == nil {
 			w.indexes = make(map[app.TaskLocator]int)
 		}
 		w.indexes[target] = len(w.changes)
-		w.changes = append(w.changes, dueClockChange{target: target, before: before, after: clock})
+		w.changes = append(w.changes, dueClockChange{
+			target: target,
+			before: w.controller.lookup(target),
+			after:  clock,
+		})
 	}
 	w.controller.assign(target, clock)
 }

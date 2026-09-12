@@ -194,7 +194,7 @@ func TestDueStepRefusalCountsOnlyUnexecutedWork(t *testing.T) {
 	if got := DueStepRefusal(nil, 3); got != nil {
 		t.Fatalf("DueStepRefusal wrapped a missing error as %v", got)
 	}
-	if got := DueStepRefusal(refused, 0); got != refused {
+	if got := DueStepRefusal(refused, 0); !errors.Is(got, refused) || got.Error() != refused.Error() {
 		t.Fatalf("DueStepRefusal rewrote a refusal with an empty queue as %v", got)
 	}
 

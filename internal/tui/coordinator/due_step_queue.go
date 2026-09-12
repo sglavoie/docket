@@ -214,7 +214,7 @@ func dueStepDeadlineText(due *time.Time) string {
 	return "Due " + due.Format("2006-01-02 15:04")
 }
 
-// DueStepRefusal names the gestures a refusal cancelled. The error itself is
+// DueStepRefusal names the gestures a refusal abandoned. The error itself is
 // wrapped rather than restated, so the application layer keeps saying why, and
 // the count is added only when something actually went unexecuted: a refusal
 // with an empty queue behind it has nothing extra to report.
