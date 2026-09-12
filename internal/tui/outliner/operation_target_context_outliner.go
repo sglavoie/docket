@@ -24,11 +24,7 @@ func (m *OutlinerModel) OperationCommandContext() operation.CommandContext {
 	if checklist, onChecklistRow := m.CursorChecklistItem(); onChecklistRow {
 		ctx.Entity = ChecklistOperationEntity(checklist)
 	} else if task != nil && project != nil {
-		ctx.Entity = operation.EntityContext{
-			ProjectID: project.ID,
-			TaskID:    task.ID,
-			Archived:  project.Archived,
-		}
+		ctx.Entity = TaskOperationEntity(task, project)
 	} else if header != nil {
 		ctx.Entity.ProjectID = header.ID
 		ctx.Entity.Archived = header.Archived
@@ -108,8 +104,9 @@ func TaskOperationEntity(task *models.Task, project *models.Project) operation.E
 		return operation.EntityContext{}
 	}
 	return operation.EntityContext{
-		ProjectID: project.ID,
-		TaskID:    task.ID,
-		Archived:  project.Archived,
+		ProjectID:          project.ID,
+		TaskID:             task.ID,
+		Archived:           project.Archived,
+		HasChildTaskCursor: task.ParentID != nil,
 	}
 }

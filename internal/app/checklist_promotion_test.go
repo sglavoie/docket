@@ -123,6 +123,10 @@ func TestPromoteChecklistItemConvertsExactlyTheNamedItem(t *testing.T) {
 			if child.ParentID == nil || *child.ParentID != owner.ID {
 				t.Fatalf("child parent = %v, want the owner %q", child.ParentID, owner.ID)
 			}
+			if child.ChecklistOrigin == nil || child.ChecklistOrigin.ProjectID != "p1" ||
+				child.ChecklistOrigin.TaskID != owner.ID || child.ChecklistOrigin.Index != tc.index {
+				t.Fatalf("child origin = %+v, want owner and item index %d", child.ChecklistOrigin, tc.index)
+			}
 			if len(repo.commits) != 1 {
 				t.Fatalf("commits = %d, want one transaction covering both halves", len(repo.commits))
 			}
@@ -608,6 +612,10 @@ func TestPromoteChecklistItemUndoRedoAcceptance(t *testing.T) {
 	}
 	if promoted.ParentID == nil || *promoted.ParentID != owner.ID {
 		t.Fatalf("durable child parent = %v, want the owner", promoted.ParentID)
+	}
+	if promoted.ChecklistOrigin == nil || promoted.ChecklistOrigin.ProjectID != project.ID ||
+		promoted.ChecklistOrigin.TaskID != owner.ID || promoted.ChecklistOrigin.Index != 1 {
+		t.Fatalf("durable child origin = %+v", promoted.ChecklistOrigin)
 	}
 	if left := after.GetTaskByID(owner.ID).Checklist; !slicesEqualChecklist(
 		left, []models.ChecklistItem{{Text: "first"}, {Text: "third"}}) {

@@ -1,6 +1,7 @@
 package entityops
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -44,19 +45,22 @@ func checklistAddItemApplicable(ctx operation.CommandContext) bool {
 	return operation.CurrentTaskIdentity(ctx).Valid()
 }
 
-// checklistPromoteItemApplicable is the row gate every other item operation
-// uses, narrowed by one more question: a visual selection refuses it. Promotion
-// is a structural act, and a selection names task rows, so falling back to the
-// one checklist item under the cursor would answer a bulk gesture with a single
-// hidden conversion.
+// S acts on a checklist item or a child task. A visual selection refuses it:
+// this conversion has one owner and one item, never a bulk interpretation.
 func checklistPromoteItemApplicable(ctx operation.CommandContext) bool {
 	return checklistRowOperationApplicable(ctx) && !ctx.Selection.Visual
 }
 
+func checklistDemoteChildApplicable(ctx operation.CommandContext) bool {
+	return ctx.View == presentation.ViewCrossProjectOutliner && !ctx.Selection.Visual &&
+		ctx.Entity.HasChildTaskCursor && !ctx.Entity.HasChecklistCursor &&
+		!operation.CommandContextNamesNonTaskEntity(ctx) && operation.CurrentTaskIdentity(ctx).Valid()
+}
+
 // ChecklistRowOperationDescriptors is the authoritative catalog of checklist
-// row operations. They target the owner task because that is the durable
-// identity a checklist item hangs off; the item itself is named by the index
-// the command context froze.
+// row operations plus the reverse child-task conversion. Checklist operations
+// target the owner task because that is the durable identity an item hangs off;
+// the item itself is named by the index the command context froze.
 //
 // Every descriptor is Task category so that a key shared with a task operation
 // keeps one category across its bindings, which is what lets a non-task cursor
@@ -104,11 +108,14 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 			),
 			operation.ValueProviderChecklistItem,
 		),
-		// Make Subtask declares no value provider and no confirmation: the item's
-		// own text is the child's title, so there is nothing left to ask.
+		// S declares no value provider: either row already carries the text.
 		withApplicability(
 			item(operation.OperationChecklistPromoteItem, "Make Subtask", "Convert this checklist item into a subtask", operation.OperationRiskMutation),
 			checklistPromoteItemApplicable,
+		),
+		withApplicability(
+			item(operation.OperationChecklistDemoteChild, "Make Checklist Item", "Convert this child task into a checklist item", operation.OperationRiskMutation),
+			checklistDemoteChildApplicable,
 		),
 		item(operation.OperationChecklistActions, "Checklist Actions", "Open the checklist item action menu", operation.OperationRiskReadOnly),
 		item(operation.OperationChecklistDeleteItem, "Delete Item", "Remove this checklist item", operation.OperationRiskDestructive),
@@ -202,6 +209,21 @@ func (c *Controller) executeChecklistRowOperation(
 	// it resolves before the checklist-cursor gate every other member needs.
 	if invocation.Descriptor.ID == operation.OperationChecklistAddItem {
 		return c.executeChecklistAddItem(shell, invocation)
+	}
+	if invocation.Descriptor.ID == operation.OperationChecklistDemoteChild {
+		identity := operation.CurrentTaskIdentity(invocation.Context)
+		task, _ := shell.TaskAndProjectForIdentity(identity)
+		if task == nil {
+			return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
+		}
+		if task.ParentID == nil {
+			return operation.OperationHandlerResult{Err: errors.New("move the cursor to a child task or checklist item")}
+		}
+		frozen, err := json.Marshal(task)
+		if err != nil {
+			return operation.OperationHandlerResult{Err: err}
+		}
+		return checklistCommandResult(shell.SubviewCoordinator().MakeChecklistItem(identity, string(frozen)))
 	}
 	entity := invocation.Context.Entity
 	if !entity.HasChecklistCursor {

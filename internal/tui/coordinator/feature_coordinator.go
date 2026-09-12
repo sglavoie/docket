@@ -111,6 +111,8 @@ type TransactionResultMsg struct {
 	// write resolves to TransactionErrorMsg and never carries it, which is what
 	// keeps a failed append from folding the outline open.
 	RevealChecklistFor taskref.TaskIdentity
+	// RevealChecklistIndex selects an inserted item other than the last one.
+	RevealChecklistIndex *int
 	// RevealTaskFor names a task this transaction minted that the primary view
 	// selects and reveals once the reload confirming it has landed. Checklist
 	// promotion is its one writer: the row the gesture was made on is gone

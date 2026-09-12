@@ -11,7 +11,7 @@ import (
 // source is edited or deleted afterwards.
 //
 // What is absent is the contract as much as what is present. There is no
-// identity, no timestamp, no parent, no due date, no deferral, no planning
+// identity, no timestamp, no parent, no checklist origin, no due date, no deferral, no planning
 // membership, no pin or review flag, no resume note, no comment, no attachment,
 // and no dependency: a repetition is fresh work carrying the same shape, and
 // every one of those fields describes the particular occurrence that is being

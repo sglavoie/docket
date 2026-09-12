@@ -19,7 +19,7 @@ func v17ProjectTestDocument(t *testing.T) V17ProjectDocument {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return V17ProjectDocument{ProjectName: "Comments", Tasks: []format.V16TaskRecord{record}}
+	return V17ProjectDocument{ProjectName: "Comments", Tasks: []format.V16TaskRecord{record.V16TaskRecord}}
 }
 
 func v17TestComment(id, text string, offset time.Duration) format.ProjectCommentRecord {

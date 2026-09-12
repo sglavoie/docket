@@ -231,7 +231,7 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 		m.crossOutliner.SettleRelocationCursor()
 	}
 	m.observeCommittedDueEffect(msg.Result.TransactionID, msg.DueEffect)
-	m.revealCommittedChecklistItem(msg.RevealChecklistFor)
+	m.revealCommittedChecklistItemAt(msg.RevealChecklistFor, msg.RevealChecklistIndex)
 	m.revealCommittedTask(msg.RevealTaskFor, taskref.TaskIdentity{
 		ProjectID: msg.Result.ProjectID,
 		TaskID:    msg.Result.TaskID,
@@ -247,6 +247,10 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 // committed item actually exists in a rebuilt projection; a refused append never
 // reaches here and leaves the outline exactly as it was.
 func (m *AppModel) revealCommittedChecklistItem(identity taskref.TaskIdentity) {
+	m.revealCommittedChecklistItemAt(identity, nil)
+}
+
+func (m *AppModel) revealCommittedChecklistItemAt(identity taskref.TaskIdentity, inserted *int) {
 	if m == nil || m.crossOutliner == nil || !identity.Valid() {
 		return
 	}
@@ -256,7 +260,14 @@ func (m *AppModel) revealCommittedChecklistItem(identity taskref.TaskIdentity) {
 	}
 	m.crossOutliner.Folds.SetChecklist(identity, true)
 	m.crossOutliner.RebuildRows()
-	m.crossOutliner.MoveCursorToChecklistItem(identity, len(task.Checklist)-1)
+	index := len(task.Checklist) - 1
+	if inserted != nil {
+		index = *inserted
+	}
+	if !m.crossOutliner.MoveCursorToChecklistItem(identity, index) && inserted != nil {
+		m.crossOutliner.MoveCursorToIdentity(identity)
+		m.crossOutliner.SetTransientStatus("Checklist item was created but is hidden by this view")
+	}
 }
 
 // revealCommittedTask seats the cursor on a task this transaction minted, named

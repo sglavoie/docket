@@ -78,9 +78,10 @@ func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location
 		UpdatedAt: record.UpdatedAt, StateChangedAt: record.StateChangedAt,
 		CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 		Pinned:      record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
-		Review:     record.Review,
-		ResumeNote: record.ResumeNote,
-		Children:   []*models.Task{},
+		Review:          record.Review,
+		ResumeNote:      record.ResumeNote,
+		ChecklistOrigin: record.ChecklistOrigin,
+		Children:        []*models.Task{},
 	}
 	if record.ParentID != "" {
 		parentID := record.ParentID
@@ -203,7 +204,7 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 	base, dueTime := currentTaskBaseFieldsFromModel(task)
 	appendCurrentTaskRecordCollectionsFromModel(&base, task)
 
-	record := format.V16TaskRecord{
+	record := format.V17TaskRecord{V16TaskRecord: format.V16TaskRecord{
 		V15TaskRecord: format.V15TaskRecord{
 			V14TaskRecord: format.V14TaskRecord{
 				V13TaskRecord: format.V13TaskRecord{
@@ -220,6 +221,7 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 			Review: task.Review,
 		},
 		ResumeNote: task.ResumeNote,
+	}, ChecklistOrigin: task.ChecklistOrigin,
 	}
 	for _, dependency := range task.Dependencies {
 		record.Dependencies = append(record.Dependencies, format.V14TaskDependency{

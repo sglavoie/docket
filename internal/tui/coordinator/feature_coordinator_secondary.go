@@ -161,6 +161,7 @@ type SubviewMutator interface {
 	// the complete ordered checklist the panel read and the promotion is refused
 	// whole unless the owner still holds exactly that list.
 	PromoteChecklistItem(req app.ChecklistPromotionRequest) (app.ChecklistPromotionResult, error)
+	MakeChecklistItem(req app.ChecklistDemotionRequest) (app.ChecklistDemotionResult, error)
 }
 
 // Compile-time assurance that the production services satisfy every secondary

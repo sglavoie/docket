@@ -83,9 +83,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`t` owns `ExpandedNodes` alone, and its walk covers every loaded project",
 		"`s` refuses under a section zoom and `p` does not, which is the one place the family diverges",
 		"The walk wraps at either end",
-		"A checklist row owns ten operations",
-		"Nine of them answer a key \u2014 `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, and " +
-			"`Space`. Six of those reuse the key their task-row counterpart holds",
+		"The checklist operation catalog holds eleven operations",
+		"Ten of them answer a key \u2014 `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, `S`, and " +
+			"`Space`. Some of those reuse the key their task-row counterpart holds",
 		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
 		"Recent is the activity review projection",
 		"Stale draws immediately after Review",

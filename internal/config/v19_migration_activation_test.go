@@ -368,7 +368,7 @@ func TestManagerV19MigrationRefusesANewerWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer := bytes.Replace(source, []byte("\"schema_version\": 19"), []byte("\"schema_version\": 20"), 1)
+	newer := bytes.Replace(source, []byte("\"schema_version\": 19"), []byte("\"schema_version\": 21"), 1)
 	if bytes.Equal(newer, source) {
 		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
 	}
@@ -395,8 +395,8 @@ func TestOperationsAfterV19MigrationAreNormallyUndoable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if catalog.SchemaVersion != V19ConfigSchemaVersion {
-		t.Fatalf("catalog schema = %d, want %d", catalog.SchemaVersion, V19ConfigSchemaVersion)
+	if catalog.SchemaVersion != CurrentConfigVersion {
+		t.Fatalf("catalog schema = %d, want %d", catalog.SchemaVersion, CurrentConfigVersion)
 	}
 	if _, statErr := os.Stat(UndoLedgerDir(root)); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("undo history survived migration: %v", statErr)

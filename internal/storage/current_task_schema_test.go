@@ -43,26 +43,27 @@ func currentSchemaFixtureProject() *models.Project {
 		CreatedAt: base, UpdatedAt: base, StateChangedAt: base,
 	}
 	child := &models.Task{
-		ID:             "task-child",
-		ShortID:        2,
-		Title:          "Every persisted field",
-		Description:    "first line\nsecond line",
-		WorkflowState:  models.StateDone,
-		Priority:       2,
-		ParentID:       &parentID,
-		Tags:           []string{"alpha", "beta"},
-		Context:        "deep-work",
-		DeferCount:     3,
-		CreatedAt:      base,
-		UpdatedAt:      base.Add(2 * time.Hour),
-		StateChangedAt: base.Add(time.Hour),
-		CompletedAt:    &completedAt,
-		DueDate:        &dueDate,
-		Pinned:         true,
-		PinnedAt:       &pinnedAt,
-		Review:         true,
-		ResumeNote:     "waiting on the staging deploy",
-		Comments:       []*models.Comment{{Text: "a stored comment", CreatedAt: base.Add(30 * time.Minute)}},
+		ID:              "task-child",
+		ShortID:         2,
+		Title:           "Every persisted field",
+		Description:     "first line\nsecond line",
+		WorkflowState:   models.StateDone,
+		Priority:        2,
+		ParentID:        &parentID,
+		ChecklistOrigin: &models.ChecklistOrigin{ProjectID: "project-alpha", TaskID: parentID, Index: 3},
+		Tags:            []string{"alpha", "beta"},
+		Context:         "deep-work",
+		DeferCount:      3,
+		CreatedAt:       base,
+		UpdatedAt:       base.Add(2 * time.Hour),
+		StateChangedAt:  base.Add(time.Hour),
+		CompletedAt:     &completedAt,
+		DueDate:         &dueDate,
+		Pinned:          true,
+		PinnedAt:        &pinnedAt,
+		Review:          true,
+		ResumeNote:      "waiting on the staging deploy",
+		Comments:        []*models.Comment{{Text: "a stored comment", CreatedAt: base.Add(30 * time.Minute)}},
 		Attachments: []models.Attachment{
 			{Filename: "notes.md", OriginalPath: "/tmp/notes.md", AddedAt: base},
 		},
@@ -150,13 +151,14 @@ func TestCurrentTaskSchemaGoldenBytes(t *testing.T) {
 		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	const golden = "# Project: Fixture\n" +
-		"<!-- tt-schema: 17 -->\n" +
+		"<!-- tt-schema: 18 -->\n" +
 		"\n" +
 		"## Task: Parent\n" +
 		"<!-- id: task-parent, short_id: 1, state: backlog, priority: 0, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T12:00:00Z, state_changed: 2026-08-01T12:00:00Z -->\n" +
 		"\n" +
 		"### Task: Every persisted field\n" +
 		"<!-- id: task-child, short_id: 2, state: done, priority: 2, parent: task-parent, tags: alpha;beta, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T14:00:00Z, state_changed: 2026-08-01T13:00:00Z, completed: 2026-08-01T15:00:00Z, due: 2026-08-14, deferred: 2026-08-20T09:00:00Z, pinned: true, pinned_at: 2026-08-01T13:30:00Z, attachments: file|notes.md|%2Ftmp%2Fnotes.md|0|2026-08-01T12:00:00Z, checklist: 1|step+one, context: deep-work, defer_count: 3, due_time: 09:30, depends: project-beta:task-9, review: true -->\n" +
+		"<!-- checklist-origin: {\"project_id\":\"project-alpha\",\"task_id\":\"task-parent\",\"index\":3} -->\n" +
 		"<!-- RESUME -->\n" +
 		"waiting on the staging deploy\n" +
 		"<!-- /RESUME -->\n" +

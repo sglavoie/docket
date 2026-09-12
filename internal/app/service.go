@@ -209,6 +209,9 @@ type projectCommit struct {
 	// them before the ordinary ExpectedRevision merge path, before any conflict
 	// bundle is recorded, and before a byte is staged or an undo image captured.
 	preconditions []storage.ProjectRevisionPrecondition
+	// artifactPreconditions guard read-only workspace artifacts such as the
+	// catalog that defines the complete set of possible reference holders.
+	artifactPreconditions []storage.ArtifactPrecondition
 	// attachmentOps are attachment file side effects (move/copy/delete) committed
 	// in the same transaction as the project write.
 	attachmentOps []storage.AttachmentOp
@@ -231,14 +234,15 @@ func changeSetFor(c projectCommit, undoAction, undoContext string) storage.Chang
 		applyPostMutationHooks(c.project)
 	}
 	return storage.ChangeSet{
-		Project:              c.project,
-		ExpectedRevision:     c.expectedRevision,
-		Base:                 c.base,
-		ProjectPreconditions: c.preconditions,
-		Artifacts:            c.artifacts,
-		AttachmentOps:        c.attachmentOps,
-		UndoAction:           undoAction,
-		UndoContext:          undoContext,
+		Project:               c.project,
+		ExpectedRevision:      c.expectedRevision,
+		Base:                  c.base,
+		ProjectPreconditions:  c.preconditions,
+		ArtifactPreconditions: c.artifactPreconditions,
+		Artifacts:             c.artifacts,
+		AttachmentOps:         c.attachmentOps,
+		UndoAction:            undoAction,
+		UndoContext:           undoContext,
 	}
 }
 

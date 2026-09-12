@@ -49,7 +49,7 @@ func mergeTestDoc(name string, tasks ...*models.Task) *ProjectDocument {
 	doc := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         tasks,
-		SchemaVersion: SchemaVersionV17,
+		SchemaVersion: CurrentTaskSchemaVersion,
 	}
 	doc.Revision = doc.ComputeRevision()
 	return doc

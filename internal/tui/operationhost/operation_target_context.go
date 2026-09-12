@@ -42,11 +42,7 @@ func (c *Controller) CommandContext(shell Shell) operation.CommandContext {
 	case onChecklistRow:
 		ctx.Entity = outliner.ChecklistOperationEntity(checklist)
 	case task != nil && project != nil:
-		ctx.Entity = operation.EntityContext{
-			ProjectID: project.ID,
-			TaskID:    task.ID,
-			Archived:  project.Archived,
-		}
+		ctx.Entity = outliner.TaskOperationEntity(task, project)
 	case header != nil:
 		ctx.Entity.ProjectID = header.ID
 		ctx.Entity.Archived = header.Archived

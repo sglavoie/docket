@@ -224,10 +224,6 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// starting a checklist and appending to one are now one act.
 		"c": operation.OperationChecklistAddItem,
 		"x": operation.OperationChecklistToggleItem,
-		// S promotes the item under the cursor into a subtask. It is not shared
-		// with A: A creates an empty child of a task row and S consumes an item
-		// that already exists, so one key would have to branch on the cursor.
-		"S": operation.OperationChecklistPromoteItem,
 		"j": operation.OperationCoreCursorDown, "down": operation.OperationCoreCursorDown,
 		"k": operation.OperationCoreCursorUp, "up": operation.OperationCoreCursorUp,
 		"home": operation.OperationCoreCursorTop,
@@ -306,6 +302,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// the one entry a cursor does not settle: it asks whether a detail pane is on
 	// screen, and Peek is listed first for the same reason the checklist is.
 	shared := map[string][]operation.OperationID{
+		"S":      {operation.OperationChecklistPromoteItem, operation.OperationChecklistDemoteChild},
 		"ctrl+u": {operation.OperationCorePeekHalfPageUp, operation.OperationCoreCursorPageUp},
 		"ctrl+d": {operation.OperationCorePeekHalfPageDown, operation.OperationCoreCursorPageDown},
 		"#":      {operation.OperationTaskSetTags, operation.OperationProjectSetTags},

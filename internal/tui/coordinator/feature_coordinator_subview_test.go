@@ -29,6 +29,10 @@ func (s *promotionStub) PromoteChecklistItem(
 	return s.result, s.err
 }
 
+func (s *promotionStub) MakeChecklistItem(app.ChecklistDemotionRequest) (app.ChecklistDemotionResult, error) {
+	panic("unexpected MakeChecklistItem")
+}
+
 func (s *promotionStub) AddComment(app.TaskLocator, string) (app.CommentResult, error) {
 	panic("unexpected AddComment")
 }

@@ -25,7 +25,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
 		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, " +
-			"`S` turn the checklist item under the cursor into a subtask of the task that owns it, " +
+			"`S` turn a checklist item into a child task or a child task back into a checklist item in its current parent, " +
 			"`D` repeat the cursor task as a new draft, `e` edits whatever the cursor names",
 		"`w` opens the workflow chord over the ten destinations the `$destination` capture sigil names",
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",

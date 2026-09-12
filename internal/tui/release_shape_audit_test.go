@@ -47,17 +47,13 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 	}
 }
 
-// TestReleaseSchemaVersionsMovedOnlyForProjectComments pins both stored schemas.
-// Acknowledgements, checklist items, and repeats write through fields the
-// schemas already carried; project comments are the one thing in this release
-// that no existing field could hold, so this pair moved exactly once and by
-// exactly one step. Either number moving again means another migration was
-// written, and a migration is never incidental.
-func TestReleaseSchemaVersionsMovedOnlyForProjectComments(t *testing.T) {
-	if got, want := storage.CurrentTaskSchemaVersion, 17; got != want {
+// TestReleaseSchemaVersionsIncludeChecklistOrigin pins the task and catalog
+// boundaries that introduced the promoted checklist origin.
+func TestReleaseSchemaVersionsIncludeChecklistOrigin(t *testing.T) {
+	if got, want := storage.CurrentTaskSchemaVersion, 18; got != want {
 		t.Errorf("live task Markdown is schema %d, want %d", got, want)
 	}
-	if got, want := config.CurrentConfigVersion, 19; got != want {
+	if got, want := config.CurrentConfigVersion, 20; got != want {
 		t.Errorf("the catalog is schema %d, want %d", got, want)
 	}
 }

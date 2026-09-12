@@ -218,6 +218,9 @@ func (m *Manager) RecoverWorkspace() error {
 		if err := m.MigrateWorkspaceToV19(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v19: %w", err)
 		}
+		if err := m.MigrateWorkspaceToV20(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v20: %w", err)
+		}
 		// Adoption is deliberately outside the chain above: it is keyed off
 		// machine-local state rather than the synced catalog schema, so it runs
 		// once per machine after the schema is already current instead of once

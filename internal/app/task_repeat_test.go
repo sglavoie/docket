@@ -40,6 +40,7 @@ func repeatSourceTask() *models.Task {
 	task.Dependencies = []models.TaskReference{{ProjectID: "proj-1", TaskID: "task-2"}}
 	parent := "task-2"
 	task.ParentID = &parent
+	task.ChecklistOrigin = &models.ChecklistOrigin{ProjectID: "proj-1", TaskID: parent, Index: 2}
 	return task
 }
 

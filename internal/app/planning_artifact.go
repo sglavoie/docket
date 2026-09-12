@@ -63,6 +63,11 @@ func (m PlanningProjectMove) valid() bool {
 // ordering fields are optional full-order replacements used by J/K and the CLI
 // move command; any valid member omitted from an order is retained at the end.
 type PlanningReconcileRequest struct {
+	// RequireAbsent refuses structural conversion when this task is planned.
+	// GuardOnly asks adapters to include a revision-checked planning artifact
+	// even when reconciliation makes no change.
+	RequireAbsent *TaskLocator
+	GuardOnly     bool
 	Targets       []PlanningReconcileTarget
 	Remove        []TaskLocator
 	Moves         []PlanningProjectMove

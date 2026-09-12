@@ -153,6 +153,8 @@ type EntityContext struct {
 	// checklist cursor needs a flag of its own: nothing else distinguishes it
 	// from the owner row whose pointer it carries.
 	HasChecklistCursor bool
+	// HasChildTaskCursor distinguishes a child task row from its parent row.
+	HasChildTaskCursor bool
 	// ChecklistIndex is the item's position inside the owner's checklist. It is
 	// meaningful only while HasChecklistCursor holds.
 	ChecklistIndex int

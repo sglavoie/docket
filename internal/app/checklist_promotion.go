@@ -60,9 +60,9 @@ type ChecklistPromotionResult struct {
 // refuses the promotion instead of merging it onto a document the calculation
 // never saw.
 //
-// The child copies no metadata from its owner: it is the item's literal text,
-// the owner as its parent, and Backlog or Done depending on whether the item was
-// checked. Everything else starts empty.
+// The child copies no metadata from its owner: it takes the item's literal
+// text, the owner as its parent, Backlog or Done, and the item's original index
+// for a possible reverse conversion. Everything else starts empty.
 func (s *Service) PromoteChecklistItem(req ChecklistPromotionRequest) (ChecklistPromotionResult, error) {
 	if !req.Owner.Valid() {
 		return ChecklistPromotionResult{}, invalidInput("task", "project id and task id are required")
@@ -112,7 +112,7 @@ func (s *Service) PromoteChecklistItem(req ChecklistPromotionRequest) (Checklist
 	// timestamps come from the same service clock through the shared creation
 	// initialization, which is the only place a created task's clocks are set.
 	now := s.clock.Now()
-	child, err := s.buildPromotedChild(ref, item.Text, destination)
+	child, err := s.buildPromotedChild(ref, item.Text, destination, req.Index)
 	if err != nil {
 		return ChecklistPromotionResult{}, err
 	}
@@ -207,12 +207,12 @@ func promotedChecklistDestination(done bool) (captureDestinationEffect, error) {
 // creation uses: a generated UUID, the project's next short ID, the canonical
 // title validation, and the one lifecycle initialization path, which is what
 // stamps the state clock and — for a checked item — the completion instant. It
-// sets the owner as parent and nothing else: no priority, tags, context,
+// sets the owner as parent and remembers the consumed item's index. No priority, tags, context,
 // description, due date, deferral, pin, review flag, resume note, attachment,
 // comment, or reference is inherited, because a checklist item carries none of
 // them.
 func (s *Service) buildPromotedChild(
-	ref TaskRef, title string, destination captureDestinationEffect,
+	ref TaskRef, title string, destination captureDestinationEffect, index int,
 ) (*models.Task, error) {
 	child, err := newTaskForCreation(s.ids.NewID(), ref.Project.GetNextShortID(), title)
 	if err != nil {
@@ -220,6 +220,7 @@ func (s *Service) buildPromotedChild(
 	}
 	parentID := ref.Task.ID
 	child.ParentID = &parentID
+	child.ChecklistOrigin = &models.ChecklistOrigin{ProjectID: ref.Project.ID, TaskID: ref.Task.ID, Index: index}
 	if err := s.initializeCreatedTask(child, destination.state); err != nil {
 		return nil, err
 	}

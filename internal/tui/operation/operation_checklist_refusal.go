@@ -19,14 +19,15 @@ const (
 	OperationChecklistMoveTop     OperationID = "tui.checklist.move-top"
 	OperationChecklistAddItem     OperationID = "tui.checklist.add-item"
 	OperationChecklistPromoteItem OperationID = "tui.checklist.promote-item"
+	OperationChecklistDemoteChild OperationID = "tui.checklist.demote-child"
 	OperationChecklistActions     OperationID = "tui.checklist.actions"
 	OperationChecklistDeleteItem  OperationID = "tui.checklist.delete-item"
 )
 
-// ChecklistRowGrammar is the set of operations a checklist cursor owns. It is
-// what operationRefusedOnChecklistRow exempts, so the refusal rule stays one
-// question — does this operation belong to the checklist row? — instead of a
-// per-key branch.
+// ChecklistRowGrammar is the checklist operation family, including the reverse
+// conversion that applies to a child task row. It is what
+// operationRefusedOnChecklistRow exempts; each descriptor's applicability still
+// decides which row can use it.
 var ChecklistRowGrammar = map[OperationID]bool{
 	OperationChecklistToggleItem:  true,
 	OperationChecklistEditItem:    true,
@@ -36,6 +37,7 @@ var ChecklistRowGrammar = map[OperationID]bool{
 	OperationChecklistMoveTop:     true,
 	OperationChecklistAddItem:     true,
 	OperationChecklistPromoteItem: true,
+	OperationChecklistDemoteChild: true,
 	OperationChecklistActions:     true,
 	OperationChecklistDeleteItem:  true,
 }

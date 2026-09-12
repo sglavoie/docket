@@ -15,19 +15,18 @@ import "github.com/sglavoie/tt/internal/storage/format"
 // CurrentTaskSchemaVersion is the schema live task Markdown is parsed and
 // written at. ProjectDocument.SchemaVersion carries this value, and
 // WriteCurrent refuses any other.
-const CurrentTaskSchemaVersion = SchemaVersionV17
+const CurrentTaskSchemaVersion = SchemaVersionV18
 
 // currentTaskProjectDocument is one project's task file at the current schema.
 // It is an alias rather than a distinct type so the codec keeps its exported
 // version-specific name for migrations while the live path spells only
 // "current"; a distinct type would need a conversion at every boundary and buy
 // nothing, since the two are the same bytes by construction.
-type currentTaskProjectDocument = V17ProjectDocument
+type currentTaskProjectDocument = V18ProjectDocument
 
-// currentTaskRecord is one task record at the current schema. Schema 17
-// advanced the document rather than the task grammar, so the record it carries
-// is still schema 16's.
-type currentTaskRecord = format.V16TaskRecord
+// currentTaskRecord is one task record at the current schema. Schema 18
+// advances the record grammar to carry a promoted checklist item's origin.
+type currentTaskRecord = format.V17TaskRecord
 
 // currentProjectCommentRecord is one stored project comment at the current
 // schema.
@@ -35,21 +34,21 @@ type currentProjectCommentRecord = format.ProjectCommentRecord
 
 // parseCurrentTaskProjectDocument strictly parses live task Markdown.
 func parseCurrentTaskProjectDocument(content string) (currentTaskProjectDocument, error) {
-	return ParseV17ProjectDocument(content)
+	return ParseV18ProjectDocument(content)
 }
 
 // writeCurrentTaskProjectDocument renders canonical live task Markdown.
 func writeCurrentTaskProjectDocument(document currentTaskProjectDocument) (string, error) {
-	return WriteV17ProjectDocument(document)
+	return WriteV18ProjectDocument(document)
 }
 
 // validateCurrentTaskProjectDocument validates a live document without
 // rendering it.
 func validateCurrentTaskProjectDocument(document currentTaskProjectDocument) error {
-	return ValidateV17ProjectDocument(document)
+	return ValidateV18ProjectDocument(document)
 }
 
 // validateCurrentTaskRecord validates one live task record.
 func validateCurrentTaskRecord(record currentTaskRecord) error {
-	return format.ValidateV16TaskRecord(record)
+	return format.ValidateV17TaskRecord(record)
 }

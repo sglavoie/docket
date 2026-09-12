@@ -173,3 +173,17 @@ func (c SubviewCoordinator) PromoteChecklistItem(
 		}
 	}
 }
+
+func (c SubviewCoordinator) MakeChecklistItem(child taskref.TaskIdentity, frozenJSON string) tea.Cmd {
+	return func() tea.Msg {
+		res, err := c.sub.MakeChecklistItem(app.ChecklistDemotionRequest{Child: child.Locator(), FrozenTaskJSON: frozenJSON})
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		return TransactionResultMsg{
+			Action: "Make Checklist Item", Result: res.Parent,
+			RevealChecklistFor:   taskref.TaskIdentity{ProjectID: res.Parent.ProjectID, TaskID: res.Parent.TaskID},
+			RevealChecklistIndex: &res.Index,
+		}
+	}
+}

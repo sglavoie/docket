@@ -18,8 +18,8 @@ A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
-What a checklist row does own is ten operations of its own. Nine of them
-answer a key:
+The checklist operation catalog contains eleven operations. Ten of them answer a key
+on a checklist row or child task row:
 
 | Key | Operation |
 | --- | --- |
@@ -31,12 +31,13 @@ answer a key:
 | `Ctrl+K` | Move Item to Top — send it past every item above |
 | `c` | Add Checklist Item — append an item to this task's checklist |
 | `S` | Make Subtask — convert it into a subtask of the task that owns it |
+| `S` | Make Checklist Item — convert a child task into an item in its current parent's checklist |
 | `Space` | Checklist Actions — the item menu: Edit Item and Delete Item |
 
-Delete Item is the tenth and answers no key. It is reachable only from the
+Delete Item is the eleventh and answers no key. It is reachable only from the
 `Space` menu and confirms before it removes anything.
 
-Add Checklist Item is the one of the ten that also answers from the owner task's own row,
+Add Checklist Item also answers from the owner task's own row,
 because a task with no checklist yet has no item row to press a key on. `c`
 therefore adds the first item and every item after it, from the task or from any
 of its items, and the prompt is the same single line either way: `Enter` saves,
@@ -62,10 +63,20 @@ does not show it. When that happens the cursor returns to the owner task and the
 status line names the subtask you cannot see — including when a ticked item
 became a done subtask and the view is hiding done work.
 
-Pressing `S` twice in a row never converts the neighbor. The whole checklist is
-frozen at the keypress and checked again at the commit, so the second press is
-measured against a list it no longer matches and is refused rather than applied
-to whatever item slid up into the row.
+Two `S` presses queued before the first commit never convert a neighboring
+item. The whole checklist is frozen at each keypress and checked again at the
+commit, so the second request is refused when the first changes that list.
+After a completed conversion, another `S` on the selected child converts it
+back into a checklist item.
+
+On a child task row, `S` converts that child into an item in its current parent's
+checklist. It uses the child's current title; Backlog becomes unticked and Done
+becomes ticked. A child created from a checklist item returns to its saved
+position if it still has the original parent; other children append. The task
+must have no descendants, other task content, Today or Next membership, or
+incoming task references. One undo restores the child and removes the item.
+After a successful conversion, the parent's checklist opens and the cursor
+selects the new item. If filters hide it, the status line reports the result.
 
 Visual selection is one of the actions a checklist row refuses, because a
 selection names task rows. Entering it from a task row hides any open checklist

@@ -27,6 +27,7 @@ import (
 var headerTargetAudit = map[operation.OperationID]string{
 	"tui.checklist.actions":           "reject",
 	"tui.checklist.add-item":          "reject",
+	"tui.checklist.demote-child":      "reject",
 	"tui.checklist.edit-item":         "reject",
 	"tui.checklist.move-bottom":       "reject",
 	"tui.checklist.move-down":         "reject",

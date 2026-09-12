@@ -368,14 +368,15 @@ read that installed it and the object standing there is that reading. A
 restoration is therefore the captured membership intersected with what is still
 offered and still readable.
 
-A checklist row owns ten operations of its own — Toggle Item, Edit Item, Move
+The checklist operation catalog holds eleven operations — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Checklist Item, Make
-Subtask, Checklist Actions, and Delete Item — registered in
+Subtask, Make Checklist Item, Checklist Actions, and Delete Item — registered in
 `internal/tui/entityops/checklist_row_operations.go` as ordinary descriptors that
-apply under a checklist cursor, Add Checklist Item alone excepted. Nine of them answer a
-key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, and `Space`. Six of those
+apply under a checklist cursor, except Add Checklist Item also applies to its owner
+and Make Checklist Item applies to a child task. Ten of them answer a
+key — `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `c`, `S`, `S`, and `Space`. Some of those
 reuse the key their task-row counterpart holds, which works because resolution
-takes the first applicable binding and the two are disjoint by cursor. Delete Item is the tenth and answers no key at all: it reaches the
+takes the first applicable binding and the two are disjoint by cursor. Delete Item is the eleventh and answers no key at all: it reaches the
 user only from the `Space` menu that Checklist Actions opens, behind the
 executor's destructive confirmation. The refusal that keeps them disjoint is one
 predicate, `operationRefusedOnChecklistRow`, read by
@@ -435,6 +436,16 @@ operation that also refuses under a visual selection, through
 `checklistPromoteItemApplicable`: promotion is structural, a selection names task
 rows, and `OperationTargetCurrentTask` would otherwise fall back to the single
 item under the cursor and answer a bulk gesture with one hidden conversion.
+
+The `S` binding on a child task row resolves to the separate Make Checklist Item
+descriptor. Its handler freezes the selected task's persisted JSON and calls
+`SubviewCoordinator.MakeChecklistItem`. The application operation rechecks the
+task against a fresh snapshot, refuses any task-only content, descendants,
+planning membership, or incoming references, and commits the child removal and
+checklist insertion together. A promoted child's origin is stored in the strict
+task schema, allowing reinsertion at the saved index while the parent remains
+the same. The result carries the parent and inserted index so the Outliner can
+open its checklist and select that specific row after reload.
 
 That same decoration owns the other end. The value overlay closes before the
 append is executed, so a commit refused by an unwritable project or a moved

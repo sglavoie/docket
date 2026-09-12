@@ -166,7 +166,7 @@ func TestProjectCommentInteriorGrammarIsStrict(t *testing.T) {
 			t.Fatalf("the escaped markers swallowed the task list: %+v", parsed.Tasks)
 		}
 
-		live, err := ParseProjectDocument(published)
+		live, err := ParseProjectDocument(strings.Replace(published, schemaMarkerV17, schemaMarkerV18, 1))
 		if err != nil {
 			t.Fatalf("ParseProjectDocument: %v\n%s", err, published)
 		}

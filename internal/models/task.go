@@ -29,6 +29,14 @@ type ChecklistItem struct {
 	Done bool   `json:"done"`
 }
 
+// ChecklistOrigin remembers where a promoted checklist item belonged. It only
+// controls placement if the child still has this same parent.
+type ChecklistOrigin struct {
+	ProjectID string `json:"project_id"`
+	TaskID    string `json:"task_id"`
+	Index     int    `json:"index"`
+}
+
 // Task is the target generic work record.
 type Task struct {
 	ID          string `json:"id"`
@@ -36,14 +44,15 @@ type Task struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	// WorkflowState is the single lifecycle source of truth.
-	WorkflowState WorkflowState `json:"workflow_state,omitempty"`
-	Priority      int           `json:"priority"`
-	ParentID      *string       `json:"parent_id,omitempty"`
-	Tags          []string      `json:"tags,omitempty"`
-	Context       string        `json:"context,omitempty"`
-	DeferCount    int           `json:"defer_count,omitempty"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
+	WorkflowState   WorkflowState    `json:"workflow_state,omitempty"`
+	Priority        int              `json:"priority"`
+	ParentID        *string          `json:"parent_id,omitempty"`
+	ChecklistOrigin *ChecklistOrigin `json:"checklist_origin,omitempty"`
+	Tags            []string         `json:"tags,omitempty"`
+	Context         string           `json:"context,omitempty"`
+	DeferCount      int              `json:"defer_count,omitempty"`
+	CreatedAt       time.Time        `json:"created_at"`
+	UpdatedAt       time.Time        `json:"updated_at"`
 	// StateChangedAt is the state clock: the instant WorkflowState last became
 	// its current value. UpdatedAt cannot answer "in this state since" because
 	// comments, tags, attachments, reparenting, and manual reordering bump it.

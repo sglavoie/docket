@@ -86,7 +86,11 @@ func ManagerPlanningArtifacts(mgr *config.Manager) app.PlanningArtifactBuilder {
 		if err != nil {
 			return nil, err
 		}
-		if !app.ReconcilePlanningState(planning, req) {
+		if err := requireUnplanned(planning, req.RequireAbsent); err != nil {
+			return nil, err
+		}
+		changed := app.ReconcilePlanningState(planning, req)
+		if !changed && !req.GuardOnly {
 			return nil, nil
 		}
 		artifact, err := coord.CheckedPlanningArtifact(planning)
@@ -107,7 +111,11 @@ func RuntimePlanningArtifacts(runtime *config.RuntimeState) app.PlanningArtifact
 	}
 	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
 		planning := ClonePlanningState(runtime.Planning())
-		if !app.ReconcilePlanningState(planning, req) {
+		if err := requireUnplanned(planning, req.RequireAbsent); err != nil {
+			return nil, err
+		}
+		changed := app.ReconcilePlanningState(planning, req)
+		if !changed && !req.GuardOnly {
 			return nil, nil
 		}
 		artifact, err := runtime.CheckedPlanningArtifact(planning)
@@ -116,4 +124,16 @@ func RuntimePlanningArtifacts(runtime *config.RuntimeState) app.PlanningArtifact
 		}
 		return []storage.ArtifactChange{artifact.StorageChange()}, nil
 	}
+}
+
+func requireUnplanned(planning *config.PlanningState, locator *app.TaskLocator) error {
+	if locator == nil {
+		return nil
+	}
+	for _, item := range append(append([]config.ProjectTaskLocator(nil), planning.Today...), planning.GetNext()...) {
+		if item.ProjectID == locator.ProjectID && item.TaskID == locator.TaskID {
+			return fmt.Errorf("task belongs to Today or Next")
+		}
+	}
+	return nil
 }

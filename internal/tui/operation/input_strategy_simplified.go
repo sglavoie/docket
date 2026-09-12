@@ -42,14 +42,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// owner task and from any of its items alike.
 			{OperationID: OperationChecklistAddItem, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 21, FooterLabel: "checklist item"},
 			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick"},
-			// S promotes the item under the cursor into a subtask of the task that
-			// owns it. It claims a key of its own rather than joining A: A creates an
-			// empty child of a task row and this consumes an item that already exists,
-			// so one key would have to branch on what the cursor holds. It carries no
-			// FooterRank — the footer ladder is the daily loop's, and a checklist row
-			// already spends its ranks on x, e and Space — and the generated ? help and
-			// the menu bar name it regardless.
-			{OperationID: OperationChecklistPromoteItem, Keys: []string{"S"}, DisplayKey: "S"},
+			// S converts the selected checklist item or child task in either direction.
+			// The two descriptors share a key but have disjoint row applicability, so
+			// help and menus name the action appropriate to the selected row.
+			{OperationID: OperationChecklistPromoteItem, Keys: []string{"S"}, DisplayKey: "S", SharedKey: true},
+			{OperationID: OperationChecklistDemoteChild, Keys: []string{"S"}, DisplayKey: "S", SharedKey: true},
 			// Space is a three-way shared key: checklist row, project header, task
 			// row. Exactly one of the three applies at any cursor, so declaration
 			// order only decides which is asked first, never which one wins.
