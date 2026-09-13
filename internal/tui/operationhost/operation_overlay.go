@@ -32,9 +32,18 @@ func (c *Controller) ExecuteRequest(
 	return operation.ResultCmd(result)
 }
 
-// OpenValueStep opens the value overlay one provider needs: a typed prompt for
-// text values, the ListSurface picker for everything else.
+// OpenValueStep opens the value overlay one provider needs: the check-in editor,
+// a typed prompt for text values, or the ListSurface picker.
 func (c *Controller) OpenValueStep(shell Shell, request operation.OperationValueRequestMsg) tea.Cmd {
+	if request.Provider.CheckInEntry() {
+		editor, err := shell.NewCheckInEditor(request.Request)
+		if err != nil {
+			shell.SetError(err)
+			return status.StatusTimeout(5 * time.Second)
+		}
+		c.CheckInEditor = editor
+		return editor.InitCmd()
+	}
 	if request.Provider.TextEntry() {
 		prompt, err := shell.NewTextPrompt(request.Request, request.Provider)
 		if err != nil {

@@ -21,6 +21,17 @@ type OperationDateValue struct {
 	Deferred bool
 }
 
+// OperationCheckInValue is the editor-neutral check-in payload. Clear records
+// the explicit choice to remove a schedule; an absent date without Clear is not
+// an instruction and is refused by the editor. The input spellings travel only
+// so a failed asynchronous save can restore the exact draft the user submitted.
+type OperationCheckInValue struct {
+	Schedule    models.CheckInSchedule
+	Clear       bool
+	DateInput   string
+	RepeatInput string
+}
+
 // OperationTagsValue is the tri-state bulk tag edit emitted by the value
 // picker. Add and Remove are uniform patches; tags in neither set preserve
 // their existing per-task membership. ContextSet carries the singleton task

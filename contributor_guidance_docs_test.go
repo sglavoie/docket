@@ -657,7 +657,13 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// automatic Stale lane without retiring its explicit filter or lens. The
 	// mechanism lives in docs/architecture/row-indicators.md and
 	// docs/architecture/presentation-chrome.md.
-	const budget = 46263
+	// Thirty-first raise, 46263 to 46602, for the reusable check-in editor. 339
+	// bytes buy the one draft contract every scheduling entry point must share:
+	// bulk starts without a borrowed default, clearing is explicit, date and
+	// cadence remain paired until save, and a commit refusal restores both over
+	// the frozen qualified targets. The mechanism lives in
+	// docs/architecture/operation-grammar.md.
+	const budget = 46602
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -683,8 +689,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The menu bar is not a sheet but a projection of the registry, the class `?` help and " +
 			"the footer ranks belong to, so it names directly-bound operations freely",
 		"a menu-only operation's `TargetSource` is target-free or view-scoped, never a task or project",
-		"The task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no " +
-			"direct key and confirms first",
+		"The task-row `Space` menu holds Set Check-In and Delete, identical to the bulk menu: " +
+			"the editor saves with `Ctrl+S`, while Delete confirms first",
+		"bulk use starts blank and labels the replacement",
 		"The Outliner project-header sheet is Archive and Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
 		"`*`, `#`, `C`, `;`, `e`, and `Space` are the shared keys, the cursor deciding: task or " +

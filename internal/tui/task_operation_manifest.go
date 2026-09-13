@@ -18,6 +18,15 @@ import (
 func taskOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
 		{
+			ID:       operation.OperationTaskSetCheckIn,
+			Label:    "Set Check-In",
+			Aliases:  []string{"schedule review", "check in", "repeat review", "clear check-in"},
+			Provider: operation.ValueProviderCheckIn,
+			Category: taskActionCategoryPlan,
+			Risk:     operation.OperationRiskMutation,
+			Bulk:     true,
+		},
+		{
 			ID:       operation.OperationTaskDelete,
 			Label:    "Delete",
 			Aliases:  []string{"remove task", "destroy task", "delete subtree"},
@@ -281,6 +290,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		operation.ValueProviderPriority,
 		operation.ValueProviderDate,
 		operation.ValueProviderDueDate,
+		operation.ValueProviderCheckIn,
 		operation.ValueProviderTags,
 		operation.ValueProviderParent,
 		operation.ValueProviderChild,
@@ -321,6 +331,7 @@ const (
 )
 
 var taskActionCategories = []listsurface.ListCategory{
+	{ID: taskActionCategoryPlan, Label: "Plan"},
 	{ID: taskActionCategoryContent, Label: "Content"},
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }

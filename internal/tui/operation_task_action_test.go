@@ -103,9 +103,10 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 			ordered = append(ordered, descriptor.ID)
 		}
 	}
-	// Every direct and retired operation is absent. The remaining projection is
-	// the single-row task menu, which Delete alone now occupies.
+	// Every direct and retired operation is absent. Check-in is the reusable
+	// scheduling form and Delete remains the destructive action.
 	want := []operation.OperationID{
+		operation.OperationTaskSetCheckIn,
 		operation.OperationTaskDelete,
 	}
 	if !reflect.DeepEqual(ordered, want) {

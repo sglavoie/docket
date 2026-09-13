@@ -100,12 +100,14 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	wantIDs := []operation.OperationID{
+		operation.OperationTaskSetCheckIn,
 		operation.OperationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("action sheet IDs = %v, want exactly Delete %v", ids, wantIDs)
+		t.Fatalf("action sheet IDs = %v, want %v", ids, wantIDs)
 	}
 	wantLabels := []string{
+		"Set Check-In",
 		"Delete",
 	}
 	for index, descriptor := range descriptors {
@@ -172,8 +174,11 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 			seenCategories[row.Category.ID] = true
 		}
 	}
-	// Delete is the whole menu, so Danger is the whole grouping: the Content
-	// header left with Comments and Attachments when they became direct keys.
+	// The reusable schedule editor and destructive action keep their distinct
+	// Plan and Danger groups.
+	if !seenCategories[taskActionCategoryPlan] {
+		t.Errorf("grouped sheet missing category %s", taskActionCategoryPlan)
+	}
 	if !seenCategories[taskActionCategoryDanger] {
 		t.Errorf("grouped sheet missing category %s", taskActionCategoryDanger)
 	}
@@ -212,10 +217,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 }
 
-// TestActionSheetMovesWithCtrlJAndCtrlK covers the sheet navigation the task
-// menu used to demonstrate. The task menu is Delete alone now that Comments and
-// Attachments answer to & and ;, so a single row can no longer move; the shared
-// sheet engine is exercised through an Outliner-hosted two-row sheet instead.
+// TestActionSheetMovesWithCtrlJAndCtrlK covers the shared sheet navigation
+// independently from the production task catalog.
 func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.first", "First"),
@@ -291,8 +294,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Equal(ids, []operation.OperationID{operation.OperationTaskDelete}) {
-		t.Fatalf("bulk action sheet IDs = %v, want Delete", ids)
+	if !slices.Equal(ids, []operation.OperationID{operation.OperationTaskSetCheckIn, operation.OperationTaskDelete}) {
+		t.Fatalf("bulk action sheet IDs = %v, want Set Check-In and Delete", ids)
 	}
 	for _, excluded := range []operation.OperationID{
 		// The four metadata operations reach a selection through their direct key.
@@ -324,6 +327,9 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	sheet, err := NewTaskActionSheetModel(registry, operation.NewOperationExecutor(registry), context, "2 tasks")
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
+	}
+	if !sheet.Surface.SetCursorToID("task-action:" + listsurface.ListItemID(operation.OperationTaskSetCheckIn)) {
+		t.Fatal("set check-in action is missing from the bulk sheet")
 	}
 	if !sheet.Surface.SetCursorToID("task-action:" + listsurface.ListItemID(operation.OperationTaskDelete)) {
 		t.Fatal("delete action is missing from the bulk sheet")

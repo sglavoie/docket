@@ -137,7 +137,10 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 		operation.OperationTaskSetState:    models.StateBacklog,
 		operation.OperationTaskSetPriority: 2,
 		operation.OperationTaskSetDueDate:  operation.OperationDateValue{},
-		operation.OperationTaskSetTags:     []string{"release"},
+		operation.OperationTaskSetCheckIn: operation.OperationCheckInValue{
+			Clear: true,
+		},
+		operation.OperationTaskSetTags: []string{"release"},
 	}
 	for _, entry := range taskOperationManifest() {
 		if !entry.Bulk {

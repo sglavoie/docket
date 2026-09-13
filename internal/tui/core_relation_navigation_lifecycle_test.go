@@ -269,7 +269,12 @@ func TestMutationsWhileVisitingLeaveTheReturnResolvingAgainstCurrentData(t *test
 		{
 			name: "deletion",
 			mutate: func(t *testing.T, env *relationLifecycleEnv) {
-				env.settle(t, "space", "enter", "y")
+				env.press(t, "space")
+				sheet := env.driver.App().operations.ActionSheet
+				if sheet == nil || !sheet.Surface.SetCursorToID("task-action:tui.task.delete") {
+					t.Fatal("task action sheet is missing Delete")
+				}
+				env.settle(t, "enter", "y")
 			},
 			verify: func(t *testing.T, env *relationLifecycleEnv) {
 				if env.task(t, env.targetProjectID, env.targetID) != nil {

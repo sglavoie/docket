@@ -78,7 +78,9 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 func TestGuideDocumentsExactTaskMenu(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
-		"`Space` contains exactly: 1. Delete",
+		"`Space` contains exactly: 1. Set Check-In 2. Delete",
+		"Repeat offers Off, 1, 3, 7, 14, and 30 days, or a custom positive day count",
+		"an empty bulk draft never clears schedules",
 		"Comments and Attachments left this menu when they gained `;` and `&`",
 		"Project Actions holds Archive project and Delete project under Danger, and nothing else",
 		"Editing left this menu when the header gained `e`, and pinning left it when the " +

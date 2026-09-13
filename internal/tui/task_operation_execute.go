@@ -50,11 +50,16 @@ func (m *AppModel) executeTaskOperation(
 			return operation.OperationHandlerResult{Err: err}
 		}
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+		cmd := m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary)
+		if invocation.Descriptor.ID == operation.OperationTaskSetCheckIn {
+			value := invocation.Value.(operation.OperationCheckInValue)
+			cmd = m.retainCheckInDraftOnFailure(operation.OperationExecutionRequest{
+				ID:      invocation.Descriptor.ID,
+				Context: operation.CloneCommandContext(invocation.Context),
+			}, value, cmd)
+		}
 		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
-			Cmd: withWaitingCheckBackStep(invocation, withOutlinerRelocationCapture(
-				m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
-				capture,
-			)),
+			Cmd: withWaitingCheckBackStep(invocation, withOutlinerRelocationCapture(cmd, capture)),
 		}}
 	}
 	if len(invocation.Targets.Targets) > 1 {
@@ -439,6 +444,20 @@ func applicationTaskOperationRequest(
 		}
 		return request, "Set Due Date",
 			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
+
+	case operation.OperationTaskSetCheckIn:
+		value, ok := invocation.Value.(operation.OperationCheckInValue)
+		if !ok || (value.Clear && !value.Schedule.IsEmpty()) || (!value.Clear && value.Schedule.Next == nil) {
+			return request, "", "", true, fmt.Errorf("invalid check-in value")
+		}
+		request.Operation = app.TaskOperationSetCheckIn
+		request.CheckIn = value.Schedule.Clone()
+		verb := "Scheduled check-in for"
+		if value.Clear {
+			verb = "Cleared check-in on"
+		}
+		return request, "Set Check-In",
+			fmt.Sprintf("Set Check-In · %s %d task(s)", verb, count), true, nil
 
 	case operation.OperationTaskSetTags:
 		switch value := invocation.Value.(type) {

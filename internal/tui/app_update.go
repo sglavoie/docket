@@ -267,6 +267,13 @@ func (m *AppModel) handleProjectParkConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	if m.operations.CheckInEditor != nil {
+		dismiss, cmd := dispatchOverlayKey(m.operations.CheckInEditor, msg)
+		if dismiss {
+			m.operations.CheckInEditor = nil
+		}
+		return true, cmd
+	}
 	if m.operations.TextPrompt != nil {
 		dismiss, cmd := dispatchOverlayKey(m.operations.TextPrompt, msg)
 		if dismiss {
@@ -312,17 +319,19 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// handleActivePasteOverlay gives a terminal bracketed paste to the mounted text
-// prompt, which is the overlay depth handleActiveKeyOverlay serves first. A
+// handleActivePasteOverlay gives a terminal bracketed paste to the mounted
+// check-in editor or text prompt. A
 // paste is not a run of key presses: it arrives as its own message, so an
 // overlay covering a view would otherwise watch the paste land in that view —
 // or, since the Outliner drops a paste outside quick edit, vanish. Only the text
-// prompt is named because it is the only overlay of the five that collects typed
-// text; the other four answer keys from a closed set no paste can spell, and
+// editor and prompt are named because they are the overlays that collect typed
+// text; the others answer keys from a closed set no paste can spell, and
 // leaving them out keeps every path a paste already took unchanged. Returning
-// true while the prompt is mounted is what stops the fall-through, including
-// under an armed discard, where the prompt owns the input and enters nothing.
+// true while either is mounted is what stops the fall-through.
 func (m *AppModel) handleActivePasteOverlay(msg tea.PasteMsg) (bool, tea.Cmd) {
+	if m.operations.CheckInEditor != nil {
+		return true, m.operations.CheckInEditor.HandlePaste(msg)
+	}
 	if m.operations.TextPrompt == nil {
 		return false, nil
 	}

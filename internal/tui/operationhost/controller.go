@@ -25,13 +25,14 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 // Shell is what the operation host needs from the shell that owns it. Every
 // method is a read of where the user is or a construction the shell alone can
-// perform, which is what keeps the two value factories — the picker and the
-// typed prompt — outside this package: each dispatches across the shell's other
+// perform, which is what keeps the value factories — the picker, typed prompt,
+// and check-in editor — outside this package: each dispatches across the shell's other
 // clusters, and a factory that named them all would put the whole shell behind
 // this port.
 type Shell interface {
@@ -63,8 +64,8 @@ type Shell interface {
 	// SetError retains a refusal on the shell's own feedback line.
 	SetError(error)
 
-	// NewValuePicker and NewTextPrompt build the value step a provider asks for.
-	// Both dispatch across clusters this package does not own.
+	// These factories build the value step a provider asks for. They dispatch
+	// across clusters this package does not own.
 	NewValuePicker(
 		operation.OperationExecutionRequest,
 		operation.ValueProviderID,
@@ -73,6 +74,9 @@ type Shell interface {
 		operation.OperationExecutionRequest,
 		operation.ValueProviderID,
 	) (*OperationTextPromptModel, error)
+	NewCheckInEditor(
+		operation.OperationExecutionRequest,
+	) (*taskform.CheckInEditorModel, error)
 
 	// ResumeWithoutSheet runs a resumed request when no action sheet is mounted.
 	// The lens picker is the one surface an operation is raised from without a
@@ -87,8 +91,8 @@ type Shell interface {
 // Controller is the shell's operation-wiring cluster: the descriptor authority,
 // the invocation pipeline, and the two-level overlay flow one invocation can
 // open on its way to an answer — the contextual action sheet, the value step (a
-// picker, or a typed prompt when the provider says so), and the confirmation a
-// destructive action stops at with its frozen request. The keys already pressed
+// picker, typed prompt, or check-in editor), and the confirmation a destructive
+// action stops at with its frozen request. The keys already pressed
 // toward an unfinished chord live here too, because a prefix is only meaningful
 // against the registry that declared it.
 //
@@ -112,10 +116,11 @@ type Controller struct {
 	// flow. The host it was opened for travels on every message it emits.
 	ActionSheet *listsurface.ContextActionSheetModel
 
-	// ValuePicker and TextPrompt are the second level: exactly one of them is
-	// mounted, chosen by whether the value provider takes typed text.
-	ValuePicker *valuepicker.OperationValuePickerModel
-	TextPrompt  *OperationTextPromptModel
+	// The value overlays are the second level: exactly one is mounted, chosen by
+	// the value provider.
+	ValuePicker   *valuepicker.OperationValuePickerModel
+	TextPrompt    *OperationTextPromptModel
+	CheckInEditor *taskform.CheckInEditorModel
 
 	// Confirm is the prompt a destructive contextual action stops at, and
 	// pendingRequest is the executor-supplied request it froze, so cancellation
@@ -230,18 +235,19 @@ func (c *Controller) registerSurfaceInputStrategies(gates []SurfaceGate) error {
 
 // OverlayMounted reports whether any level of the contextual action flow is on
 // screen. It doubles as the has-active-text-input answer because every level of
-// it takes typed input — the sheet and the picker filter, the prompt composes —
-// so the shell suppresses its global single-key shortcuts for all three alike.
+// it takes typed input — the sheet and picker filter, while the prompt and
+// editor compose — so the shell suppresses global single-key shortcuts.
 func (c *Controller) OverlayMounted() bool {
-	return c.ActionSheet != nil || c.ValuePicker != nil || c.TextPrompt != nil
+	return c.ActionSheet != nil || c.ValuePicker != nil || c.TextPrompt != nil || c.CheckInEditor != nil
 }
 
-// ClearValueStep dismisses whichever value overlay is mounted. Both are cleared
+// ClearValueStep dismisses whichever value overlay is mounted. All are cleared
 // because exactly one can be, and naming the survivor would be a second place
 // that has to know which.
 func (c *Controller) ClearValueStep() {
 	c.ValuePicker = nil
 	c.TextPrompt = nil
+	c.CheckInEditor = nil
 }
 
 // ClearOverlays dismisses the whole flow and releases the frozen request, so no

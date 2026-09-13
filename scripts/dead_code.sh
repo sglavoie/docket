@@ -19,14 +19,8 @@ fi
 # grammar that compiles into it. It has no production caller until the capture
 # and search grammar is wired to it; delete this pattern in that session, once
 # internal/textgrammar imports the query.
-#
-# The same applies to util.ParseCheckInDate, which reads a typed check-in value
-# for the capture grammar rather than for persistence, so the storage boundary
-# never reaches it. Delete this pattern in the session that wires the check-in
-# sigil, which is the session that gives it its first production caller.
 grep -v '^internal/testutil/' "$production_output" |
-	grep -v '^internal/models/query' |
-	grep -v '^internal/util/dates_calendar.go.*ParseCheckInDate' >"$actionable_output" || true
+	grep -v '^internal/models/query' >"$actionable_output" || true
 if [ -s "$actionable_output" ]; then
 	echo "production dead code detected outside internal/testutil:" >&2
 	cat "$actionable_output" >&2

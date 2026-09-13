@@ -15,7 +15,7 @@ reads.
 
 | Strategy | Manifest | Menu keeps |
 | --- | --- | --- |
-| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Delete alone on a task row; Edit, Archive, Delete on a project header |
+| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Set Check-In and Delete on a task row; Edit, Archive, Delete on a project header |
 | `ProjectHubInputStrategy` | `ProjectOperationManifest` | Archive or Unarchive, bulk tags |
 | `NotesInputStrategy` | `NotesOperationManifest` | Delete |
 | `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
@@ -30,6 +30,16 @@ grammar already reaches it on press one, and every remaining entry is a menu row
 with no direct key. `Core` marks the entries whose descriptor
 `registerCoreInputOperations` owns, so the manifest ranks and groups them
 without restating a label or a risk the core descriptor already carries.
+
+Set Check-In is the task manifest's typed form action. Its
+`ValueProviderCheckIn` value step is a compact `taskform.CheckInEditorModel`
+rather than a one-value picker: date and repeat stay together until `Ctrl+S`,
+and the emitted `OperationCheckInValue` carries the validated schedule plus the
+exact draft spellings needed to reconstruct a refused asynchronous save. The
+operation request freezes project-qualified targets before the sheet opens;
+the application bulk operation re-resolves them from a fresh snapshot and
+commits every target or none. A bulk editor starts blank and requires either a
+date or explicit Clear, so no selected task becomes the hidden default.
 
 The split lands the same way everywhere. What the surface is for stays direct;
 what is destructive or rare goes behind `Space`, and a destructive row confirms

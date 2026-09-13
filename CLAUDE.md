@@ -103,6 +103,10 @@ it leaves the review flag, `LastReviewedAt`, the state, and its clock alone;
 work owes nothing and reopening inherits nothing. `LastReviewedAt` survives
 completion and nothing may mint one. Every field-enumerating projection carries
 all three; a checklist demotion refuses rather than drop them.
+`ValueProviderCheckIn` opens one two-field draft: single-task use prefills the
+stored schedule, bulk use starts blank and labels the replacement, and only an
+explicit Clear means removal. Date and repeat validation and failed commits
+retain that draft; the frozen qualified targets are re-resolved at commit.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -151,8 +155,8 @@ operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
 or project. Clear All Folds and Advisories are the two keyless entries; both are
 target-free. The
-task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
-direct key and confirms first. The Hub sheet is
+task-row `Space` menu holds Set Check-In and Delete, identical to the bulk menu:
+the editor saves with `Ctrl+S`, while Delete confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
 Outliner project-header sheet is Archive and Delete, and never Unarchive: that
 header is drawn from the active population.

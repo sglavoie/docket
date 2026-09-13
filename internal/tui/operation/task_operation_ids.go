@@ -9,6 +9,10 @@ const (
 	OperationTaskSetState    OperationID = "tui.task.set-state"
 	OperationTaskSetPriority OperationID = "tui.task.set-priority"
 	OperationTaskSetDueDate  OperationID = "tui.task.set-due-date"
+
+	// OperationTaskSetCheckIn opens the shared schedule editor and commits its
+	// date/repeat pair across the frozen task selection in one transaction.
+	OperationTaskSetCheckIn OperationID = "tui.task.set-check-in"
 	// The two deadline steps are separate IDs rather than one operation reading a
 	// direction off the key, because a descriptor's target source and label may
 	// never branch on runtime context: "earlier" and "later" are two acts, so they

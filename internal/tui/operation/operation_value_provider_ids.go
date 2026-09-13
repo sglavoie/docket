@@ -16,6 +16,11 @@ const (
 	// fields, and the selected row carries which field it writes.
 	ValueProviderDate ValueProviderID = "date"
 
+	// ValueProviderCheckIn opens the reusable two-field check-in editor. It is
+	// neither a text prompt nor a list picker: both the date and repeat cadence
+	// stay in one draft until Ctrl+S submits the pair.
+	ValueProviderCheckIn ValueProviderID = "check-in"
+
 	// ValueProviderDueDate is the due-only projection of the same presets. Only
 	// the waiting check-back chain opens it, because that step is asking for a
 	// deadline specifically and a defer section would be noise there.
@@ -137,6 +142,9 @@ func (id ValueProviderID) TagEntry() bool {
 func (id ValueProviderID) DateEntry() bool {
 	return id == ValueProviderDate || id == ValueProviderDueDate
 }
+
+// CheckInEntry reports whether the operation needs the reusable check-in form.
+func (id ValueProviderID) CheckInEntry() bool { return id == ValueProviderCheckIn }
 
 func WithValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
 	descriptor.ValueProviderID = provider

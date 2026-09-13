@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
@@ -206,6 +207,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	}{
 		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
 		{"value picker", func(app *AppModel) { app.operations.ValuePicker = &valuepicker.OperationValuePickerModel{} }},
+		{"check-in editor", func(app *AppModel) { app.operations.CheckInEditor = &taskform.CheckInEditorModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
 			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)
@@ -272,6 +274,7 @@ func TestAttentionDayRefreshIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	}{
 		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
 		{"value picker", func(app *AppModel) { app.operations.ValuePicker = &valuepicker.OperationValuePickerModel{} }},
+		{"check-in editor", func(app *AppModel) { app.operations.CheckInEditor = &taskform.CheckInEditorModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
 			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)

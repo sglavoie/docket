@@ -270,15 +270,25 @@ no key edits them.
 
 `Space` contains exactly:
 
-1. Delete
+1. Set Check-In
+2. Delete
 
 The list filters as soon as printable text is typed. Frequent direct operations
-do not repeat in this menu. Delete always asks for confirmation. The checklist
+do not repeat in this menu. Set Check-In opens one draft with **Next check-in**
+and **Repeat** fields. A single task starts with its stored schedule; a bulk
+selection starts blank and says that saving replaces every selected schedule.
+Use `Tab`/`Shift+Tab` between fields, `Enter` for the current field's presets,
+and `Ctrl+S` to save. Dates accept the relative spellings used by the date
+controls or a custom calendar date. Repeat offers Off, 1, 3, 7, 14, and 30 days,
+or a custom positive day count. Clear is an explicit date choice; an empty bulk
+draft never clears schedules. `Esc` closes a nested preset list first and
+cancels the editor from its field view. Validation and save failures keep the
+draft open for correction. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid. Comments and Attachments left
 this menu when they gained `;` and `&`, which is that same rule: a panel reached
-by a key is not also a row, so the single-task sheet is now identical to the
-bulk one.
+by a key is not also a row. The single-task sheet remains identical to the bulk
+one, with the latter applying one explicit schedule replacement atomically.
 
 The same key on a project group header opens a different sheet, because the row
 names a project rather than a task. Project Actions holds Archive project and

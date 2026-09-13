@@ -375,6 +375,9 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	if m.operations.ActionSheet != nil {
 		out = append(out, m.operations.ActionSheet)
 	}
+	if m.operations.CheckInEditor != nil {
+		out = append(out, m.operations.CheckInEditor)
+	}
 	if m.operations.ValuePicker != nil {
 		out = append(out, m.operations.ValuePicker)
 	}

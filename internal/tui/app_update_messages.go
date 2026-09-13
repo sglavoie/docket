@@ -539,6 +539,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.reopenResumeNotePrompt(typed)
 	case CommentRejectedMsg:
 		return true, m.reopenCommentPrompt(typed)
+	case CheckInRejectedMsg:
+		return true, m.reopenCheckInEditor(typed)
 	case entityops.ChecklistItemRejectedMsg:
 		return true, m.reopenChecklistItemPrompt(typed)
 	case valuepicker.ProjectTagVocabularyActionsMsg:
