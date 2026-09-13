@@ -214,8 +214,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.handleBasicsEnter()
 			}
 			if m.activeTab == formTabSchedule {
-				m.handleScheduleEnter()
-				return m, nil
+				return m, m.handleScheduleEnter()
 			}
 			if m.activeTab == formTabChildren {
 				m.handleChildrenEnter()

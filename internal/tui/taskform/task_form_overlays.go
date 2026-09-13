@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // formOverlayKind tracks which inline overlay is active in TaskFormModel.
@@ -17,6 +18,7 @@ const (
 	formOverlayState                          // formStatePicker
 	formOverlayFlags                          // formFlagsPicker
 	formOverlayDue                            // formDueDatePicker
+	formOverlayCheckIn                        // shared CheckInEditorModel
 	formOverlayChecklistEdit                  // inline textinput for editing a checklist item
 	formOverlaySubtaskEdit                    // inline overlay for editing a subtask draft
 	formOverlayAttachmentEdit                 // inline textinput for editing an attachment draft
@@ -46,6 +48,10 @@ func (m *TaskFormModel) renderFormOverlay() string {
 	case formOverlayDue:
 		if m.duePicker != nil {
 			return m.duePicker.render(m.width, m.draft.dueDate)
+		}
+	case formOverlayCheckIn:
+		if m.checkInEditor != nil {
+			return m.checkInEditor.Render(m.width)
 		}
 	case formOverlayChecklistEdit:
 		return m.renderChecklistEditOverlay()
@@ -83,6 +89,10 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	case formOverlayDue:
 		if m.duePicker != nil {
 			dismiss, result = m.duePicker.handleKey(msg)
+		}
+	case formOverlayCheckIn:
+		if m.checkInEditor != nil {
+			cmd, dismiss, result = m.checkInEditor.HandleKey(msg)
 		}
 	case formOverlayChecklistEdit:
 		cmd, dismiss, result = m.handleChecklistEditKey(msg)
@@ -160,6 +170,7 @@ func (m *TaskFormModel) closeInlineOverlay() {
 	m.statePicker = nil
 	m.flagsPicker = nil
 	m.duePicker = nil
+	m.checkInEditor = nil
 }
 
 // applyFormOverlayResult merges an overlay result into the draft and marks dirty.
@@ -187,6 +198,18 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 		}
 		// Sync the textinput so it shows the updated value if still on the Due row.
 		m.dueTextInput.SetValue(m.draft.dueInput)
+		m.hasChanges = true
+		m.err = nil
+	case operation.OperationValueSelectedMsg:
+		value, ok := msg.Value.(operation.OperationCheckInValue)
+		if !ok {
+			return
+		}
+		if value.Clear {
+			m.draft.checkIn = models.CheckInSchedule{}
+		} else {
+			m.draft.checkIn = value.Schedule.Clone()
+		}
 		m.hasChanges = true
 		m.err = nil
 

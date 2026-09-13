@@ -47,6 +47,7 @@ type taskFormDraft struct {
 	context  string
 	dueDate  *time.Time
 	dueInput string
+	checkIn  models.CheckInSchedule
 	desc     string
 
 	// Children tab data.
@@ -84,6 +85,7 @@ type TaskFormModel struct {
 	statePicker    *formStatePicker
 	flagsPicker    *formFlagsPicker
 	duePicker      *formDueDatePicker
+	checkInEditor  *CheckInEditorModel
 
 	// Children tab state
 	checklistExpanded bool

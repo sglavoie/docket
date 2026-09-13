@@ -525,6 +525,10 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.operations.ShowConfirmation(typed)
 		return true, nil
 	case operation.OperationValueRequestMsg:
+		// A value step may itself offer a typed route to a different editor (the
+		// combined scheduling picker does this for Check-in). Replace the mounted
+		// value overlay while retaining the request's frozen target identities.
+		m.operations.ClearValueStep()
 		return true, m.operations.OpenValueStep(m, typed)
 	case operation.OperationValueSelectedMsg:
 		m.operations.ClearValueStep()

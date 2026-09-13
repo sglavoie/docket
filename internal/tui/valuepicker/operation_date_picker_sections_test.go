@@ -106,14 +106,14 @@ func TestCombinedDatePickerOpensOnADueRow(t *testing.T) {
 		{DateListItemID(false, "today")},
 	} {
 		picker := newDatePickerForTest(t, "", selected...)
-		deferred, ok := picker.dateFieldUnderCursor()
-		if !ok || deferred {
-			t.Fatalf("selected %v opened on deferred = %v (resolved %v)", selected, deferred, ok)
+		section, ok := picker.dateSectionUnderCursor()
+		if !ok || section != datePickerSectionDue {
+			t.Fatalf("selected %v opened in section %v (resolved %v), want Due", selected, section, ok)
 		}
 	}
 }
 
-func TestTabCrossesBetweenTheTwoDateSections(t *testing.T) {
+func TestTabAndShiftTabCycleTheThreeSchedulingSections(t *testing.T) {
 	picker := newDatePickerForTest(t, "")
 	if got, want := currentDateRowID(t, picker), DateListItemID(false, "clear"); got != want {
 		t.Fatalf("opening row = %q, want %q", got, want)
@@ -126,12 +126,24 @@ func TestTabCrossesBetweenTheTwoDateSections(t *testing.T) {
 	if got, want := currentDateRowID(t, picker), DateListItemID(true, "clear"); got != want {
 		t.Fatalf("row after tab = %q, want the first defer row %q", got, want)
 	}
+	if _, result := pressKey(picker, "tab"); result != nil {
+		t.Fatalf("tab to Check-in message = %#v, want none", result)
+	}
+	if got := currentDateRowID(t, picker); got != dateCheckInEditorItemID {
+		t.Fatalf("row after second tab = %q, want %q", got, dateCheckInEditorItemID)
+	}
+	if _, result := pressKey(picker, "tab"); result != nil {
+		t.Fatalf("tab wrapping to Due message = %#v, want none", result)
+	}
+	if got, want := currentDateRowID(t, picker), DateListItemID(false, "clear"); got != want {
+		t.Fatalf("row after wrapped tab = %q, want %q", got, want)
+	}
 
 	if _, result := pressKey(picker, "shift+tab"); result != nil {
 		t.Fatalf("shift+tab message = %#v, want none", result)
 	}
-	if got, want := currentDateRowID(t, picker), DateListItemID(false, "clear"); got != want {
-		t.Fatalf("row after shift+tab = %q, want the first due row %q", got, want)
+	if got := currentDateRowID(t, picker); got != dateCheckInEditorItemID {
+		t.Fatalf("row after shift+tab = %q, want %q", got, dateCheckInEditorItemID)
 	}
 }
 
@@ -177,8 +189,8 @@ func TestTabReachesDisabledDeferRowsThatActivationStillRefuses(t *testing.T) {
 	if !ok || item.Enabled() {
 		t.Fatalf("row after tab = %+v, want a disabled defer row", item)
 	}
-	if deferred, ok := picker.dateFieldUnderCursor(); !ok || !deferred {
-		t.Fatalf("disabled row resolved deferred = %v (%v), want the defer field", deferred, ok)
+	if section, ok := picker.dateSectionUnderCursor(); !ok || section != datePickerSectionDefer {
+		t.Fatalf("disabled row resolved section = %v (%v), want Defer", section, ok)
 	}
 
 	_, result := pressKey(picker, "a")
@@ -286,12 +298,56 @@ func TestCombinedDatePickerGuidanceNamesTheActiveFieldAndTheSwitch(t *testing.T)
 		t.Fatalf("defer-section guidance still names the due field:\n%s", rendered)
 	}
 
+	pressKey(picker, "tab")
+	rendered = ansi.Strip(picker.Render(100))
+	if strings.Contains(rendered, "a set") || strings.Contains(rendered, "preset key pick") {
+		t.Fatalf("Check-in action row advertises single-date controls:\n%s", rendered)
+	}
+
 	// Enter and Esc are required hints: an optional switch hint may never cost
 	// either of them their slot.
 	for _, want := range []string{"Enter choose", "Esc back"} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("guidance dropped the required hint %q:\n%s", want, rendered)
 		}
+	}
+}
+
+func TestCheckInRowOpensTheTypedEditorRequestAndClaimsDateKeys(t *testing.T) {
+	context := operation.CommandContext{Entity: operation.EntityContext{ProjectID: "project", TaskID: "task"}}
+	picker, err := NewOperationValuePickerModel(
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetDueDate, Context: context},
+		operation.ValueProviderDate,
+		"Set Due or Defer",
+		"Task",
+		OperationDateListSource(""),
+		false,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("NewOperationValuePickerModel: %v", err)
+	}
+	pressKey(picker, "shift+tab")
+	if got := currentDateRowID(t, picker); got != dateCheckInEditorItemID {
+		t.Fatalf("shift+tab from Due = %q, want Check-in", got)
+	}
+	for _, key := range []string{"t", "a"} {
+		dismissed, result := pressKey(picker, key)
+		if dismissed || result != nil || currentDateRowID(t, picker) != dateCheckInEditorItemID {
+			t.Fatalf("%q on Check-in dismissed=%v result=%#v row=%q", key, dismissed, result, currentDateRowID(t, picker))
+		}
+	}
+
+	_, dismissed, result := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	request, ok := result.(operation.OperationValueRequestMsg)
+	if !dismissed || !ok {
+		t.Fatalf("Enter dismissed=%v result=%T, want editor request", dismissed, result)
+	}
+	if request.Provider != operation.ValueProviderCheckIn || request.Request.ID != operation.OperationTaskSetCheckIn {
+		t.Fatalf("editor request = %+v", request)
+	}
+	if request.Request.Context.Entity.ProjectID != "project" || request.Request.Context.Entity.TaskID != "task" {
+		t.Fatalf("editor request lost frozen context: %+v", request.Request.Context.Entity)
 	}
 }
 

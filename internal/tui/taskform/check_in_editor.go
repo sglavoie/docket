@@ -74,7 +74,7 @@ func NewCheckInEditorModel(
 	bulk bool,
 ) *CheckInEditorModel {
 	date := textinput.New()
-	date.Placeholder = "today, tomorrow, +7d, or YYYY-MM-DD"
+	date.Placeholder = "today, +7d, or YYYY-MM-DD"
 	date.CharLimit = 64
 	repeat := textinput.New()
 	repeat.Placeholder = "Off or positive days"
@@ -314,8 +314,12 @@ func (model *CheckInEditorModel) Render(width int) string {
 	} else if model.picker == checkInPickerRepeat {
 		content.WriteString(model.renderRepeatPicker(contentWidth))
 	} else {
-		model.dateInput.SetWidth(max(contentWidth-18, 10))
-		model.repeatInput.SetWidth(max(contentWidth-18, 10))
+		// The focused marker and its separating space consume two columns before
+		// the 17-column label, and the text input's own prompt consumes two more.
+		// Giving the input the true remainder prevents the creation form's
+		// minimum-width frame from wrapping and losing its bottom border.
+		model.dateInput.SetWidth(max(contentWidth-21, 10))
+		model.repeatInput.SetWidth(max(contentWidth-21, 10))
 		theme.ApplyThemedTextInput(&model.dateInput)
 		theme.ApplyThemedTextInput(&model.repeatInput)
 		content.WriteString(chrome.RenderFormLabelWithWidth("Next check-in:", 17, model.focus == checkInFieldNext))
@@ -324,7 +328,7 @@ func (model *CheckInEditorModel) Render(width int) string {
 		content.WriteString(chrome.RenderFormLabelWithWidth("Repeat:", 17, model.focus == checkInFieldRepeat))
 		content.WriteString(model.repeatInput.View())
 		content.WriteString("\n\n")
-		content.WriteString(theme.MutedStyle.Render("Repeat options: Off, 1, 3, 7, 14, 30, or custom days"))
+		content.WriteString(theme.MutedStyle.Render("Repeat: Off, 1, 3, 7, 14, 30, or custom days"))
 	}
 	if model.notice != "" {
 		content.WriteString("\n\n")

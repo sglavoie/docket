@@ -31,7 +31,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
 		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
 		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
-		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; " +
+		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; " +
 			"`-` and `+` step the deadline one day earlier and one day later; " +
 			"`#` tags and context; `*` pin",
 		"earlier dates, yesterday, no deadline at all, today, tomorrow, later dates",
@@ -59,7 +59,8 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 			"both keys against that one ledger",
 		"No surface offers the `u undo` a recovery toast advertises and then consumes the key in silence",
 		"both it and `u` stay literal characters while a comment is being typed",
-		"`@` opens one Set Due or Defer picker holding both fields",
+		"`@` opens one scheduling picker holding three sections",
+		"CHECK-IN contains one Set check-in",
 		"`a` creates and selects a new tag",
 		"the `CONTEXTS` section is a radio group answering `#`",
 		"the leading `No context` row clears the field the way `##0` does",

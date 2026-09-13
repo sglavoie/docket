@@ -126,6 +126,10 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 			{key: "Ctrl+D", desc: "presets"},
 			{key: "Enter", desc: "confirm"},
 		}
+	case 1: // Next check-in
+		return []helpEntry{{key: "Enter", desc: "edit check-in schedule"}}
+	case 2: // Repeat
+		return []helpEntry{{key: "Enter", desc: "edit check-in schedule"}}
 	}
 	return nil
 }

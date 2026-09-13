@@ -4,17 +4,33 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
-func (m *TaskFormModel) handleScheduleEnter() {
-	if m.focusIndex == 0 {
-		// Due is the sole retained schedule field.
+func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
+	switch m.focusIndex {
+	case 0:
 		m.commitDueInput()
 		m.focusNext()
 		m.syncInputFocus()
+		return nil
+	case 1, 2:
+		m.checkInEditor = NewCheckInEditorModel(
+			operation.OperationExecutionRequest{},
+			"",
+			m.draft.checkIn,
+			false,
+		)
+		if m.focusIndex == 2 {
+			m.checkInEditor.focus = checkInFieldRepeat
+			m.checkInEditor.syncFocus()
+		}
+		m.activeOverlay = formOverlayCheckIn
+		return m.checkInEditor.InitCmd()
 	}
+	return nil
 }
 
 // handleBasicsEnter dispatches Enter key events for focused Basics-tab rows.

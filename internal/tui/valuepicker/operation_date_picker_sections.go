@@ -18,87 +18,132 @@ import (
 // answer on the row's typed payload is also what keeps the active field honest
 // — there is no second section index to drift out of step with the cursor.
 
-// dateRowField names which of the two fields one row writes. It answers for a
-// disabled row as readily as an enabled one.
-func dateRowField(item listsurface.ListItem) (deferred bool, ok bool) {
-	value, ok := item.Data.(operation.OperationDateValue)
-	if !ok {
-		return false, false
-	}
-	return value.Deferred, true
+type datePickerSection uint8
+
+const (
+	datePickerSectionDue datePickerSection = iota
+	datePickerSectionDefer
+	datePickerSectionCheckIn
+)
+
+var datePickerSections = []datePickerSection{
+	datePickerSectionDue,
+	datePickerSectionDefer,
+	datePickerSectionCheckIn,
 }
 
-// dateFieldUnderCursor is the inspection reading: the field the cursor's row
-// names, whether or not that row can be committed.
-func (model *OperationValuePickerModel) dateFieldUnderCursor() (bool, bool) {
-	item, ok := model.surface.CurrentItem()
-	if !ok {
-		return false, false
+func (section datePickerSection) label() string {
+	switch section {
+	case datePickerSectionDue:
+		return "Due"
+	case datePickerSectionDefer:
+		return "Defer"
+	case datePickerSectionCheckIn:
+		return "Check-in"
+	default:
+		return "Date"
 	}
-	return dateRowField(item)
 }
 
-// dateSectionUnderCursor is the activation reading: the same field, refused
-// when the row is disabled so the inline mode cannot type past a refusal the
-// preset rows already carry.
-func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
+// dateRowSection names which scheduling section owns a row. Eligibility stays
+// separate: a disabled defer row is still in Defer, and the editor-opening row
+// is a Check-in action rather than a disguised deadline value.
+func dateRowSection(item listsurface.ListItem) (datePickerSection, bool) {
+	switch value := item.Data.(type) {
+	case operation.OperationDateValue:
+		if value.Deferred {
+			return datePickerSectionDefer, true
+		}
+		return datePickerSectionDue, true
+	case operation.OperationCheckInEditorAction:
+		return datePickerSectionCheckIn, true
+	default:
+		return 0, false
+	}
+}
+
+// dateSectionUnderCursor is the inspection reading: the section the cursor's
+// row names, whether or not that row can be committed.
+func (model *OperationValuePickerModel) dateSectionUnderCursor() (datePickerSection, bool) {
 	item, ok := model.surface.CurrentItem()
 	if !ok {
-		return false, listsurface.ErrListItemNotFound
+		return 0, false
+	}
+	return dateRowSection(item)
+}
+
+// typedDateSectionUnderCursor is the activation reading used by `a`. It keeps
+// disabled-row refusal separate from section identity; Check-in has no typed
+// single-date mode because its row opens the paired editor instead.
+func (model *OperationValuePickerModel) typedDateSectionUnderCursor() (datePickerSection, error) {
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return 0, listsurface.ErrListItemNotFound
 	}
 	if !item.Enabled() {
-		return false, fmt.Errorf("%w: %s", listsurface.ErrListItemDisabled, item.DisabledReason)
+		return 0, fmt.Errorf("%w: %s", listsurface.ErrListItemDisabled, item.DisabledReason)
 	}
-	deferred, ok := dateRowField(item)
+	section, ok := dateRowSection(item)
 	if !ok {
-		return false, listsurface.ErrListItemNotFound
+		return 0, listsurface.ErrListItemNotFound
 	}
-	return deferred, nil
+	return section, nil
 }
 
-// sectionedDatePicker reports whether this picker holds both fields. The
-// due-only projection carries one field and no section headers, so there is
+// sectionedDatePicker reports whether this is the combined scheduling picker.
+// The due-only projection carries one field and no section headers, so there is
 // nothing there to switch between.
 func (model *OperationValuePickerModel) sectionedDatePicker() bool {
 	return model != nil && model.provider == operation.ValueProviderDate
 }
 
-// switchDateSection moves the cursor to the first matching row of the other
-// field. It reads the matches rather than the items, so a switch under an
-// active search lands on a row that is actually on screen, and it accepts a
-// disabled row on purpose: crossing into a refused defer section is how the
-// refusal gets read. Nothing is selected and the query is untouched, so a
-// switch that finds nowhere to go leaves the picker exactly as it was and says
-// which section it could not reach.
-func (model *OperationValuePickerModel) switchDateSection() tea.Msg {
-	current, ok := model.dateFieldUnderCursor()
+// switchDateSection moves the cursor to the first matching row in the adjacent
+// section. Direction now matters because the picker has three sections: Tab
+// moves forward and Shift+Tab backward. It reads matches rather than all items,
+// accepts disabled rows on purpose, and leaves the query and cursor untouched
+// when the adjacent section is filtered out.
+func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg {
+	current, ok := model.dateSectionUnderCursor()
 	if !ok {
 		return status.StatusMsg("No date values match")
 	}
+	currentIndex := 0
+	for index, section := range datePickerSections {
+		if section == current {
+			currentIndex = index
+			break
+		}
+	}
+	targetIndex := (currentIndex + direction + len(datePickerSections)) % len(datePickerSections)
+	target := datePickerSections[targetIndex]
 	for _, match := range model.surface.Matches() {
-		deferred, ok := dateRowField(match.Item)
-		if !ok || deferred == current {
+		section, ok := dateRowSection(match.Item)
+		if !ok || section != target {
 			continue
 		}
 		model.surface.SetCursorToID(match.Item.ID)
 		return nil
 	}
-	return status.StatusMsg(fmt.Sprintf("No matching %s values", DateSectionLabel(!current)))
+	return status.StatusMsg(fmt.Sprintf("No matching %s values", target.label()))
 }
 
-// dateEntryNoun names the field the cursor sits in, so the one `a` binding says
-// which of the two fields a typed value would write. The due-only picker has
-// one field and no sections, so it keeps the plain noun.
+// dateEntryNoun names the date field the cursor sits in, so the one `a` binding
+// says which value it would write. Check-in returns no noun because its row
+// opens the paired editor; the due-only picker keeps the plain noun.
 func (model *OperationValuePickerModel) dateEntryNoun() string {
 	if !model.sectionedDatePicker() {
 		return "date"
 	}
-	deferred, ok := model.dateFieldUnderCursor()
+	section, ok := model.dateSectionUnderCursor()
 	if !ok {
-		return "date"
+		return ""
 	}
-	if deferred {
+	switch section {
+	case datePickerSectionDue:
+		return "due date"
+	case datePickerSectionDefer:
 		return "defer date"
+	default:
+		return ""
 	}
-	return "due date"
 }

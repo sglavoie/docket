@@ -260,6 +260,52 @@ func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testin
 	}
 }
 
+func TestCheckInSectionOpensItsEditorAndCheckInTodayDoesNotPlanToday(t *testing.T) {
+	env := newDurableDatePickerEnv(
+		t, operation.ValueProviderDate, []*models.Task{newBulkPickerTestTask(t, 1, "review without planning")},
+	)
+	env.model.operations.ValuePicker = env.picker
+	for range 2 { // Due -> Defer -> Check-in.
+		if _, dismissed, result := env.picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyTab}); dismissed || result != nil {
+			t.Fatalf("Tab to Check-in dismissed=%v result=%#v", dismissed, result)
+		}
+	}
+	_, dismissed, result := env.picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	request, ok := result.(operation.OperationValueRequestMsg)
+	if !dismissed || !ok {
+		t.Fatalf("Check-in row dismissed=%v result=%T", dismissed, result)
+	}
+	handled, init := env.model.handleOperationOverlayMessage(request)
+	if !handled || init == nil || env.model.operations.ValuePicker != nil || env.model.operations.CheckInEditor == nil {
+		t.Fatalf("editor handoff handled=%v init=%v picker=%v editor=%v", handled, init != nil, env.model.operations.ValuePicker, env.model.operations.CheckInEditor)
+	}
+
+	editor := env.model.operations.CheckInEditor
+	editor.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter}) // open date presets
+	editor.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter}) // choose today
+	_, dismissed, result = editor.HandleKey(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	selected, ok := result.(operation.OperationValueSelectedMsg)
+	if !dismissed || !ok {
+		t.Fatalf("editor save dismissed=%v result=%T", dismissed, result)
+	}
+	handled, cmd := env.model.handleOperationOverlayMessage(selected)
+	if !handled || cmd == nil {
+		t.Fatal("editor save did not resume the check-in operation")
+	}
+	runBatchResult(t, cmd)
+
+	stored := env.storedTask(t, 0)
+	if stored.NextCheckIn == nil || stored.NextCheckIn.Format(time.DateOnly) != time.Now().Format(time.DateOnly) {
+		t.Fatalf("stored check-in = %v, want today", stored.NextCheckIn)
+	}
+	if stored.DueDate != nil || stored.DeferredUntil != nil {
+		t.Fatalf("check-in action changed due/defer = %v/%v", stored.DueDate, stored.DeferredUntil)
+	}
+	if env.plannedToday(t) {
+		t.Fatal("check-in today added the task to Today")
+	}
+}
+
 // Deferring is a scheduling act, not an attribute edit: it claims Backlog and
 // gives up Today. The due date it does not name is left exactly as it was.
 func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {

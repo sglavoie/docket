@@ -22,13 +22,20 @@ func (model *OperationValuePickerModel) handleDatePresetShortcut(key string) (te
 	if !chrome.DatePresetShortcutKey(key) {
 		return nil, false, false
 	}
-	deferred, ok := model.dateFieldUnderCursor()
+	section, ok := model.dateSectionUnderCursor()
 	if !ok {
 		// No row under the cursor means no field, and a shortcut with no field to
 		// resolve in has nothing to apply. The key is still claimed, because it is
 		// this picker's key whether or not a search left it a row to answer with.
 		return status.StatusMsg("No date values match"), false, true
 	}
+	if section == datePickerSectionCheckIn {
+		// Preset keys belong to Due and Defer only. They stay claimed here so a
+		// key such as `t` cannot fall through to another browse grammar while the
+		// Check-in action row is active.
+		return nil, false, true
+	}
+	deferred := section == datePickerSectionDefer
 	presetID, ok := chrome.DatePresetIDForKey(deferred, key)
 	if !ok {
 		// The key belongs to the other field. Silence is the whole answer: `t` is

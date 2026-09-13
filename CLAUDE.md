@@ -168,7 +168,7 @@ One key is one act on every entity surface:
 | `Enter` `a` `c` `S` `D` `e` `E`/`Ctrl+E` | zoom in · open note · create · checklist item · promote it · repeat · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` `=` `R` | copy · reorder · pin · tags · review · acknowledge |
-| `@` `-`/`+` | due or defer · step that deadline a day earlier/later |
+| `@` `-`/`+` | due/defer/check-in · step deadline earlier/later |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `b` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · scroll it · page it |

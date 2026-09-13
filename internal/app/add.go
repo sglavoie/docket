@@ -62,6 +62,9 @@ type AddTaskRequest struct {
 
 	// DueDate carries the form's calendar-date planning metadata.
 	DueDate *time.Time
+	// CheckIn carries the form's paired review schedule. It remains independent
+	// of DueDate and never participates in Today destination inference.
+	CheckIn models.CheckInSchedule
 	// Pinned carries the form's flag state and records PinnedAt.
 	// Focus Queue membership is independent planning state handled at the
 	// config-aware layer, not a task field set here.
@@ -169,6 +172,9 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 		if err != nil {
 			return normalizedAddTaskRequest{}, err
 		}
+	}
+	if err := capturedCheckInAccepts(req.CheckIn, state); err != nil {
+		return normalizedAddTaskRequest{}, err
 	}
 
 	tags, err := normalizeTags(req.Tags)
@@ -303,6 +309,11 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	// Form-originated scheduling/reference/flag metadata. All zero/nil for the CLI.
 	if req.DueDate != nil {
 		task.DueDate = cloneDueDatePtr(req.DueDate)
+	}
+	if !req.CheckIn.IsEmpty() {
+		if err := task.SetCheckIn(req.CheckIn, s.clock.Now()); err != nil {
+			return TaskRef{}, "", invalidInput("check-in", err.Error())
+		}
 	}
 	if req.Pinned {
 		now := s.clock.Now()

@@ -86,6 +86,23 @@ func TestTaskFormInlineOverlayKeepsCompleteFrameAtMinimumSize(t *testing.T) {
 	}
 }
 
+func TestTaskFormCheckInOverlayKeepsCompleteFrameAtMinimumSize(t *testing.T) {
+	m := navigateToScheduleField(newTestTaskForm())
+	m.SetSize(formMinWidth, formMinHeight)
+	m.focusIndex = 1
+	m.handleScheduleEnter()
+
+	rendered := m.View().Content
+	assertFitsWithin(t, rendered, formMinWidth, formMinHeight)
+	plain := ansi.Strip(rendered)
+	if !strings.Contains(plain, "Set Check-In") || !strings.Contains(plain, "Next check-in:") || !strings.Contains(plain, "Repeat:") {
+		t.Fatalf("check-in overlay lost fields at minimum size:\n%s", plain)
+	}
+	if !strings.Contains(plain, "╰") || !strings.Contains(plain, "╯") {
+		t.Fatalf("check-in overlay frame was clipped at minimum size:\n%s", plain)
+	}
+}
+
 // assertFitsWithin fails if any rendered line exceeds width or the line count
 // exceeds height.
 func assertFitsWithin(t *testing.T, rendered string, width, height int) {

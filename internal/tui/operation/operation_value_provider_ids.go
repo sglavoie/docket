@@ -11,9 +11,9 @@ const (
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
 
-	// ValueProviderDate is the one date picker a task operation reaches. It
-	// sections due presets above defer presets so a single key answers both
-	// fields, and the selected row carries which field it writes.
+	// ValueProviderDate is the combined scheduling picker a task operation
+	// reaches. It sections due presets above defer presets and a typed Check-in
+	// editor action; every selected row carries exactly which route it answers.
 	ValueProviderDate ValueProviderID = "date"
 
 	// ValueProviderCheckIn opens the reusable two-field check-in editor. It is

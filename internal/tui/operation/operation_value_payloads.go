@@ -21,6 +21,12 @@ type OperationDateValue struct {
 	Deferred bool
 }
 
+// OperationCheckInEditorAction is the typed row action exposed by the combined
+// scheduling picker. It is deliberately not a date value: choosing the row
+// opens the reusable two-field editor and can therefore never be mistaken for
+// a due-date or deferral mutation by the resumed deadline operation.
+type OperationCheckInEditorAction struct{}
+
 // OperationCheckInValue is the editor-neutral check-in payload. Clear records
 // the explicit choice to remove a schedule; an absent date without Clear is not
 // an instruction and is refused by the editor. The input spellings travel only

@@ -77,7 +77,7 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
 	if model.sectionedDatePicker() {
-		// Crossing between the two fields is navigation rather than an action, so
+		// Crossing between scheduling sections is navigation rather than an action, so
 		// it is bound here rather than through `add`, which speaks for the Actions
 		// category. The hint is optional, so it can never displace Enter or Esc.
 		km.Entries = append(km.Entries, keymap.Bind(
@@ -117,16 +117,20 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		// The noun is the active-field guidance: one binding writes whichever field
 		// the cursor's row names, so the hint has to say which one that is now.
 		noun := model.dateEntryNoun()
-		add("a", "Type a specific "+noun, "set "+noun, 4, func() bool { return !searching })
+		if noun != "" {
+			add("a", "Type a specific "+noun, "set "+noun, 4, func() bool { return !searching })
+		}
 		// Which key belongs to which preset is printed on the rows themselves, so
 		// the footer only has to say that the keys are live at all. `0` stands for
 		// the set because it is the one key both fields bind. The hint is optional,
 		// so a narrow footer drops it rather than a required answer.
-		km.Entries = append(km.Entries, keymap.Bind(
-			"0", "Apply a date preset by its key", "Actions",
-			keymap.WithGate(func() bool { return !searching && count > 0 }),
-			keymap.WithFooter(6, "pick", false), keymap.WithFooterKey("preset key"),
-		))
+		if noun != "" {
+			km.Entries = append(km.Entries, keymap.Bind(
+				"0", "Apply a date preset by its key", "Actions",
+				keymap.WithGate(func() bool { return !searching && count > 0 }),
+				keymap.WithFooter(6, "pick", false), keymap.WithFooterKey("preset key"),
+			))
+		}
 	}
 	if vocabularyRenameProvider(model.provider) {
 		add("e", "Rename or merge this "+model.vocabularyRenameNoun(), "rename", 5, func() bool {

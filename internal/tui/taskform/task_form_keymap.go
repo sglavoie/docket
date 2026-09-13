@@ -46,7 +46,8 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 	switch m.activeTab {
 	case formTabSchedule:
 		entries = append(entries,
-			keymap.Bind("ctrl+d", "Open due date preset picker", "Schedule"),
+			keymap.Bind("ctrl+d", "Open due date preset picker", "Schedule",
+				keymap.WithGate(func() bool { return m.focusIndex == 0 })),
 		)
 
 	case formTabChildren:

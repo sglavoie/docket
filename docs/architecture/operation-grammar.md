@@ -40,6 +40,12 @@ operation request freezes project-qualified targets before the sheet opens;
 the application bulk operation re-resolves them from a fresh snapshot and
 commits every target or none. A bulk editor starts blank and requires either a
 date or explicit Clear, so no selected task becomes the hidden default.
+The combined `@` scheduling picker exposes the same editor as a typed action
+row in its third section. Selecting that row replaces the date picker with a
+fresh `ValueProviderCheckIn` step over the original frozen context; because the
+row never carries `OperationDateValue`, it cannot resume the due/defer handler.
+The expanded creation form mounts that editor from both its Next check-in and
+Repeat rows and copies the validated pair into `AddTaskRequest.CheckIn`.
 
 The split lands the same way everywhere. What the surface is for stays direct;
 what is destructive or rare goes behind `Space`, and a destructive row confirms

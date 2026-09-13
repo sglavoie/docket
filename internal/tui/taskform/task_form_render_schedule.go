@@ -10,9 +10,11 @@ import (
 )
 
 // formScheduleLabelWidth is the fixed label column width for all Schedule-tab rows.
-const formScheduleLabelWidth = 12
+const formScheduleLabelWidth = 16
 
-// renderScheduleTab renders the retained Due field.
+// renderScheduleTab keeps the real deadline independent from the paired
+// check-in schedule. The latter two rows both open the shared schedule editor,
+// so the form and existing-task action cannot drift on parsing or repeat rules.
 func (m *TaskFormModel) renderScheduleTab() string {
 	var b strings.Builder
 	const lw = formScheduleLabelWidth
@@ -31,6 +33,24 @@ func (m *TaskFormModel) renderScheduleTab() string {
 		} else {
 			b.WriteString(scheduleDueDateDisplay(m.draft.dueDate))
 		}
+	}
+	b.WriteString("\n")
+
+	// 1: Next check-in — the shared editor owns both this row and Repeat.
+	b.WriteString(chrome.RenderFormLabelWithWidth("Next check-in:", lw, m.focusIndex == 1))
+	if m.draft.checkIn.Next == nil {
+		b.WriteString(theme.MutedStyle.Render("(none)"))
+	} else {
+		b.WriteString(m.draft.checkIn.Next.Format(time.DateOnly))
+	}
+	b.WriteString("\n")
+
+	// 2: Repeat — opening from here starts the shared editor on its repeat row.
+	b.WriteString(chrome.RenderFormLabelWithWidth("Repeat:", lw, m.focusIndex == 2))
+	if m.draft.checkIn.Next == nil {
+		b.WriteString(theme.MutedStyle.Render("Off"))
+	} else {
+		b.WriteString(repeatDisplay(m.draft.checkIn.RepeatDays))
 	}
 	b.WriteString("\n")
 	return b.String()

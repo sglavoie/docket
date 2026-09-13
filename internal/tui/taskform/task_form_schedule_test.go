@@ -3,19 +3,94 @@ package taskform
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestTaskForm_ScheduleTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m = navigateToScheduleField(m)
 	view := m.View().Content
-	if !strings.Contains(view, "Due:") {
-		t.Errorf("Schedule tab should contain Due; got:\n%s", view)
+	for _, label := range []string{"Due:", "Next check-in:", "Repeat:"} {
+		if !strings.Contains(view, label) {
+			t.Errorf("Schedule tab should contain %s; got:\n%s", label, view)
+		}
 	}
 	if strings.Contains(view, "Recurrence:") {
 		t.Errorf("Schedule tab still exposes recurrence; got:\n%s", view)
+	}
+}
+
+func TestTaskFormScheduleCheckInRowsUseTheSharedEditor(t *testing.T) {
+	m := navigateToScheduleField(newTestTaskForm())
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyTab))
+	if m.focusIndex != 1 {
+		t.Fatalf("focus after Due = %d, want Next check-in", m.focusIndex)
+	}
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	if m.activeOverlay != formOverlayCheckIn || m.checkInEditor == nil || m.checkInEditor.focus != checkInFieldNext {
+		t.Fatalf("Next check-in opened overlay=%v editor=%#v", m.activeOverlay, m.checkInEditor)
+	}
+
+	// Select today's date in the shared editor, then save its draft into the
+	// creation form. No due date is involved in this path.
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	m = sendFormKey(m, syntheticCtrlKey('s'))
+	want := time.Now().Format(time.DateOnly)
+	if m.activeOverlay != formOverlayNone || m.draft.checkIn.Next == nil || m.draft.checkIn.Next.Format(time.DateOnly) != want {
+		t.Fatalf("applied schedule = %+v overlay=%v, want %s", m.draft.checkIn, m.activeOverlay, want)
+	}
+	if m.draft.dueDate != nil || m.draft.dueInput != "" {
+		t.Fatalf("check-in editor changed due = %v / %q", m.draft.dueDate, m.draft.dueInput)
+	}
+
+	m.focusIndex = 2
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	if m.checkInEditor == nil || m.checkInEditor.focus != checkInFieldRepeat {
+		t.Fatalf("Repeat row did not open the shared editor on Repeat: %#v", m.checkInEditor)
+	}
+}
+
+func TestTaskFormScheduleDueShortcutDoesNotCollideWithCheckInRows(t *testing.T) {
+	m := navigateToScheduleField(newTestTaskForm())
+	active := func() bool {
+		for _, entry := range m.buildKeyMap().Entries {
+			if entry.Binding != nil && entry.Binding.Key == "ctrl+d" {
+				return entry.Binding.Gate == nil || entry.Binding.Gate()
+			}
+		}
+		return false
+	}
+	if !active() {
+		t.Fatal("Due row does not activate its preset shortcut")
+	}
+	for _, focus := range []int{1, 2} {
+		m.focusIndex = focus
+		if active() {
+			t.Errorf("schedule field %d activates Due's Ctrl+D shortcut", focus)
+		}
+		m = sendFormKey(m, syntheticCtrlKey('d'))
+		if m.activeOverlay != formOverlayNone || m.duePicker != nil {
+			t.Fatalf("Ctrl+D on schedule field %d opened Due: overlay=%v", focus, m.activeOverlay)
+		}
+	}
+}
+
+func TestTaskFormCheckInOverlayCancelPreservesCreationDraft(t *testing.T) {
+	day := time.Date(2026, 9, 20, 0, 0, 0, 0, time.Local)
+	m := navigateToScheduleField(newTestTaskForm())
+	m.draft.checkIn = models.CheckInSchedule{Next: &day, RepeatDays: 14}
+	m.focusIndex = 1
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	m.checkInEditor.Restore(operation.OperationCheckInValue{DateInput: "tomorrow", RepeatInput: "30"}, "")
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
+	if m.activeOverlay != formOverlayNone || m.draft.checkIn.Next == nil || !m.draft.checkIn.Next.Equal(day) || m.draft.checkIn.RepeatDays != 14 {
+		t.Fatalf("cancel changed creation schedule: %+v", m.draft.checkIn)
 	}
 }
 

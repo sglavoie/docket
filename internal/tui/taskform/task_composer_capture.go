@@ -116,6 +116,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
 	form.draft.dueInput = formatDateInput(req.Due)
+	form.draft.checkIn = req.CheckIn.Clone()
 	// Seed the Extras tab's drafts so an expanded &link or ;comment; is carried
 	// into the form rather than silently dropped. Each section starts expanded
 	// when it has content, so the values are visible without a keystroke.

@@ -173,21 +173,26 @@ func TestRelativeDateSelectedIDRefusesToApproximateAnIntraDayDefer(t *testing.T)
 	}
 }
 
-// The combined picker shows both fields, so the two preset families cannot
-// share a row identity: "tomorrow" means a deadline in one section and a
-// deferral in the other.
-func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
+// The combined picker gives every scheduling section its own row identity:
+// "tomorrow" means a date value in Due or Defer, while Check-in is a typed
+// editor action and cannot masquerade as either.
+func TestDateListItemIDsSeparateTheThreeSections(t *testing.T) {
 	source := OperationDateListSource("")
 	seen := make(map[listsurface.ListItemID]bool, len(source.Items))
 	deferredRows := 0
+	checkInRows := 0
 	for _, item := range source.Items {
 		if seen[item.ID] {
 			t.Errorf("date list repeats row ID %q", item.ID)
 		}
 		seen[item.ID] = true
-		value, ok := item.Data.(operation.OperationDateValue)
-		if !ok {
-			t.Fatalf("row %q carries %T, want operation.OperationDateValue", item.ID, item.Data)
+		value, isDate := item.Data.(operation.OperationDateValue)
+		if !isDate {
+			if _, isAction := item.Data.(operation.OperationCheckInEditorAction); !isAction || item.ID != dateCheckInEditorItemID || item.CategoryID != dateListCategoryCheckIn {
+				t.Fatalf("non-date row %q carries %T in %q", item.ID, item.Data, item.CategoryID)
+			}
+			checkInRows++
+			continue
 		}
 		if value.Deferred {
 			deferredRows++
@@ -203,6 +208,9 @@ func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
 	if want := len(OperationDatePresets(true, time.Now())); deferredRows != want {
 		t.Errorf("defer section = %d rows, want %d", deferredRows, want)
 	}
+	if checkInRows != 1 {
+		t.Errorf("check-in section = %d rows, want 1", checkInRows)
+	}
 }
 
 // A terminal task keeps the due section reachable: only the defer rows carry
@@ -210,7 +218,13 @@ func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
 func TestTerminalTaskDisablesOnlyTheDeferSection(t *testing.T) {
 	source := OperationDateListSource("terminal tasks cannot be deferred")
 	for _, item := range source.Items {
-		value := item.Data.(operation.OperationDateValue)
+		value, isDate := item.Data.(operation.OperationDateValue)
+		if !isDate {
+			if !item.Enabled() {
+				t.Errorf("check-in action %q is disabled", item.ID)
+			}
+			continue
+		}
 		if value.Deferred == item.Enabled() {
 			t.Errorf("row %q enabled = %v with deferred = %v", item.ID, item.Enabled(), value.Deferred)
 		}

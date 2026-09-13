@@ -95,9 +95,12 @@ func OperationDateSecondaryText(value time.Time) string {
 // field. Both sections are always built from the same namespace, including in
 // the due-only projection, so one resolver answers either list.
 const (
-	dateListCategoryDue   listsurface.ListCategoryID = "date-due"
-	dateListCategoryDefer listsurface.ListCategoryID = "date-defer"
+	dateListCategoryDue     listsurface.ListCategoryID = "date-due"
+	dateListCategoryDefer   listsurface.ListCategoryID = "date-defer"
+	dateListCategoryCheckIn listsurface.ListCategoryID = "date-check-in"
 )
+
+const dateCheckInEditorItemID listsurface.ListItemID = "date:check-in:editor"
 
 func DateListItemID(deferred bool, presetID string) listsurface.ListItemID {
 	if deferred {
@@ -149,11 +152,20 @@ func DateSectionLabel(deferred bool) string {
 func OperationDateListSource(deferReason string) listsurface.ListSource {
 	items := operationDateItems(false, dateListCategoryDue, "")
 	items = append(items, operationDateItems(true, dateListCategoryDefer, deferReason)...)
+	items = append(items, listsurface.ListItem{
+		ID:            dateCheckInEditorItemID,
+		CategoryID:    dateListCategoryCheckIn,
+		PrimaryText:   "Set check-in",
+		SecondaryText: "next date and repeat cadence",
+		Aliases:       []string{"check-in", "review schedule", "repeat review", "next check-in"},
+		Data:          operation.OperationCheckInEditorAction{},
+	})
 	return listsurface.ListSource{
 		Items: items,
 		Categories: []listsurface.ListCategory{
 			{ID: dateListCategoryDue, Label: DateSectionLabel(false)},
 			{ID: dateListCategoryDefer, Label: DateSectionLabel(true)},
+			{ID: dateListCategoryCheckIn, Label: "Check-in"},
 		},
 	}
 }

@@ -10,7 +10,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `gP` reveals the parent task and leaves the cursor on its row, stepping out of Focus when that parent is its hidden root; on a checklist item it jumps to the owner task; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `b` toggles Peek and `Ctrl+D`/`Ctrl+U` scroll an open one two rows at a time while `Ctrl+F`/`Ctrl+B` page it; all four belong to the open Peek, and `PgUp`/`PgDn` keep moving the outline regardless |
 | Capture and edit | `a` capture, `A` child, `c` add a checklist item to the cursor's task, `S` turn a checklist item into a child task or a child task back into a checklist item in its current parent, `D` repeat the cursor task as a new draft, `e` edits whatever the cursor names — the task inline, the checklist item, or the project a group header names — `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord over the ten destinations the `$destination` capture sigil names: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date. The chord is the one place the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `-` and `+` step the deadline one day earlier and one day later; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; `-` and `+` step the deadline one day earlier and one day later; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of whatever the cursor names — the task, or the project a group header names — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete; `C` appends one comment to the same two things without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
@@ -18,18 +18,21 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-`@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
+`@` opens one scheduling picker holding three sections. Its DUE section lists
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
 Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until
-tomorrow, For one week, and For one month. The row you commit decides which
-field is written, and the cursor always opens in the due section, so a due date
+tomorrow, For one week, and For one month. CHECK-IN contains one Set check-in
+row that opens the same Next check-in and Repeat editor as the task action menu;
+it is a typed editor action, never a deadline value. The row you commit decides
+which field or editor is reached, and the cursor always opens in the due section, so a due date
 is one `Enter` away. Where in that section it opens is the due date's business
 alone: on the preset the task's own due date names, or — when there is no due
 date, when a selection disagrees about it, or when it is a date no preset
 reproduces — on DUE's own Clear row. A deferral never moves that cursor, so a
 selection sharing a deadline but not a hide-until still opens on the deadline
 they share. Opening the picker writes nothing either way.
-`Tab` and `Shift+Tab` cross to the other section, landing on its first row that
+`Tab` moves Due → Defer → Check-in and wraps; `Shift+Tab` moves backward. Each
+lands on the adjacent section's first row that
 the current search left on screen; when the search left it none, the cursor and
 the query stay put and the status says which section could not be reached. The
 footer names the field you are in — `a set due date` or `a set defer date` —

@@ -192,10 +192,14 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			return model.tagAdder.EnterAddMode(), false, nil
 		}
 		if model.provider.DateEntry() {
-			deferred, err := model.dateSectionUnderCursor()
+			section, err := model.typedDateSectionUnderCursor()
 			if err != nil {
 				return nil, false, status.StatusMsg(err.Error())
 			}
+			if section == datePickerSectionCheckIn {
+				return nil, false, nil
+			}
+			deferred := section == datePickerSectionDefer
 			model.dateDeferred = deferred
 			if deferred {
 				model.dateAdder = chrome.NewInstantDateAdder()
@@ -216,12 +220,15 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "down", "j", "ctrl+n":
 		model.surface.MoveCursor(1)
 	case "tab", "shift+tab":
-		// The two sections are a pair, so there is only one other field to reach
-		// and both directions name it. The key is consumed either way: a picker
-		// this does not apply to must not leak Tab back to the surface underneath,
-		// where it would change the Outliner's mode out from under the overlay.
+		// The key is consumed either way: a picker this does not apply to must not
+		// leak Tab back to the surface underneath, where it would change the
+		// Outliner's mode out from under the overlay.
 		if model.sectionedDatePicker() {
-			return nil, false, model.switchDateSection()
+			direction := 1
+			if key == "shift+tab" {
+				direction = -1
+			}
+			return nil, false, model.switchDateSection(direction)
 		}
 	case "home", "g":
 		model.surface.MoveCursorToStart()
@@ -261,10 +268,16 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if err != nil {
 			return nil, false, status.StatusMsg(err.Error())
 		}
-		return nil, true, operation.OperationValueSelectedMsg{
-			Request: model.request,
-			Value:   value,
+		if _, openCheckIn := value.(operation.OperationCheckInEditorAction); openCheckIn {
+			return nil, true, operation.OperationValueRequestMsg{
+				Request: operation.OperationExecutionRequest{
+					ID:      operation.OperationTaskSetCheckIn,
+					Context: operation.CloneCommandContext(model.request.Context),
+				},
+				Provider: operation.ValueProviderCheckIn,
+			}
 		}
+		return nil, true, operation.OperationValueSelectedMsg{Request: model.request, Value: value}
 	case "w", "s", "t", "c":
 		if semanticTaskTagProvider(model.provider) {
 			return nil, false, model.jumpToTagCategory(key)

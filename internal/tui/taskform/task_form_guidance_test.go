@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestTaskFormGuidanceRequiresCommitAndCancelByState(t *testing.T) {
@@ -49,6 +50,7 @@ func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {
 		"state":     newFormStatePicker(form.draft.state).render(formMinWidth, form.draft.state),
 		"flags":     newFormFlagsPicker(form.draft.pinned, form.draft.review).render(formMinWidth),
 		"due date":  newFormDueDatePicker(form.draft.dueDate).render(formMinWidth, form.draft.dueDate),
+		"check-in":  NewCheckInEditorModel(operation.OperationExecutionRequest{}, "New task schedule", form.draft.checkIn, false).Render(formMinWidth),
 		"checklist": form.renderChecklistEditOverlay(),
 		"subtask":   form.renderSubtaskEditOverlay(),
 	}

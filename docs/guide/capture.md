@@ -130,6 +130,14 @@ aliases such as `priority:`, `due:`, `state:`, and `proj:` are literal title
 text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
+The expanded composer keeps deadlines and check-ins separate on its Schedule
+tab. Due remains the deadline field and is the only date that can infer Today.
+Next check-in and Repeat both open the shared check-in editor, with the same
+date parsing, repeat choices, custom positive-day validation, and explicit
+Clear behavior used by Set Check-In on an existing task. A schedule chosen there
+travels through expansion and the task-creation transaction as one paired value;
+a check-in due today does not add the new task to Today.
+
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
 project. A project header row is the one exception, because it names a project
 explicitly rather than incidentally, so `a` there captures into that project.
@@ -230,4 +238,3 @@ Nothing is written until the whole buffer validates. If any line is wrong you
 get every problem at once, numbered by line, and the file is kept so you can
 reopen it, fix the named lines, and run `O` again. A successful apply is one
 undoable transaction.
-

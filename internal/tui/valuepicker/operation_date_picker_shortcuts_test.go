@@ -362,7 +362,10 @@ func TestTagCategoryJumpKeysSurviveTheDateShortcuts(t *testing.T) {
 // becoming a word that finds one.
 func TestDatePresetHintsRideTheMarkerAndStayOutOfTheSearchableText(t *testing.T) {
 	for _, item := range OperationDateListSource("").Items {
-		value := item.Data.(operation.OperationDateValue)
+		value, isDate := item.Data.(operation.OperationDateValue)
+		if !isDate {
+			continue
+		}
 		presetID := strings.TrimPrefix(strings.TrimPrefix(string(item.ID), "date:due:"), "date:defer:")
 		key, ok := chrome.DatePresetKey(value.Deferred, presetID)
 		if !ok {
