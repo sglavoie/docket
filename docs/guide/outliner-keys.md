@@ -295,6 +295,26 @@ this menu when they gained `;` and `&`, which is that same rule: a panel reached
 by a key is not also a row. The single-task sheet remains identical to the bulk
 one, with the latter applying one explicit schedule replacement atomically.
 
+To schedule existing active work, open `Ctrl+M` → **Task** → **Set up check-ins**.
+The action also appears in `?` help. It walks unscheduled Doing and Waiting tasks
+across every unparked, unarchived project, including tasks hidden by the current
+lens, query, scope, or folds. Projects sort by slug and tasks by local number;
+the initial list stays fixed for the pass. Each editor shows the project, task,
+position, remaining count, and saved/skipped results.
+
+`Ctrl+S` saves one schedule and advances; each save has its own undo entry.
+`Ctrl+N` skips without writing, and `Esc` exits setup even from a preset list.
+Clear followed by Save also skips an unscheduled task. If a save is already in
+flight, Escape exits after its outcome is known. Save failures retain the draft
+for correction or retry. Tasks deleted, moved, completed, parked, archived, or
+scheduled elsewhere are rechecked and counted as no longer eligible rather
+than overwritten. An unreadable active project prevents a complete workspace
+read and is reported as a failure, never silently omitted.
+
+The original view is restored on exit. Saved schedules remain, so invoking the
+action again starts a fresh pass over work still unscheduled; there is no saved
+queue or automatic reminder to finish setup.
+
 The same key on a project group header opens a different sheet, because the row
 names a project rather than a task. Project Actions holds Archive project and
 Delete project under Danger, and nothing else. Editing left this menu when the

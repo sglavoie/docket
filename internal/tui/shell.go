@@ -133,5 +133,6 @@ func (o OverlayManager) ClearAll() {
 	m := o.app
 	m.viewNav.navigation.Overlays.CancelAll()
 	m.operations.ClearOverlays()
+	m.checkInSetup = nil
 	m.lenses.Close()
 }

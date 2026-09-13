@@ -361,6 +361,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
+	case operation.OperationCoreSetUpCheckIns:
+		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:
 		message = commandMessage(m.coreUndo())
 	case operation.OperationCoreRedo:

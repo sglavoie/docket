@@ -24,6 +24,7 @@ import (
 // AppModel is the main TUI model.
 type AppModel struct {
 	checkInOffers checkInOfferController
+	checkInSetup  *checkInSetupPass
 	// domain is the domain commit and configuration cluster: the startup-loaded
 	// snapshot of the catalog, planning and machine domains, the manager and
 	// application service every commit against them travels through, the workspace

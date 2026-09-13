@@ -104,6 +104,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationTaskReferences},
 				{OperationID: operation.OperationTaskSetResumeNote, Label: "Resume Note"},
 				{OperationID: operation.OperationTaskToggleReview},
+				{OperationID: operation.OperationCoreSetUpCheckIns},
 				menuSeparator(),
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},

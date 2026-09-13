@@ -47,6 +47,24 @@ row never carries `OperationDateValue`, it cannot resume the due/defer handler.
 The expanded creation form mounts that editor from both its Next check-in and
 Repeat rows and copies the validated pair into `AddTaskRequest.CheckIn`.
 
+The target-free `OperationCoreSetUpCheckIns` is a global Task-menu action,
+also projected into Outliner help from its descriptor. `checkInSetupPass` keeps
+a fixed list of qualified identities, counters, and an Outliner presentation
+checkpoint. It mounts the shared editor with setup guidance; it owns Skip,
+Escape, and asynchronous save-result correlation, while the editor owns date
+and repeat validation. A pending save blocks duplicate submission; Escape waits
+for that outcome before restoring the view. Failed saves keep the same draft.
+
+`app.CheckInSetupCandidates` orders the full active workspace by project slug,
+project identity, task ShortID, and task identity. `CheckInSetupSource` reads a
+fresh catalog and every unparked, unarchived owner through one document read per
+project, failing on any unreadable active owner. Both advancement and save
+re-resolve original identities. `SaveCheckInSetup` distinguishes ineligible
+skips from failures, validates the schedule, and commits one project with its
+own ledger entry. Strict project and catalog preconditions prevent concurrent
+scheduling or project parking from merging past eligibility validation. The
+pass never changes navigation, persists a queue, or broadens its initial set.
+
 The split lands the same way everywhere. What the surface is for stays direct;
 what is destructive or rare goes behind `Space`, and a destructive row confirms
 before any transaction begins. That is why the entity menus are so short: they

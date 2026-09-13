@@ -352,6 +352,16 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 // as an unmerged overwrite of B. One read makes a concurrent save either wholly
 // visible or wholly absent, and an absent one expires the preview at the guard.
 func (r *tuiAppRepository) WorkspaceCensus() (app.WorkspaceCensus, error) {
+	return r.readWorkspaceCensus(false)
+}
+
+// CheckInSetupCensus excludes parked owners before reading their documents.
+// It uses a fresh catalog and fails closed on any unreadable active project.
+func (r *tuiAppRepository) CheckInSetupCensus() (app.WorkspaceCensus, error) {
+	return r.readWorkspaceCensus(true)
+}
+
+func (r *tuiAppRepository) readWorkspaceCensus(activeOnly bool) (app.WorkspaceCensus, error) {
 	catalog, revision, err := config.NewDomainFileStore(r.dataDir).LoadCatalogChecked()
 	if err != nil {
 		return app.WorkspaceCensus{}, fmt.Errorf("reading workspace catalog for census: %w", err)
@@ -361,7 +371,7 @@ func (r *tuiAppRepository) WorkspaceCensus() (app.WorkspaceCensus, error) {
 		CatalogRevision: revision,
 	}
 	for _, cataloged := range catalog.Projects {
-		if cataloged.Archived {
+		if cataloged.Archived || (activeOnly && models.ProjectTagsParked(cataloged.Tags)) {
 			continue
 		}
 		project := cataloged.ToModel(r.dataDir)

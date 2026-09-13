@@ -33,6 +33,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			}
 			m.viewNav.navigation.ResetRoot()
 			m.operations.ClearOverlays()
+			m.checkInSetup = nil
 			m.lenses.Close()
 			m.feedback.message = ""
 			outModel = m
@@ -72,6 +73,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			cmd = m.popView()
 		}
 		return m, cmd
+	}
+
+	if saved, ok := msg.(checkInSetupSavedMsg); ok {
+		return m, m.handleCheckInSetupSaved(saved)
 	}
 
 	if handled, cmd := m.handleGlobalMessage(msg); handled {
@@ -280,6 +285,9 @@ func (m *AppModel) handleProjectParkConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	if m.checkInSetup != nil {
+		return true, m.handleCheckInSetupKey(msg)
+	}
 	if m.operations.CheckInEditor != nil {
 		dismiss, cmd := dispatchOverlayKey(m.operations.CheckInEditor, msg)
 		if dismiss {
@@ -342,6 +350,9 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 // leaving them out keeps every path a paste already took unchanged. Returning
 // true while either is mounted is what stops the fall-through.
 func (m *AppModel) handleActivePasteOverlay(msg tea.PasteMsg) (bool, tea.Cmd) {
+	if m.checkInSetup != nil && m.checkInSetup.busy {
+		return true, nil
+	}
 	if m.operations.CheckInEditor != nil {
 		return true, m.operations.CheckInEditor.HandlePaste(msg)
 	}

@@ -63,6 +63,7 @@ type CheckInEditorModel struct {
 	clear        bool
 	explicit     bool
 	submitted    bool
+	setup        bool
 }
 
 // NewCheckInEditorModel creates either a prefilled single-task editor or a
@@ -96,6 +97,13 @@ func NewCheckInEditorModel(
 	}
 	model.syncFocus()
 	return model
+}
+
+// ConfigureSetup supplies the guided pass's title and modal key guidance. The
+// shell owns Skip and Escape, while the two-field draft remains shared.
+func (model *CheckInEditorModel) ConfigureSetup() {
+	model.setup = true
+	model.title = "Set up check-ins"
 }
 
 func repeatDisplay(days int) string {
@@ -334,9 +342,13 @@ func (model *CheckInEditorModel) Render(width int) string {
 		content.WriteString("\n\n")
 		content.WriteString(theme.ValidationErrorStyle.Render(model.notice))
 	}
+	title := model.title
+	if model.setup && model.submitted {
+		title += " · Saving…"
+	}
 	return chrome.RenderOverlayBox(
 		content.String(), innerWidth,
-		lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(model.title),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(title),
 		chrome.RenderGuidanceText(model.guidanceSpec(), contentWidth),
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
@@ -377,6 +389,15 @@ func (model *CheckInEditorModel) renderRepeatPicker(width int) string {
 }
 
 func (model *CheckInEditorModel) guidanceSpec() chrome.GuidanceSpec {
+	if model.setup {
+		if model.submitted {
+			return chrome.RequiredActionGuidanceSpec("Esc exit after save")
+		}
+		if model.picker != checkInPickerNone {
+			return chrome.RequiredActionGuidanceSpec("Enter select", "j/k navigate", "Ctrl+N skip", "Esc exit")
+		}
+		return chrome.RequiredActionGuidanceSpec("Ctrl+S save", "Ctrl+N skip", "Esc exit", "Enter presets", "Tab fields")
+	}
 	if model.picker != checkInPickerNone {
 		return chrome.RequiredActionGuidanceSpec("Enter select", "j/k navigate", "Esc back")
 	}
