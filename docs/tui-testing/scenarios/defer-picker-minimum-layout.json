@@ -15,9 +15,18 @@
     { "type": "assert", "label": "the overflow is announced rather than silently clipped", "assert": "contains", "value": "more" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "walk to the last row of the defer section", "key": "G" },
-    { "type": "assert", "label": "every defer row is reachable, the window just moves", "assert": "contains", "value": "Clear defer" },
-    { "type": "assert", "assert": "contains", "value": "For one month" },
+    { "type": "key", "label": "walk to the new final check-in section", "key": "G" },
+    { "type": "assert", "label": "the appended editor action is reachable when the window moves", "assert": "contains", "value": "Set check-in" },
+    { "type": "key", "label": "return to the first defer row", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "Clear defer" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "walk to the last row of the defer section", "key": "j" },
+    { "type": "assert", "label": "every defer row is reachable, the window just moves", "assert": "contains", "value": "For one month" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
