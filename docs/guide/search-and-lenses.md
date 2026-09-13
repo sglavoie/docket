@@ -114,7 +114,7 @@ A leading `-` always means *remove*, and what it removes from is whatever you
 are working on. While you are writing a task, `-#tag` takes a tag off it. In the
 search box there is no task to edit, so the same `-` takes rows out of the
 result: `-!1`, `-#tag`, `-##context`, `-@today`, `-@@tomorrow`, `-$doing`,
-`-*pin`, `-=review`, `-%project`, `-~task`, and `-?stale` each subtract exactly what the
+`-*pin`, `-=review`, `-%project`, `-~task`, `-?review`, and `-?stale` each subtract exactly what the
 token without the `-` would have selected. That is the whole rule — every
 negation accepts the same values, offers the same completions, and reports the
 same problems as its positive twin, so there is nothing extra to learn. Several
@@ -126,6 +126,7 @@ on the task:
 
 | Token | Matches |
 | --- | --- |
+| `?review` | Current review attention: an open task carrying `=review`, or an eligible check-in whose day has arrived |
 | `?stale` | Open, undeferred work untouched for at least 90 days, the same population `fs` toggles |
 | `?deferred` | Tasks whose wake instant has not arrived |
 | `?leaf` | Tasks with no open direct child |
@@ -139,7 +140,11 @@ the other, one hop and never further down a chain. They say nothing about
 whether the other task is finished, because a reference is a note to yourself and
 never decides what is ready; they are also the two rows `f~` offers, so the
 picker and a typed query narrow by the same words. `?completed` takes the `:Nd`
-age and the other six take no value at all.
+age and the other seven take no value at all. `?review` is deliberately wider
+than `=review` only on the check-in axis: the stored form still asks about the
+flag alone, while the derived form also asks whether a scheduled look is due.
+Deferral suppresses that scheduled reminder but not an explicit stored flag;
+neither form turns staleness or Waiting into review attention.
 
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the
@@ -317,6 +322,9 @@ filter you rebuild.
 
 The list opens on two action rows — `Save current view` and, directly beneath
 it, `Add built-in view` — followed by every saved lens in alphabetical order.
+The built-in gallery includes both Review Queue, which preserves the stored
+`=review` flag meaning, and Needs Review, which uses `?review` with the ordinary
+default ordering.
 
 | Keys | Effect inside the picker |
 | --- | --- |
@@ -467,4 +475,3 @@ and Canceled for you — then `Ctrl+A` to select the visible matches, and
 `Space` → Delete. Use `fw` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
 the entire deletion is one undoable transaction.
-

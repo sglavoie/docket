@@ -162,7 +162,7 @@ error and is refused later, at the one place every other refusal is decided.
 
 #### The built-in view catalog
 
-`config.BuiltinNamedLensTemplates()` is the frozen nine-template catalog and
+`config.BuiltinNamedLensTemplates()` is the frozen ten-template catalog and
 `config.StarterNamedLenses()` its first three; both are built from
 `builtinNamedLensDefinitions()` on every call, so detachment is by construction
 rather than by a `Clone` pass and an append can never reach a template the caller
@@ -172,6 +172,11 @@ added rather than what a fresh machine already holds. A template's identity is
 its frozen UUID under the `6f1a0c4e-…` prefix, never its display order or its
 mutable name, and the catalog is returned in declaration order — the gallery, not
 `config`, sorts.
+
+Review Queue remains the stored `=review` view with Updated ordering. Needs
+Review is a separate `?review` template with default ordering, so adding the new
+attention view neither rewrites an existing saved lens nor changes what Review
+Queue means; both definitions resolve to the same review semantic accent.
 
 Adding one is the ordinary operation `tui.lens.add-template`: Filter category,
 `OperationTargetGlobal` at `TargetCardinalityNone`, `CapabilityLensPicker`, and

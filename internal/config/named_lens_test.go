@@ -138,6 +138,13 @@ func TestBuiltinNamedLensTemplatesExactCatalog(t *testing.T) {
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c10",
+			Name:  "Needs Review",
+			Mode:  LensModeAll,
+			Query: "?review",
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
+		},
+		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c07",
 			Name:  "Deferred",
 			Mode:  LensModeAll,

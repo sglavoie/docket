@@ -60,6 +60,8 @@ func (c QueryClause) token() string {
 		return "*pin"
 	case QueryFieldReview:
 		return "=review"
+	case QueryFieldNeedsReview:
+		return "?" + string(DerivedReview)
 	case QueryFieldCompleted:
 		if c.Operator == QueryOperatorAtLeast {
 			return "?" + string(QueryFieldCompleted) + ":" + c.Value
@@ -283,6 +285,12 @@ func splitSuffixedQueryValue(value, suffix string, suffixed QueryOperator) (Quer
 
 func splitDerivedQueryToken(body string) (QueryField, QueryOperator, string, error) {
 	name, value, qualified := strings.Cut(body, ":")
+	if name == string(DerivedReview) {
+		if qualified {
+			return "", "", "", fmt.Errorf("derived query token ?%s takes no value", name)
+		}
+		return QueryFieldNeedsReview, QueryOperatorPresent, "", nil
+	}
 	field := QueryField(name)
 	switch field {
 	case QueryFieldStale, QueryFieldDeferred, QueryFieldParent, QueryFieldChild, QueryFieldLeaf,

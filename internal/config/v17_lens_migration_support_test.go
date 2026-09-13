@@ -24,6 +24,7 @@ import (
 // two retired carriers verbatim, beside the rows the lens must still select
 // after migration.
 type v17LensCarrierFixture struct {
+	query    string
 	tasks    string
 	projects string
 	wantRows []string
@@ -57,6 +58,13 @@ func v17BuiltinLensCarriers() map[string]v17LensCarrierFixture {
 		},
 		lensReviewQueueTmplName: {
 			tasks:    `{"review":true}`,
+			wantRows: []string{"review", "api-review"},
+		},
+		lensNeedsReviewTmplName: {
+			// Schema 16 accepted an arbitrary saved query without parsing it. A
+			// pre-feature ?review spelling therefore survives the migration as text
+			// and becomes the canonical derived clause in the current build.
+			query:    "?review",
 			wantRows: []string{"review", "api-review"},
 		},
 		lensDeferredTmplName: {
@@ -230,7 +238,7 @@ func v17MigratedLensCases(t *testing.T) []v17PersistedLensCase {
 			id:   template.ID,
 			name: template.Name,
 			record: v16LensRecord(
-				template.ID, template.Name, template.Mode, "",
+				template.ID, template.Name, template.Mode, carrier.query,
 				template.Sort.Field, template.Sort.Ascending, carrier.tasks, carrier.projects,
 			),
 			wantQuer: template.Query,

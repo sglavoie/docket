@@ -144,6 +144,11 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			want: namedLensRole{Kind: namedLensRoleReview},
 		},
 		{
+			name: "derived review attention",
+			lens: namedLensQueryFixture("?review"),
+			want: namedLensRole{Kind: namedLensRoleReview},
+		},
+		{
 			name: "a review tag name is now ordinary vocabulary",
 			lens: namedLensQueryFixture("#review"),
 			want: namedLensRole{Kind: namedLensRoleNone},
@@ -156,6 +161,11 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		{
 			name: "a negated review flag assigns no color",
 			lens: namedLensQueryFixture("-=review"),
+			want: namedLensRole{Kind: namedLensRoleNone},
+		},
+		{
+			name: "negated review attention assigns no color",
+			lens: namedLensQueryFixture("-?review"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
@@ -398,6 +408,7 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			"Overdue":       {Kind: namedLensRoleOverdue},
 			"Active Work":   groupRole(models.StateGroupDoing),
 			"Review Queue":  {Kind: namedLensRoleReview},
+			"Needs Review":  {Kind: namedLensRoleReview},
 			"Deferred":      {Kind: namedLensRoleDeferred},
 			"Cleanup 90d":   {Kind: namedLensRoleCompleted},
 			"Parked Work":   {Kind: namedLensRoleWarning},

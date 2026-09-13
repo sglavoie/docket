@@ -126,11 +126,14 @@ func (q Query) OpensTerminalPopulation() bool {
 
 // OpensDeferredPopulation is the same rule read on the deferral axis: work whose
 // deferral has not yet expired is outside the base population until a positive
-// deferred or defer-day clause names it.
+// deferred or defer-day clause names it. The derived review clause opens it too,
+// because a stored review flag remains current attention under deferral even
+// though an arrived scheduled check-in is suppressed.
 func (q Query) OpensDeferredPopulation() bool {
 	return slices.ContainsFunc(q.Clauses, func(clause QueryClause) bool {
 		return clause.Polarity == QueryPolarityPositive &&
-			(clause.Field == QueryFieldDeferred || clause.Field == QueryFieldDefer)
+			(clause.Field == QueryFieldDeferred || clause.Field == QueryFieldDefer ||
+				clause.Field == QueryFieldNeedsReview)
 	})
 }
 

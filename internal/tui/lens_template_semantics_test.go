@@ -32,8 +32,9 @@ func daysFromNow(days int) *time.Time {
 
 // lensSemanticsOutliner holds the one population the narrowing templates are read
 // against: dated work either side of today, tasks carrying the stored review flag
-// beside tasks that merely spell the word on the tag and context axes, and
-// terminal work either side of the ninety-day completion threshold.
+// beside arrived and future check-ins, tasks that merely spell the word on the
+// tag and context axes, and terminal work either side of the ninety-day
+// completion threshold.
 func lensSemanticsOutliner() *outliner.OutlinerModel {
 	overdueNear := lensSemanticsTask("overdue-near", models.StateBacklog)
 	overdueNear.DueDate = daysFromNow(-1)
@@ -60,6 +61,19 @@ func lensSemanticsOutliner() *outliner.OutlinerModel {
 	reviewUrgent.Tags = []string{"urgent"}
 	urgentOnly := lensSemanticsTask("urgent-only", models.StateBacklog)
 	urgentOnly.Tags = []string{"urgent"}
+	reviewDue := lensSemanticsTask("review-due", models.StateBacklog)
+	reviewDue.NextCheckIn = daysFromNow(0)
+	reviewFuture := lensSemanticsTask("review-future", models.StateBacklog)
+	reviewFuture.NextCheckIn = daysFromNow(3)
+	reviewDeferredDue := lensSemanticsTask("review-deferred-due", models.StateBacklog)
+	reviewDeferredDue.NextCheckIn = daysFromNow(0)
+	reviewDeferredDue.DeferredUntil = daysFromNow(5)
+	reviewDeferredFlagged := lensSemanticsTask("review-deferred-flagged", models.StateBacklog)
+	reviewDeferredFlagged.Review = true
+	reviewDeferredFlagged.DeferredUntil = daysFromNow(5)
+	reviewStale := lensSemanticsTask("review-stale", models.StateBacklog)
+	reviewStale.UpdatedAt = time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
+	reviewWaiting := lensSemanticsTask("review-waiting", models.StateWaiting)
 
 	doneOld := lensSemanticsTask("done-old", models.StateDone)
 	doneOld.CompletedAt = daysFromNow(-120)
@@ -78,6 +92,7 @@ func lensSemanticsOutliner() *outliner.OutlinerModel {
 		"alpha",
 		overdueNear, overdueFar, dueToday, dueLater, overdueDone,
 		reviewFlagged, reviewTagged, reviewContext, reviewUrgent, urgentOnly,
+		reviewDue, reviewFuture, reviewDeferredDue, reviewDeferredFlagged, reviewStale, reviewWaiting,
 		doneOld, canceledOld, doneRecent, waitingOld,
 	))
 }
@@ -136,6 +151,33 @@ func TestReviewQueueTemplateIntersectsItsOtherFacets(t *testing.T) {
 	outlinerView.CrossProjectRebuildRows()
 	if got := sortedVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"review-urgent"}) {
 		t.Fatalf("rows under flag and tag = %v, want only the task carrying both", got)
+	}
+}
+
+// TestNeedsReviewTemplateReopensTheTypedAttentionPopulation is the cross-carrier
+// contract: the built-in definition is an ordinary saved lens, so reopening it
+// must select exactly what the live ?review spelling selected. The set includes
+// the stored flag and an arrived check-in, excludes future/deferred reminders
+// and the retired stale/Waiting routes, and still includes a flagged deferred
+// task because only scheduled reminders are suppressed by deferral.
+func TestNeedsReviewTemplateReopensTheTypedAttentionPopulation(t *testing.T) {
+	live := lensSemanticsOutliner()
+	searchRankedList(live, "?review")
+	liveIDs := sortedVisibleTaskIDs(live)
+
+	reopened := lensSemanticsOutliner()
+	applyLensOrFatal(t, reopened, lensTemplateByName(t, "Needs Review"))
+	reopenedIDs := sortedVisibleTaskIDs(reopened)
+
+	want := []string{"review-deferred-flagged", "review-due", "review-flagged", "review-urgent"}
+	if !slices.Equal(liveIDs, want) {
+		t.Fatalf("live ?review rows = %v, want current attention %v", liveIDs, want)
+	}
+	if !slices.Equal(reopenedIDs, liveIDs) {
+		t.Fatalf("reopened Needs Review rows = %v, want live query population %v", reopenedIDs, liveIDs)
+	}
+	if reopened.Sort != query.NewSortState() {
+		t.Fatalf("Needs Review sort = %+v, want existing default ordering", reopened.Sort)
 	}
 }
 

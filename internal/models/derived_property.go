@@ -15,6 +15,9 @@ type DerivedProperty string
 const (
 	// DerivedStale is the same threshold the Stale lane admits on.
 	DerivedStale DerivedProperty = "stale"
+	// DerivedReview matches the shared current-attention predicate: a stored
+	// review flag or an eligible scheduled check-in whose day has arrived.
+	DerivedReview DerivedProperty = "review"
 	// DerivedDeferred matches a deferral that has not expired yet.
 	DerivedDeferred DerivedProperty = "deferred"
 	// DerivedLeaf and DerivedParent split the population on the open direct child
@@ -36,6 +39,7 @@ const (
 // DerivedProperties is the closed set, in the order a surface teaches it.
 var DerivedProperties = []DerivedProperty{
 	DerivedStale,
+	DerivedReview,
 	DerivedDeferred,
 	DerivedLeaf,
 	DerivedParent,
@@ -69,6 +73,8 @@ func TaskMatchesDerived(
 	switch property {
 	case DerivedStale:
 		return QueryTaskIsStale(task, now)
+	case DerivedReview:
+		return TaskNeedsAttention(task, now)
 	case DerivedDeferred:
 		return task.IsDeferredAt(now)
 	case DerivedLeaf:
@@ -107,12 +113,13 @@ func DerivedOpensTerminalPopulation(property DerivedProperty) bool {
 	return property == DerivedCompleted
 }
 
-// DerivedOpensDeferredPopulation names the one property whose positive form asks
-// about work the base population hides behind a live deferral. It is the same
-// rule DerivedOpensTerminalPopulation states, read on the other axis, and the
-// negation is again a question about work already on screen.
+// DerivedOpensDeferredPopulation names properties whose positive form can match
+// work the base population hides behind a live deferral. Deferred asks for that
+// population directly; review includes a deferred task carrying the stored flag,
+// because deferral suppresses a scheduled reminder but not an explicit flag. The
+// negations are questions about work already on screen and open nothing.
 func DerivedOpensDeferredPopulation(property DerivedProperty) bool {
-	return property == DerivedDeferred
+	return property == DerivedDeferred || property == DerivedReview
 }
 
 // taskCompletedAtLeastDaysAgo keeps the live cleanup facet's shape: a task with

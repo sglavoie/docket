@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestParseSearchTokenizesDueHourWindow(t *testing.T) {
@@ -202,6 +204,17 @@ func TestNegationsReachNoOtherSurface(t *testing.T) {
 // prose, the way !important is: the sigil consumes only what it can answer, so
 // the values that do block a query are the recognized ones it cannot honor.
 func TestParseSearchDerivedValuesAreTheClosedSet(t *testing.T) {
+	definition, ok := DefinitionFor(SurfaceSearch, FieldDerived)
+	if !ok {
+		t.Fatal("search derived definition is missing")
+	}
+	if !slices.Contains(definition.Values, string(models.DerivedReview)) {
+		t.Fatalf("derived completion values = %v, want review attention", definition.Values)
+	}
+	if !strings.Contains(definition.Description, "current review attention") {
+		t.Fatalf("derived help description = %q, want current review attention named", definition.Description)
+	}
+
 	for _, name := range derivedNames {
 		parsed := ParseSearch("?" + name)
 		tokens := parsed.TokensFor(FieldDerived)
@@ -215,6 +228,16 @@ func TestParseSearchDerivedValuesAreTheClosedSet(t *testing.T) {
 
 	if parsed := ParseSearch("?completed:90d"); SearchGuidance(parsed) != "" {
 		t.Errorf("?completed:90d guidance = %q, want a runnable query", SearchGuidance(parsed))
+	}
+	for input, field := range map[string]Field{
+		"?review":  FieldDerived,
+		"-?review": FieldRemoveDerived,
+	} {
+		parsed := ParseSearch(input)
+		tokens := parsed.TokensFor(field)
+		if len(tokens) != 1 || tokens[0].Value != string(models.DerivedReview) {
+			t.Errorf("ParseSearch(%s) = %+v, want review attention on %s", input, parsed, field)
+		}
 	}
 	if prose := ParseSearch("?nonsense"); len(prose.Tokens) != 0 || prose.Text != "?nonsense" {
 		t.Errorf("ParseSearch(?nonsense) = %+v, want the whole input as prose", prose)

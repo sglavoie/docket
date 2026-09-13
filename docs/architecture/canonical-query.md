@@ -22,19 +22,25 @@ therefore two clauses rather than one ambiguous one, and the same split gives
 tag its exact and prefix readings.
 
 The fields are free text, dependency, priority, tag, context, due, defer, state,
-pinned, stale, deferred, completed, parent, child, leaf, project tag, parked,
-and archived. There is no root field: root is the negation of child. `0` is the
+pinned, stored review, derived review attention, stale, deferred, completed,
+parent, child, leaf, blocked, blocking, project tag, parked, and archived. There
+is no root field: root is the negation of child. `0` is the
 reserved unset token across priority, context, due, and the project tag, which
 is the same convention the capture grammar already spells `!0`, `##0`, and `@0`
 with.
 
 A predicate belongs in this vocabulary only when the triple `(task, project,
 now)` decides it. That rule is what keeps `Admits` total and side-effect free,
-and it is why four otherwise plausible predicates are absent: whether a
+and it is why three otherwise plausible predicates are absent: whether a
 dependency target is still open, whether a task belongs to the Today or Next
-planning collection, whether a project note matches free text, and the Review
-flag. Each needs resolution the triple cannot supply. Admitting one means giving
+planning collection, and whether a project note matches free text. Each needs resolution the triple cannot supply. Admitting one means giving
 the evaluator a resolution context, never widening `Admits`.
+
+The stored review field renders as `=review` and reads only `Task.Review`. The
+distinct attention field renders as `?review` and delegates to
+`TaskNeedsAttention`, which also admits an arrived eligible check-in. Keeping
+two internal fields is what lets both strings round-trip without reinterpreting
+saved `=review` lenses; both remain decidable from `(task, project, now)`.
 
 Free text matches over the task-side corpus: title, description, context, tags,
 checklist items, comments, attachment filenames and paths, and the owning

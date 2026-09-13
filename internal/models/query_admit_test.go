@@ -339,6 +339,86 @@ func TestQueryAdmitsTheDerivedTaskFlags(t *testing.T) {
 	}
 }
 
+// TestQueryReviewAttentionIsDistinctFromTheStoredFlag pins the compatibility
+// boundary between =review and ?review. The former reads one persisted boolean;
+// the latter delegates to TaskNeedsAttention, including an arrived check-in and
+// excluding the retired stale and Waiting routes.
+func TestQueryReviewAttentionIsDistinctFromTheStoredFlag(t *testing.T) {
+	now := queryTestNow()
+	project := queryTestProject()
+	due, future := queryTestDay(29), queryTestDay(30)
+	deferredUntil := queryTestDay(31)
+
+	stored, err := ParseQuery("=review")
+	if err != nil {
+		t.Fatalf("ParseQuery(=review): %v", err)
+	}
+	attention, err := ParseQuery("?review")
+	if err != nil {
+		t.Fatalf("ParseQuery(?review): %v", err)
+	}
+	notAttention, err := ParseQuery("-?review")
+	if err != nil {
+		t.Fatalf("ParseQuery(-?review): %v", err)
+	}
+
+	build := func(mutate func(*Task)) *Task {
+		task := queryTestTask()
+		mutate(task)
+		return task
+	}
+	cases := []struct {
+		name      string
+		task      *Task
+		isStored  bool
+		needsLook bool
+	}{
+		{"plain", build(func(*Task) {}), false, false},
+		{"stored flag", build(func(task *Task) { task.Review = true }), true, true},
+		{"arrived check-in", build(func(task *Task) { task.NextCheckIn = &due }), false, true},
+		{"future check-in", build(func(task *Task) { task.NextCheckIn = &future }), false, false},
+		{"merely stale", build(func(task *Task) {
+			task.UpdatedAt = now.AddDate(0, 0, -StaleTaskThresholdDays)
+		}), false, false},
+		{"merely waiting", build(func(task *Task) { task.WorkflowState = StateWaiting }), false, false},
+		{"deferred arrived check-in", build(func(task *Task) {
+			task.NextCheckIn = &due
+			task.DeferredUntil = &deferredUntil
+		}), false, false},
+		{"deferred stored flag", build(func(task *Task) {
+			task.Review = true
+			task.DeferredUntil = &deferredUntil
+		}), true, true},
+		{"terminal stored flag", build(func(task *Task) {
+			task.Review = true
+			task.WorkflowState = StateDone
+		}), true, false},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := stored.Admits(testCase.task, project, now); got != testCase.isStored {
+				t.Errorf("=review admits = %t, want %t", got, testCase.isStored)
+			}
+			if got := attention.Admits(testCase.task, project, now); got != testCase.needsLook {
+				t.Errorf("?review admits = %t, want %t", got, testCase.needsLook)
+			}
+			if got := notAttention.Admits(testCase.task, project, now); got == testCase.needsLook {
+				t.Errorf("-?review admits = %t, want the inverse of %t", got, testCase.needsLook)
+			}
+		})
+	}
+
+	if stored.OpensDeferredPopulation() {
+		t.Fatal("=review changed its population admission")
+	}
+	if !attention.OpensDeferredPopulation() {
+		t.Fatal("?review did not open the deferred population its flagged branch can match")
+	}
+	if notAttention.OpensDeferredPopulation() {
+		t.Fatal("-?review opened the deferred population")
+	}
+}
+
 func TestQueryAdmitsCompletionOnlyWithAUsableTimestamp(t *testing.T) {
 	now := queryTestNow()
 	project := queryTestProject()

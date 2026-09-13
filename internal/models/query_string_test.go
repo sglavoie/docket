@@ -27,6 +27,7 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 		{"$waiting", QueryFieldState, QueryOperatorIs, string(StateWaiting)},
 		{"*pin", QueryFieldPinned, QueryOperatorPresent, ""},
 		{"=review", QueryFieldReview, QueryOperatorPresent, ""},
+		{"?review", QueryFieldNeedsReview, QueryOperatorPresent, ""},
 		{"?stale", QueryFieldStale, QueryOperatorPresent, ""},
 		{"?deferred", QueryFieldDeferred, QueryOperatorPresent, ""},
 		{"?completed", QueryFieldCompleted, QueryOperatorPresent, ""},
@@ -68,7 +69,7 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 func TestQueryStringRoundTripsThroughParseQuery(t *testing.T) {
 	inputs := []string{
 		"",
-		`"login form" !1+ #auth #ui -#wip ##home @overdue $doing *pin ?stale`,
+		`"login form" !1+ #auth #ui -#wip ##home @overdue $doing *pin =review ?review -?review ?stale`,
 		"~project-beta:task-7 !0 ##0 @0 +#0",
 		"@+6h @@2026-09-01 ?completed:90d ?parent -?child ?leaf ?blocked -?blocking",
 		"+parked +archived:only +#infra",
@@ -119,6 +120,7 @@ func TestParseQueryRefusesWhatStringNeverEmits(t *testing.T) {
 		{"unterminated quote", `"login`},
 		{"unknown derived token", "?orphan"},
 		{"derived token carrying a value", "?stale:90"},
+		{"review attention carrying a value", "?review:1d"},
 		{"unknown population token", "+unfiled"},
 		{"unknown state", "$review"},
 		{"priority out of range", "!7"},

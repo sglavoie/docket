@@ -72,6 +72,7 @@ const (
 	lensOverdueTemplateName = "Overdue"
 	lensActiveWorkTmplName  = "Active Work"
 	lensReviewQueueTmplName = "Review Queue"
+	lensNeedsReviewTmplName = "Needs Review"
 	lensDeferredTmplName    = "Deferred"
 	lensCleanup90dTmplName  = "Cleanup 90d"
 	lensParkedWorkTmplName  = "Parked Work"
@@ -82,6 +83,7 @@ const (
 	lensOverdueTemplateID   = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c04"
 	lensActiveWorkTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c05"
 	lensReviewQueueTmplID   = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c06"
+	lensNeedsReviewTmplID   = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c10"
 	lensDeferredTmplID      = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c07"
 	lensCleanup90dTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c08"
 	lensParkedWorkTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09"
@@ -266,6 +268,13 @@ func builtinNamedLensDefinitions() NamedLensList {
 			Mode:  LensModeAll,
 			Query: "=review",
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:    lensNeedsReviewTmplID,
+			Name:  lensNeedsReviewTmplName,
+			Mode:  LensModeAll,
+			Query: "?" + string(models.DerivedReview),
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 		{
 			ID:    lensDeferredTmplID,

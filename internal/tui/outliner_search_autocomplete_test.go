@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"slices"
+	"testing"
 	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
@@ -28,6 +31,21 @@ func searchACValues(outlinerView *outliner.OutlinerModel) []string {
 		values = append(values, item.Value)
 	}
 	return values
+}
+
+func TestSearchAutocompleteOffersReviewAttentionFromTheDerivedRegistry(t *testing.T) {
+	outlinerView := searchACOutliner(primaryRowsProject("alpha", searchACTask("task", nil)))
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, textgrammar.FieldDerived)
+	if !ok {
+		t.Fatal("search derived definition is missing")
+	}
+
+	for _, trigger := range []string{"?", "-?"} {
+		typeSearchAC(outlinerView, trigger)
+		if got := searchACValues(outlinerView); !slices.Contains(got, string(models.DerivedReview)) {
+			t.Errorf("%s completions = %v, want review attention from %v", trigger, got, definition.Values)
+		}
+	}
 }
 
 // searchACTask seeds one tagged autocomplete candidate. The shell's own

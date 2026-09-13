@@ -85,6 +85,10 @@ const (
 	// rest. Review is a stored boolean beside Pinned, not a lifecycle state and not
 	// a tag, so it is read here the same way Pinned is.
 	QueryFieldReview QueryField = "review"
+	// QueryFieldNeedsReview is the canonical clause behind ?review. It stays
+	// distinct from QueryFieldReview because =review asks only about the stored
+	// flag, while ?review asks the shared derived attention question.
+	QueryFieldNeedsReview QueryField = "needs_review"
 	// QueryFieldStale matches open, undeferred work untouched for at least
 	// StaleTaskThresholdDays local calendar days.
 	QueryFieldStale QueryField = "stale"
@@ -188,6 +192,7 @@ var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldState, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},
 	{QueryFieldPinned, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldReview, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
+	{QueryFieldNeedsReview, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldStale, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldDeferred, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldCompleted, QueryJoinOR, []QueryOperator{QueryOperatorPresent, QueryOperatorAtLeast}, false},

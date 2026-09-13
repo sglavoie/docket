@@ -373,24 +373,24 @@ var registry = []definitionSpec{
 		Definition: Definition{
 			Field: FieldRemoveDerived, Group: "Derived", Trigger: "-?",
 			Values:   derivedNames,
-			Examples: []string{"-?stale", "-?blocked", "-?completed:90d"},
+			Examples: []string{"-?review", "-?stale", "-?blocked", "-?completed:90d"},
 			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
 		},
 		forms:   []surfaceForm{{Text: "-?derived", Surfaces: SurfaceSearch}},
 		pattern: `(?:^|\s)-\?(\S+)`, validation: validateDerived,
 		negates:           FieldDerived,
-		searchDescription: "Exclude a computed property",
+		searchDescription: "Exclude current review attention or another computed property",
 	},
 	{
 		Definition: Definition{
 			Field: FieldDerived, Group: "Derived", Trigger: "?",
 			Values:   derivedNames,
-			Examples: []string{"?stale", "?leaf", "?blocking", "?completed:90d"},
+			Examples: []string{"?review", "?stale", "?leaf", "?blocking", "?completed:90d"},
 			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
 		},
 		forms:   []surfaceForm{{Text: "?derived", Surfaces: SurfaceSearch}},
 		pattern: `(?:^|\s)\?(\S+)`, validation: validateDerived,
-		searchDescription: "Match a computed property the task does not store",
+		searchDescription: "Match current review attention or another computed property",
 	},
 	{
 		Definition: Definition{

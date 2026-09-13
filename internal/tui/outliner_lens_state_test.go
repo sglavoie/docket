@@ -26,7 +26,7 @@ const lensRoundTripScopeID = "2b7d5e91-3c48-4f16-8a05-c9e7f30d4b62"
 // token, a derived predicate, a negation, a population selector, and the
 // dependency axis the retired filter carriers could not persist at all.
 const lensRoundTripFacets = "!1 #api #zeta ##deep ##errand @week $waiting $doing " +
-	"*pin =review ?stale ?deferred ?completed:30d -?leaf +#client +#0 +parked +archived:only"
+	"*pin =review ?review ?stale ?deferred ?completed:30d -?leaf +#client +#0 +parked +archived:only"
 
 func lensRoundTripBase(t *testing.T) outliner.LensState {
 	t.Helper()
@@ -67,9 +67,9 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 	for _, facets := range []string{
 		"", `"needle"`, "!2", "!0", "#api", "#api*", "##deep", "##0",
 		"@overdue", "@today", "@week", "@2026-01-05", "@+3h", "@0", "@@2026-01-05",
-		"$backlog", "$done $canceled", "*pin", "=review", "?stale", "?deferred",
+		"$backlog", "$done $canceled", "*pin", "=review", "?review", "?stale", "?deferred",
 		"?completed", "?completed:7d", "?parent", "?child", "?leaf", "?blocked", "?blocking",
-		"-#api", "-!2", "-$doing", "-*pin", "-=review", "-?stale",
+		"-#api", "-!2", "-$doing", "-*pin", "-=review", "-?review", "-?stale",
 		"+#client", "+#0", "+parked", "+parked:only", "+archived", "+archived:only",
 	} {
 		variants["facets:"+facets] = func(s *outliner.LensState) { *s = lensStateWithFacets(t, *s, facets) }

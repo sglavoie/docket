@@ -93,7 +93,8 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 		return namedLensRole{Kind: namedLensRoleDue}
 	case namedLensHasClause(facets, models.QueryFieldDeferred):
 		return namedLensRole{Kind: namedLensRoleDeferred}
-	case namedLensHasClause(facets, models.QueryFieldReview):
+	case namedLensHasClause(facets, models.QueryFieldReview) ||
+		namedLensHasClause(facets, models.QueryFieldNeedsReview):
 		return namedLensRole{Kind: namedLensRoleReview}
 	case namedLensHasClause(facets, models.QueryFieldCompleted) ||
 		(grouped && namedLensStatesAllTerminal(states)):

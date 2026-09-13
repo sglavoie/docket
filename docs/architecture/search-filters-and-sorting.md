@@ -70,7 +70,7 @@ the same pass.
 `?` is the derived-property trigger and it is search-only, because a derived
 property is computed from the workspace rather than stored on a task: there is
 nothing for a mutation surface to write. Its value set is closed —
-`stale`, `deferred`, `leaf`, `parent`, `completed`, `blocked`, `blocking` —
+`stale`, `review`, `deferred`, `leaf`, `parent`, `completed`, `blocked`, `blocking` —
 and the names and the answers both live in `internal/models`
 (`models.DerivedProperty`, `models.DerivedProperties`, `models.TaskMatchesDerived`),
 which the grammar spells and the TUI calls without naming. That layering is not
@@ -79,7 +79,14 @@ incidental: `TestDependencyIsolationPresentationVocabulary` bans the string
 `blocked`, so the property has to be named where the invariant lives and the
 chrome that names it has to spell the sigil. The same test asserts the live
 vocabulary — `blocked`, `blocking`, `settled`, `unreadable` — is actually present,
-so a later rename cannot quietly empty the set the retirement sweep guards. `?completed:Nd` is the one qualifier, and
+so a later rename cannot quietly empty the set the retirement sweep guards.
+`?review` delegates to `models.TaskNeedsAttention`: it matches the stored review
+flag or an eligible check-in whose day has arrived, but never merely stale or
+Waiting work. It is a distinct canonical field from `=review`, so saving and
+reopening the derived query cannot rewrite the stored-flag query. Its positive
+form opens the deferred population because a flagged deferred task still needs
+attention; the scheduled branch remains suppressed there, and `-?review` opens
+nothing. `?completed:Nd` is the one qualifier, and
 it opens the terminal population the way `$done` does, through
 `models.DerivedOpensTerminalPopulation`; the census two of the properties need —
 open direct children for `?leaf`/`?parent`, incoming references for `?blocking` —

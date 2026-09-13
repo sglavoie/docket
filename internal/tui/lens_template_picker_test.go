@@ -71,6 +71,7 @@ func TestLensTemplateGalleryListsEveryTemplateAlphabetically(t *testing.T) {
 		"Cleanup 90d",
 		"Deferred",
 		"High Priority",
+		"Needs Review",
 		"Overdue",
 		"Parked Work",
 		"Review Queue",
@@ -113,8 +114,8 @@ func TestLensTemplateGalleryDisablesTheSeededStartersAndOffersTheRest(t *testing
 
 	// Every row stays visible: the gallery says why a template is unavailable
 	// rather than hiding the fact that it exists.
-	if len(picker.Surface().Items()) != 9 {
-		t.Fatalf("the gallery hid rows: %d visible, want 9", len(picker.Surface().Items()))
+	if len(picker.Surface().Items()) != 10 {
+		t.Fatalf("the gallery hid rows: %d visible, want 10", len(picker.Surface().Items()))
 	}
 	for _, saved := range seeded {
 		row := galleryRow(t, picker, saved.ID)
@@ -129,8 +130,8 @@ func TestLensTemplateGalleryDisablesTheSeededStartersAndOffersTheRest(t *testing
 			added++
 		}
 	}
-	if added != 6 {
-		t.Fatalf("%d templates are addable beside the three starters, want 6", added)
+	if added != 7 {
+		t.Fatalf("%d templates are addable beside the three starters, want 7", added)
 	}
 }
 

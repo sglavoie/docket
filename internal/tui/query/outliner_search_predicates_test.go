@@ -285,3 +285,64 @@ func TestSearchDerivedPredicatesAnswerComputedQuestions(t *testing.T) {
 		t.Error("-?completed admitted a completed task")
 	}
 }
+
+// TestSearchReviewDerivedUsesTheSharedAttentionPredicate covers the typed-query
+// carrier independently from the canonical facet a saved lens restores. Its
+// positive form opens deferred work because a stored review flag remains active
+// there; the negation narrows only the ordinary live population.
+func TestSearchReviewDerivedUsesTheSharedAttentionPredicate(t *testing.T) {
+	now := util.StartOfDay(time.Now())
+	future := now.AddDate(0, 0, 3)
+	deferredUntil := now.AddDate(0, 0, 5)
+	build := func(id string, mutate func(*models.Task)) *models.Task {
+		task := &models.Task{ID: id, WorkflowState: models.StateBacklog, UpdatedAt: now}
+		mutate(task)
+		return task
+	}
+	tasks := []*models.Task{
+		build("plain", func(*models.Task) {}),
+		build("flagged", func(task *models.Task) { task.Review = true }),
+		build("due", func(task *models.Task) { task.NextCheckIn = &now }),
+		build("future", func(task *models.Task) { task.NextCheckIn = &future }),
+		build("stale", func(task *models.Task) {
+			task.UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
+		}),
+		build("waiting", func(task *models.Task) { task.WorkflowState = models.StateWaiting }),
+		build("deferred-due", func(task *models.Task) {
+			task.NextCheckIn = &now
+			task.DeferredUntil = &deferredUntil
+		}),
+		build("deferred-flagged", func(task *models.Task) {
+			task.Review = true
+			task.DeferredUntil = &deferredUntil
+		}),
+		build("terminal-flagged", func(task *models.Task) {
+			task.Review = true
+			task.WorkflowState = models.StateDone
+		}),
+	}
+	project := &models.Project{ID: "alpha", Slug: "alpha", Tasks: tasks}
+
+	for _, spelling := range []string{"?review", "-?review"} {
+		_, gate := CompileSearchQuery(spelling, []*models.Project{project}, nil, models.Query{})
+		if gate.Invalid() {
+			t.Fatalf("%s produced guidance %q", spelling, gate.GuidanceText())
+		}
+		negative := spelling[0] == '-'
+		for _, task := range tasks {
+			want := models.TaskNeedsAttention(task, gate.now)
+			if negative {
+				want = !want
+			}
+			if got := gate.Admits(task, project); got != want {
+				t.Errorf("%s admitted %s = %t, want %t", spelling, task.ID, got, want)
+			}
+		}
+		if got, want := gate.AllowsDeferred(), !negative; got != want {
+			t.Errorf("%s AllowsDeferred = %t, want %t", spelling, got, want)
+		}
+		if gate.AllowsTerminal() {
+			t.Errorf("%s opened terminal work the attention predicate refuses", spelling)
+		}
+	}
+}
