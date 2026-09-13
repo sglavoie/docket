@@ -151,7 +151,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 
 	_, cmd = app.Update(syntheticSpecialKey(tea.KeyEsc))
 	if cmd != nil {
-		app.Update(cmd())
+		app.Update(runImmediateTestCommand(cmd))
 	}
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())

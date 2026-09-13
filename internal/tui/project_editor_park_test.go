@@ -85,7 +85,7 @@ func answerProjectParkConfirm(t *testing.T, app *AppModel, key rune) tea.Msg {
 	if cmd == nil {
 		return nil
 	}
-	return cmd()
+	return runImmediateTestCommand(cmd)
 }
 
 func TestProjectEditorParkAsksTheSharedConfirmationBeforeWriting(t *testing.T) {
