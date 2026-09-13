@@ -74,6 +74,10 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 		return preparedCapture{}, err
 	}
 
+	if err := capturedCheckInAccepts(req.CheckIn, destination.state); err != nil {
+		return preparedCapture{}, err
+	}
+
 	attachments, err := resolveCapturedAttachments(req.Attachments)
 	if err != nil {
 		return preparedCapture{}, err
@@ -181,7 +185,38 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 			return nil, invalidInput("defer", err.Error())
 		}
 	}
+	// The check-in is written here for the same reason and against the same
+	// already-accepted destination: a terminal transition clears one, so a schedule
+	// set before it would vanish, and the prepare step has already refused the pair
+	// that would need it.
+	if !req.CheckIn.IsEmpty() {
+		if err := task.SetCheckIn(req.CheckIn, now); err != nil {
+			return nil, invalidInput("check-in", err.Error())
+		}
+	}
 	return task, nil
+}
+
+// capturedCheckInAccepts judges a captured schedule before the capture consumes
+// an identity, against the destination the request settled on rather than the one
+// it named — a deferral rewrites Backlog over it, so judging the raw destination
+// would answer about a state the task never enters.
+//
+// A terminal destination refuses a schedule for the reason a terminal target does
+// on the bulk path: the lifecycle primitive would drop it the moment the task
+// entered that state, so accepting it would mean writing a value the same
+// transaction discards.
+func capturedCheckInAccepts(schedule models.CheckInSchedule, state models.WorkflowState) error {
+	if schedule.IsEmpty() {
+		return nil
+	}
+	if err := models.ValidateCheckInSchedule(schedule); err != nil {
+		return invalidInput("check-in", err.Error())
+	}
+	if state.IsTerminal() {
+		return invalidInput("check-in", string(state)+" work owes no check-in")
+	}
+	return nil
 }
 
 // deferredCaptureDestination routes a captured deferral through deferTask's

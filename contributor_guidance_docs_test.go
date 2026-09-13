@@ -634,7 +634,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// the schema pairing, which had drifted two boundaries behind the code. The
 	// mechanism lives in docs/architecture/migration.md and
 	// docs/architecture/persistence-and-transactions.md.
-	const budget = 45435
+	// Twenty-ninth raise, 45435 to 45763, for what `R` may be pressed on. 328
+	// bytes buy one rule and one retirement. The rule is that admission and
+	// navigation are two predicates rather than one: a person who opens a task
+	// early and answers it is doing the thing the feature is for, while a pass
+	// that walked onto a check-in whose day has not come would keep handing back
+	// work nobody owes yet, and a single predicate cannot be both permissive
+	// enough for the first and strict enough for the second. The retirement is
+	// staleness and Waiting, which the previous rule admitted: a task that has
+	// merely sat still never asked for anything, so every pass began with
+	// cleanup material that buried the tasks that did ask, and the two remaining
+	// routes — the flag and a date someone chose — are exactly the ones a person
+	// raised deliberately. Naming which predicate `internal/app` rechecks is the
+	// rest of it, since rechecking the narrower one would refuse the early review
+	// the wider one just admitted. The mechanism lives in
+	// docs/architecture/tui-architecture.md.
+	const budget = 45763
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

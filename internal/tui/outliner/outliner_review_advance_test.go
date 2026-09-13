@@ -28,6 +28,30 @@ func reviewSettled(id string) *models.Task {
 	return primaryRowsTask(id, models.StateBacklog)
 }
 
+// reviewScheduled is the other kind of candidate: unflagged work carrying a
+// check-in that has already come due, which is what a pass navigates by once the
+// flag is not the only way to ask.
+func reviewScheduled(id string, repeatDays int) *models.Task {
+	task := primaryRowsTask(id, models.StateBacklog)
+	scheduleCheckIn(task, 0, repeatDays)
+	return task
+}
+
+// scheduleCheckIn writes a schedule dayOffset calendar days from today through
+// the model's own gate. The offset is relative because a check-in is judged
+// against the wall clock these row tests run at, and it is written rather than
+// assigned so a fixture the production path would refuse cannot be built.
+func scheduleCheckIn(task *models.Task, dayOffset, repeatDays int) {
+	now := time.Now()
+	next := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).
+		AddDate(0, 0, dayOffset)
+	if err := task.SetCheckIn(
+		models.CheckInSchedule{Next: &next, RepeatDays: repeatDays}, now,
+	); err != nil {
+		panic("fixture check-in refused: " + err.Error())
+	}
+}
+
 // reviewAdvanceOutliner builds the real Backlog projection, whose
 // [projectHeader][task...] groups and tree order are what the advance walks.
 // Backlog is deliberate: it has no promoted lanes, so a flagged task stays where
@@ -393,25 +417,90 @@ func TestReviewAdvanceIsAbandonedWhenTheProjectionChanges(t *testing.T) {
 	}
 }
 
-// TestReviewAdvanceCarriesAWaitingPassWithoutRepeatingItself is the Waiting
-// candidate's own case. Acknowledging one changes nothing about its eligibility,
-// so the pass has to move on by position rather than by predicate — otherwise
-// the very next candidate it finds is the row it just answered.
-func TestReviewAdvanceCarriesAWaitingPassWithoutRepeatingItself(t *testing.T) {
-	first := primaryRowsTask("first", models.StateWaiting)
-	second := primaryRowsTask("second", models.StateWaiting)
+// TestReviewAdvanceCarriesARepeatingPassWithoutRepeatingItself is the repeating
+// candidate's own case, and it is the one a cadence could break: the schedule
+// survives its acknowledgement, so the pass would circle if a surviving schedule
+// still counted. It does not, because the answered occurrence moved to a day
+// that has not come.
+func TestReviewAdvanceCarriesARepeatingPassWithoutRepeatingItself(t *testing.T) {
+	first := reviewScheduled("first", 7)
+	second := reviewScheduled("second", 7)
 	alpha := primaryRowsProject("alpha", first, second)
-	outliner, _ := primaryRowsOutliner(alpha)
-	outliner.SelectOutlinerMode(chrome.ModeAll)
+	outliner := reviewAdvanceOutliner(alpha)
 
 	inboxCursorTo(t, outliner, first.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, first, alpha))
 
 	requireCursorRow(t, outliner, second.ID)
-	if !first.IsInState(models.StateWaiting) {
-		t.Fatalf("acknowledged task state = %s, want the preserved Waiting", first.State())
+	if first.NextCheckIn == nil || first.CheckInRepeatDays != 7 {
+		t.Fatalf("acknowledged check-in = %v every %d days, want the cadence preserved",
+			first.NextCheckIn, first.CheckInRepeatDays)
 	}
-	if !models.TaskAwaitsReview(first, time.Now()) {
-		t.Fatal("acknowledging a Waiting task stopped it being a candidate")
+	if models.TaskNeedsAttention(first, time.Now()) {
+		t.Fatal("an answered repeating check-in is still asking for attention")
 	}
+	// And it is still reviewable by name, which is what an early review is; only
+	// the automatic pass has moved on.
+	if !models.TaskAllowsExplicitReview(first, time.Now()) {
+		t.Fatal("a scheduled task stopped allowing an early review")
+	}
+}
+
+// TestReviewAdvanceIgnoresAFutureCheckIn is the narrowing stated as navigation:
+// scheduled work whose day has not come may be reviewed by name, but a pass does
+// not stop on it, so the cursor crosses it to reach what is actually owed.
+func TestReviewAdvanceIgnoresAFutureCheckIn(t *testing.T) {
+	source := reviewFlagged("source")
+	ahead := reviewScheduled("ahead", models.CheckInRepeatOff)
+	scheduleCheckIn(ahead, 5, models.CheckInRepeatOff)
+	owed := reviewScheduled("owed", models.CheckInRepeatOff)
+	alpha := primaryRowsProject("alpha", source, ahead, owed)
+	outliner := reviewAdvanceOutliner(alpha)
+
+	inboxCursorTo(t, outliner, source.ID)
+	capture := planReviewAcknowledgement(t, outliner, source, alpha)
+	want := []taskref.TaskIdentity{taskref.For(owed, alpha)}
+	if !slices.Equal(capture.ReviewSuccessors, want) {
+		t.Fatalf("successors = %+v, want the owed check-in alone %+v", capture.ReviewSuccessors, want)
+	}
+	requireNoExhaustionReported(t, settleReviewAcknowledgement(t, outliner, capture))
+
+	requireCursorRow(t, outliner, owed.ID)
+	if !models.TaskAllowsExplicitReview(ahead, time.Now()) {
+		t.Fatal("the skipped row stopped being explicitly reviewable; the test proves nothing")
+	}
+}
+
+// TestReviewAdvanceIgnoresStalenessAndWaiting pins the two retired routes as
+// navigation refuses them too. Both rows are visible and both would have been
+// successors under the old predicate, so a pass that stops on either has grown
+// the automatic question back.
+func TestReviewAdvanceIgnoresStalenessAndWaiting(t *testing.T) {
+	source := reviewFlagged("source")
+	stale := reviewSettled("stale")
+	stale.UpdatedAt = time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
+	waiting := primaryRowsTask("waiting", models.StateWaiting)
+	alpha := primaryRowsProject("alpha", source, stale, waiting)
+	// All rather than Backlog, because All is the one projection that draws a
+	// Waiting row, a stale row, and a flagged row at once.
+	outliner, _ := primaryRowsOutliner(alpha)
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+
+	if !models.QueryTaskIsStale(stale, time.Now()) {
+		t.Fatal("the stale fixture is not stale; the boundary proves nothing")
+	}
+	for _, id := range []string{stale.ID, waiting.ID} {
+		if countTaskRows(outliner, id) == 0 {
+			t.Fatalf("%q is not visible; a skip over an invisible row proves nothing", id)
+		}
+	}
+	inboxCursorTo(t, outliner, source.ID)
+	capture := planReviewAcknowledgement(t, outliner, source, alpha)
+	if len(capture.ReviewSuccessors) != 0 {
+		t.Fatalf("successors = %+v, want none: neither staleness nor Waiting is a candidate",
+			capture.ReviewSuccessors)
+	}
+	requireExhaustionReported(t, settleReviewAcknowledgement(t, outliner, capture))
+
+	requireCursorRow(t, outliner, source.ID)
 }

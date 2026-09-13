@@ -29,7 +29,13 @@ const (
 	// resolves a different destination per target — a date, today with its Today
 	// planning, or no deadline at all — so it owns its own single-snapshot
 	// calculation and reports what each target's deadline actually became.
-	TaskOperationStepDueDate     TaskOperation = "step_due_date"
+	TaskOperationStepDueDate TaskOperation = "step_due_date"
+	// TaskOperationSetCheckIn writes one check-in schedule across the whole
+	// selection, an empty schedule being the clear. It is not a spelling of
+	// SetDueDate: a deadline is when work is owed and can carry Today planning
+	// with it, while a check-in is when it should be looked at again and never
+	// moves a task into Today.
+	TaskOperationSetCheckIn      TaskOperation = "set_check_in"
 	TaskOperationSetDefer        TaskOperation = "set_defer"
 	TaskOperationSetTags         TaskOperation = "set_tags"
 	TaskOperationToggleTag       TaskOperation = "toggle_tag"
@@ -62,6 +68,10 @@ type TaskOperationRequest struct {
 	// Its zero value names no direction, so every other operation leaves it alone
 	// and a step request that forgot to set one is refused rather than defaulted.
 	DueStep DueStepRequest
+	// CheckIn carries the schedule TaskOperationSetCheckIn writes. Its zero value
+	// is no schedule, which is the clear, so the two halves of the operation are
+	// one value rather than a flag a caller could contradict.
+	CheckIn models.CheckInSchedule
 	Tags    []string
 	// TagPatch switches SetTags from replacement semantics to the tri-state
 	// bulk editor's add/remove patch. Membership for tags in neither set is
@@ -206,6 +216,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 
 	case TaskOperationStepDueDate:
 		return s.stepDueDates(req.Targets, req.DueStep)
+
+	case TaskOperationSetCheckIn:
+		result, err := s.BulkSetCheckIn(req.Targets, req.CheckIn)
+		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetDefer:
 		result, err := s.BulkDefer(req.Targets, req.Date)

@@ -117,8 +117,9 @@ type TaskItemMutator interface {
 	// SetResumeNote writes, replaces, or clears (empty note) one task's resume
 	// note, reporting whether anything actually changed.
 	SetResumeNote(locator app.TaskLocator, note string) (app.ResumeNoteResult, error)
-	// MarkReviewed acknowledges one task awaiting review, rechecking eligibility
-	// against the service clock before it clears the flag and touches the task.
+	// MarkReviewed acknowledges one task a person raised, rechecking eligibility
+	// against the service clock before it clears the flag, records the review,
+	// and moves any repeating check-in on.
 	MarkReviewed(locator app.TaskLocator) (app.TaskResult, error)
 	// Reparent changes one task's parent within its owning project.
 	Reparent(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)

@@ -266,7 +266,7 @@ func (s *Service) ClearTaskDependencies(locator TaskLocator) (TaskResult, error)
 // the commit writes. A refusal on any target aborts the batch before a single
 // task is touched.
 func (s *Service) bulkPatchDependencies(locators []TaskLocator, patch DependencyPatch) (BulkResult, error) {
-	return s.bulkAttributeOverSnapshot(locators, "Set Dependencies", "dependencies", func(snap Snapshot, refs []TaskRef) (func(TaskRef), error) {
+	return s.bulkAttributeOverSnapshot(locators, "Set Dependencies", "dependencies", func(snap Snapshot, refs []TaskRef) (func(TaskRef) error, error) {
 		if err := refuseSelectedDependencyTargets(refs, patch.Add); err != nil {
 			return nil, err
 		}
@@ -280,15 +280,16 @@ func (s *Service) bulkPatchDependencies(locators []TaskLocator, patch Dependency
 			resolved[ref.Task.ID] = next
 		}
 		now := s.clock.Now()
-		return func(ref TaskRef) {
+		return func(ref TaskRef) error {
 			next := resolved[ref.Task.ID]
 			// A target the patch left alone still commits, but its touch time must
 			// not move: UpdatedAt answers "when did this task last change".
 			if models.TaskReferencesEqual(ref.Task.Dependencies, next) {
-				return
+				return nil
 			}
 			ref.Task.Dependencies = next
 			ref.Task.UpdatedAt = now
+			return nil
 		}, nil
 	})
 }

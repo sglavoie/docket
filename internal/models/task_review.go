@@ -2,26 +2,17 @@ package models
 
 import "time"
 
-// TaskAwaitsReview reports whether a task is one the review pass is for: work
-// that is open and has asked, one way or another, to be looked at again. The
-// three ways are independent and deliberately unranked — a task flagged with
-// `=`, a task the stale predicate has stopped hearing from, and a task parked in
-// Waiting on someone else — so a task qualifying twice is no more a candidate
-// than one qualifying once.
+// This file owns the two review questions and keeps them apart. One is
+// automatic — which tasks are asking to be looked at, without anyone having gone
+// looking — and it is what a review pass navigates by. The other is explicit —
+// which tasks a person may acknowledge when they name one — and it is strictly
+// wider, because an early review of scheduled work is allowed.
 //
-// Deferral needs no clause of its own. A currently deferred task cannot be stale
-// (QueryTaskIsStale refuses it) and Waiting is a state a deferral does not
-// claim, so the only deferred task that answers here is one explicitly flagged,
-// which is the caller having said out loud that it wants this one back.
-//
-// Terminal work is refused outright: a done or canceled task has nothing left to
-// acknowledge, and admitting one would let a review pass touch completion data.
-func TaskAwaitsReview(task *Task, now time.Time) bool {
-	if task == nil || task.IsTerminalState() {
-		return false
-	}
-	return task.Review || task.IsInState(StateWaiting) || QueryTaskIsStale(task, now)
-}
+// Deliberately absent: a single predicate spanning both. The retired
+// TaskAwaitsReview answered "flagged, stale, or Waiting" for every consumer at
+// once, which is what made the old pass a list of everything: staleness and
+// Waiting are cleanup material a person goes looking for with `fs` and `?stale`,
+// not work that raised its hand. Neither predicate here admits them.
 
 // TaskNeedsAttention reports whether a task is asking to be looked at right
 // now, without anyone having gone looking for it. There are exactly two ways to
@@ -33,8 +24,10 @@ func TaskAwaitsReview(task *Task, now time.Time) bool {
 // parked on someone else are cleanup material a person goes looking for, not
 // work that raised its hand, and admitting them automatically is what made the
 // old review pass a list of everything rather than a list of what is owed.
-// TaskAwaitsReview still answers the older question for the consumers that have
-// not moved; the two predicates are kept apart on purpose.
+//
+// This is the predicate a review pass navigates by, so acknowledging a task
+// always takes it out of the sequence: the flag comes off and the schedule moves
+// to its next occurrence or clears. A pass therefore ends rather than circling.
 func TaskNeedsAttention(task *Task, now time.Time) bool {
 	if task == nil || task.IsTerminalState() {
 		return false

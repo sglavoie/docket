@@ -57,6 +57,11 @@ type CaptureRequest struct {
 	Description string
 	// Due, when non-nil, sets the task's calendar due date.
 	Due *time.Time
+	// CheckIn is the schedule the new task starts with; its zero value is no
+	// schedule, which is what a capture that never mentions one leaves behind. It
+	// rides beside Due rather than replacing it, because a deadline and the day to
+	// look at the work again are two independent dates.
+	CheckIn models.CheckInSchedule
 	// DeferSet marks that the request expressed a deferral at all, so a caller
 	// reads the same pair here as on TaskLineEditRequest. Defer holds the instant
 	// when one was named; a set flag with no instant captures without deferring.

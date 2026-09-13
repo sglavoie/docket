@@ -17,7 +17,24 @@ var (
 	markReviewedNow   = time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	markReviewedStale = markReviewedNow.AddDate(0, 0, -200)
 	markReviewedFresh = markReviewedNow.AddDate(0, 0, -1)
+	// markReviewedToday is the calendar day markReviewedNow falls on. A check-in
+	// is a calendar date, so every scheduled fixture is built from this rather
+	// than from the instant, which the model's own gate would refuse.
+	markReviewedToday = time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC)
 )
+
+// seedCheckIn writes a schedule through the model's gate, so a fixture that the
+// production path would refuse fails here as a fixture error rather than as a
+// misleading assertion about the service.
+func seedCheckIn(t *testing.T, task *models.Task, next time.Time, repeatDays int) {
+	t.Helper()
+	scheduled := next
+	if err := task.SetCheckIn(
+		models.CheckInSchedule{Next: &scheduled, RepeatDays: repeatDays}, markReviewedFresh,
+	); err != nil {
+		t.Fatalf("seed check-in: %v", err)
+	}
+}
 
 // seedMarkReviewedTask wires one task into a service whose clock is fixed at
 // markReviewedNow, so a committed acknowledgement is recognizable by UpdatedAt
@@ -28,10 +45,11 @@ func seedMarkReviewedTask(t *testing.T, task *models.Task) (*app.Service, *fakeR
 	return newTestServiceWithClock(repo, fixedClock{t: markReviewedNow}), repo
 }
 
-// TestMarkReviewedAdmitsEveryCandidateKind walks the three independent ways a
-// task can be awaiting review plus the overlap of all three. Each is admitted
-// on its own terms, so none of them may be expressed through another: a stale
-// task is not silently flagged first, and a Waiting one is not made stale.
+// TestMarkReviewedAdmitsEveryCandidateKind walks the independent ways a task can
+// have a review to acknowledge plus the overlap of them. Each is admitted on its
+// own terms, so none of them may be expressed through another: a scheduled task
+// is not silently flagged first, and the early case is admitted without its day
+// having arrived.
 func TestMarkReviewedAdmitsEveryCandidateKind(t *testing.T) {
 	for _, testCase := range []struct {
 		name string
@@ -41,16 +59,23 @@ func TestMarkReviewedAdmitsEveryCandidateKind(t *testing.T) {
 			task.Review = true
 			task.UpdatedAt = markReviewedFresh
 		}},
-		{"stale", func(task *models.Task) {
-			task.UpdatedAt = markReviewedStale
-		}},
-		{"waiting", func(task *models.Task) {
-			task.ApplyWorkflowState(models.StateWaiting)
+		{"check-in due today", func(task *models.Task) {
+			seedCheckIn(t, task, markReviewedToday, models.CheckInRepeatOff)
 			task.UpdatedAt = markReviewedFresh
 		}},
-		{"all three at once", func(task *models.Task) {
+		{"check-in overdue", func(task *models.Task) {
+			seedCheckIn(t, task, markReviewedToday.AddDate(0, 0, -4), models.CheckInRepeatOff)
+			task.UpdatedAt = markReviewedFresh
+		}},
+		// The early review: the day has not come, and naming the task by hand is
+		// what admits it anyway.
+		{"check-in still ahead", func(task *models.Task) {
+			seedCheckIn(t, task, markReviewedToday.AddDate(0, 0, 6), 7)
+			task.UpdatedAt = markReviewedFresh
+		}},
+		{"flagged and scheduled at once", func(task *models.Task) {
 			task.Review = true
-			task.ApplyWorkflowState(models.StateWaiting)
+			seedCheckIn(t, task, markReviewedToday, 14)
 			task.UpdatedAt = markReviewedStale
 		}},
 	} {
@@ -146,40 +171,59 @@ func TestMarkReviewedPreservesEverythingButTheFlagAndTouch(t *testing.T) {
 	}
 }
 
-// TestMarkReviewedKeepsWaitingACandidate is the consequence of preserving the
-// state: acknowledging a Waiting task says "I have seen it", not "I have heard
-// back", so the same task is still a candidate for the next pass.
-func TestMarkReviewedKeepsWaitingACandidate(t *testing.T) {
+// TestMarkReviewedMovesARepeatingCheckInOffTheAttentionList is what makes a pass
+// terminate: a repeating schedule survives its acknowledgement, but the date it
+// now carries is counted from the review day, so the same task stops asking for
+// attention even though it is still explicitly reviewable. A repeat that
+// re-raised itself immediately would make a pass circle forever.
+func TestMarkReviewedMovesARepeatingCheckInOffTheAttentionList(t *testing.T) {
 	task := newTask("t1", 1, "Chase the vendor")
 	task.ApplyWorkflowState(models.StateWaiting)
+	seedCheckIn(t, task, markReviewedToday.AddDate(0, 0, -3), 7)
 	task.UpdatedAt = markReviewedFresh
 	svc, repo := seedMarkReviewedTask(t, task)
 
 	if _, err := svc.MarkReviewed(repo.loc("t1")); err != nil {
 		t.Fatalf("MarkReviewed: %v", err)
 	}
-	if !models.TaskAwaitsReview(task, markReviewedNow) {
-		t.Fatal("an acknowledged Waiting task stopped being a review candidate")
+	want := markReviewedToday.AddDate(0, 0, 7)
+	if task.NextCheckIn == nil || !task.NextCheckIn.Equal(want) {
+		t.Fatalf("NextCheckIn = %v, want %v counted from the review day", task.NextCheckIn, want)
 	}
-	// And acknowledging it again is legal, because nothing about it changed.
+	if task.CheckInRepeatDays != 7 {
+		t.Errorf("repeat = %d, want the cadence to survive its own occurrence", task.CheckInRepeatDays)
+	}
+	if models.TaskNeedsAttention(task, markReviewedNow) {
+		t.Error("an answered check-in is still asking for attention")
+	}
+	// Still explicitly reviewable, because reviewing scheduled work early is
+	// allowed — which is also what makes a second acknowledgement legal.
+	if !models.TaskAllowsExplicitReview(task, markReviewedNow) {
+		t.Error("a scheduled task refuses an early review")
+	}
 	if _, err := svc.MarkReviewed(repo.loc("t1")); err != nil {
 		t.Fatalf("second MarkReviewed: %v", err)
 	}
 }
 
-// TestMarkReviewedStopsStaleness is the other consequence: the touch is the
-// answer to staleness, so a stale task acknowledged once is not a candidate the
-// second time around.
-func TestMarkReviewedStopsStaleness(t *testing.T) {
+// TestMarkReviewedClearsAOneOffCheckIn is the other half of the cadence: a
+// schedule with no repeat is answered once and gone, so the second
+// acknowledgement has nothing to take and is refused.
+func TestMarkReviewedClearsAOneOffCheckIn(t *testing.T) {
 	task := newTask("t1", 1, "Old importer spike")
-	task.UpdatedAt = markReviewedStale
+	seedCheckIn(t, task, markReviewedToday, models.CheckInRepeatOff)
+	task.UpdatedAt = markReviewedFresh
 	svc, repo := seedMarkReviewedTask(t, task)
 
 	if _, err := svc.MarkReviewed(repo.loc("t1")); err != nil {
 		t.Fatalf("MarkReviewed: %v", err)
 	}
-	if models.TaskAwaitsReview(task, markReviewedNow) {
-		t.Fatal("an acknowledged stale task is still a candidate")
+	if !task.CheckIn().IsEmpty() {
+		t.Fatalf("check-in = %v, want an answered one-off cleared whole", task.CheckIn())
+	}
+	// The history survives what it recorded: what was cleared is what is owed.
+	if task.LastReviewedAt == nil || !task.LastReviewedAt.Equal(markReviewedNow) {
+		t.Errorf("LastReviewedAt = %v, want the operation clock %v", task.LastReviewedAt, markReviewedNow)
 	}
 	if _, err := svc.MarkReviewed(repo.loc("t1")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("second MarkReviewed = %v, want ErrInvalidInput", err)
@@ -197,6 +241,20 @@ func TestMarkReviewedRefusesIneligibleTasks(t *testing.T) {
 	}{
 		{"fresh open work", func(task *models.Task) {
 			task.UpdatedAt = markReviewedFresh
+		}},
+		// Staleness and Waiting are the two retired routes. Neither may come
+		// back through this door: they are what `fs` and `?stale` are for, and
+		// admitting them here is what made the old pass a list of everything.
+		{"merely stale", func(task *models.Task) {
+			task.UpdatedAt = markReviewedStale
+		}},
+		{"merely waiting", func(task *models.Task) {
+			task.ApplyWorkflowState(models.StateWaiting)
+			task.UpdatedAt = markReviewedFresh
+		}},
+		{"stale and waiting at once", func(task *models.Task) {
+			task.ApplyWorkflowState(models.StateWaiting)
+			task.UpdatedAt = markReviewedStale
 		}},
 		// Deferral is an answer to "is this still relevant", so an old task
 		// hidden until next week is not asking to be looked at.
@@ -259,26 +317,43 @@ func TestMarkReviewedAdmitsADeferredFlaggedTask(t *testing.T) {
 	}
 }
 
-// TestMarkReviewedReadsCurrentTime keeps the admission test and the write on one
-// reading of the clock. A task one day short of stale is refused, and the same
-// task is admitted once the clock alone has moved past the threshold — no other
-// input changes between the two calls.
+// TestMarkReviewedReadsCurrentTime keeps the admission test, the stamps, and the
+// successor date on one reading of the service's clock rather than on the wall.
+// The same fixture acknowledged at two instants must answer differently in all
+// three, and the successor must be counted from the day the review happened —
+// not from the date that was owed, which is what keeps a cadence honest when a
+// check-in is answered late.
 func TestMarkReviewedReadsCurrentTime(t *testing.T) {
-	task := newTask("t1", 1, "Old importer spike")
-	task.UpdatedAt = markReviewedNow.AddDate(0, 0, -(models.StaleTaskThresholdDays - 1))
-	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
+	owed := markReviewedToday.AddDate(0, 0, -30)
+	for _, testCase := range []struct {
+		name string
+		now  time.Time
+		day  time.Time
+	}{
+		{"acknowledged today", markReviewedNow, markReviewedToday},
+		{"acknowledged tomorrow", markReviewedNow.AddDate(0, 0, 1), markReviewedToday.AddDate(0, 0, 1)},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			task := newTask("t1", 1, "Old importer spike")
+			seedCheckIn(t, task, owed, 7)
+			task.UpdatedAt = markReviewedFresh
+			repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 
-	early := newTestServiceWithClock(repo, fixedClock{t: markReviewedNow})
-	if _, err := early.MarkReviewed(repo.loc("t1")); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("a day short of stale = %v, want ErrInvalidInput", err)
-	}
-
-	later := markReviewedNow.AddDate(0, 0, 1)
-	if _, err := newTestServiceWithClock(repo, fixedClock{t: later}).MarkReviewed(repo.loc("t1")); err != nil {
-		t.Fatalf("stale by the clock alone: %v", err)
-	}
-	if !task.UpdatedAt.Equal(later) {
-		t.Errorf("UpdatedAt = %v, want the clock that admitted it %v", task.UpdatedAt, later)
+			svc := newTestServiceWithClock(repo, fixedClock{t: testCase.now})
+			if _, err := svc.MarkReviewed(repo.loc("t1")); err != nil {
+				t.Fatalf("MarkReviewed: %v", err)
+			}
+			if !task.UpdatedAt.Equal(testCase.now) || task.LastReviewedAt == nil ||
+				!task.LastReviewedAt.Equal(testCase.now) {
+				t.Errorf("stamps = %v / %v, want the service clock %v",
+					task.UpdatedAt, task.LastReviewedAt, testCase.now)
+			}
+			want := testCase.day.AddDate(0, 0, 7)
+			if task.NextCheckIn == nil || !task.NextCheckIn.Equal(want) {
+				t.Errorf("NextCheckIn = %v, want %v counted from the review day",
+					task.NextCheckIn, want)
+			}
+		})
 	}
 }
 

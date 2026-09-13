@@ -33,7 +33,7 @@ import (
 // all-or-nothing, matching the atomic guarantee every other bulk use case gives.
 // A nil validate skips the pre-check; a nil mutate is a programming error.
 func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
-	return s.bulkAttributeOverSnapshot(locators, undoAction, undoContext, func(_ Snapshot, refs []TaskRef) (func(TaskRef), error) {
+	return s.bulkAttributeOverSnapshot(locators, undoAction, undoContext, func(_ Snapshot, refs []TaskRef) (func(TaskRef) error, error) {
 		if validate != nil {
 			for _, r := range refs {
 				if validationErr := validate(r); validationErr != nil {
@@ -41,7 +41,7 @@ func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext 
 				}
 			}
 		}
-		return func(r TaskRef) { mutate(r.Task) }, nil
+		return func(r TaskRef) error { mutate(r.Task); return nil }, nil
 	})
 }
 
@@ -51,10 +51,16 @@ func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext 
 // the commit will write, and returns the per-target mutation. A refusal from
 // plan aborts the whole batch with nothing persisted, so every target is judged
 // on one coherent view of the workspace.
+//
+// The mutation may refuse too, for the mutations whose one writer is a validating
+// model primitive: a refusal there aborts the batch on the same terms plan's
+// does, restoring every project the loop had already touched, rather than
+// committing a selection the caller would have no way to tell apart from a
+// complete one.
 func (s *Service) bulkAttributeOverSnapshot(
 	locators []TaskLocator,
 	undoAction, undoContext string,
-	plan func(Snapshot, []TaskRef) (func(TaskRef), error),
+	plan func(Snapshot, []TaskRef) (func(TaskRef) error, error),
 ) (BulkResult, error) {
 	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
@@ -83,7 +89,9 @@ func (s *Service) bulkAttributeOverSnapshot(
 		return BulkResult{}, err
 	}
 	for _, r := range refs {
-		mutate(r)
+		if mutationErr := mutate(r); mutationErr != nil {
+			return BulkResult{}, mutationErr
+		}
 	}
 
 	commits, idx := distinctProjectCommits(refs, snap)
@@ -362,7 +370,7 @@ func (s *Service) BulkSetPinned(locators []TaskLocator, pinned bool) (BulkResult
 // membership, and pin exactly where they were. Only the explicitly targeted
 // tasks are touched; a parent's review flag says nothing about its children.
 func (s *Service) bulkToggleReview(locators []TaskLocator) (BulkResult, error) {
-	return s.bulkAttributeOverSnapshot(locators, "Toggle Review", "review", func(_ Snapshot, refs []TaskRef) (func(TaskRef), error) {
+	return s.bulkAttributeOverSnapshot(locators, "Toggle Review", "review", func(_ Snapshot, refs []TaskRef) (func(TaskRef) error, error) {
 		review := false
 		for _, ref := range refs {
 			if !ref.Task.Review {
@@ -371,6 +379,6 @@ func (s *Service) bulkToggleReview(locators []TaskLocator) (BulkResult, error) {
 			}
 		}
 		now := s.clock.Now()
-		return func(ref TaskRef) { ref.Task.ApplyReview(review, now) }, nil
+		return func(ref TaskRef) error { ref.Task.ApplyReview(review, now); return nil }, nil
 	})
 }

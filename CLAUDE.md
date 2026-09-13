@@ -462,13 +462,17 @@ ordinary creation transaction still mints identity, timestamps, and the one undo
 entry. There is no recurrence field, repeat relationship, or copy-options screen.
 
 `R` acknowledges one task and advances; `=` stays the flag toggle and gains
-neither half. A candidate is one visible nonterminal task that is flagged, stale
-under the stale predicate, or Waiting: `models.TaskAwaitsReview` is that one
-predicate and `internal/app` rechecks it against the operation clock before
-committing. Acknowledging clears the flag and writes `UpdatedAt`, nothing else.
-It is not a lifecycle transition, so a Waiting task keeps its state, its clock,
-its check-back date, and its unreset waiting age, and there is no review
-timestamp or persistent review queue. The successor sequence is the ordered
+neither half. Candidacy is two predicates over visible nonterminal work, never
+one: `models.TaskNeedsAttention` is flagged or a check-in whose day has arrived
+and is what a pass navigates by, and `models.TaskAllowsExplicitReview` widens it
+by any scheduled check-in and is what naming one task admits, so an early review
+is allowed by name while advancing skips a day still ahead. Staleness and
+Waiting are neither. `internal/app` rechecks the wider one against the service
+clock before committing. Acknowledging clears the flag, stamps `LastReviewedAt`,
+moves a repeating schedule on from that instant or clears a one-off, and writes
+`UpdatedAt`, nothing else. It is not a lifecycle transition, so a Waiting task
+keeps its state, its clock, its check-back date, and its unreset waiting age,
+and there is no persistent review queue. The successor sequence is the ordered
 deduplicated eligible task rows below the cursor, captured before the commit and
 rechecked after it; the cursor takes the first still visible and still eligible,
 expanding no fold, changing no lens, loading no project, and never wrapping, and

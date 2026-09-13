@@ -136,20 +136,27 @@ looking at. It answers on one task at a time and refuses under a visual
 selection, because the move to the next candidate is half of what it does and a
 selection has no next.
 
-A candidate is an open task that is flagged for review with `=`, has gone stale,
-or is Waiting on someone else. Done and canceled tasks are never candidates, and
-a deferred task is one only if you flagged it yourself — hiding something until
-next week is already an answer to "is this still relevant". Pressing `R` on
-anything else refuses and says why.
+A candidate is an open task you raised yourself: one flagged for review with `=`,
+or one whose check-in day has arrived. Done and canceled tasks are never
+candidates, and a deferred task is one only if you flagged it yourself — hiding
+something until next week is already an answer to "is this still relevant". A
+task that has merely sat untouched, or that is Waiting on someone else, is not a
+candidate: that is cleanup you go looking for with `fs` and `?stale`, not work
+that asked for you. Pressing `R` on anything else refuses and says why.
 
-Marking clears the review flag and updates the task's timestamp, which is what
-makes a stale task stop being stale. Nothing else changes: the state and how
-long it has been in it, dates, deferral, Today or Next membership, pin, resume
-note, comments, and body all survive. A Waiting task is still Waiting
-afterwards, still shows its check-back date, and still counts the days it has
-been waiting — acknowledging that you have seen it is not the same as hearing
-back. Nothing records that a review happened beyond the updated timestamp, and
-there is no review queue accumulating anywhere.
+You may also press `R` on a task whose check-in is still ahead, and answer it
+early. That is the one way the two differ: naming a task yourself admits any
+scheduled check-in, while the pass below only ever walks onto one that is owed.
+
+Marking clears the review flag, records when the review happened, and updates the
+task's timestamp. A repeating check-in moves on from the moment you answered, not
+from the day it was owed, so answering three days late does not make the next one
+three days early; a one-off check-in is done and clears. Nothing else changes:
+the state and how long it has been in it, dates, deferral, Today or Next
+membership, pin, resume note, comments, and body all survive. A Waiting task is
+still Waiting afterwards, still shows its check-back date, and still counts the
+days it has been waiting — acknowledging that you have seen it is not the same as
+hearing back. There is no review queue accumulating anywhere.
 
 The cursor then moves down to the next candidate visible right where you are: it
 skips headers, checklist rows, and tasks that are not candidates, and it stays

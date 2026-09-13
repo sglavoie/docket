@@ -18,6 +18,12 @@ type EditRequest struct {
 	Title *string
 	// Description, when non-nil, replaces the task description.
 	Description *string
+	// CheckIn, when non-nil, replaces the task's whole check-in schedule; an
+	// empty schedule clears it. Nil preserves what the task already holds, which
+	// is what keeps every edit that never mentions a check-in — a title fix, a
+	// body rewrite, an external-editor round trip — from silently retiring one.
+	// Replacing is not acknowledging: the review flag and LastReviewedAt survive.
+	CheckIn *models.CheckInSchedule
 }
 
 // Edit applies content changes to a task and commits them as one ChangeSet. A
@@ -80,7 +86,17 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 	if req.Description != nil {
 		task.Description = *req.Description
 	}
-	task.UpdatedAt = s.clock.Now()
+	now := s.clock.Now()
+	if req.CheckIn != nil {
+		if !req.CheckIn.IsEmpty() && task.IsTerminalState() {
+			return invalidInput("check-in", fmt.Sprintf(
+				"#%d is %s; a finished task owes no check-in", task.ShortID, task.State()))
+		}
+		if err := applyCheckInSchedule(task, *req.CheckIn, now); err != nil {
+			return err
+		}
+	}
+	task.UpdatedAt = now
 	return nil
 }
 

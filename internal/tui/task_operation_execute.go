@@ -251,11 +251,14 @@ func (m *AppModel) executeTaskStepDueDateOperation(
 // construction: the descriptor is not Bulk, so a visual selection refuses at
 // resolution and never reaches here.
 //
-// Eligibility is read from the live task rather than from the row's drawing, and
-// refused by name. The application layer reads it again against its own clock
-// before it commits, so this check is what keeps the keystroke honest rather
-// than what makes the mutation safe: a row admitted here and changed underneath
-// is still refused there.
+// Eligibility is models.TaskAllowsExplicitReview — the wider question, because
+// naming a task is what makes an early review of scheduled work legitimate,
+// while the narrower attention predicate is what the advance navigates by. It is
+// read from the live task rather than from the row's drawing, and refused by
+// name. The application layer reads it again against its own clock before it
+// commits, so this check is what keeps the keystroke honest rather than what
+// makes the mutation safe: a row admitted here and changed underneath is still
+// refused there.
 func (m *AppModel) executeTaskMarkReviewedOperation(
 	invocation operation.OperationInvocation,
 ) operation.OperationHandlerResult {
@@ -271,9 +274,9 @@ func (m *AppModel) executeTaskMarkReviewedOperation(
 	if task == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
 	}
-	if !models.TaskAwaitsReview(task, time.Now()) {
+	if !models.TaskAllowsExplicitReview(task, time.Now()) {
 		return operation.OperationHandlerResult{Err: fmt.Errorf(
-			"task is not awaiting review: flag it with = or wait for it to go stale",
+			"task has no review to acknowledge: flag it with = or schedule a check-in",
 		)}
 	}
 	capture := m.captureOutlinerReviewAdvance(invocation.Targets)

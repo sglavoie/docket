@@ -25,8 +25,14 @@ const reviewAdvanceExhaustedStatus = "No further visible review candidates"
 // promoted lane moves a task rather than copying it — so neither guard fires
 // today. Both are here because the sequence is consumed after a rebuild the
 // planning code cannot see, and landing on a second copy of a row the user has
-// already answered is not advancing. The source matters most: a Waiting task is
-// still a candidate after it is acknowledged.
+// already answered is not advancing.
+//
+// Candidacy is models.TaskNeedsAttention: the automatic question, so a pass
+// visits what raised its hand — a flag, or a check-in whose day has come — and
+// not everything a person could choose to acknowledge. An early review is still
+// allowed by name on the task under the cursor; it is only the advancing that
+// skips a schedule whose day is still ahead. Acknowledging always takes the
+// source out of that set, so a pass ends rather than circling.
 //
 // Eligibility is read here and again when the cursor lands. Recording it twice
 // is not redundancy: this reading is what keeps an ineligible row out of the
@@ -49,7 +55,7 @@ func (m *OutlinerModel) PlanReviewAdvance(capture *OutlinerRelocationCapture) {
 			continue
 		}
 		seen[identity] = true
-		if !models.TaskAwaitsReview(row.Task, now) {
+		if !models.TaskNeedsAttention(row.Task, now) {
 			continue
 		}
 		capture.ReviewSuccessors = append(capture.ReviewSuccessors, identity)
@@ -57,7 +63,8 @@ func (m *OutlinerModel) PlanReviewAdvance(capture *OutlinerRelocationCapture) {
 }
 
 // finishReviewAdvance seats the cursor on the first recorded successor that is
-// still both visible and awaiting review, and reports exhaustion when none is.
+// still both visible and still asking for attention, and reports exhaustion when
+// none is.
 // It writes m.Cursor and nothing else: ComputeOutlinerViewport stays the single
 // window authority, folds are left as they were, and no project is loaded to
 // find a candidate the projection does not already hold. There is no wrap —
@@ -83,7 +90,7 @@ func (m *OutlinerModel) finishReviewAdvance(capture *OutlinerRelocationCapture) 
 			continue
 		}
 		row := m.Rows[index]
-		if row.Task == nil || !models.TaskAwaitsReview(row.Task, now) {
+		if row.Task == nil || !models.TaskNeedsAttention(row.Task, now) {
 			continue
 		}
 		m.Cursor = index

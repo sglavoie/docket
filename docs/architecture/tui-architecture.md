@@ -74,9 +74,14 @@ relocation — a Waiting task acknowledged keeps its row — so the capture carr
 it. `PlanReviewAdvance` records the sequence from the rows on screen at the
 keystroke, ordered, deduplicated by identity, and seeded with the source, since
 All draws one task in several lanes and landing on a second copy of a row is not
-advancing. Eligibility is `models.TaskAwaitsReview`, read there and again when
-the cursor lands, so a candidate the commit or another surface changed while the
-transaction was in flight is skipped rather than selected. `finishReviewAdvance`
+advancing. Eligibility there is `models.TaskNeedsAttention` — the narrower of
+the two review predicates, so the pass walks onto flagged work and check-ins
+whose day has arrived and never onto a schedule still ahead — read at the
+keystroke and again when the cursor lands, so a candidate the commit or another
+surface changed while the transaction was in flight is skipped rather than
+selected. The wider `models.TaskAllowsExplicitReview` belongs to the keypress
+rather than to the advance: naming one task admits any scheduled check-in, which
+is what lets a person answer one early. `finishReviewAdvance`
 writes `m.Cursor` alone on the same terms as `advanceAfterDeparture`, adds no
 jump entry because nothing was vacated, and consults no catalog flag: a sweep
 the user asked for by name works in every mode. When no successor survives it

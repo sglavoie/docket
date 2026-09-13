@@ -244,8 +244,13 @@ func TestMarkReviewedRefusesATaskNoAxisAdmits(t *testing.T) {
 	if result.Err == nil {
 		t.Fatal("R acknowledged a task no review axis admits")
 	}
-	if !strings.Contains(result.Err.Error(), "not awaiting review") {
-		t.Errorf("error = %v, want the not-awaiting-review refusal", result.Err)
+	if !strings.Contains(result.Err.Error(), "no review to acknowledge") {
+		t.Errorf("error = %v, want the nothing-to-acknowledge refusal", result.Err)
+	}
+	// The refusal names the two routes the user controls and nothing else:
+	// waiting for staleness is no longer one of them.
+	if strings.Contains(result.Err.Error(), "stale") {
+		t.Errorf("error = %v, still offers staleness as a review route", result.Err)
 	}
 	if async.outliner.Cursor != before {
 		t.Errorf("cursor = %d after a refusal, want the untouched %d", async.outliner.Cursor, before)
@@ -309,16 +314,19 @@ func TestMarkReviewedUndoRestoresTheFlagAndLeavesTheCursor(t *testing.T) {
 	}
 }
 
-// TestMarkReviewedAdmitsAWaitingTaskWithoutResettingItsWait is the Waiting
-// candidate end to end: it answers to R, and the acknowledgement leaves the
-// state, its clock, and the check-back date exactly where they were, so the
-// waiting age the row shows does not restart.
-func TestMarkReviewedAdmitsAWaitingTaskWithoutResettingItsWait(t *testing.T) {
+// TestMarkReviewedAnswersAWaitingCheckInWithoutResettingItsWait is the Waiting
+// task end to end, and it is scheduled rather than merely Waiting because that
+// is now the only thing that makes it answerable: the state alone no longer
+// admits R. The acknowledgement leaves the state, its clock, and the check-back
+// deadline exactly where they were, so the waiting age the row shows does not
+// restart, and it moves the schedule rather than the deadline.
+func TestMarkReviewedAnswersAWaitingCheckInWithoutResettingItsWait(t *testing.T) {
 	waiting := newBulkPickerTestTask(t, 1, "waiting on the vendor")
 	waiting.WorkflowState = models.StateWaiting
 	waiting.StateChangedAt = time.Now().AddDate(0, 0, -21)
 	due := time.Now().AddDate(0, 0, 3)
 	waiting.DueDate = &due
+	markReviewedSchedule(t, waiting, -2, 7)
 	successor := reviewCandidateTask(t, 2, "successor")
 	async := newReviewAsyncEnv(t, []*models.Task{waiting, successor})
 	async.outliner.SelectOutlinerMode(chrome.ModeAll)
@@ -339,7 +347,34 @@ func TestMarkReviewedAdmitsAWaitingTaskWithoutResettingItsWait(t *testing.T) {
 	if stored.DueDate == nil || stored.DueDate.Format(time.DateOnly) != before.DueDate.Format(time.DateOnly) {
 		t.Errorf("DueDate = %v, want the preserved check-back %v", stored.DueDate, before.DueDate)
 	}
-	if !models.TaskAwaitsReview(stored, time.Now()) {
-		t.Error("an acknowledged Waiting task stopped being a candidate")
+	// The cadence survives the occurrence it answered, counted from today rather
+	// than from the overdue date it was owed on.
+	wantNext := time.Now().AddDate(0, 0, 7).Format(time.DateOnly)
+	if stored.NextCheckIn == nil || stored.NextCheckIn.Format(time.DateOnly) != wantNext {
+		t.Errorf("NextCheckIn = %v, want %s", stored.NextCheckIn, wantNext)
+	}
+	if stored.CheckInRepeatDays != 7 {
+		t.Errorf("repeat = %d, want the preserved 7", stored.CheckInRepeatDays)
+	}
+	if stored.LastReviewedAt == nil {
+		t.Error("the acknowledgement stamped no review history")
+	}
+	if models.TaskNeedsAttention(stored, time.Now()) {
+		t.Error("an answered check-in is still asking for attention")
+	}
+}
+
+// markReviewedSchedule writes a check-in dayOffset calendar days from today
+// through the model's own gate, so a fixture the production path would refuse
+// fails here rather than making a misleading assertion downstream.
+func markReviewedSchedule(t *testing.T, task *models.Task, dayOffset, repeatDays int) {
+	t.Helper()
+	now := time.Now()
+	next := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).
+		AddDate(0, 0, dayOffset)
+	if err := task.SetCheckIn(
+		models.CheckInSchedule{Next: &next, RepeatDays: repeatDays}, now,
+	); err != nil {
+		t.Fatalf("seed check-in: %v", err)
 	}
 }

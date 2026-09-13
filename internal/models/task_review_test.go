@@ -5,71 +5,49 @@ import (
 	"time"
 )
 
-// TestTaskAwaitsReviewAdmitsAndRefuses states the admission set once, for the
-// one predicate every surface reads. The three ways in are independent, and the
-// interesting rows are the ones where two axes disagree: a deferred task that
-// was flagged is in, and a deferred task that is merely old is out.
-func TestTaskAwaitsReviewAdmitsAndRefuses(t *testing.T) {
+// TestStalenessAndWaitingAreNoLongerReviewRoutes pins the retirement of
+// TaskAwaitsReview's two extra clauses. Neither live predicate may grow them
+// back: an untouched task and a task parked on someone else are what `fs` and
+// `?stale` are for, and admitting them automatically is what made a review pass
+// a list of everything. The stale predicate itself is untouched and still says
+// yes about the same task, which is what makes this a boundary and not a
+// deletion.
+func TestStalenessAndWaitingAreNoLongerReviewRoutes(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
-	fresh := now.AddDate(0, 0, -1)
 	old := now.AddDate(0, 0, -(StaleTaskThresholdDays + 10))
-	later := now.Add(72 * time.Hour)
 
 	build := func(seed func(*Task)) *Task {
 		task, err := NewGenericTask("t1", 1, "Chase the vendor")
 		if err != nil {
 			t.Fatalf("NewGenericTask: %v", err)
 		}
-		task.UpdatedAt = fresh
+		task.UpdatedAt = now.AddDate(0, 0, -1)
 		seed(task)
 		return task
+	}
+
+	stale := build(func(task *Task) { task.UpdatedAt = old })
+	if !QueryTaskIsStale(stale, now) {
+		t.Fatal("fixture is not stale; the retirement boundary proves nothing")
 	}
 
 	for _, testCase := range []struct {
 		name string
 		task *Task
-		want bool
 	}{
-		{"nil", nil, false},
-		{"fresh open work", build(func(*Task) {}), false},
-		{"flagged", build(func(task *Task) { task.Review = true }), true},
-		{"stale", build(func(task *Task) { task.UpdatedAt = old }), true},
-		{"waiting", build(func(task *Task) { task.ApplyWorkflowState(StateWaiting) }), true},
-		{"one day short of stale", build(func(task *Task) {
-			task.UpdatedAt = now.AddDate(0, 0, -(StaleTaskThresholdDays - 1))
-		}), false},
-		{"exactly stale", build(func(task *Task) {
-			task.UpdatedAt = now.AddDate(0, 0, -StaleTaskThresholdDays)
-		}), true},
-		{"deferred and flagged", build(func(task *Task) {
-			task.Review = true
-			task.DeferredUntil = &later
-		}), true},
-		{"deferred and waiting", build(func(task *Task) {
+		{"merely stale", stale},
+		{"merely waiting", build(func(task *Task) { task.ApplyWorkflowState(StateWaiting) })},
+		{"stale and waiting", build(func(task *Task) {
+			task.UpdatedAt = old
 			task.ApplyWorkflowState(StateWaiting)
-			task.DeferredUntil = &later
-		}), true},
-		{"deferred and merely old", build(func(task *Task) {
-			task.UpdatedAt = old
-			task.DeferredUntil = &later
-		}), false},
-		{"expired deferral and old", build(func(task *Task) {
-			task.UpdatedAt = old
-			expired := now.Add(-time.Hour)
-			task.DeferredUntil = &expired
-		}), true},
-		{"done and flagged", build(func(task *Task) {
-			task.Review = true
-			task.ApplyWorkflowState(StateDone)
-		}), false},
-		{"canceled and old", build(func(task *Task) {
-			task.UpdatedAt = old
-			task.ApplyWorkflowState(StateCanceled)
-		}), false},
+		})},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			if got := TaskAwaitsReview(testCase.task, now); got != testCase.want {
-				t.Errorf("TaskAwaitsReview = %v, want %v", got, testCase.want)
+			if TaskNeedsAttention(testCase.task, now) {
+				t.Error("TaskNeedsAttention readmitted a retired review route")
+			}
+			if TaskAllowsExplicitReview(testCase.task, now) {
+				t.Error("TaskAllowsExplicitReview readmitted a retired review route")
 			}
 		})
 	}
