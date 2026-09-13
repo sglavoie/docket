@@ -3,7 +3,8 @@
   "fixture": "stale",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "two untouched tasks, which is cleanup rather than review work", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "label": "untouched tasks stay in their lifecycle lane", "assert": "contains", "value": "Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
 
     { "type": "key", "label": "onto the first untouched task", "key": "home" },
     { "type": "key", "key": "j" },
@@ -11,15 +12,15 @@
     { "type": "key", "label": "sitting still is not a review candidate", "key": "R" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "task has no review to acknowledge" },
-    { "type": "assert", "label": "and the refusal moved nothing", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "label": "and the refusal moved nothing", "assert": "contains", "value": "Backlog  (3)" },
 
     { "type": "key", "label": "raise it deliberately instead", "key": "=" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Review  (1)" },
-    { "type": "assert", "assert": "contains", "value": "Stale  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Backlog  (2)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "onto the second untouched task, still in the Stale lane", "key": "home" },
+    { "type": "key", "label": "onto the second untouched task, still in Backlog", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
@@ -28,6 +29,7 @@
     { "type": "key", "label": "raise that one too", "key": "=" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Review  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Backlog  (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
 
     { "type": "key", "label": "onto the first flagged candidate", "key": "home" },

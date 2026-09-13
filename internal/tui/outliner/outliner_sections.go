@@ -559,7 +559,9 @@ func (m *OutlinerModel) buildReviewSection(
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
 		identity := taskref.For(task, project)
-		if task == nil || project == nil || !models.TaskNeedsAttention(task, now) ||
+		if task == nil || project == nil ||
+			(task.IsDeferredAt(now) && !input.IncludeDeferred) ||
+			!models.TaskNeedsAttention(task, now) ||
 			pinned[identity] || today[identity] || next[identity] ||
 			(!task.Review && doing[identity]) {
 			continue

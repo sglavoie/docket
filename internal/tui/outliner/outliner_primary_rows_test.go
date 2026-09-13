@@ -76,7 +76,8 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 // shared attention predicate and the distinction between its two branches.
 // Manual flags keep their established claim over Doing; scheduled-only
 // reminders stay in Pinned, Today, Next, or Doing and render their indicator in
-// place rather than duplicating the task under Review.
+// place rather than duplicating the task under Review. Deferred work remains
+// outside the default population until an explicit query opens it.
 func TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence(t *testing.T) {
 	now := time.Now()
 	dueCheckIn := util.StartOfDay(now.AddDate(0, 0, -1))
@@ -129,7 +130,6 @@ func TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence(t *testing.
 		{id: scheduled.ID, want: "scheduled Review lane", promotedTag: reviewLaneKey},
 		{id: scheduledDoing.ID, want: "Doing precedence"},
 		{id: future.ID, want: "future schedule stays in Backlog"},
-		{id: deferredFlagged.ID, want: "manual flag survives deferral", promotedTag: reviewLaneKey},
 		{id: contextReviewed.ID, want: "unpromoted backlog row"},
 		{id: reviewedToday.ID, want: "Today precedence", today: true},
 		{id: reviewedNext.ID, want: "Next precedence", next: true},
@@ -145,6 +145,9 @@ func TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence(t *testing.
 			t.Fatalf("task %q row = %+v found=%t, want %s", lane.id, row, ok, lane.want)
 		}
 	}
+	if countTaskRows(outliner, deferredFlagged.ID) != 0 {
+		t.Fatalf("deferred flagged task escaped the default population: %v", visibleTaskIDs(outliner))
+	}
 	doingIndex, reviewIndex, reviewCount := -1, -1, 0
 	for index, row := range outliner.Rows {
 		if row.IsSectionHeader && row.StateGroup == models.StateGroupDoing {
@@ -158,8 +161,8 @@ func TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence(t *testing.
 	if doingIndex < 0 || reviewIndex <= doingIndex {
 		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
 	}
-	if reviewCount != 4 {
-		t.Fatalf("Review section count = %d, want manual backlog/Doing/deferred plus scheduled backlog", reviewCount)
+	if reviewCount != 3 {
+		t.Fatalf("Review section count = %d, want manual backlog/Doing plus scheduled backlog", reviewCount)
 	}
 	if reviewed.State() != models.StateBacklog || !reviewed.Review {
 		t.Fatalf("Review projection mutated durable task: state=%s review=%v", reviewed.State(), reviewed.Review)

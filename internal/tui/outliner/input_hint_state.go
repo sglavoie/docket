@@ -89,7 +89,11 @@ func (m *OutlinerModel) CursorScrollOffset(id operation.OperationID) int {
 func (m *OutlinerModel) taskBindingIsIneffective(binding operation.OperationKeyBinding) bool {
 	identities := m.SelectedTaskIdentities()
 	if !m.IsMultiSelectActive() {
-		task, project := m.GetTaskRef()
+		identity, ok := m.cursorTaskIdentity()
+		if !ok {
+			return true
+		}
+		task, project := m.TaskAndProjectForIdentity(identity)
 		if task == nil || project == nil {
 			return true
 		}

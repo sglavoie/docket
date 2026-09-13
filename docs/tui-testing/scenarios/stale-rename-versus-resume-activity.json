@@ -3,7 +3,8 @@
   "fixture": "stale",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
 
     { "type": "key", "label": "rename the tag both untouched tasks carry", "key": "f" },
     { "type": "key", "key": "#" },
@@ -17,7 +18,8 @@
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "wait" },
-    { "type": "assert", "label": "a vocabulary rename is not activity, so the lane is unmoved", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "label": "a vocabulary rename does not move lifecycle lanes", "assert": "contains", "value": "Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
     { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew untouched vendor briefing" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -30,8 +32,8 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Set Resume Note" },
     { "type": "wait" },
-    { "type": "assert", "label": "a resume note is activity, so that one task leaves the lane", "assert": "contains", "value": "Stale  (1)" },
-    { "type": "assert", "assert": "contains", "value": "Backlog  (2)" },
+    { "type": "assert", "label": "a resume note is activity without changing the lifecycle lane", "assert": "contains", "value": "Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "and it is admitted by Recent, which the untouched one still is not", "key": "g" },
@@ -46,7 +48,8 @@
     { "type": "key", "key": "a" },
     { "type": "key", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

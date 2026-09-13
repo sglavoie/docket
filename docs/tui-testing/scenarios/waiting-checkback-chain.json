@@ -9,14 +9,14 @@
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "block the task on someone else", "key": "w" },
     { "type": "wait" },
-    { "type": "assert", "label": "the check-back is asked for while the answer is known", "assert": "contains", "value": "Set Due Date" },
+    { "type": "assert", "label": "the deadline is asked for while the answer is known", "assert": "contains", "value": "Set Due Date" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move onto the one-week preset", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the waiting task counts down to chasing it", "assert": "contains", "value": "check 7d" },
+    { "type": "assert", "label": "the waiting task renders the chosen date as a deadline", "assert": "contains", "value": "Build login form  ‹ waiting now  ⊡ " },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "go back to the top of the Outliner", "key": "home" },
@@ -26,11 +26,11 @@
     { "type": "key", "label": "block this one too", "key": "w" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date" },
-    { "type": "key", "label": "decline the check-back", "key": "esc" },
+    { "type": "key", "label": "decline the deadline", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "declining the date leaves the Waiting move standing", "assert": "contains", "value": "@ Waiting  (3)" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox waiting now" },
-    { "type": "assert", "label": "no check-back was invented for it", "assert": "not_contains", "value": "Triage support inbox waiting now check" },
+    { "type": "assert", "label": "no deadline was invented for it", "assert": "not_contains", "value": "Triage support inbox waiting now  ⊡" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

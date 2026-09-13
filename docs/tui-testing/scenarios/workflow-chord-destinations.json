@@ -32,10 +32,10 @@
     { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
 
     { "type": "key", "key": "w" },
-    { "type": "key", "label": "ww blocks it, which chains into the check-back", "key": "w" },
+    { "type": "key", "label": "ww blocks it, which chains into the deadline", "key": "w" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date" },
-    { "type": "key", "label": "decline the check-back", "key": "esc" },
+    { "type": "key", "label": "decline the deadline", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Waiting" },
 
