@@ -130,6 +130,7 @@ func (m *OutlinerModel) RebuildRows() {
 	// crossProjectRebuildRows directly and is deliberately not covered: a View
 	// must not write status.
 	defer m.UpdateVisualSelectionStatus()
+	defer m.restoreTimeDrivenCursor()
 	m.SyncJumpProjection()
 	if m.Project == nil {
 		// Mark as a mutation-driven rebuild so the memoization guard in

@@ -10,7 +10,7 @@ them. The keys themselves are in [`outliner-keys.md`](outliner-keys.md).
 All mode shows open, undeferred work in this order:
 
 ```text
-Pinned, Today, Doing, Review, Stale, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
@@ -22,12 +22,15 @@ newest-first and `J`/`K` reorder them manually; a pinned subtree ranks by its
 own root's pin. `Ctrl+J`/`Ctrl+K` take the same route
 in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
 manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
-you have flagged with `=review` or the `=` key. That list is draw order, not claim order: a pinned task or one
-you have planned into Today or Next claims its row there and never also appears
-under Review. Stale follows Review and collects open, undeferred work whose
-`UpdatedAt` touch time is at least 90 local-calendar days old. Pinned, Today,
-Next, Review, and Doing keep stronger claims, so a task appears only once. Due is date ordered. Done, Canceled,
-and deferred work stay hidden unless a filter explicitly asks for them.
+you have flagged with `=review` or the `=` key, plus scheduled check-ins whose
+day has arrived. That list is draw order, not claim order: Pinned, Today, and
+Next claim every candidate first, and Doing keeps a scheduled-only reminder in
+place; a manual review flag retains Review precedence over Doing. A task never
+appears twice. Old untouched work stays in its lifecycle group rather than
+being promoted automatically; `fs`, `?stale`, and the Stale lens remain the
+explicit cleanup routes. Due is date ordered. Done and Canceled work stay hidden
+unless a filter explicitly asks for them; deferred work does too unless its
+manual review flag raises it.
 
 Every mode groups its tasks by project when you are looking at more than one
 project. A project group is a foldable `[slug] (count)` header; focus a single

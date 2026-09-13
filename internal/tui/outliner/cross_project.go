@@ -304,6 +304,10 @@ func (m *OutlinerModel) CrossProjectRebuildRows() {
 
 	// Update guard state and consume the force flag.
 	m.Population.record(currentFingerprint, currentFocusDepth, taskCount)
+	// A day-boundary or defer-wake invalidation captures the cursor before the
+	// projection can change lanes. Every real rebuild exit below must consume it;
+	// a memoized return above deliberately leaves it standing with the force flag.
+	defer m.restoreTimeDrivenCursor()
 	// The reference index is a reading of the population this pass is about to
 	// walk, so it is dropped here and nowhere else on this path: every force
 	// flag and every fresh load reaches this line, and a pass the guard

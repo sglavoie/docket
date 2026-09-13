@@ -265,6 +265,67 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	})
 }
 
+func TestAttentionDayRefreshIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
+	cases := []struct {
+		name string
+		arm  func(*AppModel)
+	}{
+		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
+		{"value picker", func(app *AppModel) { app.operations.ValuePicker = &valuepicker.OperationValuePickerModel{} }},
+		{"inline row editor", func(app *AppModel) {
+			out := app.crossOutliner
+			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)
+		}},
+		{"visual selection", func(app *AppModel) {
+			out := app.crossOutliner
+			project := out.Population.Projects[0]
+			out.ReplaceSelection([]taskref.TaskIdentity{taskref.For(project.Tasks[0], project)})
+		}},
+		{"ranked list", func(app *AppModel) {
+			out := app.crossOutliner
+			out.BeginSearchProjection()
+			out.ToggleRankedList()
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := typedTestApp(t)
+			setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
+			out := app.crossOutliner
+			out.CrossProjectRebuildRows()
+			tickAt := time.Now().AddDate(0, 0, 1)
+
+			tc.arm(app)
+			out.Population.ForceRebuild = false
+			if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
+				t.Fatal("periodicSaveMsg was not handled")
+			}
+			if out.Population.ForceRebuild {
+				t.Fatal("day-boundary attention refresh rebuilt under a pending interaction")
+			}
+			if !out.TimeDrivenRefreshOwedAt(tickAt) {
+				t.Fatal("refused day-boundary refresh was consumed")
+			}
+		})
+	}
+}
+
+func TestPeriodicTickInvalidatesAttentionOnTheNextLocalDay(t *testing.T) {
+	app := typedTestApp(t)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
+	out := app.crossOutliner
+	out.CrossProjectRebuildRows()
+	out.Population.ForceRebuild = false
+	tickAt := time.Now().AddDate(0, 0, 1)
+
+	if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
+		t.Fatal("periodicSaveMsg was not handled")
+	}
+	if !out.Population.ForceRebuild {
+		t.Fatal("next local day did not invalidate review filters, lane counts, and Peek")
+	}
+}
+
 func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {
 	app := typedTestApp(t)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)

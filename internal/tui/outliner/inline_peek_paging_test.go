@@ -397,7 +397,7 @@ func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
 
 	// Editing the detail resets: the offset pointed into a document that no longer
 	// exists, and the same row of a different document is not where the reader was.
-	task.Description += " and a newly appended sentence"
+	outliner.Rows[outliner.Cursor].Task.Description += " and a newly appended sentence"
 	if got := peekOffset(t, outliner); got != 0 {
 		t.Fatalf("an edited description kept offset %d", got)
 	}

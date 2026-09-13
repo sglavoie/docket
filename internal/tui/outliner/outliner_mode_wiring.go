@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // buildOutlinerModeInput assembles the common scoped input all canonical mode
@@ -65,6 +66,10 @@ func (m *OutlinerModel) ProjectsInCatalogOrder(projects []*models.Project) []*mo
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() {
+	// Freeze the day before every branch, including ranked results and defensive
+	// exits. A later periodic tick can then tell whether calendar-derived review
+	// membership was answered on the day currently on screen.
+	m.timeDrivenDay = time.Now()
 	// Assigned above the ranked-list return so both branches leave a live wake
 	// clock and child census behind: a presentation the user leaves must not
 	// resume with a stale one.
@@ -116,6 +121,43 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.separatePinnedSection(pinnedBoundary)
 	m.attributeNarrowingMatches(narrowing)
 	m.finalizeModeRows()
+}
+
+// TimeDrivenRefreshOwedAt reports whether the canonical rows were last answered
+// on a different local calendar day. A zero day means no projection has been
+// built yet; the first build establishes the baseline without making startup a
+// synthetic refresh.
+func (m *OutlinerModel) TimeDrivenRefreshOwedAt(now time.Time) bool {
+	if m == nil || m.timeDrivenDay.IsZero() || now.IsZero() {
+		return false
+	}
+	return util.DaysBetween(m.timeDrivenDay, now) != 0
+}
+
+// InvalidateTimeDrivenRows leaves one projection rebuild owed and remembers the
+// cursor by mode identity. The render path remains the rebuild authority; when
+// it consumes the invalidation, restoreTimeDrivenCursor keeps a row promoted by
+// a newly arrived check-in from moving the cursor onto a neighbor.
+func (m *OutlinerModel) InvalidateTimeDrivenRows() {
+	if m == nil {
+		return
+	}
+	if !m.timeDrivenCursorPending {
+		m.timeDrivenCursor = m.captureModeCursor()
+		m.timeDrivenCursorPending = true
+	}
+	m.Population.Invalidate()
+}
+
+func (m *OutlinerModel) restoreTimeDrivenCursor() {
+	if m == nil || !m.timeDrivenCursorPending {
+		return
+	}
+	anchor := m.timeDrivenCursor
+	m.timeDrivenCursor = modeCursorAnchor{}
+	m.timeDrivenCursorPending = false
+	m.restoreModeCursor(anchor)
+	m.ClampCursor()
 }
 
 // finalizeModeRows is the single row-finalization seam every buildCanonicalModeRows

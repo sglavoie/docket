@@ -120,6 +120,14 @@ type OutlinerModel struct {
 	// tick; what a row shows stays isComputedOpenWork's decision.
 	NextDeferWake time.Time
 
+	// timeDrivenDay is the local calendar day the current canonical projection
+	// was built on. Review queries and lane counts can change when a check-in day
+	// arrives without any task mutation, so the shell's periodic tick compares
+	// against it and leaves an invalidation owed until interaction state is safe.
+	timeDrivenDay           time.Time
+	timeDrivenCursor        modeCursorAnchor
+	timeDrivenCursorPending bool
+
 	// openChildCounts holds each task's open direct-child count, read from the
 	// authoritative project trees rather than from a row's own task, whose
 	// Children the filter pipeline may have rewritten.

@@ -297,15 +297,16 @@ func inlinePeekBoundedTitleRows(text string, width int) []string {
 }
 
 // inlinePeekDatesLine names the task clock the row has no width for: how long
-// ago it was created and last touched, when it is due, and whether it recently
-// came back from a deferral. Labels stay muted and values take the footer's key
-// color, so the durations read as data rather than as prose.
+// ago it was created and last touched, its deadline and check-in schedule, when
+// it was last reviewed, and whether it recently came back from a deferral.
+// Labels stay muted and values take the footer's key color, so the durations
+// read as data rather than as prose.
 func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	if task == nil || width <= 0 {
 		return ""
 	}
 
-	parts := make([]string, 0, 5)
+	parts := make([]string, 0, 8)
 	field := func(label, value string) {
 		parts = append(parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
 	}
@@ -317,6 +318,17 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	}
 	if task.DueDate != nil {
 		field("due", chrome.DueGrammarValue(task))
+	}
+	if task.NextCheckIn != nil {
+		field("check-in", task.NextCheckIn.Format(time.DateOnly))
+		repeat := "off"
+		if task.CheckInRepeatDays > models.CheckInRepeatOff {
+			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)
+		}
+		field("repeat", repeat)
+	}
+	if task.LastReviewedAt != nil {
+		field("last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
 	}
 	if taskWokeRecently(task, now) {
 		field("woke", query.FormatRecencyAge(*task.DeferredUntil, now))
@@ -339,15 +351,22 @@ func inlinePeekDatesLines(task *models.Task, now time.Time, indent string, width
 // restart Peek's paging on the minute.
 func inlinePeekDatesKey(task *models.Task) string {
 	parts := []string{
-		task.CreatedAt.Format(time.RFC3339),
-		task.UpdatedAt.Format(time.RFC3339),
-		strconv.Itoa(task.DeferCount),
+		"created:" + task.CreatedAt.Format(time.RFC3339Nano),
+		"updated:" + task.UpdatedAt.Format(time.RFC3339Nano),
+		"defer-count:" + strconv.Itoa(task.DeferCount),
+		"check-in-repeat:" + strconv.Itoa(task.CheckInRepeatDays),
 	}
 	if task.DueDate != nil {
-		parts = append(parts, task.DueDate.Format(time.RFC3339))
+		parts = append(parts, "due:"+task.DueDate.Format(time.RFC3339Nano))
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, task.DeferredUntil.Format(time.RFC3339))
+		parts = append(parts, "deferred:"+task.DeferredUntil.Format(time.RFC3339Nano))
+	}
+	if task.NextCheckIn != nil {
+		parts = append(parts, "check-in:"+task.NextCheckIn.Format(time.RFC3339Nano))
+	}
+	if task.LastReviewedAt != nil {
+		parts = append(parts, "last-review:"+task.LastReviewedAt.Format(time.RFC3339Nano))
 	}
 	return strings.Join(parts, "|")
 }

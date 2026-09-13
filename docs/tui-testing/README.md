@@ -60,7 +60,7 @@ machine's sync wrote the bundle.
 | `parked` | One project in the base task workspace and one tagged `parked`. |
 | `project-mix` | An active project with a task, an active project with none, an active project whose two tasks are both finished, a parked project with a task, and an archived project with none. |
 | `signals` | A lapsed deferral beside a whole-day and an hour-valued pending one, concentrated overdue work, and a durable Today membership. |
-| `stale` | Old and fresh open work for the Stale lane, facet, fold, and narrow-width contracts. |
+| `stale` | Old and fresh open work for lifecycle-lane placement, the Stale facet, and narrow-width contracts. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
@@ -300,7 +300,7 @@ The committed suite exercises the product contracts directly:
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
 | Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
 | Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
-| Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
+| Stale work staying in its lifecycle lane, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `internal/tui/theme/semantic_tag_title_style_test.go` |
 | Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `internal/tui/outliner/tag_chip_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `internal/tui/app_deterministic_startup_test.go`, `internal/tui/taskform/task_composer_test.go`, `internal/tui/taskform/task_form_save_create_test.go` |

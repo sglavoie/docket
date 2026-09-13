@@ -230,10 +230,10 @@ answer there unchanged. `HasContentRows`, never the row count, decides an empty
 projection, and the empty state paints that header above the existing
 explanation.
 
-All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing. It
-admits open, undeferred work untouched for at least 90 days. `fs` is
-unavailable in Recent; entry clears only Stale: `Stale filter cleared: Recent
-only includes the last 30 days`.
+All has no automatic Stale lane: old work stays in its lifecycle group. `fs`
+and the Stale lens remain explicit cleanup tools. `fs` is unavailable in
+Recent; entry clears only Stale: `Stale filter cleared: Recent only includes
+the last 30 days`.
 
 `ComputeOutlinerViewport` is the single window authority and the only place a
 render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
@@ -366,7 +366,9 @@ Row and Peek budget:
   `projectPeekOwner` is that project identity, so All's several headers for one
   project share one window. Task Peek keeps its comment count.
 - Peek's window is one content-row offset, session-only, keyed by typed Peek
-  owner, document fingerprint, and terminal size; nothing else resets it.
+  owner, document fingerprint, and terminal size; schedule date, cadence, and
+  last-review instant are part of that fingerprint. The dates line shows a
+  future check-in even while the row stays quiet.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
   the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`
   three, both clamped to the document end. `PeekContext.Visible` is consumption
@@ -386,6 +388,11 @@ Row and Peek budget:
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`.
+- The 60-second periodic tick invalidates a projection when its frozen local day
+  is no longer current, so `?review`, Review counts, rows, and Peek answer an
+  arrived check-in without a key press. The invalidation remains owed under an
+  overlay, picker, inline editor, visual selection, or ranked result; its later
+  rebuild restores the cursor by qualified task identity.
 - The four-step pulse ladder drops done, inbox, overdue, then today. In Today,
   pace outranks the workspace pulse: exhaust that ladder first, then shorten and
   remove pace before truncating required interaction context.
@@ -471,7 +478,7 @@ Waiting are neither. `internal/app` rechecks the wider one against the service
 clock before committing. Acknowledging clears the flag, stamps `LastReviewedAt`,
 moves a repeating schedule on from that instant or clears a one-off, and writes
 `UpdatedAt`, nothing else. It is not a lifecycle transition, so a Waiting task
-keeps its state, its clock, its check-back date, and its unreset waiting age,
+keeps its state, its clock, its deadline, and its unreset waiting age,
 and there is no persistent review queue. The successor sequence is the ordered
 deduplicated eligible task rows below the cursor, captured before the commit and
 rechecked after it; the cursor takes the first still visible and still eligible,
@@ -765,7 +772,7 @@ Guessable addresses are omitted; do not restore them.
 | --- | --- | --- |
 | Modes, grouping, Pinned, Review | `outliner-modes.md` | `tui-architecture` |
 | Title fitter, guidance, status strip, footer flash | `outliner-chrome.md` | `presentation-chrome`; `row-indicators` |
-| Defer, waiting, check-back, drop ladder, checklist | `outliner-rows.md` | `row-indicators` |
+| Defer, waiting, check-ins, deadlines, drop ladder, checklist | `outliner-rows.md` | `row-indicators` |
 | Keys, registry, executor, providers | `outliner-keys.md` | `operation-grammar` |
 | Filters, search, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner-rows.md` | `search-filters-and-sorting`; `selection-and-project-tags` |
 | Storage layout, migration chain | `storage.md` | `persistence-and-transactions`; `migration` |

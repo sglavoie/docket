@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // This file covers one indicator at a time: what each signal spells, which
@@ -153,7 +154,7 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 		Recency:      "recency",
 		waiting:      "waiting",
 		doing:        "doing",
-		check:        "check",
+		review:       "review",
 		due:          "due",
 		deferred:     "deferred",
 		checklist:    "checklist",
@@ -164,7 +165,7 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 	plain := ansi.Strip(segments.render())
 	previous := -1
 	for _, part := range []string{
-		"recency", "waiting", "doing", "check", "due", "deferred", "deferCount", "checklist", "comments", "attachments", "dependencies",
+		"recency", "waiting", "doing", "review", "due", "deferred", "deferCount", "checklist", "comments", "attachments", "dependencies",
 	} {
 		index := strings.Index(plain, part)
 		if index <= previous {
@@ -180,7 +181,7 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 		Recency:      "recency",
 		waiting:      "waiting",
 		doing:        "doing",
-		check:        "check",
+		review:       "review",
 		due:          "due",
 		deferred:     "deferred",
 		checklist:    "checklist",
@@ -211,11 +212,11 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 		case 7:
 			want.waiting = ""
 		case 8:
-			want.due = ""
-		case 9:
 			want.doing = ""
+		case 9:
+			want.review = ""
 		case 10:
-			want.check = ""
+			want.due = ""
 		}
 		drop(&segments)
 		if segments != want {
@@ -224,43 +225,39 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 	}
 }
 
-func TestCheckBackIndicatorCountsTowardChasing(t *testing.T) {
+func TestReviewIndicatorRendersOnlyArrivedEligibleCheckIns(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
-		name string
-		due  *time.Time
-		want string
+		name     string
+		checkIn  *time.Time
+		deferred *time.Time
+		state    models.WorkflowState
+		want     string
 	}{
-		{"no date to chase", nil, ""},
-		{"overdue", timePtr(now.AddDate(0, 0, -5)), "check +5d"},
-		{"today", timePtr(now.AddDate(0, 0, 0)), "check today"},
-		{"upcoming", timePtr(now.AddDate(0, 0, 3)), "check 3d"},
-		{"late in the day still counts as that day", timePtr(now.Add(11 * time.Hour)), "check today"},
+		{name: "no schedule", state: models.StateBacklog},
+		{name: "overdue", checkIn: timePtr(now.AddDate(0, 0, -5)), state: models.StateBacklog, want: "review +5d"},
+		{name: "today", checkIn: timePtr(util.StartOfDay(now)), state: models.StateBacklog, want: "review today"},
+		{name: "upcoming stays quiet", checkIn: timePtr(now.AddDate(0, 0, 3)), state: models.StateBacklog},
+		{name: "deferred schedule is suppressed", checkIn: timePtr(now.AddDate(0, 0, -2)), deferred: timePtr(now.AddDate(0, 0, 1)), state: models.StateBacklog},
+		{name: "terminal schedule is suppressed defensively", checkIn: timePtr(now.AddDate(0, 0, -2)), state: models.StateDone},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{
-				ID:             "blocked",
-				Title:          "Blocked",
-				WorkflowState:  models.StateWaiting,
-				StateChangedAt: now.AddDate(0, 0, -1),
-				DueDate:        tc.due,
+				ID:            "scheduled",
+				Title:         "Scheduled",
+				WorkflowState: tc.state,
+				NextCheckIn:   tc.checkIn,
+				DeferredUntil: tc.deferred,
 			}
-			// The chip's padding cells are presentation, not content: trim them
-			// so the case list stays a statement about the text. The empty case
-			// stays honest because TrimSpace("") is "".
-			if got := strings.TrimSpace(ansi.Strip(formatCheckBackIndicator(task, now))); got != tc.want {
-				t.Fatalf("check-back = %q, want %q", got, tc.want)
+			if got := strings.TrimSpace(ansi.Strip(formatReviewIndicator(task, now))); got != tc.want {
+				t.Fatalf("review indicator = %q, want %q", got, tc.want)
 			}
 		})
 	}
 }
 
-// A check-back is a due date read as a chase, so it draws the same three chips
-// and must inherit their emphasis rather than declare its own: a check-back that
-// has arrived is as loud as the deadline it came from, and one still days away
-// stays as quiet.
-func TestCheckBackIndicatorSharesTheDueChipEmphasis(t *testing.T) {
+func TestReviewIndicatorSharesArrivedDueChipEmphasis(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
@@ -270,27 +267,43 @@ func TestCheckBackIndicatorSharesTheDueChipEmphasis(t *testing.T) {
 
 			cases := []struct {
 				name string
-				due  time.Time
+				day  time.Time
 				want string
 			}{
-				{"overdue", now.AddDate(0, 0, -5), theme.OverdueStyle.Render("check +5d")},
-				{"today", now, theme.DueTodayStyle.Render("check today")},
-				{"upcoming", now.AddDate(0, 0, 3), theme.DueDateStyle.Render("check 3d")},
+				{"overdue", util.StartOfDay(now.AddDate(0, 0, -5)), theme.OverdueStyle.Render("review +5d")},
+				{"today", util.StartOfDay(now), theme.DueTodayStyle.Render("review today")},
 			}
 			for _, tc := range cases {
-				due := tc.due
+				day := tc.day
 				task := &models.Task{
-					ID:             "blocked",
-					Title:          "Blocked",
-					WorkflowState:  models.StateWaiting,
-					StateChangedAt: now.AddDate(0, 0, -1),
-					DueDate:        &due,
+					ID:            "scheduled",
+					Title:         "Scheduled",
+					WorkflowState: models.StateBacklog,
+					NextCheckIn:   &day,
 				}
-				if got := formatCheckBackIndicator(task, now); got != tc.want {
-					t.Errorf("%s check-back = %q, want the due tier's own render %q", tc.name, got, tc.want)
+				if got := formatReviewIndicator(task, now); got != tc.want {
+					t.Errorf("%s review indicator = %q, want the arrived due tier's render %q", tc.name, got, tc.want)
 				}
 			}
 		})
+	}
+}
+
+func TestReviewIndicatorCountsCalendarDaysAcrossDST(t *testing.T) {
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkIn := time.Date(2026, time.November, 1, 0, 0, 0, 0, location)
+	now := time.Date(2026, time.November, 2, 0, 1, 0, 0, location)
+	task := &models.Task{
+		ID:            "dst",
+		Title:         "DST boundary",
+		WorkflowState: models.StateBacklog,
+		NextCheckIn:   &checkIn,
+	}
+	if got := strings.TrimSpace(ansi.Strip(formatReviewIndicator(task, now))); got != "review +1d" {
+		t.Fatalf("DST review indicator = %q, want one calendar day", got)
 	}
 }
 

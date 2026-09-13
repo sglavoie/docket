@@ -14,9 +14,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-// zoomChromeApp is the filter-chord fixture with fresh touch times, so its tasks
-// reach their workflow-state groups instead of being swept into the Stale lane
-// that a zero UpdatedAt puts them in.
+// zoomChromeApp is the filter-chord fixture with explicit fresh touch times, so
+// its age remains irrelevant to the workflow-section chrome under test.
 func zoomChromeApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := newFilterChordTestApp(t)

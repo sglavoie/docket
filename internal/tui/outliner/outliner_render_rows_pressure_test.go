@@ -111,34 +111,34 @@ func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
 	}
 }
 
-func TestWaitingRowReplacesThePlainDueDateWithTheCheckBack(t *testing.T) {
+func TestWaitingRowKeepsDeadlineIndependentFromCheckIn(t *testing.T) {
 	now := time.Now()
 	due := util.StartOfDay(now.AddDate(0, 0, 4))
+	checkIn := util.StartOfDay(now.AddDate(0, 0, -2))
 	task := &models.Task{
 		ID:             "blocked",
 		Title:          "Blocked on vendor",
 		WorkflowState:  models.StateWaiting,
 		StateChangedAt: now.AddDate(0, 0, -6),
 		DueDate:        &due,
+		NextCheckIn:    &checkIn,
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
-	for _, want := range []string{"waiting 6d", "check 4d"} {
+	for _, want := range []string{"waiting 6d", "review +2d", ansi.Strip(query.FormatDueDate(task))} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("waiting row missing %q: %q", want, plain)
 		}
-	}
-	if strings.Contains(plain, "⊡") {
-		t.Fatalf("waiting row restated its due date beside the check-back: %q", plain)
 	}
 }
 
 func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 	now := time.Now()
 	due := util.StartOfDay(now.AddDate(0, 0, 4))
+	checkIn := util.StartOfDay(now.AddDate(0, 0, -2))
 	task := &models.Task{
 		ID:             "loaded",
 		Title:          "Blocked on vendor",
@@ -146,6 +146,7 @@ func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 		StateChangedAt: now.AddDate(0, 0, -6),
 		UpdatedAt:      now,
 		DueDate:        &due,
+		NextCheckIn:    &checkIn,
 		Comments:       []*models.Comment{{Text: "One"}, {Text: "Two"}},
 		Attachments:    []models.Attachment{{Filename: "quote.pdf"}},
 		Checklist:      []models.ChecklistItem{{Text: "Chase", Done: true}, {Text: "Escalate"}},
@@ -155,7 +156,7 @@ func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	wide := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
-	for _, want := range []string{"check 4d", "waiting 6d", "1/2", "▪ 2", "⊕ 1"} {
+	for _, want := range []string{"review +2d", ansi.Strip(query.FormatDueDate(task)), "waiting 6d", "1/2", "▪ 2", "⊕ 1"} {
 		if !strings.Contains(wide, want) {
 			t.Fatalf("wide row missing %q: %q", want, wide)
 		}
@@ -170,7 +171,7 @@ func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 			t.Fatalf("narrow row kept %q, which the ladder sheds first: %q", shed, narrow)
 		}
 	}
-	if !strings.Contains(narrow, "check 4d") {
-		t.Fatalf("narrow row shed the check-back before shallower signals: %q", narrow)
+	if !strings.Contains(narrow, ansi.Strip(query.FormatDueDate(task))) {
+		t.Fatalf("narrow row shed the deadline before shallower signals: %q", narrow)
 	}
 }

@@ -2,7 +2,6 @@ package outliner
 
 import (
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/models"
@@ -545,22 +544,24 @@ type reviewSectionBuild struct {
 	projected map[taskref.TaskIdentity]bool
 }
 
-// buildReviewSection promotes ordinary open tasks carrying the stored review
-// flag into the sparse All-mode Review lane. Pinning and explicit Today/Next membership are
-// stronger claims: a deliberate planning commitment outranks a descriptive tag,
-// so planning a flagged task moves its row instead of duplicating it.
+// buildReviewSection promotes tasks that currently need attention into the
+// sparse All-mode Review lane. Pinning and explicit Today/Next membership are
+// stronger claims for every candidate. Doing is stronger only for a scheduled
+// check-in: a manual review flag keeps its established claim over lifecycle,
+// while an automatic reminder stays visible in place on active work.
 func (m *OutlinerModel) buildReviewSection(
 	input OutlinerModeInput,
-	pinned, today, next map[taskref.TaskIdentity]bool,
+	pinned, today, next, doing map[taskref.TaskIdentity]bool,
 ) reviewSectionBuild {
+	now := input.now()
 	result := reviewSectionBuild{projected: make(map[taskref.TaskIdentity]bool)}
 	var rows []OutlinerRow
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
 		identity := taskref.For(task, project)
-		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
-			!task.Review ||
-			pinned[identity] || today[identity] || next[identity] {
+		if task == nil || project == nil || !models.TaskNeedsAttention(task, now) ||
+			pinned[identity] || today[identity] || next[identity] ||
+			(!task.Review && doing[identity]) {
 			continue
 		}
 		if input.TaskExclude != nil && input.TaskExclude(task, project) {
@@ -600,86 +601,6 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		OutlinerRow{PromotedTag: reviewLaneKey},
 		func(projectID string) string {
 			return reviewProjectSectionCollapsePrefix + projectID
-		},
-	)
-}
-
-const (
-	staleSectionCollapseKey           = "_promoted:stale"
-	staleProjectSectionCollapsePrefix = "_promoted_project:stale:"
-)
-
-type staleSectionBuild struct {
-	groups    []projectRowGroup
-	count     int
-	projected map[taskref.TaskIdentity]bool
-}
-
-// taskIsStale is the Stale lane's reading of staleness, which is the ?stale
-// predicate's reading: models owns the answer, and the lane only decides where
-// a stale row is drawn.
-func taskIsStale(task *models.Task, now time.Time) bool {
-	if now.IsZero() {
-		now = time.Now()
-	}
-	return models.QueryTaskIsStale(task, now)
-}
-
-// buildStaleSection promotes old untouched work into the sparse All-mode Stale
-// lane. Every deliberate planning, review, or active-work claim is stronger
-// than derived age, so those rows move rather than duplicate.
-func (m *OutlinerModel) buildStaleSection(
-	input OutlinerModeInput,
-	pinned, today, next, review, doing map[taskref.TaskIdentity]bool,
-) staleSectionBuild {
-	input.Now = input.now()
-	result := staleSectionBuild{projected: make(map[taskref.TaskIdentity]bool)}
-	var rows []OutlinerRow
-	for _, candidate := range orderedModeTasks(input) {
-		task, project := candidate.row.Task, candidate.row.Project
-		if task == nil || project == nil {
-			continue
-		}
-		identity := taskref.For(task, project)
-		if !taskIsStale(task, input.Now) || pinned[identity] || today[identity] ||
-			next[identity] || review[identity] || doing[identity] {
-			continue
-		}
-		if input.TaskExclude != nil && input.TaskExclude(task, project) {
-			continue
-		}
-		if input.TaskFilter != nil && !input.TaskFilter(task, project) {
-			continue
-		}
-		row := m.outlinerRowFromModeRow(candidate.row)
-		row.Breadcrumb = taskAncestorBreadcrumb(task)
-		row.HasVisibleChildren = false
-		result.projected[identity] = true
-		result.count++
-		rows = append(rows, row)
-	}
-	result.groups = m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true})
-	return result
-}
-
-func (m *OutlinerModel) appendStaleSection(section staleSectionBuild) {
-	if section.count == 0 || !m.sectionZoomAdmits(staleSectionCollapseKey) {
-		return
-	}
-	m.Rows = append(m.Rows, OutlinerRow{
-		IsSectionHeader: true,
-		SectionName:     "Stale",
-		SectionCount:    section.count,
-		CollapseKey:     staleSectionCollapseKey,
-	})
-	if m.sectionCollapsed(staleSectionCollapseKey) {
-		return
-	}
-	m.appendProjectGroupedForests(
-		section.groups,
-		OutlinerRow{},
-		func(projectID string) string {
-			return staleProjectSectionCollapsePrefix + projectID
 		},
 	)
 }

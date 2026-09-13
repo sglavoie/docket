@@ -72,13 +72,29 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	}
 }
 
-// TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership pins the
-// Review lane to the stored review flag alone. Every other axis stays its own,
-// so a task whose context or tag list happens to spell review stays in its
-// lifecycle group: the lane reads task.Review and nothing else.
-func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.T) {
+// TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence pins the
+// shared attention predicate and the distinction between its two branches.
+// Manual flags keep their established claim over Doing; scheduled-only
+// reminders stay in Pinned, Today, Next, or Doing and render their indicator in
+// place rather than duplicating the task under Review.
+func TestPrimaryAllPromotesAttentionWithManualAndScheduledPrecedence(t *testing.T) {
+	now := time.Now()
+	dueCheckIn := util.StartOfDay(now.AddDate(0, 0, -1))
+	futureCheckIn := util.StartOfDay(now.AddDate(0, 0, 2))
 	reviewed := primaryRowsTask("reviewed", models.StateBacklog)
 	reviewed.Review = true
+	manualDoing := primaryRowsTask("manual-doing", models.StateDoing)
+	manualDoing.Review = true
+	scheduled := primaryRowsTask("scheduled", models.StateBacklog)
+	scheduled.NextCheckIn = &dueCheckIn
+	scheduledDoing := primaryRowsTask("scheduled-doing", models.StateDoing)
+	scheduledDoing.NextCheckIn = &dueCheckIn
+	future := primaryRowsTask("future", models.StateBacklog)
+	future.NextCheckIn = &futureCheckIn
+	deferredFlagged := primaryRowsTask("deferred-flagged", models.StateBacklog)
+	deferredFlagged.Review = true
+	deferredUntil := now.AddDate(0, 0, 3)
+	deferredFlagged.DeferredUntil = &deferredUntil
 	reviewedToday := primaryRowsTask("reviewed-today", models.StateBacklog)
 	reviewedToday.Review = true
 	reviewedNext := primaryRowsTask("reviewed-next", models.StateBacklog)
@@ -90,9 +106,11 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	pinned := primaryRowsTask("pinned-review", models.StateDoing)
 	pinned.Review = true
 	pinned.Pinned = true
-	now := time.Now()
 	pinned.PinnedAt = &now
-	project := primaryRowsProject("alpha", reviewed, reviewedToday, reviewedNext, contextReviewed, doing, pinned)
+	project := primaryRowsProject(
+		"alpha", reviewed, manualDoing, scheduled, scheduledDoing, future, deferredFlagged,
+		reviewedToday, reviewedNext, contextReviewed, doing, pinned,
+	)
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedToday.ID}})
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedNext.ID}})
@@ -107,6 +125,11 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 		pinned      bool
 	}{
 		{id: reviewed.ID, want: "Review lane", promotedTag: reviewLaneKey},
+		{id: manualDoing.ID, want: "manual Review precedence", promotedTag: reviewLaneKey},
+		{id: scheduled.ID, want: "scheduled Review lane", promotedTag: reviewLaneKey},
+		{id: scheduledDoing.ID, want: "Doing precedence"},
+		{id: future.ID, want: "future schedule stays in Backlog"},
+		{id: deferredFlagged.ID, want: "manual flag survives deferral", promotedTag: reviewLaneKey},
 		{id: contextReviewed.ID, want: "unpromoted backlog row"},
 		{id: reviewedToday.ID, want: "Today precedence", today: true},
 		{id: reviewedNext.ID, want: "Next precedence", next: true},
@@ -135,8 +158,8 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	if doingIndex < 0 || reviewIndex <= doingIndex {
 		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
 	}
-	if reviewCount != 1 {
-		t.Fatalf("Review section count = %d, want the one unplanned flagged task", reviewCount)
+	if reviewCount != 4 {
+		t.Fatalf("Review section count = %d, want manual backlog/Doing/deferred plus scheduled backlog", reviewCount)
 	}
 	if reviewed.State() != models.StateBacklog || !reviewed.Review {
 		t.Fatalf("Review projection mutated durable task: state=%s review=%v", reviewed.State(), reviewed.Review)
@@ -157,109 +180,25 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	}
 }
 
-func TestPrimaryAllStaleLanePrecedenceAndOrder(t *testing.T) {
+func TestPrimaryAllLeavesStaleWorkInItsLifecycleLane(t *testing.T) {
 	old := time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
-	staleTask := func(id string, state models.WorkflowState) *models.Task {
-		task := primaryRowsTask(id, state)
-		task.UpdatedAt = old
-		return task
-	}
-
-	pinned := staleTask("pinned-stale", models.StateBacklog)
-	pinned.Pinned = true
-	pinned.PinnedAt = &old
-	today := staleTask("today-stale", models.StateBacklog)
-	next := staleTask("next-stale", models.StateBacklog)
-	review := staleTask("review-stale", models.StateBacklog)
-	review.Review = true
-	review.UpdatedAt = old
-	doing := staleTask("doing-stale", models.StateDoing)
-	stale := staleTask("plain-stale", models.StateBacklog)
+	stale := primaryRowsTask("plain-stale", models.StateBacklog)
+	stale.UpdatedAt = old
 	inbox := primaryRowsTask("fresh-inbox", models.StateInbox)
-	project := primaryRowsProject("alpha", pinned, today, next, review, doing, stale, inbox)
-	outliner, runtime := primaryRowsOutliner(project)
-	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: today.ID}})
-	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: next.ID}})
+	project := primaryRowsProject("alpha", stale, inbox)
+	outliner, _ := primaryRowsOutliner(project)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	wantLane := map[string]string{
-		pinned.ID: "Pinned",
-		today.ID:  "Today",
-		next.ID:   "Next",
-		review.ID: "Review",
-		doing.ID:  "Doing",
-		stale.ID:  "Stale",
+	if got := countTaskRows(outliner, stale.ID); got != 1 {
+		t.Fatalf("stale task row count = %d, want one: %v", got, visibleTaskIDs(outliner))
 	}
-	for id, want := range wantLane {
-		if got := countTaskRows(outliner, id); got != 1 {
-			t.Fatalf("task %q row count = %d, want one: %v", id, got, visibleTaskIDs(outliner))
+	if got := primarySectionForTask(outliner, stale.ID); got != models.StateGroupBacklog.Label() {
+		t.Fatalf("stale task section = %q, want ordinary Backlog", got)
+	}
+	for _, row := range outliner.Rows {
+		if row.IsSectionHeader && row.SectionName == "Stale" {
+			t.Fatal("All mode still constructed a Stale lane")
 		}
-		if got := primarySectionForTask(outliner, id); got != want {
-			t.Errorf("task %q section = %q, want %q", id, got, want)
-		}
-	}
-
-	sectionIndex := make(map[string]int)
-	for index, row := range outliner.Rows {
-		if row.IsSectionHeader {
-			sectionIndex[row.SectionName] = index
-		}
-	}
-	if sectionIndex["Doing"] >= sectionIndex["Review"] ||
-		sectionIndex["Review"] >= sectionIndex["Stale"] ||
-		sectionIndex["Stale"] >= sectionIndex["Inbox"] {
-		t.Fatalf("section indexes = %v, want Doing < Review < Stale < Inbox", sectionIndex)
-	}
-	if staleSectionCollapseKey == reviewSectionCollapseKey ||
-		staleProjectSectionCollapsePrefix == reviewProjectSectionCollapsePrefix {
-		t.Fatal("Stale and Review collapse namespaces overlap")
-	}
-}
-
-func TestBuildStaleSectionUsesUpdatedCalendarDayAndVisibilityGuards(t *testing.T) {
-	location, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Date(2026, time.November, 2, 0, 1, 0, 0, location)
-	taskAt := func(id string, updated time.Time) *models.Task {
-		task := primaryRowsTask(id, models.StateBacklog)
-		task.UpdatedAt = updated
-		return task
-	}
-	day90 := now.AddDate(0, 0, -models.StaleTaskThresholdDays)
-	boundary := taskAt("boundary", time.Date(
-		day90.Year(), day90.Month(), day90.Day(), 23, 59, 0, 0, location,
-	))
-	boundary.StateChangedAt = now
-	day89 := now.AddDate(0, 0, -(models.StaleTaskThresholdDays - 1))
-	fresh := taskAt("fresh", util.StartOfDay(day89))
-	fresh.StateChangedAt = now.AddDate(0, 0, -200)
-	terminal := taskAt("terminal", boundary.UpdatedAt)
-	terminal.WorkflowState = models.StateDone
-	deferred := taskAt("deferred", boundary.UpdatedAt)
-	deferredUntil := now.Add(time.Hour)
-	deferred.DeferredUntil = &deferredUntil
-	excluded := taskAt("excluded", boundary.UpdatedAt)
-	filtered := taskAt("filtered", boundary.UpdatedAt)
-	project := primaryRowsProject("alpha", boundary, fresh, terminal, deferred, excluded, filtered)
-	outliner, _ := primaryRowsOutliner(project)
-	input := OutlinerModeInput{
-		Projects: []*models.Project{project},
-		Now:      now,
-		TaskExclude: func(task *models.Task, _ *models.Project) bool {
-			return task.ID == excluded.ID
-		},
-		TaskFilter: func(task *models.Task, _ *models.Project) bool {
-			return task.ID != filtered.ID
-		},
-	}
-	empty := map[taskref.TaskIdentity]bool{}
-	section := outliner.buildStaleSection(input, empty, empty, empty, empty, empty)
-
-	want := taskref.TaskIdentity{ProjectID: project.ID, TaskID: boundary.ID}
-	if section.count != 1 || len(section.projected) != 1 || !section.projected[want] {
-		t.Fatalf("Stale projection = count %d identities %v, want only %v", section.count, section.projected, want)
 	}
 }
 

@@ -295,7 +295,7 @@ when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
 only after jump history records an origin; `Ctrl+I` returns to the relocated
 task.
 
-All mode projects open, undeferred work as Pinned, Today, Doing, Review, Stale,
+All mode projects open work as Pinned, Today, Doing, Review,
 Inbox, Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 the mode catalog admits through `ShowsPinned`, set on All and Today
 only; Inbox, Next, Backlog, Due, and Recent own one narrow ordered answer that a
@@ -309,11 +309,12 @@ whole run between the cursor and its group's edge, redistributing only the
 timestamps that run already carries so pins outside it keep their instants.
 It retains the ancestor marker and an
 identity suppression set, so promoted tasks appear only once.
-Review similarly promotes open tasks carrying the stored `Review` flag, after
-Doing. Claim order and draw order are different things: the Review lane draws
-after Doing, but claims a row only after Pinned, Today, and Next have taken
-theirs. A deliberate planning commitment outranks a descriptive flag, so `wn` on
-a flagged row visibly moves it into Next rather than appearing to copy it.
+Review similarly promotes open tasks carrying the stored `Review` flag or an
+eligible check-in whose day has arrived, after Doing. Claim order and draw order
+are different things: Pinned, Today, and Next take every candidate first;
+scheduled-only attention also yields to Doing, while a manual flag retains the
+existing Review claim over Doing. Old work is not promoted into a Stale lane;
+the Stale filter and lens remain explicit cleanup tools.
 The projection does not change lifecycle or planning. The flag is a boolean on
 the task beside `Pinned`, written by the `=` sigil on all four grammar surfaces,
 toggled on a row by that same character as a root key, and narrowed by the `f=`

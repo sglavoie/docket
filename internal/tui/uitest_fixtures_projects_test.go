@@ -134,8 +134,9 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildStaleFixture isolates old touch times so the Stale lane and fs facet can
-// be exercised without shifting cursor-sensitive scenarios on other fixtures.
+// buildStaleFixture isolates old touch times so lifecycle-lane placement and the
+// fs facet can be exercised without shifting cursor-sensitive scenarios on
+// other fixtures.
 // Both stale tasks carry one shared tag, which is what lets a vocabulary rename
 // reach exactly the untouched population: the rename must leave every timestamp
 // alone, so the lane it is run from has to be the lane it is measured against.

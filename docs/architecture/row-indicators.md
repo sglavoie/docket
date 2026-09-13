@@ -56,18 +56,23 @@ while those three counters wait for the rebuild that makes their rows visible.
 Waiting age reads the state clock, never the touch time.
 `formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
 formats `StateChangedAt` through `FormatRecencyChip`, so a comment, a tag, or a
-reparent on a blocked task cannot reset how long it has been blocked. A waiting
-task's due date is its check-back date, so `formatCheckBackIndicator` replaces
-the plain `FormatDueDate` segment rather than sitting beside it: rendering both
-would state one fact twice. It compares calendar days through `util.StartOfDay`,
-like `ClassifyDueDate`, because a check-back reads at day granularity even though
-a due date may now carry a time; it is
-the one indicator that styles an overdue reading (`check +<age>`) as pressure.
+reparent on a blocked task cannot reset how long it has been blocked. A Waiting
+deadline remains the ordinary `FormatDueDate` segment; check-ins are a separate
+schedule and never reinterpret or suppress it.
+
+`formatReviewIndicator` adds `review today` or `review +<age>` only when
+`Task.CheckInIsDueAt` says the schedule has arrived and is eligible. Future
+schedules stay in Peek, while deferral and terminal state suppress the row
+signal. Waiting and Doing ages remain muted beside it. The periodic tick compares
+the projection's frozen local day with the current one and safely invalidates
+rows, `?review`, Review counts, and Peek; the refresh remains owed during an
+overlay, picker, editor, visual selection, or ranked result, and the eventual
+rebuild restores the cursor by qualified task identity.
 
 Every due reading is a background badge rather than colored text, so a date
 reads as one bounded object in a row that already tints titles, tags, and
-context. `ClassifyDueDate`'s three tiers and `formatCheckBackIndicator`'s three
-tiers share the `makeDueBadgeStyle` family, which holds the section header's
+context. `ClassifyDueDate`'s three tiers and `formatReviewIndicator`'s two
+arrived tiers share the `makeDueBadgeStyle` family, which holds the section header's
 contrast contract — a tone-aware fill under a high-contrast foreground. A tier
 passes that constructor one `dueBadgeTone`: the fill and the ink that reads on
 it, once per theme, plus whether the tier is emphasized. The overdue and today
@@ -160,9 +165,8 @@ because eleven segments cannot all fit at minimum width. Counts go first, since
 the row's own badges and Peek still carry them; the reference count follows them
 for the same reason and stays ahead of every operational signal, because a
 reference changes nothing about when the task is due or how long it has been
-waiting. Recency, defer, Waiting age, due date, and Doing age follow;
-check-back goes last because it is the one
-indicator naming work that has gone quiet on someone else's desk. A new
+waiting. Recency, defer, Waiting age, and Doing age follow; an arrived eligible
+check-in leaves after those elapsed signals, and the deadline goes last. A new
 indicator gets a position in that list, not an append.
 
 The search match cue sits above that ladder rather than in it. A projected row

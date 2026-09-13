@@ -145,7 +145,11 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// A consumed wake makes rows visible that ComputeWorkspacePulse excluded
 		// while their deferral was pending, so the same update recounts the pulse
 		// even within one local day.
-		if m.wakeDeferredRows(msg.At) {
+		rowsInvalidated := m.wakeDeferredRows(msg.At)
+		if m.refreshAttentionDay(msg.At) {
+			rowsInvalidated = true
+		}
+		if rowsInvalidated {
 			m.refreshWorkspacePulseAt(msg.At)
 		} else if !m.completionActivity.IsCurrentLocalDay(msg.At) {
 			m.refreshWorkspacePulseAcrossLocalDay(msg.At)
@@ -178,12 +182,25 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // sole ownership of ViewScrollOffset. A refusal leaves nextDeferWake standing,
 // so the next tick retries.
 func (m *AppModel) wakeDeferredRows(now time.Time) bool {
-	if !m.deferWakeOwedAt(now) || !m.safeToRebuildForWake() {
+	if !m.deferWakeOwedAt(now) || !m.safeToInvalidateTimeDrivenRows() {
 		return false
 	}
 	out := m.crossOutliner
 	out.NextDeferWake = time.Time{}
-	out.Population.Invalidate()
+	out.InvalidateTimeDrivenRows()
+	return true
+}
+
+// refreshAttentionDay invalidates calendar-derived rows on the first safe tick
+// of a new local day. The projection day is advanced only by the rebuild itself,
+// so an overlay, picker, editor, visual selection, or ranked result leaves the
+// refresh owed for the next tick instead of silently consuming it.
+func (m *AppModel) refreshAttentionDay(now time.Time) bool {
+	out := m.crossOutliner
+	if out == nil || !out.TimeDrivenRefreshOwedAt(now) || !m.safeToInvalidateTimeDrivenRows() {
+		return false
+	}
+	out.InvalidateTimeDrivenRows()
 	return true
 }
 
@@ -195,14 +212,14 @@ func (m *AppModel) deferWakeOwedAt(now time.Time) bool {
 	return out != nil && !out.NextDeferWake.IsZero() && !now.Before(out.NextDeferWake)
 }
 
-// safeToRebuildForWake refuses while a new row would invalidate what the user
+// safeToInvalidateTimeDrivenRows refuses while a new row would invalidate what the user
 // is already in the middle of: an overlay or value picker holds a pending
 // operation's resolved refs, an inline row editor and a visual selection both
 // name rows the rebuild would renumber, and the flat ranked list is a settled
 // order the woken task was never scored against. A query that is merely
 // narrowing the mode's own lanes is not such a state: it is re-answered on
 // every rebuild, so the woken task is matched against it like any other row.
-func (m *AppModel) safeToRebuildForWake() bool {
+func (m *AppModel) safeToInvalidateTimeDrivenRows() bool {
 	out := m.crossOutliner
 	if out == nil {
 		return false

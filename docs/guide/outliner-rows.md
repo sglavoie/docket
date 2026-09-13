@@ -112,14 +112,15 @@ other row and returns with them.
 
 A Waiting task reads as `waiting <age>`, measured from the moment it entered
 Waiting rather than from the last time anything touched it, so recording a chase
-in the comments does not reset how long the work has been blocked. If it also
-carries a due date, that date is the check-back, so the row replaces the plain
-date with `check <age>` counting down to chasing it, `check today`, or an
-overdue `check +<age>`. Moving a task to Waiting with `ww` therefore asks for the
-check-back date immediately; `Esc` there declines the date and the Waiting move
+in the comments does not reset how long the work has been blocked. A due date
+beside it remains a deadline and keeps the ordinary due chip. A check-in is a
+separate schedule: once its day arrives the row additionally says `review today`
+or `review +<age>`, unless the task is deferred; before then it appears only in
+Peek and scheduling controls. Moving a task to Waiting with `ww` still asks for
+the deadline immediately; `Esc` there declines the date and the Waiting move
 still stands.
 
-Due dates and check-backs both render as a filled chip rather than as colored
+Due dates and arrived check-ins both render as a filled chip rather than as colored
 text, so a date reads as one bounded object beside the titles, tags, and context
 badges that share the row. All three tiers are chips — overdue, today, and
 upcoming — and they share one hue that no section header uses, so a date is
@@ -166,8 +167,8 @@ A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: the repeated-deferral count goes first, then checklist,
 comment, and attachment counts because the checklist rows and Peek still carry
 them, then the dependency count because Peek still names it, then the recency
-and defer markers, then the waiting age, due date, and Doing age; the check-back
-date goes last.
+and defer markers, then the neutral waiting and Doing ages, then the arrived
+check-in; the deadline goes last.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -233,7 +234,8 @@ entry once more, focusing the cursor task's parent.
 is a task or a project header. On a task, Peek
 follows navigation and reads, in this order: the resume note, the description, a
 dates line reading
-`created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
+`created 12d · updated 2d · due 2026-08-14 · check-in 2026-08-20 · repeat 7d · last review 3d · woke 1d · deferred ×3`
+with empty fields omitted (a one-off schedule reads `repeat off`),
 attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
 list, the task's context, and its tags. Every one of those is shown whole. Long
 text wraps rather than being cut off, and nothing is dropped to make room for
@@ -248,7 +250,9 @@ belong to an open Peek: pressing one at the end of the detail does nothing rathe
 than moving the outline underneath. `PgDn` and `PgUp` still move the outline,
 open Peek or not. Where you scrolled to is remembered while you stay on the same
 row and resets by itself when you move to another task or project, the detail
-changes, or the terminal is resized.
+changes, or the terminal is resized. Future check-ins appear here while the task
+row stays quiet; only an arrived, undeferred schedule adds `review today` or
+`review +Nd` to the row.
 
 On a project header — the group header a cross-project mode draws above each
 project's tasks, and the single header a project-scoped or focused view leads

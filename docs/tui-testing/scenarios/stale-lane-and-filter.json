@@ -3,20 +3,12 @@
   "fixture": "stale",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "All promotes untouched work into the Stale lane", "assert": "contains", "value": "Stale  (2)" },
+    { "type": "assert", "label": "All leaves untouched work in its lifecycle lane", "assert": "not_contains", "value": "Stale  (2)" },
     { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew untouched vendor briefing" },
     { "type": "assert", "assert": "contains", "value": "Draft current launch note" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "fold the Stale lane from its initial header", "key": "h" },
-    { "type": "assert", "label": "the folded lane keeps its count", "assert": "contains", "value": "Stale  (2)" },
-    { "type": "assert", "assert": "not_contains", "value": "Revisit dormant launch checklist" },
-    { "type": "assert", "assert": "not_contains", "value": "Renew untouched vendor briefing" },
-    { "type": "assert", "assert": "contains", "value": "Draft current launch note" },
-    { "type": "assert", "assert": "no_layout_issues" },
-
-    { "type": "key", "label": "unfold the Stale lane", "key": "l" },
     { "type": "key", "label": "go to Backlog outside All", "key": "g" },
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Draft current launch note" },

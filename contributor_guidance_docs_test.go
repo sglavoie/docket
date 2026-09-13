@@ -649,7 +649,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// rest of it, since rechecking the narrower one would refuse the early review
 	// the wider one just admitted. The mechanism lives in
 	// docs/architecture/tui-architecture.md.
-	const budget = 45763
+	// Thirtieth raise, 45763 to 46263, for time-driven attention presentation.
+	// Five hundred bytes buy the contracts that a future check-in stays in Peek,
+	// an arrived one joins rows and Review without displacing scheduled-only
+	// Doing work, and the periodic invalidation waits out any interaction that
+	// owns row identities before restoring the cursor. The same rule retires the
+	// automatic Stale lane without retiring its explicit filter or lens. The
+	// mechanism lives in docs/architecture/row-indicators.md and
+	// docs/architecture/presentation-chrome.md.
+	const budget = 46263
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -722,7 +730,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The four-step pulse ladder drops done, inbox, overdue, then today",
 		"pace outranks the workspace pulse: exhaust that ladder first, then shorten and remove pace before " +
 			"truncating required interaction context",
-		"All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing",
+		"All has no automatic Stale lane: old work stays in its lifecycle group",
+		"The 60-second periodic tick invalidates a projection when its frozen local day is no longer current",
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",

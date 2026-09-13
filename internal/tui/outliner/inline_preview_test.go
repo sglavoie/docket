@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // peekDocumentBody is the complete detail document for a row, independent of
@@ -105,6 +106,8 @@ func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
 	due := time.Date(2026, time.August, 14, 0, 0, 0, 0, time.UTC)
+	checkIn := time.Date(2026, time.August, 12, 0, 0, 0, 0, time.UTC)
+	lastReview := now.Add(-3 * time.Hour)
 	woke := now.Add(-24 * time.Hour)
 	pending := now.Add(24 * time.Hour)
 	stale := now.Add(-query.DeferWakeWindow - time.Hour)
@@ -118,13 +121,16 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 		{
 			"every field",
 			&models.Task{
-				CreatedAt:     now.Add(-12 * 24 * time.Hour),
-				UpdatedAt:     now.Add(-2 * 24 * time.Hour),
-				DueDate:       &due,
-				DeferredUntil: &woke,
-				DeferCount:    3,
+				CreatedAt:         now.Add(-12 * 24 * time.Hour),
+				UpdatedAt:         now.Add(-2 * 24 * time.Hour),
+				DueDate:           &due,
+				DeferredUntil:     &woke,
+				DeferCount:        3,
+				NextCheckIn:       &checkIn,
+				CheckInRepeatDays: 7,
+				LastReviewedAt:    &lastReview,
 			},
-			"created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3",
+			"created 12d · updated 2d · due 2026-08-14 · check-in 2026-08-12 · repeat 7d · last review 3h · woke 1d · deferred ×3",
 		},
 		{
 			"created only",
@@ -146,6 +152,11 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 			&models.Task{DeferCount: 4},
 			"deferred ×4",
 		},
+		{
+			"one-off check-in names repetition as off",
+			&models.Task{NextCheckIn: &checkIn},
+			"check-in 2026-08-12 · repeat off",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -154,6 +165,48 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInlinePeekCheckInFieldsWrapWithinNarrowWidth(t *testing.T) {
+	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
+	checkIn := util.StartOfDay(now.AddDate(0, 0, 2))
+	lastReview := now.Add(-37 * time.Hour)
+	task := &models.Task{
+		NextCheckIn:       &checkIn,
+		CheckInRepeatDays: 30,
+		LastReviewedAt:    &lastReview,
+	}
+	const width = 22
+	lines := inlinePeekDatesLines(task, now, "  ", width)
+	plain := ansi.Strip(strings.Join(lines, "\n"))
+	for _, want := range []string{"check-in", "2026-08-12", "repeat", "30d", "last", "review", "1d"} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("narrow Peek dates missing %q:\n%s", want, plain)
+		}
+	}
+	for index, line := range lines {
+		if got, limit := lipgloss.Width(line), width+2; got > limit {
+			t.Fatalf("narrow Peek line %d is %d columns, want <= %d: %q", index, got, limit, ansi.Strip(line))
+		}
+	}
+}
+
+func TestInlinePeekDatesKeyIncludesCheckInScheduleAndReviewHistory(t *testing.T) {
+	task := &models.Task{}
+	assertChanged := func(label string, mutate func()) {
+		t.Helper()
+		before := inlinePeekDatesKey(task)
+		mutate()
+		if after := inlinePeekDatesKey(task); after == before {
+			t.Fatalf("%s did not change Peek dates identity", label)
+		}
+	}
+
+	checkIn := time.Date(2026, time.August, 12, 0, 0, 0, 0, time.UTC)
+	assertChanged("next check-in", func() { task.NextCheckIn = &checkIn })
+	assertChanged("repeat", func() { task.CheckInRepeatDays = 7 })
+	lastReview := time.Date(2026, time.August, 10, 9, 0, 0, 0, time.UTC)
+	assertChanged("last review", func() { task.LastReviewedAt = &lastReview })
 }
 
 // TestInlinePeekBodyKeepsItsContentOrder locks what replaced the old drop

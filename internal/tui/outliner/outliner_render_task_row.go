@@ -296,7 +296,7 @@ type taskIndicatorSegments struct {
 	Recency     string
 	waiting     string
 	doing       string
-	check       string
+	review      string
 	due         string
 	deferred    string
 	checklist   string
@@ -317,7 +317,7 @@ func (segments taskIndicatorSegments) render() string {
 		segments.Recency,
 		segments.waiting,
 		segments.doing,
-		segments.check,
+		segments.review,
 		segments.due,
 		segments.deferred,
 		segments.deferCount,
@@ -334,8 +334,8 @@ func (segments taskIndicatorSegments) render() string {
 
 // indicatorDropLadder orders which indicators a narrow row sheds, shallowest
 // signal first. Counts go early because the row's own badges and Peek still
-// carry them; the check-back date goes last because it is the one indicator
-// naming work that has already gone quiet on someone else's desk.
+// carry them; elapsed ages leave before a due check-in, and the task's deadline
+// goes last because it is the final commitment width pressure may hide.
 var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.deferCount = "" },
 	func(segments *taskIndicatorSegments) { segments.checklist = "" },
@@ -350,9 +350,9 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.Recency = "" },
 	func(segments *taskIndicatorSegments) { segments.deferred = "" },
 	func(segments *taskIndicatorSegments) { segments.waiting = "" },
-	func(segments *taskIndicatorSegments) { segments.due = "" },
 	func(segments *taskIndicatorSegments) { segments.doing = "" },
-	func(segments *taskIndicatorSegments) { segments.check = "" },
+	func(segments *taskIndicatorSegments) { segments.review = "" },
+	func(segments *taskIndicatorSegments) { segments.due = "" },
 }
 
 // renderTaskIndicatorSegments promotes operational task state and concise
@@ -371,16 +371,15 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow) taskIndicat
 	}
 	if task.IsInState(models.StateWaiting) {
 		segments.waiting = formatWaitingAgeIndicator(task, now)
-		if m.columnConfig.IsVisible(listsurface.ColDueDate) {
-			segments.check = formatCheckBackIndicator(task, now)
-		}
 	}
 	if task.IsInState(models.StateDoing) {
 		segments.doing = formatDoingAgeIndicator(task, now)
 	}
-	// A waiting task's due date is its check-back date, so the countdown replaces
-	// the plain date rather than restating it beside itself.
-	if segments.check == "" && m.columnConfig.IsVisible(listsurface.ColDueDate) {
+	segments.review = formatReviewIndicator(task, now)
+	// A deadline remains a deadline in every lifecycle state. Check-ins have
+	// their own schedule and indicator, so Waiting no longer reinterprets a due
+	// date as a check-back or suppresses the ordinary due chip.
+	if m.columnConfig.IsVisible(listsurface.ColDueDate) {
 		segments.due = query.FormatDueDate(task)
 	}
 	if m.columnConfig.IsVisible(listsurface.ColDefer) {
@@ -463,24 +462,20 @@ func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
 	return theme.MutedStyle.Render("doing") + " " + age
 }
 
-// formatCheckBackIndicator renders a waiting task's due date as the countdown to
-// chasing it, which is the actionable reading of that date once the work is out
-// of your hands. Comparison is by calendar day because a due date is a day, not
-// an instant.
-func formatCheckBackIndicator(task *models.Task, now time.Time) string {
-	if task.DueDate == nil || task.IsComplete() {
+// formatReviewIndicator announces only a scheduled check-in whose calendar day
+// has arrived and whose task is eligible to raise it. A future schedule belongs
+// in Peek, while a deferred or terminal task stays silent. The two arrived
+// tiers share deadline emphasis without borrowing deadline meaning: the word
+// review keeps the signals distinct even when both occur on one row.
+func formatReviewIndicator(task *models.Task, now time.Time) string {
+	if task == nil || !task.CheckInIsDueAt(now) {
 		return ""
 	}
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*task.DueDate)
-	switch {
-	case dueDay.Before(today):
-		return theme.OverdueStyle.Render("check +" + query.FormatRecencyAge(dueDay, today))
-	case dueDay.Equal(today):
-		return theme.DueTodayStyle.Render("check today")
-	default:
-		return theme.DueDateStyle.Render("check " + query.FormatRecencyAge(today, dueDay))
+	daysLate := util.DaysBetween(*task.NextCheckIn, now)
+	if daysLate == 0 {
+		return theme.DueTodayStyle.Render("review today")
 	}
+	return theme.OverdueStyle.Render(fmt.Sprintf("review +%dd", daysLate))
 }
 
 // formatDeferIndicator separates a pending deferral from one that has lapsed. A

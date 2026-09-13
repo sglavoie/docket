@@ -335,7 +335,10 @@ spends the whole budget on content.
 
 The offset itself is session-only and lives in `peekOffsetState`, keyed by an
 `inlinePeekOwner` — a kind plus that kind's identity — the width-independent
-`Fingerprint` of the document, and the terminal size. The owner is typed rather
+`Fingerprint` of the document, and the terminal size. The task fingerprint
+includes its next check-in, repeat cadence, and last-review instant, so changing
+any part of the schedule/history starts the changed document at the top while a
+clock-only redraw preserves the reading position. The owner is typed rather
 than a bare task identity because the project header's detail shares this
 arithmetic and these four keys: `inlinePeekOwnerProject` carries the project
 identity beside `inlinePeekOwnerTask`'s `taskref.TaskIdentity`, so the two
