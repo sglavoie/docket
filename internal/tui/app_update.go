@@ -20,9 +20,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	// single place the footer divider flash can compare status text before and
 	// after dispatch. It must stay one defer: a second one would run first
 	// under LIFO, before recovery and before outCmd is assigned.
+	msg, origin, interactive := m.beginCheckInOfferUpdate(msg)
 	statusBefore := m.captureFooterFlashProbe()
 	defer func() {
 		if r := recover(); r != nil {
+			m.cancelPendingCheckInOffer()
 			stack := debug.Stack()
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
 			m.feedback.err = fmt.Errorf("internal error: %v", r)
@@ -39,6 +41,13 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			// would risk a second panic with no recover left above it.
 			return
 		}
+		if interactive && origin == m.checkInOffers.epoch {
+			m.observeCheckInOfferMessage(msg)
+		}
+		outCmd = tea.Batch(outCmd, m.drainCheckInOffer())
+		if interactive || checkInOfferInput(msg) {
+			outCmd = withCheckInOfferOrigin(outCmd, origin)
+		}
 		if flash := m.armFooterFlashSince(statusBefore); flash != nil {
 			outCmd = tea.Batch(outCmd, flash)
 		}
@@ -46,6 +55,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			outCmd = tea.Batch(outCmd, expiry)
 		}
 	}()
+
+	if command, ok := msg.(checkInOfferCommandMsg); ok {
+		return m, runCheckInOfferCommand(command)
+	}
 
 	// Handle all trivial close-view messages via the CloseViewMsg interface.
 	// This eliminates individual case arms for ~35 Close*Msg types that only

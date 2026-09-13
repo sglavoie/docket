@@ -316,6 +316,11 @@ func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 		return nil
 	case tea.BatchMsg:
 		return []tea.Cmd(m)
+	case checkInOfferCommandMsg:
+		if m.cmd == nil || isAnimationCmd(m.cmd) {
+			return nil
+		}
+		return []tea.Cmd{runCheckInOfferCommand(m)}
 	case uitestScheduledTick:
 		d.schedule(m)
 		return nil
@@ -403,4 +408,21 @@ func runCmd(cmd tea.Cmd) <-chan tea.Msg {
 		ch <- cmd()
 	}()
 	return ch
+}
+
+// runImmediateTestCommand executes one leaf operation for tests that inspect
+// its direct result instead of draining the shell. Provenance envelopes change
+// scheduling, not the underlying operation or message these tests assert.
+func runImmediateTestCommand(cmd tea.Cmd) tea.Msg {
+	msg := cmd()
+	for {
+		switch typed := msg.(type) {
+		case checkInOfferCommandMsg:
+			msg = runCheckInOfferCommand(typed)()
+		case checkInOfferOriginMsg:
+			msg = typed.message
+		default:
+			return msg
+		}
+	}
 }

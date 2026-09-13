@@ -205,7 +205,7 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bo
 
 // CaptureBulk runs the multi-task capture use case for Bulk Capture. On success it
 // emits a TaskCreatedMsg (which pops+refreshes) when closeOnSuccess is set — the
-// whole batch was valid — or a SaveCompleteMsg (refresh, keep the view) when some
+// whole batch was valid — or a TasksCapturedMsg (refresh, keep the view) when some
 // input lines failed to parse and remain for the user to fix. A commit failure
 // surfaces an ErrorMsg.
 func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSuccess bool) tea.Cmd {
@@ -218,6 +218,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 		if closeOnSuccess {
 			msg := TaskCreatedMsg{
 				CreatedCount:    len(results),
+				Results:         results,
 				PlanningChanged: captureRequestsChangePlanning(reqs),
 			}
 			if len(results) > 0 {
@@ -226,7 +227,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			}
 			return msg
 		}
-		return status.SaveCompleteMsg{}
+		return TasksCapturedMsg{Results: results}
 	}
 }
 
@@ -253,6 +254,7 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 		}
 		return TaskCreatedMsg{
 			Result: &result, OpenTaskID: openTaskID, OpenContent: openContent,
+			Results:         append([]app.TaskResult{res.Task}, res.Subtasks...),
 			PlanningChanged: req.Destination.IsPlanning(),
 		}
 	}

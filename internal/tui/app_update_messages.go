@@ -161,6 +161,14 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.lifecycle.periodicSaveCmd()
 	case status.SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
+	case coordinator.TasksCapturedMsg:
+		if m.taskComposer != nil {
+			m.taskComposer.Update(msg)
+		}
+		for _, result := range msg.Results {
+			m.reloadProjectByID(result.ProjectID)
+		}
+		return true, m.handleSaveComplete(status.SaveCompleteMsg{})
 	case coordinator.TransactionResultMsg:
 		return true, m.handleTransactionResult(msg)
 	case coordinator.BatchTransactionResultMsg:
@@ -379,17 +387,19 @@ func (m *AppModel) refreshLoadedTaskWorkspace() {
 // in-memory copy so views bound to it reflect a mutation committed through the
 // application layer. A blank id, unknown project, or load error is a no-op — the
 // shared post-save refresh reloads the current view's projects regardless.
-func (m *AppModel) reloadProjectByID(projectID string) {
+func (m *AppModel) reloadProjectByID(projectID string) bool {
 	if projectID == "" {
-		return
+		return false
 	}
 	project := m.projectByID(projectID)
 	if project == nil {
-		return
+		return false
 	}
 	if err := storage.LoadProject(project); err != nil {
 		logging.Warn("failed to reload project %s after transaction: %v", project.Name, err)
+		return false
 	}
+	return true
 }
 
 func (m *AppModel) handleGlobalRefreshMessage(tea.Msg) (bool, tea.Cmd) { return false, nil }

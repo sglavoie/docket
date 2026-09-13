@@ -19,6 +19,7 @@ import (
 // shared navigation/status logic, so the legacy Task/Project fields (still set by
 // the not-yet-migrated task form) and the coordinator path share one handler.
 type TaskCreatedMsg struct {
+	Results         []app.TaskResult
 	Task            *models.Task
 	Project         *models.Project // target project (for cross-project + open-after)
 	Result          *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
@@ -27,6 +28,9 @@ type TaskCreatedMsg struct {
 	OpenTaskID      string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
 	OpenContent     bool            // open description editor after creation
 }
+
+// TasksCapturedMsg refreshes a successful subset while the composer retains invalid lines.
+type TasksCapturedMsg struct{ Results []app.TaskResult }
 
 // TaskClipboardProjectedMsg carries application-owned clipboard text back to
 // the TUI adapter, which performs the platform clipboard write. Hidden is how

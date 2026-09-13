@@ -451,23 +451,23 @@ fallback text, so the re-render delayed origin feedback performs keeps saying th
 outcome instead of putting the gesture back. Every other caller passes no
 override and reads exactly as before.
 
-One operation may chain into a second one by following its committed command with
-an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
-has just made relevant. `withWaitingCheckBackStep` runs the set-state command,
-and only a committed result — the `transactionCommitted` gate — is followed
-through `tea.Sequence` by the value request for
-`operation.OperationTaskSetDueDate`. That
-request names `ValueProviderDueDate` rather than the combined list `@` opens,
-because the step is asking for a deadline and a defer section would answer a
-different question. A
-rejected move returns its `TransactionErrorMsg` untouched, so a task that never
-reached Waiting can never be given a check-back date. The chain keys off
-`invocation.Value` rather than runtime context, and it sits on the one shared
-`applicationTaskOperationRequest` path, so single and bulk moves chain
-identically and the second step targets the same tasks even though the transition
-moved the cursor. Because the first transaction has already committed,
-cancelling the second step cancels the date alone and leaves the Waiting move
-standing.
+Optional check-in setup follows committed `TaskStateEffect` evidence. Creation
+and real transitions into Doing or Waiting qualify only when the committed
+result has no schedule. Registry actions, capture, the expanded form, line
+edits and outline buffers carry the same evidence; unchanged states and failed
+commits produce no offer. The shell freezes the committed subset, then rechecks
+only those identities before opening the shared `ValueProviderCheckIn` editor.
+
+Command envelopes retain the original command and its initiating input generation,
+so unrelated input cancels a late offer. Keeping the command visible also lets
+the scenario harness skip animation work without losing the origin. Transaction IDs prevent duplicate delivery from reopening
+it. Open-after content editing finishes first, and nested overlays retain
+ownership. Escape dismisses setup while the state or creation remains committed.
+Saving is a separate undo entry. `CheckInOffer` saves validate active state and
+absence of a schedule from one fresh snapshot and attach strict project revision
+preconditions, preventing replacement of another process's new schedule even if
+it arrives between that snapshot and commit. Explicit Set Check-In continues to
+support replacement.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its second
 keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.

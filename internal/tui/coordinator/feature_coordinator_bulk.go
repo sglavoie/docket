@@ -29,6 +29,7 @@ func (c BulkCoordinator) TransitionLocators(locators []app.TaskLocator, target m
 		}
 		return BatchTransactionResultMsg{
 			Action:            "Bulk Transition",
+			Tasks:             res.Tasks,
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           msg,
 			TransactionID:     res.TransactionID,

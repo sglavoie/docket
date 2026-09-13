@@ -180,6 +180,7 @@ var (
 // affected project IDs so the shell reloads exactly those projects, and a
 // presentation-neutral summary for the status line.
 type BatchTransactionResultMsg struct {
+	Tasks             []app.TaskResult
 	Action            string
 	TouchedProjectIDs []string
 	Summary           string

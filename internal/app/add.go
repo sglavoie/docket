@@ -368,7 +368,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		parentID := ref.Task.ID
 		child.ParentID = &parentID
 		ref.Project.Tasks = append(ref.Project.Tasks, child)
-		childRefs = append(childRefs, TaskRef{Task: child, Project: ref.Project})
+		childRefs = append(childRefs, TaskRef{Task: child, Project: ref.Project, Base: ref.Base})
 	}
 
 	planning, err := planningArtifactsForTargets(

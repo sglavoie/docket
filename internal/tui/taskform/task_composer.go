@@ -209,7 +209,7 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 
 func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case coordinator.TaskCreatedMsg, status.ErrorMsg:
+	case coordinator.TaskCreatedMsg, coordinator.TasksCapturedMsg, status.ErrorMsg:
 		m.SubmissionInFlight = false
 	}
 

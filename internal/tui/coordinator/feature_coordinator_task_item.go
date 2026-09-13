@@ -53,6 +53,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 			}
 		}
 		return BatchTransactionResultMsg{
+			Tasks:             result.Tasks,
 			Action:            action,
 			TouchedProjectIDs: result.TouchedProjectIDs,
 			Summary:           summary,

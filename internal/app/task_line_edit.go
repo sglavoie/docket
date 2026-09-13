@@ -85,6 +85,7 @@ type TaskLineEditResult struct {
 	AffectedProjectIDs   []string
 	TransactionID        string
 	Changed              bool
+	StateEffect          *TaskStateEffect
 	// DueEdited mirrors the request's DueSet: the edited line carried an explicit
 	// deadline instruction. It is intent, not effect, so a clear of a deadline
 	// that was already absent still reports true — a caller remembering a cleared
@@ -138,6 +139,12 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		}
 		committed = true
 		result.DueEdited = req.DueSet
+		// Ownership changes do not imply creation. Compare the final task to
+		// its source document, where this identity lived before the edit.
+		result.StateEffect = taskStateEffect(TaskRef{
+			Task: snap.ProjectByID(result.Task.ProjectID).GetTaskByID(result.Task.TaskID),
+			Base: before.Document(req.Source.ProjectID),
+		})
 		return result, nil
 	}
 
@@ -215,6 +222,7 @@ func taskLineEditResult(ref TaskRef, transactionID string, changed bool) TaskLin
 		Changed:       changed,
 	}
 	if changed {
+		result.StateEffect = taskStateEffect(ref)
 		result.AffectedProjectIDs = []string{ref.Project.ID}
 	}
 	return result

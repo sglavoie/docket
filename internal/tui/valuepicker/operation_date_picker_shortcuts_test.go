@@ -282,9 +282,7 @@ func TestKeysUnboundInTheActiveFieldStaySilent(t *testing.T) {
 	}
 }
 
-// The Waiting check-back step gets the due shortcuts because its rows are due
-// rows; it gets no defer shortcuts because it has no defer rows, and it needs no
-// section switch to reach the ones it has.
+// The due-only projection has due shortcuts and no deferral section switch.
 func TestTheDueOnlyPickerAnswersTheDueShortcutsAlone(t *testing.T) {
 	picker := newDueOnlyPickerForTest(t)
 	dismissed, result := pressKey(picker, "t")

@@ -1,8 +1,8 @@
 package chrome
 
 // The date preset shortcut table lives here because more than one date surface
-// reads it: the value picker `@` opens, the due-only projection the Waiting
-// check-back step opens, and the creation form's inline due picker. One table is
+// reads it: the value picker `@` opens, its deadline-only projection, and the
+// creation form's inline due picker. One table is
 // what keeps a key from meaning one distance on one of them and another distance
 // on the next, and it is the same table the rows print their hints from, so a
 // surface cannot advertise a key its dispatch does not honor.

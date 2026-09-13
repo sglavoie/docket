@@ -317,8 +317,8 @@ func bulkMoveResult(
 	}
 	revision := revisionAt(outcome.results, destinationAt)
 	transactionID := transactionIDAt(outcome.results, destinationAt)
-	base := snap.Document(destination.ID)
 	for _, ref := range roots {
+		base := snap.Document(ref.Project.ID)
 		result.Tasks = append(result.Tasks, newTaskResult(
 			TaskRef{Task: ref.Task, Project: destination, Base: base},
 			revision,

@@ -21,9 +21,8 @@ const (
 	// stay in one draft until Ctrl+S submits the pair.
 	ValueProviderCheckIn ValueProviderID = "check-in"
 
-	// ValueProviderDueDate is the due-only projection of the same presets. Only
-	// the waiting check-back chain opens it, because that step is asking for a
-	// deadline specifically and a defer section would be noise there.
+	// ValueProviderDueDate is the deadline-only projection of the same presets.
+	// Optional active-work setup uses ValueProviderCheckIn.
 	ValueProviderDueDate ValueProviderID = "due-date"
 
 	// ValueProviderChecklistItem is the typed text of one checklist item. It is

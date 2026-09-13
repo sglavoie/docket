@@ -129,16 +129,16 @@ func TestCommentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("u emitted no workspace undo request")
 	}
-	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || msg.Redo {
-		t.Fatalf("u emitted %#v, want an undo request", driver.pendingCmd())
+	if msg, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); !ok || msg.Redo {
+		t.Fatalf("u emitted %#v, want an undo request", runImmediateTestCommand(driver.pendingCmd))
 	}
 
 	press("ctrl+r")
 	if driver.pendingCmd == nil {
 		t.Fatal("Ctrl+R emitted no workspace redo request")
 	}
-	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || !msg.Redo {
-		t.Fatalf("Ctrl+R emitted %#v, want a redo request", driver.pendingCmd())
+	if msg, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); !ok || !msg.Redo {
+		t.Fatalf("Ctrl+R emitted %#v, want a redo request", runImmediateTestCommand(driver.pendingCmd))
 	}
 }
 
@@ -154,7 +154,7 @@ func TestCommentsSubStatesKeepUAsTypedText(t *testing.T) {
 		if driver.pendingCmd == nil {
 			return
 		}
-		if _, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); ok {
+		if _, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); ok {
 			t.Fatalf("u reached the workspace ledger while %s owned the key stream", state)
 		}
 	}

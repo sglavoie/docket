@@ -9,6 +9,13 @@ project at once.
 One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
+Creating work in Doing or Waiting without a check-in offers optional setup after
+the creation commits. Bulk capture offers one editor for the eligible committed
+tasks. `Esc` keeps the new tasks and skips setup; `Ctrl+S` saves a separate undoable
+check-in. A creation that already supplies a schedule receives no offer. When
+create-and-open is used, the content editor finishes before setup is offered.
+The same offer follows committed line or outline edits that enter either state.
+
 ```text
 !1-3  #tag  ##context  @date  @@defer  $destination  *pin  =review  %project  >parent  <child  ~task  &link  ;comment;
 ```

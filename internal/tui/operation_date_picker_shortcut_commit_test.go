@@ -253,9 +253,8 @@ func reopenDatePicker(
 	return picker
 }
 
-// The Waiting check-back step's picker is the due-only projection, so its rows
-// answer the due keys and commit a real deadline.
-func TestDueOnlyPickerShortcutCommitsACheckBackDate(t *testing.T) {
+// The due-only projection answers the due keys and commits a real deadline.
+func TestDueOnlyPickerShortcutCommitsADeadline(t *testing.T) {
 	week := util.StartOfDay(time.Now()).AddDate(0, 0, 7)
 	env := newDatePickerShortcutEnv(t, operation.ValueProviderDueDate)
 	env.press(t, "w")

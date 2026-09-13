@@ -20,6 +20,8 @@
     { "type": "key", "key": "g" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
+    { "type": "assert", "assert": "contains", "value": "Set Check-In" },
+    { "type": "key", "label": "skip optional setup and continue the workflow", "key": "esc" },
 
     { "type": "assert", "label": "the emptied parent counts the children placed elsewhere", "assert": "contains", "value": "User authentication  ›2" },
     { "type": "assert", "label": "the promoted children still name their hidden parent", "assert": "contains", "value": "Build login form  ‹" },

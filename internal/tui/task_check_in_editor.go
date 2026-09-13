@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskform"
@@ -32,6 +33,9 @@ func (m *AppModel) NewCheckInEditor(
 		return nil, fmt.Errorf("select at least one task")
 	}
 	bulk := request.Context.Selection.Visual || len(refs) > 1
+	if request.Context.CheckInOffer {
+		return taskform.NewCheckInEditorModel(request, fmt.Sprintf("Optional check-in for %d task(s) · Esc skips setup", len(refs)), models.CheckInSchedule{}, bulk), nil
+	}
 	if bulk {
 		return taskform.NewCheckInEditorModel(
 			request,

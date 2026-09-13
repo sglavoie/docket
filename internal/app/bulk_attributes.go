@@ -62,6 +62,17 @@ func (s *Service) bulkAttributeOverSnapshot(
 	undoAction, undoContext string,
 	plan func(Snapshot, []TaskRef) (func(TaskRef) error, error),
 ) (BulkResult, error) {
+	return s.bulkAttributeOverSnapshotGuarded(locators, undoAction, undoContext, plan, false)
+}
+
+// bulkAttributeOverSnapshotGuarded also protects eligibility-dependent writes
+// from three-way merging against a different read set.
+func (s *Service) bulkAttributeOverSnapshotGuarded(
+	locators []TaskLocator,
+	undoAction, undoContext string,
+	plan func(Snapshot, []TaskRef) (func(TaskRef) error, error),
+	strict bool,
+) (BulkResult, error) {
 	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
@@ -95,6 +106,11 @@ func (s *Service) bulkAttributeOverSnapshot(
 	}
 
 	commits, idx := distinctProjectCommits(refs, snap)
+	if strict {
+		if err := attachReadSetRevisionGuards(commits); err != nil {
+			return BulkResult{}, err
+		}
+	}
 	results, err := s.commitProjects(commits, undoAction, undoContext)
 	if err != nil {
 		return BulkResult{}, err

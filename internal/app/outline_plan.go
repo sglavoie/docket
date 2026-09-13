@@ -225,9 +225,9 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 	revision := revisionAt(outcome.results, 0)
 	transactionID := transactionIDAt(outcome.results, 0)
 	return OutlinePlanResult{
-		Created:  outlineTaskResults(project, created, revision, transactionID),
-		Updated:  outlineTaskResults(project, updated, revision, transactionID),
-		Deleted:  outlineTaskResults(project, deleted, revision, transactionID),
+		Created:  outlineTaskResults(project, base, created, revision, transactionID),
+		Updated:  outlineTaskResults(project, base, updated, revision, transactionID),
+		Deleted:  outlineTaskResults(project, base, deleted, revision, transactionID),
 		DueEdits: outlineDueEdits(before.ProjectByID(project.ID), project.ID, updated),
 	}, nil
 }
@@ -265,13 +265,13 @@ func sameDueDate(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-func outlineTaskResults(project *models.Project, tasks []*models.Task, revision, transactionID string) []TaskResult {
+func outlineTaskResults(project *models.Project, base *storage.ProjectDocument, tasks []*models.Task, revision, transactionID string) []TaskResult {
 	if len(tasks) == 0 {
 		return nil
 	}
 	results := make([]TaskResult, 0, len(tasks))
 	for _, task := range tasks {
-		results = append(results, newTaskResult(TaskRef{Task: task, Project: project}, revision, transactionID))
+		results = append(results, newTaskResult(TaskRef{Task: task, Project: project, Base: base}, revision, transactionID))
 	}
 	return results
 }

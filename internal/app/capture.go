@@ -317,7 +317,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	results := make([]TaskResult, len(items))
 	for i, item := range items {
 		results[i] = newTaskResult(
-			TaskRef{Task: item.task, Project: item.project},
+			TaskRef{Task: item.task, Project: item.project, Base: snap.Document(item.project.ID)},
 			revisionAt(outcome.results, projectIndex[item.project.ID]),
 			transactionIDAt(outcome.results, projectIndex[item.project.ID]),
 		)

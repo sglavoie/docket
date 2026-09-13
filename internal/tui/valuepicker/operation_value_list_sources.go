@@ -170,9 +170,8 @@ func OperationDateListSource(deferReason string) listsurface.ListSource {
 	}
 }
 
-// OperationDueDateListSource is the due-only projection. The waiting check-back
-// chain is the one caller: that step asks for a deadline specifically, so a
-// defer section there would offer an answer to a question nobody asked.
+// OperationDueDateListSource is the deadline-only projection, with no
+// deferral or check-in rows.
 func OperationDueDateListSource() listsurface.ListSource {
 	return listsurface.ListSource{Items: operationDateItems(false, "", "")}
 }

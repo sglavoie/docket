@@ -75,6 +75,8 @@ type TaskResult struct {
 	// result. Adapters use it to correlate recovery affordances with the newest
 	// workspace-ledger entry.
 	TransactionID string
+	// StateEffect describes the committed lifecycle entry, including creation.
+	StateEffect *TaskStateEffect
 }
 
 // newTaskResult builds a TaskResult from a resolved task/project pair and the
@@ -87,5 +89,6 @@ func newTaskResult(ref TaskRef, revision, transactionID string) TaskResult {
 		Title:         ref.Task.Title,
 		Revision:      revision,
 		TransactionID: transactionID,
+		StateEffect:   taskStateEffect(ref),
 	}
 }

@@ -23,6 +23,8 @@
     { "type": "key", "label": "start the third Inbox task", "key": "g" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Doing · u undo" },
+    { "type": "assert", "assert": "contains", "value": "Set Check-In" },
+    { "type": "key", "label": "skip optional setup and continue the workflow", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 4" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "complete the fourth Inbox task", "key": "d" },

@@ -49,6 +49,9 @@ func (m *AppModel) executeTaskOperation(
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
+		if request.CheckInOffer && request.CheckIn.IsEmpty() {
+			return operation.OperationHandlerResult{}
+		}
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		cmd := m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary)
 		if invocation.Descriptor.ID == operation.OperationTaskSetCheckIn {
@@ -59,7 +62,7 @@ func (m *AppModel) executeTaskOperation(
 			}, value, cmd)
 		}
 		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
-			Cmd: withWaitingCheckBackStep(invocation, withOutlinerRelocationCapture(cmd, capture)),
+			Cmd: withOutlinerRelocationCapture(cmd, capture),
 		}}
 	}
 	if len(invocation.Targets.Targets) > 1 {
@@ -71,54 +74,6 @@ func (m *AppModel) executeTaskOperation(
 		return operation.OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 	}
 	return m.executeSingleTaskOperation(invocation, identity)
-}
-
-// withWaitingCheckBackStep follows a committed move into Waiting with the
-// due-only picker rather than the combined one `@` opens, because the step is
-// asking for a check-back deadline and a defer section would answer a different
-// question. The chain is keyed off the operation's own value rather than runtime
-// context, and it is gated on the transition's own outcome: a rejected move
-// returns its error untouched, so no picker opens and no due date can be
-// committed on a task that never reached Waiting. On the success path the state
-// transition has already committed when the picker opens, so Esc there cancels
-// the date alone and the Waiting move stands.
-func withWaitingCheckBackStep(invocation operation.OperationInvocation, cmd tea.Cmd) tea.Cmd {
-	if invocation.Descriptor.ID != operation.OperationTaskSetState {
-		return cmd
-	}
-	if state, ok := invocation.Value.(models.WorkflowState); !ok || state != models.StateWaiting {
-		return cmd
-	}
-	checkBack := operation.OperationValueRequestMsg{
-		Request: operation.OperationExecutionRequest{
-			ID:      operation.OperationTaskSetDueDate,
-			Context: operation.CloneCommandContext(invocation.Context),
-		},
-		Provider: operation.ValueProviderDueDate,
-	}
-	return func() tea.Msg {
-		msg := cmd()
-		if !transactionCommitted(msg) {
-			return msg
-		}
-		return tea.Sequence(
-			func() tea.Msg { return msg },
-			func() tea.Msg { return checkBack },
-		)()
-	}
-}
-
-// transactionCommitted reports whether a coordinator command resolved to a
-// durable mutation. The two result types mirror withOutlinerRelocationCapture:
-// a task operation lands on the batch path even for one target, while the
-// single-task commit path still emits TransactionResultMsg.
-func transactionCommitted(msg tea.Msg) bool {
-	switch msg.(type) {
-	case coordinator.BatchTransactionResultMsg, coordinator.TransactionResultMsg:
-		return true
-	default:
-		return false
-	}
 }
 
 // executeTaskTogglePinOperation applies one deterministic toggle to the whole
@@ -297,7 +252,7 @@ func (m *AppModel) executeTaskMarkReviewedOperation(
 // off the mutation path before it because two things are true of them and of
 // nothing else: the order of their targets is the order the copied text reads
 // in, and they commit nothing, so there is no transaction for a relocation
-// capture or a check-back step to follow.
+// capture or a check-in offer to follow.
 func operationProjectsClipboard(id operation.OperationID) bool {
 	switch id {
 	case operation.OperationTaskCopyTitle,
@@ -452,6 +407,7 @@ func applicationTaskOperationRequest(
 		}
 		request.Operation = app.TaskOperationSetCheckIn
 		request.CheckIn = value.Schedule.Clone()
+		request.CheckInOffer = invocation.Context.CheckInOffer
 		verb := "Scheduled check-in for"
 		if value.Clear {
 			verb = "Cleared check-in on"

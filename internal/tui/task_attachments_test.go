@@ -131,7 +131,7 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("J did not reach tui.attachment.reorder-down")
 	}
-	driver.pendingCmd()
+	runImmediateTestCommand(driver.pendingCmd)
 	if len(fake.reorders) != 1 || fake.reorders[0].from != 0 || fake.reorders[0].to != 1 {
 		t.Fatalf("J recorded %+v, want ReorderAttachment(0, 1) on press one", fake.reorders)
 	}
@@ -195,16 +195,16 @@ func TestAttachmentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("u emitted no workspace undo request")
 	}
-	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || msg.Redo {
-		t.Fatalf("u emitted %#v, want an undo request", driver.pendingCmd())
+	if msg, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); !ok || msg.Redo {
+		t.Fatalf("u emitted %#v, want an undo request", runImmediateTestCommand(driver.pendingCmd))
 	}
 
 	press("ctrl+r")
 	if driver.pendingCmd == nil {
 		t.Fatal("Ctrl+R emitted no workspace redo request")
 	}
-	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || !msg.Redo {
-		t.Fatalf("Ctrl+R emitted %#v, want a redo request", driver.pendingCmd())
+	if msg, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); !ok || !msg.Redo {
+		t.Fatalf("Ctrl+R emitted %#v, want a redo request", runImmediateTestCommand(driver.pendingCmd))
 	}
 }
 
@@ -220,7 +220,7 @@ func TestAttachmentsAddModeKeepsUAsTypedText(t *testing.T) {
 	}
 	press("u")
 	if driver.pendingCmd != nil {
-		if _, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); ok {
+		if _, ok := runImmediateTestCommand(driver.pendingCmd).(status.WorkspaceUndoMsg); ok {
 			t.Fatal("u undid a transaction while the attachment path was being typed")
 		}
 	}
@@ -270,7 +270,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("confirming Unlink produced no command")
 	}
-	driver.pendingCmd()
+	runImmediateTestCommand(driver.pendingCmd)
 
 	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].deleteFile {
 		t.Fatalf("confirming the sheet's Unlink recorded %+v, want RemoveAttachment(index=0, deleteFile=false)", fake.removals)

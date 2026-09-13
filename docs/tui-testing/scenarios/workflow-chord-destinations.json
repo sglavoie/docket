@@ -30,12 +30,14 @@
     { "type": "key", "label": "wg starts it", "key": "g" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
+    { "type": "assert", "assert": "contains", "value": "Set Check-In" },
+    { "type": "key", "label": "skip optional setup", "key": "esc" },
 
     { "type": "key", "key": "w" },
-    { "type": "key", "label": "ww blocks it, which chains into the deadline", "key": "w" },
+    { "type": "key", "label": "ww blocks it and offers check-in setup", "key": "w" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
-    { "type": "key", "label": "decline the deadline", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Set Check-In" },
+    { "type": "key", "label": "decline the check-in", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State: Waiting" },
 

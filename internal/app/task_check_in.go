@@ -34,6 +34,10 @@ import (
 // that half-succeeded would be worse than one that refused: the caller would
 // have no way to tell which half landed.
 func (s *Service) BulkSetCheckIn(locators []TaskLocator, schedule models.CheckInSchedule) (BulkResult, error) {
+	return s.bulkSetCheckIn(locators, schedule, false)
+}
+
+func (s *Service) bulkSetCheckIn(locators []TaskLocator, schedule models.CheckInSchedule, offer bool) (BulkResult, error) {
 	if err := validateOperationTargets(locators); err != nil {
 		return BulkResult{}, err
 	}
@@ -41,7 +45,14 @@ func (s *Service) BulkSetCheckIn(locators []TaskLocator, schedule models.CheckIn
 		return BulkResult{}, invalidInput("check-in", err.Error())
 	}
 	action, context := checkInUndoEntry(schedule)
-	return s.bulkAttributeOverSnapshot(locators, action, context, func(_ Snapshot, refs []TaskRef) (func(TaskRef) error, error) {
+	return s.bulkAttributeOverSnapshotGuarded(locators, action, context, func(_ Snapshot, refs []TaskRef) (func(TaskRef) error, error) {
+		if offer {
+			for _, ref := range refs {
+				if !ref.Task.CheckIn().IsEmpty() || (ref.Task.State() != models.StateDoing && ref.Task.State() != models.StateWaiting) {
+					return nil, invalidInput("check-in", fmt.Sprintf("#%d is no longer eligible for this offer", ref.Task.ShortID))
+				}
+			}
+		}
 		if err := checkInTargetsAccept(refs, schedule); err != nil {
 			return nil, err
 		}
@@ -51,7 +62,7 @@ func (s *Service) BulkSetCheckIn(locators []TaskLocator, schedule models.CheckIn
 		return func(ref TaskRef) error {
 			return applyCheckInSchedule(ref.Task, schedule, now)
 		}, nil
-	})
+	}, offer)
 }
 
 // checkInTargetsAccept is the whole workspace half of the validation, run

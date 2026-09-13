@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -156,6 +157,7 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 // already typed, so nothing the buffer held is lost to a rejected sigil.
 func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd) {
 	if msg.Task == nil {
+		m.cancelPendingCheckInOffer()
 		return true, nil
 	}
 
@@ -167,11 +169,13 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 
 	tmpPath, err := writeTaskContentBuffer(msg.Path, content)
 	if err != nil {
+		m.cancelPendingCheckInOffer()
 		return true, status.ErrorCmd("%s", err)
 	}
 
 	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
+		m.cancelPendingCheckInOffer()
 		removeTaskContentBuffer(tmpPath)
 		return true, status.ErrorCmd("%s", editorErr)
 	}
@@ -239,9 +243,11 @@ func removeTaskContentBuffer(path string) {
 // reopens the buffer instead.
 func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.Cmd) {
 	if msg.Err != nil {
+		m.cancelPendingCheckInOffer()
 		return true, status.ErrorCmd("editor failed: %w", msg.Err)
 	}
 	if msg.Task == nil || msg.Project == nil {
+		m.cancelPendingCheckInOffer()
 		return true, nil
 	}
 
@@ -254,6 +260,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		task = project.GetTaskByID(msg.Task.ID)
 	}
 	if task == nil {
+		m.cancelPendingCheckInOffer()
 		removeTaskContentBuffer(msg.Path)
 		return true, status.ErrorCmd("task edit context is unavailable")
 	}
@@ -265,6 +272,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 
 	if msg.NewTitle == baseline {
 		if msg.RejectedTitle != "" {
+			m.cancelPendingCheckInOffer()
 			removeTaskContentBuffer(msg.Path)
 			return true, status.ErrorCmd("%s", msg.Notice)
 		}
@@ -304,11 +312,14 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 		relocation = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{source})
 	}
 
+	m.checkInOffers.openContent = false
 	edited, err := m.domain.service.EditTaskLine(req)
 	removeTaskContentBuffer(msg.Path)
 	if err != nil {
+		m.cancelPendingCheckInOffer()
 		return m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{Source: source, Err: err})
 	}
+	m.queueCheckInOffer([]app.TaskResult{{ProjectID: edited.Task.ProjectID, TaskID: edited.Task.TaskID, TransactionID: edited.TransactionID, StateEffect: edited.StateEffect}})
 	return m.handleTaskLineEdited(coordinator.TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
 }
 
@@ -343,6 +354,7 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 // catalog-reading surfaces are therefore rebuilt from the restored snapshot on
 // the same terms every forward catalog mutation rebuilds them.
 func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
+	m.cancelPendingCheckInOffer()
 	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	restore := ledger.UndoWithEntry
 	verb, label := "Undid", "undo"
