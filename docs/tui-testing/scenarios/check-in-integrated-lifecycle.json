@@ -1,0 +1,352 @@
+{
+  "name": "check-in-integrated-lifecycle",
+  "fixture": "check-ins",
+  "size": "110x35",
+  "actions": [
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Migrated vendor wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "review +"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Stale  ("
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "Migrated vendor wait"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "due 2020-04-01 15:30"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "check-in 2020-04-01"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "key",
+      "key": "R"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "review +"
+    },
+    {
+      "type": "restart"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "review +"
+    },
+    {
+      "type": "command",
+      "command": "Set up check-ins"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Set up check-ins"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Migrated vendor wait"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+n"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Setup active work"
+    },
+    {
+      "type": "text",
+      "text": "today"
+    },
+    {
+      "type": "key",
+      "key": "tab"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+s"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Setup waiting work"
+    },
+    {
+      "type": "text",
+      "text": "today"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+s"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "2 saved, 1 skipped"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "review today"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Today  ("
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "Setup active work"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Doing"
+    },
+    {
+      "type": "key",
+      "key": "R"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "review today"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "repeat 3d"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "last review"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "key",
+      "key": "R"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "task has no review to acknowledge"
+    },
+    {
+      "type": "key",
+      "key": "w"
+    },
+    {
+      "type": "key",
+      "key": "d"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "restart"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "Setup active work $done"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Setup active work"
+    },
+    {
+      "type": "key",
+      "key": "w"
+    },
+    {
+      "type": "key",
+      "key": "i"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "restart"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "Setup active work"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "last review"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "check-in 20"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "repeat 3d"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}

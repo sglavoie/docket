@@ -61,6 +61,7 @@ machine's sync wrote the bundle.
 | `project-mix` | An active project with a task, an active project with none, an active project whose two tasks are both finished, a parked project with a task, and an archived project with none. |
 | `signals` | A lapsed deferral beside a whole-day and an hour-valued pending one, concentrated overdue work, and a durable Today membership. |
 | `stale` | Old and fresh open work for lifecycle-lane placement, the Stale facet, and narrow-width contracts. |
+| `check-ins` | A schema-19 workspace activated through the real migration path, with a timed Waiting deadline, unscheduled Doing/Waiting work, and dormant cleanup. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
@@ -300,6 +301,10 @@ The committed suite exercises the product contracts directly:
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
 | Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
 | Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
+| Migration → setup → due attention → early review → recurrence → completion/reopen, with restart-backed persistence | `check-in-integrated-lifecycle.json` |
+| Stored flags versus scheduled attention, preserved `=review` and `?stale`, and `fs` cleanup | `check-in-flags-and-stale.json` |
+| Calendar midnight, deferred wake, Doing/Today precedence and project Today counts from reloaded task documents | `internal/tui/outliner/check_in_calendar_acceptance_test.go` plus the safe-refresh tests in `internal/tui/defer_wake_refresh_test.go` |
+| Dark/light, ordinary/selected rows, monochrome output, editor and setup at 110×35, 62×24 and 60×20 | `internal/tui/check_in_visual_acceptance_test.go` |
 | Stale work staying in its lifecycle lane, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `internal/tui/theme/semantic_tag_title_style_test.go` |
 | Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `internal/tui/outliner/tag_chip_style_test.go` |
@@ -318,9 +323,24 @@ The committed suite exercises the product contracts directly:
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and
 v4→v5→v6 config tests plus CLI startup recovery. Those tests are the migrated
-install scenarios: JSON fixtures begin after workspace construction, so schema
-migration and startup recovery stay at the real storage/startup boundary rather
-than being simulated inside the TUI driver.
+install scenarios. The `check-ins` fixture activates historical documents through
+the manager before launching its JSON scenarios; recovery fault injection stays
+at the real storage/startup boundary.
+
+For visual review, set `TT_CHECK_IN_REVIEW_DIR` to an artifact directory while
+running `TestCheckInVisualAcceptance`. It writes the rendered ANSI screens and
+the same screens passed through the terminal monochrome profile. Scenario
+`wait` advances timer delivery only; exact calendar-boundary assertions use an
+explicit `OutlinerModeInput.Now` after reloading stored task documents.
+
+Release compatibility requires actual old-binary execution:
+`env TT_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d just cross-machine`.
+That schema-19 binary validates the legacy Waiting seed before the new binary
+activates it. The gate then checks one-off review, setup eligibility, early
+recurrence, completion/reopen and the preserved timed deadline. The check-in
+races run in separate processes in both commit orders: review/reschedule and
+terminal/reminder conflicts, independent content/schedule merges, and strict
+deadline-step refusal versus mergeable scheduling.
 
 ## Observation contract
 

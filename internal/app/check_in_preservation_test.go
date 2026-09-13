@@ -25,9 +25,9 @@ var checkInReviewedAt = checkInNow.AddDate(0, 0, -9)
 // scheduledTask is open work carrying a complete check-in and a review history:
 // both halves of what an unrelated edit must preserve and a terminal transition
 // must treat differently.
-func scheduledTask(t *testing.T, id string, shortID int, title string) *models.Task {
+func scheduledTask(t *testing.T, shortID int, title string) *models.Task {
 	t.Helper()
-	task := newTask(id, shortID, title)
+	task := newTask("t1", shortID, title)
 	seedTaskCheckIn(t, task)
 	return task
 }
@@ -93,7 +93,7 @@ func requireScheduleIntact(t *testing.T, task *models.Task, where string) {
 // itself: a nil patch is "say nothing", not "clear", which is what keeps a title
 // fix and an external-editor body round trip from retiring a schedule.
 func TestEditPreservesAnUnmentionedCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	title := "chase the vendor again"
 	body := "The importer cannot land without it."
@@ -112,7 +112,7 @@ func TestEditPreservesAnUnmentionedCheckIn(t *testing.T) {
 // the whole schedule, and the empty one is the clear. Neither touches the review
 // history, because replacing what is owed says nothing about what happened.
 func TestEditWritesAndClearsAMentionedCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newCheckInService(repo)
 
@@ -163,7 +163,7 @@ func TestEditRefusesAScheduleOnTerminalWork(t *testing.T) {
 // TestTaskLineEditPreservesTheCheckIn walks the inline `e` path, which rewrites
 // the task through a completely separate patch applier from Edit's.
 func TestTaskLineEditPreservesTheCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 
 	result, err := newCheckInService(repo).EditTaskLine(app.TaskLineEditRequest{
@@ -185,7 +185,7 @@ func TestTaskLineEditPreservesTheCheckIn(t *testing.T) {
 // it into another. The schedule is the task's, so changing owners changes
 // nothing about it.
 func TestTaskLineEditAcrossProjectsPreservesTheCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	repo := newFakeRepo(
 		newProject("proj-a", "Alpha", task),
 		newProject("proj-b", "Beta"))
@@ -208,7 +208,7 @@ func TestTaskLineEditAcrossProjectsPreservesTheCheckIn(t *testing.T) {
 // reaches storage through the batch transaction rather than the single edit, and
 // carries a descendant the selection never named.
 func TestBulkMovePreservesTheCheckIn(t *testing.T) {
-	root := scheduledTask(t, "t1", 1, "chase the vendor")
+	root := scheduledTask(t, 1, "chase the vendor")
 	child := childOf("t2", 2, "chase the sub-vendor", root)
 	seedTaskCheckIn(t, child)
 	repo := newFakeRepo(
@@ -226,7 +226,7 @@ func TestBulkMovePreservesTheCheckIn(t *testing.T) {
 // parent edge and the project's task order without going near task content.
 func TestReparentPreservesTheCheckIn(t *testing.T) {
 	parent := newTask("t0", 1, "the umbrella")
-	task := scheduledTask(t, "t1", 2, "chase the vendor")
+	task := scheduledTask(t, 2, "chase the vendor")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", parent, task))
 	svc := newCheckInService(repo)
 
@@ -250,7 +250,7 @@ func TestReparentPreservesTheCheckIn(t *testing.T) {
 // clear rather than an omission, and the buffer holds no check-in syntax at all,
 // which makes it the path most likely to erase one.
 func TestOutlinePlanPreservesTheCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	project := newProject("proj-a", "Alpha", task)
 	repo := newFakeRepo(project)
 
@@ -317,7 +317,7 @@ func TestTerminalTransitionsClearTheScheduleThroughEveryPath(t *testing.T) {
 		}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			task := scheduledTask(t, "t1", 1, "chase the vendor")
+			task := scheduledTask(t, 1, "chase the vendor")
 			project := newProject("proj-a", "Alpha", task)
 			repo := newFakeRepo(project)
 			svc := newCheckInService(repo)
@@ -343,7 +343,7 @@ func TestTerminalTransitionsClearTheScheduleThroughEveryPath(t *testing.T) {
 // gone the moment the task finished, and reopening mints nothing, so a reopened
 // task is unscheduled rather than quietly owing a date nobody set.
 func TestReopeningInheritsNoCheckIn(t *testing.T) {
-	task := scheduledTask(t, "t1", 1, "chase the vendor")
+	task := scheduledTask(t, 1, "chase the vendor")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", task))
 	svc := newCheckInService(repo)
 
@@ -413,7 +413,7 @@ func TestCaptureCarriesAScheduleAndRefusesATerminalOne(t *testing.T) {
 // set is enumerated elsewhere, which is what makes the absence structural; this
 // is the behavioral half, over a source that has something to leak.
 func TestRepeatDraftCarriesNoScheduleOrHistory(t *testing.T) {
-	source := scheduledTask(t, "t1", 1, "ship the quarterly report")
+	source := scheduledTask(t, 1, "ship the quarterly report")
 	repo := newFakeRepo(newProject("proj-a", "Alpha", source))
 	svc := newCheckInService(repo)
 

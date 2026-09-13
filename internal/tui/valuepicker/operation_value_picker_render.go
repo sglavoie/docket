@@ -81,7 +81,7 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		// it is bound here rather than through `add`, which speaks for the Actions
 		// category. The hint is optional, so it can never displace Enter or Esc.
 		km.Entries = append(km.Entries, keymap.Bind(
-			"tab", "Switch between the Due and Defer sections", "Navigation",
+			"tab", "Switch between Due, Defer, and Check-in sections", "Navigation",
 			keymap.WithGate(func() bool { return !searching && count > 0 }),
 			keymap.WithFooter(3, "switch field", false), keymap.WithFooterKey("Tab"),
 		))
@@ -114,24 +114,9 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		})
 	}
 	if model.provider.DateEntry() {
-		// The noun is the active-field guidance: one binding writes whichever field
-		// the cursor's row names, so the hint has to say which one that is now.
-		noun := model.dateEntryNoun()
-		if noun != "" {
-			add("a", "Type a specific "+noun, "set "+noun, 4, func() bool { return !searching })
-		}
-		// Which key belongs to which preset is printed on the rows themselves, so
-		// the footer only has to say that the keys are live at all. `0` stands for
-		// the set because it is the one key both fields bind. The hint is optional,
-		// so a narrow footer drops it rather than a required answer.
-		if noun != "" {
-			km.Entries = append(km.Entries, keymap.Bind(
-				"0", "Apply a date preset by its key", "Actions",
-				keymap.WithGate(func() bool { return !searching && count > 0 }),
-				keymap.WithFooter(6, "pick", false), keymap.WithFooterKey("preset key"),
-			))
-		}
+		model.appendDateGuidance(km, searching, count)
 	}
+
 	if vocabularyRenameProvider(model.provider) {
 		add("e", "Rename or merge this "+model.vocabularyRenameNoun(), "rename", 5, func() bool {
 			return !searching && count > 0
@@ -254,5 +239,18 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		title,
 		guidanceText,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
+	)
+}
+
+func (model *OperationValuePickerModel) appendDateGuidance(km *keymap.KeyMap, searching bool, count int) {
+	// Check-in opens its own editor, so only Due and Defer advertise date typing
+	// and immediate presets in the shared picker.
+	noun := model.dateEntryNoun()
+	if noun == "" {
+		return
+	}
+	km.Entries = append(km.Entries,
+		keymap.Bind("a", "Type a specific "+noun, "Actions", keymap.WithGate(func() bool { return !searching }), keymap.WithFooter(4, "set "+noun, false)),
+		keymap.Bind("0", "Apply a date preset by its key", "Actions", keymap.WithGate(func() bool { return !searching && count > 0 }), keymap.WithFooter(6, "pick", false), keymap.WithFooterKey("preset key")),
 	)
 }

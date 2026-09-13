@@ -317,11 +317,12 @@ func (model *CheckInEditorModel) Render(width int) string {
 		content.WriteString(theme.MutedStyle.Render(model.subtitle))
 		content.WriteString("\n\n")
 	}
-	if model.picker == checkInPickerDate {
+	switch model.picker {
+	case checkInPickerDate:
 		content.WriteString(model.renderDatePicker(contentWidth))
-	} else if model.picker == checkInPickerRepeat {
+	case checkInPickerRepeat:
 		content.WriteString(model.renderRepeatPicker(contentWidth))
-	} else {
+	default:
 		// The focused marker and its separating space consume two columns before
 		// the 17-column label, and the text input's own prompt consumes two more.
 		// Giving the input the true remainder prevents the creation form's
@@ -391,15 +392,15 @@ func (model *CheckInEditorModel) renderRepeatPicker(width int) string {
 func (model *CheckInEditorModel) guidanceSpec() chrome.GuidanceSpec {
 	if model.setup {
 		if model.submitted {
-			return chrome.RequiredActionGuidanceSpec("Esc exit after save")
+			return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Esc exit after save")}
 		}
 		if model.picker != checkInPickerNone {
-			return chrome.RequiredActionGuidanceSpec("Enter select", "j/k navigate", "Ctrl+N skip", "Esc exit")
+			return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Enter select", "Ctrl+N skip", "Esc exit"), chrome.OptionalGuidanceHints(10, "j/k navigate")...)}
 		}
-		return chrome.RequiredActionGuidanceSpec("Ctrl+S save", "Ctrl+N skip", "Esc exit", "Enter presets", "Tab fields")
+		return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Ctrl+S save", "Ctrl+N skip", "Esc exit"), chrome.OptionalGuidanceHints(10, "Enter presets", "Tab fields")...)}
 	}
 	if model.picker != checkInPickerNone {
-		return chrome.RequiredActionGuidanceSpec("Enter select", "j/k navigate", "Esc back")
+		return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Enter select", "Esc back"), chrome.OptionalGuidanceHints(10, "j/k navigate")...)}
 	}
-	return chrome.RequiredActionGuidanceSpec("Ctrl+S save", "Tab/Shift+Tab fields", "Enter presets", "Esc cancel")
+	return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Ctrl+S save", "Esc cancel"), chrome.OptionalGuidanceHints(10, "Tab/Shift+Tab fields", "Enter presets")...)}
 }

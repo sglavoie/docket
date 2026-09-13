@@ -107,6 +107,7 @@ const (
 // workspace. The workspace is already created (empty temp data dir + config)
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
+	"check-ins":         buildCheckInFixture,
 	FixtureEmpty:        buildEmptyFixture,
 	FixtureFresh:        nil,
 	FixtureRich:         buildRichFixture,

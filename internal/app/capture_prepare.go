@@ -74,7 +74,7 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 		return preparedCapture{}, err
 	}
 
-	if err := capturedCheckInAccepts(req.CheckIn, destination.state); err != nil {
+	if err = capturedCheckInAccepts(req.CheckIn, destination.state); err != nil {
 		return preparedCapture{}, err
 	}
 

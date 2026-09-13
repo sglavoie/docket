@@ -563,6 +563,16 @@ case_six() {
 		report_fail "tt at $ref could not mint a workspace of its own (see $work_dir/case6-old.log)"
 		return
 	fi
+	# Populate the schema-19 binary's document before activation, and require
+	# that binary itself to validate it. This proves the Waiting seed crosses
+	# the boundary instead of being added after migration.
+	if [ "${TT_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
+		if ! TT_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperSeedsLegacyCheckIns$' >"$work_dir/case6-legacy-seed.log" 2>&1 ||
+			! HOME="$home_old" "$old_binary" doctor --data-dir "$shared" >"$work_dir/case6-legacy-verify.log" 2>&1; then
+			report_fail "schema-19 binary could not validate the legacy check-in seed"
+			return
+		fi
+	fi
 	minted_marker=$(task_schema_marker "$shared")
 	if [ -z "$minted_marker" ]; then
 		report_fail "tt at $ref minted no readable task document"
@@ -600,6 +610,13 @@ case_six() {
 		return
 	fi
 
+	if [ "${TT_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
+		if ! TT_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperReviewsMigratedCheckIns$' >"$work_dir/case6-check-ins.log" 2>&1; then
+			report_fail "migrated check-in lifecycle failed (see $work_dir/case6-check-ins.log)"
+			return
+		fi
+		report_pass "schema-19 Waiting deadline seeds a check-in; setup, early review, recurrence and reopen preserve metadata"
+	fi
 	if ! seed_workspace "$shared" "$work_dir/case6-seed.log"; then
 		report_fail "could not seed the migrated workspace (see $work_dir/case6-seed.log)"
 		return
@@ -1451,6 +1468,16 @@ case_ten_promotion_versus_edit() {
 	report_pass "a promotion and an edit over one checklist leave each item exactly once ($outcome_a / $outcome_b)"
 }
 
+# The Go judges fork separate processes in both commit orders and inspect the
+# final documents, conflict bundles, planning bytes and ledger counts.
+case_eleven_check_ins() {
+ if "$helper_binary" -test.run '^TestCrossMachineCheckIn' -test.v >"$work_dir/case11-check-ins.log" 2>&1; then
+  report_pass "check-in review, content, terminal and deadline races preserve both commit orders"
+ else
+  report_fail "check-in races failed (see $work_dir/case11-check-ins.log)"
+ fi
+}
+
 # snapshot_workspace writes a sorted path/size/checksum listing of every file
 # under a workspace, which is what "byte-identical" is checked against.
 snapshot_workspace() {
@@ -1477,6 +1504,7 @@ case_nine_rival_steps
 case_nine_batch_versus_write
 case_ten_rival_promotions
 case_ten_promotion_versus_edit
+case_eleven_check_ins
 
 echo
 if [ "$failures" -gt 0 ]; then

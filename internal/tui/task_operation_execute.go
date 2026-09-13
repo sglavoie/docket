@@ -377,28 +377,7 @@ func applicationTaskOperationRequest(
 			fmt.Sprintf("Set Priority · Set priority on %d task(s)", count), true, nil
 
 	case operation.OperationTaskSetDueDate:
-		value, ok := invocation.Value.(operation.OperationDateValue)
-		if !ok {
-			return request, "", "", true, fmt.Errorf("invalid date value")
-		}
-		request.Date = taskref.CloneOperationDate(value.Date)
-		if value.Deferred {
-			request.Operation = app.TaskOperationSetDefer
-			verb := "Deferred"
-			if value.Date == nil {
-				verb = "Cleared defer on"
-			}
-			return request, "Set Defer",
-				fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
-		}
-		request.Operation = app.TaskOperationSetDueDate
-		request.PlanForToday = coordinator.DueDateIsToday(value.Date)
-		verb := "Set due date on"
-		if value.Date == nil {
-			verb = "Cleared due date on"
-		}
-		return request, "Set Due Date",
-			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
+		return applicationDateOperationRequest(request, invocation.Value)
 
 	case operation.OperationTaskSetCheckIn:
 		value, ok := invocation.Value.(operation.OperationCheckInValue)
@@ -865,4 +844,32 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 		selected = roots
 	}
 	return coordinator.FinalizeStaleSelectionBatchResult(cmd, taskref.TaskLocatorsFromTaskRefs(selected))
+}
+
+// applicationDateOperationRequest keeps deadline planning and deferral effects
+// confined to date payloads; a check-in never enters this translation.
+func applicationDateOperationRequest(request app.TaskOperationRequest, raw any) (app.TaskOperationRequest, string, string, bool, error) {
+	count := len(request.Targets)
+	value, ok := raw.(operation.OperationDateValue)
+	if !ok {
+		return request, "", "", true, fmt.Errorf("invalid date value")
+	}
+	request.Date = taskref.CloneOperationDate(value.Date)
+	if value.Deferred {
+		request.Operation = app.TaskOperationSetDefer
+		verb := "Deferred"
+		if value.Date == nil {
+			verb = "Cleared defer on"
+		}
+		return request, "Set Defer",
+			fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
+	}
+	request.Operation = app.TaskOperationSetDueDate
+	request.PlanForToday = coordinator.DueDateIsToday(value.Date)
+	verb := "Set due date on"
+	if value.Date == nil {
+		verb = "Cleared due date on"
+	}
+	return request, "Set Due Date",
+		fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
 }

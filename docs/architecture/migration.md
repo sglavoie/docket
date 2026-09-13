@@ -194,7 +194,9 @@ check-in path:
    leaving it behind would strand a document the new reader rejects. The audit
    reports how many Waiting tasks were seeded, names the three new keys, and is
    the only place that can explain the emptied history. The portable lens
-   collection is not restaged: no saved lens narrows by a check-in.
+   collection is not restaged: existing `=review` and Stale lenses keep their
+   meanings. The additive Needs Review template uses `?review`; it does not
+   rewrite a saved lens or turn its stored flag query into scheduled attention.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
 than cleanup after it. Schema 15 removes the review tag from every task as it

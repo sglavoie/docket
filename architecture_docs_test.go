@@ -88,7 +88,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"`Space`. Some of those reuse the key their task-row counterpart holds",
 		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
 		"Recent is the activity review projection",
-		"Stale draws immediately after Review",
+		"Stale is an explicit cleanup filter and lens, with no automatic lane",
 		"The lowercase `fs` facet applies that same predicate as a row refinement except in Recent, where it " +
 			"is unavailable",
 		"Entering Recent with it active clears only Stale and reports " +

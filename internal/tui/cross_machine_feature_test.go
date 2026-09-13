@@ -86,13 +86,19 @@ type crossMachineInterruptedResult struct {
 // under it. That is what makes "the loser staged nothing" a claim a test can
 // make, and what lets the two refusal shapes — a strict precondition and an
 // ordinary recorded merge conflict — be told apart by which role was held.
-func runCrossMachineInterruptedMutation(t *testing.T, held, writer crossMachineRole) crossMachineInterruptedResult {
+func runCrossMachineInterruptedMutation(t *testing.T, held, writer crossMachineRole, prepare ...func(*models.Project)) crossMachineInterruptedResult {
 	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatalf("locate this test binary: %v", err)
 	}
 	workspace, project := crossMachineWorkspace(t)
+	for _, seed := range prepare {
+		seed(project)
+		if err = storage.SaveProject(project); err != nil {
+			t.Fatal(err)
+		}
+	}
 	baseRevision := crossMachineProjectRevision(t, project)
 	undoBefore := crossMachineUndoCount(t, workspace.DataDir)
 	planningBefore := crossMachinePlanningBytes(t, workspace.DataDir)
@@ -156,10 +162,10 @@ func runCrossMachineInterruptedMutation(t *testing.T, held, writer crossMachineR
 // dueStepRole names one forked machine stepping a selection of deadlines. The
 // titles are joined rather than passed separately because the order is the
 // input: the first names the project the barrier holds the batch at.
-func dueStepRole(name, direction, retry string, titles ...string) crossMachineRole {
+func dueStepRole(name, retry string, titles ...string) crossMachineRole {
 	env := []string{
 		helperTitleEnv + "=" + strings.Join(titles, helperTitleSeparator),
-		helperDueStepEnv + "=" + direction,
+		helperDueStepEnv + "=" + helperDueStepForward,
 	}
 	if retry != "" {
 		env = append(env, helperDueRetryEnv+"="+retry)
@@ -195,8 +201,8 @@ func dueStepRole(name, direction, retry string, titles ...string) crossMachineRo
 // is exactly one calendar day later, and the file holds the second.
 func TestCrossMachineDueStepRaceRefusesTheStaleStepAndAdvancesOnRetry(t *testing.T) {
 	race := runCrossMachineRace(t, []crossMachineRole{
-		dueStepRole("A", helperDueStepForward, "1", dueStepRaceAnchorTitle),
-		dueStepRole("B", helperDueStepForward, "1", dueStepRaceAnchorTitle),
+		dueStepRole("A", "1", dueStepRaceAnchorTitle),
+		dueStepRole("B", "1", dueStepRaceAnchorTitle),
 	})
 	requireCrossMachineDistinctShortIDs(t, race.merged)
 
@@ -268,7 +274,7 @@ func crossMachineNextDay(t *testing.T, deadline string) string {
 // precondition makes: it is validated ahead of the merge, so there is nothing to
 // record and nothing to retry from.
 func TestCrossMachineDueStepBatchIsRefusedWholeByAnInterveningWrite(t *testing.T) {
-	held := dueStepRole("held", helperDueStepForward, "", dueStepRaceAnchorTitle, dueStepRaceSupportTitle)
+	held := dueStepRole("held", "", dueStepRaceAnchorTitle, dueStepRaceSupportTitle)
 	// The interrupting write names a different task and a different action, so
 	// the held batch is the only thing that could have moved its own targets: the
 	// refused process is asked to prove from the inside that none of them did.

@@ -324,11 +324,9 @@ state — and a `wr` terminal would contradict the parser. `ApplyReview` stores 
 `PinnedAt` orders the pinned section; nothing reads when a task was flagged, so
 a timestamp would be a field with no reader.
 
-Stale draws immediately after Review. It promotes open, currently undeferred
-work whose `UpdatedAt` touch time is at least 90 local-calendar days old,
-measured inclusively by local calendar day. Its claim loses to Pinned, Today,
-Next, Review, and Doing, so deliberate planning, flagged review, and active
-work stay in their stronger lanes without duplication. The lowercase `fs`
+Stale is an explicit cleanup filter and lens, with no automatic lane. It
+matches open, currently undeferred work whose `UpdatedAt` touch time is at least
+90 local-calendar days old, measured inclusively by local calendar day. The lowercase `fs`
 facet applies that same predicate as a row refinement except in Recent, where it
 is unavailable. Entering Recent with it active clears only Stale and reports
 `Stale filter cleared: Recent only includes the last 30 days`. The `fs` facet

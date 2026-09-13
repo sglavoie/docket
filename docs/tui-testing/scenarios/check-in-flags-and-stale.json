@@ -1,0 +1,308 @@
+{
+  "name": "check-in-flags-and-stale",
+  "fixture": "check-ins",
+  "size": "110x35",
+  "actions": [
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "?review"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Migrated vendor wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Setup waiting work"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "=review"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Migrated vendor wait"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "?stale"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "key",
+      "key": "="
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "=review"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "command",
+      "command": "Set Check-In"
+    },
+    {
+      "type": "text",
+      "text": "+7d"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+s"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "restart"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "=review"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "key",
+      "key": "R"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "text",
+      "text": "?review"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Migrated vendor wait"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Dormant cleanup"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+u"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "home"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "j"
+    },
+    {
+      "type": "key",
+      "key": "f"
+    },
+    {
+      "type": "key",
+      "key": "s"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Stale"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Stale  ("
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}

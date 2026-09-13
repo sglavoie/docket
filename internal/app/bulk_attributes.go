@@ -107,10 +107,11 @@ func (s *Service) bulkAttributeOverSnapshotGuarded(
 
 	commits, idx := distinctProjectCommits(refs, snap)
 	if strict {
-		if err := attachReadSetRevisionGuards(commits); err != nil {
+		if err = attachReadSetRevisionGuards(commits); err != nil {
 			return BulkResult{}, err
 		}
 	}
+	awaitBulkCommitBarrier(refs, snap, undoAction)
 	results, err := s.commitProjects(commits, undoAction, undoContext)
 	if err != nil {
 		return BulkResult{}, err

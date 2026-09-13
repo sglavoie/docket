@@ -328,7 +328,7 @@ func TestCheckInSetupMinimumLayoutAndSavedViewRestoration(t *testing.T) {
 	if task := model.projectByID(first.ProjectID).GetTaskByID(first.TaskID); task == nil || task.CheckIn().IsEmpty() {
 		t.Fatal("saved schedule absent from refreshed view data")
 	}
-	if err := driver.Restart(); err != nil {
+	if err = driver.Restart(); err != nil {
 		t.Fatal(err)
 	}
 	fresh, err := driver.App().domain.service.CheckInSetupCandidates()

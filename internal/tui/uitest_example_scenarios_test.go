@@ -34,6 +34,8 @@ func exampleScenariosDir(t *testing.T) string {
 
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
+		"check-in-integrated-lifecycle.json",
+		"check-in-flags-and-stale.json",
 		"capture-grammar.json",
 		"capture-attachment.json",
 		"capture-comment.json",

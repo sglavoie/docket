@@ -157,9 +157,9 @@ Marking clears the review flag, records when the review happened, and updates th
 task's timestamp. A repeating check-in moves on from the moment you answered, not
 from the day it was owed, so answering three days late does not make the next one
 three days early; a one-off check-in is done and clears. Nothing else changes:
-the state and how long it has been in it, dates, deferral, Today or Next
+the state and how long it has been in it, deadlines, deferral, Today or Next
 membership, pin, resume note, comments, and body all survive. A Waiting task is
-still Waiting afterwards, still shows its check-back date, and still counts the
+still Waiting afterwards, keeps its separate deadline, and still counts the
 days it has been waiting — acknowledging that you have seen it is not the same as
 hearing back. There is no review queue accumulating anywhere.
 
@@ -294,6 +294,14 @@ mutations is the shape this menu exists to avoid. Comments and Attachments left
 this menu when they gained `;` and `&`, which is that same rule: a panel reached
 by a key is not also a row. The single-task sheet remains identical to the bulk
 one, with the latter applying one explicit schedule replacement atomically.
+
+For example, keep a vendor deadline on Friday and set a repeating check-in for
+Tuesday every 3 days. Reviewing on Monday schedules the next check-in for
+Thursday; reviewing late on Wednesday schedules it for Saturday. The Friday
+deadline stays put, and neither check-in adds the task to Today. Changing the
+check-in date alone keeps any manual review flag and the previous review time.
+Deferral hides scheduled reminders until wake; completion or cancellation clears
+the schedule, so reopening retains review history without restarting it.
 
 To schedule existing active work, open `Ctrl+M` → **Task** → **Set up check-ins**.
 The action also appears in `?` help. It walks unscheduled Doing and Waiting tasks

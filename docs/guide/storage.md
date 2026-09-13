@@ -334,7 +334,7 @@ Provider-specific notes:
   back over the original by hand. Syncthing also does not synchronize clocks, and
   a machine whose clock is well behind the others will write timestamps that read
   as older than they are — which is what the state clock, the check-back
-  interval, and the Stale lane are all measured against.
+  interval, and the explicit Stale filter are all measured against.
 
 **After a sync problem, run `tt doctor`.** Its checks are ordered so the ones
 that block anything else come first: saved lenses, the transaction journal and

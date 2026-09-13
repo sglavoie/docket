@@ -72,7 +72,6 @@ func flattenTaskGroups(groups [][]*models.Task) ([]*models.Task, []int) {
 // group per project, so a two-group call is the cross-project selection.
 func newDurableDatePickerEnv(
 	t *testing.T,
-	provider operation.ValueProviderID,
 	groups ...[]*models.Task,
 ) *durableDatePickerEnv {
 	t.Helper()
@@ -97,7 +96,7 @@ func newDurableDatePickerEnv(
 	picker, err := model.newOperationValuePicker(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskSetDueDate,
 		Context: context,
-	}, provider)
+	}, operation.ValueProviderDate)
 	if err != nil {
 		t.Fatalf("newOperationValuePicker: %v", err)
 	}
@@ -231,7 +230,7 @@ func (e *durableDatePickerEnv) completeInWorkspace(t *testing.T, index int) {
 func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testing.T) {
 	today := util.StartOfDay(time.Now())
 	env := newDurableDatePickerEnv(
-		t, operation.ValueProviderDate, []*models.Task{newBulkPickerTestTask(t, 1, "plan me")},
+		t, []*models.Task{newBulkPickerTestTask(t, 1, "plan me")},
 	)
 	env.press(t, "t")
 
@@ -262,7 +261,7 @@ func TestDueTodayPresetKeyWritesTodayPlanningThatUndoAndRedoMoveWithIt(t *testin
 
 func TestCheckInSectionOpensItsEditorAndCheckInTodayDoesNotPlanToday(t *testing.T) {
 	env := newDurableDatePickerEnv(
-		t, operation.ValueProviderDate, []*models.Task{newBulkPickerTestTask(t, 1, "review without planning")},
+		t, []*models.Task{newBulkPickerTestTask(t, 1, "review without planning")},
 	)
 	env.model.operations.ValuePicker = env.picker
 	for range 2 { // Due -> Defer -> Check-in.
@@ -313,7 +312,7 @@ func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {
 	tomorrow := today.AddDate(0, 0, 1)
 	task := newBulkPickerTestTask(t, 1, "deferred out of today")
 	task.Start()
-	env := newDurableDatePickerEnv(t, operation.ValueProviderDate, []*models.Task{task})
+	env := newDurableDatePickerEnv(t, []*models.Task{task})
 
 	env.press(t, "t")
 	if !env.plannedToday(t) {
@@ -353,7 +352,7 @@ func TestADeferPresetKeyTakesTheTaskOutOfTodayAndClaimsBacklog(t *testing.T) {
 // explicit membership rather than a shadow of the date, so it stands.
 func TestClearingADueDateLeavesTheTodayMembershipStanding(t *testing.T) {
 	env := newDurableDatePickerEnv(
-		t, operation.ValueProviderDate, []*models.Task{newBulkPickerTestTask(t, 1, "planned and undated")},
+		t, []*models.Task{newBulkPickerTestTask(t, 1, "planned and undated")},
 	)
 	env.press(t, "t")
 	if !env.plannedToday(t) {
@@ -382,7 +381,7 @@ func TestClearingADueDateLeavesTheTodayMembershipStanding(t *testing.T) {
 func TestClearingADeferralPreservesTheLifecycleTheDeferralLeft(t *testing.T) {
 	task := newBulkPickerTestTask(t, 1, "hidden then revealed")
 	task.Start()
-	env := newDurableDatePickerEnv(t, operation.ValueProviderDate, []*models.Task{task})
+	env := newDurableDatePickerEnv(t, []*models.Task{task})
 
 	env.crossField(t, false)
 	env.press(t, "1")
@@ -422,7 +421,7 @@ func TestAMixedTerminalSelectionRefusesTheDeferralWithoutAPartialWrite(t *testin
 	open := newBulkPickerTestTask(t, 1, "still open")
 	done := newBulkPickerTestTask(t, 2, "already done")
 	done.Complete()
-	env := newDurableDatePickerEnv(t, operation.ValueProviderDate, []*models.Task{open, done})
+	env := newDurableDatePickerEnv(t, []*models.Task{open, done})
 
 	env.crossField(t, false)
 	if reason := env.pressRefusedRow(t, "m"); !strings.Contains(reason, "cannot defer a done task") {
@@ -478,7 +477,7 @@ func TestATargetRemovedWhileThePickerIsOpenRefusesInsteadOfFallingBackToTheCurso
 func TestATargetCompletedWhileThePickerIsOpenRefusesTheWholeDeferral(t *testing.T) {
 	stillOpen := newBulkPickerTestTask(t, 1, "still open at commit time")
 	finished := newBulkPickerTestTask(t, 2, "finished under the picker")
-	env := newDurableDatePickerEnv(t, operation.ValueProviderDate, []*models.Task{stillOpen, finished})
+	env := newDurableDatePickerEnv(t, []*models.Task{stillOpen, finished})
 
 	// The defer rows were built while both tasks qualified, so the refusal cannot
 	// come from the picker: only the application layer sees the completion.

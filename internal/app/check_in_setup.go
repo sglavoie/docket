@@ -130,11 +130,11 @@ func (s *Service) SaveCheckInSetup(locator TaskLocator, schedule models.CheckInS
 	if task == nil {
 		return TaskResult{}, true, nil
 	}
-	if err := applyCheckInSchedule(task, schedule, s.clock.Now()); err != nil {
+	if err = applyCheckInSchedule(task, schedule, s.clock.Now()); err != nil {
 		return TaskResult{}, false, err
 	}
 	commits := []projectCommit{{project: entry.Project, expectedRevision: entry.Revision, base: entry.Document}}
-	if err := attachReadSetRevisionGuards(commits); err != nil {
+	if err = attachReadSetRevisionGuards(commits); err != nil {
 		return TaskResult{}, false, err
 	}
 	if census.CatalogPath != "" {
