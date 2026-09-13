@@ -15,8 +15,9 @@ import (
 // project availability without naming a population. Every such predicate is
 // classified below by the question it actually answers:
 //
-//   - "availability" — the check admits a parked project on purpose. Archival is
-//     the whole rule, and adding a parked-tag condition here would be a bug.
+//   - "availability" — the check chooses a project population. Parked owners
+//     remain available unless the classification explicitly names the narrower
+//     task workspace; that narrowing must never happen by accident.
 //   - "lifecycle" — the check is about the archived lifecycle itself: rendering
 //     the archived badge, gating archive/restore, protecting Unfiled.
 //
@@ -24,6 +25,7 @@ import (
 // availability check to the base task workspace can never happen by accident.
 var archivePredicateAudit = map[string]string{
 	"internal/app/activity.go:completionActivityFromSnapshot":                      "availability: completion activity mirrors the base task workspace population",
+	"internal/app/check_in_setup.go:checkInSetupEligible":                          "availability: guided setup admits only the base task workspace, excluding archived and parked owners before checking task eligibility",
 	"internal/app/notes_port.go:ProjectLocationPrecondition":                       "lifecycle: a note transaction refuses an owner archived since the snapshot",
 	"internal/app/project_comments.go:AddProjectComment":                           "lifecycle: an archived project refuses a new comment; parked owners and Unfiled write like any other project",
 	"internal/app/project_comments.go:resolveProjectCommentTarget":                 "lifecycle: an archived project refuses an edit or a removal on the same terms an add is refused; the panel stays readable",
@@ -39,7 +41,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/app_init.go:NewAppModel":                                         "lifecycle: a restored current project that was archived is dropped",
 	"internal/tui/app_projects.go:activeProjectByID":                               "availability: shell cache lookup admits parked projects",
 	"internal/tui/app_projects.go:ensureSystemUnfiledProject":                      "lifecycle: bootstrap repair un-archives protected Unfiled",
-	"internal/tui/domain_controller.go:WorkspaceCensus":                            "availability: the whole-workspace census admits every non-archived project, parked ones included",
+	"internal/tui/domain_controller.go:readWorkspaceCensus":                        "availability: the general census admits parked owners; the explicit active-only setup census excludes them, and both exclude archived owners",
 	"internal/tui/grammar/dependency_autocomplete.go:DependencyAdditionCandidates": "availability: a ~ completion offers open work in parked projects too",
 	"internal/tui/query/filters_project.go:ProjectLifecycleAdmits":                 "lifecycle: the archived population axis decides exclude, include, or only",
 	"internal/tui/handler_project_tags.go:planProjectBulkTags":                     "lifecycle: an archived project refuses a tag edit",
