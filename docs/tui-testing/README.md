@@ -63,6 +63,7 @@ machine's sync wrote the bundle.
 | `stale` | Old and fresh open work for lifecycle-lane placement, the Stale facet, and narrow-width contracts. |
 | `check-ins` | A schema-19 workspace activated through the real migration path, with a timed Waiting deadline, unscheduled Doing/Waiting work, and dormant cleanup. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
+| `ux-acceptance` | Three projects whose axes are simultaneously true — a three-generation subtree, long titles, overdue/today/waiting/deferred/review attention, resume note, description, tags, context, checklist, comment, attachment, a cross-project reference, a pin, and a done task — so one workspace answers a row, a Peek, a selection, and a narrow terminal at once. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
 Every other fixture leaves all of its projects untagged, so parked behavior is
@@ -213,6 +214,7 @@ The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
 | --- | --- | --- |
 | `contains` | substring | The plain screen contains the value. |
 | `not_contains` | substring | The plain screen does not contain the value. |
+| `not_clipped` | substring | The plain screen contains the value, and a failure says whether it was absent or truncated. |
 | `count_contains` | substring plus `count` | The plain screen contains the value exactly `count` times. |
 | `view` | view name | `current_view` equals the value. |
 | `status_contains` | substring | The informational/status line contains the value. |
@@ -222,6 +224,18 @@ The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
 Use semantic labels and view names instead of exact full-screen snapshots or
 color escape sequences. Add `no_layout_issues` at every important narrow or
 resized state.
+
+`not_clipped` reaches the one defect normalization hides. A line a width fitter
+truncated still fits the terminal, so it raises no layout issue, and a `contains`
+assertion on the full text then fails exactly the way a missing row does.
+`not_clipped` returns the same verdict `contains` would and differs only in what
+it says when it fails: it names the longest prefix of the value the screen shows
+before a `…`, so `screen clips "Restore the overdue billing reconciliation
+export" to "Restore the overdue billing reco…"` is distinguishable from `screen
+does not contain … , clipped or whole`. Reach for it wherever a title, a chip, or
+a guidance line is the thing under test rather than the backdrop. Every
+observation also carries `clipped_lines` for the same reason; clipping is legal
+today, so it is never a layout issue and `no_layout_issues` keeps its meaning.
 
 A scenario run replaces the process-wide clipboard write for its duration, so
 `y`, `Y`, and `Ctrl+Y` land in a buffer `clipboard_contains` reads instead of the
@@ -342,6 +356,12 @@ races run in separate processes in both commit orders: review/reschedule and
 terminal/reminder conflicts, independent content/schedule merges, and strict
 deadline-step refusal versus mergeable scheduling.
 
+[`ux-refinement-regression-map.md`](ux-refinement-regression-map.md) maps the
+planned UX refinement work onto those scenarios and their Go tests: which file
+records each behavior today, which scenarios assert an expanded project-header
+row rather than merely navigating past one, and why that navigation must stay on
+public keys. The four `ux-acceptance-*` baselines are its recorded "before".
+
 ## Observation contract
 
 Each action observes:
@@ -354,6 +374,7 @@ Each action observes:
 | `plain_screen` | ANSI-free rendering. |
 | `status`, `status_is_info`, `error` | Shell feedback state. |
 | `layout_issues` | Structured render-audit failures. |
+| `clipped_lines` | Every rendered line a width fitter truncated, with its 1-based line number. Not a layout issue: clipping fits the terminal by construction. |
 | `pending_async` | Commands still pending after bounded draining. |
 | `snapshot` | Small view-specific semantic state. |
 | `available_commands` | Applicable production operations from the active input strategy. |

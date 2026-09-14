@@ -150,6 +150,14 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"lens-rename-resume-undo-order.json",
 		"selection-fold-copy-hidden-members.json",
 		"stale-rename-versus-resume-activity.json",
+		// The UX refinement baselines. They are required because their whole value
+		// is being the recorded "before": a later session that improves a row, a
+		// Peek, a narrow layout, or a selection has to change one of these on
+		// purpose rather than delete it.
+		"ux-acceptance-row-baseline.json",
+		"ux-acceptance-peek-baseline.json",
+		"ux-acceptance-narrow-baseline.json",
+		"ux-acceptance-selection-baseline.json",
 	}
 	scenariosDir := exampleScenariosDir(t)
 	for _, name := range required {

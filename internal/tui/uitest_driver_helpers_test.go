@@ -217,6 +217,7 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 		Status:       d.app.feedback.message,
 		StatusIsInfo: d.app.feedback.info,
 		LayoutIssues: issues,
+		ClippedLines: screenClippedLines(plain),
 		PendingAsync: len(d.pendingFutures),
 	}
 	if d.app.feedback.err != nil {

@@ -1,0 +1,46 @@
+{
+  "name": "ux-acceptance-row-baseline",
+  "fixture": "ux-acceptance",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "label": "launch is Active Projects, All", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "assert", "label": "every lifecycle lane the fixture populates is grouped", "assert": "contains", "value": "▾  @ Pinned  (1)" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Doing  (2)" },
+    { "type": "assert", "label": "Review is promoted as an All-mode lane, not a state", "assert": "contains", "value": "▾  @ Review  (1)" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Inbox  (3)" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Backlog  (6)" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Waiting  (2)" },
+
+    { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform-delivery]", "count": 6 },
+    { "type": "assert", "assert": "count_contains", "value": "[ux-client-rollout]", "count": 2 },
+    { "type": "assert", "assert": "count_contains", "value": "[ux-support-queue]", "count": 2 },
+    { "type": "assert", "label": "a project header carries the lane's overdue pressure", "assert": "contains", "value": "! overdue 1" },
+
+    { "type": "assert", "label": "the drop ladder's indicators all reach a 100-column row", "assert": "contains", "value": "☑1/2" },
+    { "type": "assert", "assert": "contains", "value": "▪ 1" },
+    { "type": "assert", "assert": "contains", "value": "⊕ 1" },
+    { "type": "assert", "label": "the reference counter counts stored locators", "assert": "contains", "value": "~0/1" },
+    { "type": "assert", "label": "a parent and its child each carry the relation marker", "assert": "contains", "value": "‹›1" },
+    { "type": "assert", "assert": "contains", "value": "⊡ Today" },
+    { "type": "assert", "assert": "contains", "value": "waiting 9d" },
+    { "type": "assert", "assert": "contains", "value": "doing now" },
+    { "type": "assert", "label": "context and tags are row segments today", "assert": "contains", "value": "[finance]" },
+    { "type": "assert", "assert": "contains", "value": "#audit #billing" },
+
+    { "type": "assert", "label": "a title that fits is rendered whole", "assert": "not_clipped", "value": "Confirm the release sign-off owed today" },
+    { "type": "assert", "assert": "not_clipped", "value": "Await the vendor security questionnaire" },
+    { "type": "assert", "label": "today the long title loses its tail to the indicators beside it", "assert": "contains", "value": "Restore the overdue billing reco…" },
+    { "type": "assert", "assert": "not_contains", "value": "Restore the overdue billing reconciliation export before the audit closes" },
+
+    { "type": "assert", "label": "All hides deferred and terminal work rather than laning it", "assert": "not_contains", "value": "Hold the deferred storage cleanup" },
+    { "type": "assert", "assert": "not_contains", "value": "Close the retired staging cluster" },
+
+    { "type": "resize", "label": "a wider terminal keeps the same composition", "width": 120, "height": 40 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Review  (1)" },
+    { "type": "assert", "label": "even 120 columns cannot hold that title beside its indicators", "assert": "not_contains", "value": "Restore the overdue billing reconciliation export before the audit closes" }
+  ]
+}

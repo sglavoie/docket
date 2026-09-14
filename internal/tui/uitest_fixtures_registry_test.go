@@ -36,6 +36,10 @@ const (
 	FixtureSignals      = "signals"
 	FixtureStale        = "stale"
 	FixtureChecklist    = "checklist"
+	// FixtureUXAcceptance is the one fixture where the axes every other fixture
+	// isolates are simultaneously true, so a row, a Peek document, a selection,
+	// and a narrow terminal can be reviewed against the same workspace.
+	FixtureUXAcceptance = "ux-acceptance"
 )
 
 // Checklist fixture identities. Scenarios assert on these titles and item texts,
@@ -122,6 +126,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureSignals:      buildSignalsFixture,
 	FixtureStale:        buildStaleFixture,
 	FixtureChecklist:    buildChecklistFixture,
+	FixtureUXAcceptance: buildUXAcceptanceFixture,
 }
 
 // BuiltinFixtureNames returns the sorted list of built-in fixture names.

@@ -71,12 +71,12 @@ type UITestAction struct {
 	Command string `json:"command,omitempty"`
 
 	// Assert names the invariant to check for UITestActionAssert. Supported
-	// kinds: "contains", "not_contains", "count_contains", "view",
-	// "no_layout_issues", "status_contains".
+	// kinds: "contains", "not_contains", "not_clipped", "count_contains",
+	// "view", "no_layout_issues", "status_contains", "clipboard_contains".
 	Assert string `json:"assert,omitempty"`
 	// Value is the argument for the assertion (a substring for contains/
-	// not_contains/count_contains/status_contains, a view name for "view"). It
-	// is ignored by "no_layout_issues".
+	// not_contains/not_clipped/count_contains/status_contains, a view name for
+	// "view"). It is ignored by "no_layout_issues".
 	Value string `json:"value,omitempty"`
 	// Count is the exact number of substring occurrences expected by
 	// "count_contains". It is ignored by every other assertion kind.
@@ -104,6 +104,18 @@ type UITestIssue struct {
 	// Line is the 1-based line number the issue refers to, or 0 when the issue
 	// is screen-wide.
 	Line int `json:"line,omitempty"`
+}
+
+// UITestClippedLine is one rendered line a width fitter had to truncate. It is
+// reported beside the plain screen rather than as a UITestIssue because clipping
+// is a legal outcome today; what it must not be is invisible, since a clipped
+// line satisfies every width check the normalizer performs.
+type UITestClippedLine struct {
+	// Line is the 1-based line number within the plain screen.
+	Line int `json:"line"`
+	// Text is that line with trailing padding removed, so the truncation point
+	// is the last thing a failure message prints.
+	Text string `json:"text"`
 }
 
 // UITestCommand is a compact description of a command the active view exposes,
@@ -142,6 +154,11 @@ type UITestObservation struct {
 	StatusIsInfo bool          `json:"status_is_info,omitempty"`
 	Error        string        `json:"error,omitempty"`
 	LayoutIssues []UITestIssue `json:"layout_issues,omitempty"`
+	// ClippedLines lists the rendered lines a width fitter truncated. Normalizing
+	// a screen would otherwise conceal exactly that: a clipped line is inside the
+	// terminal width, so it raises no layout issue and reads as content that was
+	// never rendered rather than content that was cut.
+	ClippedLines []UITestClippedLine `json:"clipped_lines,omitempty"`
 	// PendingAsync counts commands that did not complete within the drain
 	// timeout and are still outstanding (drained later by a "wait" action).
 	PendingAsync int `json:"pending_async,omitempty"`

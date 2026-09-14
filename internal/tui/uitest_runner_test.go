@@ -230,6 +230,17 @@ func (d *UITestDriver) runAssert(a UITestAction) error {
 		if strings.Contains(obs.PlainScreen, a.Value) {
 			return fmt.Errorf("screen unexpectedly contains %q", a.Value)
 		}
+	case "not_clipped":
+		// A `contains` failure cannot tell a row that was never rendered from a
+		// row whose title the fitters cut, and those are opposite defects. The
+		// verdict is still plain containment; the clipped prefix only decides
+		// which of the two the message names.
+		if !strings.Contains(obs.PlainScreen, a.Value) {
+			if prefix, clipped := clippedPrefixOf(obs.PlainScreen, a.Value); clipped {
+				return fmt.Errorf("screen clips %q to %q%s", a.Value, prefix, truncationEllipsis)
+			}
+			return fmt.Errorf("screen does not contain %q, clipped or whole", a.Value)
+		}
 	case "count_contains":
 		if got := strings.Count(obs.PlainScreen, a.Value); got != a.Count {
 			return fmt.Errorf("screen contains %q %d time(s), want %d", a.Value, got, a.Count)

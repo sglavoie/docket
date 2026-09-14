@@ -32,6 +32,7 @@ const (
 var uitestAssertKinds = map[string]bool{
 	"contains":           true,
 	"not_contains":       true,
+	"not_clipped":        true,
 	"count_contains":     true,
 	"view":               true,
 	"no_layout_issues":   true,
@@ -180,6 +181,12 @@ func (a UITestAction) validate() error {
 			// An empty needle matches any clipboard, including the one no copy
 			// ever wrote, so it is an authoring slip rather than a weak check.
 			return errors.New("clipboard_contains assertion has empty value")
+		}
+		if a.Assert == "not_clipped" && strings.TrimSpace(a.Value) == "" {
+			// The value is the text that must survive the fitters whole. An empty
+			// one is contained by every screen, so it would pass without ever
+			// naming what it was protecting.
+			return errors.New("not_clipped assertion has empty value")
 		}
 		if a.Assert == "count_contains" {
 			if a.Value == "" {
