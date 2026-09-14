@@ -158,7 +158,8 @@ func (t *Task) LastReviewed() *time.Time {
 	return CloneInstant(t.LastReviewedAt)
 }
 
-// SetCheckIn writes a validated schedule and reports whether anything changed.
+// SetCheckIn writes a validated schedule, returning a validation error if invalid
+// or an error if the task is nil, and nil on success.
 // The stored date is a copy of the caller's, so the caller keeps no handle on
 // it. UpdatedAt moves only on a real change.
 //
