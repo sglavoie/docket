@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
@@ -56,7 +57,7 @@ func (m *AppModel) executeTaskOperation(
 		cmd := m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary)
 		if invocation.Descriptor.ID == operation.OperationTaskSetCheckIn {
 			value := invocation.Value.(operation.OperationCheckInValue)
-			cmd = m.retainCheckInDraftOnFailure(operation.OperationExecutionRequest{
+			cmd = operationhost.RetainCheckInDraftOnFailure(operation.OperationExecutionRequest{
 				ID:      invocation.Descriptor.ID,
 				Context: operation.CloneCommandContext(invocation.Context),
 			}, value, cmd)

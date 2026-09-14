@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -55,7 +56,7 @@ func runCheckInOfferCommand(command checkInOfferCommandMsg) tea.Cmd {
 		case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg,
 			coordinator.TaskCreatedMsg, coordinator.TasksCapturedMsg, coordinator.TaskLineEditedMsg,
 			operation.OperationCommandResultMsg, operation.OperationValueSelectedMsg,
-			operation.OperationValueRequestMsg, CheckInRejectedMsg:
+			operation.OperationValueRequestMsg, operationhost.CheckInRejectedMsg:
 			return checkInOfferOriginMsg{message: msg, epoch: epoch}
 		default:
 			return msg
@@ -79,7 +80,7 @@ func (m *AppModel) beginCheckInOfferUpdate(msg tea.Msg) (tea.Msg, uint64, bool) 
 	}
 	if wrapped, ok := msg.(checkInOfferOriginMsg); ok {
 		// A refused save may restore its draft only on the interaction that owns it.
-		if _, rejected := wrapped.message.(CheckInRejectedMsg); rejected && wrapped.epoch != m.checkInOffers.epoch {
+		if _, rejected := wrapped.message.(operationhost.CheckInRejectedMsg); rejected && wrapped.epoch != m.checkInOffers.epoch {
 			return nil, wrapped.epoch, false
 		}
 		return wrapped.message, wrapped.epoch, true

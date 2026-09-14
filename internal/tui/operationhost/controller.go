@@ -31,9 +31,9 @@ import (
 
 // Shell is what the operation host needs from the shell that owns it. Every
 // method is a read of where the user is or a construction the shell alone can
-// perform, which is what keeps the value factories — the picker, typed prompt,
-// and check-in editor — outside this package: each dispatches across the shell's other
-// clusters, and a factory that named them all would put the whole shell behind
+// perform, which keeps the picker and typed prompt factories outside this
+// package: each dispatches across the shell's other clusters, and a factory
+// that named them all would put the whole shell behind
 // this port.
 type Shell interface {
 	// CurrentView and ActiveView name the route the context is resolved against.
@@ -74,9 +74,6 @@ type Shell interface {
 		operation.OperationExecutionRequest,
 		operation.ValueProviderID,
 	) (*OperationTextPromptModel, error)
-	NewCheckInEditor(
-		operation.OperationExecutionRequest,
-	) (*taskform.CheckInEditorModel, error)
 
 	// ResumeWithoutSheet runs a resumed request when no action sheet is mounted.
 	// The lens picker is the one surface an operation is raised from without a

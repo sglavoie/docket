@@ -115,6 +115,10 @@ func richProjectNoteBody() string {
 // buildBusyFixture creates a dense mix of urgent, scheduled, waiting,
 // and inbox work for dashboard stress tests.
 func buildBusyFixture(w *uitestWorkspace) error {
+	return buildBusyFixtureAt(w, time.Now())
+}
+
+func buildBusyFixtureAt(w *uitestWorkspace, now time.Time) error {
 	project, err := w.addProject("Busy Project", func(p *models.Project) {
 		overdue := newFixtureTask(p, "Overdue: submit quarterly report")
 		overdue.Priority = 1
@@ -124,7 +128,9 @@ func buildBusyFixture(w *uitestWorkspace) error {
 		dueSoon := newFixtureTask(p, "Due soon: renew certificate")
 		dueSoon.Priority = 2
 		dueSoon.ApplyWorkflowState(models.StateBacklog)
-		setDue(dueSoon, 12*time.Hour)
+		// Deadline stepping starts tomorrow regardless of the current hour.
+		due := fixtureDueInstant(now.AddDate(0, 0, 1), 0)
+		dueSoon.DueDate = &due
 
 		urgentWaiting := newFixtureTask(p, "Waiting: production outage")
 		urgentWaiting.Priority = 1

@@ -1,18 +1,18 @@
-package tui
+package chrome
 
 import (
 	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// renderPinnedTasksBar renders the compact, non-interactive pinned summary.
+// RenderPinnedTasksBar renders the compact, non-interactive pinned summary.
 // Navigation and scope-wide search live in the Outliner; the retired pinned popup is gone.
-func (m *AppModel) renderPinnedTasksBar(width int) string {
-	pinned := m.collectPinnedTasks()
+func RenderPinnedTasksBar(pinned []*models.Task, width int) string {
 	if len(pinned) == 0 {
 		return ""
 	}
@@ -36,7 +36,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 	entries := make([]string, 0, len(pinned))
 	for _, item := range pinned {
 		titleWidth := max(perEntryWidth, 3)
-		title := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{}).
+		title := theme.TaskTitleStyleFor(item, theme.TaskTitleStyleOptions{}).
 			Render(textfit.TruncateToVisualWidth(item.Title, titleWidth))
 		if renderedWidth := lipgloss.Width(title); renderedWidth < titleWidth {
 			title += strings.Repeat(" ", titleWidth-renderedWidth)

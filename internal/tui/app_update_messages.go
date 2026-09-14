@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notesops"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -553,8 +554,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.reopenResumeNotePrompt(typed)
 	case CommentRejectedMsg:
 		return true, m.reopenCommentPrompt(typed)
-	case CheckInRejectedMsg:
-		return true, m.reopenCheckInEditor(typed)
+	case operationhost.CheckInRejectedMsg:
+		return true, m.operations.ReopenCheckInEditor(m, typed, operationRefusalReason(typed.Err))
 	case entityops.ChecklistItemRejectedMsg:
 		return true, m.reopenChecklistItemPrompt(typed)
 	case valuepicker.ProjectTagVocabularyActionsMsg:

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -248,7 +250,6 @@ func (m *AppModel) toggleRedoTimestamp(kind toggleUndoKind) time.Time {
 }
 
 type pinnedTaskInfo struct {
-	Title       string
 	ShortID     int
 	ProjectName string
 	PinnedAt    time.Time
@@ -272,7 +273,6 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 			}
 			if task.Pinned && !task.IsTerminalState() && !task.IsDeferredAt(now) {
 				info := pinnedTaskInfo{
-					Title:       task.Title,
 					ShortID:     task.ShortID,
 					ProjectName: project.Name,
 					Task:        task,
@@ -304,4 +304,14 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 	})
 
 	return pinned
+}
+
+// renderPinnedTasksBar supplies the visible pin population to shared chrome.
+func (m *AppModel) renderPinnedTasksBar(width int) string {
+	pinned := m.collectPinnedTasks()
+	tasks := make([]*models.Task, 0, len(pinned))
+	for _, item := range pinned {
+		tasks = append(tasks, item.Task)
+	}
+	return chrome.RenderPinnedTasksBar(tasks, width)
 }

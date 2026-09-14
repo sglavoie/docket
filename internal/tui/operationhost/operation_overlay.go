@@ -36,7 +36,7 @@ func (c *Controller) ExecuteRequest(
 // a typed prompt for text values, or the ListSurface picker.
 func (c *Controller) OpenValueStep(shell Shell, request operation.OperationValueRequestMsg) tea.Cmd {
 	if request.Provider.CheckInEntry() {
-		editor, err := shell.NewCheckInEditor(request.Request)
+		editor, err := c.NewCheckInEditor(shell, request.Request)
 		if err != nil {
 			shell.SetError(err)
 			return status.StatusTimeout(5 * time.Second)

@@ -16,11 +16,12 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		// parent_selector.go into listsurface in Session 2.19,
 		// notes_view_render.go into notes in Session 2.22, and the two task
 		// detail renderers into taskdetail in Session 2.23, and the Outliner row
-		// renderer into outliner in Session 4.10; the rule follows the file, not
+		// renderer into outliner in Session 4.10 and pinned summary into chrome;
+		// the rule follows the file, not
 		// the package.
 		"chrome/shared_render.go",
 		"outliner/outliner_render.go",
-		"app_pinned_tasks_render.go",
+		"chrome/pinned_tasks_bar.go",
 		"listsurface/parent_selector.go",
 		"grammar/quick_capture_autocomplete.go",
 		"taskdetail/task_attachments_view.go",

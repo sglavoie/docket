@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -141,7 +142,7 @@ func TestCheckInOfferDoesNotOverwriteConcurrentSchedule(t *testing.T) {
 		t.Fatal(result.Err)
 	}
 	rejection := result.Message.(operation.OperationCommandResultMsg).Cmd()
-	if _, ok := rejection.(CheckInRejectedMsg); !ok {
+	if _, ok := rejection.(operationhost.CheckInRejectedMsg); !ok {
 		t.Fatalf("concurrent schedule was not refused: %T", rejection)
 	}
 	stored := env.reload(t, 0).GetTaskByID(task.ID)
@@ -257,7 +258,7 @@ func TestCheckInOfferWaitsForNestedOverlayAndCancelsOnInput(t *testing.T) {
 			model := env.appModel()
 			registerCheckInTestOperations(t, model)
 			context := bulkTaskActionTestContext(env.projects[0], task)
-			blocker, err := model.NewCheckInEditor(operation.OperationExecutionRequest{ID: operation.OperationTaskSetCheckIn, Context: context})
+			blocker, err := model.operations.NewCheckInEditor(model, operation.OperationExecutionRequest{ID: operation.OperationTaskSetCheckIn, Context: context})
 			if err != nil {
 				t.Fatal(err)
 			}

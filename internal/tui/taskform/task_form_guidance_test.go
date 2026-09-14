@@ -59,7 +59,11 @@ func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {
 		if !strings.Contains(plain, "Esc cancel") {
 			t.Errorf("%s picker lost required cancellation guidance:\n%s", name, plain)
 		}
-		if !strings.Contains(plain, "Enter") {
+		commitKey := "Enter"
+		if name == "check-in" {
+			commitKey = "Ctrl+S save"
+		}
+		if !strings.Contains(plain, commitKey) {
 			t.Errorf("%s picker lost required commit guidance:\n%s", name, plain)
 		}
 	}

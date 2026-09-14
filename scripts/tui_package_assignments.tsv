@@ -439,7 +439,7 @@ app_messages_tasks.go	taskform	L7	assigned
 app_messages_views.go	tui	L8	assigned
 app_navigation.go	tui	L8	receiver:AppModel
 app_pinned_tasks_data.go	tui	L8	receiver:AppModel
-app_pinned_tasks_render.go	tui	L8	receiver:AppModel
+chrome/pinned_tasks_bar.go	chrome	L1	assigned
 app_project_view_state.go	tui	L8	receiver:AppModel
 app_projects.go	tui	L8	receiver:AppModel
 app_queue.go	tui	L8	receiver:AppModel
@@ -798,3 +798,4 @@ operationhost/menu_bar_startup_validation.go	operationhost	L7	assigned
 notesops/controller.go	notesops	L7	receiver:Controller
 notesops/note_index_controller.go	notesops	L7	receiver:noteIndex
 operationhost/controller.go	operationhost	L7	receiver:Controller
+operationhost/check_in_editor.go	operationhost	L7	receiver:Controller

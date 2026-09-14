@@ -457,3 +457,54 @@ func TestFixtureDueInstantSurvivesTheMidnightMinute(t *testing.T) {
 		}
 	}
 }
+
+func TestBusyFixtureDeadlineStartsTomorrow(t *testing.T) {
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, base := range []time.Time{
+		time.Date(2026, 9, 13, 0, 0, 22, 0, location),
+		time.Date(2026, 9, 13, 11, 59, 22, 0, location),
+		time.Date(2026, 9, 13, 12, 0, 22, 0, location),
+		time.Date(2026, 9, 13, 23, 59, 22, 0, location),
+		time.Date(2026, 3, 7, 23, 30, 22, 0, location),
+		time.Date(2026, 11, 1, 0, 30, 22, 0, location),
+	} {
+		t.Run(base.Format(time.RFC3339), func(t *testing.T) {
+			ws, err := newUITestWorkspace()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+			if err := buildBusyFixtureAt(ws, base); err != nil {
+				t.Fatal(err)
+			}
+			var project *models.Project
+			// Find the seeded project rather than relying on sandbox ordering.
+			for _, candidate := range ws.Runtime.Catalog().Projects {
+				if candidate.Name == "Busy Project" {
+					project = &models.Project{ID: candidate.ID, Name: candidate.Name, Slug: candidate.Slug, Path: ws.Runtime.ProjectPath(candidate.Slug)}
+					break
+				}
+			}
+			if project == nil {
+				t.Fatal("fixture is missing Busy Project")
+			}
+			if err := storage.LoadProject(project); err != nil {
+				t.Fatal(err)
+			}
+			for _, task := range project.Tasks {
+				if task.Title != "Due soon: renew certificate" {
+					continue
+				}
+				want := base.AddDate(0, 0, 1).Format(time.DateOnly)
+				if task.DueDate == nil || task.DueDate.Format(time.DateOnly) != want {
+					t.Fatalf("stored deadline = %v, want calendar tomorrow %s", task.DueDate, want)
+				}
+				return
+			}
+			t.Fatal("fixture is missing the renewal task")
+		})
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -130,10 +131,10 @@ func TestRejectedCheckInSaveReopensExactDraft(t *testing.T) {
 		Schedule:  models.CheckInSchedule{Next: func() *time.Time { d := time.Date(2026, 9, 21, 0, 0, 0, 0, time.Local); return &d }(), RepeatDays: 45},
 		DateInput: "Sep 21 2026", RepeatInput: "45",
 	}
-	cmd := model.retainCheckInDraftOnFailure(request, want, func() tea.Msg {
+	cmd := operationhost.RetainCheckInDraftOnFailure(request, want, func() tea.Msg {
 		return coordinator.TransactionErrorMsg{Err: wantErr}
 	})
-	msg, ok := cmd().(CheckInRejectedMsg)
+	msg, ok := cmd().(operationhost.CheckInRejectedMsg)
 	if !ok {
 		t.Fatalf("failure wrapper returned %T", cmd())
 	}

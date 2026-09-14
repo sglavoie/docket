@@ -1,4 +1,4 @@
-package tui
+package operationhost
 
 import (
 	"fmt"
@@ -22,10 +22,11 @@ type CheckInRejectedMsg struct {
 // NewCheckInEditor builds the operation host's specialized value step. A
 // single target is prefilled from its schedule; every bulk target set opens as
 // an explicit replacement with no selected task used as a hidden default.
-func (m *AppModel) NewCheckInEditor(
+func (c *Controller) NewCheckInEditor(
+	shell Shell,
 	request operation.OperationExecutionRequest,
 ) (*taskform.CheckInEditorModel, error) {
-	refs, err := m.operationTaskRefs(request.Context)
+	refs, err := c.TaskRefs(shell, request.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +53,8 @@ func (m *AppModel) NewCheckInEditor(
 	), nil
 }
 
-func (m *AppModel) retainCheckInDraftOnFailure(
+// RetainCheckInDraftOnFailure preserves the submitted draft on commit refusal.
+func RetainCheckInDraftOnFailure(
 	request operation.OperationExecutionRequest,
 	value operation.OperationCheckInValue,
 	cmd tea.Cmd,
@@ -66,13 +68,14 @@ func (m *AppModel) retainCheckInDraftOnFailure(
 	}
 }
 
-func (m *AppModel) reopenCheckInEditor(msg CheckInRejectedMsg) tea.Cmd {
-	editor, err := m.NewCheckInEditor(msg.Request)
+// ReopenCheckInEditor restores a refused draft against its frozen targets.
+func (c *Controller) ReopenCheckInEditor(shell Shell, msg CheckInRejectedMsg, reason string) tea.Cmd {
+	editor, err := c.NewCheckInEditor(shell, msg.Request)
 	if err != nil {
-		m.feedback.err = msg.Err
+		shell.SetError(msg.Err)
 		return nil
 	}
-	editor.Restore(msg.Value, operationRefusalReason(msg.Err))
-	m.operations.CheckInEditor = editor
+	editor.Restore(msg.Value, reason)
+	c.CheckInEditor = editor
 	return editor.InitCmd()
 }

@@ -173,6 +173,11 @@
 #     alternative was passing both in from six call sites, which is a redesign
 #     Phase 1 does not do. It is safe by construction: `theme` is L0 and
 #     depends on nothing, so this edge can never close a cycle.
+#   - Check-in integration adds `taskform -> operation` for the typed schedule
+#     request and result shared by inline and operation editors, and
+#     `operationhost -> taskform,coordinator` for editor invocation, retry and
+#     commit refusals. Neither dependency reaches back to operationhost or
+#     introduces an upward edge.
 package	layer	depends_on
 presentation	L0	-
 theme	L0	-
@@ -191,7 +196,7 @@ listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation,taskref,
 help	L6	listsurface,operation,chrome,keymap,route,theme,textfit,pulse
 notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsurface,help
 taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help
-taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,listsurface
+taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,listsurface,operation
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
@@ -201,6 +206,6 @@ lensops	L7	lens,operation,listsurface,outliner,valuepicker
 filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outliner,projecthub,valuepicker
 notesops	L7	presentation,operation,route,listsurface,notes,projecthub,outliner
 projectops	L7	presentation,theme,status,chrome,operation,route,listsurface,notes,projecthub,outliner,taskdetail,valuepicker,filterops
-operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref
+operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref,taskform,coordinator
 valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost

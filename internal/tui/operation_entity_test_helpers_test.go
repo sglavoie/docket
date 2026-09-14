@@ -1,8 +1,12 @@
 package tui
 
 import (
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // workspaceTagEntity returns the identity of one tag aggregated across the
@@ -40,4 +44,11 @@ func toolEntity(id string) operation.EntityIdentity {
 // operation target another operation.
 func operationEntity(id operation.OperationID) operation.EntityIdentity {
 	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindOperation, Name: string(id)})
+}
+
+func taskOperationTestContext(task *models.Task, project *models.Project) operation.CommandContext {
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
+	context.Entity = outliner.TaskOperationEntity(task, project)
+	return context
 }
