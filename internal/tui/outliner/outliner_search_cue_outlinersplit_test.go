@@ -99,10 +99,10 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 	}
 }
 
-// TestSearchCueKeepsCursorPaintAndTitleColor holds the split paint against the
+// TestSearchCueKeepsCursorPaintAndNeutralTitle holds the split paint against the
 // new segment: the cue is content, so the bar and the trailing fill still mark
-// the cursor and the title keeps the color it earned, in both themes.
-func TestSearchCueKeepsCursorPaintAndTitleColor(t *testing.T) {
+// the cursor, and the title beside them stays ordinary text in both themes.
+func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
 			task := cueTask()
@@ -116,8 +116,11 @@ func TestSearchCueKeepsCursorPaintAndTitleColor(t *testing.T) {
 				if !strings.Contains(line, cue) {
 					t.Fatalf("selected=%v row lost its muted cue:\n%q", selected, line)
 				}
-				if !strings.Contains(line, theme.GetTitlePriorityStyle(2).Render(task.Title)) {
-					t.Fatalf("selected=%v row lost its semantic title color:\n%q", selected, line)
+				if !strings.Contains(line, theme.NormalStyle.Render(task.Title)) {
+					t.Fatalf("selected=%v row did not render its title as ordinary text:\n%q", selected, line)
+				}
+				if strings.Contains(line, theme.GetTitlePriorityStyle(2).Render(task.Title)) {
+					t.Fatalf("selected=%v row colored its title by priority:\n%q", selected, line)
 				}
 				if got := lipgloss.Width(line); got > 80 {
 					t.Fatalf("selected=%v row rendered %d columns, want at most 80", selected, got)
@@ -211,7 +214,7 @@ func TestSearchCueDropsBeforeEveryIndicator(t *testing.T) {
 			outliner, project := cursorHighlightOutliner(t, task)
 			row := OutlinerRow{Task: task, ProjectID: project.ID, MatchSource: MatchSourceChecklist}
 
-			full := outliner.renderTaskIndicatorSegments(row).render()
+			full := outliner.renderTaskIndicatorSegments(row, time.Now()).render()
 			for _, want := range []string{"deferred ×3", "☑", "▪ 1", "⊕ 1"} {
 				if !strings.Contains(ansi.Strip(full), want) {
 					t.Fatalf("fixture did not wear %q: %q", want, ansi.Strip(full))

@@ -25,8 +25,12 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 		if !strings.Contains(plain, "semantic  bug › question › epic › story › feature › idea —") {
 			t.Fatalf("provider %q explainer = %q, want the precedence chain", provider, plain)
 		}
-		if !strings.HasSuffix(plain, "colors its title.") {
+		if !strings.HasSuffix(plain, valuepicker.SemanticTaskTagExplainerSummary) {
 			t.Fatalf("provider %q explainer = %q, want the full summary", provider, plain)
+		}
+		// Titles are neutral, so the explainer may not promise one.
+		if strings.Contains(plain, "title") {
+			t.Fatalf("provider %q explainer = %q, want no promise about titles", provider, plain)
 		}
 	}
 	for _, provider := range []operation.ValueProviderID{
@@ -67,8 +71,7 @@ func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	// between its own words: drop them before checking the text survived.
 	unboxed := strings.ReplaceAll(plain, "│", " ")
 	if got := strings.Join(strings.Fields(unboxed), " "); !strings.Contains(got, "semantic bug › question › epic › story › feature › idea") ||
-		!strings.Contains(got, "highest one a task carries") ||
-		!strings.Contains(got, "colors its title.") {
+		!strings.Contains(got, strings.Join(strings.Fields(valuepicker.SemanticTaskTagExplainerSummary), " ")) {
 		t.Fatalf("picker dropped wrapped explainer:\n%s", plain)
 	}
 }
@@ -119,14 +122,13 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 	}
 }
 
-// TestSemanticTagPickerRowsWearTheTitleColorTheyApply walks every section of
-// both tag pickers, not just the semantic one the name grew out of: a semantic
-// row wearing its title color is one case of the general rule that a row wears
-// the color of what it does. The table is keyed by section rather than by row,
-// so a registry entry added to an existing section is covered the moment it is
+// TestSemanticTagPickerRowsWearTheColorTheyApply walks every section of both tag
+// pickers, not just the semantic one the name grew out of: a row wears the color
+// of what it does. The table is keyed by section rather than by row, so a
+// registry entry added to an existing section is covered the moment it is
 // declared, and a new section fails until tagPickerRowColor is taught what it
 // applies.
-func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
+func TestSemanticTagPickerRowsWearTheColorTheyApply(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		source listsurface.ListSource
@@ -201,17 +203,22 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 }
 
 // tagPickerRowColor is the one rule for what color a tag picker row wears: the
-// color of the strongest thing the row does. A semantic row paints a task title,
-// a behavioral row paints its own badge, and a row that changes no other color
-// falls back to the chip its tag already wears on the task row. A section with
-// no case here answers false rather than a fallback color, which is what stops a
-// new one from shipping uncolored.
+// color of the strongest thing the row does. A semantic row wears the accent the
+// vocabulary reserves for its own role — the picker is that accent's one
+// consumer, since no task title carries it — a behavioral row paints its own
+// badge, and a row that changes no other color falls back to the chip its tag
+// already wears on the task row. A section with no case here answers false
+// rather than a fallback color, which is what stops a new one from shipping
+// uncolored.
 func tagPickerRowColor(t *testing.T, item listsurface.ListItem) (lipgloss.Style, bool) {
 	t.Helper()
 	switch item.CategoryID {
 	case valuepicker.TaskTagSemanticCategory:
-		task := &models.Task{Tags: []string{item.PrimaryText}}
-		return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}), true
+		entry, ok := models.SemanticTaskTagByName(item.PrimaryText)
+		if !ok {
+			t.Fatalf("semantic row %q names no registry entry", item.ID)
+		}
+		return theme.SemanticTaskTitleStyle(entry.Role, 0, false, false), true
 	case valuepicker.ProjectTagBehavioralCategory:
 		info, ok := models.BehavioralProjectTags[item.PrimaryText]
 		if !ok {

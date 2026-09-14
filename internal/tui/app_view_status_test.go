@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/valuepicker"
 )
 
 func pickerStatusBarApp(t *testing.T) *AppModel {
@@ -28,7 +29,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 
 	app.operations.ValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
 	withPicker := ansi.Strip(app.renderStatusBar())
-	if strings.Contains(withPicker, "colors its title.") {
+	if strings.Contains(withPicker, valuepicker.SemanticTaskTagExplainerSummary) {
 		t.Fatalf("picker explainer leaked into status bar:\n%s", withPicker)
 	}
 	if !strings.Contains(withPicker, "capture") {
@@ -47,7 +48,7 @@ func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T)
 	app.feedback.message = "Tagged 1 task(s)"
 
 	statusBar := ansi.Strip(app.renderStatusBar())
-	if strings.Contains(statusBar, "colors its title.") {
+	if strings.Contains(statusBar, valuepicker.SemanticTaskTagExplainerSummary) {
 		t.Fatalf("picker explainer leaked into transient status row:\n%s", statusBar)
 	}
 	if !strings.Contains(statusBar, "Tagged 1 task(s)") {

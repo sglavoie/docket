@@ -10,15 +10,15 @@ import (
 )
 
 func TestPickHeroAttribute(t *testing.T) {
-	pastDue := util.StartOfDay(time.Now().Add(-48 * time.Hour))
-	futureDue := util.StartOfDay(time.Now().Add(48 * time.Hour))
-	today := util.StartOfDay(time.Now())
+	now := time.Now()
+	pastDue := util.StartOfDay(now.Add(-48 * time.Hour))
+	futureDue := util.StartOfDay(now.Add(48 * time.Hour))
+	today := util.StartOfDay(now)
 
 	tests := []struct {
-		name    string
-		task    *models.Task
-		project *models.Project
-		want    HeroKind
+		name string
+		task *models.Task
+		want HeroKind
 	}{
 		{
 			name: "nil task → HeroNone",
@@ -26,85 +26,102 @@ func TestPickHeroAttribute(t *testing.T) {
 			want: HeroNone,
 		},
 		{
-			name: "overdue + P1 + due-today → HeroOverdue (precedence top)",
+			name: "overdue + review + due-today + P1 → HeroOverdue (precedence top)",
 			task: &models.Task{
-				ID:            "t-overdue-p1-waiting",
+				ID:            "t-overdue-everything",
 				WorkflowState: models.StateBacklog,
 				Priority:      1,
+				Review:        true,
 				DueDate:       &pastDue,
 			},
-			project: &models.Project{},
-			want:    HeroOverdue,
+			want: HeroOverdue,
 		},
 		{
-			name: "explicit StateWaiting + P1 → HeroWaiting",
+			name: "review flag + due today + P1 → HeroReview (beats due today)",
 			task: &models.Task{
-				ID:            "t-status-waiting",
-				WorkflowState: models.StateWaiting,
+				ID:            "t-review-flag",
+				WorkflowState: models.StateBacklog,
 				Priority:      1,
+				Review:        true,
+				DueDate:       &today,
 			},
-			project: &models.Project{},
-			want:    HeroWaiting,
+			want: HeroReview,
 		},
 		{
-			name: "explicit StateWaiting alone → HeroWaiting",
+			name: "arrived check-in → HeroReview",
 			task: &models.Task{
-				ID:            "t-status-waiting-only",
-				WorkflowState: models.StateWaiting,
+				ID:            "t-check-in-due",
+				WorkflowState: models.StateBacklog,
 				Priority:      3,
+				NextCheckIn:   &today,
 			},
-			project: &models.Project{},
-			want:    HeroWaiting,
+			want: HeroReview,
 		},
 		{
-			name:    "due today + P1 → HeroDueToday (beats P1)",
-			task:    &models.Task{ID: "t-due-today-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &today},
-			project: &models.Project{},
-			want:    HeroDueToday,
+			name: "check-in still ahead → no hero of its own",
+			task: &models.Task{
+				ID:            "t-check-in-ahead",
+				WorkflowState: models.StateBacklog,
+				Priority:      3,
+				NextCheckIn:   &futureDue,
+			},
+			want: HeroNone,
 		},
 		{
-			name:    "due today + P3 → HeroDueToday",
-			task:    &models.Task{ID: "t-due-today", WorkflowState: models.StateBacklog, Priority: 3, DueDate: &today},
-			project: &models.Project{},
-			want:    HeroDueToday,
+			name: "due today + P1 → HeroDueToday (beats P1)",
+			task: &models.Task{ID: "t-due-today-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &today},
+			want: HeroDueToday,
 		},
 		{
-			name:    "P1 only → HeroP1",
-			task:    &models.Task{ID: "t-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &futureDue},
-			project: &models.Project{},
-			want:    HeroP1,
+			name: "due today + P3 → HeroDueToday",
+			task: &models.Task{ID: "t-due-today", WorkflowState: models.StateBacklog, Priority: 3, DueDate: &today},
+			want: HeroDueToday,
 		},
 		{
-			name:    "todo P3 no due → HeroNone",
-			task:    &models.Task{ID: "t-mundane", WorkflowState: models.StateBacklog, Priority: 3},
-			project: &models.Project{},
-			want:    HeroNone,
+			name: "P1 only → HeroP1",
+			task: &models.Task{ID: "t-p1", WorkflowState: models.StateBacklog, Priority: 1, DueDate: &futureDue},
+			want: HeroP1,
 		},
 		{
-			name:    "P1 without project still returns HeroP1",
-			task:    &models.Task{ID: "t-p1-noproj", WorkflowState: models.StateBacklog, Priority: 1},
-			project: nil,
-			want:    HeroP1,
+			name: "todo P3 no due → HeroNone",
+			task: &models.Task{ID: "t-mundane", WorkflowState: models.StateBacklog, Priority: 3},
+			want: HeroNone,
 		},
 		{
-			name:    "done P1 → HeroNone (completed is quiet)",
-			task:    &models.Task{ID: "t-done", WorkflowState: models.StateDone, Priority: 1, DueDate: &pastDue},
-			project: &models.Project{},
-			want:    HeroNone,
+			name: "waiting alone stays quiet",
+			task: &models.Task{ID: "t-waiting", WorkflowState: models.StateWaiting, Priority: 3},
+			want: HeroNone,
 		},
 		{
-			name:    "canceled P1 overdue → HeroNone (canceled is quiet)",
-			task:    &models.Task{ID: "t-canceled", WorkflowState: models.StateCanceled, Priority: 1, DueDate: &pastDue},
-			project: &models.Project{},
-			want:    HeroNone,
+			name: "waiting P1 earns the hero every P1 earns",
+			task: &models.Task{ID: "t-waiting-p1", WorkflowState: models.StateWaiting, Priority: 1},
+			want: HeroP1,
+		},
+		{
+			name: "waiting overdue is overdue, not a state hero",
+			task: &models.Task{ID: "t-waiting-overdue", WorkflowState: models.StateWaiting, Priority: 3, DueDate: &pastDue},
+			want: HeroOverdue,
+		},
+		{
+			name: "done P1 → HeroNone (completed is quiet)",
+			task: &models.Task{ID: "t-done", WorkflowState: models.StateDone, Priority: 1, DueDate: &pastDue},
+			want: HeroNone,
+		},
+		{
+			name: "canceled P1 overdue → HeroNone (canceled is quiet)",
+			task: &models.Task{ID: "t-canceled", WorkflowState: models.StateCanceled, Priority: 1, DueDate: &pastDue},
+			want: HeroNone,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := PickHeroAttribute(tc.task)
+			got := PickHeroAttribute(tc.task, now)
 			if got != tc.want {
-				t.Errorf("pickHeroAttribute() = %v, want %v", got, tc.want)
+				t.Errorf("PickHeroAttribute() = %v, want %v", got, tc.want)
+			}
+			if gotPriority, want := PriorityIsHero(got), tc.want == HeroP1; gotPriority != want {
+				t.Errorf("PriorityIsHero(%v) = %v, want %v", got, gotPriority, want)
 			}
 		})
 	}

@@ -25,7 +25,7 @@ const (
 
 	semanticTaskTagExplainerLabel     = "semantic"
 	semanticTaskTagExplainerSeparator = " › "
-	SemanticTaskTagExplainerSummary   = "— the highest one a task carries colors its title."
+	SemanticTaskTagExplainerSummary   = "— a fixed vocabulary, listed strongest first."
 
 	taskTagJumpHintLabel     = "jump"
 	taskTagJumpHintSeparator = " · "
@@ -251,7 +251,9 @@ func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount in
 // restated summaries would swamp the overlay, so it is one line. Its names and
 // those rows resolve one SemanticTaskTitleStyle lookup, so the chain here and
 // the section above it can never disagree and a future registry entry cannot
-// render uncolored. The complete block wraps inline when needed.
+// render uncolored. That lookup is the vocabulary's own reserved color: these
+// six names are a closed set, so their color is a legend, unlike the chip ramp
+// under it. The complete block wraps inline when needed.
 func SemanticTaskTagExplainer(provider operation.ValueProviderID, width int) string {
 	if !semanticTaskTagProvider(provider) {
 		return ""

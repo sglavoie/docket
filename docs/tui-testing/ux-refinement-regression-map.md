@@ -68,19 +68,37 @@ declared their text required, while this reads the finished screen.
 
 ### Session 2 — Neutral titles and selective attention styling
 
-- Go: `internal/tui/primary_row_title_style_test.go`,
+- Go: `internal/tui/attention_styling_acceptance_test.go`,
+  `internal/tui/primary_row_title_style_test.go`,
   `internal/tui/task_title_regression_test.go`,
+  `internal/tui/outliner_cursor_highlight_test.go`,
+  `internal/tui/theme/styles_helpers_test.go`,
+  `internal/tui/theme/semantic_tag_title_style_test.go`,
+  `internal/tui/chrome/hero_attribute_test.go`,
   `internal/tui/outliner/tag_chip_style_test.go`,
   `internal/tui/outliner/operational_title_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json`,
   `docs/tui-testing/scenarios/theme-toggle.json`,
-  `docs/tui-testing/scenarios/task-context-row-wide-layout.json`
-- Contracts: `CLAUDE.md` — `theme.TagChipStyle` as the single tag color
-  authority, `OrderedTaskTags` as the single chip order, the
-  `bug > question > epic > story > feature > idea` title precedence, and "a slot
-  is a mnemonic, never a legend". `docs/decisions/behavioral-signals-contracts.md`
-  (Task-row indicators), `docs/architecture/row-indicators.md`,
-  `docs/guide/outliner-rows.md`.
+  `docs/tui-testing/scenarios/task-context-row-wide-layout.json`,
+  `docs/tui-testing/scenarios/semantic-task-tags-split.json`,
+  `docs/tui-testing/scenarios/tags-picker-direct.json`
+- Contracts: `CLAUDE.md` — a task title is neutral text and
+  `theme.TaskTitleStyleFor` answers lifecycle alone,
+  `chrome.PickHeroAttribute` as the overdue > review > due-today > priority-1
+  ladder over badges, `theme.OverdueRowStyle` as the one row tint,
+  `theme.TagChipStyle` as the single tag color authority, `OrderedTaskTags` as
+  the single chip order, the `bug > question > epic > story > feature > idea`
+  order as a listing order only, and "a slot is a mnemonic, never a legend".
+  `docs/decisions/behavioral-signals-contracts.md` (Task-row indicators),
+  `docs/architecture/row-indicators.md`,
+  `docs/architecture/selection-and-project-tags.md`,
+  `docs/guide/outliner-rows.md`, `docs/guide/outliner-chrome.md`.
+- `internal/tui/attention_styling_acceptance_test.go` is where the ANSI evidence
+  lives: the matrix renders each combination in dark and light, resting,
+  focused, selected, and both, then projects the bytes through an ASCII color
+  profile. Its companion holds one title fixed across every signal and requires
+  the monochrome rows to stay pairwise distinct, which is what proves each
+  signal survives without color rather than merely rendering beside one.
 
 ### Session 3 — Peek contains every detail removed from rows
 

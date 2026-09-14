@@ -38,14 +38,15 @@ const EmptyStateNoTasks = "No tasks yet. Press a to capture one."
 // caller's overflow count stays honest by construction and each surface keeps
 // its own rules about which tags are renderable at all.
 //
-// Semantic tags are deprioritized, never excluded. The title color already
-// carries the semantic signal, so a row that can afford two chips spends them on
-// what the title cannot say; but under --no-color there is no title color
-// channel and no renderer can detect that (RunOptions.DisableColor only reaches
-// tea.WithEnvironment), so a task tagged only bug must still show #bug.
-// Membership in that deprioritized group is decided by the same
-// SemanticTaskTagByName lookup TaskTitleStyleFor consults, so a tag is demoted
-// exactly when the title can speak for it.
+// Semantic tags are deprioritized, never excluded: a row that can afford two
+// chips spends them on the tags a reader cannot guess from the six-name
+// vocabulary every task shares, and Peek still names the complete set. The rule
+// predates neutral titles, where a semantic tag was deprioritized because the
+// title color had already said it; the ordering outlived that reason, and which
+// chips a narrowed row keeps is the row-budget work's to revisit rather than the
+// sort's to decide unilaterally. Membership in that deprioritized group is the
+// models.SemanticTaskTagByName lookup, the same one the pickers build their
+// SEMANTIC section from.
 //
 // The sort key is models.NormalizeTag, the same canonical spelling TagChipSlot
 // hashes, so a tag's position and its color agree about what one tag is. The raw

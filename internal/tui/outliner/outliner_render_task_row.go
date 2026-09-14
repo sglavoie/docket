@@ -150,19 +150,22 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 			tagSegment = " " + rendered
 		}
 	}
-	indicatorSegments := m.renderTaskIndicatorSegments(row)
+	// One instant for the whole row. The ladder and the review segment ask the
+	// same calendar-day question, so reading the clock twice could demote a badge
+	// for a review the row does not name.
+	now := time.Now()
+	indicatorSegments := m.renderTaskIndicatorSegments(row, now)
 
-	// Von Restorff: demote non-hero badges so the most urgent attribute stands
-	// out.
-	hero := chrome.PickHeroAttribute(task)
-	if hero != chrome.HeroNone {
-		if !chrome.StatusIsHero(hero) {
-			statusIcon = chrome.DemoteBadge(statusIcon)
-		}
-		if !chrome.PriorityIsHero(hero) && prioritySegment != "" {
-			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
-				prioritySegment = chrome.DemoteBadge(trimmed) + " "
-			}
+	// Von Restorff: one row asks for attention with one badge. The ladder in
+	// chrome.PickHeroAttribute decides whether priority is that badge, and the
+	// priority badge quietens when something more time-sensitive is on the row.
+	// The state badge is not in this: it says what the row is rather than how
+	// loudly it is asking, so it keeps its own colors on every row, which is what
+	// leaves an ordinary Waiting row readable without making it urgent.
+	hero := chrome.PickHeroAttribute(task, now)
+	if hero != chrome.HeroNone && !chrome.PriorityIsHero(hero) && prioritySegment != "" {
+		if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
+			prioritySegment = chrome.DemoteBadge(trimmed) + " "
 		}
 	}
 	prefixBudget := max(min(rowWidth/3, 12), 4)
@@ -284,9 +287,11 @@ func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task) string {
 	return theme.GetStateBadge(task.State())
 }
 
-// renderTaskTitleStyle resolves an Outliner title's color. It passes no
-// CursorSelected: the cursor is marked by the gutter and the trailing fill, so
-// the title under it keeps the priority or semantic color it earned.
+// renderTaskTitleStyle resolves an Outliner title's color, which for every
+// non-terminal task is ordinary text: attention travels on the badges and
+// indicators beside the title, never on the title itself. It passes no
+// CursorSelected either, because the cursor is marked by the gutter and the
+// trailing fill, so the row under it reads exactly like the rows around it.
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task) lipgloss.Style {
 	return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
 }
@@ -359,13 +364,12 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 // activity counts into the row. Rich content stays in Peek. The caller drops
 // segments along indicatorDropLadder when preserving all signals would leave an
 // unreadably small title.
-func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow) taskIndicatorSegments {
+func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow, now time.Time) taskIndicatorSegments {
 	var segments taskIndicatorSegments
 	task := row.Task
 	if task == nil {
 		return segments
 	}
-	now := time.Now()
 	if m.PrimaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(listsurface.ColRecency) {
 		segments.Recency = query.FormatRecencyChip(m.rowRecencyKey(row), now)
 	}
@@ -462,14 +466,25 @@ func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
 	return theme.MutedStyle.Render("doing") + " " + age
 }
 
-// formatReviewIndicator announces only a scheduled check-in whose calendar day
-// has arrived and whose task is eligible to raise it. A future schedule belongs
-// in Peek, while a deferred or terminal task stays silent. The two arrived
-// tiers share deadline emphasis without borrowing deadline meaning: the word
-// review keeps the signals distinct even when both occur on one row.
+// formatReviewIndicator announces a task that is asking to be looked at, which
+// models.TaskNeedsAttention answers and this only spells: the stored review flag,
+// or a scheduled check-in whose calendar day has arrived and whose task is
+// eligible to raise it. A future schedule belongs in Peek, while a terminal task
+// stays silent and a deferred one suppresses its schedule. The row and the
+// attention ladder read one predicate, so a row can never demote its priority
+// badge for a review it does not name.
+//
+// The three tiers share deadline emphasis without borrowing deadline meaning:
+// the word review keeps the signals distinct even when both occur on one row.
+// The bare `review` is the flag alone — someone marked this task, so there is no
+// day to be late against — and it stays as long as the flag does, since `=` set
+// it and `R` is what takes it off.
 func formatReviewIndicator(task *models.Task, now time.Time) string {
-	if task == nil || !task.CheckInIsDueAt(now) {
+	if !models.TaskNeedsAttention(task, now) {
 		return ""
+	}
+	if !task.CheckInIsDueAt(now) {
+		return theme.DueTodayStyle.Render("review")
 	}
 	daysLate := util.DaysBetween(*task.NextCheckIn, now)
 	if daysLate == 0 {
@@ -596,19 +611,24 @@ func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, sta
 		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }
 
-// taskRowTint names the row-level background a task earns from its own state. It
-// is returned rather than applied so the cursor row can wear it on the content
-// region alone, leaving the gutter and the trailing fill to say where the cursor
-// is. A waiting row therefore stays visibly waiting while you stand on it.
+// taskRowTint names the row-level background a task earns, and a missed deadline
+// is the only thing that earns one. It is the loudest mark the list has — a
+// whole row repainted — so it is spent on the top of the attention ladder alone.
+// Waiting held one until the ladder was consolidated: every Waiting row wore an
+// alert background whether or not anything was owed on it, which made the
+// quietest work in the workspace look like the most urgent. Waiting now reads
+// through its state badge and its `waiting <age>` segment, and a Waiting task
+// with a missed deadline is tinted for the deadline like any other task.
+//
+// It is returned rather than applied so the cursor row can wear it on the
+// content region alone, leaving the gutter and the trailing fill to say where
+// the cursor is. An overdue row therefore stays visibly overdue while you stand
+// on it.
 func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
-	switch {
-	case task.IsInState(models.StateWaiting):
-		return theme.WaitingRowStyle, true
-	case task.IsOverdue():
+	if task.IsOverdue() {
 		return theme.OverdueRowStyle, true
-	default:
-		return lipgloss.Style{}, false
 	}
+	return lipgloss.Style{}, false
 }
 
 func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint cursorPaint, rowWidth, rowIndex int) string {

@@ -139,14 +139,15 @@ func TestOrderedTaskTagsDeprioritizesSemanticTagsWithoutDroppingThem(t *testing.
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// Deprioritize, never exclude: with nothing else competing, the semantic tag
-	// still reaches the row. Under --no-color the title carries no semantic color
-	// at all, and no renderer can detect that, so the chip is the only signal.
+	// still reaches the row. The chip is now the only place a semantic tag is
+	// said at all — the title is neutral text — so dropping it would lose the tag.
 	if got := ansi.Strip(listsurface.RenderTruncatedTags([]string{"bug"}, 2, 8)); got != "#bug" {
 		t.Errorf("a bug-only task rendered %q, want #bug", got)
 	}
 
-	// With descriptive tags competing, the two row slots go to what the title
-	// color cannot say, and the dropped semantic tag is still counted.
+	// With descriptive tags competing, the two row slots go to the tags a reader
+	// cannot guess from the six-name vocabulary, and the dropped semantic tag is
+	// still counted.
 	rendered := listsurface.RenderTruncatedTags([]string{"bug", "ux", "billing"}, 2, 8)
 	if got, want := ansi.Strip(rendered), "#billing #ux +1"; got != want {
 		t.Errorf("row tags = %q, want %q", got, want)

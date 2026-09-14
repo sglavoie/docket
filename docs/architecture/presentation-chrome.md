@@ -276,7 +276,7 @@ does the size of each step, because the two directions are not symmetric.
 Darkening preserves chroma, so the light theme's bar is a distinct dark block at
 a moderate factor; lightening washes chroma out, so the dark theme's bar goes to
 `0.85` — most of the way to white — or it lands on a mid gray that the row's own
-colored titles and badges already out-shout.
+badges and chips already out-shout.
 
 `outlinerCursorRow` truncates the content to the columns the gutter leaves, then
 pads the remainder with `cursorPaint.trail()`, so a marked row is exactly
@@ -284,9 +284,11 @@ pads the remainder with `cursorPaint.trail()`, so a marked row is exactly
 on — and degrades to a truncated gutter when `rowWidth` is no wider than the
 gutter itself. The seam is a concatenation only: it joins the same pieces at the
 same widths the row already had, so `titleWidth` remains the single title-budget
-authority. `taskRowTint` returns the waiting/overdue row background instead of
+authority. `taskRowTint` returns the overdue row background instead of
 applying it, which is what lets the cursor row wear that tint on its content
-region while the bar and trailing fill say where the cursor is. `SelectedLine`
+region while the bar and trailing fill say where the cursor is. Overdue is the
+only tint it answers with: a repainted row is the loudest mark the list has, so
+it belongs to the top of the attention ladder alone. `SelectedLine`
 stays the whole-line authority on every other list surface.
 
 Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`

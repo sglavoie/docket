@@ -1,31 +1,39 @@
 package chrome
 
 import (
+	"time"
+
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// HeroKind identifies which row attribute earns full saturation under the
-// Von Restorff rule: at most one badge per row is rendered at full saturation
-// (the "hero"); the rest demote to MutedStyle so the eye can target the most
-// urgent attribute.
+// HeroKind identifies which attention signal a row is allowed to shout with.
+// At most one attribute per row is the hero; the supporting badges beside it
+// demote to MutedStyle so the eye lands on the most time-sensitive thing first.
 //
 // Dense-row hierarchy (top to bottom of visual priority):
-//  1. Urgency hero — at most one badge per row, picked from the precedence
-//     ladder below. All other supporting badges demote to MutedStyle so the
-//     eye lands on the hero first.
-//  2. Title — the primary text of the row, always readable. Title styling is
-//     handled by TaskTitleStyleFor; the hero policy does not touch the title.
-//  3. Quiet supporting metadata — non-hero badges (status, type, priority,
-//     due) are demoted so they read as secondary context.
+//  1. Attention hero — at most one per row, picked from the precedence ladder
+//     below. Supporting badges demote to MutedStyle.
+//  2. Title — the primary text of the row, always readable and always neutral.
+//     TaskTitleStyleFor colors a title for lifecycle reasons alone; no attention
+//     signal reaches it.
+//  3. Identity — the workflow-state badge. It says what the row *is* rather than
+//     how loudly it is asking, so it is never demoted and never the hero.
+//  4. Quiet supporting metadata — the non-hero attention badges.
 //
-// Hero precedence is urgency-only (first match wins):
-//  1. HeroOverdue   — task is past due
-//  2. HeroWaiting   — explicit Waiting lifecycle state
-//  3. HeroDueToday  — task is due today (and not yet overdue)
+// Hero precedence is attention-only (first match wins):
+//  1. HeroOverdue   — the deadline has passed
+//  2. HeroReview    — the task is asking to be looked at (models.TaskNeedsAttention)
+//  3. HeroDueToday  — the deadline is today (and not yet overdue)
 //  4. HeroP1        — Priority == 1
+//
+// Waiting is deliberately absent. An ordinary Waiting row is quiet work parked
+// on someone else's desk: its state badge and its `waiting <age>` segment say so
+// without the row claiming urgency it does not have. A Waiting task earns a hero
+// the same way any other task does — by being overdue, by owing a review, or by
+// its deadline and priority — never by its state.
 //
 // Quiet states (always return HeroNone so no badge competes for attention):
 // terminal tasks (done, canceled).
@@ -34,16 +42,21 @@ type HeroKind int
 const (
 	HeroNone HeroKind = iota
 	HeroOverdue
-	HeroWaiting
+	HeroReview
 	HeroDueToday
 	HeroP1
 )
 
-// PickHeroAttribute returns the highest-precedence hero attribute for a task.
-// Returns HeroNone when no attribute qualifies (the row keeps current badge
-// styling; nothing is demoted) and for quiet states — completed, canceled,
-// tasks never claim the hero slot.
-func PickHeroAttribute(t *models.Task) HeroKind {
+// PickHeroAttribute returns the highest-precedence attention attribute for a
+// task at now. Returns HeroNone when no attribute qualifies (the row keeps
+// current badge styling; nothing is demoted) and for quiet states — completed
+// and canceled tasks never claim the hero slot.
+//
+// now is a parameter rather than a call to time.Now inside, because the review
+// half of the ladder is a calendar-day question that models.TaskNeedsAttention
+// answers against a supplied clock: one row-render pass therefore reads one
+// instant for its hero, its review segment, and its ages.
+func PickHeroAttribute(t *models.Task, now time.Time) HeroKind {
 	if t == nil {
 		return HeroNone
 	}
@@ -53,8 +66,8 @@ func PickHeroAttribute(t *models.Task) HeroKind {
 	if t.IsOverdue() {
 		return HeroOverdue
 	}
-	if t.IsInState(models.StateWaiting) {
-		return HeroWaiting
+	if models.TaskNeedsAttention(t, now) {
+		return HeroReview
 	}
 	if t.IsDueToday() {
 		return HeroDueToday
@@ -65,8 +78,6 @@ func PickHeroAttribute(t *models.Task) HeroKind {
 	return HeroNone
 }
 
-// dueIsInlineHero reports whether a task's due date may be rendered as the
-// dense-row urgency anchor.
 // DemoteBadge re-renders a pre-styled badge with MutedStyle, preserving the
 // glyph and the visual width (trailing padding from PadBadge is untouched).
 // Returns the input unchanged when empty.
@@ -77,8 +88,9 @@ func DemoteBadge(badge string) string {
 	return theme.MutedStyle.Render(ansi.Strip(badge))
 }
 
-// StatusIsHero reports whether the status badge is the hero for a given kind.
-func StatusIsHero(h HeroKind) bool { return h == HeroWaiting }
-
-// PriorityIsHero reports whether the priority badge is the hero.
+// PriorityIsHero reports whether the priority badge is the hero. It is the one
+// projection of HeroKind a row renderer needs: the state badge is identity and
+// keeps its own colors on every row, while the deadline and review segments
+// carry their own tiers, so priority is the only badge whose salience the ladder
+// decides.
 func PriorityIsHero(h HeroKind) bool { return h == HeroP1 }

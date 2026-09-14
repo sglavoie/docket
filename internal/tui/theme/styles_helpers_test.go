@@ -83,6 +83,10 @@ func TestRenderCursorPrefixUsesMinimalMargin(t *testing.T) {
 	}
 }
 
+// TestTaskTitleStyleFor holds the neutral title: nothing about how loudly a task
+// is asking reaches its title, so priority, a deadline, an owed review, a
+// semantic tag, a pin, and a deferral all render in ordinary text. Only the
+// three lifecycle statements — muted, canceled, cursor-selected — remain.
 func TestTaskTitleStyleFor(t *testing.T) {
 	ApplyTheme(ThemeConfig{})
 
@@ -94,26 +98,62 @@ func TestTaskTitleStyleFor(t *testing.T) {
 		}
 	}
 
+	overdue := time.Now().AddDate(0, 0, -3)
+	today := time.Now()
+	tomorrow := time.Now().AddDate(0, 0, 1)
+
 	tests := []struct {
 		name string
 		task *models.Task
 		opts TaskTitleStyleOptions
 		want lipgloss.Style
 	}{
-		{"priority 1", taskWith(1), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
-		{"priority 2", taskWith(2), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
-		{"priority 3", taskWith(3), TaskTitleStyleOptions{}, GetTitlePriorityStyle(3)},
+		{"priority 1", taskWith(1), TaskTitleStyleOptions{}, NormalStyle},
+		{"priority 2", taskWith(2), TaskTitleStyleOptions{}, NormalStyle},
+		{"priority 3", taskWith(3), TaskTitleStyleOptions{}, NormalStyle},
 		{"priority unset", taskWith(0), TaskTitleStyleOptions{}, NormalStyle},
-		{"plain task keeps priority title style", func() *models.Task {
-			task := taskWith(1)
-			return task
-		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(1)},
-		{"pinned keeps priority title style", func() *models.Task {
+		{"pinned is neutral", func() *models.Task {
 			task := taskWith(2)
 			task.Pinned = true
 			return task
-		}(), TaskTitleStyleOptions{}, GetTitlePriorityStyle(2)},
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"semantic tag is neutral", func() *models.Task {
+			task := taskWith(1)
+			task.Tags = []string{"bug"}
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"overdue is neutral", func() *models.Task {
+			task := taskWith(1)
+			task.DueDate = &overdue
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"due today is neutral", func() *models.Task {
+			task := taskWith(3)
+			task.DueDate = &today
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"review flag is neutral", func() *models.Task {
+			task := taskWith(0)
+			task.Review = true
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"waiting is neutral", func() *models.Task {
+			task := taskWith(0)
+			task.WorkflowState = models.StateWaiting
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"deferred is neutral", func() *models.Task {
+			task := taskWith(1)
+			task.DeferredUntil = &tomorrow
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
+		{"done is neutral", func() *models.Task {
+			task := taskWith(1)
+			task.WorkflowState = models.StateDone
+			return task
+		}(), TaskTitleStyleOptions{}, NormalStyle},
 		{"cursor selected uses selected title style", taskWith(0), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
+		{"cursor selected outranks priority", taskWith(1), TaskTitleStyleOptions{CursorSelected: true}, SelectedTaskTitleStyle},
 		{"canceled uses canceled style", func() *models.Task {
 			task := taskWith(1)
 			task.WorkflowState = models.StateCanceled

@@ -22,10 +22,9 @@ var (
 	// sides so every overlay has a complete visual boundary.
 	OverlayHaloStyle = lipgloss.NewStyle().Background(ColorDimmedBg)
 
-	// WaitingRowStyle applies a subtle red background tint to waiting rows.
-	WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
-
-	// OverdueRowStyle applies a subtle amber background tint to overdue rows.
+	// OverdueRowStyle applies a subtle amber background tint to overdue rows. It
+	// is the only row tint: repainting a whole row is the loudest mark the list
+	// has, so it belongs to the top of the attention ladder alone.
 	OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
 
 	// SelectedTaskTitleStyle is applied to the task title on the selected row.

@@ -60,7 +60,11 @@ reparent on a blocked task cannot reset how long it has been blocked. A Waiting
 deadline remains the ordinary `FormatDueDate` segment; check-ins are a separate
 schedule and never reinterpret or suppress it.
 
-`formatReviewIndicator` adds `review today` or `review +<age>` only when
+`formatReviewIndicator` spells `models.TaskNeedsAttention` and nothing else, so
+the row and `chrome.PickHeroAttribute` read one predicate and a row can never
+demote a badge for a review it does not name. It has three tiers: a bare `review`
+for the stored flag alone, which has no day to be late against and stays until
+`R` clears it, then `review today` and `review +<age>` once
 `Task.CheckInIsDueAt` says the schedule has arrived and is eligible. Future
 schedules stay in Peek, while deferral and terminal state suppress the row
 signal. Waiting and Doing ages remain muted beside it. The periodic tick compares
@@ -70,9 +74,9 @@ overlay, picker, editor, visual selection, or ranked result, and the eventual
 rebuild restores the cursor by qualified task identity.
 
 Every due reading is a background badge rather than colored text, so a date
-reads as one bounded object in a row that already tints titles, tags, and
-context. `ClassifyDueDate`'s three tiers and `formatReviewIndicator`'s two
-arrived tiers share the `makeDueBadgeStyle` family, which holds the section header's
+reads as one bounded object in a row whose title is neutral and whose tags and
+context carry their own colors. `ClassifyDueDate`'s three tiers and
+`formatReviewIndicator`'s three share the `makeDueBadgeStyle` family, which holds the section header's
 contrast contract — a tone-aware fill under a high-contrast foreground. A tier
 passes that constructor one `dueBadgeTone`: the fill and the ink that reads on
 it, once per theme, plus whether the tier is emphasized. The overdue and today
@@ -94,6 +98,27 @@ two `Padding(0, 1)` cells need
 no width formula of their own: `outlinerNonTitleWidth` sums `lipgloss.Width`
 over the already-styled segments, so the title budget shrinks by exactly two
 like any other segment growth.
+
+The attention ladder is `chrome.PickHeroAttribute`, and it is the row's one
+authority on how loudly a task is asking: overdue, then review, then due-today,
+then priority-1, with a terminal task answering `HeroNone` whatever it carries.
+`HeroReview` reads `models.TaskNeedsAttention`, the same predicate
+`formatReviewIndicator` spells, so the ladder and the row agree by construction.
+A hero the priority badge did not win demotes that badge through
+`chrome.DemoteBadge`, which is what leaves one saturated badge per row;
+`chrome.PriorityIsHero` is the one projection of `HeroKind` the row renderer
+needs. The state badge is outside the ladder in both directions: it is identity
+rather than urgency, so it is never a hero and never demoted, which is what
+leaves an ordinary Waiting row readable without making it look urgent. Waiting
+earns a hero only on the terms any other task does — its own deadline, review, or
+priority.
+
+`theme.TaskTitleStyleFor` is the single title-style authority and answers
+lifecycle alone: muted or disabled, canceled, cursor-selected, otherwise ordinary
+text. No signal in the ladder reaches a title. `theme.SemanticTaskTitleStyle`
+survives as the six-name vocabulary's reserved accent with the `SEMANTIC` picker
+rows as its one consumer; its `...Title` palette keys are historical names kept
+because the palette is a published surface.
 
 Doing age follows the same state-clock contract.
 `formatDoingAgeIndicator` is gated on `IsInState(models.StateDoing)` and formats

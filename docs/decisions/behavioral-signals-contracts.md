@@ -30,10 +30,24 @@ segments, but pressure must follow the table above.
 
 The Doing-age text is `doing <age>`, reads `StateChangedAt`, and stays neutral:
 it does not participate in `chrome.PickHeroAttribute` at
-`internal/tui/chrome/hero_attribute.go`. Overdue, Waiting, due-today, and
-priority-1 remain the only hero candidates. Adding Doing as a fourth competing
-urgency badge would contradict the existing `chrome.HeroKind` and
-`chrome.PickHeroAttribute` hierarchy in `internal/tui/chrome/hero_attribute.go`.
+`internal/tui/chrome/hero_attribute.go`. Adding Doing as a competing urgency
+badge would contradict the existing `chrome.HeroKind` and
+`chrome.PickHeroAttribute` hierarchy in `internal/tui/chrome/hero_attribute.go`,
+and that lock is unchanged.
+
+The candidate list itself has since been consolidated. It is overdue, review,
+due-today, and priority-1, in that precedence, and Waiting is no longer among
+them: a lifecycle state says what a row is rather than how loudly it is asking,
+so an ordinary Waiting row is quiet and a Waiting task earns a hero only on the
+same terms as any other task. `review` is the one addition, and it is what
+`models.TaskNeedsAttention` answers — the stored review flag or a check-in whose
+day has arrived. The state badge is consequently never demoted: it is identity,
+so it keeps its own colors on every row and is neither hero nor hero-suppressed.
+
+The row tint follows the same rule. `theme.OverdueRowStyle` is the only one:
+repainting a whole row is the loudest mark the list has, so it is spent on the
+top of the ladder alone. Waiting held a second tint until this consolidation,
+which made the quietest work in the workspace look like the most urgent.
 
 The repeated-deferral signal starts at the third deferral. For
 `DeferCount >= 3`, its row segment is `deferred ×N`; smaller values render no

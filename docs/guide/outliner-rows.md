@@ -116,9 +116,17 @@ in the comments does not reset how long the work has been blocked. A due date
 beside it remains a deadline and keeps the ordinary due chip. A check-in is a
 separate schedule: once its day arrives the row additionally says `review today`
 or `review +<age>`, unless the task is deferred; before then it appears only in
-Peek and scheduling controls. Moving a task to Waiting with `ww` still asks for
-the deadline immediately; `Esc` there declines the date and the Waiting move
-still stands.
+Peek and scheduling controls. A task you flagged with `=` and owe no date for
+says a bare `review`, so the row always names what it is asking for. Moving a
+task to Waiting with `ww` still asks for the deadline immediately; `Esc` there
+declines the date and the Waiting move still stands.
+
+Waiting by itself is quiet. The row says `waiting`, and that is the whole
+signal: no background tint, and nothing that makes it read as more urgent than
+the work you could actually do something about today. Waiting says where a task
+is, not how loudly it is asking. A Waiting task still shouts when it earns it —
+a deadline that has passed, a check-in whose day has come, a priority you
+set — on exactly the same terms as any other task.
 
 Due dates and arrived check-ins both render as a filled chip rather than as colored
 text, so a date reads as one bounded object beside the titles, tags, and context
@@ -252,7 +260,7 @@ open Peek or not. Where you scrolled to is remembered while you stay on the same
 row and resets by itself when you move to another task or project, the detail
 changes, or the terminal is resized. Future check-ins appear here while the task
 row stays quiet; only an arrived, undeferred schedule adds `review today` or
-`review +Nd` to the row.
+`review +Nd` to the row, and the review flag alone adds a bare `review`.
 
 On a project header — the group header a cross-project mode draws above each
 project's tasks, and the single header a project-scoped or focused view leads

@@ -54,6 +54,16 @@ type TaskTitleStyleOptions struct {
 	Disabled bool
 }
 
+// SemanticTaskTitleStyle resolves the color the six-member semantic vocabulary
+// reserves for one of its roles. It is the vocabulary's own accent, not a task
+// title's: no task title wears one, and the `SEMANTIC` rows of the `#` and `f#`
+// pickers are its one consumer, where the six names are shown as members of a
+// closed set rather than as tags on a task.
+//
+// The name and the palette keys behind it — ColorSemanticBugTitle and its
+// selected and deferred variants — are historical. They stay as they are because
+// the palette is a published surface: renaming a color would rewrite a stored
+// vocabulary to record that a renderer stopped calling it.
 func SemanticTaskTitleStyle(
 	role models.SemanticTaskTagRole,
 	priority int,
@@ -157,27 +167,34 @@ func TagChipStyle(tag string) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(tagChipColors[tagChipSlot(tag)])
 }
 
-// TaskTitleStyleFor returns the canonical style for a rendered task title.
+// TaskTitleStyleFor returns the canonical style for a rendered task title, and
+// a task title is neutral. Nothing about how loudly a task is asking reaches it:
+// priority is the priority badge's to say, a deadline the due chip's, an owed
+// review the review segment's, and a semantic tag its chip's. A title that also
+// carried those signals spent the row's widest and most-read region restating
+// what the badges beside it already said, and left the one region a reader
+// cannot skip competing with itself.
+//
+// What remains is lifecycle alone, because those three are statements about
+// whether the text should be read at all rather than about urgency: a muted or
+// disabled row is context, a canceled task is struck through, and a cursor-selected
+// row on a surface that inverts nothing else says so on its title. Every other
+// task reads in ordinary text.
 func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.Style {
 	if task == nil {
 		return NormalStyle
 	}
 
-	isMuted := opts.Muted || opts.Disabled
-	isCanceled := task.IsInState(models.StateCanceled)
-	if isMuted {
+	if opts.Muted || opts.Disabled {
 		return MutedStyle
 	}
-	if isCanceled {
+	if task.IsInState(models.StateCanceled) {
 		return CanceledStyle
-	}
-	if entry, ok := models.SemanticTaskTagForTags(task.Tags); ok {
-		return SemanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsDeferred())
 	}
 	if opts.CursorSelected {
 		return SelectedTaskTitleStyle
 	}
-	return GetTitlePriorityStyle(task.Priority)
+	return NormalStyle
 }
 
 // GetStateBadge returns the workflow-state icon rendered as a styled badge

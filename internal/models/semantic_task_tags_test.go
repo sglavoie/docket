@@ -46,56 +46,26 @@ func TestSemanticTaskTagsStayInPrecedenceOrder(t *testing.T) {
 	}
 }
 
-func TestSemanticTaskTagForTagsAppliesPrecedenceRegardlessOfSliceOrder(t *testing.T) {
-	tests := []struct {
-		name string
-		tags []string
-		want SemanticTaskTagRole
-	}{
-		{name: "idea then bug", tags: []string{"idea", "bug"}, want: SemanticTaskTagBug},
-		{name: "bug then idea", tags: []string{"bug", "idea"}, want: SemanticTaskTagBug},
-		{name: "story then epic", tags: []string{"story", "epic"}, want: SemanticTaskTagEpic},
-		{name: "epic then story", tags: []string{"epic", "story"}, want: SemanticTaskTagEpic},
-		{name: "question then epic", tags: []string{"question", "epic"}, want: SemanticTaskTagQuestion},
-		{name: "epic then question", tags: []string{"epic", "question"}, want: SemanticTaskTagQuestion},
-		{name: "bug outranks question", tags: []string{"question", "bug"}, want: SemanticTaskTagBug},
-		{name: "ascending", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: SemanticTaskTagBug},
-		{name: "descending", tags: []string{"bug", "question", "epic", "story", "feature", "idea"}, want: SemanticTaskTagBug},
-		{name: "ordinary tags interleaved", tags: []string{"urgent", "feature", "backend", "story"}, want: SemanticTaskTagStory},
-		{name: "lowest alone", tags: []string{"chore", "idea"}, want: SemanticTaskTagIdea},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			entry, ok := SemanticTaskTagForTags(tt.tags)
-			if !ok {
-				t.Fatalf("SemanticTaskTagForTags(%v) reported no semantic tag", tt.tags)
-			}
-			if entry.Role != tt.want {
-				t.Fatalf("role = %v, want %v", entry.Role, tt.want)
-			}
-		})
-	}
-}
-
-func TestSemanticTaskTagForTagsIgnoresOrdinaryTags(t *testing.T) {
+// TestSemanticTaskTagsResolveOneAtATime holds the registry to per-tag lookup.
+// Precedence orders the vocabulary where it is listed; it no longer resolves a
+// task's several semantic tags down to one, because no renderer has a
+// single-valued channel to resolve them into.
+func TestSemanticTaskTagsResolveOneAtATime(t *testing.T) {
 	for _, tags := range [][]string{
-		nil,
-		{},
-		{"type:bug"},
-		{"type:epic"},
-		{"bugfix"},
-		{"storytelling"},
-		{"feature:ui"},
-		{" idea "},
-		{" epic "},
-		{"chore", "spike", "urgent", "blocked", "parked"},
+		{"idea", "bug"},
+		{"bug", "idea"},
+		{"urgent", "feature", "backend", "story"},
 	} {
-		entry, ok := SemanticTaskTagForTags(tags)
-		if ok {
-			t.Errorf("SemanticTaskTagForTags(%v) = %q, want no match", tags, entry.Name)
-		}
-		if entry.Role != SemanticTaskTagNone {
-			t.Errorf("SemanticTaskTagForTags(%v) role = %v, want None", tags, entry.Role)
+		for _, tag := range tags {
+			entry, ok := SemanticTaskTagByName(tag)
+			if _, semantic := map[string]struct{}{
+				"bug": {}, "question": {}, "epic": {}, "story": {}, "feature": {}, "idea": {},
+			}[tag]; semantic != ok {
+				t.Fatalf("SemanticTaskTagByName(%q) ok = %v, want %v", tag, ok, semantic)
+			}
+			if ok && entry.Name != tag {
+				t.Fatalf("SemanticTaskTagByName(%q) = %q", tag, entry.Name)
+			}
 		}
 	}
 }

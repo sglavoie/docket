@@ -663,7 +663,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// cadence remain paired until save, and a commit refusal restores both over
 	// the frozen qualified targets. The mechanism lives in
 	// docs/architecture/operation-grammar.md.
-	const budget = 46602
+	// Thirty-second raise, 46602 to 47447, for neutral titles and one attention
+	// ladder. 845 bytes buy two rules and one retirement. The first is that a
+	// title carries no signal: every consumer of a task title shares one style
+	// authority, so a rule written for the Outliner alone would leave previews,
+	// autocomplete, and pickers recoloring the same text on their own terms, and
+	// a title that means priority here and a semantic tag there means nothing
+	// anywhere. The second is that the ladder is a closed precedence over badges
+	// rather than a set of independent claims, which is what keeps one saturated
+	// mark per row when overdue, review, due today, and priority 1 are all true
+	// at once. The retirement is Waiting, as both hero and row tint: a lifecycle
+	// state says what a row is rather than how loudly it is asking, and tinting
+	// the quietest work in the workspace made it read as the most urgent. Naming
+	// the state badge as identity is the rest of it, since a badge that is never
+	// a hero would otherwise be demoted by every hero above it. The mechanism
+	// lives in docs/architecture/row-indicators.md and
+	// docs/decisions/behavioral-signals-contracts.md.
+	const budget = 47447
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

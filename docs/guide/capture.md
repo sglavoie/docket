@@ -161,7 +161,9 @@ capture into its project, `Capture → Rich Project`, rather than refusing. `A` 
 unchanged and still means a child of the cursor task, one level deeper.
 
 Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`
-tags color task titles in that precedence order. Namespaced values such as
+tags name a kind of work. They wear their own chip on a row like any other tag
+and leave the title alone; the order above is the order they are listed in.
+Namespaced values such as
 `type:bug` and partial matches remain ordinary tags and add no prefix or marker
 icon. Both tag pickers group those six under a `SEMANTIC` section above the rest:
 `#` Set Tags always offers all six with a one-line summary each, whether or not

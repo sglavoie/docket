@@ -7,11 +7,15 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
+// TestOutlinerQueuedPriorityTitlesStayNeutral is the inverse of the rule this
+// file used to hold: an assigned priority reaches the row as its badge, and the
+// title beside it is ordinary text at every priority.
+func TestOutlinerQueuedPriorityTitlesStayNeutral(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
@@ -94,14 +98,22 @@ func findPrimaryRowStyleOutlinerRow(t *testing.T, rows []outliner.OutlinerRow, t
 func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	t.Helper()
 
-	priorityTitle := theme.GetTitlePriorityStyle(task.Priority).Render(task.Title)
-	if !strings.Contains(line, priorityTitle) {
-		t.Fatalf("expected priority-styled title for %q in:\n%s", task.Title, ansi.Strip(line))
+	if !strings.Contains(line, theme.NormalStyle.Render(task.Title)) {
+		t.Fatalf("expected neutral title for %q in:\n%s", task.Title, ansi.Strip(line))
 	}
 
-	activeTitle := theme.ActiveStyle.Render(task.Title)
-	if activeTitle != priorityTitle && strings.Contains(line, activeTitle) {
-		t.Fatalf("active state should not recolor title %q in:\n%s", task.Title, ansi.Strip(line))
+	for name, styled := range map[string]string{
+		"priority":     theme.GetTitlePriorityStyle(task.Priority).Render(task.Title),
+		"active state": theme.ActiveStyle.Render(task.Title),
+	} {
+		if styled != task.Title && strings.Contains(line, styled) {
+			t.Fatalf("%s recolored title %q in:\n%s", name, task.Title, ansi.Strip(line))
+		}
+	}
+
+	// The priority the title no longer carries still reaches the row.
+	if badge := chrome.RenderPriorityBadge(task.Priority); badge != "" && !strings.Contains(line, badge) {
+		t.Fatalf("priority %d lost its badge in:\n%s", task.Priority, ansi.Strip(line))
 	}
 }
 

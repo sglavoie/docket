@@ -199,15 +199,21 @@ explainer use the complete `Summary`.
 parallel structure is deliberate: both publish the name and one-sentence summary
 every explaining surface reads, and neither carries an effect. The labels differ
 on purpose. A *behavioral* project tag decides something — `parked` removes a
-project from the base task workspace — while a *semantic* task tag only renders,
-coloring the title and touching no filter, sort, or workflow rule. The shapes
+project from the base task workspace — while a *semantic* task tag only names a
+kind of work, touching no filter, sort, or workflow rule and no longer coloring
+the title either. The shapes
 differ for the same reason: `BehavioralProjectTags` is a map keyed by tag name
 because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `question` > `epic` > `story` > `feature` > `idea` precedence
-is part of what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
-the `#` and `f#` pickers read the slice order to build their `SEMANTIC` section.
-Those rows and the explainer line beneath them resolve one color through
-`theme.SemanticTaskTitleStyle`, so the section previews the effect it describes.
+is part of what it publishes. That precedence now orders the listing and nothing
+else: nothing resolves a task's several semantic tags down to one, because no
+surface renders one winner. The `#` and `f#` pickers read the slice order to
+build their `SEMANTIC` section, and those rows and the explainer line beneath
+them resolve one color through `theme.SemanticTaskTitleStyle` — a per-role accent
+the vocabulary reserves, whose `...Title` palette keys are a historical name kept
+because the palette is published. The row wears the color the vocabulary gives
+that name, which is the strongest thing the row is about; it is not a preview of
+a title, because the title it would have painted is neutral text.
 Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
@@ -228,10 +234,10 @@ effect" rule to every tag rather than the six semantic ones. It hashes
 every `ApplyTheme`. The slot index, not a resolved hex, is therefore the durable
 unit of tag identity: `T` re-colors every chip and slot `i` stays the same color
 family in both themes, so toggling never reshuffles which tag wears which hue.
-The ramp is the explicit tier below the semantic titles — six slots at ≤65%
+The ramp is the explicit tier below the reserved accents — six slots at ≤65%
 saturation, gated in `internal/config/theme_defaults_test.go` for perceptual
-distance from each other, from the ten title colors, and from both alert row
-backgrounds — which keeps a chip subordinate to the title beside it by
+distance from each other, from the ten accent colors, and from both alert row
+backgrounds — which keeps a chip quieter than the badges beside it by
 construction rather than by convention.
 
 The ramp is a mnemonic, not a legend. A slot promises "this tag is reliably that
@@ -249,16 +255,16 @@ site knowing. A picker row is an offer rather than a label, so it previews the
 color it is about to paint, which makes a colored chip and a colored row one
 rule seen twice: a row wears the color of the strongest thing its tag does, and
 its chip color only when it changes no other color. So a `SEMANTIC` row takes
-`theme.SemanticTaskTitleStyle` and a
+the reserved accent `theme.SemanticTaskTitleStyle` and a
 behavioral project row its badge role, while the descriptive rows of both `#`
 editors and of `f#`, the tag rows the `#` picker's `CONTEXTS` section collects
 by context usage — `f#` reads a census with no context counts in it, so that
 section never appears there — the minted row an inline add mode produces, and
 the facet rows
 of `F#` fall back to `theme.TagChipStyle`. One tag can therefore wear two colors
-across surfaces — `#bug` is title red under `SEMANTIC` and its own slot color in
-Peek — so a document or test expecting a semantic picker row and its chip to
-agree is naming a contract that does not exist. Two rows stay plain
+across surfaces — `#bug` is the vocabulary's red under `SEMANTIC` and its own
+slot color as a chip — so a document or test expecting a semantic picker row and
+its chip to agree is naming a contract that does not exist. Two rows stay plain
 deliberately: the `##name` context radio rows, which write a field rather than
 name a tag and whose "No context" clear row would read as disabled in
 `MutedStyle`, and `F#`'s `Untagged` sentinel row, which names the empty tag set
@@ -272,10 +278,10 @@ then every semantic tag, also alphabetically. Storage keeps tags in insertion
 order, so this is what makes the tag set rather than the typing history decide
 what a row shows. It is a pure permutation, which keeps `RenderTruncatedTags`'
 `+N` overflow honest by construction and makes the row a strict prefix of the
-Peek line. Semantic tags are deprioritized, never excluded: the title color
-already carries that signal, so a row spends its two chips on what the title
-cannot say, but `RunOptions.DisableColor` only reaches `tea.WithEnvironment` and
-no renderer can detect it, so a task tagged only `bug` must still show `#bug`.
+Peek line. Semantic tags are deprioritized, never excluded: the six names are a vocabulary
+every task shares, so a row spends its two chips on the tags that cannot be
+guessed, and `RunOptions.DisableColor` only reaches `tea.WithEnvironment` where no
+renderer can detect it, so a task tagged only `bug` must still show `#bug`.
 
 `#` is bound to two descriptors, `tui.task.set-tags` and
 `tui.project.set-tags`, marked `SharedKey` on the input strategy. `*` pairs

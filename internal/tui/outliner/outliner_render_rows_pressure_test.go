@@ -92,7 +92,7 @@ func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
-	segments := outliner.renderTaskIndicatorSegments(row)
+	segments := outliner.renderTaskIndicatorSegments(row, time.Now())
 	if got := ansi.Strip(segments.doing); got != "doing 9d" {
 		t.Fatalf("rendered doing segment = %q, want %q", got, "doing 9d")
 	}

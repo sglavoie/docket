@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -46,7 +47,8 @@ func cursorHighlightOutlinerTheme(t *testing.T, themeName string, tasks ...*mode
 
 // TestCursorTaskRowKeepsEveryColorItEarned is the inverse of what SelectedLine
 // guarantees: the row under the cursor is the one row that must still say what
-// it is, so its chip, badge and priority title survive intact.
+// it is, so its chip and badges survive intact. Its title is the one thing that
+// was never earned — a title is neutral text on every row, cursor included.
 func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	task := &models.Task{
 		ID:            "t1",
@@ -62,16 +64,24 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	for name, want := range map[string]string{
-		"tag chip":    theme.TagChipStyle("infra").Render("#infra"),
-		"state badge": theme.GetStateBadge(models.StateDoing),
-		"title":       theme.GetTitlePriorityStyle(2).Render(task.Title),
+		"tag chip":       theme.TagChipStyle("infra").Render("#infra"),
+		"state badge":    theme.GetStateBadge(models.StateDoing),
+		"priority badge": chrome.RenderPriorityBadge(2),
 	} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("cursor row lost its %s:\n%q", name, line)
 		}
 	}
-	if strings.Contains(line, theme.SelectedTaskTitleStyle.Render(task.Title)) {
-		t.Fatalf("cursor row repainted its title with the selection style:\n%q", line)
+	if !strings.Contains(line, theme.NormalStyle.Render(task.Title)) {
+		t.Fatalf("cursor row did not render its title as ordinary text:\n%q", line)
+	}
+	for name, unwanted := range map[string]string{
+		"priority title color": theme.GetTitlePriorityStyle(2).Render(task.Title),
+		"selection style":      theme.SelectedTaskTitleStyle.Render(task.Title),
+	} {
+		if strings.Contains(line, unwanted) {
+			t.Fatalf("cursor row repainted its title with the %s:\n%q", name, line)
+		}
 	}
 }
 
@@ -87,7 +97,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	if len(positions) == 0 {
 		t.Fatal("fixture query matched nothing")
 	}
-	want := textfit.HighlightText(task.Title, positions, theme.GetTitlePriorityStyle(3))
+	want := textfit.HighlightText(task.Title, positions, theme.NormalStyle)
 	if !strings.Contains(line, want) {
 		t.Fatalf("cursor row dropped its search-match highlight:\n%q", line)
 	}
@@ -267,41 +277,69 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 }
 
 // TestCursorRowKeepsItsRowTint records the improvement the seam buys: the cursor
-// owns the bar and the fill, not the content, so a waiting or overdue row is
-// still visibly waiting or overdue while you stand on it.
+// owns the bar and the fill, not the content, so an overdue row is still visibly
+// overdue while you stand on it.
 func TestCursorRowKeepsItsRowTint(t *testing.T) {
 	overdue := time.Now().AddDate(0, 0, -3)
-	cases := map[string]struct {
-		task *models.Task
-		tint lipgloss.Style
-	}{
-		"waiting": {
-			task: &models.Task{
-				ID: "waiting", ShortID: 1, Title: "Blocked on review",
-				WorkflowState: models.StateWaiting, StateChangedAt: time.Now().AddDate(0, 0, -2),
-			},
-			tint: theme.WaitingRowStyle,
-		},
-		"overdue": {
-			task: &models.Task{
-				ID: "overdue", ShortID: 2, Title: "Past due", DueDate: &overdue,
-				WorkflowState: models.StateBacklog,
-			},
-			tint: theme.OverdueRowStyle,
-		},
+	task := &models.Task{
+		ID: "overdue", ShortID: 2, Title: "Past due", DueDate: &overdue,
+		WorkflowState: models.StateBacklog,
 	}
 
-	for name, tc := range cases {
-		outlinerView, project := cursorHighlightOutliner(t, tc.task)
-		row := outliner.OutlinerRow{Task: tc.task, ProjectID: project.ID}
-		line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
-		if !strings.Contains(line, backgroundParams(t, tc.tint.GetBackground())) {
-			t.Fatalf("%s cursor row dropped its row tint:\n%q", name, line)
+	if !strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
+		t.Fatalf("overdue cursor row dropped its row tint:\n%q", line)
+	}
+	if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
+		t.Fatalf("overdue cursor row dropped its bar:\n%q", line)
+	}
+}
+
+// TestWaitingRowWearsNoTint is the other half of that rule. A row tint is the
+// loudest mark the list has, so the overdue row above is the only row that earns
+// one: an ordinary Waiting task is the quietest work in the workspace and says
+// so through its badge and its `waiting <age>` segment alone.
+func TestWaitingRowWearsNoTint(t *testing.T) {
+	task := &models.Task{
+		ID: "waiting", ShortID: 1, Title: "Blocked on review",
+		WorkflowState: models.StateWaiting, StateChangedAt: time.Now().AddDate(0, 0, -2),
+	}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
+
+	for name, selected := range map[string]bool{"cursor": true, "ordinary": false} {
+		line := outlinerView.RenderOutlinerTaskRow(row, selected, 80, 80, 0, nil)
+		if strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
+			t.Fatalf("%s waiting row painted the overdue row tint:\n%q", name, line)
 		}
-		if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
-			t.Fatalf("%s cursor row dropped its bar:\n%q", name, line)
+		if !strings.Contains(line, theme.GetStateBadge(models.StateWaiting)) {
+			t.Fatalf("%s waiting row lost the badge that says it is waiting:\n%q", name, line)
 		}
+		if !strings.Contains(ansi.Strip(line), "waiting") {
+			t.Fatalf("%s waiting row named no waiting age:\n%q", name, ansi.Strip(line))
+		}
+	}
+}
+
+// TestWaitingRowKeepsTheOverdueTintItEarns holds the seam the other way: Waiting
+// no longer reinterprets a deadline, so a Waiting task that missed one is tinted
+// for the deadline exactly like any other task.
+func TestWaitingRowKeepsTheOverdueTintItEarns(t *testing.T) {
+	overdue := time.Now().AddDate(0, 0, -3)
+	task := &models.Task{
+		ID: "waiting-overdue", ShortID: 1, Title: "Blocked and late", DueDate: &overdue,
+		WorkflowState: models.StateWaiting, StateChangedAt: time.Now().AddDate(0, 0, -2),
+	}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
+
+	line := outlinerView.RenderOutlinerTaskRow(row, false, 80, 80, 0, nil)
+
+	if !strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
+		t.Fatalf("overdue waiting row dropped the tint its deadline earned:\n%q", line)
 	}
 }
 

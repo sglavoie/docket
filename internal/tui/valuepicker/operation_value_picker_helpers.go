@@ -165,7 +165,7 @@ func (model *OperationValuePickerModel) AddOrSelectTag(tag string) error {
 		item.SecondaryText = ""
 	}
 	// A minted tag the registry knows belongs in the semantic section, or it
-	// would sit under TAGS while it colors the title.
+	// would sit under TAGS while the registry publishes a meaning for it.
 	if entry, ok := models.SemanticTaskTagByName(tag); ok && semanticTaskTagProvider(model.provider) {
 		item = semanticTaskTagItem(tag, entry, 0)
 	}

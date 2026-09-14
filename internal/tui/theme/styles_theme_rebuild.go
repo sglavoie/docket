@@ -38,10 +38,8 @@ func rebuildTaskStyles() {
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
 	if ActiveThemeName == "light" {
-		WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fde8e8"))
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fef3e2"))
 	} else {
-		WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2e1515"))
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
 	}
 

@@ -526,7 +526,21 @@ the same normalization so an unmintable persisted set fails closed.
 
 `models.BehavioralProjectTags` and `models.SemanticTaskTags` are effect-free
 metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
-`bug` > `question` > `epic` > `story` > `feature` > `idea` only colors titles.
+`bug` > `question` > `epic` > `story` > `feature` > `idea` only orders the
+`SEMANTIC` picker rows, the one consumer of the accent
+`theme.SemanticTaskTitleStyle`, whose `...Title` palette keys are historical
+names. No renderer resolves several semantic tags to one; each reaches a row as
+its own chip.
+
+A task title is neutral text: priority, a deadline, an owed review, a pin, and a
+semantic tag each reach the row through their own badge, chip, or segment and
+never through the title. `theme.TaskTitleStyleFor` is that one authority and
+answers lifecycle alone — muted, canceled, cursor-selected.
+`chrome.PickHeroAttribute` is the attention ladder — overdue, review over
+`models.TaskNeedsAttention`, due today, then priority 1 — and it demotes one
+badge, never a title. A state badge is identity, so it is neither hero nor
+demoted and an ordinary Waiting row stays quiet; `theme.OverdueRowStyle` is the
+one row tint.
 
 `theme.TagChipStyle` is the single tag color authority under those titles, on
 the ≤65% ramp tier, and `OrderedTaskTags` the single chip order; a slot is a

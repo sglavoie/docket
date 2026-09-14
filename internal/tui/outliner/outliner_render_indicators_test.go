@@ -83,7 +83,7 @@ func TestRepeatedDeferralSurfacesIgnoreHiddenDeferColumn(t *testing.T) {
 		{count: repeatedDeferralThreshold, want: "deferred ×3"},
 	} {
 		task := &models.Task{DeferCount: tc.count, DeferredUntil: &pending}
-		segments := outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task})
+		segments := outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task}, time.Now())
 		if segments.deferred != "" {
 			t.Fatalf("count %d hidden defer column rendered defer date %q", tc.count, ansi.Strip(segments.deferred))
 		}

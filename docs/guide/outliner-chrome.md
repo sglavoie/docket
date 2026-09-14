@@ -147,10 +147,10 @@ bright column at the far left says where the cursor is, and the empty columns
 past the row's text carry a dim recess saying how far the row reaches. Nothing
 between them changes: the multi-select box, the tree connectors and the fold
 arrow keep the colors they wear on every other row, and so do the state badge,
-the priority-colored title, the tag chips, the due tier, the project badge and
-the search-match highlight — all of which read the same under the cursor as
-beside it, leaving a waiting or overdue row visibly waiting or overdue while you
-stand on it. The bar is the row's leftmost column on every row type: a blank
+the priority badge, the tag chips, the due tier, the project badge and the
+search-match highlight — all of which read the same under the cursor as beside
+it, leaving an overdue row visibly overdue while you stand on it. The bar is the
+row's leftmost column on every row type: a blank
 margin, except on a section header, where it reverses the fold arrow. A cursor
 flash floods the whole gutter rather than changing the bar's color, so a pulse
 reads as more of the same mark. Every other list — the pickers, the tag and
@@ -168,11 +168,11 @@ A row inside `#`, `f#`, or `F#` is an offer rather than a label, so it shows you
 the color it is about to paint. Most of those rows paint nothing else and simply
 wear their own chip: the descriptive tag rows, and the tag rows that `#` collects
 under `CONTEXTS` because the same value is also in use as a context. A tag that does
-something louder shows that instead — a row under `SEMANTIC` wears the title
-color it applies, and a
-`parked` project row wears the warning badge it hangs on the project. So the
-same tag can read as one color in a picker and another as a chip; when they
-disagree, the picker is naming the effect. Two rows stay plain on purpose: the
+something louder shows that instead — a row under `SEMANTIC` wears the color the
+six-name vocabulary reserves for it, and a `parked` project row wears the warning
+badge it hangs on the project. So the same tag can read as one color in a picker
+and another as a chip; when they disagree, the picker is naming what the row is
+about rather than repainting the chip. Two rows stay plain on purpose: the
 `##name` radio rows in `#`, which set a field rather than name a tag, and `F#`'s
 `Untagged` row, which names the projects carrying no tag at all. `fc`'s rows are
 plain for the same reason: a context is a field, not a chip. A Select
@@ -182,16 +182,17 @@ share the one secondary line that carries the counts beside them.
 Read a chip color as a mnemonic, not a legend. It tells you `#billing` is
 reliably that one color; it never tells you what that color means. Six chip
 colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
-share one, and nothing in `tt` ever decides anything from a chip color. The
-colors that do carry meaning stay louder than the chips: a `bug`, `question`,
-`epic`, `story`, `feature`, or `idea` tag colors the whole title, and a chip
-never overrides the title beside it.
+share one, and nothing in `tt` ever decides anything from a chip color. A `bug`,
+`question`, `epic`, `story`, `feature`, or `idea` tag is a tag like any other on
+a row: it wears its chip and nothing else. The task title stays ordinary text
+whatever a task is tagged, how urgent it is, or when it is due.
 
 A row shows at most two chips, and it chooses them instead of showing the first
 two you typed: descriptive tags come first in alphabetical order, then the
 semantic ones, with a `+N` counting whatever did not fit. A task tagged `ux`,
-`bug`, and `billing` reads `#billing #ux +1` however you typed it, because the
-red title has already said `bug`. Peek names the whole set in the same order and
+`bug`, and `billing` reads `#billing #ux +1` however you typed it: the six
+semantic names are a vocabulary every task shares, so the two row slots go to
+the tags you cannot guess. Peek names the whole set in the same order and
 the same colors, so a row is always the beginning of its own Peek line. A task
-carrying nothing but semantic tags still shows them, because under `--no-color`
-the chip is the only channel left.
+carrying nothing but semantic tags still shows them, because the chip is the
+only place its row says so.

@@ -3,110 +3,97 @@ package theme
 import (
 	"image/color"
 	"testing"
-	"time"
 
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
+// TestSemanticTaskTitleStyleResolvesOneRoleAtATime holds what the accent is now
+// for: one member of the closed six-name vocabulary, resolved by role. It takes
+// a role rather than a task's tag list because no task title wears one — the
+// `SEMANTIC` picker rows are its one consumer, and a row names exactly one tag.
+func TestSemanticTaskTitleStyleResolvesOneRoleAtATime(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: "dark"})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 	tests := []struct {
-		name string
-		tags []string
+		role models.SemanticTaskTagRole
 		want color.Color
 	}{
-		{name: "bug", tags: []string{"BUG"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
-		{name: "question", tags: []string{"QuEsTiOn"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
-		{name: "epic", tags: []string{"EPIC"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
-		{name: "story", tags: []string{"Story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
-		{name: "feature", tags: []string{"Feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
-		{name: "idea", tags: []string{"iDeA"}, want: lipgloss.Color(defaultColorSemanticIdeaTitle)},
-		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
-		{name: "question precedence", tags: []string{"idea", "feature", "story", "epic", "question"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
-		{name: "epic precedence", tags: []string{"idea", "feature", "story", "epic"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
-		{name: "story precedence", tags: []string{"idea", "feature", "story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
-		{name: "feature precedence", tags: []string{"idea", "feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
+		{models.SemanticTaskTagBug, lipgloss.Color(defaultColorSemanticBugTitle)},
+		{models.SemanticTaskTagQuestion, lipgloss.Color(defaultColorSemanticQuestionTitle)},
+		{models.SemanticTaskTagEpic, lipgloss.Color(defaultColorSemanticEpicTitle)},
+		{models.SemanticTaskTagStory, lipgloss.Color(defaultColorSemanticStoryTitle)},
+		{models.SemanticTaskTagFeature, lipgloss.Color(defaultColorSemanticFeatureTitle)},
+		{models.SemanticTaskTagIdea, lipgloss.Color(defaultColorSemanticIdeaTitle)},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityMedium, Tags: tt.tags}
-			if got := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).GetForeground(); got != tt.want {
-				t.Fatalf("foreground = %v, want %v", got, tt.want)
-			}
-		})
+		if got := SemanticTaskTitleStyle(tt.role, 0, false, false).GetForeground(); got != tt.want {
+			t.Errorf("role %v foreground = %v, want %v", tt.role, got, tt.want)
+		}
+	}
+
+	// The absent role adds no color of its own, so a non-semantic row reads as the
+	// list's ordinary text rather than as a seventh member.
+	if got := SemanticTaskTitleStyle(models.SemanticTaskTagNone, 0, false, false); got.GetForeground() != NormalStyle.GetForeground() {
+		t.Errorf("SemanticTaskTagNone foreground = %v, want the ordinary %v", got.GetForeground(), NormalStyle.GetForeground())
 	}
 }
 
-func TestIdeaTagColorsOtherwiseUncoloredTaskTitles(t *testing.T) {
+// TestTaskTitleStyleForIgnoresSemanticTags is the rule the accent no longer
+// reaches. A semantic tag says what kind of work a task is, which the chip
+// beside the title carries; the title itself stays ordinary text whatever the
+// tag list holds, in every theme.
+func TestTaskTitleStyleForIgnoresSemanticTags(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
 			ApplyTheme(ThemeConfig{Name: themeName})
 			t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
-			plain := &models.Task{WorkflowState: models.StateBacklog}
-			idea := &models.Task{WorkflowState: models.StateBacklog, Tags: []string{"idea"}}
-			plainForeground := TaskTitleStyleFor(plain, TaskTitleStyleOptions{}).GetForeground()
-			ideaForeground := TaskTitleStyleFor(idea, TaskTitleStyleOptions{}).GetForeground()
-			if ideaForeground == plainForeground {
-				t.Fatalf("idea foreground = ordinary task foreground %v", plainForeground)
+			plain := TaskTitleStyleFor(&models.Task{WorkflowState: models.StateBacklog}, TaskTitleStyleOptions{})
+			for _, tags := range [][]string{
+				{"bug"}, {"QuEsTiOn"}, {"epic"}, {"Story"}, {"feature"}, {"iDeA"},
+				{"idea", "feature", "story", "epic", "question", "bug"},
+				{"type:bug"}, {"bugfix"}, {" idea "},
+			} {
+				task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, Tags: tags}
+				assertStylesEqual(t, TaskTitleStyleFor(task, TaskTitleStyleOptions{}), plain)
 			}
 		})
 	}
 }
 
-func TestSemanticTagTitleStylesIgnoreFormerMarkersAndPartialMatches(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: "dark"})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
-
-	for _, tags := range [][]string{
-		{"type:bug"}, {"type:epic"}, {"storytelling"}, {"bugfix"}, {"feature:ui"}, {" idea "}, {" epic "},
-	} {
-		task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, Tags: tags}
-		got := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
-		assertStylesEqual(t, got, GetTitlePriorityStyle(models.PriorityHigh))
+// TestSemanticTaskTitleStyleCoversThemeSelectedAndDeferredVariants keeps every
+// palette entry the vocabulary publishes under test. The accent is a published
+// surface: a picker row can be focused or point at deferred work, so all three
+// variants stay reachable in both themes.
+func TestSemanticTaskTitleStyleCoversThemeSelectedAndDeferredVariants(t *testing.T) {
+	type roleColors struct {
+		role     models.SemanticTaskTagRole
+		base     string
+		selected string
+		deferred string
 	}
-}
-
-func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.T) {
-	tomorrow := time.Now().AddDate(0, 0, 1)
 	themes := []struct {
 		name  string
-		roles []struct {
-			tag      string
-			base     string
-			selected string
-			deferred string
-		}
+		roles []roleColors
 	}{
-		{name: "dark", roles: []struct {
-			tag      string
-			base     string
-			selected string
-			deferred string
-		}{
-			{tag: "bug", base: "#ff4f58", selected: "#ff9ea3", deferred: "#c47074"},
-			{tag: "question", base: "#f57a00", selected: "#ffa366", deferred: "#d66e29"},
-			{tag: "epic", base: "#e17bff", selected: "#eeb6ff", deferred: "#b16fc4"},
-			{tag: "story", base: "#3fc5ff", selected: "#95dfff", deferred: "#4891b0"},
-			{tag: "feature", base: "#35d67f", selected: "#90e8b9", deferred: "#549572"},
-			{tag: "idea", base: "#ffd23f", selected: "#ffe695", deferred: "#9c8740"},
+		{name: "dark", roles: []roleColors{
+			{role: models.SemanticTaskTagBug, base: "#ff4f58", selected: "#ff9ea3", deferred: "#c47074"},
+			{role: models.SemanticTaskTagQuestion, base: "#f57a00", selected: "#ffa366", deferred: "#d66e29"},
+			{role: models.SemanticTaskTagEpic, base: "#e17bff", selected: "#eeb6ff", deferred: "#b16fc4"},
+			{role: models.SemanticTaskTagStory, base: "#3fc5ff", selected: "#95dfff", deferred: "#4891b0"},
+			{role: models.SemanticTaskTagFeature, base: "#35d67f", selected: "#90e8b9", deferred: "#549572"},
+			{role: models.SemanticTaskTagIdea, base: "#ffd23f", selected: "#ffe695", deferred: "#9c8740"},
 		}},
-		{name: "light", roles: []struct {
-			tag      string
-			base     string
-			selected string
-			deferred string
-		}{
-			{tag: "bug", base: "#cc2222", selected: "#8f1818", deferred: "#b06c6c"},
-			{tag: "question", base: "#c25a00", selected: "#5d3228", deferred: "#c76c38"},
-			{tag: "epic", base: "#9d1fb8", selected: "#6e1681", deferred: "#a26aaf"},
-			{tag: "story", base: "#0b6ba8", selected: "#084b76", deferred: "#4d84a7"},
-			{tag: "feature", base: "#067a3f", selected: "#04552c", deferred: "#3f8d66"},
-			{tag: "idea", base: "#8f6b00", selected: "#644b00", deferred: "#927d3c"},
+		{name: "light", roles: []roleColors{
+			{role: models.SemanticTaskTagBug, base: "#cc2222", selected: "#8f1818", deferred: "#b06c6c"},
+			{role: models.SemanticTaskTagQuestion, base: "#c25a00", selected: "#5d3228", deferred: "#c76c38"},
+			{role: models.SemanticTaskTagEpic, base: "#9d1fb8", selected: "#6e1681", deferred: "#a26aaf"},
+			{role: models.SemanticTaskTagStory, base: "#0b6ba8", selected: "#084b76", deferred: "#4d84a7"},
+			{role: models.SemanticTaskTagFeature, base: "#067a3f", selected: "#04552c", deferred: "#3f8d66"},
+			{role: models.SemanticTaskTagIdea, base: "#8f6b00", selected: "#644b00", deferred: "#927d3c"},
 		}},
 	}
 	for _, variant := range themes {
@@ -115,21 +102,17 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 			t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 			for _, role := range variant.roles {
-				t.Run(role.tag, func(t *testing.T) {
-					base := &models.Task{WorkflowState: models.StateBacklog, Tags: []string{role.tag}}
-					if got := TaskTitleStyleFor(base, TaskTitleStyleOptions{}).GetForeground(); got != lipgloss.Color(role.base) {
-						t.Errorf("base foreground = %v, want %s", got, role.base)
-					}
-					selected := TaskTitleStyleFor(base, TaskTitleStyleOptions{CursorSelected: true})
-					if got := selected.GetForeground(); got != lipgloss.Color(role.selected) || !selected.GetBold() {
-						t.Errorf("selected style foreground/bold = %v/%v, want %s/true", got, selected.GetBold(), role.selected)
-					}
-					base.DeferredUntil = &tomorrow
-					deferred := TaskTitleStyleFor(base, TaskTitleStyleOptions{})
-					if got := deferred.GetForeground(); got != lipgloss.Color(role.deferred) || !deferred.GetFaint() {
-						t.Errorf("deferred style foreground/faint = %v/%v, want %s/true", got, deferred.GetFaint(), role.deferred)
-					}
-				})
+				if got := SemanticTaskTitleStyle(role.role, 0, false, false).GetForeground(); got != lipgloss.Color(role.base) {
+					t.Errorf("role %v base foreground = %v, want %s", role.role, got, role.base)
+				}
+				selected := SemanticTaskTitleStyle(role.role, 0, true, false)
+				if got := selected.GetForeground(); got != lipgloss.Color(role.selected) || !selected.GetBold() {
+					t.Errorf("role %v selected foreground/bold = %v/%v, want %s/true", role.role, got, selected.GetBold(), role.selected)
+				}
+				deferred := SemanticTaskTitleStyle(role.role, 0, false, true)
+				if got := deferred.GetForeground(); got != lipgloss.Color(role.deferred) || !deferred.GetFaint() {
+					t.Errorf("role %v deferred foreground/faint = %v/%v, want %s/true", role.role, got, deferred.GetFaint(), role.deferred)
+				}
 			}
 		})
 	}
