@@ -450,12 +450,15 @@ func TestProjectPeekIsReservedByTheViewport(t *testing.T) {
 			plain := outliner.ComputeOutlinerViewport(80, 0).VisibleRows
 			outliner.PeekMode = true
 			peeked := outliner.ComputeOutlinerViewport(80, 0).VisibleRows
-			drawn := outliner.inlinePeekLineCount(header, 79)
-			if drawn == 0 {
-				t.Fatal("the header drew no Peek to reserve")
+			drawn := len(outliner.PeekDockLines())
+			if drawn != PeekDockRows {
+				t.Fatalf("the header's dock drew %d rows, want %d", drawn, PeekDockRows)
 			}
-			if got := plain - peeked; got != drawn+1 {
-				t.Fatalf("reserved %d rows for a %d-row Peek, want %d", got, drawn, drawn+1)
+			if len(outliner.PeekDocumentBodyForRow(header)) == 0 {
+				t.Fatal("the header owns no document for the dock to draw")
+			}
+			if got := plain - peeked; got != PeekDockRows+1 {
+				t.Fatalf("reserved %d rows for the dock, want %d", got, PeekDockRows+1)
 			}
 
 			// The whole frame still fits, which is what the reservation buys.
@@ -520,12 +523,10 @@ func TestProjectPeekKeepsOneMeasurementAndOneRender(t *testing.T) {
 				label := fmt.Sprintf("%s scope=%q %dx%d", themeName, scope, size.width, size.height)
 				outliner := projectPeekOutliner(t, scope, size.width, size.height,
 					peekCommentedProject("alpha"), peekCommentedProject("beta"))
-				row := outliner.Rows[outliner.Cursor]
-
 				for step := 0; ; step++ {
-					width := outliner.peekRenderWidth()
-					drawn := outliner.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width)
-					if got := outliner.inlinePeekLineCount(row, size.width-1); got != len(drawn) {
+					width := size.width
+					drawn := outliner.PeekDockLines()
+					if got := outliner.peekDockHeight(); got != len(drawn) {
 						t.Fatalf("%s step %d measured %d rows and drew %d", label, step, got, len(drawn))
 					}
 					for number, line := range drawn {

@@ -45,7 +45,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 		t.Run(strconv.Itoa(width), func(t *testing.T) {
 			segments := outliner.buildTaskRowSegments(row, width, nil, cursorPaint{})
 			indicators := ansi.Strip(segments.indicators)
-			plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, width, 0, nil))
+			plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, 0, nil))
 			if got := lipgloss.Width(plain); got > width {
 				t.Fatalf("%d-column row assembled %d columns: %q", width, got, plain)
 			}
@@ -101,7 +101,7 @@ func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
 		t.Fatal("Doing task with a due date omitted its due segment")
 	}
 
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 60, 60, 0, nil))
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 60, 0, nil))
 	for _, want := range []string{"Ship the migration safely", "doing 9d", ansi.Strip(query.FormatDueDate(task))} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("60-column Doing row missing %q: %q", want, plain)
@@ -128,7 +128,7 @@ func TestWaitingRowKeepsDeadlineIndependentFromCheckIn(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	for _, want := range []string{"waiting 6d", "review +2d", ansi.Strip(query.FormatDueDate(task))} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("waiting row missing %q: %q", want, plain)
@@ -156,14 +156,14 @@ func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
-	wide := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	wide := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	for _, want := range []string{"review +2d", ansi.Strip(query.FormatDueDate(task)), "waiting 6d", "1/2", "▪ 2", "⊕ 1"} {
 		if !strings.Contains(wide, want) {
 			t.Fatalf("wide row missing %q: %q", want, wide)
 		}
 	}
 
-	narrow := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 30, 30, 0, nil))
+	narrow := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 30, 0, nil))
 	if !strings.Contains(narrow, "Blocke") {
 		t.Fatalf("narrow row let indicators eat the title: %q", narrow)
 	}

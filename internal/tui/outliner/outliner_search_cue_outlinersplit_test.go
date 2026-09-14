@@ -18,7 +18,7 @@ func cueRowLine(t *testing.T, source MatchSource, width int) string {
 	task := cueTask()
 	outliner, project := cursorHighlightOutliner(t, task)
 	row := OutlinerRow{Task: task, ProjectID: project.ID, MatchSource: source}
-	return ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, width, 0, nil))
+	return ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, 0, nil))
 }
 
 // TestSearchCueNamesEveryNonTitleSource is the cue vocabulary itself: one word
@@ -75,7 +75,7 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 		if len(outliner.Rows) == 0 || outliner.Rows[0].Task != task {
 			t.Fatalf("search rows = %v, want the seeded task", searchVisibleTaskIDs(outliner))
 		}
-		return ansi.Strip(outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 120, 0, nil))
+		return ansi.Strip(outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 0, nil))
 	}
 
 	searchRankedList(outliner, "zeppelin")
@@ -93,7 +93,7 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
-		if plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, index, nil)); strings.Contains(plain, "·") {
+		if plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil)); strings.Contains(plain, "·") {
 			t.Fatalf("restored row wore a cue: %q", plain)
 		}
 	}
@@ -112,7 +112,7 @@ func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 			cue := theme.MutedStyle.Render("  · comment")
 
 			for _, selected := range []bool{false, true} {
-				line := outliner.RenderOutlinerTaskRow(row, selected, 80, 80, 0, nil)
+				line := outliner.RenderOutlinerTaskRow(row, selected, 80, 0, nil)
 				if !strings.Contains(line, cue) {
 					t.Fatalf("selected=%v row lost its muted cue:\n%q", selected, line)
 				}
@@ -153,7 +153,7 @@ func TestSearchCueIsChargedOnceAtEveryWidth(t *testing.T) {
 
 		for _, width := range []int{8, 12, 20, 30, 40, 60, 80, 120} {
 			for _, selected := range []bool{false, true} {
-				line := outliner.RenderOutlinerTaskRow(row, selected, width, width, 0, nil)
+				line := outliner.RenderOutlinerTaskRow(row, selected, width, 0, nil)
 				got := lipgloss.Width(line)
 				if selected && got != width {
 					t.Fatalf("%q cursor row at width %d rendered %d columns", title, width, got)

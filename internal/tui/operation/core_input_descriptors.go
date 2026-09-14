@@ -55,6 +55,21 @@ func CommandContextNamesPeekTarget(ctx CommandContext) bool {
 	return CurrentTaskIdentity(ctx).Valid() || ctx.Entity.HasProjectHeaderCursor
 }
 
+// CommandContextSatisfiesPeekRequirement is what those five keys actually need,
+// and it is the toggle that differs: closing an open dock names nothing, because
+// the dock is the frame's rather than the row's. So Peek answers on any row
+// while one is on screen — a reader who opened the dock and then moved onto a
+// section header still has one key to close it with — while opening it, and
+// every scrolling key, still needs a row whose detail Peek can draw. Both the
+// descriptor's applicability and the delegated handler's refusal ask here, so
+// the key that is offered stays the key that acts.
+func CommandContextSatisfiesPeekRequirement(id OperationID, ctx CommandContext) bool {
+	if id == OperationCorePeek && ctx.Peek.Visible {
+		return true
+	}
+	return CommandContextNamesPeekTarget(ctx)
+}
+
 // openProjectApplicability is Enter's project branch: it answers on a project
 // group header and on nothing else, which it establishes by ruling out every
 // other row kind Enter can land on. The focused-project header is one of those:
@@ -121,8 +136,16 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"project preview",
 	))
 	peek.Applicability = func(ctx CommandContext) bool {
-		return CoreOutlinerApplicability(ctx) &&
-			!ctx.Selection.Visual &&
+		if !CoreOutlinerApplicability(ctx) {
+			return false
+		}
+		// An open dock closes from wherever the cursor is. The selection and
+		// checklist exclusions are the opening ones: entering a selection closes the
+		// dock, so a visual selection never reaches the first branch.
+		if ctx.Peek.Visible {
+			return true
+		}
+		return !ctx.Selection.Visual &&
 			!ctx.Entity.HasChecklistCursor &&
 			CommandContextNamesPeekTarget(ctx)
 	}

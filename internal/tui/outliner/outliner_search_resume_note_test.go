@@ -141,7 +141,7 @@ func TestResumeNoteSearchAttributionFollowsEveryRebuild(t *testing.T) {
 		if len(outliner.Rows) == 0 || outliner.Rows[0].Task != noted {
 			t.Fatalf("search rows = %v, want the noted task", searchVisibleTaskIDs(outliner))
 		}
-		return ansi.Strip(outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 120, 0, nil))
+		return ansi.Strip(outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 0, nil))
 	}
 
 	// Nothing matches until the note carries the term.
@@ -187,7 +187,7 @@ func TestResumeNoteSearchAttributionFollowsEveryRebuild(t *testing.T) {
 		if row.MatchSource != MatchSourceNone {
 			t.Fatalf("restored row carried source %d, want none", row.MatchSource)
 		}
-		plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, index, nil))
+		plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
 		if strings.Contains(plain, "· resume") {
 			t.Fatalf("restored row wore the resume cue: %q", plain)
 		}

@@ -34,10 +34,10 @@ func TestDependencyIsolationPresentationIsStateIndependent(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture produced no row for the referring task")
 	}
-	withRefs := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	withRefs := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	stored := row.Task.Dependencies
 	row.Task.Dependencies = nil
-	withoutRefs := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	withoutRefs := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	row.Task.Dependencies = stored
 	if !strings.Contains(withRefs, "~0/2") {
 		t.Fatalf("row omitted the reference count: %q", withRefs)

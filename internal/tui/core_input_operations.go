@@ -85,9 +85,11 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	// Peek's five keys read a task or a project header, so they refuse on the rows
 	// that name neither — a section header, a note, a checklist item — for the same
 	// reason the task keys refuse on a header: a delegated binding bypasses target
-	// resolution, and an unmet requirement would otherwise be a silent no-op.
+	// resolution, and an unmet requirement would otherwise be a silent no-op. The
+	// toggle over an open dock is the one exception, and the requirement predicate
+	// owns it rather than a second branch here.
 	if operation.CoreInputOperationRequiresPeekTarget(invocation.Descriptor.ID) &&
-		!operation.CommandContextNamesPeekTarget(invocation.Context) {
+		!operation.CommandContextSatisfiesPeekRequirement(invocation.Descriptor.ID, invocation.Context) {
 		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
 	}
 

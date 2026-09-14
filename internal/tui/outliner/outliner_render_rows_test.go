@@ -48,7 +48,7 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
 	}
 
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 24, 24, 0, nil))
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 24, 0, nil))
 	if !strings.Contains(plain, "[abcde…]") {
 		t.Fatalf("narrow row dropped its reserved context badge: %q", plain)
 	}
@@ -142,7 +142,7 @@ func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 				name     string
 				selected bool
 			}{{"resting", false}, {"cursor", true}} {
-				line := outliner.RenderOutlinerTaskRow(row, variant.selected, 120, 120, 0, nil)
+				line := outliner.RenderOutlinerTaskRow(row, variant.selected, 120, 0, nil)
 				if !strings.Contains(line, chip) {
 					t.Errorf("%s row lost its due chip: %q", variant.name, line)
 				}
@@ -173,7 +173,7 @@ func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
 			continue
 		}
 
-		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, index, nil))
+		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
 		if strings.Contains(line, "["+row.ProjectID+"]") {
 			t.Errorf("task row %q repeated project badge in %q", row.Task.ID, line)
 		}
@@ -198,7 +198,7 @@ func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	for _, want := range []string{"▪ 2", "⊕ 1"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("task row missing %q: %q", want, plain)
@@ -217,7 +217,7 @@ func TestOutlinerTaskRowShowsSemanticTitleWithoutMarkerPrefix(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 120, 0, nil))
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
 	for _, want := range []string{"Fix capture grammar", "#bug", "#composer"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("task row missing %q: %q", want, plain)
@@ -235,7 +235,7 @@ func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
 
 	promoted := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: task, Breadcrumb: "Parent ›",
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if !strings.Contains(promoted, "Child  ‹") {
 		t.Fatalf("promoted task row omitted ancestor marker: %q", promoted)
 	}
@@ -245,7 +245,7 @@ func TestOutlinerTaskRowShowsAncestorMarkerOnlyForPromotedRoot(t *testing.T) {
 
 	nested := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: task, Prefix: connectorSpace + connectorLastItem,
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if strings.Contains(nested, "‹") {
 		t.Fatalf("nested task row retained ancestor marker: %q", nested)
 	}
@@ -272,14 +272,14 @@ func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
 
 	detached := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: parent,
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if !strings.Contains(detached, "Parent  ›2") {
 		t.Fatalf("detached parent row omitted the child count: %q", detached)
 	}
 
 	combined := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: tasks[1], Breadcrumb: "Parent ›",
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if !strings.Contains(combined, "open-a  ‹") {
 		t.Fatalf("promoted child row omitted the ancestor marker: %q", combined)
 	}
@@ -289,7 +289,7 @@ func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
 
 	rendered := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: parent, HasVisibleChildren: true,
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if strings.Contains(rendered, "›") {
 		t.Fatalf("row showing its children restated parenthood: %q", rendered)
 	}
@@ -300,7 +300,7 @@ func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
 	closedProject := renderFixtureProject(t, "closed", "closed", "Closed", []*models.Task{terminal, closedChild})
 	closedOutliner := NewOutlinerModel(closedProject, nil, newTestConfig())
 	closedOutliner.openChildCounts = query.OpenChildCounts([]*models.Project{closedProject})
-	quiet := ansi.Strip(closedOutliner.RenderOutlinerTaskRow(OutlinerRow{Task: terminal}, false, 120, 120, 0, nil))
+	quiet := ansi.Strip(closedOutliner.RenderOutlinerTaskRow(OutlinerRow{Task: terminal}, false, 120, 0, nil))
 	if strings.Contains(quiet, "›") {
 		t.Fatalf("parent with only terminal children carried a marker: %q", quiet)
 	}
@@ -322,7 +322,7 @@ func TestOutlinerTaskRowCombinesBothRelationDirections(t *testing.T) {
 
 	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: tasks[1], Breadcrumb: "Root ›",
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if !strings.Contains(plain, "Mid  ‹›1") {
 		t.Fatalf("row missing the combined relation marker: %q", plain)
 	}
@@ -343,7 +343,7 @@ func TestOutlinerTaskRowKeepsTheAncestorMarkerOnACrowdedRow(t *testing.T) {
 	for _, width := range []int{60, 72, 100} {
 		plain := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 			Task: task, Breadcrumb: "Grandparent › Parent ›",
-		}, false, width, width, 0, nil))
+		}, false, width, 0, nil))
 		if !strings.Contains(plain, "…  ‹") {
 			t.Fatalf("width %d dropped the marker from a clipped title: %q", width, plain)
 		}
@@ -368,7 +368,7 @@ func TestPinnedMarkerNamesAPinOutsideThePinnedLane(t *testing.T) {
 
 	elsewhere := OutlinerRow{Task: task, ProjectID: project.ID}
 	for _, width := range []int{120, 24} {
-		plain := ansi.Strip(outliner.RenderOutlinerTaskRow(elsewhere, false, width, width, 0, nil))
+		plain := ansi.Strip(outliner.RenderOutlinerTaskRow(elsewhere, false, width, 0, nil))
 		if !strings.Contains(plain, "* Pinne") {
 			t.Fatalf("width %d dropped the pin marker: %q", width, plain)
 		}
@@ -379,7 +379,7 @@ func TestPinnedMarkerNamesAPinOutsideThePinnedLane(t *testing.T) {
 
 	lane := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: task, ProjectID: project.ID, IsPinnedSection: true,
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if strings.Contains(lane, "* Pinned work") {
 		t.Fatalf("Pinned lane row restated its own section header: %q", lane)
 	}
@@ -387,7 +387,7 @@ func TestPinnedMarkerNamesAPinOutsideThePinnedLane(t *testing.T) {
 	unpinned := &models.Task{ID: "plain", Title: "Plain work", WorkflowState: models.StateInbox}
 	quiet := ansi.Strip(outliner.RenderOutlinerTaskRow(OutlinerRow{
 		Task: unpinned, ProjectID: project.ID,
-	}, false, 120, 120, 0, nil))
+	}, false, 120, 0, nil))
 	if strings.Contains(quiet, "*") {
 		t.Fatalf("unpinned row wore the marker: %q", quiet)
 	}

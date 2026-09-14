@@ -288,8 +288,8 @@ section zoom, then the existing project/base escape behavior. The zoom narrows
 one mode, so it unwinds after the Focus stacks and before the project scope that
 owns the mode.
 
-`b` toggles a session-only, project-qualified Peek below the cursor
-row. Peek follows cursor, mode, and scope navigation. `rowSupportsPeek` is the
+`b` toggles a session-only, project-qualified Peek in a dock below the list.
+Peek follows cursor, mode, and scope navigation. `rowSupportsPeek` is the
 one answer to which rows own a document — task rows and project headers — and the
 render, the measurement, the offset key, and the four scrolling keys all ask
 there, so none of them can admit a row another one refuses. A task Peek names the
@@ -306,15 +306,31 @@ descriptors are wrapped in `!CommandContextNamesNonTaskEntity`:
 `CoreInputOperationRequiresPeekTarget` and `CommandContextNamesPeekTarget` are
 their sibling requirement instead, so a section, note, or checklist row refuses
 by name rather than leaving the key silently dead.
+`CommandContextSatisfiesPeekRequirement` is the one exception and the one place
+it is spelled, shared by the descriptor's applicability and the delegated
+handler's gate: an open dock admits `b` on any row, because the row that opened
+the dock is not necessarily the row the user closes it from, and a key that
+refused there would leave the pane unclosable without moving the cursor.
 
-The five-line budget is a bound on what is visible, not on what Peek holds,
-because `ComputeOutlinerViewport` subtracts the Peek height plus a guard row from
-an already-tight one. `inlinePeekDocument` is that split: `Body` is every detail
-row the task has, wrapped to the pane and complete, and `inlinePeekBodyRows` (5)
+The dock is a fixed block below the list, not a pane attached to a row.
+`PeekDockRows` (7) is one divider plus `inlinePeekWindowRows`, and
+`ComputeOutlinerViewport` subtracts exactly that plus a guard row whenever
+`PeekDockVisible()`, reading no cursor and no document: what the cursor rests on
+decides what the dock says, never how tall it is, so moving between a one-line
+task and a forty-line one leaves every list row where it was. That constant is
+what the old row-attached pane could not offer, since its height was the cursor
+document's height and every cursor move re-laid-out the list under it.
+
+The five-line budget is therefore a bound on what is visible, not on what Peek
+holds. `inlinePeekDocument` is that split: `Body` is every detail row the task
+has, wrapped to the dock's own width and complete, and `inlinePeekBodyRows` (5)
 decides only how many of them are on screen at a time. `Lines(offset)` is the one
-way to either, so the height the viewport reserves and the height the renderer
-draws are the same number by construction rather than by two agreeing
-calculations.
+way to either and always returns `inlinePeekWindowRows`, padding a short document
+with blank rows rather than shrinking, so the height the viewport reserves and
+the height the renderer draws are the same number by construction rather than by
+two agreeing calculations. A row that owns no document keeps the dock at that
+height too: `peekDockPlaceholderDocument` is one body line saying so, built
+through the same type, so the refusal costs the list nothing and moves nothing.
 
 Body order is the whole title, the ancestor chain, the status line, the dates
 line, resume, description, the checklist count, attachment names, the comment
@@ -357,15 +373,18 @@ the reference lists and hands it in through `inlinePeekOptions.Planning`.
 
 The window is a content-row offset rather than a page ordinal, which is what lets
 two step sizes share one model: `Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`
-(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (3), and `scrollPeek`
-clamps whatever they add. Three of a paged document's four content rows is a full
-page carrying one row across the boundary, so a wrapped sentence is never split
-between two keystrokes with nothing in common; the half step keeps two. Neither
-lands on a boundary the document imposed, so mixing them reaches every line.
-`ClampOffset` pins the last window to the end of the body, so it is full rather
-than short, and a paged document reserves one of its five rows for the counter,
-which names how many body rows sit above and below the window; an unpaged one
-spends the whole budget on content.
+(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (4), and `scrollPeek`
+clamps whatever they add. Four of the five content rows is a full page carrying
+one row across the boundary, so a wrapped sentence is never split between two
+keystrokes with nothing in common; the half step keeps three. Neither lands on a
+boundary the document imposed, so mixing them reaches every line. `ClampOffset`
+pins the last window to the end of the body, so it is full rather than short, and
+`positionLine` is a sixth row beneath the five rather than one of them: it is
+drawn for every document, naming how many body rows sit above and below the
+window, and reads `0 above · 0 below` when there are none. A row spent on a
+constant is what buys the constant height — a counter that appeared only when a
+document paged would move the four content rows under the reader's eye the moment
+the document changed.
 
 The offset itself is session-only and lives in `peekOffsetState`, keyed by an
 `inlinePeekOwner` — a kind plus that kind's identity — the width-independent
@@ -385,10 +404,11 @@ redraw preserves a manual scroll. `scrollPeek` is the only writer.
 
 `PeekCommandContext` answers consumption and availability separately, because
 they differ at exactly the boundary. `Visible` is consumption and is the whole of
-the four descriptors' applicability: a visible Peek swallows all four keys
-at either end and over a body too short to move, since a shared binding that
-declines falls through to the next one and the outline would scroll under a Peek
-the user was trying to read. `CanPageDown`/`CanPageUp` are availability and are
+the four descriptors' applicability: it is the dock being on screen rather than
+the cursor row owning a document, so an open dock swallows all four keys at
+either end, over a body too short to move, and over a placeholder, since a shared
+binding that declines falls through to the next one and the outline would scroll
+under a Peek the user was trying to read. `CanPageDown`/`CanPageUp` are availability and are
 read by the footer hints alone, so a key that cannot move is still eaten but
 never advertised. Only `ctrl+d`/`ctrl+u` carry both owners; `pgdown`/`pgup` stay
 sole-owner paths, which is what keeps the outline pageable with a Peek open.
@@ -415,7 +435,7 @@ surface edits a reference except the grammar.
 #### The project header's document
 
 `inlinePeekProjectDocumentFor` is Peek's second document kind. It shares
-`inlinePeekDocument` whole — the same window arithmetic, the same counter row,
+`inlinePeekDocument` whole — the same window arithmetic, the same position row,
 the same four keys — and owns only what a project has to say. Both header forms
 take it: the cross-project group header a multi-project mode draws above each
 project's rows, and the single `IsFocusedProjectHeader` row a single-project
@@ -467,23 +487,22 @@ Task Peek is unchanged by all of this, comment count included: a task's comments
 have the `;` panel standing behind their count, and a project header carries no
 count at all because the row has no column for one.
 
-The empty projection is the one place the pane is not reserved by
-`ComputeOutlinerViewport`, because that path never calls it: a focused header
-over `No tasks yet.` was one row that could not overflow, and a Peek beneath it
-can. `clipBlockToRows` is that path's whole height authority. It keeps the rows
-`ContentHeight` has left once the explanation below has been paid for, so the
-header itself always survives and the pane gives up its tail instead of the
-window. An empty project is exactly the header a reader parks on, so the state is
-worth the one measurement rather than a refusal to draw.
+The empty projection is the one place the dock is not reserved by
+`ComputeOutlinerViewport`, because that path never calls it, and the one place
+the dock may be drawn short. It has no list window to hold the dock down and none
+beneath it for a shortened dock to shift, so `renderOutlinerEmptyState` writes
+the header and the explanation first and gives the dock whatever rows
+`ContentHeight` has left. An empty project is exactly the row a reader parks on,
+so the state is worth drawing; the sentence saying why it is empty is what
+survives a terminal too short for both.
 
-Because the document is additive and every block is inside the window, the
-measurement path no longer has a row budget to derive from the row's own column
-layout: whatever a task holds, its block is `inlinePeekBodyRows` tall or shorter.
-`inlinePeekLineCount` and the renderer both go through `Lines`, so
-`ComputeOutlinerViewport` reserves exactly what is drawn without either of them
-reconstructing the row's title width. A measurement that under-reserves overflows
-terminal height and the scenario harness reports `height_overflow`; there is now
-no arithmetic between the two that could.
+Everywhere else the reservation and the render are the same constant.
+`peekDockHeight()` is `PeekDockRows` or zero and reads nothing else, and
+`PeekDockLines()` returns exactly that many rows for every document, placeholder
+included, so the measurement cannot reconstruct a row's title width because it
+never looks at a row at all. A measurement that under-reserves overflows terminal
+height and the scenario harness reports `height_overflow`; there is now no
+arithmetic between the two that could.
 
 ### Sorting axis
 

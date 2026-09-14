@@ -64,8 +64,9 @@ func pagedPeekOutliner(t *testing.T, task *models.Task, width, height int) *Outl
 	outliner.RebuildRows()
 	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 	outliner.PeekMode = true
-	// A frame has to have been drawn for LastViewport to hold the row width the
-	// scrolling keys read, exactly as it has when a key arrives in production.
+	// A frame is drawn for the same reason production draws one before a key
+	// arrives: the dock is on screen from here on, and its window is what the
+	// scrolling keys move.
 	outliner.View()
 	return outliner
 }
@@ -102,13 +103,13 @@ func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
 		seen := make([]bool, len(doc.Body))
 		offset, step := 0, inlinePeekHalfPageRows
 		for {
-			for i := offset; i < offset+inlinePeekPagedRows; i++ {
+			for i := offset; i < min(offset+inlinePeekBodyRows, len(seen)); i++ {
 				seen[i] = true
 			}
 			lines := doc.Lines(offset)
-			if len(lines) != inlinePeekBodyRows {
+			if len(lines) != inlinePeekWindowRows {
 				t.Fatalf("width %d offset %d drew %d rows, want %d",
-					width, offset, len(lines), inlinePeekBodyRows)
+					width, offset, len(lines), inlinePeekWindowRows)
 			}
 			for number, line := range lines {
 				if got := lipgloss.Width(line); got > width {
@@ -136,7 +137,7 @@ func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
 }
 
 // TestInlinePeekWindowMovesByContentRows locks the two distances and the clamp
-// that ends them. A half page is two content rows and a full page is three, both
+// that ends them. A half page is two content rows and a full page is four, both
 // counted off wherever the window already sits, so the two keys compose instead
 // of each snapping to its own grid.
 func TestInlinePeekWindowMovesByContentRows(t *testing.T) {
@@ -158,9 +159,9 @@ func TestInlinePeekWindowMovesByContentRows(t *testing.T) {
 
 	// A full page keeps one content row on screen across the move, which is the
 	// overlap that makes the jump readable.
-	if inlinePeekPagedRows-inlinePeekFullPageRows != 1 {
+	if inlinePeekBodyRows-inlinePeekFullPageRows != 1 {
 		t.Fatalf("a full page of %d rows in a %d-row window leaves %d rows of overlap, want 1",
-			inlinePeekFullPageRows, inlinePeekPagedRows, inlinePeekPagedRows-inlinePeekFullPageRows)
+			inlinePeekFullPageRows, inlinePeekBodyRows, inlinePeekBodyRows-inlinePeekFullPageRows)
 	}
 
 	// Both ends clamp, and the last window is full rather than short: scrolling
@@ -171,45 +172,52 @@ func TestInlinePeekWindowMovesByContentRows(t *testing.T) {
 	if got := doc.ClampOffset(len(doc.Body)); got != doc.MaxOffset() {
 		t.Fatalf("scrolling past the end = %d, want %d", got, doc.MaxOffset())
 	}
-	if doc.MaxOffset()+inlinePeekPagedRows != len(doc.Body) {
+	if doc.MaxOffset()+inlinePeekBodyRows != len(doc.Body) {
 		t.Fatalf("the last window ends at %d, want the body's %d rows",
-			doc.MaxOffset()+inlinePeekPagedRows, len(doc.Body))
+			doc.MaxOffset()+inlinePeekBodyRows, len(doc.Body))
 	}
 }
 
-// TestInlinePeekCounterRowNamesWhatIsOffScreen holds the row the budget reserves.
-// It is spent on exact counts rather than an ordinal, because what a reader
-// needs is how much detail is unread in each direction — and once a window can
-// stop between two pages, an ordinal cannot be spelled at all.
-func TestInlinePeekCounterRowNamesWhatIsOffScreen(t *testing.T) {
+// TestInlinePeekPositionRowNamesWhatIsOffScreen holds the row the dock reserves
+// under the body. It is spent on exact counts rather than an ordinal, because
+// what a reader needs is how much detail is unread in each direction — and once
+// a window can stop between two pages, an ordinal cannot be spelled at all. It
+// is always drawn, an unpaged document included: a row that came and went would
+// move the frame under the cursor for no reason the reader chose.
+func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
 	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Width: 80})
 	total := len(doc.Body)
 
 	for offset := 0; offset <= doc.MaxOffset(); offset++ {
 		lines := doc.Lines(offset)
-		counter := ansi.Strip(lines[len(lines)-1])
-		want := strings.TrimSpace(ansi.Strip(doc.counterLine(offset, total-offset-inlinePeekPagedRows)))
-		if strings.TrimSpace(counter) != want {
-			t.Fatalf("offset %d counter = %q, want %q", offset, counter, want)
+		position := ansi.Strip(lines[len(lines)-1])
+		want := strings.TrimSpace(ansi.Strip(doc.positionLine(offset, total-offset-inlinePeekBodyRows)))
+		if strings.TrimSpace(position) != want {
+			t.Fatalf("offset %d position row = %q, want %q", offset, position, want)
 		}
 	}
 
-	first := ansi.Strip(doc.Lines(0)[inlinePeekBodyRows-1])
+	first := ansi.Strip(doc.Lines(0)[inlinePeekWindowRows-1])
 	if !strings.HasPrefix(strings.TrimSpace(first), "0 above · ") {
-		t.Fatalf("top counter = %q, want nothing above it", first)
+		t.Fatalf("top position row = %q, want nothing above it", first)
 	}
 	last := doc.Lines(doc.MaxOffset())
 	if !strings.HasSuffix(strings.TrimSpace(ansi.Strip(last[len(last)-1])), "· 0 below") {
-		t.Fatalf("end counter = %q, want nothing below it", ansi.Strip(last[len(last)-1]))
+		t.Fatalf("end position row = %q, want nothing below it", ansi.Strip(last[len(last)-1]))
 	}
 
-	// An unpaged document reserves nothing: the whole budget goes to content.
+	// An unpaged document keeps the same window: the body is padded rather than
+	// the dock shortened, and the position row reads zero in both directions.
 	short := inlinePeekDocumentFor(inlinePeekOptions{Task: &models.Task{Description: "Short"}, Width: 80})
 	if short.Paged() {
 		t.Fatal("a one-line document claimed to be paged")
 	}
-	if got := ansi.Strip(strings.Join(short.Lines(0), "\n")); strings.Contains(got, "below") {
-		t.Fatalf("an unpaged document drew a counter row: %q", got)
+	shortLines := short.Lines(0)
+	if len(shortLines) != inlinePeekWindowRows {
+		t.Fatalf("an unpaged document drew %d rows, want %d", len(shortLines), inlinePeekWindowRows)
+	}
+	if got := strings.TrimSpace(ansi.Strip(shortLines[len(shortLines)-1])); got != "0 above · 0 below" {
+		t.Fatalf("an unpaged position row = %q, want zero in both directions", got)
 	}
 }
 
@@ -336,19 +344,30 @@ func TestPeekScrollingIsRefusedWhereThereIsNothingToScroll(t *testing.T) {
 		t.Fatalf("an unpaged Peek offered %v", hintEntries(hints))
 	}
 
-	// A header row keeps PeekMode on and shows no Peek, so the offer has to come
-	// off the footer even though the mode is still open.
+	// A row that owns no document keeps the dock open and draws the placeholder,
+	// so the keys are still consumed there while the offer comes off the footer.
 	for index, row := range outliner.Rows {
-		if !row.IsTaskRow() {
+		if !rowSupportsPeek(row) {
 			outliner.Cursor = index
 			break
 		}
 	}
-	if outliner.Rows[outliner.Cursor].IsTaskRow() {
-		t.Skip("fixture produced no header row to park the cursor on")
+	if rowSupportsPeek(outliner.Rows[outliner.Cursor]) {
+		t.Skip("fixture produced no unsupported row to park the cursor on")
 	}
-	if peek := outliner.PeekCommandContext(); peek.Visible {
-		t.Fatalf("a header row claimed a visible Peek: %+v", peek)
+	peek := outliner.PeekCommandContext()
+	if !peek.Visible || peek.CanPageDown || peek.CanPageUp {
+		t.Fatalf("placeholder context = %+v, want visible and immovable", peek)
+	}
+	dock := outliner.PeekDockLines()
+	if len(dock) != PeekDockRows {
+		t.Fatalf("placeholder dock drew %d rows, want %d", len(dock), PeekDockRows)
+	}
+	if got := ansi.Strip(strings.Join(dock, "\n")); !strings.Contains(got, peekDockPlaceholderText) {
+		t.Fatalf("placeholder dock = %q, want the stand-in text", got)
+	}
+	if hints := outliner.peekScrollHints(); len(hints) != 0 {
+		t.Fatalf("a placeholder offered %v", hintEntries(hints))
 	}
 }
 
@@ -426,13 +445,11 @@ func TestPeekScrollingKeepsOneMeasurementAndOneRender(t *testing.T) {
 		for _, task := range []*models.Task{pagedPeekTask(), unicodePeekTask()} {
 			for _, size := range []struct{ width, height int }{{40, 12}, {60, 20}, {80, 24}, {120, 40}} {
 				outliner := pagedPeekOutliner(t, task, size.width, size.height)
-				row := outliner.Rows[outliner.Cursor]
 
 				for step := 0; ; step++ {
-					indent := inlinePeekIndentForRow(row)
-					width := outliner.peekRenderWidth()
-					drawn := outliner.InlinePeekLinesForRow(row, indent, width)
-					if got := outliner.inlinePeekLineCount(row, size.width-1); got != len(drawn) {
+					width := size.width
+					drawn := outliner.PeekDockLines()
+					if got := outliner.peekDockHeight(); got != len(drawn) {
 						t.Fatalf("%s %s %dx%d step %d measured %d rows and drew %d",
 							themeName, task.ID, size.width, size.height, step, got, len(drawn))
 					}

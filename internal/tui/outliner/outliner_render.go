@@ -77,7 +77,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 		case selected && m.isQuickEditRow(row):
 			rowBuilder.WriteString(m.RenderOutlinerQuickEditRow(row, viewport.rowWidth))
 		default:
-			rowBuilder.WriteString(m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, viewport.rowWidth, i, colLayout))
+			rowBuilder.WriteString(m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, i, colLayout))
 		}
 
 		if i < viewport.endIdx-1 {
@@ -347,8 +347,9 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 
 	// A header row says almost nothing about the project it names — a slug, a
 	// count, and what is urgent inside. Peek is where the rest of it is readable,
-	// on the same key and under the same cursor rule as a task's.
-	return m.appendInlinePeek(line, row, rowIndex, rowWidth)
+	// in the dock below the list, on the same key and under the same cursor rule
+	// as a task's.
+	return line
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a
@@ -567,8 +568,28 @@ func (m *OutlinerModel) RenderOutlinerTreeContent(width int) string {
 
 	viewport := m.ComputeOutlinerViewport(width, extraFooter)
 	b.WriteString(m.renderOutlinerRows(viewport))
+	m.writePeekDock(&b, viewport)
 
 	return b.String()
+}
+
+// writePeekDock puts the dock under the list, at the screen row the viewport
+// already paid for. The list block is padded out to its whole window first: a
+// projection shorter than the window would otherwise pull the dock up the frame,
+// and a dock that sits in a different place per projection is the same moving
+// target docking it was meant to retire.
+func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewport) {
+	dock := m.PeekDockLines()
+	if len(dock) == 0 {
+		return
+	}
+	for drawn := viewport.endIdx - viewport.startIdx; drawn < viewport.VisibleRows; drawn++ {
+		b.WriteString("\n")
+	}
+	for _, line := range dock {
+		b.WriteString("\n")
+		b.WriteString(line)
+	}
 }
 
 // statusStripBody builds the outstanding-conflict indicator, the focus notice,
@@ -804,34 +825,29 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	// the same place and drawn by the same renderer as when it does: the header is
 	// context for the projection, and the explanation below belongs under it. It
 	// takes the full width — the scrollbar column the row path subtracts is never
-	// reserved here.
-	//
-	// The header alone cannot overflow the window, but the Peek an empty project
-	// is exactly the place to open can. There is no viewport on this path to
-	// reserve against, so the block is clipped to the rows left over once the
-	// explanation below it has been paid for; the header itself always survives.
+	// reserved here — and it is one line, because the detail an empty project is
+	// exactly the place to open is in the dock below rather than hanging off the
+	// row.
 	if header, ok := m.focusedProjectHeaderRow(); ok {
-		spent := strings.Count(b.String(), "\n")
-		rendered := m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0)
-		b.WriteString(clipBlockToRows(rendered, max(m.ContentHeight()-spent-1, 1)))
+		b.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
 		b.WriteString("\n")
 	}
 	b.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
+	// The dock follows the explanation rather than the frame's last row: there is
+	// no list window on this path to hold it down, and an empty projection has
+	// nothing between the two to read past. This is also the one path that may
+	// shorten it, because it is the one with no list below for a shortened dock to
+	// shift: there is no viewport here to have reserved the rows, so the dock
+	// spends what the header and the explanation left and an empty projection on a
+	// short terminal keeps the sentence explaining itself.
+	if dock := m.PeekDockLines(); len(dock) > 0 {
+		room := max(m.ContentHeight()-lipgloss.Height(b.String()), 0)
+		for _, line := range dock[:min(len(dock), room)] {
+			b.WriteString("\n")
+			b.WriteString(line)
+		}
+	}
 	return b.String()
-}
-
-// clipBlockToRows keeps the first rows lines of an already-rendered block. It is
-// the empty state's only height authority: every other surface measures through
-// ComputeOutlinerViewport, which this path deliberately never calls.
-func clipBlockToRows(block string, rows int) string {
-	if rows <= 0 {
-		return ""
-	}
-	lines := strings.Split(block, "\n")
-	if len(lines) <= rows {
-		return block
-	}
-	return strings.Join(lines[:rows], "\n")
 }
 
 // focusedProjectHeaderRow names the focused-project header the current
@@ -899,12 +915,15 @@ func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int)
 	// drive a negative window slice.
 	visibleRows := max(m.ContentHeight()-extraFooterLines, 1)
 
-	if m.PeekMode && m.Cursor >= 0 && m.Cursor < len(m.Rows) && rowSupportsPeek(m.Rows[m.Cursor]) {
+	if dock := m.peekDockHeight(); dock > 0 {
+		// The dock's height is a constant, so the list loses the same rows whatever
+		// the cursor is resting on: opening Peek moves the list once, and nothing
+		// the cursor does afterwards moves it again.
+		//
 		// The shell footer may wrap to three lines at minimum width while views
-		// retain the standard two-line size budget. Reserve one guard row so a
-		// Peek attached to the last visible task is never the line shell clipping
-		// removes.
-		visibleRows = max(visibleRows-m.inlinePeekLineCount(m.Rows[m.Cursor], width-1)-1, 1)
+		// retain the standard two-line size budget. Reserve one guard row so the
+		// dock's position line is never the line shell clipping removes.
+		visibleRows = max(visibleRows-dock-1, 1)
 	}
 
 	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &m.ViewScrollOffset)

@@ -20,12 +20,16 @@ const (
 	// inlinePeekBodyRows is Peek's body budget. It is a window onto the detail
 	// document rather than a cap on it: the document is assembled whole and this
 	// many of its rows are on screen at a time, so a detail that does not fit is
-	// a page away instead of gone.
+	// a page away instead of gone. The window is always exactly this tall, short
+	// documents padded, because the dock's height may not follow its content.
 	inlinePeekBodyRows = 5
-	// inlinePeekPagedRows is what the body has left for content once the counter
-	// row is on screen. The counter is only drawn when there is something off
-	// screen to count, so an unpaged document keeps the whole budget.
-	inlinePeekPagedRows = inlinePeekBodyRows - 1
+	// inlinePeekPositionRows is the position row beneath the body. It is always
+	// drawn, for the same reason the body is always padded: a row whose counts
+	// appear and disappear would move the list under the cursor.
+	inlinePeekPositionRows = 1
+	// inlinePeekWindowRows is the whole window one document draws, which is what
+	// the dock reserves around its divider.
+	inlinePeekWindowRows = inlinePeekBodyRows + inlinePeekPositionRows
 	// inlinePeekHalfPageRows and inlinePeekFullPageRows are the two distances a
 	// scroll travels. Both are counted in content rows rather than in pages, so
 	// the window stops wherever the arithmetic lands instead of on a boundary the
@@ -35,7 +39,7 @@ const (
 	// keystroke with nothing in common between the two halves. A half page is the
 	// shorter step the same keys mean over every list in the product.
 	inlinePeekHalfPageRows = 2
-	inlinePeekFullPageRows = inlinePeekPagedRows - 1
+	inlinePeekFullPageRows = inlinePeekBodyRows - 1
 )
 
 // inlinePeekDocument is the complete detail document behind Peek, separated
@@ -69,8 +73,9 @@ func (doc inlinePeekDocument) Empty() bool {
 	return len(doc.Body) == 0
 }
 
-// Paged reports whether the body outgrows its budget. Nothing below the
-// threshold reserves a counter row, so a short document keeps all five.
+// Paged reports whether the body outgrows its budget, which is what the
+// scrolling keys and their hints read. A document that fits has the single
+// offset zero and nothing to travel to.
 func (doc inlinePeekDocument) Paged() bool {
 	return len(doc.Body) > inlinePeekBodyRows
 }
@@ -80,10 +85,7 @@ func (doc inlinePeekDocument) Paged() bool {
 // is pinned to the body's end and an unpaged document has the single offset
 // zero.
 func (doc inlinePeekDocument) MaxOffset() int {
-	if !doc.Paged() {
-		return 0
-	}
-	return len(doc.Body) - inlinePeekPagedRows
+	return max(len(doc.Body)-inlinePeekBodyRows, 0)
 }
 
 // ClampOffset bounds a content-row offset to the document. Every reader goes
@@ -94,28 +96,31 @@ func (doc inlinePeekDocument) ClampOffset(offset int) int {
 }
 
 // Lines renders the window at one content-row offset: the content rows visible
-// there and, when anything is off screen, the counter row that says exactly how
-// much. It is the only way to either the drawn window or its height, so a render
-// and a measurement cannot disagree about what is on screen.
+// there, blank-padded when the document is shorter than the window, and the
+// position row that says exactly how much sits off screen in each direction. It
+// is the only way to either the drawn window or its height, so a render and a
+// measurement cannot disagree about what is on screen. The slice is always
+// inlinePeekWindowRows long, which is what keeps the dock the same height over
+// a one-line document and a fifty-line one.
 func (doc inlinePeekDocument) Lines(offset int) []string {
 	if doc.Empty() {
 		return nil
 	}
-	lines := make([]string, 0, inlinePeekBodyRows)
-	if !doc.Paged() {
-		return append(lines, doc.Body...)
-	}
 	start := doc.ClampOffset(offset)
-	end := start + inlinePeekPagedRows
+	end := min(start+inlinePeekBodyRows, len(doc.Body))
+	lines := make([]string, 0, inlinePeekWindowRows)
 	lines = append(lines, doc.Body[start:end]...)
-	return append(lines, doc.counterLine(start, len(doc.Body)-end))
+	for len(lines) < inlinePeekBodyRows {
+		lines = append(lines, "")
+	}
+	return append(lines, doc.positionLine(start, len(doc.Body)-end))
 }
 
-// counterLine spends the reserved row on exact counts rather than an ordinal:
+// positionLine spends the reserved row on exact counts rather than an ordinal:
 // what a reader needs to know is how much detail is still unread in each
 // direction, and a page number only answers that after arithmetic — the more so
 // once a window can stop between two pages.
-func (doc inlinePeekDocument) counterLine(above, below int) string {
+func (doc inlinePeekDocument) positionLine(above, below int) string {
 	counts := fmt.Sprintf("%d above · %d below", above, below)
 	return doc.indent + theme.MutedStyle.Render(textfit.TruncateIntentional(counts, doc.width, "…"))
 }

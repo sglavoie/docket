@@ -238,8 +238,13 @@ reports `No parent to focus`. Inside Focus it climbs one level from the focus
 root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
-`b` toggles a session-only Peek directly beneath the cursor row, whether that row
-is a task or a project header. On a task, Peek
+`b` toggles a session-only Peek in a pane docked below the list, whether the
+cursor is on a task or on a project header. The pane is always the same height —
+seven rows, counted off the list once when you open it — so a short task and a
+long one give the outline exactly the same room and moving between them never
+shifts the rows under your cursor. On a row with no detail to show, a section
+heading or a checklist item, the pane stays where it is and reads `No detail to
+show for this row.`; `b` closes it again from any row. On a task, Peek
 follows navigation and reads, in this order: the task's whole title, the ancestor
 chain of a promoted row as `Parent: Launch platform › User authentication`, a
 status line reading
@@ -256,8 +261,9 @@ something else: Peek shows five rows at a time and `Ctrl+D` and `Ctrl+U` scroll
 through the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page
 at a time. Every move keeps at least one row of what you were reading, the two
 step sizes mix freely, and the last one stops at the end of the detail rather
-than running past it. While there is more than a window's worth, a row at the
-bottom reads `12 above · 7 below` so you always know how much is out of sight.
+than running past it. A sixth row at the bottom always reads
+`12 above · 7 below`, so you know how much is out of sight and a detail that fits
+says so with `0 above · 0 below` rather than changing the pane's height.
 The footer offers a key only when that direction can actually move, but all four
 belong to an open Peek: pressing one at the end of the detail does nothing rather
 than moving the outline underneath. `PgDn` and `PgUp` still move the outline,
@@ -292,7 +298,7 @@ state; a reference whose project is not loaded keeps its stored
 Comments stay a count, because `;` is the panel that reads them, and the
 checklist stays a count because its items are already rows of their own beneath
 the task, where you tick, edit, and promote them. Nothing in Peek sits outside
-the five rows: the whole title leads the detail, so a title the row had to clip
+the pane: the whole title leads the detail, so a title the row had to clip
 with `…` is finished by scrolling rather than read from two places at once, and
 the ancestor chain follows it. `Esc` closes Peek
 before unwinding Outliner navigation.

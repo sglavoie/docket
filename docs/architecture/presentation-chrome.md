@@ -159,6 +159,20 @@ a display budget, so a deeper stack names its remainder instead of dropping it,
 and `queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis
 that fails to clear itself.
 
+Peek's dock is the frame's other fixed reservation, and it is fixed in the
+stronger sense: `peekDockHeight` returns `PeekDockRows` or zero and measures
+neither the cursor nor the document, so `ComputeOutlinerViewport` subtracts the
+same rows — that constant plus one guard row against a footer wrapping to three
+lines at minimum width — under a one-line task and under a forty-line one.
+Opening Peek moves the list once and nothing the cursor does afterwards moves it
+again. `writePeekDock` pads the list block out to `VisibleRows` before writing
+the dock, so a projection shorter than its window leaves the dock at the screen
+row the reservation already paid for rather than pulling it up the frame. The
+empty projection is the one path that may draw the dock short, because it
+computes no viewport and has no list below a shortened dock to shift: it clamps
+the block to the rows `ContentHeight` still has after the header and the
+explanation, which always survive.
+
 The menu bar and its open menu are the same kind of thing one level apart. The
 bar is machine-local chrome: `M` writes `MenuBarVisible`, which `MenuBarPinned`
 reads back, `menuBarRows` charges

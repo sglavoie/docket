@@ -59,7 +59,12 @@ func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 	}
 }
 
-func TestPeekIndentDoesNotRenderTreeGlyphs(t *testing.T) {
+// TestPeekDocumentIndentIgnoresTheRowsNesting is the dock's half of the old
+// alignment claim. The document is drawn in a block of its own below the list
+// rather than beneath the row it describes, so it owns one indent: a deeply
+// nested row and a root row produce the same left edge, and neither carries the
+// tree glyphs that only mean something in the list.
+func TestPeekDocumentIndentIgnoresTheRowsNesting(t *testing.T) {
 	task := &models.Task{
 		ID:          "nested",
 		Title:       "Nested task",
@@ -67,25 +72,26 @@ func TestPeekIndentDoesNotRenderTreeGlyphs(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outlinerView := outliner.NewOutlinerModel(project, nil, newTestConfig())
+	outlinerView.SetSize(80, 24)
 	outlinerView.PeekMode = true
 	outlinerView.Cursor = 0
 
-	row := outliner.OutlinerRow{
-		Task:   task,
-		Prefix: "│   ├── ",
+	nested := outlinerView.PeekDocumentBodyForRow(outliner.OutlinerRow{Task: task, Prefix: "│   ├── "})
+	root := outlinerView.PeekDocumentBodyForRow(outliner.OutlinerRow{Task: task})
+	if len(nested) == 0 {
+		t.Fatal("the nested row produced no Peek document")
 	}
-	rendered := ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil))
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 2 {
-		t.Fatalf("rendered row has no Peek content:\n%s", rendered)
-	}
-	for _, peekLine := range lines[1:] {
-		if strings.ContainsAny(peekLine, "│├└─") {
-			t.Fatalf("Peek line contains tree glyphs: %q", peekLine)
+	for index, line := range nested {
+		plain := ansi.Strip(line)
+		if strings.ContainsAny(plain, "│├└─") {
+			t.Fatalf("Peek line contains tree glyphs: %q", plain)
+		}
+		if plain != ansi.Strip(root[index]) {
+			t.Fatalf("line %d differs by nesting:\n%q\n%q", index, plain, ansi.Strip(root[index]))
 		}
 	}
-	if !strings.HasPrefix(lines[1], strings.Repeat(" ", lipgloss.Width(row.Prefix)+4)) {
-		t.Fatalf("Peek line lost nesting alignment: %q", lines[1])
+	if got := ansi.Strip(nested[0]); !strings.HasPrefix(got, "  ") || strings.HasPrefix(got, "   ") {
+		t.Fatalf("Peek line does not carry the dock's own indent: %q", got)
 	}
 }
 
@@ -104,22 +110,24 @@ func TestPeekNamesTheWholeTitleAtEveryWidth(t *testing.T) {
 	outlinerView.Cursor = 0
 
 	for _, width := range []int{60, 100} {
+		outlinerView.SetSize(width, 24)
 		row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-		lines := strings.Split(ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, width, width, 0, nil)), "\n")
-		if len(lines) < 2 {
-			t.Fatalf("width %d rendered no Peek body:\n%s", width, strings.Join(lines, "\n"))
+		rowLine := ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, width, 0, nil))
+		if !strings.HasSuffix(strings.TrimRight(rowLine, " "), "…") {
+			t.Fatalf("width %d row did not clip the title:\n%s", width, rowLine)
 		}
-		if !strings.HasSuffix(strings.TrimRight(lines[0], " "), "…") {
-			t.Fatalf("width %d row did not clip the title:\n%s", width, lines[0])
+		body := outlinerView.PeekDocumentBodyForRow(row)
+		if len(body) == 0 {
+			t.Fatalf("width %d rendered no Peek body", width)
 		}
 		// The wrap drops the space it breaks on, so the title is compared word by
 		// word rather than byte for byte.
-		peek := strings.Join(strings.Fields(strings.Join(lines[1:], " ")), " ")
+		peek := strings.Join(strings.Fields(ansi.Strip(strings.Join(body, " "))), " ")
 		if want := strings.Join(strings.Fields(title), " "); !strings.HasPrefix(peek, want) {
 			t.Fatalf("width %d Peek did not lead with the whole title:\n%s", width, peek)
 		}
-		for lineNumber, line := range lines {
+		for lineNumber, line := range append([]string{rowLine}, body...) {
 			if got := lipgloss.Width(line); got > width {
 				t.Fatalf("width %d line %d overflowed to %d", width, lineNumber, got)
 			}
@@ -137,13 +145,14 @@ func TestPeekNamesATitleTheRowAlreadyShowed(t *testing.T) {
 	outlinerView.PeekMode = true
 	outlinerView.Cursor = 0
 
+	outlinerView.SetSize(120, 24)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
-	lines := strings.Split(ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, 120, 120, 0, nil)), "\n")
-	if len(lines) < 2 {
-		t.Fatalf("rendered row has no Peek content:\n%s", strings.Join(lines, "\n"))
+	body := outlinerView.PeekDocumentBodyForRow(row)
+	if len(body) == 0 {
+		t.Fatal("the row produced no Peek document")
 	}
-	if strings.TrimSpace(lines[1]) != "Short title" {
-		t.Fatalf("Peek did not lead with the title: %q", lines[1])
+	if got := strings.TrimSpace(ansi.Strip(body[0])); got != "Short title" {
+		t.Fatalf("Peek did not lead with the title: %q", got)
 	}
 }
 
@@ -278,7 +287,7 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 	}
 
 	const width = 60
-	plain := ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, width, width, 0, nil))
+	plain := ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, width, 0, nil))
 	for _, want := range []string{"Readable", "Today", "woke"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("narrow urgency row missing %q:\n%s", want, plain)

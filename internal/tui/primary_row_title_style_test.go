@@ -30,7 +30,7 @@ func TestOutlinerQueuedPriorityTitlesStayNeutral(t *testing.T) {
 
 	for _, task := range tasks {
 		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.Rows, task.ID)
-		line := m.RenderOutlinerTaskRow(m.Rows[rowIndex], false, 120, 120, rowIndex, nil)
+		line := m.RenderOutlinerTaskRow(m.Rows[rowIndex], false, 120, rowIndex, nil)
 		assertPrimaryRowTitleStyle(t, line, task)
 		assertPlanningMarkerColumnRemoved(t, line, m.Rows[rowIndex], task)
 	}

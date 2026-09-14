@@ -61,7 +61,7 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	for name, want := range map[string]string{
 		"tag chip":       theme.TagChipStyle("infra").Render("#infra"),
@@ -91,7 +91,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	outlinerView.SetSearchQuery("release")
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	positions := query.SearchSubstringPositions(task.Title, "release", false)
 	if len(positions) == 0 {
@@ -118,7 +118,7 @@ func TestCursorRowIsExactlyRowWidth(t *testing.T) {
 	taskRow := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "│   ├── "}
 	rows := map[string]func(width int) string{
 		"task": func(width int) string {
-			return outlinerView.RenderOutlinerTaskRow(taskRow, true, width, width, 0, nil)
+			return outlinerView.RenderOutlinerTaskRow(taskRow, true, width, 0, nil)
 		},
 		"checklist": func(width int) string {
 			row := taskRow
@@ -162,7 +162,7 @@ func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 60, 60, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 60, 0, nil)
 
 	if got := lipgloss.Width(line); got != 60 {
 		t.Fatalf("full-width cursor row rendered %d columns", got)
@@ -179,7 +179,7 @@ func cursorRowsByType(outlinerView *outliner.OutlinerModel, project *models.Proj
 	task.Checklist = []models.ChecklistItem{{Text: "Draft the notes"}}
 	return map[string]string{
 		"task": outlinerView.RenderOutlinerTaskRow(
-			outliner.OutlinerRow{Task: task, ProjectID: project.ID}, true, 80, 80, 0, nil),
+			outliner.OutlinerRow{Task: task, ProjectID: project.ID}, true, 80, 0, nil),
 		"checklist": outlinerView.RenderOutlinerChecklistRow(checklistRow, true, 80, 0),
 		"section header": outlinerView.RenderOutlinerSectionHeaderRow(outliner.OutlinerRow{
 			IsSectionHeader: true,
@@ -260,7 +260,7 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: prefix}
 	outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(row)})
 
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	for name, want := range map[string]string{
 		"multi-select box":  theme.SelectionCheckStyle.Render("[x]"),
@@ -288,7 +288,7 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	if !strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
 		t.Fatalf("overdue cursor row dropped its row tint:\n%q", line)
@@ -311,7 +311,7 @@ func TestWaitingRowWearsNoTint(t *testing.T) {
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
 	for name, selected := range map[string]bool{"cursor": true, "ordinary": false} {
-		line := outlinerView.RenderOutlinerTaskRow(row, selected, 80, 80, 0, nil)
+		line := outlinerView.RenderOutlinerTaskRow(row, selected, 80, 0, nil)
 		if strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
 			t.Fatalf("%s waiting row painted the overdue row tint:\n%q", name, line)
 		}
@@ -336,7 +336,7 @@ func TestWaitingRowKeepsTheOverdueTintItEarns(t *testing.T) {
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outlinerView.RenderOutlinerTaskRow(row, false, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, false, 80, 0, nil)
 
 	if !strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
 		t.Fatalf("overdue waiting row dropped the tint its deadline earned:\n%q", line)
@@ -353,7 +353,7 @@ func TestCursorFlashWidensTheMark(t *testing.T) {
 	prefix := "│   ├── "
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: prefix}
 
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	flashBg := backgroundParams(t, theme.ColorFlashBg)
 	if got := strings.Count(line, flashBg); got < 2 {

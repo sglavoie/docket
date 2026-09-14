@@ -30,7 +30,7 @@ Four committed scenarios record the current product against it:
 | Scenario | Records |
 | --- | --- |
 | `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json` | Lane grouping, one expanded project header per lane per project, the full indicator ladder, and which titles today's row clips. |
-| `docs/tui-testing/scenarios/ux-acceptance-peek-baseline.json` | The Peek document's body order, its bounded window and counter row, its paging keys, and the named cross-project dependent. |
+| `docs/tui-testing/scenarios/ux-acceptance-peek-baseline.json` | The Peek document's body order, its bounded window and position row, its paging keys, and the named cross-project dependent. |
 | `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json` | 60×20, 80×24, 100×35, and 120×40 layout health, the footer rank drops, and the narrow Peek window. |
 | `docs/tui-testing/scenarios/ux-acceptance-selection-baseline.json` | Peek closing when a selection begins, the multi-select summary, `Ctrl+A` over the visible projection, and `Esc` unwinding. |
 
@@ -127,21 +127,33 @@ declared their text required, while this reads the finished screen.
 
 ### Session 4 — Dock Peek and unify viewport geometry
 
-- Go: `internal/tui/responsive_peek_test.go`,
+- Go: `internal/tui/outliner/peek_dock_test.go` — the dock's fixed height under
+  every cursor at 60×20, 80×24, and 120×40, the one reservation opening it
+  spends, the placeholder over a row owning no document, and the divider landing
+  on the same screen row as the cursor crosses between a one-line task and a
+  paged one — `internal/tui/responsive_peek_test.go`,
   `internal/tui/outliner/inline_peek_paging_test.go`,
   `internal/tui/outliner/inline_peek_empty_project_width_test.go`,
   `internal/tui/outliner/empty_project_peek_guidance_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json`,
   `docs/tui-testing/scenarios/ux-acceptance-selection-baseline.json`,
+  `docs/tui-testing/scenarios/ux-acceptance-peek-baseline.json`,
+  `docs/tui-testing/scenarios/outliner-peek-scrolling.json`,
   `docs/tui-testing/scenarios/outliner-peek-paging.json`,
+  `docs/tui-testing/scenarios/outliner-peek-whole-title.json`,
+  `docs/tui-testing/scenarios/task-context-reserved-segment-narrow.json`,
   `docs/tui-testing/scenarios/presentation-size-matrix.json`
-- Contracts: `CLAUDE.md` — `ComputeOutlinerViewport` as the single window
-  authority and the only place a render moves `ViewScrollOffset`, "Never
+- Contracts: `CLAUDE.md` — Peek as a dock below the list whose height
+  `PeekDockRows` states and `ComputeOutlinerViewport` reserves without reading
+  the cursor or the document, that same function as the single window authority
+  and the only place a render moves `ViewScrollOffset`, "Never
   recompute the window in a key handler", `StatusStripHeight` reserving the strip,
   `peekOffsetForRow` pure with `scrollPeek` the only writer, the
   `Ctrl+D`/`Ctrl+U` versus `Ctrl+F`/`Ctrl+B` split, `PeekContext.Visible` as
   consumption against `CanPage*` as availability, and `PgDn`/`PgUp` staying the
-  cursor's. `docs/architecture/presentation-chrome.md`.
+  cursor's. `docs/guide/outliner-rows.md`,
+  `docs/architecture/search-filters-and-sorting.md`,
+  `docs/architecture/presentation-chrome.md`.
 
 ### Session 5 — Simplify task rows and protect inline editing
 

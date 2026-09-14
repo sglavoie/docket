@@ -354,11 +354,22 @@ whole-line authority on every other list surface.
 
 Row and Peek budget:
 
+- Peek is a dock below the list, never a block under its row. `PeekDockRows` is
+  the divider plus `inlinePeekWindowRows`, `ComputeOutlinerViewport` subtracts it
+  and one guard row whenever `PeekDockVisible()`, reading no cursor and no
+  document, and the list block is padded to the whole window, so what the cursor
+  names decides what the dock says and never where it sits or how tall it is. A
+  row owning no document draws `peekDockPlaceholderDocument` at that same height;
+  `b` closes an open dock from any row, through the one shared
+  `CommandContextSatisfiesPeekRequirement`. The empty projection is the one path
+  that reserves nothing and the one that may draw the dock short, after its
+  header and its explanation.
 - `inlinePeekDocument` separates the whole detail from the window of it on
   screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;
-  `inlinePeekBodyRows` bounds visibility alone and the counter row spends one of
-  those rows. Nothing sits outside that window and the document has no header:
+  `inlinePeekBodyRows` bounds visibility alone, a short document pads, and
+  `positionLine` is a further row drawn for every document, `0 above · 0 below`
+  included. Nothing sits outside that window and the document has no header:
   body order is title, parent, status, dates, resume, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags;
   place a new section deliberately. The whole title and the uncompacted ancestor
@@ -383,10 +394,10 @@ Row and Peek budget:
   future check-in even while the row stays quiet.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
   the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`
-  three, both clamped to the document end. `PeekContext.Visible` is consumption
-  and `CanPage*` availability: a visible Peek swallows all four keys at
-  either boundary and over a body too short to move, while only the hints read
-  what can move. `PgDn`/`PgUp` stay the cursor's alone.
+  four, both clamped to the document end. `PeekContext.Visible` is the open dock
+  and is consumption, `CanPage*` availability: an open dock swallows all four
+  keys at either boundary, over a body too short to move, and over a placeholder,
+  while only the hints read what can move. `PgDn`/`PgUp` stay the cursor's alone.
 - `TruncateToVisualWidth` has no counterpart: its dropped tail is not
   recoverable, so a surface needing the whole text renders the whole text,
   wrapped.

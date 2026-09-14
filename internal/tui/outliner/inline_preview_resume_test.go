@@ -77,9 +77,9 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 		if got := strings.Join(strings.Fields(plain), " "); got != "Selected state backlog Resume: "+note {
 			t.Fatalf("width %d did not carry the whole note:\n%s", width, got)
 		}
-		if page := doc.Lines(0); len(page) > inlinePeekBodyRows {
-			t.Fatalf("width %d drew %d rows, want at most the %d-row budget:\n%s",
-				width, len(page), inlinePeekBodyRows, ansi.Strip(strings.Join(page, "\n")))
+		if page := doc.Lines(0); len(page) != inlinePeekWindowRows {
+			t.Fatalf("width %d drew %d rows, want the %d-row window:\n%s",
+				width, len(page), inlinePeekWindowRows, ansi.Strip(strings.Join(page, "\n")))
 		}
 		for number, line := range doc.Body {
 			if got := lipgloss.Width(line); got > width {
@@ -106,9 +106,9 @@ func TestInlinePeekResumeNoteSpendsThePageRatherThanRaisingIt(t *testing.T) {
 	}, Width: width})
 	with := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: width})
 
-	if len(without.Lines(0)) != inlinePeekBodyRows || len(with.Lines(0)) != inlinePeekBodyRows {
+	if len(without.Lines(0)) != inlinePeekWindowRows || len(with.Lines(0)) != inlinePeekWindowRows {
 		t.Fatalf("Peek height = %d without a note and %d with one, want %d both ways",
-			len(without.Lines(0)), len(with.Lines(0)), inlinePeekBodyRows)
+			len(without.Lines(0)), len(with.Lines(0)), inlinePeekWindowRows)
 	}
 	if len(with.Body) <= len(without.Body) {
 		t.Fatalf("the note added no document rows: %d with, %d without", len(with.Body), len(without.Body))
@@ -144,8 +144,8 @@ func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
 	doc := inlinePeekDocumentFor(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
 	})
-	if got := len(doc.Lines(0)); got != inlinePeekBodyRows {
-		t.Fatalf("Peek height = %d, want %d", got, inlinePeekBodyRows)
+	if got := len(doc.Lines(0)); got != inlinePeekWindowRows {
+		t.Fatalf("Peek height = %d, want %d", got, inlinePeekWindowRows)
 	}
 	plain := ansi.Strip(strings.Join(doc.Body, "\n"))
 	if !strings.HasPrefix(plain, "Selected task whose title") {
@@ -161,10 +161,13 @@ func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
 	}
 }
 
-// TestInlinePeekResumeNoteIsMeasuredByTheSameAuthorityThatDrawsIt keeps the one
-// rendering-and-measurement authority the viewport depends on: the note may not
-// add a row the height reservation never counted.
-func TestInlinePeekResumeNoteIsMeasuredByTheSameAuthorityThatDrawsIt(t *testing.T) {
+// TestInlinePeekResumeNoteIsInTheRowsDocumentAtEveryWidth reaches the note the
+// way the dock does, through the row rather than through a document the test
+// built itself, so the indent and the width the dock supplies are the ones under
+// test. The note is in the document and fits the terminal at every width; how
+// much of that document is on screen is the dock's fixed window, measured where
+// the dock is measured.
+func TestInlinePeekResumeNoteIsInTheRowsDocumentAtEveryWidth(t *testing.T) {
 	note := strings.TrimSpace(strings.Repeat("resume ", 30))
 	task := resumeNotePeekTask(note)
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project", Tasks: []*models.Task{task}}
@@ -173,13 +176,16 @@ func TestInlinePeekResumeNoteIsMeasuredByTheSameAuthorityThatDrawsIt(t *testing.
 	row := OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "│   ├── "}
 
 	for _, width := range []int{40, 60, 80, 120} {
-		indent := inlinePeekIndentForRow(row)
-		drawn := model.InlinePeekLinesForRow(row, indent, width)
-		if got := model.inlinePeekLineCount(row, width); got != len(drawn) {
-			t.Fatalf("width %d measured %d Peek lines and drew %d", width, got, len(drawn))
+		model.SetSize(width, 24)
+		body := model.PeekDocumentBodyForRow(row)
+		plain := ansi.Strip(strings.Join(body, "\n"))
+		if !strings.Contains(strings.Join(strings.Fields(plain), " "), "Resume: "+note) {
+			t.Fatalf("width %d lost the note from the row's document:\n%s", width, plain)
 		}
-		if !strings.Contains(ansi.Strip(strings.Join(drawn, "\n")), "Resume: ") {
-			t.Fatalf("width %d drew no resume line:\n%s", width, ansi.Strip(strings.Join(drawn, "\n")))
+		for number, line := range body {
+			if got := lipgloss.Width(line); got > width {
+				t.Fatalf("width %d line %d overflowed to %d: %q", width, number, got, ansi.Strip(line))
+			}
 		}
 	}
 }

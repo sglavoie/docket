@@ -21,11 +21,26 @@ func peekDocumentBody(m *OutlinerModel, row OutlinerRow, width int) []string {
 	return m.inlinePeekDocumentForRow(row, "  ", width).Body
 }
 
-// peekFirstPage is the first page of a document built straight from options,
-// which is what the renderer and the viewport measurement both consume. Paging
+// peekFirstPage is the first window of a document built straight from options,
+// which is what the dock draws and what the viewport reserves room for. Paging
 // past it is inline_peek_paging_test.go's subject, not this file's.
 func peekFirstPage(opts inlinePeekOptions) []string {
 	return inlinePeekDocumentFor(opts).Lines(0)
+}
+
+// peekWindowText is the content a window carries, without the blank rows a short
+// document is padded out to the dock's fixed height with and without the
+// position row every window ends on. A test comparing Peek against exact text
+// means this; a test about the dock's geometry means the row count instead.
+func peekWindowText(lines []string) string {
+	content := make([]string, 0, len(lines))
+	for _, line := range lines[:min(len(lines), inlinePeekBodyRows)] {
+		if strings.TrimSpace(ansi.Strip(line)) == "" {
+			continue
+		}
+		content = append(content, ansi.Strip(line))
+	}
+	return strings.Join(content, "\n")
 }
 
 // TestInlinePeekNilAndEmptyTask pins the two degenerate inputs. A row that
@@ -43,15 +58,20 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 		Indent: "  ",
 		Width:  40,
 	})
-	if got := ansi.Strip(strings.Join(lines, "\n")); got != "  state backlog" {
+	if got := peekWindowText(lines); got != "  state backlog" {
 		t.Fatalf("empty Peek = %q", got)
+	}
+	// The window is still the dock's fixed height: a task with one line to say
+	// pads rather than shrinking the block the list gave up rows for.
+	if len(lines) != inlinePeekWindowRows {
+		t.Fatalf("empty Peek window = %d rows, want %d", len(lines), inlinePeekWindowRows)
 	}
 }
 
-// TestInlinePeekPageIsBoundedWhileTheDocumentIsNot is the split session 4 bought:
-// the document holds every detail row the task has, and the five-row budget
-// decides only how many of them are on screen. One of those five goes to the
-// counter as soon as anything is off screen.
+// TestInlinePeekPageIsBoundedWhileTheDocumentIsNot is the split the dock rests
+// on: the document holds every detail row the task has, and the five-row budget
+// decides only how many of them are on screen. The position row beneath them is
+// always drawn, so the window is the same height whatever the document holds.
 func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
@@ -79,8 +99,8 @@ func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 
 	rendered := doc.Lines(0)
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if len(rendered) != inlinePeekBodyRows {
-		t.Fatalf("first page = %d rows, want %d:\n%s", len(rendered), inlinePeekBodyRows, plain)
+	if len(rendered) != inlinePeekWindowRows {
+		t.Fatalf("first page = %d rows, want %d:\n%s", len(rendered), inlinePeekWindowRows, plain)
 	}
 	if got := ansi.Strip(rendered[0]); got != "    Selected" {
 		t.Fatalf("page does not lead with the whole title: %q\n%s", got, plain)
@@ -272,8 +292,8 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 			t.Fatalf("Peek still renders %q:\n%s", banned, body)
 		}
 	}
-	if len(doc.Lines(0)) != inlinePeekBodyRows {
-		t.Fatalf("page = %d rows, want %d", len(doc.Lines(0)), inlinePeekBodyRows)
+	if len(doc.Lines(0)) != inlinePeekWindowRows {
+		t.Fatalf("page = %d rows, want %d", len(doc.Lines(0)), inlinePeekWindowRows)
 	}
 }
 
@@ -399,8 +419,8 @@ func TestInlinePeekNamesTheWholeTitle(t *testing.T) {
 
 // TestInlinePeekTitleIsBodyRatherThanHeader is the scrolling half of the same
 // claim. Nothing in Peek sits outside the window any more: a title long enough
-// to fill the pane pages away like a long description, and the page stays five
-// rows wide however long the title is.
+// to fill the dock pages away like a long description, and the window stays the
+// same height however long the title is.
 func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 	task := &models.Task{
 		ID:          "task",
@@ -413,8 +433,8 @@ func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 	}
 
 	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 40})
-	if len(doc.Lines(0)) != inlinePeekBodyRows {
-		t.Fatalf("first page = %d rows, want the %d-row budget", len(doc.Lines(0)), inlinePeekBodyRows)
+	if len(doc.Lines(0)) != inlinePeekWindowRows {
+		t.Fatalf("first page = %d rows, want the %d-row window", len(doc.Lines(0)), inlinePeekWindowRows)
 	}
 	if !strings.HasPrefix(ansi.Strip(doc.Lines(0)[0]), "continuation") {
 		t.Fatalf("page does not lead with the title:\n%s", ansi.Strip(strings.Join(doc.Lines(0), "\n")))
@@ -442,14 +462,14 @@ func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Child"}
 
-	withParent := ansi.Strip(strings.Join(peekFirstPage(inlinePeekOptions{
+	withParent := peekWindowText(peekFirstPage(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
-	}), "\n"))
+	}))
 	if !strings.Contains(withParent, "Parent: Launch platform › User authentication") {
 		t.Fatalf("parent line = %q", withParent)
 	}
 
-	withoutParent := ansi.Strip(strings.Join(peekFirstPage(inlinePeekOptions{Task: task, Width: 80}), "\n"))
+	withoutParent := peekWindowText(peekFirstPage(inlinePeekOptions{Task: task, Width: 80}))
 	if strings.Contains(withoutParent, "Parent:") {
 		t.Fatalf("root task Peek gained a parent line: %q", withoutParent)
 	}

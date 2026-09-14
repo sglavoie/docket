@@ -33,7 +33,7 @@ func (p *projectPreviewPainter) RenderRow(index, width int) string {
 	// layout matches what the Outliner passes below its own alignment threshold,
 	// and the absolute row index keeps zebra striping anchored to the task rather
 	// than to the scroll position.
-	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, width, index, nil)
+	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, index, nil)
 }
 
 // NewProjectPreviewPainter is the Hub's NewPreviewTaskPainter. Building one costs

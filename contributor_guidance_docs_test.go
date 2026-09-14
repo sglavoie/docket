@@ -691,7 +691,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// retirement beneath it: a truncation has no inverse, so the surface that
 	// needs the whole text renders the whole text. The mechanism lives in
 	// docs/architecture/search-filters-and-sorting.md.
-	const budget = 47922
+	// Thirty-fourth raise, 47922 to 48761, for the docked Peek. 839 bytes buy the
+	// rule that the reservation is a constant: the pane moved out from under its
+	// row and into a fixed block below the list, so the height reads neither the
+	// cursor nor the document and moving between a one-line task and a forty-line
+	// one leaves every list row where it was. A pane whose height was its
+	// document's height re-laid-out the list on every cursor move, which is the
+	// thing this retires, and stating the constant is what keeps a future
+	// contributor from trimming the block back to what the current row happens to
+	// need. The three consequences are the rest of it: a row with nothing to show
+	// draws a placeholder rather than closing the gap, the position row is drawn
+	// always so paging cannot change the height either, and consumption is the
+	// dock being open rather than the cursor owning a document, which is what lets
+	// the four keys stay eaten and `b` stay able to close what it opened. The one
+	// exception, the empty projection, is named because it is the one path with no
+	// list beneath the dock to protect. The mechanism lives in
+	// docs/architecture/search-filters-and-sorting.md.
+	const budget = 48761
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

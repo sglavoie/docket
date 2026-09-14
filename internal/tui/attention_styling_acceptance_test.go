@@ -224,7 +224,7 @@ func TestAttentionSignalsRenderAcrossThemesAndFocus(t *testing.T) {
 						outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(row)})
 					}
 
-					line := outlinerView.RenderOutlinerTaskRow(row, focus.cursor, 100, 100, 0, nil)
+					line := outlinerView.RenderOutlinerTaskRow(row, focus.cursor, 100, 0, nil)
 					plain := ansi.Strip(line)
 
 					for _, want := range requiredPlainText(task, testCase) {
@@ -323,7 +323,7 @@ func monochromeRowText(t *testing.T, task *models.Task) string {
 	t.Helper()
 	outlinerView, project := cursorHighlightOutlinerTheme(t, "dark", task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
-	return strings.TrimRight(ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, false, 100, 100, 0, nil)), " ")
+	return strings.TrimRight(ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, false, 100, 0, nil)), " ")
 }
 
 // TestAttentionSignalsAreDistinguishableWithoutColor is the check the matrix

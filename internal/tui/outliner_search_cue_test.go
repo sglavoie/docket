@@ -22,9 +22,9 @@ func TestSearchCueStaysOutOfPeekAndProjectPreview(t *testing.T) {
 	bare := attributed
 	bare.MatchSource = outliner.MatchSourceNone
 
-	indent := "    "
-	withCue := outlinerView.InlinePeekLinesForRow(attributed, indent, 120)
-	without := outlinerView.InlinePeekLinesForRow(bare, indent, 120)
+	outlinerView.SetSize(120, 24)
+	withCue := outlinerView.PeekDocumentBodyForRow(attributed)
+	without := outlinerView.PeekDocumentBodyForRow(bare)
 	if len(withCue) != len(without) {
 		t.Fatalf("Peek changed length under attribution: %d vs %d", len(withCue), len(without))
 	}
@@ -38,7 +38,7 @@ func TestSearchCueStaysOutOfPeekAndProjectPreview(t *testing.T) {
 		if previewRow.MatchSource != outliner.MatchSourceNone {
 			t.Fatalf("preview row carried source %d, want none", previewRow.MatchSource)
 		}
-		if plain := ansi.Strip(outlinerView.RenderOutlinerTaskRow(previewRow, false, 120, 120, 0, nil)); strings.Contains(plain, "·") {
+		if plain := ansi.Strip(outlinerView.RenderOutlinerTaskRow(previewRow, false, 120, 0, nil)); strings.Contains(plain, "·") {
 			t.Fatalf("project preview row wore a cue: %q", plain)
 		}
 	}

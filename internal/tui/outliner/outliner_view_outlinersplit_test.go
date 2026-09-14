@@ -90,12 +90,13 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 	}
 }
 
-// TestViewportReservesTheWholePeekBlockForALongTitle is the measurement-path
-// contract, restated now that nothing sits outside the additive cap. A title too
-// long for its row costs document rows, not reserved ones, so the block a long
-// title produces is the same height as any other and computeOutlinerViewport
-// reserves exactly what the renderer draws.
-func TestViewportReservesTheWholePeekBlockForALongTitle(t *testing.T) {
+// TestViewportReservesTheWholePeekDockWhateverTheRowHolds is the measurement-path
+// contract, restated now that the dock is a fixed block below the list. A title
+// too long for its row costs document rows, not reserved ones, and the row the
+// cursor rests on costs nothing at all: the reservation, the render, and the
+// list window are the same numbers over a long task and a short one, which is
+// what keeps moving between them from shifting the frame.
+func TestViewportReservesTheWholePeekDockWhateverTheRowHolds(t *testing.T) {
 	const (
 		width  = 60
 		height = 20
@@ -114,19 +115,30 @@ func TestViewportReservesTheWholePeekBlockForALongTitle(t *testing.T) {
 	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
 
 	outliner.PeekMode = true
-	row := outliner.Rows[outliner.Cursor]
-	indent := strings.Repeat(" ", lipgloss.Width(row.Prefix)+4)
-	reserved := outliner.inlinePeekLineCount(row, width-1)
-	if reserved != inlinePeekBodyRows {
-		t.Fatalf("reserved %d Peek rows, want the %d-row budget", reserved, inlinePeekBodyRows)
+	reserved := outliner.peekDockHeight()
+	if reserved != PeekDockRows {
+		t.Fatalf("reserved %d dock rows, want the %d-row dock", reserved, PeekDockRows)
 	}
-	if drawn := len(outliner.InlinePeekLinesForRow(row, indent, width)); drawn > reserved {
-		t.Fatalf("render drew %d Peek rows, more than the %d reserved", drawn, reserved)
+	if drawn := len(outliner.PeekDockLines()); drawn != reserved {
+		t.Fatalf("render drew %d dock rows against %d reserved", drawn, reserved)
 	}
+	longWindow := outliner.ComputeOutlinerViewport(width, 0).VisibleRows
+
+	// The short task's detail is a fraction of the long one's, and neither the
+	// dock nor the list window notices.
+	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: short.ID})
+	if drawn := len(outliner.PeekDockLines()); drawn != reserved {
+		t.Fatalf("the short task's dock drew %d rows, want %d", drawn, reserved)
+	}
+	if got := outliner.ComputeOutlinerViewport(width, 0).VisibleRows; got != longWindow {
+		t.Fatalf("the short task left %d list rows and the long one %d", got, longWindow)
+	}
+	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
+
 	// The title is in the document rather than above it, so it is the long task's
 	// document that grew, not its reservation.
 	whole := ansi.Strip(strings.Join(
-		inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}).Body, " "))
+		inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: peekDockIndent, Width: width}).Body, " "))
 	if want := strings.Join(strings.Fields(long.Title), " "); !strings.Contains(strings.Join(strings.Fields(whole), " "), want) {
 		t.Fatalf("the long title is not in its Peek document:\n%s", whole)
 	}

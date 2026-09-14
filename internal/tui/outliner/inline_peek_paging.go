@@ -2,7 +2,6 @@ package outliner
 
 import (
 	"slices"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 
@@ -10,7 +9,111 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
+
+// The dock is Peek's place on the frame: a divider, the document window, and a
+// height that does not depend on what the window holds. That constant is the
+// whole point of docking it. A pane that grew with its content moved the list
+// under the cursor every time the cursor landed on a longer task, so reading one
+// row cost the position of every other; here the list keeps the same rows and
+// the cursor keeps the same screen row whether the detail below is one line or
+// fifty.
+const (
+	peekDockDividerRows = 1
+	// PeekDockRows is the whole dock and the number ComputeOutlinerViewport
+	// reserves from the list. It is exported because the shell measures frames
+	// against it rather than against a literal seven.
+	PeekDockRows = peekDockDividerRows + inlinePeekWindowRows
+	// peekDockIndent is the column the dock's content starts in. It is fixed
+	// rather than read off the cursor row: the dock hangs off the frame, not off a
+	// tree node, so a deeply nested task and a root one read at the same margin.
+	peekDockIndent = "  "
+	// peekDockPlaceholderText is what the dock says for a row that owns no detail
+	// document — a section header, a note, a checklist item. The dock stays open
+	// and stays this tall there, so crossing such a row moves nothing on screen.
+	peekDockPlaceholderText = "No detail to show for this row."
+	// peekDockPlaceholderFingerprint identifies that stand-in content. It is a
+	// constant because the placeholder is one document however many rows fall back
+	// to it, and it can never be scrolled: a row with no document has no offset to
+	// remember.
+	peekDockPlaceholderFingerprint = "peek-dock-placeholder"
+)
+
+// PeekDockVisible reports whether the dock is on screen. It is Peek's one
+// open-or-closed answer, and every reader — the render, the reservation, the
+// operation grammar, and the guidance — asks here, so none of them can disagree
+// about whether there is a dock. The cursor row is deliberately not part of it:
+// the dock survives the cursor moving onto a row that owns no document, which is
+// what the placeholder is for.
+func (m *OutlinerModel) PeekDockVisible() bool {
+	return m != nil && m.PeekMode
+}
+
+// peekDockHeight is what the dock costs the list. It is a constant or zero and
+// never a measurement of the document, which is what makes the list's window,
+// the cursor's screen row, and the page distance independent of what Peek is
+// showing.
+func (m *OutlinerModel) peekDockHeight() int {
+	if !m.PeekDockVisible() {
+		return 0
+	}
+	return PeekDockRows
+}
+
+// peekDockWidth is the width the dock draws at. The dock spans the frame rather
+// than hanging off a row, so there is no scrollbar column to subtract and no
+// need to ask which path drew the last frame: the terminal width is the answer
+// on every frame, the empty projection included.
+func (m *OutlinerModel) peekDockWidth() int {
+	if m == nil {
+		return 1
+	}
+	return max(m.Width(), 1)
+}
+
+// PeekDockLines is the dock: the divider that separates it from the list, the
+// document's window, and the position row under it. The slice is exactly
+// PeekDockRows long while the dock is open and empty while it is closed, so the
+// height that is reserved and the block that is drawn are one measurement rather
+// than two that agree.
+func (m *OutlinerModel) PeekDockLines() []string {
+	if !m.PeekDockVisible() {
+		return nil
+	}
+	width := m.peekDockWidth()
+	lines := make([]string, 0, PeekDockRows)
+	lines = append(lines, chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(theme.ColorBorder)))
+	return append(lines, m.peekDockWindow(width)...)
+}
+
+// peekDockWindow is the document's own rows: the cursor row's detail at its
+// remembered offset, or the placeholder for a row that owns none. Both come back
+// the same height, because Lines pads a short document rather than shrinking the
+// window.
+func (m *OutlinerModel) peekDockWindow(width int) []string {
+	row, doc, ok := m.peekCursorDocument()
+	if !ok {
+		return peekDockPlaceholderDocument(width).Lines(0)
+	}
+	return doc.Lines(m.peekOffsetForRow(row, doc))
+}
+
+// peekDockPlaceholderDocument is the stand-in document, built as a document
+// rather than as a block of text so it goes through the same Lines the real one
+// does: the padding, the position row, and the height are the window's rules,
+// not a second copy of them.
+func peekDockPlaceholderDocument(width int) inlinePeekDocument {
+	available := max(width-lipgloss.Width(peekDockIndent), 1)
+	text := theme.MutedStyle.Render(textfit.TruncateIntentional(peekDockPlaceholderText, available, "…"))
+	return inlinePeekDocument{
+		Body:        []string{peekDockIndent + text},
+		Fingerprint: peekDockPlaceholderFingerprint,
+		indent:      peekDockIndent,
+		width:       available,
+	}
+}
 
 // inlinePeekOwnerKind names what kind of thing a remembered offset belongs to.
 // Peek draws two documents — a task's and a project header's — and each kind's
@@ -107,14 +210,6 @@ type peekOffsetState struct {
 	offset int
 }
 
-// inlinePeekIndentForRow is the column Peek's lines start in: past the row's
-// tree prefix and the fixed lead the row spends on its cursor gutter, checkbox,
-// fold indicator, and status icon. Peek carries no tree glyphs of its own, so
-// the indent is spaces rather than a copy of the prefix.
-func inlinePeekIndentForRow(row OutlinerRow) string {
-	return strings.Repeat(" ", lipgloss.Width(row.Prefix)+4)
-}
-
 // inlinePeekDocumentForRow builds the complete detail document for one row.
 // Every reader — the renderer, the viewport measurement, and the two paging
 // keys — comes through here, so none of them can be looking at a different
@@ -202,9 +297,9 @@ func (m *OutlinerModel) peekOwnerForRow(row OutlinerRow) inlinePeekOwner {
 // and that is the whole of how scrolling resets: the stored offset answers only
 // for the exact owner, detail, reference population, and layout it was written
 // against, so each of those changing falls back to the top without any writer
-// having to notice. The model width and height stand in for the layout rather
-// than the caller's width, which differs by the scrollbar column between the
-// measuring pass and the drawing one.
+// having to notice. The model width and height stand in for the layout, which is
+// the whole of it: the dock spans the frame, so nothing about where the cursor
+// sits or how many rows the list holds changes how the document wrapped.
 func (m *OutlinerModel) peekOffsetForRow(row OutlinerRow, doc inlinePeekDocument) int {
 	if m == nil || !m.peek.key.sameAs(m.inlinePeekOffsetKey(row, doc)) {
 		return 0
@@ -212,31 +307,11 @@ func (m *OutlinerModel) peekOffsetForRow(row OutlinerRow, doc inlinePeekDocument
 	return doc.ClampOffset(m.peek.offset)
 }
 
-// peekRenderWidth is the width the last render gave a row. The scrolling keys
-// read it rather than recomputing a window: ComputeOutlinerViewport is the single
-// window authority, and it has already run for the frame the user is looking at.
-//
-// The empty projection is the one frame that never reaches that authority.
-// renderOutlinerEmptyState returns before it, drawing the focused header — and
-// the Peek hanging off it — at the full width, so LastViewport still names
-// whatever frame last held rows, at whatever size the terminal was then. Reading
-// it there would build the keys a document of another width, whose end is not
-// the end of the one on screen. The branch is the same HasContentRows the render
-// branches on, so the two cannot disagree about which path drew.
-func (m *OutlinerModel) peekRenderWidth() int {
-	if !m.HasContentRows() {
-		return max(m.Width(), 1)
-	}
-	if width := m.LastViewport.rowWidth; width > 0 {
-		return width
-	}
-	return max(m.Width()-1, 1)
-}
-
-// peekCursorDocument is the document the scrolling keys act on, or false when
-// there is none: Peek closed, a cursor off the rows, or a row that owns no
-// document. PeekMode alone is not enough — it survives the cursor moving onto a
-// section header or a note row, where Peek draws nothing to page.
+// peekCursorDocument is the document the dock draws and the scrolling keys act
+// on, or false when there is none: Peek closed, a cursor off the rows, or a row
+// that owns no document. PeekMode alone is not enough — it survives the cursor
+// moving onto a section header or a note row, where the dock draws its
+// placeholder and there is nothing to page.
 func (m *OutlinerModel) peekCursorDocument() (OutlinerRow, inlinePeekDocument, bool) {
 	if m == nil || !m.PeekMode || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return OutlinerRow{}, inlinePeekDocument{}, false
@@ -245,8 +320,8 @@ func (m *OutlinerModel) peekCursorDocument() (OutlinerRow, inlinePeekDocument, b
 	if !rowSupportsPeek(row) {
 		return OutlinerRow{}, inlinePeekDocument{}, false
 	}
-	width := m.peekRenderWidth()
-	doc := m.inlinePeekDocumentForRow(row, inlinePeekIndentForRow(row), width)
+	width := m.peekDockWidth()
+	doc := m.inlinePeekDocumentForRow(row, peekDockIndent, width)
 	// A header naming a project the population no longer holds draws nothing, and
 	// nothing on screen is nothing to page: the four keys belong to the list again
 	// rather than being swallowed by a pane that is not there.
@@ -360,19 +435,22 @@ func (m *OutlinerModel) peekOperationKey(id operation.OperationID, fallback stri
 
 // PeekCommandContext is Peek's contribution to the operation grammar's view of
 // the world, and it answers two different questions with two different fields.
-// Visible is consumption: the four scrolling descriptors are applicable under it
-// alone, so a Peek on screen swallows every one of those keys — at either
-// boundary and over a document too short to move — rather than letting the press
-// reach the list cursor underneath. CanPageDown and CanPageUp are availability:
-// they say whether the window has anywhere to go, and only the footer hints read
-// them, because an offer that cannot move is worse than no offer while a key that
-// silently moves the wrong thing is worse than both.
+// Visible is consumption, and it is the dock's own open-or-closed state rather
+// than the cursor document's: the four scrolling descriptors are applicable
+// under it alone, so a dock on screen swallows every one of those keys — at
+// either boundary, over a document too short to move, and over a row showing the
+// placeholder — rather than letting the press reach the list cursor underneath.
+// The delegated handler is where a row that names no document refuses by name.
+// CanPageDown and CanPageUp are availability: they say whether the window has
+// anywhere to go, and only the footer hints read them, because an offer that
+// cannot move is worse than no offer while a key that silently moves the wrong
+// thing is worse than both.
 func (m *OutlinerModel) PeekCommandContext() operation.PeekContext {
-	row, doc, ok := m.peekCursorDocument()
-	if !ok {
+	if !m.PeekDockVisible() {
 		return operation.PeekContext{}
 	}
-	if !doc.Paged() {
+	row, doc, ok := m.peekCursorDocument()
+	if !ok || !doc.Paged() {
 		return operation.PeekContext{Visible: true}
 	}
 	current := m.peekOffsetForRow(row, doc)

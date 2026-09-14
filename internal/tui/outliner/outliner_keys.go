@@ -431,7 +431,7 @@ func (m *OutlinerModel) TaskLineEditRequest(source taskref.TaskIdentity, result 
 // Focus stack → cross-project Focus stack → section zoom → project scope.
 func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 	return []listsurface.EscStep{
-		{Active: func() bool { return m.PeekMode }, Clear: func() {
+		{Active: func() bool { return m.PeekDockVisible() }, Clear: func() {
 			m.PeekMode = false
 		}},
 		{Active: func() bool { return m.IsRangeSelectionActive() }, Clear: func() {
@@ -581,18 +581,15 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	// explanation and the way out of it are what the user needs there; the
 	// header's own actions stay in `?` help and its action sheet.
 	//
-	// A Peek drawn under that header is the exception, and it is asked as the
-	// scrolling descriptors ask it — a pane on screen, not the mode flag — so a
-	// header the population cannot resolve still falls through to the cause. The
-	// pane is the innermost thing on screen and the one Esc puts down first, so
-	// naming the empty state's recovery key here would promise an act the first
-	// press is not doing. Closing the pane restores this branch and its cause
-	// unchanged.
-	case !m.HasContentRows() && !m.PeekCommandContext().Visible:
+	// An open dock is the exception: it is the innermost thing on screen and the
+	// one Esc puts down first, so naming the empty state's recovery key here would
+	// promise an act the first press is not doing. Closing the dock restores this
+	// branch and its cause unchanged.
+	case !m.HasContentRows() && !m.PeekDockVisible():
 		return m.emptyGuidance(), true
 	case m.MultiSelectMode:
 		return m.multiSelectGuidance(), true
-	case m.PeekMode:
+	case m.PeekDockVisible():
 		peekKey := m.peekOperationKey(operation.OperationCorePeek, peekDisplayKey)
 		hints := chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek")
 		// The four scrolling keys are offered only in the direction the document

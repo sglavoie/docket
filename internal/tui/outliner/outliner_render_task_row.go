@@ -210,16 +210,23 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	return segments
 }
 
-func (m *OutlinerModel) RenderOutlinerTaskRow(row OutlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *chrome.ColumnLayout) string {
+// RenderOutlinerTaskRow draws one task row, and exactly one line of it. The
+// detail behind the row is the dock's, below the list, so the renderer takes the
+// row's own column budget and nothing else: there is no second width for a pane
+// that no longer hangs off the row.
+func (m *OutlinerModel) RenderOutlinerTaskRow(
+	row OutlinerRow,
+	selected bool,
+	rowWidth, rowIndex int,
+	colLayout *chrome.ColumnLayout,
+) string {
 	task := row.Task
 	titleStyle := m.renderTaskTitleStyle(task)
 	paint := m.cursorPaintFor(selected)
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
-	line := applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
-
-	return m.appendInlinePeek(line, row, rowIndex, width)
+	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 }
 
 // rowIdentity resolves a row's project-qualified task identity, supplying the
@@ -644,47 +651,14 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 	return chrome.ZebraLine(line, rowWidth, rowIndex)
 }
 
-// InlinePeekLinesForRow is the window onto the row's detail document that is on
-// screen. The document itself, its window geometry, and the remembered offset
-// live in inline_peek_document.go and inline_peek_paging.go; this is the seam the
-// renderer and the viewport measurement below it share.
-func (m *OutlinerModel) InlinePeekLinesForRow(row OutlinerRow, indent string, rowWidth int) []string {
+// PeekDocumentBodyForRow is one row's complete detail document, wrapped to the
+// dock's own indent and width. It is the whole of it rather than the window on
+// screen: the dock reaches the window through Lines, and this is the seam for
+// naming a row's detail directly — what Peek can be scrolled to, independent of
+// where the cursor is and of what the frame currently shows.
+func (m *OutlinerModel) PeekDocumentBodyForRow(row OutlinerRow) []string {
 	if m == nil || !rowSupportsPeek(row) {
 		return nil
 	}
-	doc := m.inlinePeekDocumentForRow(row, indent, rowWidth)
-	return doc.Lines(m.peekOffsetForRow(row, doc))
-}
-
-// appendInlinePeek draws a row's Peek window beneath the row itself. Both row
-// kinds that own a document come through here, so the pane attaches on the same
-// terms wherever it appears: only under the cursor, only while Peek is open, and
-// only when the document has something to say.
-func (m *OutlinerModel) appendInlinePeek(line string, row OutlinerRow, rowIndex, width int) string {
-	if m == nil || !m.PeekMode || rowIndex != m.Cursor {
-		return line
-	}
-	// Peek belongs to the selected row but is not another tree node. Preserve the
-	// nesting width for alignment without repeating connector glyphs.
-	peekLines := m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width)
-	if len(peekLines) == 0 {
-		return line
-	}
-	var b strings.Builder
-	b.WriteString(line)
-	for _, peekLine := range peekLines {
-		b.WriteString("\n")
-		b.WriteString(peekLine)
-	}
-	return b.String()
-}
-
-// inlinePeekLineCount measures the Peek height ComputeOutlinerViewport must
-// reserve. It reconstructs the row's real indent, which is what decides how wide
-// the document wrapped and therefore how many of its rows a counter row has to
-// account for. It counts the same window the render draws: both call Lines, so a
-// height that is reserved and a window that is painted cannot disagree.
-func (m *OutlinerModel) inlinePeekLineCount(row OutlinerRow, width int) int {
-	width = max(width, 1)
-	return len(m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width))
+	return m.inlinePeekDocumentForRow(row, peekDockIndent, m.peekDockWidth()).Body
 }
