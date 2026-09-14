@@ -19,7 +19,7 @@ const (
 
 	// The attention row set. Each title carries exactly one of the four
 	// precedence states — overdue, review, due today, P1 — so a styling
-	// regression names the row it broke instead of a colour.
+	// regression names the row it broke instead of a color.
 	uxAcceptanceOverdueTitle  = "Restore the overdue billing reconciliation export before the audit closes"
 	uxAcceptanceReviewTitle   = "Reread the quarterly access list flagged for review"
 	uxAcceptanceDueTodayTitle = "Confirm the release sign-off owed today"

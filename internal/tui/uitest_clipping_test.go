@@ -96,7 +96,7 @@ func TestObservationReportsClippedLines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to build fixture driver: %v", err)
 	}
-	defer ws.Cleanup()
+	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	obs := driver.Observe(ObserveOptions{})
 	if len(obs.ClippedLines) == 0 {
@@ -119,13 +119,13 @@ func TestNotClippedAssertionNamesWhichDefectItFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to build fixture driver: %v", err)
 	}
-	defer ws.Cleanup()
+	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	assert := func(value string) error {
 		return driver.runAssert(UITestAction{Type: UITestActionAssert, Assert: "not_clipped", Value: value})
 	}
 
-	if err := assert(uxAcceptanceDueTodayTitle); err != nil {
+	if err = assert(uxAcceptanceDueTodayTitle); err != nil {
 		t.Fatalf("whole title failed not_clipped: %v", err)
 	}
 
