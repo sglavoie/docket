@@ -1,10 +1,12 @@
 package outliner
 
 import (
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -123,7 +125,6 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 	row OutlinerRow,
 	indent string,
 	rowWidth int,
-	colLayout *chrome.ColumnLayout,
 ) inlinePeekDocument {
 	if m == nil {
 		return inlinePeekDocument{}
@@ -146,12 +147,37 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 		Task:             row.Task,
 		Indent:           indent,
 		Width:            rowWidth,
-		TitleOverflow:    m.TaskRowTitleOverflow(row, rowWidth, colLayout),
 		Breadcrumb:       row.Breadcrumb,
+		Planning:         m.peekPlanningMembership(row),
 		Dependencies:     outgoingDependencyDetails(row.Task, index),
 		Dependents:       incomingDependencyDetails(m.rowIdentity(row), index),
 		DependencyCensus: DependencyCensusFor(row.Task, index),
 	})
+}
+
+// peekPlanningMembership names the planning collection a task belongs to, or
+// nothing. Membership is neither a lifecycle state nor a field on the task: it is
+// an explicit project-qualified entry in the planning state, and Today and Next
+// are mutually exclusive, so one name is the whole answer. This is the impure
+// half of the document — the renderer below it reads only what it is handed — and
+// it is resolved here for the same reason the reference lists are.
+func (m *OutlinerModel) peekPlanningMembership(row OutlinerRow) string {
+	if m == nil || m.Runtime == nil || row.Task == nil {
+		return ""
+	}
+	identity := m.rowIdentity(row)
+	if identity.ProjectID == "" || identity.TaskID == "" {
+		return ""
+	}
+	locator := config.ProjectTaskLocator{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
+	planning := m.Runtime.Planning()
+	switch {
+	case slices.Contains(planning.GetToday(), locator):
+		return "today"
+	case slices.Contains(planning.GetNext(), locator):
+		return "next"
+	}
+	return ""
 }
 
 func (m *OutlinerModel) inlinePeekOffsetKey(row OutlinerRow, doc inlinePeekDocument) inlinePeekOffsetKey {
@@ -220,7 +246,7 @@ func (m *OutlinerModel) peekCursorDocument() (OutlinerRow, inlinePeekDocument, b
 		return OutlinerRow{}, inlinePeekDocument{}, false
 	}
 	width := m.peekRenderWidth()
-	doc := m.inlinePeekDocumentForRow(row, inlinePeekIndentForRow(row), width, chrome.WorstCaseColumnLayout(width))
+	doc := m.inlinePeekDocumentForRow(row, inlinePeekIndentForRow(row), width)
 	// A header naming a project the population no longer holds draws nothing, and
 	// nothing on screen is nothing to page: the four keys belong to the list again
 	// rather than being swallowed by a pane that is not there.

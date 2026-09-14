@@ -100,7 +100,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"rich-tools.json",
 		"outliner-peek-wide-layout.json",
 		"outliner-peek-narrow-layout.json",
-		"outliner-peek-title-continuation.json",
+		"outliner-peek-whole-title.json",
 		"outliner-bulk-action-intersection.json",
 		"outliner-checklist-rows-fold.json",
 		"outliner-checklist-selection-suppression.json",

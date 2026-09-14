@@ -210,16 +210,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	return segments
 }
 
-// taskRowTitleOverflow returns the title text the row itself could not show, so
-// Peek can complete it rather than restate it.
-func (m *OutlinerModel) TaskRowTitleOverflow(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
-	if m == nil || row.Task == nil {
-		return ""
-	}
-	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, cursorPaint{})
-	return textfit.VisualWidthOverflow(row.Task.Title, segments.titleWidth(rowWidth))
-}
-
 func (m *OutlinerModel) RenderOutlinerTaskRow(row OutlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *chrome.ColumnLayout) string {
 	task := row.Task
 	titleStyle := m.renderTaskTitleStyle(task)
@@ -229,7 +219,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(row OutlinerRow, selected bool, ro
 
 	line := applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 
-	return m.appendInlinePeek(line, row, rowIndex, width, colLayout)
+	return m.appendInlinePeek(line, row, rowIndex, width)
 }
 
 // rowIdentity resolves a row's project-qualified task identity, supplying the
@@ -658,16 +648,11 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 // screen. The document itself, its window geometry, and the remembered offset
 // live in inline_peek_document.go and inline_peek_paging.go; this is the seam the
 // renderer and the viewport measurement below it share.
-func (m *OutlinerModel) InlinePeekLinesForRow(
-	row OutlinerRow,
-	indent string,
-	rowWidth int,
-	colLayout *chrome.ColumnLayout,
-) []string {
+func (m *OutlinerModel) InlinePeekLinesForRow(row OutlinerRow, indent string, rowWidth int) []string {
 	if m == nil || !rowSupportsPeek(row) {
 		return nil
 	}
-	doc := m.inlinePeekDocumentForRow(row, indent, rowWidth, colLayout)
+	doc := m.inlinePeekDocumentForRow(row, indent, rowWidth)
 	return doc.Lines(m.peekOffsetForRow(row, doc))
 }
 
@@ -675,19 +660,13 @@ func (m *OutlinerModel) InlinePeekLinesForRow(
 // kinds that own a document come through here, so the pane attaches on the same
 // terms wherever it appears: only under the cursor, only while Peek is open, and
 // only when the document has something to say.
-func (m *OutlinerModel) appendInlinePeek(
-	line string,
-	row OutlinerRow,
-	rowIndex int,
-	width int,
-	colLayout *chrome.ColumnLayout,
-) string {
+func (m *OutlinerModel) appendInlinePeek(line string, row OutlinerRow, rowIndex, width int) string {
 	if m == nil || !m.PeekMode || rowIndex != m.Cursor {
 		return line
 	}
 	// Peek belongs to the selected row but is not another tree node. Preserve the
 	// nesting width for alignment without repeating connector glyphs.
-	peekLines := m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width, colLayout)
+	peekLines := m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width)
 	if len(peekLines) == 0 {
 		return line
 	}
@@ -701,13 +680,11 @@ func (m *OutlinerModel) appendInlinePeek(
 }
 
 // inlinePeekLineCount measures the Peek height ComputeOutlinerViewport must
-// reserve. It reconstructs the row's real indent and substitutes the worst-case
-// column layout, because the title continuation sits outside the paged budget
-// and a measurement that assumed neither would diverge without bound on a deep
-// row. It counts the same window the render draws: both call Lines, so a height
-// that is reserved and a window that is painted cannot disagree.
+// reserve. It reconstructs the row's real indent, which is what decides how wide
+// the document wrapped and therefore how many of its rows a counter row has to
+// account for. It counts the same window the render draws: both call Lines, so a
+// height that is reserved and a window that is painted cannot disagree.
 func (m *OutlinerModel) inlinePeekLineCount(row OutlinerRow, width int) int {
 	width = max(width, 1)
-	indent := inlinePeekIndentForRow(row)
-	return len(m.InlinePeekLinesForRow(row, indent, width, chrome.WorstCaseColumnLayout(width)))
+	return len(m.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width))
 }

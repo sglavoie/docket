@@ -105,17 +105,24 @@ declared their text required, while this reads the finished screen.
 - Go: `internal/tui/outliner/inline_preview_test.go`,
   `internal/tui/outliner/inline_preview_resume_test.go`,
   `internal/tui/outliner/inline_peek_project_document_test.go`,
-  `internal/tui/outliner/inline_peek_paging_test.go`
+  `internal/tui/outliner/inline_peek_paging_test.go`,
+  `internal/tui/responsive_peek_test.go`,
+  `internal/tui/outliner/outliner_render_rows_pressure_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-peek-baseline.json`,
   `docs/tui-testing/scenarios/outliner-peek-scrolling.json`,
   `docs/tui-testing/scenarios/outliner-peek-paging.json`,
+  `docs/tui-testing/scenarios/outliner-peek-whole-title.json`,
+  `docs/tui-testing/scenarios/outliner-checklist-rows-fold.json`,
   `docs/tui-testing/scenarios/outliner-project-peek-group-header.json`,
   `docs/tui-testing/scenarios/outliner-project-peek-focused-header.json`
-- Contracts: `CLAUDE.md` — the Row and Peek budget, in particular the stated body
-  order (resume, description, dates, attachments, comment count,
-  `Dependencies`/`Dependents`, context, tags), "place a new section
-  deliberately", "Peek holds no checklist line", and the unresolvable-reference
+- Contracts: `CLAUDE.md` — the Row and Peek budget, in particular "Nothing sits
+  outside that window and the document has no header", the stated body
+  order (title, parent, status, dates, resume, description, checklist count,
+  attachments, comment count, `Dependencies`/`Dependents`, context, tags),
+  "place a new section deliberately", "Checklist and comments stay counts; their
+  items are rows and their panel", and the unresolvable-reference
   fallback shared with `project export`. `docs/guide/outliner-rows.md`,
+  `docs/architecture/search-filters-and-sorting.md`,
   `docs/architecture/row-indicators.md`.
 
 ### Session 4 — Dock Peek and unify viewport geometry
@@ -152,9 +159,9 @@ declared their text required, while this reads the finished screen.
   gets a position, the trailing `~S/N` counting stored locators regardless of
   target state, `taskRowSegments` reserving the relation marker, the context
   segment, and the pin marker at every width, `taskPinnedMarker` reading
-  `task.Pinned && !row.IsPinnedSection`, `VisualWidthOverflow` subtracting the
-  same ellipsis column as `TruncateToVisualWidth`, and the four-step pulse
-  ladder. `docs/decisions/behavioral-signals-contracts.md`,
+  `task.Pinned && !row.IsPinnedSection`, `TruncateToVisualWidth` having no
+  counterpart because its dropped tail is not recoverable, and the four-step
+  pulse ladder. `docs/decisions/behavioral-signals-contracts.md`,
   `docs/architecture/row-indicators.md`, `docs/guide/outliner-rows.md`.
 
 ### Session 6 — Represent project groups independently of header rows

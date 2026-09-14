@@ -23,8 +23,8 @@ func TestSearchCueStaysOutOfPeekAndProjectPreview(t *testing.T) {
 	bare.MatchSource = outliner.MatchSourceNone
 
 	indent := "    "
-	withCue := outlinerView.InlinePeekLinesForRow(attributed, indent, 120, nil)
-	without := outlinerView.InlinePeekLinesForRow(bare, indent, 120, nil)
+	withCue := outlinerView.InlinePeekLinesForRow(attributed, indent, 120)
+	without := outlinerView.InlinePeekLinesForRow(bare, indent, 120)
 	if len(withCue) != len(without) {
 		t.Fatalf("Peek changed length under attribution: %d vs %d", len(withCue), len(without))
 	}

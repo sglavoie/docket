@@ -292,11 +292,12 @@ owns the mode.
 row. Peek follows cursor, mode, and scope navigation. `rowSupportsPeek` is the
 one answer to which rows own a document — task rows and project headers — and the
 render, the measurement, the offset key, and the four scrolling keys all ask
-there, so none of them can admit a row another one refuses. A task Peek carries
-no checklist line, because checklist items are rows and restating them would
-spend the tightest budget in the Outliner on content already on screen, while the
-task row's progress badge covers the folded case. Entering visual selection
-disables Peek.
+there, so none of them can admit a row another one refuses. A task Peek names the
+checklist as a count and never as its items: the items are rows of their own
+under the task, where they are edited, ticked, and promoted, so repeating their
+text would spend the window on content the outline holds one keypress away, while
+the count answers the folded case the row's progress badge used to. Entering
+visual selection disables Peek.
 
 The key is one descriptor over `OperationTargetCurrentEntity` rather than a pair
 branching on the cursor, because Peek is one act whatever the row names. That is
@@ -315,11 +316,44 @@ way to either, so the height the viewport reserves and the height the renderer
 draws are the same number by construction rather than by two agreeing
 calculations.
 
-Body order is resume, description, dates, attachment names, comment count, the
-two reference lists, context, and tags. Order is the whole of what
+Body order is the whole title, the ancestor chain, the status line, the dates
+line, resume, description, the checklist count, attachment names, the comment
+count, the two reference lists, context, and tags. Order is the whole of what
 `inlinePeekBodySections` decides: nothing competes for room any more, because
 room is the window's problem. A new section still takes a deliberate position,
 but what it costs is a scroll rather than the line beneath it.
+
+Nothing sits outside that window. The title and the parent chain are body rows
+like any other, which is why `inlinePeekDocument` carries only `Body`: a document
+with a pinned header has two heights — the reserved one and the drawn one — and
+the first thing a reader opens Peek for, the tail of a clipped title, is exactly
+the thing a fixed header cannot grow to hold. `inlinePeekTitleLines` wraps the
+whole title, elided nowhere, styled through `TaskTitleStyleFor` so it reads as
+the same title the row clipped; the row keeps its `…`, which reads as "the rest
+is in Peek". The dropped tail is never reassembled from a head and a tail that
+two different measurements agreed on — `TruncateToVisualWidth` is the row's cut
+and has no counterpart, because the surface that needs the whole text renders the
+whole text. `inlinePeekParentLines` follows, root-first and uncompacted, wrapped
+rather than elided, so a chain six levels deep is read to its end by scrolling.
+
+The two summary lines beneath them are what the row abbreviates or drops
+entirely. `inlinePeekStatusLine` spells the lifecycle state in words rather than
+as a glyph — with the age appended for the two states whose age is a question
+about the work, Doing and Waiting, read off `StateChangedAt` — then the priority
+as a number under the same `ValidatePriority` gate the badge takes, the planning
+collection, and the two boolean axes as bare words, since a label beside `pinned`
+would say it twice. `inlinePeekDatesLine` is the task clock: created, updated,
+deadline, check-in with its repeat, last review, a recent wake, and a repeated
+deferral. Both are `label value` pairs joined by middots on one wrapped line
+rather than a section each, because a column of six one-word facts would spend
+the whole window saying what fits in two. Both key on stored values — the state
+clock and the stored instants, never the rendered durations — so the minute tick
+redraws them without throwing a reader back to the top.
+
+Planning membership is the one field neither readable off the task nor derivable
+in a pure renderer: it is an explicit project-qualified collection in the
+planning state. `peekPlanningMembership` resolves it in the impure seam beside
+the reference lists and hands it in through `inlinePeekOptions.Planning`.
 
 The window is a content-row offset rather than a page ordinal, which is what lets
 two step sizes share one model: `Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`
@@ -398,14 +432,13 @@ no longer holds resolves nothing, and the builder returns the zero document;
 screen, so the four keys belong to the list again rather than being swallowed by
 one that is not there.
 
-The name is header rather than body, because the header row spends its width on
-the slug badge, the group size, and the pressure chips and never draws the name
-at all. It goes through `inlinePeekBoundedTitleRows`, the same bounded
-title-continuation policy a long task title takes, now one implementation serving
-both kinds. Its key still travels in the fingerprint, which is what makes a
-rename a different document.
+The name leads the body, exactly as the task's title leads its own, because the
+header row spends its width on the slug badge, the group size, and the pressure
+chips and never draws the name at all. `inlinePeekProjectNameLines` wraps it
+unbounded, so a long name is scrolled to rather than clipped. Its key travels in
+the fingerprint, which is what makes a rename a different document.
 
-Body order is description, tags, then comments. The comment section is appended
+Body order is the name, description, tags, then comments. The comment section is appended
 unconditionally rather than through the `add` helper the other two take: a
 project with nothing stored still owes the reader `No comments yet.`, which is
 also what keeps every resolvable header's document non-empty. Bodies read newest
@@ -443,36 +476,14 @@ header itself always survives and the pane gives up its tail instead of the
 window. An empty project is exactly the header a reader parks on, so the state is
 worth the one measurement rather than a refusal to draw.
 
-Two blocks sit outside that budget, both because the row deliberately elided them
-and Peek is the surface whose job is to show what the row had no width for.
-
-The first is the title continuation. A title the row clipped is completed there
-rather than restated: `inlinePeekTitleLines` renders `title` minus exactly the
-prefix the row rendered — no label, no ellipsis within `inlinePeekTitleRows` (3),
-and no repetition of the visible head — styled through `TaskTitleStyleFor` so it
-reads as the same title. The row keeps its `…`, which now reads as "continues
-below". It renders only when the row actually clipped and it is first in the
-order. `VisualWidthOverflow` is the counterpart to `TruncateToVisualWidth` and
-must subtract the same ellipsis column, or the two disagree about the cut and a
-character is duplicated or lost.
-
-The second is the parent line. A promoted section root's row is reduced to a bare
-`‹`, so `inlinePeekParentLine` names the ancestor chain in full, root-first and
-uncompacted, directly beneath the continuation. The effective cap is
-`inlinePeekMaxLines` plus the continuation rows plus that line, so neither
-displaces anything, and a bare adopted child no longer falls through to `No
-additional details`.
-
-Both paths derive the title budget from one formula, `buildTaskRowSegments` plus
-`taskRowSegments.titleWidth`, because the measurement path cannot have the real
-`ColumnLayout`: `ComputeOutlinerColumnLayout` reads the row window
-`ComputeOutlinerViewport` is still deriving. `inlinePeekLineCount` therefore
-substitutes `WorstCaseColumnLayout` and passes the row's real indent. Padding only
-ever widens a badge and every status/priority glyph is single-width, so the
-substitution over-reserves by at most two columns of title budget instead of
-under-reserving the Peek height; the guard row covers the residue. A measurement
-that under-reserves overflows terminal height and the scenario harness reports
-`height_overflow`.
+Because the document is additive and every block is inside the window, the
+measurement path no longer has a row budget to derive from the row's own column
+layout: whatever a task holds, its block is `inlinePeekBodyRows` tall or shorter.
+`inlinePeekLineCount` and the renderer both go through `Lines`, so
+`ComputeOutlinerViewport` reserves exactly what is drawn without either of them
+reconstructing the row's title width. A measurement that under-reserves overflows
+terminal height and the scenario harness reports `height_overflow`; there is now
+no arithmetic between the two that could.
 
 ### Sorting axis
 

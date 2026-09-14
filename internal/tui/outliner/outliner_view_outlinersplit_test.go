@@ -90,10 +90,12 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 	}
 }
 
-// TestViewportReservesTheTitleContinuationRows is the measurement-path contract:
-// the continuation sits outside the additive cap, so computeOutlinerViewport
-// must reserve those rows too or the list overflows the bottom of the terminal.
-func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
+// TestViewportReservesTheWholePeekBlockForALongTitle is the measurement-path
+// contract, restated now that nothing sits outside the additive cap. A title too
+// long for its row costs document rows, not reserved ones, so the block a long
+// title produces is the same height as any other and computeOutlinerViewport
+// reserves exactly what the renderer draws.
+func TestViewportReservesTheWholePeekBlockForALongTitle(t *testing.T) {
 	const (
 		width  = 60
 		height = 20
@@ -115,12 +117,18 @@ func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
 	row := outliner.Rows[outliner.Cursor]
 	indent := strings.Repeat(" ", lipgloss.Width(row.Prefix)+4)
 	reserved := outliner.inlinePeekLineCount(row, width-1)
-	bare := len(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}).Lines(0))
-	if reserved <= bare {
-		t.Fatalf("reserved %d Peek rows, want more than the %d the block holds without a continuation", reserved, bare)
+	if reserved != inlinePeekBodyRows {
+		t.Fatalf("reserved %d Peek rows, want the %d-row budget", reserved, inlinePeekBodyRows)
 	}
-	if drawn := len(outliner.InlinePeekLinesForRow(row, indent, width, nil)); drawn > reserved {
+	if drawn := len(outliner.InlinePeekLinesForRow(row, indent, width)); drawn > reserved {
 		t.Fatalf("render drew %d Peek rows, more than the %d reserved", drawn, reserved)
+	}
+	// The title is in the document rather than above it, so it is the long task's
+	// document that grew, not its reservation.
+	whole := ansi.Strip(strings.Join(
+		inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}).Body, " "))
+	if want := strings.Join(strings.Fields(long.Title), " "); !strings.Contains(strings.Join(strings.Fields(whole), " "), want) {
+		t.Fatalf("the long title is not in its Peek document:\n%s", whole)
 	}
 
 	for lineNumber, line := range strings.Split(outliner.View().Content, "\n") {

@@ -132,11 +132,15 @@ func walkEmptyProjectPeek(t *testing.T, m *OutlinerModel, width, direction int, 
 		}
 		above, below := assertEmptyProjectPeekIsDrawn(t, m, width, fmt.Sprintf("%s step %d", label, step))
 
-		moved := m.HalfPagePeek(direction)
+		// One move per stop, alternating the distances. Calling both would spend
+		// five content rows on an odd step and read the counter a step behind the
+		// window, which turns "the walk reached the end" into an accident of how
+		// many rows the document happened to hold.
+		move := m.HalfPagePeek
 		if step%2 == 1 {
-			moved = m.PagePeek(direction)
+			move = m.PagePeek
 		}
-		if moved {
+		if move(direction) {
 			continue
 		}
 		remaining := below

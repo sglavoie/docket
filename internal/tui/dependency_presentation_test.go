@@ -64,7 +64,7 @@ func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
 	if !ok {
 		t.Fatal("fixture produced no row for the referring task")
 	}
-	peek := ansi.Strip(strings.Join(outlinerView.InlinePeekLinesForRow(row, "  ", 200, nil), "\n"))
+	peek := ansi.Strip(strings.Join(outlinerView.InlinePeekLinesForRow(row, "  ", 200), "\n"))
 	if !strings.Contains(peek, detail.String()) {
 		t.Fatalf("Peek does not carry %q:\n%s", detail.String(), peek)
 	}

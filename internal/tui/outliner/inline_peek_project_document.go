@@ -32,30 +32,23 @@ type inlinePeekProjectOptions struct {
 // inlinePeekProjectDocumentFor assembles the detail behind a project header. The
 // header row spends its width on the slug badge, the group size, and the
 // pressure chips, so everything below is what the row has no room to say: the
-// project's own name above, then its description, its tags, and every stored
-// comment newest first.
+// project's own name, then its description, its tags, and every stored comment
+// newest first. All four are body, so a long name pages like a long comment.
 func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocument {
 	if opts.Project == nil || opts.Width <= 0 {
 		return inlinePeekDocument{}
 	}
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
-	header := inlinePeekProjectNameLines(opts.Project, opts.Indent, available)
-
 	sections := inlinePeekProjectBodySections(opts.Project, opts.Indent, available)
 	body := make([]string, 0, len(sections))
-	keys := make([]string, 0, len(sections)+1)
-	// The name is header rather than body, so it is never paged away; its key
-	// still travels in the fingerprint, which is what makes a rename a different
-	// document and returns the window to the top.
-	keys = append(keys, "name:"+opts.Project.Name)
+	keys := make([]string, 0, len(sections))
 	for _, section := range sections {
 		body = append(body, section.lines...)
 		keys = append(keys, section.key)
 	}
 
 	return inlinePeekDocument{
-		Header:      header,
 		Body:        body,
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
@@ -68,7 +61,7 @@ func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocum
 // with nothing to say still owes the reader the sentence saying so — and that
 // keeps every project's document non-empty, so a header always has a Peek.
 func inlinePeekProjectBodySections(project *models.Project, indent string, width int) []inlinePeekSection {
-	sections := make([]inlinePeekSection, 0, 3)
+	sections := make([]inlinePeekSection, 0, 4)
 	add := func(key string, lines []string) {
 		if len(lines) == 0 {
 			return
@@ -76,27 +69,25 @@ func inlinePeekProjectBodySections(project *models.Project, indent string, width
 		sections = append(sections, inlinePeekSection{key: key, lines: lines})
 	}
 
+	add("name:"+project.Name, inlinePeekProjectNameLines(project, indent, width))
 	add("description:"+project.Description, inlinePeekDescriptionLines(project.Description, indent, width))
 	add("tags:"+strings.Join(project.Tags, ","), inlinePeekProjectTagLines(project.Tags, indent, width))
 	return append(sections, inlinePeekProjectCommentSection(project.Comments, indent, width))
 }
 
-// inlinePeekProjectNameLines is the project's name, wrapped and bounded by the
-// same title-continuation policy a long task title takes. It is a name rather
-// than a continuation because the header row never showed one: the badge carries
-// the slug, which is the portable directory component and not what the project is
-// called.
+// inlinePeekProjectNameLines is the project's name, leading its body the way a
+// task's title leads that one: wrapped to the pane, elided nowhere, and reached
+// by scrolling when it is long. It is a name rather than a continuation because
+// the header row never showed one — the badge carries the slug, which is the
+// portable directory component and not what the project is called.
 func inlinePeekProjectNameLines(project *models.Project, indent string, width int) []string {
-	rows := inlinePeekBoundedTitleRows(strings.TrimSpace(project.Name), width)
-	if len(rows) == 0 {
+	name := strings.TrimSpace(project.Name)
+	if name == "" || width <= 0 {
 		return nil
 	}
 	style := theme.ProjectColorStyle(project).Bold(true)
-	lines := make([]string, 0, len(rows))
-	for _, row := range rows {
-		lines = append(lines, indent+style.Render(textfit.TruncateIntentional(row, width, "…")))
-	}
-	return lines
+	paint := func(row string) string { return style.Render(row) }
+	return inlinePeekHangingLines("", textfit.WrapText(name, width), indent, width, paint)
 }
 
 func inlinePeekProjectTagLines(tags []string, indent string, width int) []string {

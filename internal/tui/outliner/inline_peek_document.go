@@ -36,10 +36,6 @@ const (
 	// shorter step the same keys mean over every list in the product.
 	inlinePeekHalfPageRows = 2
 	inlinePeekFullPageRows = inlinePeekPagedRows - 1
-	// inlinePeekTitleRows caps the title continuation alone. The continuation is
-	// header rather than body — it completes what the row clipped — so it sits
-	// outside the paged budget and outside its paging.
-	inlinePeekTitleRows = 3
 )
 
 // inlinePeekDocument is the complete detail document behind Peek, separated
@@ -48,13 +44,11 @@ const (
 // is drawn are the same number by construction rather than by two agreeing
 // calculations.
 type inlinePeekDocument struct {
-	// Header is the title continuation and the ancestor chain. Both complete
-	// what the row itself had to elide, so they are never paged away: a page
-	// turn moves the body under a stable heading.
-	Header []string
-	// Body is every detail row the task has, wrapped to the pane and in content
-	// order. It is unbounded; inlinePeekBodyRows decides only how much of it is
-	// on screen.
+	// Body is every detail row the subject has, wrapped to the pane and in
+	// content order, the title and the ancestor chain included. It is unbounded
+	// and nothing in it sits outside the window: inlinePeekBodyRows decides only
+	// how much of it is on screen, so a detail Peek holds is always a scroll
+	// away rather than sometimes pinned and sometimes elided.
 	Body []string
 	// Fingerprint identifies the content the body was built from, independent of
 	// the width it was wrapped to. It is what lets a stored offset survive a
@@ -72,7 +66,7 @@ type inlinePeekDocument struct {
 // subject could not be resolved produces one, and it is what tells the four
 // scrolling keys that no pane is on screen to consume them.
 func (doc inlinePeekDocument) Empty() bool {
-	return len(doc.Header) == 0 && len(doc.Body) == 0
+	return len(doc.Body) == 0
 }
 
 // Paged reports whether the body outgrows its budget. Nothing below the
@@ -99,16 +93,15 @@ func (doc inlinePeekDocument) ClampOffset(offset int) int {
 	return min(max(offset, 0), doc.MaxOffset())
 }
 
-// Lines renders the window at one content-row offset: the whole header, the
-// content rows under it, and, when anything is off screen, the counter row that
-// says exactly how much. It is the only way to either the drawn window or its
-// height, so a render and a measurement cannot disagree about what is on screen.
+// Lines renders the window at one content-row offset: the content rows visible
+// there and, when anything is off screen, the counter row that says exactly how
+// much. It is the only way to either the drawn window or its height, so a render
+// and a measurement cannot disagree about what is on screen.
 func (doc inlinePeekDocument) Lines(offset int) []string {
 	if doc.Empty() {
 		return nil
 	}
-	lines := make([]string, 0, len(doc.Header)+inlinePeekBodyRows)
-	lines = append(lines, doc.Header...)
+	lines := make([]string, 0, inlinePeekBodyRows)
 	if !doc.Paged() {
 		return append(lines, doc.Body...)
 	}
@@ -128,11 +121,15 @@ func (doc inlinePeekDocument) counterLine(above, below int) string {
 }
 
 type inlinePeekOptions struct {
-	Task          *models.Task
-	Indent        string
-	Width         int
-	TitleOverflow string
-	Breadcrumb    string
+	Task       *models.Task
+	Indent     string
+	Width      int
+	Breadcrumb string
+	// Planning is the task's planning membership, `today`, `next`, or empty. It
+	// arrives resolved for the same reason the two reference lists do: membership
+	// is an explicit project-qualified collection in the planning state and is
+	// readable nowhere on the task itself.
+	Planning string
 	// Dependencies and Dependents are the two read-only reference details. They
 	// arrive resolved because Peek is a pure renderer and neither direction can
 	// be read off the task alone: an outgoing entry needs the target project to
@@ -155,22 +152,17 @@ type inlinePeekSection struct {
 }
 
 // inlinePeekDocumentFor assembles the additive, cursor-following task preview.
-// The selected row already owns task identity and operational metadata, so Peek
-// contains only richer content: the resume note and description first, then
-// dates, attachments, the comment count, the two reference lists, the context,
-// and tags. A title the row had to clip is completed above them and a promoted
-// root's ancestor chain follows it; both are header rather than body.
+// Peek is the task's complete document rather than a supplement to the row: the
+// row keeps an abbreviated form of a few signals and drops the rest, and every
+// one of them is spelled here in full. The whole title leads, then the ancestor
+// chain and the two summary lines, then the resume note and description, then
+// the longer supporting material.
 func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 	if opts.Task == nil || opts.Width <= 0 {
 		return inlinePeekDocument{}
 	}
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
-	header := inlinePeekTitleLines(opts.Task, opts.TitleOverflow, opts.Indent, available)
-	if parent := inlinePeekParentLine(opts.Breadcrumb, available); parent != "" {
-		header = append(header, opts.Indent+parent)
-	}
-
 	sections := inlinePeekBodySections(opts, available)
 	body := make([]string, 0, len(sections))
 	keys := make([]string, 0, len(sections))
@@ -178,12 +170,8 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 		body = append(body, section.lines...)
 		keys = append(keys, section.key)
 	}
-	if len(header) == 0 && len(body) == 0 {
-		body = append(body, opts.Indent+theme.MutedStyle.Render("No additional details"))
-	}
 
 	return inlinePeekDocument{
-		Header:      header,
 		Body:        body,
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
@@ -195,9 +183,13 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 // that has anything to say. Order is the whole of what this function decides:
 // every section below renders itself in full and none of them competes with
 // another for room, because room is the page's problem rather than theirs.
+//
+// One clock is read for the whole document, so the state age and the task clock
+// beneath it cannot be measured against two instants that straddle a tick.
 func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSection {
 	task := opts.Task
-	sections := make([]inlinePeekSection, 0, 9)
+	now := time.Now()
+	sections := make([]inlinePeekSection, 0, 13)
 	add := func(key string, lines []string) {
 		if len(lines) == 0 {
 			return
@@ -205,12 +197,29 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		sections = append(sections, inlinePeekSection{key: key, lines: lines})
 	}
 
-	// Resume leads the body because it answers the question Peek is opened to
-	// ask — where was this left — and the description answers a different, older
-	// one.
+	// Identity leads: the whole title, then the ancestor chain the row reduced to
+	// a bare `‹`. A reader who opened Peek on a clipped row is looking for the
+	// rest of that title, so nothing precedes it.
+	add("title:"+task.Title, inlinePeekTitleLines(task, opts.Indent, width))
+	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
+
+	// The two summary lines follow, densest first: what the task is right now,
+	// then when. Both are `label value` pairs on one wrapped line rather than a
+	// section each, because a row of six one-word facts would spend the whole
+	// window saying what fits in two.
+	add("status:"+inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width))
+	add("dates:"+inlinePeekDatesKey(task), inlinePeekDatesLines(task, now, opts.Indent, width))
+
+	// Resume precedes the description because it answers the question Peek is
+	// opened to ask — where was this left — and the description answers a
+	// different, older one.
 	add("resume:"+task.ResumeNote, inlinePeekResumeLines(task.ResumeNote, opts.Indent, width))
 	add("description:"+task.Description, inlinePeekDescriptionLines(task.Description, opts.Indent, width))
-	add("dates:"+inlinePeekDatesKey(task), inlinePeekDatesLines(task, time.Now(), opts.Indent, width))
+
+	// The three supporting counts sit under the task's own text, in the order a
+	// reader reaches for them: the steps inside this task, the files beside it,
+	// then the conversation about it.
+	add("checklist:"+inlinePeekChecklistKey(task), inlinePeekChecklistLines(task, opts.Indent, width))
 	add("attachments:"+inlinePeekAttachmentsKey(task), inlinePeekAttachmentsLines(task, opts.Indent, width))
 	add("comments:"+strconv.Itoa(len(task.Comments)), inlinePeekCommentsLines(task, opts.Indent, width))
 
@@ -240,60 +249,150 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	return sections
 }
 
-// inlinePeekParentLine names the ancestor chain the row reduced to a bare `‹`.
-// It is header like the title continuation and for the same reason: the row
-// deliberately elided it, and Peek is the surface that shows what the row had no
-// width for. Root-first and uncompacted — Peek has the width the row did not.
-func inlinePeekParentLine(breadcrumb string, width int) string {
-	if width <= 0 {
-		return ""
-	}
+// inlinePeekParentLines names the ancestor chain the row reduced to a bare `‹`.
+// Root-first and uncompacted — Peek has the width the row did not — and wrapped
+// rather than elided, so a chain six levels deep is read to its end by scrolling
+// like every other long section.
+func inlinePeekParentLines(breadcrumb, indent string, width int) []string {
 	chain := strings.TrimSuffix(strings.TrimSpace(breadcrumb), " ›")
 	if chain == "" {
+		return nil
+	}
+	return inlinePeekStyledLines(theme.MutedStyle.Render("Parent: "), chain, indent, width)
+}
+
+// inlinePeekTitleLines is the task's whole title, wrapped to the pane and elided
+// nowhere. The row spends its width on badges and clips the title to whatever is
+// left, so Peek is where the title is read, and it leads the body rather than
+// standing outside it: a title long enough to fill the pane is reached by
+// scrolling exactly as a long description is. No label and the task's own title
+// styling, so it reads as the title instead of as another Label: value line.
+func inlinePeekTitleLines(task *models.Task, indent string, width int) []string {
+	if task == nil || width <= 0 {
+		return nil
+	}
+	title := strings.TrimSpace(task.Title)
+	if title == "" {
+		return nil
+	}
+	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
+	paint := func(row string) string { return style.Render(row) }
+	return inlinePeekHangingLines("", textfit.WrapText(title, width), indent, width, paint)
+}
+
+// inlinePeekFields collects `label value` pairs into one dense line. Peek has
+// two such lines — what the task is and when it is — and they share this so a
+// label reads the same way on both: muted label, keyed value, a middot between
+// fields. Nothing here measures: the line is handed to the ordinary wrapping
+// layout like every other section.
+type inlinePeekFields struct {
+	parts []string
+}
+
+func (f *inlinePeekFields) add(label, value string) {
+	if value == "" {
+		return
+	}
+	f.parts = append(f.parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
+}
+
+// flag is a field that is its own value. Pinned and review are booleans a task
+// either wears or does not, so a label beside one would say the word twice.
+func (f *inlinePeekFields) flag(word string) {
+	f.parts = append(f.parts, theme.HelpKeyStyle.Render(word))
+}
+
+func (f inlinePeekFields) line() string {
+	if len(f.parts) == 0 {
 		return ""
 	}
-	return textfit.TruncateIntentional(theme.MutedStyle.Render("Parent: ")+chain, width, "…")
+	return strings.Join(f.parts, theme.HelpStyle.Render(" · "))
 }
 
-// inlinePeekTitleLines completes a title the row clipped rather than restating
-// it: the row keeps its ellipsis, which now reads as "continues below", and Peek
-// carries only the remainder. No label and the task's own title styling, so it
-// reads as the same title instead of as another Label: value line.
-func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int) []string {
-	if task == nil || overflow == "" || width <= 0 {
-		return nil
+// inlinePeekStatusLine spells what the row's badges abbreviate and what it drops
+// entirely: the lifecycle state in words rather than as a glyph, the assigned
+// priority as a number, the planning collection the task belongs to, and the two
+// independent boolean axes. The state is never omitted — every task is in one —
+// so a task Peek always has at least this line to show.
+func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) string {
+	if task == nil {
+		return ""
 	}
-
-	wrapped := inlinePeekBoundedTitleRows(overflow, width)
-	if len(wrapped) == 0 {
-		return nil
+	var fields inlinePeekFields
+	fields.add("state", inlinePeekStateValue(task, now))
+	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
+	// badge for names no priority here either.
+	if models.ValidatePriority(task.Priority, false) == nil {
+		fields.add("priority", strconv.Itoa(task.Priority))
 	}
-
-	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
-	lines := make([]string, 0, len(wrapped))
-	for _, line := range wrapped {
-		lines = append(lines, indent+style.Render(textfit.TruncateIntentional(line, width, "…")))
+	fields.add("plan", planning)
+	if task.Pinned {
+		fields.flag("pinned")
 	}
-	return lines
+	if task.Review {
+		fields.flag("review")
+	}
+	return fields.line()
 }
 
-// inlinePeekBoundedTitleRows is the bounded title-continuation policy, one
-// implementation for both document kinds: wrap to the pane, keep at most
-// inlinePeekTitleRows of it, and end a truncated run on an ellipsis that says so.
-// It is deliberately the only thing in Peek that elides — the header completes
-// what a row clipped, and a heading long enough to fill the pane by itself would
-// leave no room for the body it heads.
-func inlinePeekBoundedTitleRows(text string, width int) []string {
-	if text == "" || width <= 0 {
+func inlinePeekStatusLines(task *models.Task, planning string, now time.Time, indent string, width int) []string {
+	return inlinePeekStyledLines("", inlinePeekStatusLine(task, planning, now), indent, width)
+}
+
+// inlinePeekStateValue names the state and, for the two states whose age is a
+// question about the work rather than about the record, how long it has held it.
+// StateChangedAt is what it reads, so commenting on a blocked task does not reset
+// how long it has been blocked.
+func inlinePeekStateValue(task *models.Task, now time.Time) string {
+	state := task.State().String()
+	if !task.IsInState(models.StateDoing) && !task.IsInState(models.StateWaiting) {
+		return state
+	}
+	age := query.FormatRecencyAge(task.StateChangedAt, now)
+	if age == "" {
+		return state
+	}
+	return state + " " + age
+}
+
+// inlinePeekStatusKey identifies the summary by its stored values, the state
+// clock included rather than the age rendered from it: the age drifts with every
+// tick and would otherwise return Peek's window to the top on the minute.
+func inlinePeekStatusKey(task *models.Task, planning string) string {
+	return strings.Join([]string{
+		"state:" + task.State().String(),
+		"state-changed:" + task.StateChangedAt.Format(time.RFC3339Nano),
+		"priority:" + strconv.Itoa(task.Priority),
+		"plan:" + planning,
+		"pinned:" + strconv.FormatBool(task.Pinned),
+		"review:" + strconv.FormatBool(task.Review),
+	}, "|")
+}
+
+// inlinePeekChecklistLines keeps the checklist a count, as the row's indicator
+// did. The items themselves are rows of their own under the task, where they are
+// edited, ticked, and promoted; repeating their text here would spend the window
+// on content the outline already holds one keypress away.
+func inlinePeekChecklistLines(task *models.Task, indent string, width int) []string {
+	if task == nil || len(task.Checklist) == 0 {
 		return nil
 	}
-	wrapped := textfit.WrapText(text, width)
-	if len(wrapped) <= inlinePeekTitleRows {
-		return wrapped
+	done := 0
+	for _, item := range task.Checklist {
+		if item.Done {
+			done++
+		}
 	}
-	wrapped = wrapped[:inlinePeekTitleRows]
-	wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
-	return wrapped
+	entry := fmt.Sprintf("%d/%d done", done, len(task.Checklist))
+	return inlinePeekEntryLines("Checklist: ", []string{entry}, indent, width)
+}
+
+func inlinePeekChecklistKey(task *models.Task) string {
+	states := make([]string, 0, len(task.Checklist))
+	for _, item := range task.Checklist {
+		states = append(states, strconv.FormatBool(item.Done))
+	}
+	return strings.Join(states, ",")
 }
 
 // inlinePeekDatesLine names the task clock the row has no width for: how long
@@ -371,9 +470,11 @@ func inlinePeekDatesKey(task *models.Task) string {
 	return strings.Join(parts, "|")
 }
 
-// inlinePeekAttachmentsLines names every attachment, one per row. The row
-// counts them and the `&` panel opens them; Peek is where the names are read,
-// so a name too long for the pane wraps rather than joining an elided tail.
+// inlinePeekAttachmentsLines names every attachment, one per row, under a label
+// carrying their count. The `&` panel opens them; Peek is where the names are
+// read, so a name too long for the pane wraps rather than joining an elided
+// tail, and the count says how many rows the section is worth scrolling for
+// before the first of them is read.
 func inlinePeekAttachmentsLines(task *models.Task, indent string, width int) []string {
 	if task == nil || len(task.Attachments) == 0 {
 		return nil
@@ -384,7 +485,8 @@ func inlinePeekAttachmentsLines(task *models.Task, indent string, width int) []s
 			entries = append(entries, name)
 		}
 	}
-	return inlinePeekEntryLines("Attachments: ", entries, indent, width)
+	label := fmt.Sprintf("Attachments %d: ", len(entries))
+	return inlinePeekEntryLines(label, entries, indent, width)
 }
 
 func inlinePeekAttachmentsKey(task *models.Task) string {

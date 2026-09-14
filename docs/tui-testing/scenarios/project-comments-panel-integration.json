@@ -75,10 +75,11 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
 
-    { "type": "key", "label": "b Peeks the same project, newest comment first", "key": "b" },
+    { "type": "key", "label": "b Peeks the same project, its own name first", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
-    { "type": "assert", "assert": "contains", "value": "Kickoff waits on the storefront launch and on staffing" },
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
+    { "type": "key", "label": "and the comments read newest first, a page below the metadata", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "Kickoff waits on the storefront launch and on staffing" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "one more comment, long enough that the window cannot hold it", "key": "C" },
@@ -86,9 +87,12 @@
     { "type": "key", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the open pane refreshed onto the comment it just gained", "assert": "contains", "value": "The charter cannot be signed off" },
-    { "type": "assert", "label": "and a body taller than the window reserves its counter row", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "label": "a document that changed under the pane reopens at its top", "assert": "contains", "value": "0 above ·" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "and the comment it just gained is the first one below the metadata", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "The charter cannot be signed off" },
+    { "type": "key", "key": "ctrl+b" },
+    { "type": "assert", "assert": "contains", "value": "0 above ·" },
 
     { "type": "key", "label": "Ctrl+D travels half the distance Ctrl+F does", "key": "ctrl+d" },
     { "type": "assert", "assert": "not_contains", "value": "0 above ·" },

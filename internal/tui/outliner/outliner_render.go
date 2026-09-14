@@ -348,7 +348,7 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	// A header row says almost nothing about the project it names — a slug, a
 	// count, and what is urgent inside. Peek is where the rest of it is readable,
 	// on the same key and under the same cursor rule as a task's.
-	return m.appendInlinePeek(line, row, rowIndex, rowWidth, nil)
+	return m.appendInlinePeek(line, row, rowIndex, rowWidth)
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a

@@ -32,21 +32,3 @@ const (
 	// is applied. Below this threshold prefix padding is skipped to preserve space.
 	MinColumnAlignWidth = 60
 )
-
-// WorstCaseColumnLayout stands in for the real layout on the viewport
-// measurement pass, which cannot have one: ComputeOutlinerColumnLayout reads the
-// row window computeOutlinerViewport is still deriving. Padding only ever widens
-// a badge and every status/priority glyph is single-width, so assuming it is
-// present over-reserves the Peek height by at most two columns of title budget
-// instead of under-reserving it and overflowing terminal height.
-func WorstCaseColumnLayout(rowWidth int) *ColumnLayout {
-	if rowWidth < MinColumnAlignWidth {
-		return nil
-	}
-	return &ColumnLayout{
-		PriorityWidth: 1,
-		StatusWidth:   1,
-		HasPriority:   true,
-		HasStatus:     true,
-	}
-}

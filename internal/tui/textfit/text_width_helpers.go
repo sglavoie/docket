@@ -12,15 +12,15 @@
 package textfit
 
 import (
-	"strings"
-
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
 // TruncateToVisualWidth clips text to width, measuring visual (ANSI-aware)
 // width and spending the last column on an ellipsis whenever there is more than
-// one to spend. VisualWidthOverflow returns the tail it drops.
+// one to spend. The dropped tail is not recoverable: a surface that needs the
+// whole text renders the whole text, wrapped, rather than reassembling it from a
+// head and a tail that two different measurements agreed on.
 func TruncateToVisualWidth(text string, width int) string {
 	if width <= 0 {
 		return ""
@@ -32,26 +32,6 @@ func TruncateToVisualWidth(text string, width int) string {
 		return ansi.Truncate(text, width, "")
 	}
 	return ansi.Truncate(text, width-1, "") + "…"
-}
-
-// VisualWidthOverflow returns the text TruncateToVisualWidth drops at this
-// width, so a caller can render the clipped tail elsewhere. It must subtract the
-// same ellipsis column TruncateToVisualWidth reserves, or the two disagree about
-// the cut and a character is duplicated or lost. A prefix mismatch returns "" so
-// the failure hides the tail rather than repeating the visible head.
-func VisualWidthOverflow(text string, width int) string {
-	if width <= 0 || lipgloss.Width(text) <= width {
-		return ""
-	}
-	kept := width
-	if width >= 2 {
-		kept = width - 1
-	}
-	tail, ok := strings.CutPrefix(text, ansi.Truncate(text, kept, ""))
-	if !ok {
-		return ""
-	}
-	return tail
 }
 
 // FitStyledLineToWidth hard-clips a styled line to width without an ellipsis

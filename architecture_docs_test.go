@@ -160,7 +160,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`~` is the fourth of the set and the only one that preselects",
 		"both halves of the diff resolve against one snapshot and land in one transaction " +
 			"with one undo entry",
-		"A task Peek carries no checklist line",
+		"A task Peek names the\nchecklist as a count and never as its items",
+		"Nothing sits outside that window",
+		"The dropped tail is never reassembled from a head and a tail that\ntwo different measurements agreed on",
 		"`inlinePeekDocument` is that split",
 		"the height the viewport reserves and the height the renderer draws are the same number",
 		"The Outliner remains full-width at every supported terminal size",

@@ -28,13 +28,13 @@
     { "type": "key", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "Planning stays parked until" },
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
 
     { "type": "assert", "label": "a body taller than the window reserves its counter row", "assert": "contains", "value": "0 above ·" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+F pages the pane, not the list", "key": "ctrl+f" },
+    { "type": "assert", "label": "which is where the stored comment body reads", "assert": "contains", "value": "Planning stays parked until" },
     { "type": "assert", "assert": "not_contains", "value": "0 above ·" },
     { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -55,8 +55,10 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "label": "a fresh launch opens with no pane", "assert": "not_contains", "value": "Planning stays parked until" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Planning stays parked until" },
+    { "type": "assert", "label": "the document leads with the project's own name", "assert": "contains", "value": "Mix Quiet Planning" },
     { "type": "assert", "label": "and a fresh window starts at the top", "assert": "contains", "value": "0 above ·" },
+    { "type": "key", "key": "ctrl+f" },
+    { "type": "assert", "label": "with the stored comment a page turn below it", "assert": "contains", "value": "Planning stays parked until" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -240,10 +240,15 @@ and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
 `b` toggles a session-only Peek directly beneath the cursor row, whether that row
 is a task or a project header. On a task, Peek
-follows navigation and reads, in this order: the resume note, the description, a
-dates line reading
+follows navigation and reads, in this order: the task's whole title, the ancestor
+chain of a promoted row as `Parent: Launch platform › User authentication`, a
+status line reading
+`state doing 4h · priority 1 · plan today · pinned · review`
+with empty fields omitted (only Doing and Waiting carry an age, and it counts
+from the last state change rather than the last edit), a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · check-in 2026-08-20 · repeat 7d · last review 3d · woke 1d · deferred ×3`
-with empty fields omitted (a one-off schedule reads `repeat off`),
+with empty fields omitted too (a one-off schedule reads `repeat off`), the resume
+note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
 list, the task's context, and its tags. Every one of those is shown whole. Long
 text wraps rather than being cut off, and nothing is dropped to make room for
@@ -264,8 +269,8 @@ row stays quiet; only an arrived, undeferred schedule adds `review today` or
 
 On a project header — the group header a cross-project mode draws above each
 project's tasks, and the single header a project-scoped or focused view leads
-with — the same key opens the same pane over the project instead. It reads the
-project's full name above the body, then its description, its tags, and every
+with — the same key opens the same pane over the project instead. It leads with the
+project's full name, then its description, its tags, and every
 comment it has, newest first, each under a `[2026-03-03 09:30] 6 days ago` stamp.
 A project with no comments yet says `No comments yet.` rather than showing
 nothing, so the key always answers on a header. Everything is shown whole and the
@@ -284,14 +289,12 @@ point back from there and no key edits it at all. Each entry takes a row of its
 own, reading as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
 `project-id:task-id` locator and reads `(unavailable)` rather than being dropped.
-Comments stay a count, because `;` is the panel that reads them, and checklist
-items are absent because they are already rows of their own beneath the task. A
-promoted row's
-ancestor chain is named above the body in full, root-first, as
-`Parent: Launch platform › User authentication`; it and a clipped title's
-continuation sit outside the five rows rather than spending
-them, so a page is always five rows of detail. The `Resume:` line is the first of
-those, because it answers the question Peek is opened to ask. `Esc` closes Peek
+Comments stay a count, because `;` is the panel that reads them, and the
+checklist stays a count because its items are already rows of their own beneath
+the task, where you tick, edit, and promote them. Nothing in Peek sits outside
+the five rows: the whole title leads the detail, so a title the row had to clip
+with `…` is finished by scrolling rather than read from two places at once, and
+the ancestor chain follows it. `Esc` closes Peek
 before unwinding Outliner navigation.
 
 State, Today/Next, priority, due, tags, defer, pin, and Move to Project actions

@@ -48,7 +48,7 @@ func peekProjectDocument(project *models.Project, width int) inlinePeekDocument 
 }
 
 func peekDocumentText(doc inlinePeekDocument) string {
-	return ansi.Strip(strings.Join(append(append([]string{}, doc.Header...), doc.Body...), "\n"))
+	return ansi.Strip(strings.Join(doc.Body, "\n"))
 }
 
 // firstIndexOf is the ordering assertion's one read. It fails the test rather
@@ -64,7 +64,7 @@ func firstIndexOf(t *testing.T, haystack, needle, label string) int {
 }
 
 // TestProjectPeekNamesEveryStoredDetailInOrder is the document's content
-// contract: the project's own name above, then description, tags, and the
+// contract: the project's own name first, then description, tags, and the
 // comment bodies newest first. Body order is asserted by position rather than by
 // presence, because the sections are what a reader scans and a reordering is
 // invisible to a membership check.
@@ -72,16 +72,12 @@ func TestProjectPeekNamesEveryStoredDetailInOrder(t *testing.T) {
 	project := peekCommentedProject("alpha")
 	doc := peekProjectDocument(project, 80)
 
-	header := ansi.Strip(strings.Join(doc.Header, "\n"))
-	if !strings.Contains(header, project.Name) {
-		t.Fatalf("header omits the project name %q: %q", project.Name, header)
-	}
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
-	if strings.Contains(body, project.Name) {
-		t.Fatalf("the name is repeated in the paged body: %q", body)
-	}
-
+	name := firstIndexOf(t, body, project.Name, "the project name")
 	description := firstIndexOf(t, body, "Description: ", "the description label")
+	if name >= description {
+		t.Fatalf("the name does not lead the body: name %d, description %d:\n%s", name, description, body)
+	}
 	tags := firstIndexOf(t, body, "#platform", "the tag chips")
 	comments := firstIndexOf(t, body, "Comments: ", "the comment label")
 	if description >= tags || tags >= comments {
@@ -128,7 +124,7 @@ func TestProjectPeekSpendsOneRowPerVisualLine(t *testing.T) {
 	}
 
 	doc := peekProjectDocument(project, 80)
-	for i, line := range append(append([]string{}, doc.Header...), doc.Body...) {
+	for i, line := range doc.Body {
 		if strings.Contains(line, "\n") {
 			t.Fatalf("row %d carries a newline of its own: %q", i, ansi.Strip(line))
 		}
@@ -528,8 +524,7 @@ func TestProjectPeekKeepsOneMeasurementAndOneRender(t *testing.T) {
 
 				for step := 0; ; step++ {
 					width := outliner.peekRenderWidth()
-					drawn := outliner.InlinePeekLinesForRow(
-						row, inlinePeekIndentForRow(row), width, chrome.WorstCaseColumnLayout(width))
+					drawn := outliner.InlinePeekLinesForRow(row, inlinePeekIndentForRow(row), width)
 					if got := outliner.inlinePeekLineCount(row, size.width-1); got != len(drawn) {
 						t.Fatalf("%s step %d measured %d rows and drew %d", label, step, got, len(drawn))
 					}

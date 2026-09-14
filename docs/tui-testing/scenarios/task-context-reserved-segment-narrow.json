@@ -6,8 +6,11 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "an over-budget context keeps its reserved row segment", "assert": "contains", "value": "[distributed…]" },
     { "type": "key", "label": "select the long-context task", "key": "end" },
-    { "type": "key", "label": "Peek reveals the complete context beyond the row budget", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "[distributed-systems]" },
+    { "type": "key", "label": "Peek carries the complete context beyond the row budget", "key": "b" },
+    { "type": "assert", "label": "the context sits below the first window of a paged document", "assert": "contains", "value": "0 above · 2 below" },
+    { "type": "key", "label": "page to the end of the document", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "Context: [distributed-systems]" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

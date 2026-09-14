@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // resumeNotePeekTask is the shape every case below varies: one task whose note
@@ -75,7 +74,7 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 		if strings.Contains(plain, "…") {
 			t.Fatalf("width %d elided the note instead of wrapping it:\n%s", width, plain)
 		}
-		if got := strings.Join(strings.Fields(plain), " "); got != "Resume: "+note {
+		if got := strings.Join(strings.Fields(plain), " "); got != "Selected state backlog Resume: "+note {
 			t.Fatalf("width %d did not carry the whole note:\n%s", width, got)
 		}
 		if page := doc.Lines(0); len(page) > inlinePeekBodyRows {
@@ -115,8 +114,12 @@ func TestInlinePeekResumeNoteSpendsThePageRatherThanRaisingIt(t *testing.T) {
 		t.Fatalf("the note added no document rows: %d with, %d without", len(with.Body), len(without.Body))
 	}
 	plain := ansi.Strip(strings.Join(with.Body, "\n"))
-	if !strings.HasPrefix(plain, "Resume: stopped at the CSV column mapping") {
-		t.Fatalf("the note is not the first Peek row:\n%s", plain)
+	resume := strings.Index(plain, "Resume: stopped at the CSV column mapping")
+	if resume < 0 {
+		t.Fatalf("the note is missing from the document:\n%s", plain)
+	}
+	if description := strings.Index(plain, "Description:"); resume > description {
+		t.Fatalf("the note follows the description:\n%s", plain)
 	}
 	// Nothing comes off the tail to pay for it any more: the detail below the
 	// note is a page turn away rather than gone.
@@ -127,42 +130,34 @@ func TestInlinePeekResumeNoteSpendsThePageRatherThanRaisingIt(t *testing.T) {
 	}
 }
 
-// TestInlinePeekResumeNotePreservesTheHeaderExceptions holds the two lines that
-// sit outside the body against the note that sits inside it: a clipped title and
-// a promoted root's ancestor chain still head the pane with the note beneath
-// them, and neither pages away.
-func TestInlinePeekResumeNotePreservesTheHeaderExceptions(t *testing.T) {
-	const overflow = "the remainder the row had no width for"
+// TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain replaced the header
+// exceptions. Nothing sits outside the body any more, so the claim is about
+// order rather than exemption: the whole title leads, the promoted ancestor
+// chain follows it, and the note sits beneath both while the page stays five
+// rows tall.
+func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
 	task := resumeNotePeekTask("stopped at the CSV column mapping")
+	task.Title = "Selected task whose title is long enough to want more than one row of a narrow pane"
 	task.CreatedAt = time.Now().Add(-5 * 24 * time.Hour)
 	task.UpdatedAt = time.Now().Add(-time.Hour)
 
-	continuation := inlinePeekDocumentFor(inlinePeekOptions{
-		Task: task, TitleOverflow: overflow, Width: 80,
-	})
-	if got := len(continuation.Lines(0)); got != len(continuation.Header)+inlinePeekBodyRows {
-		t.Fatalf("continuation Peek height = %d, want %d", got, len(continuation.Header)+inlinePeekBodyRows)
-	}
-	plain := ansi.Strip(strings.Join(continuation.Lines(0), "\n"))
-	if !strings.HasPrefix(plain, overflow) {
-		t.Fatalf("the note displaced the title continuation:\n%s", plain)
-	}
-	if !strings.Contains(plain, "Resume: stopped at the CSV column mapping") {
-		t.Fatalf("the continuation displaced the note:\n%s", plain)
-	}
-
-	ancestor := inlinePeekDocumentFor(inlinePeekOptions{
+	doc := inlinePeekDocumentFor(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
 	})
-	if got := len(ancestor.Lines(0)); got != len(ancestor.Header)+inlinePeekBodyRows {
-		t.Fatalf("ancestor Peek height = %d, want %d", got, len(ancestor.Header)+inlinePeekBodyRows)
+	if got := len(doc.Lines(0)); got != inlinePeekBodyRows {
+		t.Fatalf("Peek height = %d, want %d", got, inlinePeekBodyRows)
 	}
-	plain = ansi.Strip(strings.Join(ancestor.Lines(0), "\n"))
-	if !strings.HasPrefix(plain, "Parent: Launch platform › User authentication") {
-		t.Fatalf("the note displaced the ancestor chain:\n%s", plain)
+	plain := ansi.Strip(strings.Join(doc.Body, "\n"))
+	if !strings.HasPrefix(plain, "Selected task whose title") {
+		t.Fatalf("the title does not lead the document:\n%s", plain)
 	}
-	if !strings.Contains(plain, "Resume: stopped at the CSV column mapping") {
-		t.Fatalf("the ancestor chain displaced the note:\n%s", plain)
+	parent := strings.Index(plain, "Parent: Launch platform › User authentication")
+	resume := strings.Index(plain, "Resume: stopped at the CSV column mapping")
+	if parent < 0 || resume < 0 {
+		t.Fatalf("the document lost the ancestor chain or the note:\n%s", plain)
+	}
+	if parent > resume {
+		t.Fatalf("the note precedes the ancestor chain:\n%s", plain)
 	}
 }
 
@@ -179,7 +174,7 @@ func TestInlinePeekResumeNoteIsMeasuredByTheSameAuthorityThatDrawsIt(t *testing.
 
 	for _, width := range []int{40, 60, 80, 120} {
 		indent := inlinePeekIndentForRow(row)
-		drawn := model.InlinePeekLinesForRow(row, indent, width, chrome.WorstCaseColumnLayout(width))
+		drawn := model.InlinePeekLinesForRow(row, indent, width)
 		if got := model.inlinePeekLineCount(row, width); got != len(drawn) {
 			t.Fatalf("width %d measured %d Peek lines and drew %d", width, got, len(drawn))
 		}

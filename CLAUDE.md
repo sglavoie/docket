@@ -358,14 +358,21 @@ Row and Peek budget:
   screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;
   `inlinePeekBodyRows` bounds visibility alone and the counter row spends one of
-  those rows. Body order is resume, description, dates, attachments, comment
-  count, `Dependencies`/`Dependents`, context, tags; place a new section
-  deliberately. Peek holds no checklist line; title continuation and parent are
-  header, so they sit outside the window. A reference target is named nowhere
+  those rows. Nothing sits outside that window and the document has no header:
+  body order is title, parent, status, dates, resume, description, checklist
+  count, attachments, comment count, `Dependencies`/`Dependents`, context, tags;
+  place a new section deliberately. The whole title and the uncompacted ancestor
+  chain lead it, so a clipped row is recovered by scrolling and the row's `…`
+  never has a counterpart that reassembles it. Status spells state — with a
+  Doing/Waiting age off `StateChangedAt` — priority, planning membership, pinned,
+  and review, and keys on stored values so a tick never resets the window.
+  Checklist and comments stay counts; their items are rows and their panel.
+  A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
 - Both project header forms Peek through `inlinePeekProjectDocumentFor` over the
-  row's own `ProjectID`, never the view's: name as header, then description,
+  row's own `ProjectID`, never the view's: name leading the body, then
+  description,
   tags, and every stored comment newest first, with `No comments yet.` for none,
   so a header always has a document and an unresolved one has none.
   `projectPeekOwner` is that project identity, so All's several headers for one
@@ -380,8 +387,9 @@ Row and Peek budget:
   and `CanPage*` availability: a visible Peek swallows all four keys at
   either boundary and over a body too short to move, while only the hints read
   what can move. `PgDn`/`PgUp` stay the cursor's alone.
-- `VisualWidthOverflow` must subtract the same ellipsis column as
-  `TruncateToVisualWidth`, or a character is duplicated or lost.
+- `TruncateToVisualWidth` has no counterpart: its dropped tail is not
+  recoverable, so a surface needing the whole text renders the whole text,
+  wrapped.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append. The trailing `~S/N` counts stored locators in `N` regardless of target
   state or availability, degrades with the content counts, and is gated by no

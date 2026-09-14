@@ -65,13 +65,14 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 
 			titleWidth := segments.titleWidth(width)
 			visible := textfit.TruncateToVisualWidth(title, titleWidth)
-			overflow := outliner.TaskRowTitleOverflow(row, width, nil)
-			if overflow == "" {
-				t.Fatalf("%d-column row did not expose its clipped title tail", width)
+			if !strings.HasSuffix(visible, "…") {
+				t.Fatalf("%d-column row did not clip its title: %q", width, visible)
 			}
-			head := strings.TrimSuffix(visible, "…")
-			if got := head + overflow; got != title {
-				t.Fatalf("%d-column visible head plus overflow = %q, want %q", width, got, title)
+			// The clipped tail is not reassembled from the row. Peek carries the
+			// whole title, wrapped, which is the one place a reader recovers it.
+			peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, width), "\n"))
+			if got := strings.Join(strings.Fields(peek), " "); !strings.HasPrefix(got, title) {
+				t.Fatalf("%d-column Peek did not name the whole title:\n%s", width, peek)
 			}
 		})
 	}

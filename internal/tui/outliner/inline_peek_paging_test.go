@@ -106,9 +106,9 @@ func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
 				seen[i] = true
 			}
 			lines := doc.Lines(offset)
-			if len(lines) != len(doc.Header)+inlinePeekBodyRows {
+			if len(lines) != inlinePeekBodyRows {
 				t.Fatalf("width %d offset %d drew %d rows, want %d",
-					width, offset, len(lines), len(doc.Header)+inlinePeekBodyRows)
+					width, offset, len(lines), inlinePeekBodyRows)
 			}
 			for number, line := range lines {
 				if got := lipgloss.Width(line); got > width {
@@ -431,7 +431,7 @@ func TestPeekScrollingKeepsOneMeasurementAndOneRender(t *testing.T) {
 				for step := 0; ; step++ {
 					indent := inlinePeekIndentForRow(row)
 					width := outliner.peekRenderWidth()
-					drawn := outliner.InlinePeekLinesForRow(row, indent, width, chrome.WorstCaseColumnLayout(width))
+					drawn := outliner.InlinePeekLinesForRow(row, indent, width)
 					if got := outliner.inlinePeekLineCount(row, size.width-1); got != len(drawn) {
 						t.Fatalf("%s %s %dx%d step %d measured %d rows and drew %d",
 							themeName, task.ID, size.width, size.height, step, got, len(drawn))

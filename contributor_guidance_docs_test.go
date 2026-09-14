@@ -679,7 +679,19 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// a hero would otherwise be demoted by every hero above it. The mechanism
 	// lives in docs/architecture/row-indicators.md and
 	// docs/decisions/behavioral-signals-contracts.md.
-	const budget = 47447
+	// Thirty-third raise, 47447 to 47922, for Peek as the complete document. 475
+	// bytes buy the rule that nothing in it sits outside the scrolling window.
+	// A pinned header made the document two heights at once — one reserved, one
+	// drawn — and pinned exactly the section a reader opens Peek to finish
+	// reading, so the whole title and the ancestor chain are now ordinary body
+	// rows. Spelling the new order is what makes "place a new section
+	// deliberately" enforceable, and naming status and dates as the lines that
+	// carry what the row stopped showing is what keeps a future contributor from
+	// re-adding a badge to the row instead. The counterpart rule is the
+	// retirement beneath it: a truncation has no inverse, so the surface that
+	// needs the whole text renders the whole text. The mechanism lives in
+	// docs/architecture/search-filters-and-sorting.md.
+	const budget = 47922
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -737,7 +749,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"A value provider is exactly one of `TextEntry()`",
 		"`inlinePeekDocument` separates the whole detail from the window of it on screen",
 		"`peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves\nthe window",
-		"`VisualWidthOverflow` must subtract the same ellipsis column as `TruncateToVisualWidth`",
+		"`TruncateToVisualWidth` has no counterpart: its dropped tail is not\n  recoverable",
+		"Nothing sits outside that window and the document has no header",
+		"Checklist and comments stay counts; their items are rows and their panel",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",
 		"amber blocked, green settled, muted unreadable",
