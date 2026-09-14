@@ -314,3 +314,50 @@ func TestParseCheckInDateRefusesNonsense(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCheckInDateRelative(t *testing.T) {
+	for _, tc := range []struct {
+		name, zone, base, want string
+		inputs                 []string
+	}{
+		{"tomorrow", "America/Havana", "2026-03-07", "2026-03-08", []string{"tomorrow", "tmrw", "+1d", "in 1 day", "sun", "this sun", "eow"}},
+		{"week", "America/Havana", "2026-03-01", "2026-03-08", []string{"+7d", "+1w", "next week", "in 1 week", "next sun"}},
+		{"month", "America/Havana", "2026-02-08", "2026-03-08", []string{"+1m", "next month", "in 1 month", "mar 8", "8 mar"}},
+		{"today on gap", "America/Havana", "2026-03-08", "2026-03-08", []string{"today", "eod", "+0d"}},
+		{"after gap", "America/Havana", "2026-03-08", "2026-03-09", []string{"tomorrow", "+1d"}},
+		{"backwards", "America/Havana", "2026-03-09", "2026-03-08", []string{"yesterday", "ytd"}},
+		{"Brazil", "America/Sao_Paulo", "2018-11-03", "2018-11-04", []string{"tomorrow", "+1d"}},
+		{"Beirut", "Asia/Beirut", "2026-03-28", "2026-03-29", []string{"tomorrow", "+1d"}},
+		{"fall back", "America/Havana", "2026-10-31", "2026-11-01", []string{"tomorrow", "+1d"}},
+		{"clamped month", "America/Havana", "2026-01-31", "2026-02-28", []string{"+1m", "next month"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			loc := mustLoadZone(t, tc.zone)
+			// Late evening in Havana is already the next UTC date; the parser
+			// must copy the local components rather than convert the instant.
+			now, err := time.ParseInLocation("2006-01-02 15:04", tc.base+" 23:30", loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, input := range tc.inputs {
+				got, err := ParseCheckInDateAt(input, now)
+				if err != nil {
+					t.Errorf("%q: %v", input, err)
+					continue
+				}
+				if got.Format(DateFormat) != tc.want || got.Location() != loc || !IsStartOfCalendarDate(got) {
+					t.Errorf("%q = %s, want start of %s in %s", input, got, tc.want, loc)
+				}
+			}
+		})
+	}
+}
+
+func TestParseCheckInDateRelativeRefusesSkippedDate(t *testing.T) {
+	now := time.Date(2011, 12, 29, 12, 0, 0, 0, mustLoadZone(t, "Pacific/Apia"))
+	for _, input := range []string{"tomorrow", "+1d", "in 1 day", "fri"} {
+		if _, err := ParseCheckInDateAt(input, now); err == nil {
+			t.Errorf("%q accepted a date Pacific/Apia skipped entirely", input)
+		}
+	}
+}

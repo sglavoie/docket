@@ -423,6 +423,13 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 	if date, ok := parseExactDate(input); ok {
 		return date, nil
 	}
+	return parseRelativeDateFromDay(input, weekEndDay, today)
+}
+
+// parseRelativeDateFromDay evaluates normalized date expressions from the
+// supplied day. Check-ins use a UTC civil day here to keep local midnight gaps
+// out of the arithmetic; due and defer retain their local StartOfDay base.
+func parseRelativeDateFromDay(input, weekEndDay string, today time.Time) (time.Time, error) {
 	if date, ok := parseKeywordDate(input, weekEndDay, today); ok {
 		return date, nil
 	}

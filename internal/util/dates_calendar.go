@@ -120,11 +120,11 @@ func ValidateStorableCalendarDate(t time.Time) error {
 // it to tell a time-bearing input apart from an unparseable one.
 var ErrCheckInsAreDateOnly = errors.New("a check-in is a calendar day; drop the time of day")
 
-// ParseCheckInDate parses a check-in value. It is ParseCalendarDate — so the
-// hour form (+Nh) stays defer-only — with a trailing clock refused by name as
-// well: a deadline may carry an hour, a check-in may not, and a caller that
-// typed one gets told which of the two values it is setting rather than a
-// generic format error.
+// ParseCheckInDate parses a check-in value using ParseCalendarDate's grammar
+// with calendar-safe arithmetic. The hour form (+Nh) stays defer-only and a
+// trailing clock is refused by name: a check-in may not carry an hour. A caller
+// that typed one gets told which value it is setting rather than a generic
+// format error.
 //
 // An explicit "00:00" is refused with the same message even though it resolves
 // to the same instant the bare date does. ExtractDueClockSuffix reads a midnight
@@ -133,6 +133,13 @@ var ErrCheckInsAreDateOnly = errors.New("a check-in is a calendar day; drop the 
 // of a time that happens to be harmless, and the value a surface reads back
 // would not be the value it was given.
 func ParseCheckInDate(input string) (time.Time, error) {
+	return ParseCheckInDateAt(input, time.Now())
+}
+
+// ParseCheckInDateAt resolves a check-in relative to now's calendar date and
+// location. All date arithmetic happens on civil components before resolving
+// the start of the result in that location, including dates without midnight.
+func ParseCheckInDateAt(input string, now time.Time) (time.Time, error) {
 	datePart, _, _, _, err := ExtractDueClockSuffix(input)
 	if err != nil {
 		return time.Time{}, err
@@ -140,22 +147,22 @@ func ParseCheckInDate(input string) (time.Time, error) {
 	if datePart != strings.TrimSpace(input) {
 		return time.Time{}, ErrCheckInsAreDateOnly
 	}
-	// A written-out date names a civil date, so it is resolved as one: the
-	// components are read in UTC and the start of that date is rebuilt here. Going
-	// through the general parser instead would hand time.Date a midnight the local
-	// zone may not have, and its answer in that case is 23:00 on the day before —
-	// the right instant under the wrong question, and a check-in stored a day early.
-	if civil, ok := parseExactDateIn(normalizeDateInput(datePart), time.UTC); ok {
-		day, civilErr := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), time.Local)
-		if civilErr != nil {
-			return time.Time{}, civilErr
-		}
-		if storableErr := ValidateStorableCalendarDate(day); storableErr != nil {
-			return time.Time{}, storableErr
-		}
-		return day, nil
+	datePart = normalizeDateInput(datePart)
+	if relativeHoursRe.MatchString(datePart) {
+		return time.Time{}, errHoursAreDeferOnly
 	}
-	day, err := ParseCalendarDate(datePart)
+	// Copy the local date components, rather than converting now to UTC (which
+	// can change the date). Resolve both written and relative forms in UTC so a
+	// nonexistent local midnight cannot silently move the requested date back.
+	civil, exact := parseExactDateIn(datePart, time.UTC)
+	if !exact {
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		civil, err = parseRelativeDateFromDay(datePart, "sun", today)
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+	day, err := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), now.Location())
 	if err != nil {
 		return time.Time{}, err
 	}

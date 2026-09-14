@@ -64,6 +64,7 @@ type CheckInEditorModel struct {
 	explicit     bool
 	submitted    bool
 	setup        bool
+	now          func() time.Time
 }
 
 // NewCheckInEditorModel creates either a prefilled single-task editor or a
@@ -87,6 +88,7 @@ func NewCheckInEditorModel(
 		subtitle:    subtitle,
 		dateInput:   date,
 		repeatInput: repeat,
+		now:         time.Now,
 	}
 	if !bulk {
 		if schedule.Next != nil {
@@ -252,8 +254,12 @@ func (model *CheckInEditorModel) handlePickerKey(msg tea.KeyPressMsg) (tea.Cmd, 
 				model.dateInput.SetValue("")
 				model.repeatInput.SetValue("Off")
 			} else {
+				day, err := util.AddCalendarDays(model.now(), preset.days)
+				if err != nil {
+					model.notice = err.Error()
+					return nil, false, nil
+				}
 				model.clear = false
-				day := util.StartOfDay(time.Now()).AddDate(0, 0, preset.days)
 				model.dateInput.SetValue(day.Format(time.DateOnly))
 			}
 		} else {

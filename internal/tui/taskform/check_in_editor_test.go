@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func checkInEditorKey(key string) tea.KeyPressMsg {
@@ -130,5 +131,94 @@ func TestCheckInEditorClearIsExplicitAndOuterEscapeCancels(t *testing.T) {
 	}
 	if _, ok := result.(operation.OperationValueCanceledMsg); !ok {
 		t.Fatalf("outer Escape result = %T", result)
+	}
+}
+
+func TestCheckInEditorCalendarDatePresets(t *testing.T) {
+	loc, err := time.LoadLocation("America/Havana")
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := time.Local
+	time.Local = loc
+	t.Cleanup(func() { time.Local = previous })
+	for _, tc := range []struct {
+		label string
+		from  time.Time
+	}{
+		{"today", time.Date(2026, 3, 8, 12, 0, 0, 0, loc)},
+		{"tomorrow", time.Date(2026, 3, 7, 12, 0, 0, 0, loc)},
+		{"+week", time.Date(2026, 3, 1, 12, 0, 0, 0, loc)},
+		{"+month", time.Date(2026, 2, 6, 12, 0, 0, 0, loc)},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			model := NewCheckInEditorModel(operation.OperationExecutionRequest{}, "Task", models.CheckInSchedule{}, true)
+			model.now = func() time.Time { return tc.from }
+			model.HandleKey(checkInEditorKey("enter"))
+			for _, preset := range checkInDatePresets {
+				if preset.label == tc.label {
+					break
+				}
+				model.HandleKey(checkInEditorKey("down"))
+			}
+			model.HandleKey(checkInEditorKey("enter"))
+			if model.DateInput() != "2026-03-08" {
+				t.Fatalf("preset drafted %q, want 2026-03-08", model.DateInput())
+			}
+			_, dismissed, result := model.HandleKey(checkInEditorKey("ctrl+s"))
+			selected, ok := result.(operation.OperationValueSelectedMsg)
+			if !dismissed || !ok {
+				t.Fatalf("save dismissed=%v result=%T notice=%q", dismissed, result, model.Notice())
+			}
+			value := selected.Value.(operation.OperationCheckInValue)
+			if value.Schedule.Next == nil || value.Schedule.Next.Format(time.DateOnly) != "2026-03-08" {
+				t.Fatalf("saved schedule = %+v", value.Schedule)
+			}
+			if err := models.ValidateCheckInSchedule(value.Schedule); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestCheckInEditorRefusesSkippedPresetWithoutLosingDraft(t *testing.T) {
+	loc, err := time.LoadLocation("Pacific/Apia")
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := NewCheckInEditorModel(operation.OperationExecutionRequest{}, "Task", models.CheckInSchedule{}, true)
+	model.now = func() time.Time { return time.Date(2011, 12, 29, 12, 0, 0, 0, loc) }
+	model.dateInput.SetValue("2011-12-31")
+	model.repeatInput.SetValue("7")
+	model.HandleKey(checkInEditorKey("enter"))
+	model.HandleKey(checkInEditorKey("down"))
+	_, dismissed, result := model.HandleKey(checkInEditorKey("enter"))
+	if dismissed || result != nil || model.Notice() == "" || model.picker != checkInPickerDate {
+		t.Fatalf("refusal dismissed=%v result=%T notice=%q picker=%v", dismissed, result, model.Notice(), model.picker)
+	}
+	if model.DateInput() != "2011-12-31" || model.RepeatInput() != "7" {
+		t.Fatal("refused preset changed the draft")
+	}
+}
+
+func TestCheckInRelativeDatePassesScheduleValidation(t *testing.T) {
+	loc, err := time.LoadLocation("America/Havana")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		input string
+		day   int
+	}{{"tomorrow", 7}, {"+7d", 1}, {"next week", 1}} {
+		next, err := util.ParseCheckInDateAt(tc.input, time.Date(2026, 3, tc.day, 12, 0, 0, 0, loc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if next.Format(time.DateOnly) != "2026-03-08" {
+			t.Fatalf("%q = %s, want 2026-03-08", tc.input, next)
+		}
+		if err := models.ValidateCheckInSchedule(models.CheckInSchedule{Next: &next}); err != nil {
+			t.Fatalf("%q: %v", tc.input, err)
+		}
 	}
 }
