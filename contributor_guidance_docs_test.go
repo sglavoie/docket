@@ -766,8 +766,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`s`, `p`, and `t` fold the section, project, and task axes; `P` is Select Project",
 		"`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and `[`, " +
 			"which own no sigil",
-		"`@` is the one date picker over both fields, so the cursor's defer section, " +
+		"`@` is the one date picker over Due, Defer, and Check-in; the cursor's Defer section, " +
 			"not a provider method, lets `+Nh` parse",
+		"`Tab` moves forward through those sections and wraps; `Shift+Tab` moves backward",
 		"Task workflow state, project tags, and project archive lifecycle are three independent axes",
 		"`parked` is the one behavioral project tag",
 		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +

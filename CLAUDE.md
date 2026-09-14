@@ -300,16 +300,17 @@ disables color, and non-interactive commands honor it.
 A value provider is exactly one of `TextEntry()` (a separate overlay),
 `TagEntry()` or `DateEntry()` (inline add modes), or a plain list. A value the
 presets cannot express belongs in an inline mode on that picker, never a
-standalone form. `@` is the one date picker over both fields, so the cursor's
-defer section, not a provider method, lets `+Nh` parse. That cursor is the
-active field and the only one: read it off the row's own date payload, never a
-second section index. It opens in Due on the due field alone — a preset, else
-Due's Clear row — and opening writes nothing. `Tab` crosses to the other field's
-first match, disabled rows included, since reading a row's field and committing
-it are different questions, and it is consumed on every picker, so a one-section
-picker is inert rather than leaking it. A preset key is one `chrome` table read
-by field and preset ID, never a per-surface keyboard; the creation form borrows
-it and keeps its own order, labels, and arithmetic. It dispatches ahead of the
+standalone form. `@` is the one date picker over Due, Defer, and Check-in; the
+cursor's Defer section, not a provider method, lets `+Nh` parse. The cursor names
+the section: read the row's typed payload, never a second section index.
+It opens in Due on the due field alone — a preset, else
+Due's Clear row — and opening writes nothing. `Tab` moves forward through those
+sections and wraps; `Shift+Tab` moves backward. Both land on the adjacent section's
+first match, including disabled rows; no match preserves cursor and query.
+Both are consumed on every picker; a one-section picker is inert. A preset key
+is one `chrome` table read by field and preset ID, never a per-surface keyboard;
+the creation form borrows it and keeps its own order, labels, and arithmetic.
+It dispatches ahead of the
 browse grammar, which already claims `t` and `w`, and claims a key bound in
 either field so one unbound there is silent; it commits the row `SetCursorToID`
 lands on through the `SelectedValue` path `Enter` takes, so a filtered-out preset
