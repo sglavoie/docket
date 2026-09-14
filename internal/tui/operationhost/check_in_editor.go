@@ -41,7 +41,7 @@ func (c *Controller) NewCheckInEditor(
 		return taskform.NewCheckInEditorModel(
 			request,
 			fmt.Sprintf("Replace schedule on %d selected tasks", len(refs)),
-			refs[0].Task.CheckIn(),
+			models.CheckInSchedule{},
 			true,
 		), nil
 	}
