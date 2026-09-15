@@ -83,7 +83,7 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 	}
 }
 
-func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
+func TestProjectGroupsCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 	for _, keys := range []struct {
 		name     string
 		collapse string
@@ -104,18 +104,18 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			outlinerView.Population.Invalidate()
 			outlinerView.CrossProjectRebuildRows()
 
-			projectHeader := -1
-			for index, row := range outlinerView.Rows {
-				if row.IsProjectHeader && row.ProjectID == alpha.ID {
-					projectHeader = index
-					break
-				}
+			// The fold starts from a task row, because an expanded group draws no
+			// header: the last rung of h folds the group the cursor's own row
+			// carries, and that is the fold this test presses.
+			alphaRow := findTaskRow(outlinerView.Rows, "alpha-task")
+			if alphaRow < 0 {
+				t.Fatalf("Alpha task is missing from rows: %+v", outlinerView.Rows)
 			}
-			if projectHeader < 0 {
-				t.Fatalf("Alpha project header is missing from rows: %+v", outlinerView.Rows)
+			outlinerView.Cursor = alphaRow
+			collapseKey := outlinerView.Rows[alphaRow].Group.ProjectKey
+			if collapseKey == "" {
+				t.Fatalf("Alpha task row carries no project group: %+v", outlinerView.Rows[alphaRow])
 			}
-			outlinerView.Cursor = projectHeader
-			collapseKey := outlinerView.Rows[projectHeader].EffectiveCollapseKey()
 
 			collapseMsg, err := parseUITestKey(keys.collapse)
 			if err != nil {
@@ -132,6 +132,9 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			}
 			if findTaskRow(outlinerView.Rows, "beta-task") < 0 {
 				t.Fatal("collapsing Alpha also hid Beta's task")
+			}
+			if row := outlinerView.Rows[outlinerView.Cursor]; !row.IsProjectHeader || row.ProjectID != alpha.ID {
+				t.Fatalf("collapsed cursor row = %+v, want Alpha's summary", row)
 			}
 
 			expandMsg, err := parseUITestKey(keys.expand)

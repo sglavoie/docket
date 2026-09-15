@@ -33,8 +33,12 @@ unless a filter explicitly asks for them; deferred work does too unless its
 manual review flag raises it.
 
 Every mode groups its tasks by project when you are looking at more than one
-project. A project group is a foldable `[slug] (count)` header; focus a single
-project and those per-group headers give way to one `[slug]` header at the top
+project. An open group draws no heading at all: each of its tasks carries its
+project's `[slug]` just before the title, and the row you would have spent on a
+heading goes to the tasks instead. Fold the group with `p` or `h` and that row
+comes back as a `[slug] (count)` summary, which is also where you read a slug
+too long to fit beside a title. Focus a single project and the whole axis goes
+away — labels and summaries both — replaced by one `[slug]` header at the top
 of the projection. That one is context rather than a group: it carries no fold
 arrow and no count, `h` and `l` do nothing on it, and `Enter` has nowhere to go
 because you are already inside that project. What it does carry is the project
@@ -43,7 +47,7 @@ from that row. It stays there in every mode and in ranked search, and it
 stays there when the mode, a query, a lens, or a subtree focus leaves nothing to
 list — the explanation of why the view is empty is printed underneath it.
 Project groups put pinned projects first and then sort alphabetically, and that
-header order stays the same across sections and modes. Tasks inside a group keep
+order stays the same across sections and modes. Tasks inside a group keep
 hierarchy, the parent marker, and the mode's own sort; `J`/`K` never move a
 task across a project group.
 

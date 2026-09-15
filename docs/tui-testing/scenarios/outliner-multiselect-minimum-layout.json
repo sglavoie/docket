@@ -6,7 +6,6 @@
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "key", "label": "select current task and enter multi-select mode", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "[x]" },

@@ -214,7 +214,7 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	}
 	cmd = out.CrossSkipNonNavigableRows(previous, cmd)
 	out.UpdateRangeSelection()
-	out.VoidRelocationCaptureAfterNavigation(previous)
+	out.AdoptNavigatedCursor(previous)
 	return cmd
 }
 

@@ -5,7 +5,6 @@
   "actions": [
     { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
     { "type": "key", "key": "n" },
-    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "label": "scope to that project", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

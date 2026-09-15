@@ -214,14 +214,15 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	}
 }
 
-// TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance is the same hole
+// TestInboxAsyncGroupJumpAwayAndBackBeforeReloadVoidsAdvance is the same hole
 // reached through the other navigation family. A last-task-of-project departure
-// settles the cursor on the following project header, so n and N are the keys
-// that move from there — and n wrapping to the other header and N returning
-// lands the cursor back on the settled index without changing the projection
-// fingerprint. Only voiding at the header jump itself keeps the accepted reload
-// from applying the successor advance over the header the user chose.
-func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
+// settles the cursor on the row that opens the following project's group, so n
+// and N are the keys that move from there — and n wrapping to the other group
+// and N returning lands the cursor back on the settled index without changing
+// the projection fingerprint. Only voiding at the group jump itself keeps the
+// accepted reload from applying the successor advance over the row the user
+// chose.
+func TestInboxAsyncGroupJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	alphaOne := newBulkPickerTestTask(t, 1, "alpha one")
 	alphaTwo := newBulkPickerTestTask(t, 2, "alpha two")
 	betaOne := newBulkPickerTestTask(t, 1, "beta one")
@@ -240,37 +241,43 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	if async.outliner.Cursor != settled {
 		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
-	if settled < 0 || settled >= len(async.outliner.Rows) || !async.outliner.Rows[settled].IsHeaderRow() {
-		t.Fatalf("the fixture did not settle the cursor on a project header at row %d", settled)
+	if settled < 0 || settled >= len(async.outliner.Rows) {
+		t.Fatalf("settled cursor %d is outside the projection", settled)
+	}
+	// The settled row opens its project's block, which is what n and N stop on:
+	// an expanded group draws no heading, so the first row of the run is the
+	// group's own beginning.
+	settledRow := async.outliner.Rows[settled]
+	if settled == 0 || settledRow.Group == async.outliner.Rows[settled-1].Group {
+		t.Fatalf("the fixture did not settle the cursor on a group start at row %d", settled)
 	}
 
-	// n then N while the disk refresh is still in flight: the header jump wraps to
-	// the other project header and back onto the settled one.
+	// n then N while the disk refresh is still in flight: the group jump wraps to
+	// the other project's block and back onto the settled one.
 	if _, moved := async.outliner.MoveCursorToAdjacentHeader(1); !moved {
-		t.Fatal("n found no header to jump to")
+		t.Fatal("n found no group to jump to")
 	}
 	if async.outliner.Cursor == settled {
-		t.Fatal("the fixture did not actually move the cursor off the settled header")
+		t.Fatal("the fixture did not actually move the cursor off the settled group")
 	}
 	if _, moved := async.outliner.MoveCursorToAdjacentHeader(-1); !moved {
-		t.Fatal("N found no header to jump back to")
+		t.Fatal("N found no group to jump back to")
 	}
 	if async.outliner.Cursor != settled {
 		t.Fatalf("cursor = %d after jumping back, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
-	returnedHeader := async.outliner.Rows[settled].EffectiveCollapseKey()
+	returned := async.outliner.CurrentTaskIdentity()
 
 	async.applyReload(t, saveCmd)
 
 	if async.outliner.RelocationHistory.Pending != nil {
-		t.Fatal("a header jump away and back left the relocation capture armed")
+		t.Fatal("a group jump away and back left the relocation capture armed")
 	}
 	if async.outliner.Cursor < 0 || async.outliner.Cursor >= len(async.outliner.Rows) {
 		t.Fatalf("cursor = %d is outside the reloaded projection", async.outliner.Cursor)
 	}
-	row := async.outliner.Rows[async.outliner.Cursor]
-	if !row.IsHeaderRow() || row.EffectiveCollapseKey() != returnedHeader {
-		t.Fatalf("cursor row = %+v, want the project header the user returned to %q", row, returnedHeader)
+	if got := async.outliner.CurrentTaskIdentity(); got != returned {
+		t.Fatalf("cursor task = %+v, want the group the user returned to %+v", got, returned)
 	}
 }
 
@@ -289,9 +296,11 @@ func TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance(t *testing.T) {
 	inboxCursorTo(t, async.outliner, alphaTwo.ID)
 	saveCmd := async.commitState(t, models.StateDone)
 
-	// One j while the disk refresh is still in flight.
+	// One j while the disk refresh is still in flight. It goes through the key's
+	// own call rather than writing Cursor, because a genuine keypress also moves
+	// the anchor the reload restores from and writing the field moves neither.
 	moved := async.outliner.CurrentTaskIdentity()
-	async.outliner.Cursor++
+	async.model.coreMoveCursor("j")
 	if async.outliner.CurrentTaskIdentity() == moved {
 		t.Fatal("the fixture did not actually move the cursor")
 	}

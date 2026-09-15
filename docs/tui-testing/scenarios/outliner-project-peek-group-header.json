@@ -5,6 +5,7 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the first cross-project group header", "key": "n" },
     { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "[client-alpha]" },
     { "type": "assert", "assert": "not_contains", "value": "Client Alpha" },
@@ -30,12 +31,12 @@
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "moving onto the project's task hands Peek to the task", "key": "j" },
+    { "type": "key", "label": "expanding the summary lands the cursor on the task it stood in for, which hands Peek to the task", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "so the project's comment is no longer what is shown", "assert": "not_contains", "value": "Kickoff moved to Monday morning" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "and coming back re-reads the project", "key": "k" },
+    { "type": "key", "label": "and folding the group back re-reads the project", "key": "h" },
     { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
 
     { "type": "resize", "label": "the pane holds at the narrowest supported terminal", "width": 60, "height": 20 },
@@ -43,14 +44,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 35 },
 
-    { "type": "key", "label": "folding the group keeps the header and its pane together", "key": "h" },
-    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
-    { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
+    { "type": "assert", "label": "the fold keeps the header and its pane together", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "expanding the summary lands the cursor on the task it was standing in for", "key": "l" },
-    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
-    { "type": "key", "label": "so hand Peek back to the project before undoing", "key": "k" },
-    { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
 
     { "type": "key", "label": "undo takes the comment back and the pane says so", "key": "u" },
     { "type": "wait" },

@@ -59,8 +59,9 @@ func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *
 }
 
 // TestPrimaryAllFocusedProjectLeadsWithOneHeader is the focused-scope round
-// trip. Entering a project drops its redundant per-group headers and gains the
-// one focused header above the content it still shows; leaving restores the
+// trip. The base scope groups by project and names that project on every row;
+// entering one drops the axis, taking those labels with it, and gains the one
+// focused header above the content it still shows. Leaving restores the
 // cross-project grouping unchanged, which is the half this test has always
 // locked.
 func TestPrimaryAllFocusedProjectLeadsWithOneHeader(t *testing.T) {
@@ -72,15 +73,7 @@ func TestPrimaryAllFocusedProjectLeadsWithOneHeader(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(alpha)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	baseProjectHeaders := 0
-	for _, row := range outliner.Rows {
-		if row.IsProjectHeader {
-			baseProjectHeaders++
-		}
-	}
-	if baseProjectHeaders == 0 {
-		t.Fatal("single-project base scope omitted cross-project sub-headers")
-	}
+	assertCrossProjectGrouping(t, outliner, alpha.ID, "base scope")
 
 	outliner.PushProjectScope(alpha.ID)
 	assertSoleFocusedProjectHeader(t, outliner, alpha.ID, "all")
@@ -114,14 +107,36 @@ func TestPrimaryAllFocusedProjectLeadsWithOneHeader(t *testing.T) {
 	if !outliner.PopProjectScope() {
 		t.Fatal("focused project scope did not pop")
 	}
-	projectHeaders := 0
-	for _, row := range outliner.Rows {
-		if row.IsProjectHeader {
-			projectHeaders++
+	assertCrossProjectGrouping(t, outliner, alpha.ID, "restored base scope")
+}
+
+// assertCrossProjectGrouping pins the unscoped form: the project axis is live,
+// every task row carries its group, and the row names the project itself, since
+// an expanded group spends no row on a heading that could name it instead.
+func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label string) {
+	t.Helper()
+	groups := m.VisibleProjectGroups()
+	if len(groups) == 0 {
+		t.Fatalf("%s rendered no project groups", label)
+	}
+	for _, group := range groups {
+		if group.ProjectID != projectID {
+			t.Fatalf("%s project group = %+v, want %q", label, group, projectID)
 		}
 	}
-	if projectHeaders == 0 {
-		t.Fatal("base scope did not restore cross-project sub-headers")
+	for _, row := range m.Rows {
+		if row.IsFocusedProjectHeader {
+			t.Fatalf("%s rendered a focused project header: %+v", label, row)
+		}
+		if !row.IsTaskRow() {
+			continue
+		}
+		if !slices.Contains(groups, row.Group) {
+			t.Fatalf("%s task row %q carries group %+v, want one of %+v", label, row.Task.ID, row.Group, groups)
+		}
+		if m.taskProjectLabel(row) == "" {
+			t.Fatalf("%s task row %q named no project", label, row.Task.ID)
+		}
 	}
 }
 

@@ -52,19 +52,85 @@ func addCommentFixtureApp(t *testing.T) (*UITestDriver, *uitestWorkspace, *outli
 // happens to need.
 func seatCursorOnTaskTitled(t *testing.T, view *outliner.OutlinerModel, title string) {
 	t.Helper()
-	for index, row := range view.Rows {
-		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
-			view.Cursor = index
-			return
-		}
+	if seatCursorOnVisibleTaskTitled(view, title) {
+		return
+	}
+	// A project group folded to reach its header hides every task row it holds,
+	// so the second half of that bracket is opening the groups again. Only a miss
+	// spends it, which leaves a fold a test closed on purpose closed.
+	for _, group := range view.VisibleProjectGroups() {
+		view.SetProjectGroupFolded(group, false)
+	}
+	view.RebuildRows()
+	if seatCursorOnVisibleTaskTitled(view, title) {
+		return
 	}
 	t.Fatalf("no task row titled %q in the projection", title)
 }
 
+// seatCursorOnVisibleTaskTitled seats the cursor on the drawn row naming title
+// and reports whether the projection held one.
+func seatCursorOnVisibleTaskTitled(view *outliner.OutlinerModel, title string) bool {
+	for index, row := range view.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
+			view.Cursor = index
+			return true
+		}
+	}
+	return false
+}
+
+// foldEveryProjectGroup closes every project group the projection shows, which
+// is how a test reaches a project header at all: an expanded group draws none,
+// and the summary a fold leaves behind is the header every project operation
+// resolves from. It writes the groups the model reports rather than a key
+// sequence, so a fixture gaining a lane does not change what the caller means.
+func foldEveryProjectGroup(t *testing.T, view *outliner.OutlinerModel) {
+	t.Helper()
+	groups := view.VisibleProjectGroups()
+	if len(groups) == 0 {
+		t.Fatal("the projection carries no project group to fold")
+	}
+	for _, group := range groups {
+		view.SetProjectGroupFolded(group, true)
+	}
+	view.RebuildRows()
+}
+
+// onProjectHeaderCursor folds the project groups, seats the cursor on the first
+// summary that leaves behind, runs inspect, then reopens exactly the groups it
+// closed. Reaching a project header costs a fold, and a fold hides the task rows
+// the rest of a test still needs, so the two belong in one bracket rather than
+// in a caller that has to remember the second half.
+func onProjectHeaderCursor(t *testing.T, view *outliner.OutlinerModel, inspect func()) {
+	t.Helper()
+	groups := view.VisibleProjectGroups()
+	seatCursorOnProjectHeader(t, view)
+	inspect()
+	for _, group := range groups {
+		view.SetProjectGroupFolded(group, false)
+	}
+	view.RebuildRows()
+}
+
+// seatCursorOnRow parks the cursor on the first row the predicate accepts.
+func seatCursorOnRow(t *testing.T, view *outliner.OutlinerModel, kind string, match func(outliner.OutlinerRow) bool) {
+	t.Helper()
+	for index, row := range view.Rows {
+		if match(row) {
+			view.Cursor = index
+			return
+		}
+	}
+	t.Fatalf("the projection carries no %s row", kind)
+}
+
 // seatCursorOnProjectHeader parks the cursor on the fixture's project header,
-// which is the only row `C` may resolve a project from.
+// which is the only row `C` may resolve a project from. It folds first, because
+// that header exists only while the group it summarizes is closed.
 func seatCursorOnProjectHeader(t *testing.T, view *outliner.OutlinerModel) {
 	t.Helper()
+	foldEveryProjectGroup(t, view)
 	seatCursorOnRow(t, view, "project header", func(row outliner.OutlinerRow) bool {
 		return row.IsProjectHeader
 	})

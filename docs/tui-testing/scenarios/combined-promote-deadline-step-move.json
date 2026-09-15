@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "onto Client Alpha's header", "key": "j" },
     { "type": "key", "label": "onto its only task", "key": "j" },
 
     { "type": "key", "label": "c answers from the owner row, since an empty checklist has no item row", "key": "c" },

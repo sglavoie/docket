@@ -63,25 +63,16 @@ func TestAddCommentAppliesOnTaskRowsAndNowhereElse(t *testing.T) {
 	view.Cursor = item
 	refusedAtCursor(t, app, "checklist item row")
 
-	for _, row := range []struct {
-		name  string
-		match func(outliner.OutlinerRow) bool
-	}{
-		{"section header", func(r outliner.OutlinerRow) bool { return r.IsSectionHeader }},
-		{"project header", func(r outliner.OutlinerRow) bool { return r.IsProjectHeader }},
-	} {
-		seated := false
-		for index, candidate := range view.Rows {
-			if row.match(candidate) {
-				view.Cursor, seated = index, true
-				break
-			}
-		}
-		if !seated {
-			t.Fatalf("the projection carries no %s row", row.name)
-		}
-		refusedAtCursor(t, app, row.name)
-	}
+	seatCursorOnRow(t, view, "section header", func(r outliner.OutlinerRow) bool {
+		return r.IsSectionHeader
+	})
+	refusedAtCursor(t, app, "section header")
+
+	// The project header costs a fold to reach, so the refusal is asserted
+	// inside that bracket and the groups are open again on the way out.
+	onProjectHeaderCursor(t, view, func() {
+		refusedAtCursor(t, app, "project header")
+	})
 
 	// A project-qualified section header does name a non-task entity, and that
 	// one is refused a step earlier: the key never binds there at all.

@@ -142,15 +142,6 @@ type OutlinerModel struct {
 	// Column visibility config (loaded from project view state)
 	columnConfig *listsurface.ColumnConfig
 
-	// CompactProjectGroups is the headerless project presentation: a project group
-	// draws its header only while it is folded, so an expanded group is a plain run
-	// of task rows and a folded one is the single summary that names it. Folding,
-	// navigation, group cursor restoration, and project targeting read
-	// OutlinerRowGroup rather than the header row, so both presentations answer the
-	// same way; this flag is what lets the headerless one be exercised before the
-	// row labels that make it readable exist.
-	CompactProjectGroups bool
-
 	// Peek mode follows the cursor and shows additive task detail inline.
 	PeekMode bool
 

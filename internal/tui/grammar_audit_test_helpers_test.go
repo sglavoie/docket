@@ -52,8 +52,14 @@ func pressFilterChord(t *testing.T, app *AppModel, keys string) tea.Cmd {
 	return cmd
 }
 
+// headerTargetProjectHeaderRow folds the projection's project groups and returns
+// the first summary they leave behind. The fold is not incidental setup: an
+// expanded group draws no heading, so its summary is the only project header a
+// cross-project projection ever has, and it is the row every project operation
+// resolves from.
 func headerTargetProjectHeaderRow(t *testing.T, outlinerView *outliner.OutlinerModel) int {
 	t.Helper()
+	foldEveryProjectGroup(t, outlinerView)
 	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader {
 			return index

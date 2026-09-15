@@ -26,7 +26,6 @@
 
     { "type": "key", "label": "record where the first of them was left", "key": "home" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "r" },
     { "type": "text", "text": "picked this back up after the vendor call" },
     { "type": "key", "key": "enter" },

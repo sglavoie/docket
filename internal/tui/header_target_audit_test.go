@@ -348,17 +348,10 @@ func headerTargetCursorContext(t *testing.T) operation.CommandContext {
 	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
-	for index, row := range outlinerView.Rows {
-		if !row.IsProjectHeader {
-			continue
-		}
-		outlinerView.Cursor = index
-		ctx := app.operationCommandContext()
-		ctx.View = presentation.ViewCrossProjectOutliner
-		return ctx
-	}
-	t.Fatal("fixture Outliner exposed no project header row")
-	return operation.CommandContext{}
+	outlinerView.Cursor = headerTargetProjectHeaderRow(t, outlinerView)
+	ctx := app.operationCommandContext()
+	ctx.View = presentation.ViewCrossProjectOutliner
+	return ctx
 }
 
 func headerTargetClassification(

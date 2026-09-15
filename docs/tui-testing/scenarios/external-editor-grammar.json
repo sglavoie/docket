@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "step onto the project header", "key": "j" },
     { "type": "key", "label": "move onto the first visible task", "key": "j" },
 
     { "type": "command", "label": "return a reopened buffer the user saved without fixing", "command": "external editor refusal" },

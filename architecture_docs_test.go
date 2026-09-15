@@ -78,7 +78,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		// starts a block, so the rule is stated over rowStartsGroup rather than over
 		// the row kind that used to be the only way to declare one.
 		"`n`/`N` step the cursor between blocks, and their stop set is `rowStartsGroup`",
-		"a header-only one would leave a whole group unreachable under `CompactProjectGroups`",
+		"a header-only one would leave every expanded group unreachable",
 		"There are three fold axes and therefore three bulk keys: `s` for section headers, " +
 			"`p` for project group headers, `t` for task subtrees",
 		"if any member of the set is folded the press expands them all, otherwise it folds them all",
@@ -92,7 +92,13 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"groups `VisibleProjectGroups()` reports, and each writes its own half through " +
 			"`setGroupFold`",
 		"Neither scans for a header and neither matches a key prefix",
-		"`CompactProjectGroups` is that headerless presentation",
+		// Session 8 retired the switch: the headerless presentation is now the only
+		// one, and the compact per-row label is what makes it readable.
+		"one compact `[label]` segment per task row, from `taskProjectLabel` under the same " +
+			"`groupsRowsByProject` predicate the emitter reads",
+		"bounded by `projectLabelWidth` and reserved at every width beside the pin and " +
+			"relation markers rather than joining `indicatorDropLadder`",
+		"The truncation that ceiling imposes has the folded summary as its counterpart",
 		"`appendProjectGroupHeader` emits nothing for an expanded group and keeps the summary " +
 			"a folded one is",
 		"`rowStartsGroup` is what `n`/`N` step between",

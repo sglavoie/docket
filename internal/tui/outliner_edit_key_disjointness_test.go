@@ -73,9 +73,7 @@ func TestOutlinerEditKeyNamesExactlyOneEntityPerRow(t *testing.T) {
 		{
 			name: "a project header edits the project",
 			seat: func(t *testing.T) {
-				seatCursorOnRow(t, view, "project header", func(row outliner.OutlinerRow) bool {
-					return row.IsProjectHeader
-				})
+				seatCursorOnProjectHeader(t, view)
 			},
 			want: operation.OperationScopeRenameProject,
 		},
@@ -155,16 +153,4 @@ func assertEditKeyOpensNoEditor(t *testing.T, driver *UITestDriver) {
 	if got := driver.App().crossOutliner.Cursor; got != before {
 		t.Fatalf("a refused e moved the cursor from %d to %d", before, got)
 	}
-}
-
-// seatCursorOnRow parks the cursor on the first row the predicate accepts.
-func seatCursorOnRow(t *testing.T, view *outliner.OutlinerModel, kind string, match func(outliner.OutlinerRow) bool) {
-	t.Helper()
-	for index, row := range view.Rows {
-		if match(row) {
-			view.Cursor = index
-			return
-		}
-	}
-	t.Fatalf("the projection carries no %s row", kind)
 }

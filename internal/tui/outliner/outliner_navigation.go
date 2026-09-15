@@ -831,7 +831,7 @@ func (m *OutlinerModel) MoveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 		}
 		m.Cursor = index
 		m.UpdateRangeSelection()
-		m.VoidRelocationCaptureAfterNavigation(previous)
+		m.AdoptNavigatedCursor(previous)
 		return listsurface.FlashIfJumped(previous, m.Cursor, &m.CursorFlash), true
 	}
 	return nil, false

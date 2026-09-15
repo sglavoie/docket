@@ -60,11 +60,21 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 						}
 					}
 				}
-				// The whole title, not a prefix of it: 60 columns is the narrowest
-				// layout the product supports, and on the simplified row budget the
-				// check-in fixture's longest title fits there beside the review
-				// countdown and the deadline rather than clipping against a badge.
-				capture("rows", "Migrated vendor wait", "review +", "Apr 1 15:30", "today 0")
+				// What one row can promise depends on the width it is given, and the
+				// compact project label is part of that arithmetic now. At 110 the
+				// whole title, the countdown, and the deadline all arrive. At 62 the
+				// two indicators still outrank the title's tail, so the title is
+				// what pays. At 60 the fitter sheds the countdown first instead and
+				// the whole title comes back. The deadline survives all three, which
+				// is the ladder's own promise.
+				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 15:30", "today 0"}
+				switch size[0] {
+				case 62:
+					rowsRequired = []string{"Migrate", "review +", "Apr 1 15:30", "today 0"}
+				case 60:
+					rowsRequired = []string{"Migrated vendor wait", "Apr 1 15:30", "today 0"}
+				}
+				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner
 				var id taskref.TaskIdentity
 				for _, row := range out.Rows {
@@ -77,10 +87,14 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 					t.Fatal("no migrated task")
 				}
 				out.ReplaceSelection([]taskref.TaskIdentity{id})
-				// A selection buys its checkbox out of the title's columns, so at
-				// 60 the same title clips here; the deadline and the countdown are
-				// what may not be what it pays with.
-				capture("selected", "Migrated vendor", "review +", "Apr 1 15:30")
+				// A selection buys its checkbox out of the same budget, and the
+				// narrow widths spend the countdown on it. The deadline is what may
+				// not be paid with: it survives the checkbox at every width.
+				selectedRequired := []string{"Migrated vendor", "review +", "Apr 1 15:30"}
+				if size[0] < 110 {
+					selectedRequired = []string{"Migrated vendor", "Apr 1 15:30"}
+				}
+				capture("selected", selectedRequired...)
 				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
 					t.Fatal(err)
 				}

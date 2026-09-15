@@ -3,12 +3,10 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
     { "type": "key", "label": "select it", "key": "v" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "move past the Inbox group and project headers", "key": "j" },
+    { "type": "key", "label": "move past the Inbox section header", "key": "j" },
     { "type": "key", "label": "select a second, non-adjacent task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
 

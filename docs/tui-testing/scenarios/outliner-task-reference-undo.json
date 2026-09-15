@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move below the first section header", "key": "j" },
     { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "key": "e" },
     { "type": "text", "label": "store one reference the typed way", "text": " ~client-beta:1" },

@@ -6,9 +6,8 @@
     { "type": "switch_machine", "label": "the laptop is where the scoped lens is authored", "machine": "laptop" },
     { "type": "wait" },
 
-    { "type": "key", "label": "step onto the Client Beta group header", "key": "n" },
+    { "type": "key", "label": "step onto the Client Beta group's first task", "key": "n" },
     { "type": "key", "key": "n" },
-    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "label": "scope to that project", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
@@ -23,6 +22,7 @@
 
     { "type": "switch_machine", "label": "the desktop deletes the project that lens opens in", "machine": "desktop" },
     { "type": "wait" },
+    { "type": "key", "label": "fold the groups so the project has a header row", "key": "p" },
     { "type": "key", "key": "n" },
     { "type": "key", "key": "n" },
     { "type": "key", "label": "the project sheet is the only route to Delete", "key": "space" },

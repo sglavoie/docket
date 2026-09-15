@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "160x55",
   "actions": [
-    { "type": "key", "label": "move below the first section header", "key": "j" },
     { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "key": "e" },
     { "type": "text", "label": "reference a task in a project this view can still read", "text": " ~client-beta:1" },
@@ -12,6 +11,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "~0/1" },
 
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the referenced project's header", "key": "j" },
     { "type": "key", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Beta" },
@@ -22,8 +22,8 @@
     { "type": "wait" },
     { "type": "assert", "label": "the target left the population the picker reads", "assert": "not_contains", "value": "Beta rollout checklist" },
 
+    { "type": "key", "label": "unfold the groups again", "key": "p" },
     { "type": "key", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "back onto the referring task", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~0/1?" },
 

@@ -3,6 +3,7 @@
   "fixture": "multi-project",
   "size": "100x30",
   "actions": [
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step from the section header onto Client Alpha's project header", "key": "j" },
     { "type": "assert", "label": "the header footer offers the menu that reaches every act no key does", "assert": "contains", "value": "Space actions" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },
@@ -23,16 +24,16 @@
 
     { "type": "key", "label": "Esc closes the sheet without acting", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Project Actions" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "▸ [client-alpha] (1)" },
 
-    { "type": "key", "label": "the same key one row down is the task menu, because the row names a task", "key": "j" },
-    { "type": "key", "key": "space" },
+    { "type": "key", "label": "unfolding seats the cursor on the task the summary covered", "key": "l" },
+    { "type": "key", "label": "the same key on that row is the task menu, because the row names a task", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "Delete project" },
     { "type": "key", "key": "esc" },
 
     { "type": "resize", "label": "the sheet survives the narrowest supported terminal", "width": 60, "height": 20 },
-    { "type": "key", "key": "k" },
+    { "type": "key", "label": "folding the cursor's own group gives the header back", "key": "h" },
     { "type": "key", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
     { "type": "assert", "assert": "contains", "value": "Delete project" },

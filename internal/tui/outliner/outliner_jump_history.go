@@ -160,7 +160,7 @@ func (m *OutlinerModel) moveToJumpPosition(position OutlinerJumpPosition, index 
 	oldCursor := m.Cursor
 	m.Cursor = index
 	m.ViewScrollOffset = position.ScrollOffset
-	m.VoidRelocationCaptureAfterNavigation(oldCursor)
+	m.AdoptNavigatedCursor(oldCursor)
 	return listsurface.FlashIfJumped(oldCursor, index, &m.CursorFlash)
 }
 
@@ -370,22 +370,29 @@ func (m *OutlinerModel) SettleRelocationCursor() {
 	pending.SettledCursor = m.Cursor
 }
 
-// voidRelocationCaptureAfterNavigation drops a pending capture the moment the
-// user moves the cursor themselves. discardDisplacedRelocationCapture can only
+// AdoptNavigatedCursor takes the cursor the user just moved as the one the
+// in-flight work has to respect. Callers pass the cursor from before their own
+// move: a refused or boundary-flashed navigation moved nothing and is adopted as
+// nothing.
+//
+// It settles two things at once, because one keypress decides both. A pending
+// relocation capture is dropped: discardDisplacedRelocationCapture can only
 // compare numbers when the reload lands, and a cursor that leaves SettledCursor
 // and returns to it is numerically indistinguishable from one that never moved,
-// so the accepted reload would re-arm an advance the user already voided.
-// Recording the navigation as it happens is what tells the two apart. Callers
-// pass the cursor from before their own move: a refused or boundary-flashed
-// navigation moved nothing and voids nothing.
-func (m *OutlinerModel) VoidRelocationCaptureAfterNavigation(previous int) {
-	if m == nil || m.RelocationHistory.Pending == nil {
-		return
-	}
-	if m.Cursor == previous {
+// so the accepted reload would re-arm an advance the user already voided, and
+// recording the navigation as it happens is what tells the two apart. And a read
+// already in flight is re-aimed at the new row, on exactly the terms
+// rebaseReloadTargetAfterRelocation states for a relation hop or a scope push:
+// its projects are still the newest reading there is and still wanted, only
+// where to stand in them has changed. Leaving the read aimed where the
+// mutation's own rebuild settled would drag the cursor back off the row the user
+// chose, which is the advance the dropped capture was canceling.
+func (m *OutlinerModel) AdoptNavigatedCursor(previous int) {
+	if m == nil || m.Cursor == previous {
 		return
 	}
 	m.RelocationHistory.Pending = nil
+	m.rebaseReloadTargetAfterRelocation()
 }
 
 // discardDisplacedRelocationCapture drops a pending capture the user has walked

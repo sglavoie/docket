@@ -41,7 +41,7 @@ func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
 	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.pinMarker,
+		segments.statusIcon, segments.prioritySegment, segments.pinMarker, segments.projectLabel,
 		segments.indicators, segments.relationMarker, segments.matchCue,
 	) {
 		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")
@@ -166,34 +166,56 @@ func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 	}
 }
 
-func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
+// TestCrossProjectProjectIdentityHasExactlyOneCarrier walks both halves of the
+// same guarantee: a group states its project once. Expanded, the carrier is
+// every task row's compact label and there is no heading to repeat it; folded,
+// the carrier is the summary that replaces those rows.
+func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateBacklog))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	headerLabels := make(map[string]bool)
+	labeled := make(map[string]int)
 	for index, row := range outliner.Rows {
 		if row.IsProjectHeader {
-			headerLabels[row.ProjectID] = strings.Contains(
-				ansi.Strip(outliner.RenderOutlinerProjectHeaderRow(row, false, 120, index)),
-				"["+row.ProjectID+"]",
-			)
-			continue
+			t.Fatalf("expanded group drew a heading beside its labeled rows: %+v", row)
 		}
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
-
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
-		if strings.Contains(line, "["+row.ProjectID+"]") {
-			t.Errorf("task row %q repeated project badge in %q", row.Task.ID, line)
+		if !strings.Contains(line, "["+row.ProjectID+"]") {
+			t.Errorf("task row %q named no project in %q", row.Task.ID, line)
+			continue
 		}
+		labeled[row.ProjectID]++
+	}
+	if labeled[alpha.ID] != 1 || labeled[beta.ID] != 1 {
+		t.Fatalf("labeled rows = %v, want one per project", labeled)
 	}
 
+	for _, group := range outliner.VisibleProjectGroups() {
+		outliner.SetProjectGroupFolded(group, true)
+	}
+	outliner.RebuildRows()
+
+	summaries := make(map[string]bool)
+	for index, row := range outliner.Rows {
+		if row.IsTaskRow() {
+			t.Fatalf("folded group retained a task row: %+v", row)
+		}
+		if !row.IsProjectHeader {
+			continue
+		}
+		summaries[row.ProjectID] = strings.Contains(
+			ansi.Strip(outliner.RenderOutlinerProjectHeaderRow(row, false, 120, index)),
+			"["+row.ProjectID+"]",
+		)
+	}
 	for _, projectID := range []string{alpha.ID, beta.ID} {
-		if !headerLabels[projectID] {
-			t.Errorf("project header %q did not retain its label", projectID)
+		if !summaries[projectID] {
+			t.Errorf("folded summary %q did not name its project", projectID)
 		}
 	}
 }

@@ -232,9 +232,9 @@ block by scanning for a header or by comparing lane markers. It identifies a
 block inside one projection and never across two, because two modes may spell one
 project fold alike: `modeCursorAnchor` therefore holds no group.
 
-A projection may draw no heading over a group and every key still reaches it:
-`CompactProjectGroups` emits the header only while the group is folded, and that
-summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —
+A projection draws no heading over an expanded group and every key still reaches
+it: `appendProjectGroupHeader` emits the header only while the group is folded,
+and that summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —
 a header row, or a row whose predecessor carried another group — and
 `VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
 the three scans for a header. `h`'s last rung folds the cursor's own group, after
@@ -439,7 +439,15 @@ Row and Peek budget:
   out of that ladder — `taskRowSegments` reserves both at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
-  `ShowsPinned`. The match cue is shed ahead of the whole ladder and is now the
+  `ShowsPinned`. `taskProjectLabel` is reserved on those same terms and joins no
+  ladder: a cross-project row names its project in a compact `[label]` ahead of
+  the title, under that one `groupsRowsByProject` predicate, so a group states
+  its identity exactly once — the labels while it is expanded, the summary while
+  it is folded, which is also the counterpart spelling a slug
+  `projectLabelWidth` cut. Both single-project forms stay silent, and so does a
+  row seated under its own parent, since parents are project-local and the
+  connectors have already answered.
+  The match cue is shed ahead of the whole ladder and is now the
   one on-row explanation of a hit the row cannot show.
 - `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent
   and its width, so the title budget reaches the caret by construction and never

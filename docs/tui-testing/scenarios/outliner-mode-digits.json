@@ -23,7 +23,6 @@
 
     { "type": "key", "label": "jump to the Client Alpha group header", "key": "n" },
     { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
-    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "label": "start the go-to chord", "key": "g" },
     { "type": "key", "label": "scope to the cursor task's project", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

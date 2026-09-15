@@ -4,6 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the Doing project header", "key": "j" },
     { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task to use this action" },
 
@@ -43,7 +44,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
     { "type": "assert", "assert": "not_contains", "value": "No parent (project root)" },
-    { "type": "assert", "label": "every row survived the refusals", "assert": "contains", "value": "▾ [rich-project] (1)" },
+    { "type": "assert", "label": "every row survived the refusals", "assert": "contains", "value": "▸ [rich-project] (1)" },
+    { "type": "key", "label": "unfolding gives the tasks the summaries stood for back", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },

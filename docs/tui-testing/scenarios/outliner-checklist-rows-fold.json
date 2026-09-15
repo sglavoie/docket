@@ -7,7 +7,6 @@
     { "type": "assert", "label": "the owner row is its title; the fold is what says a checklist hangs below", "assert": "contains", "value": "Draft the launch runbook" },
     { "type": "assert", "label": "progress is supporting detail, so the count is Peek's", "assert": "not_contains", "value": "1/3" },
     { "type": "assert", "label": "checklists default to collapsed", "assert": "not_contains", "value": "Outline the rollback steps" },
-    { "type": "key", "label": "move onto the project header", "key": "j" },
     { "type": "key", "label": "move onto the checklist-only task", "key": "j" },
     { "type": "key", "label": "Peek is where that progress is legible", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Checklist: 1/3 done" },

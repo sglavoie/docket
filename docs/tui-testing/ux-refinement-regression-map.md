@@ -29,7 +29,7 @@ Four committed scenarios record the current product against it:
 
 | Scenario | Records |
 | --- | --- |
-| `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json` | Lane grouping, one expanded project header per lane per project, the full indicator ladder, and which titles today's row clips. |
+| `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json` | Lane grouping, the compact project label every cross-project task row carries, the full indicator ladder, and which titles today's row clips. |
 | `docs/tui-testing/scenarios/ux-acceptance-peek-baseline.json` | The Peek document's body order, its bounded window and position row, its paging keys, and the named cross-project dependent. |
 | `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json` | 60×20, 80×24, 100×35, and 120×40 layout health, the footer rank drops, and the narrow Peek window. |
 | `docs/tui-testing/scenarios/ux-acceptance-selection-baseline.json` | Peek closing when a selection begins, the multi-select summary, `Ctrl+A` over the visible projection, and `Esc` unwinding. |
@@ -39,8 +39,11 @@ Two facts these recorded, which shape the sessions that follow:
 - The overdue title is clipped at **every** supported width, 120 columns
   included. Widening the terminal is not the fix; the indicators beside it are
   what cost the room.
-- At 100×35 the launch view spends **12 of its 34 rows** on expanded project
-  headers — six for one project alone, because each lane opens its own.
+- At 100×35 the launch view spent **12 of its 34 rows** on expanded project
+  headers — six for one project alone, because each lane opened its own. Session
+  8 spent that budget on the tasks instead: the same fixture now draws **22
+  rows**, none of them a heading, and the four-task `check-ins` fixture draws
+  **8 rows where it drew 12**.
 
 ## Clipping is visible now
 
@@ -231,9 +234,10 @@ declared their text required, while this reads the finished screen.
   `foldState.GroupFocus` living exactly as long as that fold.
   `docs/guide/outliner-keys.md`, `docs/architecture/operation-grammar.md`,
   `docs/architecture/tui-architecture.md`.
-- Headerless coverage: `CompactProjectGroups` is the production switch the model
-  tests throw to assert both presentations answer alike before Session 8 lands
-  the row labels that make the compact one readable.
+- Headerless coverage: the model tests reach the headerless presentation
+  directly, since `appendProjectGroupHeader` now draws a heading for folded
+  groups alone; Session 8 retired the `CompactProjectGroups` switch along with
+  the expanded heading it made optional.
 
 ### Session 8 — Switch to compact project labels
 

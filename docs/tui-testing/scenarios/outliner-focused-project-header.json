@@ -4,7 +4,7 @@
   "size": "100x30",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "assert", "label": "unscoped, a project is a foldable group with a size", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+    { "type": "assert", "label": "unscoped, a project reaches its rows as a compact label rather than a heading", "assert": "contains", "value": "[mix-active-…] Mix rollout plan" },
 
     { "type": "key", "label": "focus the project that holds work", "key": "P" },
     { "type": "assert", "assert": "contains", "value": "Select Project" },
@@ -40,7 +40,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "leave the focus", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-…] Mix rollout plan" },
 
     { "type": "key", "label": "now focus the project that holds nothing", "key": "P" },
     { "type": "key", "key": "/" },

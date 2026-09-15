@@ -31,20 +31,21 @@ func sortPressKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 	}
 }
 
-func sortProjectHeaderOrder(t *testing.T, driver *UITestDriver) []string {
+func sortProjectGroupOrder(t *testing.T, driver *UITestDriver) []string {
 	t.Helper()
 	outlinerView := driver.App().crossOutliner
 	if outlinerView == nil {
 		t.Fatal("the fixture app has no Outliner")
 	}
-	order := make([]string, 0, len(outlinerView.Rows))
-	for _, row := range outlinerView.Rows {
-		if row.IsProjectHeader {
-			order = append(order, row.ProjectID)
-		}
+	// Group order is read off the groups the rows carry, since an expanded group
+	// draws no heading to read it off.
+	groups := outlinerView.VisibleProjectGroups()
+	order := make([]string, 0, len(groups))
+	for _, group := range groups {
+		order = append(order, group.ProjectID)
 	}
 	if len(order) == 0 {
-		t.Fatal("the projection exposed no project header rows")
+		t.Fatal("the projection exposed no project groups")
 	}
 	return order
 }
@@ -121,11 +122,11 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 // tasks inside a project group and never the sequence of the groups themselves.
 func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
 	driver := sortDriver(t, FixtureMultiProject)
-	before := sortProjectHeaderOrder(t, driver)
+	before := sortProjectGroupOrder(t, driver)
 
 	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "!"}, {"o", "@"}, {"o", "u"}} {
 		sortPressKeys(t, driver, keys...)
-		if after := sortProjectHeaderOrder(t, driver); !equalStringSlices(before, after) {
+		if after := sortProjectGroupOrder(t, driver); !equalStringSlices(before, after) {
 			t.Fatalf("%s reordered the project groups: %v, want %v", strings.Join(keys, ""), after, before)
 		}
 	}
@@ -136,7 +137,10 @@ func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
 func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 	driver := sortDriver(t, FixtureRich, "end", "*")
 	driver.Wait(defaultWaitTimeout)
-	sortPressKeys(t, driver, "home", "down", "down", "down", "down", "down", "*")
+	// Three rows below the top: the Pinned lane header, the row it holds, the
+	// Doing lane header, then Doing's first task. No project heading sits
+	// between a lane and its rows.
+	sortPressKeys(t, driver, "home", "down", "down", "down", "*")
 	driver.Wait(defaultWaitTimeout)
 
 	pinned := func() []string {

@@ -5,7 +5,6 @@
   "actions": [
     { "type": "key", "label": "go to Backlog", "key": "g" },
     { "type": "key", "key": "b" },
-    { "type": "key", "label": "step onto Launch platform", "key": "j" },
     { "type": "key", "label": "step onto User authentication", "key": "j" },
 
     { "type": "key", "label": "open Adopt Children", "key": "<" },

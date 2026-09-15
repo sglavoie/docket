@@ -32,7 +32,6 @@
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
-    { "type": "key", "label": "move onto a task row", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "and so does an inline edit", "key": "e" },
     { "type": "text", "text": " \\raw" },

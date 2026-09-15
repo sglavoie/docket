@@ -34,7 +34,6 @@
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },
-    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "assert", "label": "the row states how many of the references it stores are settled", "assert": "contains", "value": "~0/2" },
     { "type": "key", "label": "Peek is the only surface that names them", "key": "b" },
     { "type": "assert", "label": "a row per entry, in stored order, each stating the target's state", "assert": "contains", "value": "Dependencies 0/2: Client Alpha #1 Alpha migration kickoff (backlog)" },

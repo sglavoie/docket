@@ -5,6 +5,7 @@
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "label": "nothing is parked yet, so the base scope needs no anchor", "assert": "not_contains", "value": "parked" },
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
 
     { "type": "key", "label": "open the project tag picker", "key": "#" },
@@ -46,8 +47,9 @@
     { "type": "key", "label": "recover with the undo route the status named", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Park Project" },
     { "type": "wait" },
-    { "type": "assert", "label": "the project and its task come back", "assert": "contains", "value": "[client-alpha] (1)" },
-    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "the project comes back", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "key", "label": "unfold to see the task it brought with it", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "assert", "label": "the scope anchor retires with the last parked project", "assert": "not_contains", "value": "Active Projects · 1 parked" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

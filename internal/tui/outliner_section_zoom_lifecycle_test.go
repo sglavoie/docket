@@ -10,14 +10,29 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
+// projectHeaderIndex folds one project's groups and returns the first summary
+// that leaves behind. The fold is the only way to a project header: an open
+// group draws none, and its summary is the row every project operation resolves
+// from.
 func projectHeaderIndex(t *testing.T, outlinerView *outliner.OutlinerModel, projectID string) int {
 	t.Helper()
+	folded := false
+	for _, group := range outlinerView.VisibleProjectGroups() {
+		if group.ProjectID != projectID {
+			continue
+		}
+		outlinerView.SetProjectGroupFolded(group, true)
+		folded = true
+	}
+	if folded {
+		outlinerView.RebuildRows()
+	}
 	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.ProjectID == projectID {
 			return index
 		}
 	}
-	t.Fatalf("projection has no project sub-header for %q", projectID)
+	t.Fatalf("projection has no project group for %q", projectID)
 	return -1
 }
 

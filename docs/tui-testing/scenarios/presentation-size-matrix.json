@@ -24,7 +24,6 @@
     { "type": "key", "label": "leave Project search", "key": "esc" },
     { "type": "key", "label": "return to the Outliner", "key": "esc" },
 
-    { "type": "key", "label": "move onto the first project", "key": "j" },
     { "type": "key", "label": "move onto its first task", "key": "j" },
     { "type": "command", "label": "60x20 opens a task tool", "command": "task comments" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },

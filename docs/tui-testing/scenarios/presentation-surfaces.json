@@ -14,7 +14,6 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "move onto a task", "key": "j" },
     { "type": "key", "label": "open child capture form", "key": "A" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },

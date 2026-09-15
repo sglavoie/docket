@@ -5,7 +5,6 @@
   "actions": [
     { "type": "resize", "width": 66, "height": 22 },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "step onto the project header", "key": "down" },
     { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select current task and enter multi-select mode", "key": "v" },

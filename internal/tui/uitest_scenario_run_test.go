@@ -161,18 +161,16 @@ func TestUITestScenarioMinimumHeightViewLayoutsNoOverflow(t *testing.T) {
 		// cursor on a task row before opening the project editor.
 		{"project editor", []UITestAction{
 			{Type: UITestActionCommand, Command: "outliner root"},
-			// Step past the shared section header and the navigable project
-			// header to land on the first task row.
-			{Type: UITestActionKey, Key: "down"},
+			// Step past the shared section header to land on the first task row;
+			// the project group below it draws no heading while it is open.
 			{Type: UITestActionKey, Key: "down"},
 		}, "rename project", "ProjectEditor"},
 		// Project Inbox mode needs a project under the cursor in the global
 		// Outliner, so switch to All first and land on a task row.
 		{"project Inbox mode", []UITestAction{
 			{Type: UITestActionCommand, Command: "outliner root"},
-			// Step past the shared section header and the navigable project
-			// header to land on the first task row.
-			{Type: UITestActionKey, Key: "down"},
+			// Step past the shared section header to land on the first task row;
+			// the project group below it draws no heading while it is open.
 			{Type: UITestActionKey, Key: "down"},
 		}, "project inbox mode", "CrossProjectOutliner"},
 		{"global Inbox mode", nil, "global inbox mode", "CrossProjectOutliner"},
@@ -265,10 +263,9 @@ func TestUITestScenarioLongInlineInputsNoOverflow(t *testing.T) {
 			actions: []UITestAction{
 				// rename project targets the cursor project, so land the cursor on
 				// a task row via all-tasks before opening the editor. The rows lead
-				// with a shared section header then a navigable project header, so
-				// step past both to reach the first task.
+				// with a shared section header and the project group below it draws
+				// no heading while it is open, so one step reaches the first task.
 				{Type: UITestActionCommand, Command: "outliner root"},
-				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionKey, Key: "down"},
 				{Type: UITestActionCommand, Command: "rename project"},
 				{Type: UITestActionText, Text: longValue},
@@ -319,10 +316,10 @@ func TestUITestScenarioTaskSubviewLongTitleLayoutsNoOverflow(t *testing.T) {
 					Size:    size,
 					Actions: []UITestAction{
 						{Type: UITestActionCommand, Command: "outliner root"},
-						// All-tasks rows lead with a shared section header then a
-						// navigable project header; step past both to land the
-						// cursor on the first task before opening its subview.
-						{Type: UITestActionKey, Key: "down"},
+						// All-tasks rows lead with a shared section header and the
+						// project group below it draws no heading while it is open,
+						// so one step lands the cursor on the first task before
+						// opening its subview.
 						{Type: UITestActionKey, Key: "down"},
 						{Type: UITestActionCommand, Command: tt.command},
 						{Type: UITestActionAssert, Assert: "view", Value: tt.view},

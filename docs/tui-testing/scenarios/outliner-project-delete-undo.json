@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold it to reach one", "key": "p" },
     { "type": "key", "label": "step onto the Rich Project header", "key": "j" },
     { "type": "key", "label": "open the project sheet", "key": "space" },
     { "type": "key", "key": "down" },
@@ -39,6 +40,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Undid: Delete Project: Rich Project" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[rich-project]" },
+    { "type": "key", "label": "the restored folds still stand, so unfold to read the tree back", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" },

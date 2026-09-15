@@ -47,27 +47,32 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 				t.Fatalf("Pinned count = %d, want 3", outliner.Rows[0].SectionCount)
 			}
 
-			var projectHeaders []OutlinerRow
+			// The lane's groups are read off the rows: an expanded group draws no
+			// heading, so the project each row carries is the whole of what says
+			// where one group ends and the next begins.
+			var projectGroups []OutlinerRowGroup
 			var pinnedTasks []OutlinerRow
+			counts := make(map[string]int)
 			for _, row := range outliner.Rows[1:] {
 				if !row.IsPinnedSection {
 					break
 				}
-				switch {
-				case row.IsProjectHeader:
-					projectHeaders = append(projectHeaders, row)
-				case row.IsTaskRow() && row.Task != nil:
+				if row.Group.ProjectGrouped() && !slices.Contains(projectGroups, row.Group) {
+					projectGroups = append(projectGroups, row.Group)
+				}
+				if row.IsTaskRow() && row.Task != nil {
 					pinnedTasks = append(pinnedTasks, row)
+					counts[row.Group.ProjectID]++
 				}
 			}
-			if len(projectHeaders) != 2 || len(pinnedTasks) != 3 {
-				t.Fatalf("Pinned groups/tasks = %d/%d, want 2/3", len(projectHeaders), len(pinnedTasks))
+			if len(projectGroups) != 2 || len(pinnedTasks) != 3 {
+				t.Fatalf("Pinned groups/tasks = %d/%d, want 2/3", len(projectGroups), len(pinnedTasks))
 			}
-			if got := []string{projectHeaders[0].ProjectID, projectHeaders[1].ProjectID}; !slices.Equal(got, []string{"alpha", "beta"}) {
+			if got := []string{projectGroups[0].ProjectID, projectGroups[1].ProjectID}; !slices.Equal(got, []string{"alpha", "beta"}) {
 				t.Fatalf("Pinned project groups = %v, want alphabetical order", got)
 			}
-			if got := []int{projectHeaders[0].SectionCount, projectHeaders[1].SectionCount}; !slices.Equal(got, []int{2, 1}) {
-				t.Fatalf("Pinned project counts = %v, want [2 1]", got)
+			if counts["alpha"] != 2 || counts["beta"] != 1 {
+				t.Fatalf("Pinned project counts = %v, want alpha=2 and beta=1", counts)
 			}
 			if got := []string{
 				pinnedTasks[0].ProjectID + "/" + pinnedTasks[0].Task.ID,
@@ -126,7 +131,10 @@ func TestPinnedSectionIsAbsentFromNarrowModes(t *testing.T) {
 	}
 }
 
-func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
+// TestPinnedProjectGroupsCollapseIndependently folds one project's Pinned group
+// from a task row inside it, because that group draws no heading while it is
+// open: the summary the fold produces is where l answers from.
+func TestPinnedProjectGroupsCollapseIndependently(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	alphaTask := primaryRowsTask("alpha-task", models.StateBacklog)
 	alphaTask.Pinned, alphaTask.PinnedAt = true, &now
@@ -137,20 +145,15 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	alphaHeader := -1
-	for index, row := range outliner.Rows {
-		if row.IsProjectHeader && row.IsPinnedSection && row.ProjectID == alpha.ID {
-			alphaHeader = index
-			break
-		}
+	if !outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) {
+		t.Fatalf("alpha's pinned task has no row to stand on: %+v", outliner.Rows)
 	}
-	if alphaHeader < 0 {
-		t.Fatalf("Pinned project header is missing from rows: %+v", outliner.Rows)
+	collapseKey := outliner.Rows[outliner.Cursor].Group.ProjectKey
+	if collapseKey == "" {
+		t.Fatalf("alpha's pinned row carries no project fold: %+v", outliner.Rows[outliner.Cursor])
 	}
-	outliner.Cursor = alphaHeader
-	collapseKey := outliner.Rows[alphaHeader].EffectiveCollapseKey()
 	if !outliner.CollapseOrMoveToParent() {
-		t.Fatal("left on Pinned project header did not collapse the group")
+		t.Fatal("left on a Pinned task row did not collapse its group")
 	}
 	if !outliner.Folds.CollapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q was not recorded", collapseKey)
@@ -162,8 +165,11 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 		t.Fatal("collapsing Alpha hid Beta's pinned task")
 	}
 
+	if row := outliner.Rows[outliner.Cursor]; !row.IsProjectHeader || row.Group.ProjectKey != collapseKey {
+		t.Fatalf("cursor after the fold = %+v, want alpha's Pinned summary", row)
+	}
 	if !outliner.ExpandAtCursor() {
-		t.Fatal("right on Pinned project header did not expand the group")
+		t.Fatal("right on the Pinned summary did not expand the group")
 	}
 	if outliner.Folds.CollapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q remained set after expansion", collapseKey)

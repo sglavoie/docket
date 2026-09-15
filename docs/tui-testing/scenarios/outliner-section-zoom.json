@@ -41,8 +41,9 @@
     { "type": "key", "key": "l" },
 
     { "type": "key", "label": "zoom the Inbox lane again", "key": "enter" },
-    { "type": "key", "label": "step onto the project sub-header inside the zoom", "key": "j" },
-    { "type": "assert", "label": "a project sub-header keeps naming the project act", "assert": "contains", "value": "Enter open" },
+    { "type": "key", "label": "step onto the zoom's first task", "key": "j" },
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold the cursor's own to reach one", "key": "h" },
+    { "type": "assert", "label": "a project heading keeps naming the project act", "assert": "contains", "value": "Enter open" },
     { "type": "key", "label": "scoping to that project drops the zoom rather than composing with it", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Inbox Backlog · All" },
     { "type": "assert", "assert": "not_contains", "value": "Section: Inbox" },
@@ -84,7 +85,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the picker left the cursor on the task, so restart the walk at the first header", "key": "home" },
-    { "type": "key", "label": "n counts the bucket's project sub-header too, so Today is the second jump", "key": "n" },
+    { "type": "key", "label": "n stops at each group start, so the Today bucket is the second jump", "key": "n" },
     { "type": "key", "key": "n" },
     { "type": "key", "label": "a computed bucket zooms like a state group", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Section: Today" },
@@ -93,7 +94,6 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "land on the bucket's only task", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "complete it so the zoomed section empties", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "assert", "label": "an emptied zoom stays put instead of unwinding under the user", "assert": "contains", "value": "Section: Today" },

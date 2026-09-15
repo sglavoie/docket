@@ -288,12 +288,20 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 	deferUntil := time.Now().AddDate(0, 0, -1)
 	task.DueDate = &due
 	task.DeferredUntil = &deferUntil
+	// Four levels of connector mean a parent, and the row carries one, so the
+	// compact project label stands down the way it does for any row seated under
+	// its own parent: the connectors have already said which project this is.
+	parent := &models.Task{
+		ID: "parent", ShortID: 8, Title: "Parent",
+		WorkflowState: models.StateBacklog,
+	}
+	task.ParentID = &parent.ID
 	project := renderFixtureProject(
 		t,
 		"project",
 		"a-very-long-project-slug",
 		"Project",
-		[]*models.Task{task},
+		[]*models.Task{parent, task},
 	)
 	outlinerView := outliner.NewOutlinerModel(nil, nil, newTestConfig())
 	outlinerView.Population.Projects = []*models.Project{project}

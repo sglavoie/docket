@@ -178,18 +178,17 @@ func TestChecklistPromotionRefusesEveryRowThatNamesNoItem(t *testing.T) {
 		}
 	}
 
-	for _, row := range []struct {
-		name  string
-		match func(outliner.OutlinerRow) bool
-	}{
-		{"section header", func(r outliner.OutlinerRow) bool { return r.IsSectionHeader }},
-		{"project header", func(r outliner.OutlinerRow) bool { return r.IsProjectHeader }},
-	} {
-		seatCursorOnRow(t, view, row.name, row.match)
-		if descriptor.Applicable(appModel.operationCommandContext()) {
-			t.Errorf("S applied on a %s", row.name)
-		}
+	seatCursorOnRow(t, view, "section header", func(r outliner.OutlinerRow) bool { return r.IsSectionHeader })
+	if descriptor.Applicable(appModel.operationCommandContext()) {
+		t.Error("S applied on a section header")
 	}
+	// The project header is the folded group's summary, so reaching it means
+	// folding: an expanded group draws no header for the cursor to sit on.
+	onProjectHeaderCursor(t, view, func() {
+		if descriptor.Applicable(appModel.operationCommandContext()) {
+			t.Error("S applied on a project header")
+		}
+	})
 
 	// The one row it does answer from, so the refusals above are not vacuous.
 	expandChecklistOf(t, view, checklistFixtureFoldTitle)

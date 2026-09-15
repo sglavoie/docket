@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move onto the doing task", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "open the one date picker", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
@@ -26,8 +25,6 @@
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "back to the launch view", "key": "0" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "reopen over the dated task", "key": "@" },
     { "type": "assert", "label": "the stored due date is the cursor row", "assert": "contains", "value": "› t Today" },
     { "type": "key", "label": "cross to the deferral", "key": "tab" },

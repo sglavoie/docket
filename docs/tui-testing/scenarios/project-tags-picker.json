@@ -4,6 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
     { "type": "assert", "label": "the same key names the project on a header row", "assert": "contains", "value": "# project tags" },
 
@@ -36,7 +37,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Confirm" },
     { "type": "assert", "assert": "status_contains", "value": "Set Project Tags: Client Alpha · u undo" },
     { "type": "wait" },
-    { "type": "assert", "label": "a descriptive tag decides nothing about which projections a project reaches", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "label": "a descriptive tag decides nothing about which projections a project reaches", "assert": "contains", "value": "▸ [client-alpha] (1)" },
     { "type": "assert", "assert": "not_contains", "value": "parked" },
 
     { "type": "key", "label": "reopen to see the stored set", "key": "#" },

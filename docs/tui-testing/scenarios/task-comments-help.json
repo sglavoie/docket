@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "160x55",
   "actions": [
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "select Build login form", "key": "j" },
 
     { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },

@@ -8,8 +8,9 @@
     { "type": "key", "label": "scroll the cursor to the bottom of a long list", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 053" },
-    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 200" },
+    { "type": "key", "label": "one row back off the end, so the three anchors have somewhere to put it", "key": "k" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 060" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 053" },
 
     { "type": "key", "label": "zt puts the cursor row at the top", "key": "z" },
     { "type": "key", "key": "t" },

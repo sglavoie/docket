@@ -446,10 +446,21 @@ func selectProjectPickerRow(t *testing.T, driver *UITestDriver, label string) {
 func seatCursorOnProjectHeaderFor(t *testing.T, driver *UITestDriver, projectID string) {
 	t.Helper()
 	view := driver.App().crossOutliner
-	for index, row := range view.Rows {
-		if row.IsProjectHeader && row.ProjectID == projectID {
-			view.Cursor = index
-			return
+	// A grouping projection draws the header only once the group is folded, and a
+	// scoped one leads with a focused header no fold produces, so the fold is
+	// what a miss spends rather than what the seat opens with.
+	for attempt := range 2 {
+		if attempt == 1 {
+			foldEveryProjectGroup(t, view)
+		}
+		for index, row := range view.Rows {
+			if row.IsProjectHeader && row.ProjectID == projectID {
+				view.Cursor = index
+				return
+			}
+		}
+		if len(view.VisibleProjectGroups()) == 0 {
+			break
 		}
 	}
 	t.Fatalf("no project header for %q:\n%s", projectID, driver.Render())

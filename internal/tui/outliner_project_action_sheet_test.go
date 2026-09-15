@@ -27,6 +27,9 @@ func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, operation
 	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
+	// The header is a folded group's summary, so the fold has to happen before
+	// there is a row to seat the cursor on.
+	foldEveryProjectGroup(t, outlinerView)
 	for index, row := range outlinerView.Rows {
 		if !row.IsProjectHeader {
 			continue

@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "key", "label": "step past the Backlog group header", "key": "j" },
     { "type": "key", "label": "step past the project group header onto the first task", "key": "j" },
 
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
@@ -73,7 +72,6 @@
     { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
 
     { "type": "key", "label": "back to the top of the Outliner", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "onto the next remaining task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wd completes that one", "key": "d" },

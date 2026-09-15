@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
@@ -26,7 +25,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State" },
     { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },
-    { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "⊘   [rich-project] Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "abandon a half-typed chord", "key": "w" },

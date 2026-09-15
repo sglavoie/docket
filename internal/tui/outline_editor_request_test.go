@@ -90,6 +90,9 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 		t.Fatal("fixture app has no Outliner")
 	}
 
+	// Folding is what produces a project header: an expanded group draws none,
+	// and the summary a fold leaves behind is the row O has to read a project off.
+	foldEveryProjectGroup(t, outlinerView)
 	header, task := -1, -1
 	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader && header < 0 {
@@ -99,8 +102,21 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 			task = index
 		}
 	}
-	if header < 0 || task < 0 {
-		t.Fatalf("fixture exposed header=%d task=%d", header, task)
+	if header < 0 {
+		t.Fatalf("folding the groups exposed no project header: %+v", outlinerView.Rows)
+	}
+	if task < 0 {
+		outlinerView.Folds.CollapsedSections = map[string]bool{}
+		outlinerView.RebuildRows()
+		for index, row := range outlinerView.Rows {
+			if row.IsTaskRow() {
+				task = index
+				break
+			}
+		}
+	}
+	if task < 0 {
+		t.Fatal("fixture exposed no task row")
 	}
 
 	outlinerView.Cursor = header

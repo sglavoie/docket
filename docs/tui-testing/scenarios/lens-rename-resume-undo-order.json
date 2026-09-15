@@ -49,7 +49,6 @@
 
     { "type": "key", "label": "record where the doing task was left", "key": "home" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "r" },
     { "type": "text", "text": "stopped at the OAuth callback stub" },
     { "type": "key", "key": "enter" },

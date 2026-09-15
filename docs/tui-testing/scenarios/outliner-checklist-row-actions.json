@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move onto the project header", "key": "j" },
     { "type": "key", "label": "move onto the checklist-only task", "key": "j" },
     { "type": "key", "label": "expand its checklist", "key": "l" },
     { "type": "key", "label": "move onto the first checklist item", "key": "j" },

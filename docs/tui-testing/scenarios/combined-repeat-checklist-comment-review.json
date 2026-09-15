@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move onto the project header", "key": "j" },
     { "type": "key", "label": "onto the task whose checklist the repeat will copy", "key": "j" },
     { "type": "key", "label": "Peek is where the checklist the repeat will copy is legible", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Checklist: 1/3 done" },
@@ -27,7 +26,6 @@
     { "type": "assert", "assert": "contains", "value": "Checklist: 0/3 done" },
     { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "key", "label": "back to the source it was copied from", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "b" },
     { "type": "assert", "label": "which is untouched", "assert": "contains", "value": "Checklist: 1/3 done" },

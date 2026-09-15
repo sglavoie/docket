@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move below the first section header", "key": "j" },
     { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "key": "e" },
     { "type": "text", "label": "reference a task in a project this view can still read", "text": " ~client-beta:1" },
@@ -15,6 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "key", "key": "b" },
 
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the referenced project's header", "key": "j" },
     { "type": "key", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Beta" },
@@ -25,8 +25,8 @@
     { "type": "wait" },
     { "type": "assert", "label": "the target left the population the Outliner reads", "assert": "not_contains", "value": "Beta rollout checklist" },
 
+    { "type": "key", "label": "unfold the groups again", "key": "p" },
     { "type": "key", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "assert", "label": "the denominator is over stored locators, not over reachable ones, and the trailing ? says one cannot be read", "assert": "contains", "value": "~0/1?" },
     { "type": "resize", "label": "wide enough for a locator no name shortens", "width": 140, "height": 35 },
@@ -44,7 +44,6 @@
     { "type": "key", "label": "nothing pruned the reference, so restoring the project restores the label", "key": "u" },
     { "type": "wait" },
     { "type": "key", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },

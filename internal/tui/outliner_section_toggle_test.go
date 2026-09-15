@@ -56,16 +56,13 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	parentIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
 	outlinerView.Folds.ExpandedNodes[parentIdentity] = false
 	expandedBefore := maps.Clone(outlinerView.Folds.ExpandedNodes)
-	projectHeaderKey := ""
-	for _, row := range outlinerView.Rows {
-		if row.IsProjectHeader {
-			projectHeaderKey = row.EffectiveCollapseKey()
-			break
-		}
+	// The project fold is named by the group the rows carry, since an expanded
+	// group draws no header row to read a collapse key off.
+	groups := outlinerView.VisibleProjectGroups()
+	if len(groups) == 0 {
+		t.Fatal("cross-project All mode is missing a project group")
 	}
-	if projectHeaderKey == "" {
-		t.Fatal("cross-project All mode is missing a project header")
-	}
+	projectHeaderKey := groups[0].ProjectKey
 
 	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) < 4 {

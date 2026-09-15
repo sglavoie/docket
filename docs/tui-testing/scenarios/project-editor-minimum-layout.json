@@ -4,8 +4,7 @@
   "size": "72x20",
   "actions": [
     { "type": "command", "label": "open global All focus", "command": "outliner root" },
-    { "type": "key", "label": "step onto the project header", "key": "down" },
-    { "type": "key", "label": "move cursor onto a task", "key": "down" },
+    { "type": "key", "label": "move cursor onto a task, which its group leads with", "key": "down" },
     { "type": "command", "label": "focus the highlighted task's project in Inbox", "command": "project inbox mode" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "command", "label": "open Project Editor", "command": "rename project" },

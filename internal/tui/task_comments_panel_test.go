@@ -105,7 +105,8 @@ func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(str
 		}
 	}
 
-	press("j")
+	// One j leaves the lane header for the first task row: an expanded project
+	// group spends no row on a heading between the two.
 	press("j")
 	press(";")
 	if driver.App().entities.ActiveCommentsPanel(driver.App()) == nil {

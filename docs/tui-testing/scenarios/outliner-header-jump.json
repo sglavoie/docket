@@ -5,23 +5,40 @@
   "actions": [
     { "type": "assert", "label": "the cursor opens on the Backlog section header", "assert": "contains", "value": "s sections" },
 
-    { "type": "key", "label": "n steps onto the first project header", "key": "n" },
-    { "type": "assert", "assert": "contains", "value": "# project tags" },
+    { "type": "key", "label": "n steps onto the first row of the first project group", "key": "n" },
+    { "type": "assert", "label": "an expanded group spends no row on a heading, so the stop is a task", "assert": "not_contains", "value": "s sections" },
+
+    { "type": "key", "label": "n walks the remaining three group starts", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "n" },
     { "type": "assert", "assert": "not_contains", "value": "s sections" },
 
-    { "type": "key", "label": "n walks the remaining three project headers", "key": "n" },
-    { "type": "key", "key": "n" },
-    { "type": "key", "key": "n" },
-    { "type": "assert", "assert": "contains", "value": "# project tags" },
-
-    { "type": "key", "label": "n past the last header wraps to the section header", "key": "n" },
+    { "type": "key", "label": "n past the last group wraps to the section header", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "s sections" },
-
-    { "type": "key", "label": "N from the first header wraps to the last", "key": "N" },
-    { "type": "assert", "assert": "contains", "value": "# project tags" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "a query narrows the mode and keeps its headers", "key": "/" },
+    { "type": "key", "label": "folding draws each group a summary header, which is the same stop", "key": "p" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "# project tags" },
+    { "type": "assert", "assert": "not_contains", "value": "s sections" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "unfold the groups again", "key": "p" },
+
+    { "type": "key", "label": "the first group start is the first project's first task", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Alpha migration kickoff" },
+
+    { "type": "key", "label": "N from the section header wraps to the last group start", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "N" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Finish the distributed systems book" },
+
+    { "type": "key", "label": "a query narrows the mode and keeps its sections", "key": "/" },
     { "type": "text", "text": "Alpha" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "label": "the narrowed mode still emits its own section header", "assert": "contains", "value": "@ Backlog" },

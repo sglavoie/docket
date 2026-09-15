@@ -10,7 +10,6 @@
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 1" },
-    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "triage the first Inbox task to Next", "key": "n" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Next: Untriaged inbox item 1 · u undo" },

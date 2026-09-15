@@ -10,7 +10,6 @@
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },
-    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "assert", "label": "one stored locator, none of it settled", "assert": "contains", "value": "~0/1" },
 
     { "type": "key", "label": "follow the reference", "key": "g" },

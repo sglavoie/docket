@@ -4,6 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
     { "type": "key", "label": "step onto the first project header", "key": "j" },
     { "type": "key", "label": "open Notes from a project header row", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "Notes" },
@@ -13,7 +14,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close Notes", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "step onto the task beneath the header", "key": "j" },
+    { "type": "key", "label": "unfolding seats the cursor on the task the summary covered", "key": "l" },
     { "type": "key", "label": "open Notes from a task row", "key": "ctrl+n" },
     { "type": "assert", "label": "a task cursor never narrows the manager", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },

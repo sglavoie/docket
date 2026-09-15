@@ -25,7 +25,6 @@
 
     { "type": "key", "label": "the scope push is the same selection by another spelling", "key": "n" },
     { "type": "key", "key": "n" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

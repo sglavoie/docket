@@ -16,7 +16,7 @@
     { "type": "assert", "label": "Ctrl+L enters Recent", "assert": "contains", "value": "Active Projects · Recent" },
     { "type": "assert", "label": "the cursor lands on the newest task", "assert": "contains", "value": "Latest activity: Ship the recency probe" },
     { "type": "assert", "label": "the bucket naming the landing row stays on screen", "assert": "contains", "value": "◷ Today" },
-    { "type": "assert", "label": "the project header naming the landing row stays on screen", "assert": "contains", "value": "[unfiled]" },
+    { "type": "assert", "label": "the landing row names its own project, since Recent groups across them", "assert": "contains", "value": "[unfiled]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "narrow terminal keeps the landing row", "width": 60, "height": 24 },

@@ -48,8 +48,12 @@ func outlinerHasTask(outlinerView *outliner.OutlinerModel, projectID, taskID str
 
 func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
+	// The destination is named so it sorts after the source. Project groups no
+	// longer cost a heading row apiece, so a task moving into the group that
+	// already sits above it would land on the very row index it left, and a
+	// relocation that changes no index records no origin to jump back to.
 	source := newSession2Project(t, dataDir, "line edit source")
-	destination := newSession2Project(t, dataDir, "line edit destination")
+	destination := newSession2Project(t, dataDir, "line edit target")
 	moving := source.Tasks[0]
 	neighbor, err := models.NewGenericTask("line-edit-neighbor", source.GetNextShortID(), "Origin neighbor")
 	if err != nil {

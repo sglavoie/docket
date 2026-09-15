@@ -3,7 +3,6 @@
   "fixture": "parked",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "step onto the first task", "key": "j" },
     { "type": "key", "key": "j" },
 
     { "type": "key", "label": "open Move to Project", "key": "%" },
@@ -15,7 +14,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Project: #3 Ship the delivery checklist → parked-work" },
     { "type": "assert", "label": "the moved task follows its new owner out of the base task workspace, so the status names it but no row does", "assert": "count_contains", "value": "Ship the delivery checklist", "count": 1 },
-    { "type": "assert", "assert": "contains", "value": "[active-delivery] (1)" },
+    { "type": "assert", "label": "the one project still holding work names itself on its surviving row", "assert": "contains", "value": "[active-deli…] Confirm the release window" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

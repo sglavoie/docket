@@ -747,7 +747,21 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// the cursor on a task a restored checkpoint left behind rather than on one the
 	// expanded group holds. The mechanism lives in
 	// docs/architecture/tui-architecture.md.
-	const budget = 51328
+	// Thirty-eighth raise, 51328 to 51904, for the compact project label. 576
+	// bytes buy the rule that replaces the expanded heading rather than merely
+	// deleting it: a group states its project exactly once, and which row carries
+	// that statement depends only on whether the group is folded. Naming the
+	// carrier on both sides is what keeps a contributor from restoring the heading
+	// the moment a row looks anonymous, and from letting the label join
+	// indicatorDropLadder, where a narrow row would shed the one segment that says
+	// which of two identically titled tasks this is. The width constant is named
+	// because a truncation with no counterpart is forbidden here, so the folded
+	// summary is stated to be that counterpart. The two silences are the boundary:
+	// both single-project forms already name the project in their chrome, and a
+	// nested row's connectors already answer, so a label there would spend the
+	// columns the row can least afford on a repetition. The mechanism lives in
+	// docs/architecture/row-indicators.md and docs/architecture/tui-architecture.md.
+	const budget = 51904
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

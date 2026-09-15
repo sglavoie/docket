@@ -13,11 +13,13 @@ import (
 // Next already had it and are covered by outliner_planning_headers_test.go.
 var flatGroupingModes = []chrome.OutlinerModeID{chrome.ModeInbox, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent}
 
-// projectGroupCollapseKey returns the fold key one project's group declares.
+// projectGroupCollapseKey returns the fold key one project's group declares. It
+// reads the group off the rows, because the heading that used to spell that key
+// is drawn only while the fold it names is already closed.
 func projectGroupCollapseKey(m *OutlinerModel, projectID string) string {
-	for _, row := range m.Rows {
-		if row.IsProjectHeader && row.IsCollapsibleHeader() && row.ProjectID == projectID {
-			return row.EffectiveCollapseKey()
+	for _, group := range m.VisibleProjectGroups() {
+		if group.ProjectID == projectID {
+			return group.ProjectKey
 		}
 	}
 	return ""
@@ -33,11 +35,12 @@ func TestFlatModesGroupCrossProjectRowsByProject(t *testing.T) {
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, fixture.tasks) {
 				t.Fatalf("%s rows = %v, want %v", mode, got, fixture.tasks)
 			}
-			headers, counts := projectGroupHeaders(outliner)
-			if !slices.Equal(headers, []string{fixture.alpha.ID, fixture.beta.ID}) {
-				t.Fatalf("%s project headers = %v, want one per project in alphabetical order",
-					mode, headers)
+			groups := projectGroupOrder(outliner)
+			if !slices.Equal(groups, []string{fixture.alpha.ID, fixture.beta.ID}) {
+				t.Fatalf("%s project groups = %v, want one per project in alphabetical order",
+					mode, groups)
 			}
+			counts := projectGroupTaskCounts(outliner)
 			if counts[fixture.alpha.ID] != 2 || counts[fixture.beta.ID] != 1 {
 				t.Fatalf("%s project counts = %v, want alpha=2 and beta=1", mode, counts)
 			}
@@ -53,18 +56,18 @@ func TestFlatModesPlacePinnedProjectGroupsFirst(t *testing.T) {
 			outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
 			outliner.SelectOutlinerMode(mode)
 
-			headers, _ := projectGroupHeaders(outliner)
-			if !slices.Equal(headers, []string{fixture.beta.ID, fixture.alpha.ID}) {
-				t.Fatalf("%s project headers = %v, want pinned projects first", mode, headers)
+			groups := projectGroupOrder(outliner)
+			if !slices.Equal(groups, []string{fixture.beta.ID, fixture.alpha.ID}) {
+				t.Fatalf("%s project groups = %v, want pinned projects first", mode, groups)
 			}
 		})
 	}
 }
 
 // TestFlatModeProjectGroupsGiveWayToOneFocusedHeader locks both halves of the
-// single-project rule at once: the redundant per-group headers still disappear,
-// and the one focused-project header takes their place at the top of the
-// projection. Both single-project forms are covered, because an explicit scope
+// single-project rule at once: the project axis disappears, taking the per-row
+// labels with it, and the one focused-project header leads the projection
+// instead. Both single-project forms are covered, because an explicit scope
 // and a direct project model reach that header by different routes.
 func TestFlatModeProjectGroupsGiveWayToOneFocusedHeader(t *testing.T) {
 	for _, mode := range flatGroupingModes {
@@ -77,8 +80,8 @@ func TestFlatModeProjectGroupsGiveWayToOneFocusedHeader(t *testing.T) {
 			if len(visibleTaskIDs(scoped)) == 0 {
 				t.Fatalf("%s focused on one project rendered no tasks", mode)
 			}
-			if headers, _ := projectGroupHeaders(scoped); len(headers) != 0 {
-				t.Fatalf("%s focused on one project rendered redundant headers %v", mode, headers)
+			if groups := projectGroupOrder(scoped); len(groups) != 0 {
+				t.Fatalf("%s focused on one project rendered redundant groups %v", mode, groups)
 			}
 			assertSoleFocusedProjectHeader(t, scoped, fixture.alpha.ID, mode)
 
@@ -87,15 +90,15 @@ func TestFlatModeProjectGroupsGiveWayToOneFocusedHeader(t *testing.T) {
 			if len(visibleTaskIDs(single)) == 0 {
 				t.Fatalf("%s single-project Outliner rendered no tasks", mode)
 			}
-			if headers, _ := projectGroupHeaders(single); len(headers) != 0 {
-				t.Fatalf("%s single-project Outliner rendered redundant headers %v", mode, headers)
+			if groups := projectGroupOrder(single); len(groups) != 0 {
+				t.Fatalf("%s single-project Outliner rendered redundant groups %v", mode, groups)
 			}
 			assertSoleFocusedProjectHeader(t, single, fixture.alpha.ID, mode)
 		})
 	}
 }
 
-func TestDueProjectGroupsUseAlphabeticalProjectHeaders(t *testing.T) {
+func TestDueProjectGroupsAreAlphabetical(t *testing.T) {
 	alphaTask := groupingDueTask("alpha-task", -1)
 	betaTask := groupingDueTask("beta-task", -3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -107,12 +110,12 @@ func TestDueProjectGroupsUseAlphabeticalProjectHeaders(t *testing.T) {
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
 		t.Fatalf("Due rows = %v, want rows grouped by alphabetical project headers", got)
 	}
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Due project headers = %v, want alphabetical order", headers)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Due project groups = %v, want alphabetical order", groups)
 	}
 }
 
-func TestRecentProjectHeadersStayAlphabeticalAcrossTriageAndReentry(t *testing.T) {
+func TestRecentProjectGroupsStayAlphabeticalAcrossTriageAndReentry(t *testing.T) {
 	alphaTask := recentTask("alpha-task", models.StateBacklog, 4)
 	betaTask := recentTask("beta-task", models.StateBacklog, 3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -120,19 +123,19 @@ func TestRecentProjectHeadersStayAlphabeticalAcrossTriageAndReentry(t *testing.T
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeRecent)
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project headers = %v, want alphabetical order", headers)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Recent project groups = %v, want alphabetical order", groups)
 	}
 
 	alphaTask.UpdatedAt = time.Now()
 	outliner.RebuildRows()
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project headers after triage = %v, want the same alphabetical order", headers)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Recent project groups after triage = %v, want the same alphabetical order", groups)
 	}
 
 	outliner.SelectOutlinerMode(chrome.ModeRecent)
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project headers after re-entry = %v, want alphabetical order", headers)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Recent project groups after re-entry = %v, want alphabetical order", groups)
 	}
 }
 

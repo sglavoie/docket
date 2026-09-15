@@ -110,11 +110,9 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "key", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-…] Mix rollout plan" },
 
-    { "type": "key", "label": "walk to a project that holds work", "key": "n" },
-    { "type": "assert", "assert": "contains", "value": "[mix-active-delivery]" },
-    { "type": "key", "label": "and onto its task", "key": "j" },
+    { "type": "key", "label": "walk to the group start of a project that holds work, which is its task", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
     { "type": "key", "label": "where the same key opens the task's own comments", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },

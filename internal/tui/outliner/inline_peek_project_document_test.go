@@ -223,8 +223,10 @@ func TestProjectPeekFingerprintReadsStoredValuesAlone(t *testing.T) {
 }
 
 // projectPeekOutliner puts a cursor on a project header with Peek open. Scoping
-// picks the header form: an empty scope leaves the cross-project group headers
-// All emits, and a scope produces the one focused header session 6 added.
+// picks the header form: an empty scope folds the cross-project groups, whose
+// summaries are the only project rows All draws now that an expanded group
+// spends no row on a heading, and a scope produces the one focused header
+// session 6 added.
 func projectPeekOutliner(t *testing.T, scope string, width, height int, projects ...*models.Project) *OutlinerModel {
 	t.Helper()
 	outliner := scopeTestOutliner(projects...)
@@ -233,6 +235,12 @@ func projectPeekOutliner(t *testing.T, scope string, width, height int, projects
 		outliner.PushProjectScope(scope)
 	}
 	outliner.RebuildRows()
+	if scope == "" {
+		for _, group := range outliner.VisibleProjectGroups() {
+			outliner.SetProjectGroupFolded(group, true)
+		}
+		outliner.RebuildRows()
+	}
 	if !moveCursorToProjectHeader(outliner, projects[0].ID, 0) {
 		t.Fatalf("no project header for %q", projects[0].ID)
 	}
@@ -416,19 +424,17 @@ func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 
 // TestProjectPeekIsReservedByTheViewport is the geometry claim. The window
 // authority subtracts exactly what the renderer draws, plus the one guard row it
-// already reserved for a task Peek — at the top of the list, with the cursor
-// pushed to the bottom of the viewport, and over a collapsed group, where the
-// header is the only row its project has left.
+// already reserved for a task Peek — at the top of the list and with the cursor
+// pushed to the bottom of the viewport, over the collapsed summaries that are
+// the only project rows a cross-project projection draws.
 func TestProjectPeekIsReservedByTheViewport(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		scope      string
 		occurrence int
-		collapse   bool
 	}{
 		{name: "first group header"},
 		{name: "later group header", occurrence: 1},
-		{name: "collapsed group header", collapse: true},
 		{name: "focused project header", scope: "alpha"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -436,13 +442,6 @@ func TestProjectPeekIsReservedByTheViewport(t *testing.T) {
 			outliner := projectPeekOutliner(t, test.scope, 80, 18, alpha, beta)
 			if !moveCursorToProjectHeader(outliner, alpha.ID, test.occurrence) {
 				t.Fatalf("no header %d for alpha", test.occurrence)
-			}
-			if test.collapse {
-				outliner.SetSectionRowCollapsed(outliner.Rows[outliner.Cursor], true)
-				outliner.RebuildRows()
-				if !moveCursorToProjectHeader(outliner, alpha.ID, test.occurrence) {
-					t.Fatal("collapsing dropped alpha's header")
-				}
 			}
 			header := outliner.Rows[outliner.Cursor]
 

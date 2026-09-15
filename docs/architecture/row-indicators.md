@@ -247,6 +247,38 @@ Pinned section is built — and a filter-admitted terminal or deferred pinned ro
 inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
 
+The compact project label is the fourth, and it exists because the heading that
+used to name a group is no longer drawn while the group is open.
+`taskProjectLabel` renders `[slug] ` — the project's slug, else its name, else
+the stored ID when neither resolves — in `theme.ProjectColorStyle`, under the
+one `groupsRowsByProject` predicate `appendProjectGroupHeader` reads. That
+shared predicate is the whole of the coordination: the heading and the labels
+are two presentations of one fact, so they can never both speak over a group nor
+both stay silent over one.
+
+It is reserved rather than laddered on the strongest form of the pin's argument.
+A deadline a 60-column row sheds is still one keypress away in Peek, and the row
+above it is unambiguous without it; a row whose owner is unknown is a row whose
+title may belong to either of two projects, and no amount of Peek fixes a
+misread that happened at a glance. `projectLabelWidth` is what keeps that
+reserve affordable: the label spends at most fourteen columns, brackets
+included, so an ordinary slug arrives whole and a long one is cut to its
+recognisable head rather than laid sideways as a heading was. Twelve characters
+of slug is where the label and the title stop trading against each other — wide
+enough to recognise, narrow enough that the widest titles the row is measured
+for still arrive whole.
+That cut is the one truncation on the row with a counterpart — `p` or `h` folds
+the group and the summary spells the slug whole — which is what lets it exist at
+all under the rule that a dropped tail must be recoverable somewhere.
+
+Two rows draw none. Both single-project forms are silent because
+`groupsRowsByProject` is false there and the focused-project header above
+already names the project. A row seated under its own parent is silent for the
+pinned lane's reason: parents are project-local, so the connectors drawn above
+have already answered, and the columns a nested row can least afford go to its
+title instead. A promoted root whose parent lives elsewhere is not seated under
+it — it carries a `Breadcrumb` instead — so it keeps the label.
+
 A pinned *project* wears the same glyph, from the same `PinnedMarker()` helper,
 on every surface that lists one: the Outliner project group header, the Select
 Project rows, and the `%` Move to Project picker. One vocabulary, so `*` writes

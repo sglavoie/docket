@@ -45,8 +45,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header", "key": "j" },
-    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header onto the new row", "key": "j" },
     { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "label": "both drafts committed in the same transaction as the task", "assert": "contains", "value": "2 comment(s)" },

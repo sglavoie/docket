@@ -169,22 +169,32 @@ func TestOutlinerDepartureDoesNotAdvanceOutsideInbox(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			// The same multi-project shape the Inbox defect needs: departing the
 			// last task of a non-final group is exactly where an advance would
-			// show, so a passing assertion here is the gate holding shut.
+			// show, so a passing assertion here is the gate holding shut. The
+			// middle group is folded because its summary is the one row that now
+			// separates the clamp from the successor: an expanded group spends no
+			// row on a heading, so a departing task's row index would otherwise be
+			// the successor's own and neither outcome would be observable.
 			alphaOne := primaryRowsTask("alpha-one", models.StateBacklog)
 			alphaTwo := primaryRowsTask("alpha-two", models.StateBacklog)
 			betaOne := primaryRowsTask("beta-one", models.StateBacklog)
-			betaTwo := primaryRowsTask("beta-two", models.StateBacklog)
+			gammaOne := primaryRowsTask("gamma-one", models.StateBacklog)
 			alpha := primaryRowsProject("alpha", alphaOne, alphaTwo)
-			beta := primaryRowsProject("beta", betaOne, betaTwo)
-			outliner, _ := primaryRowsOutliner(alpha, beta)
+			beta := primaryRowsProject("beta", betaOne)
+			gamma := primaryRowsProject("gamma", gammaOne)
+			outliner, _ := primaryRowsOutliner(alpha, beta, gamma)
 			outliner.SelectOutlinerMode(mode)
+			outliner.Folds.CollapsedSections[projectGroupCollapseKey(outliner, beta.ID)] = true
+			inboxAdvanceRebuild(outliner)
+			if got := countTaskRows(outliner, betaOne.ID); got != 0 {
+				t.Fatalf("%s rendered the folded group's %q %d time(s), want none", mode, betaOne.ID, got)
+			}
 
 			inboxCursorTo(t, outliner, alphaTwo.ID)
 			capture := outliner.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(alphaTwo, alpha)})
 			if capture == nil {
 				t.Fatal("relocation capture = nil")
 			}
-			successor := taskref.For(betaOne, beta)
+			successor := taskref.For(gammaOne, gamma)
 			if capture.Origin.Following != successor {
 				t.Fatalf("%s successor = %+v, want %+v", mode, capture.Origin.Following, successor)
 			}

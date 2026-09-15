@@ -5,6 +5,7 @@
   "actions": [
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
+    { "type": "key", "label": "fold the group so one summary states it", "key": "p" },
     { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
     { "type": "assert", "label": "today drops first and only the pulse still says it", "assert": "count_contains", "value": "today 1", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },

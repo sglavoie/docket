@@ -76,9 +76,15 @@ func TestProjectTagParkAllMembersAnchorsTheOutlinerCursorOnASurvivor(t *testing.
 	if fixture.cross.Cursor < 0 || fixture.cross.Cursor >= len(fixture.cross.Rows) {
 		t.Fatalf("post-park cursor %d is outside %d rows", fixture.cross.Cursor, len(fixture.cross.Rows))
 	}
+	// The anchor names a group, not a heading: an expanded group leads with its
+	// first task, a folded one with its summary, and the cursor lands on
+	// whichever of the two the survivor's block opens with.
 	row := fixture.cross.Rows[fixture.cross.Cursor]
-	if !row.IsProjectHeader || row.ProjectID != survivor.ID {
-		t.Fatalf("post-park cursor row = %#v, want the surviving project header", row)
+	if !row.Group.ProjectGrouped() || row.Group.ProjectID != survivor.ID {
+		t.Fatalf("post-park cursor row = %#v, want the surviving project group", row)
+	}
+	if fixture.cross.Cursor > 0 && fixture.cross.Rows[fixture.cross.Cursor-1].Group == row.Group {
+		t.Fatalf("post-park cursor row %d is inside the survivor's block, want the row it opens with", fixture.cross.Cursor)
 	}
 }
 

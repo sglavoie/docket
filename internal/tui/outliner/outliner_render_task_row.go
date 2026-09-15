@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -24,13 +25,14 @@ import (
 type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker           string
+	projectLabel                                     string
 	indicators, relationMarker, matchCue             string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
-		s.statusIcon, s.prioritySegment, s.pinMarker,
+		s.statusIcon, s.prioritySegment, s.pinMarker, s.projectLabel,
 		s.indicators, s.relationMarker, s.matchCue,
 	), 1)
 }
@@ -49,17 +51,18 @@ func (s taskRowSegments) gutter() string {
 // sizes it to the columns the title actually had. A widened title budget reaches
 // the editor by construction, which is the whole point of naming this once.
 func (s taskRowSegments) titlePrefix() string {
-	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.pinMarker
+	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.pinMarker + s.projectLabel
 }
 
 // content is everything from the state badge on, the region that keeps its own
 // colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
 // counts.
 func (s taskRowSegments) content(title string) string {
-	return fmt.Sprintf("%s %s%s%s%s%s%s",
+	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
 		s.statusIcon,
 		s.prioritySegment,
 		s.pinMarker,
+		s.projectLabel,
 		title,
 		s.relationMarker,
 		s.matchCue,
@@ -90,6 +93,53 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 		return ""
 	}
 	return theme.MutedStyle.Render("  " + marker)
+}
+
+// projectLabelWidth is every column the compact project label may spend,
+// brackets included. It is a fixed reserve rather than a share of the row,
+// because the label answers one question — which project owns this row — and
+// that answer is worth the same at 60 columns as at 120. The ceiling is what
+// makes the label compact rather than a heading laid sideways: the heading it
+// replaced had a row to itself and could spell the whole slug, while this rides
+// beside a title that still has to be readable. Twelve characters of slug is
+// where the two stop trading against each other — it is long enough that an
+// ordinary slug arrives whole and a long one is cut somewhere recognizable,
+// and short enough that the widest titles the row is meant to carry still
+// arrive whole at the widths they were measured for.
+const projectLabelWidth = 14
+
+// taskProjectLabel names the project owning one cross-project task row.
+// groupsRowsByProject is the same predicate appendProjectGroupHeader reads, so
+// the label appears in exactly the projections that used to open a heading over
+// the group: the identity moves onto the rows rather than being stated twice.
+// Both single-project forms stay silent, because their chrome already names the
+// project and a label there would only repeat it.
+//
+// It is reserved at every width, like the pin and relation markers, instead of
+// joining indicatorDropLadder. A row whose project is unknown is a row whose
+// title may mean two different things, and no deadline makes up for that; the
+// ceiling above is how the reserve stays affordable at the narrow widths where
+// the ladder is already running.
+//
+// A row seated under its own parent is silent for the same reason the pinned
+// lane's rows carry no pin: parents are project-local, so the connectors above
+// have already answered the question, and the columns a nested row can least
+// afford go to its title. A promoted root whose parent is elsewhere is not
+// seated under it, so it keeps the label.
+func (m *OutlinerModel) taskProjectLabel(row OutlinerRow) string {
+	if !m.groupsRowsByProject() || row.ProjectID == "" {
+		return ""
+	}
+	if row.Task != nil && row.Task.ParentID != nil && row.Breadcrumb == "" {
+		return ""
+	}
+	project := m.ResolveProjectForRow(row)
+	label := row.ProjectID
+	if project != nil {
+		label = grammar.ProjectLabel(project)
+	}
+	label = textfit.TruncateToVisualWidth(label, projectLabelWidth-2)
+	return theme.ProjectColorStyle(project).Render("["+label+"]") + " "
 }
 
 // taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
@@ -173,6 +223,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
 		pinMarker:       m.taskPinnedMarker(row),
+		projectLabel:    m.taskProjectLabel(row),
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
 		matchCue:        taskMatchSourceCue(row),
@@ -482,11 +533,12 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 	return m.LensTextQuery(), m.LensCaseSensitive()
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, indicators, relationMarker, matchCue string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, projectLabel, indicators, relationMarker, matchCue string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
+		lipgloss.Width(projectLabel) +
 		lipgloss.Width(indicators) +
 		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }

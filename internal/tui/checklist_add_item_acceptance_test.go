@@ -116,27 +116,17 @@ func TestChecklistAddItemAppliesFromEveryOwnerRowAndNoOther(t *testing.T) {
 		t.Error("c refused a checklist item row")
 	}
 
-	for _, row := range []struct {
-		name  string
-		match func(outliner.OutlinerRow) bool
-	}{
-		{"section header", func(r outliner.OutlinerRow) bool { return r.IsSectionHeader }},
-		{"project header", func(r outliner.OutlinerRow) bool { return r.IsProjectHeader }},
-	} {
-		seated := false
-		for index, candidate := range view.Rows {
-			if row.match(candidate) {
-				view.Cursor, seated = index, true
-				break
-			}
-		}
-		if !seated {
-			t.Fatalf("the projection carries no %s row", row.name)
-		}
-		if descriptor.Applicable(app.operationCommandContext()) {
-			t.Errorf("c applied on a %s, which names no task", row.name)
-		}
+	seatCursorOnRow(t, view, "section header", func(r outliner.OutlinerRow) bool { return r.IsSectionHeader })
+	if descriptor.Applicable(app.operationCommandContext()) {
+		t.Error("c applied on a section header, which names no task")
 	}
+	// The project header is what a folded group leaves behind, so the fold is how
+	// the cursor gets there at all; an expanded group draws no header.
+	onProjectHeaderCursor(t, view, func() {
+		if descriptor.Applicable(app.operationCommandContext()) {
+			t.Error("c applied on a project header, which names no task")
+		}
+	})
 
 	// A visual selection is the last refusal: one item appended to one of N
 	// selected tasks is not a bulk act, so `c` steps aside rather than picking
