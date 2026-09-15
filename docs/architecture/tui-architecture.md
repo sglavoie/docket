@@ -77,9 +77,55 @@ boundary the moment the vacated group runs out of rows.
 `ComputeOutlinerViewport` remains the single window authority and no flash is
 emitted, since the user's own keypress caused the move. With nothing to recover
 onto, the rebuild's own clamp stands, which is what keeps the empty-projection
-anchoring. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
-and the undo path arms no capture at all, so restoring a task never moves the
-cursor.
+anchoring. A departure records no jump entry, so `Ctrl+O` gains nothing from it.
+The undo path arms no capture at all: a ledger restore is not a keypress aimed
+at a row, and what it owes the cursor is answered separately, by the correlation
+below.
+
+`coordinator.UndoFocusController` is the session's memory of which single task
+each committed transaction was aimed at. It holds `CommittedFocusTarget` pairs —
+the address the task had before the commit and the address the commit left it at
+— keyed by transaction ID, capped at `undoFocusHistoryLimit`, and written
+nowhere, so a restart correlates nothing. Its two stacks mirror
+`DueClockController`: a forward commit clears the redo branch, a restore pops the
+top entry only when the transaction ID matches, and the stacks are therefore a
+subsequence of the workspace ledger's rather than a copy of it. That subsequence
+is what makes "no correlation" a single case. A bulk gesture, a project commit, a
+comment, a due step, and a transaction from a previous session all leave the top
+of the stack naming something else, so the restore falls through to the ordinary
+ledger path with no focus change at all — the selection and the position the user
+still holds are untouched by construction, without a bulk-specific branch.
+
+Only a seam that already names one target records one. `TransactionResultMsg`
+carries its own single result, and `FocusTargetFromResult` walks
+`CommittedDueEffect.Moves` backwards to recover where that task started.
+`TaskLineEditedMsg` names both halves outright — the identity the editor opened
+on and the address the save resolved to, which a `%project` token can have moved
+to another project — and records past the unchanged-edit return, since an edit
+that changed nothing wrote no ledger entry to correlate with. Every other
+committed mutation arrives as `BatchTransactionResultMsg`, whose
+`CommittedTarget` is stamped by `stampCommittedFocusTarget` at the dispatch seams
+that send exactly one task: the reorder, indent, outdent, delete, and
+single-target operation paths. A bulk or project-scoped batch leaves it zero.
+Nothing elects a target out of `CommittedDueEffect.Moves` or `Removed`, which
+list every relocated or deleted descendant and so cannot say which row the user
+pointed at. A creation records an after address and no before one, so undoing it
+correlates to nothing and redoing it seats the task it mints again.
+
+`AppModel.refocusRestoredTask` spends that correlation.
+`OutlinerModel.RefocusRestoredTask` seats the cursor only on a task the current
+projection already draws: it expands no fold, loads no project, changes no mode,
+scope, query, or sort, refuses outright while a visual selection stands, and
+writes `m.Cursor` and one jump frame and nothing else. A restored task the view
+does not admit is the view's answer rather than an obstacle, so the shell names
+where the task went — `now in <Project> (<Lane>)` — instead of rewriting the
+projection to show it. `Ctrl+O origin` is appended only when the move actually
+vacated a position, so an undo that moved nothing advertises nothing. The
+refocus runs before `refreshTaskViewsAfterSave`, because
+`preserveCrossOutlinerCursorForReload` captures the cursor row's own task
+identity at request time: seating the cursor first is what makes the disk-backed
+reload land back on the restored row by identity rather than drag the view back
+to where it started.
 
 `FinishTaskLineEditRelocation` takes that same retention rule with the identity
 the edit resolved to, so an edit that renamed or reparented the task inside its

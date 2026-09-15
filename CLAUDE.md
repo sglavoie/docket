@@ -246,6 +246,25 @@ own clamp left. `recoverCursorAfterDeparture` writes `m.Cursor` alone.
 fallback, since an edit may be what emptied the block. `R` branches ahead of all
 of it on `ReviewAdvance`, and navigation voids a pending capture as it happens.
 
+A ledger restore is not a mutation and is not measured that way.
+`UndoFocusController` is the session's memory of which single task each
+committed transaction was aimed at, keyed by transaction ID, bounded by the
+ledger's depth, and persisted nowhere; its two stacks are a subsequence of the
+ledger's, so a top-of-stack mismatch is uncorrelated, which is what makes a
+restart, a bulk gesture, and an unrelated transaction one case that guesses
+nothing and leaves position and selection alone. Only a seam naming one target
+records: a single-task result names its own, a row edit names both halves past
+its no-op return, and `BatchTransactionResultMsg.CommittedTarget` is stamped by
+the single-task dispatch alone — never elected from `CommittedDueEffect`, whose
+`Moves` and `Removed` are full of descendants nobody pointed at and whose
+`Moves` only recovers a pair's other half. A creation has no before address, so
+undoing it correlates to nothing. `RefocusRestoredTask` spends a correlation
+only on a task the projection already draws, expanding and rewriting nothing,
+writing `m.Cursor` and the jump frame alone, and refusing under a visual
+selection; otherwise the restore names the location instead. It runs ahead of
+`refreshTaskViewsAfterSave`, which captures the cursor's own task at request
+time. `Ctrl+O origin` is advertised only where a frame was pushed.
+
 A projection draws no heading over an expanded group and every key still reaches
 it: `appendProjectGroupHeader` emits the header only while the group is folded,
 and that summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —

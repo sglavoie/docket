@@ -311,6 +311,14 @@ when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
 only after jump history records an origin; `Ctrl+I` returns to the relocated
 task.
 
+A ledger restore decorates its own message on the same terms. When the session's
+undo-focus memory correlates the restored transaction with one committed task,
+the message gains `Ctrl+O origin` if the cursor actually moved to it, and
+`now in <Project> (<Lane>)` when the current projection does not draw it. An
+uncorrelated restore — a bulk gesture, a project commit, a transaction from a
+previous session — names neither and moves nothing. See
+[`tui-architecture.md`](tui-architecture.md).
+
 All mode projects open work as Pinned, Today, Doing, Review,
 Inbox, Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 the mode catalog admits through `ShowsPinned`, set on All and Today

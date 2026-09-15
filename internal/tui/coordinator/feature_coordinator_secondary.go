@@ -207,6 +207,13 @@ type BatchTransactionResultMsg struct {
 	// DueEffect is the typed evidence this transaction carries about deadlines
 	// and task addresses, for the session clock memory (see TransactionResultMsg).
 	DueEffect CommittedDueEffect
+	// CommittedTarget is the pre-commit address of the one task this batch was
+	// aimed at, for the session undo-focus memory. Only the seams that dispatch a
+	// single-task gesture through the batch path set it: a bulk gesture names
+	// several tasks and a project-scoped commit names none, and both leave the
+	// zero value rather than electing one of the addresses in DueEffect, whose
+	// Moves and Removed lists are full of descendants nobody pointed at.
+	CommittedTarget app.TaskLocator
 	// RecoveryContext replaces the ledger entry's own context in the undoable
 	// toast. The deadline stepper is its one writer: what its ledger entry
 	// records is the gesture (`+1 day`), which is what the undo browser should
@@ -234,6 +241,27 @@ func FinalizeStaleSelectionBatchResult(cmd tea.Cmd, locators []app.TaskLocator) 
 		for _, locator := range locators {
 			batch.ClearSelectionTaskIDs = append(batch.ClearSelectionTaskIDs, locator.TaskID)
 		}
+		return batch
+	}
+}
+
+// stampCommittedFocusTarget names, on the batch a gesture produced, the one
+// task the gesture was aimed at. It decorates rather than threading the address
+// through runBatch because the address is the caller's own argument and the
+// mutation closure never sees it. A canceled or failed gesture resolves to
+// TransactionErrorMsg and is left untouched, so nothing can correlate a
+// transaction that never committed.
+func stampCommittedFocusTarget(cmd tea.Cmd, target app.TaskLocator) tea.Cmd {
+	if cmd == nil || !target.Valid() {
+		return cmd
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		batch, ok := msg.(BatchTransactionResultMsg)
+		if !ok {
+			return msg
+		}
+		batch.CommittedTarget = target
 		return batch
 	}
 }

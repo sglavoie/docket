@@ -132,6 +132,43 @@ func (m *OutlinerModel) PushJumpBack(position OutlinerJumpPosition) {
 	m.RelocationHistory.Back = appendBoundedJump(m.RelocationHistory.Back, position)
 }
 
+// RefocusRestoredTask seats the cursor on a task a ledger restore put back, and
+// only on one this projection already draws. It expands nothing, loads nothing,
+// and changes no mode, scope, query, or fold: a restored task the current view
+// does not admit is the view's answer, not an obstacle, and the caller names
+// where the task went instead of rewriting the projection to show it.
+//
+// A visual selection is left strictly alone, because the selection and the rows
+// it counts are the user's standing state and an undo is not a selection
+// gesture.
+//
+// seated reports that the cursor is on the restored task — whether it had to
+// move or was already there. originRecorded reports that the move actually
+// vacated a position worth returning to, so `Ctrl+O` is advertised only where
+// that frame exists: an undo that moved nothing pushes nothing.
+func (m *OutlinerModel) RefocusRestoredTask(identity taskref.TaskIdentity) (cmd tea.Cmd, seated, originRecorded bool) {
+	if m == nil || !identity.Valid() || m.IsMultiSelectActive() {
+		return nil, false, false
+	}
+	destination, visible := m.RowIndexForTask(identity)
+	if !visible {
+		return nil, false, false
+	}
+	if destination == m.Cursor {
+		return nil, true, false
+	}
+	m.SyncJumpProjection()
+	origin, hasOrigin := m.currentJumpPosition()
+	oldCursor := m.Cursor
+	m.Cursor = destination
+	if hasOrigin {
+		m.PushJumpBack(origin)
+		m.RelocationHistory.forward = nil
+	}
+	m.AdoptNavigatedCursor(oldCursor)
+	return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), true, hasOrigin
+}
+
 func (m *OutlinerModel) JumpBackward() tea.Cmd {
 	if m == nil {
 		return nil

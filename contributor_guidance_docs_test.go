@@ -861,7 +861,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// declare any of it: an OutlinerMode field gating recovery is exactly what was
 	// removed here.
 	// The mechanism lives in docs/architecture/tui-architecture.md.
-	const budget = 57620
+	// Forty-fifth raise, 57620 to 58920, for undo focus correlated to the exact
+	// committed transaction. 1300 bytes buy three refusals the code reads as
+	// incidental. The stacks being a subsequence of the ledger's is the whole
+	// design: it is what makes a restart, a bulk gesture, and an unrelated
+	// transaction one uncorrelated case, and the obvious "improvement" — a map
+	// keyed by transaction ID, so a correlation survives out of order — silently
+	// resurrects a stale target and moves the cursor on an undo that restored
+	// something else. Which seam may record is stated because CommittedDueEffect
+	// is right there and already names addresses: electing one out of Moves or
+	// Removed looks like reuse and would follow a descendant nobody pointed at,
+	// and a bulk gesture would acquire a target it never had. And the refocus
+	// being refusal-shaped — only a task already drawn, no expansion, no load, no
+	// mode, scope, query, or fold write, and nothing at all under a visual
+	// selection — is the rule a later session undoes first, because "reveal the
+	// restored task" reads as helpful and would let undo rewrite a projection the
+	// user chose. The ordering against refreshTaskViewsAfterSave rides along
+	// because it is invisible and wrong in one direction only.
+	// The mechanism lives in docs/architecture/tui-architecture.md.
+	const budget = 58920
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -142,6 +142,18 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
+Undoing or redoing tells you where the work went. When the entry you took back
+was aimed at one task — a state change, a reorder, an indent, a row edit, a
+delete — and the restored task is drawn in the view you are standing in, the
+cursor moves onto it and the message ends in `Ctrl+O origin`, so one key returns
+to where you were. When the view does not draw it, nothing moves: your mode,
+scope, search, filters, and folds stay exactly as you left them and the message
+names the destination instead, as `now in Design (Done)`. An entry that was aimed
+at many tasks at once, or at a project, says neither and moves nothing, so a
+selection you are still holding survives its own undo. The correlation is
+session-only: after restarting `tt`, undo still restores the same work but never
+moves the cursor.
+
 The Outliner marks its cursor row in the margins rather than over the row. One
 bright column at the far left says where the cursor is, and the empty columns
 past the row's text carry a dim recess saying how far the row reaches. Nothing

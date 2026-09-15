@@ -1,0 +1,26 @@
+{
+  "name": "undo-focus-restart-uncorrelated",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "leave the group header for the first task", "key": "j" },
+    { "type": "key", "label": "complete that one task", "key": "w" },
+    { "type": "key", "key": "d" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "restart", "label": "relaunch tt, which keeps the durable ledger and drops the session correlation" },
+    { "type": "wait" },
+    { "type": "key", "label": "undo the completion from the previous session", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Change State: Done" },
+    {
+      "type": "assert",
+      "label": "the restore still names its transaction, but nothing this session saw committed it",
+      "assert": "not_contains",
+      "value": "Ctrl+O origin"
+    },
+    { "type": "assert", "assert": "not_contains", "value": "now in" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the work still comes back", "assert": "contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

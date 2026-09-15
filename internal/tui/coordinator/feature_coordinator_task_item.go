@@ -58,6 +58,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 			TouchedProjectIDs: result.TouchedProjectIDs,
 			Summary:           summary,
 			TransactionID:     result.TransactionID,
+			CommittedTarget:   soleOperationTarget(req.Targets),
 			DueEffect: CommittedDueEffect{
 				Steps: result.DueSteps,
 				Edits: result.DueEdits,
@@ -67,11 +68,19 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 	}
 }
 
+// runTaskBatch is runBatch for the structural mutations that name exactly one
+// task. It commits identically and additionally stamps that task's pre-commit
+// address on the result, so a later ledger restore of this transaction can seat
+// the cursor back on the row the gesture moved.
+func runTaskBatch(action string, task taskref.TaskIdentity, mutate func() ([]string, string, string, error)) tea.Cmd {
+	return stampCommittedFocusTarget(runBatch(action, mutate), task.Locator())
+}
+
 // MoveToTop moves one task to the top of its siblings as one project-scoped
 // transaction, emitting a BatchTransactionResultMsg so the touched project is
 // reloaded through the shared batch path.
 func (c TaskItemCoordinator) MoveToTop(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Move to Top", func() ([]string, string, string, error) {
+	return runTaskBatch("Move to Top", task, func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskToTop(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -83,7 +92,7 @@ func (c TaskItemCoordinator) MoveToTop(task taskref.TaskIdentity) tea.Cmd {
 // MoveToBottom moves one task to the bottom of its siblings as one project-scoped
 // transaction (see MoveToTop).
 func (c TaskItemCoordinator) MoveToBottom(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Move to Bottom", func() ([]string, string, string, error) {
+	return runTaskBatch("Move to Bottom", task, func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskToBottom(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -95,7 +104,7 @@ func (c TaskItemCoordinator) MoveToBottom(task taskref.TaskIdentity) tea.Cmd {
 // MoveUp swaps one task with its previous model-order sibling as one
 // project-scoped transaction (see MoveToTop for the reload path).
 func (c TaskItemCoordinator) MoveUp(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Move Up", func() ([]string, string, string, error) {
+	return runTaskBatch("Move Up", task, func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskUp(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -107,7 +116,7 @@ func (c TaskItemCoordinator) MoveUp(task taskref.TaskIdentity) tea.Cmd {
 // MoveDown swaps one task with its next model-order sibling as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) MoveDown(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Move Down", func() ([]string, string, string, error) {
+	return runTaskBatch("Move Down", task, func() ([]string, string, string, error) {
 		res, err := c.task.MoveTaskDown(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -120,7 +129,7 @@ func (c TaskItemCoordinator) MoveDown(task taskref.TaskIdentity) tea.Cmd {
 // project-scoped transaction. Passing the adjacent visible target lets filtered
 // and collapsed Outliner projections preserve hidden siblings' relative order.
 func (c TaskItemCoordinator) ReorderSiblings(task, target taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
+	return runTaskBatch("Reorder Siblings", task, func() ([]string, string, string, error) {
 		res, err := c.task.ReorderSiblingTasks(task.Locator(), target.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -134,7 +143,7 @@ func (c TaskItemCoordinator) ReorderSiblings(task, target taskref.TaskIdentity) 
 // ReorderSiblings: the caller lists exactly the visible peers, so hidden
 // siblings between them keep their durable slots.
 func (c TaskItemCoordinator) ReorderSiblingOrder(moved taskref.TaskIdentity, order []taskref.TaskIdentity, edge string) tea.Cmd {
-	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
+	return runTaskBatch("Reorder Siblings", moved, func() ([]string, string, string, error) {
 		res, err := c.task.ReorderSiblingOrder(moved.Locator(), taskIdentityLocators(order))
 		if err != nil {
 			return nil, "", "", err
@@ -146,13 +155,25 @@ func (c TaskItemCoordinator) ReorderSiblingOrder(moved taskref.TaskIdentity, ord
 // ReorderPinnedOrder rewrites the named pinned chain into the given
 // top-to-bottom display order as one transaction, which may span projects.
 func (c TaskItemCoordinator) ReorderPinnedOrder(moved taskref.TaskIdentity, order []taskref.TaskIdentity, edge string) tea.Cmd {
-	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
+	return runTaskBatch("Reorder Pinned", moved, func() ([]string, string, string, error) {
 		res, err := c.task.ReorderPinnedTasksOrder(moved.Locator(), taskIdentityLocators(order))
 		if err != nil {
 			return nil, "", "", err
 		}
 		return res.ProjectIDs, fmt.Sprintf("Moved pinned #%d to %s", res.ShortID, edge), res.TransactionID, nil
 	})
+}
+
+// soleOperationTarget names the one task an operation request was aimed at, and
+// nothing at all when it was aimed at several. The request's own target list is
+// the user's selection, so its cardinality is exactly the distinction the
+// undo-focus memory needs; the committed result's task list is not, because it
+// also enumerates the descendants the operation swept along.
+func soleOperationTarget(targets []app.TaskLocator) app.TaskLocator {
+	if len(targets) != 1 {
+		return app.TaskLocator{}
+	}
+	return targets[0]
 }
 
 func taskIdentityLocators(order []taskref.TaskIdentity) []app.TaskLocator {
@@ -167,7 +188,7 @@ func taskIdentityLocators(order []taskref.TaskIdentity) []app.TaskLocator {
 // task is the identity that must end up displayed first, because the pinned
 // order is PinnedAt-descending and equal timestamps resolve in its favor.
 func (c TaskItemCoordinator) ReorderPinned(task, target taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
+	return runTaskBatch("Reorder Pinned", task, func() ([]string, string, string, error) {
 		res, err := c.task.ReorderPinnedTasks(task.Locator(), target.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -179,7 +200,7 @@ func (c TaskItemCoordinator) ReorderPinned(task, target taskref.TaskIdentity) te
 // Indent nests one task under the task model-above it as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) Indent(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Indent", func() ([]string, string, string, error) {
+	return runTaskBatch("Indent", task, func() ([]string, string, string, error) {
 		res, err := c.task.IndentTask(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -191,7 +212,7 @@ func (c TaskItemCoordinator) Indent(task taskref.TaskIdentity) tea.Cmd {
 // Outdent moves one task to become a sibling of its parent as one project-scoped
 // transaction.
 func (c TaskItemCoordinator) Outdent(task taskref.TaskIdentity) tea.Cmd {
-	return runBatch("Outdent", func() ([]string, string, string, error) {
+	return runTaskBatch("Outdent", task, func() ([]string, string, string, error) {
 		res, err := c.task.OutdentTask(task.Locator())
 		if err != nil {
 			return nil, "", "", err
@@ -357,7 +378,10 @@ func (c TaskItemCoordinator) DeleteTask(task taskref.TaskIdentity, artifacts []s
 			TouchedProjectIDs: res.TouchedProjectIDs,
 			Summary:           msg,
 			TransactionID:     res.TransactionID,
-			DueEffect:         CommittedDueEffect{Removed: res.RemovedTaskLocators},
+			// The subtree's root, not res.RemovedTaskLocators: the user pointed at
+			// one row and the descendants went with it.
+			CommittedTarget: task.Locator(),
+			DueEffect:       CommittedDueEffect{Removed: res.RemovedTaskLocators},
 		}
 	}
 }

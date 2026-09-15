@@ -61,6 +61,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"form-viewport-minimum-height.json",
 		"form-extras-comments-narrow.json",
 		"cleanup-undo-redo.json",
+		"undo-focus-committed-target.json",
+		"undo-focus-restart-uncorrelated.json",
 		"daily-loop.json",
 		"inbox-triage-advance-across-project-groups.json",
 		"inbox-triage-advance-promotes-children.json",

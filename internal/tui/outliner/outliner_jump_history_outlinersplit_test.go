@@ -174,3 +174,69 @@ func TestOutlinerRelocationHistoryIsBounded(t *testing.T) {
 		t.Fatalf("oldest retained row = %d, want 25", got)
 	}
 }
+
+func TestRefocusRestoredTaskSeatsTheCursorAndRecordsTheVacatedOrigin(t *testing.T) {
+	outliner, _ := jumpHistoryFixture("before", "restored", "after")
+	outliner.Cursor = 0
+	restored := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "restored"}
+
+	_, seated, originRecorded := outliner.RefocusRestoredTask(restored)
+	if !seated || !originRecorded {
+		t.Fatalf("refocus = seated %v origin %v, want true/true", seated, originRecorded)
+	}
+	requireCurrentJumpTask(t, outliner, restored)
+	if len(outliner.RelocationHistory.Back) != 1 {
+		t.Fatalf("jump history = %d entries, want 1", len(outliner.RelocationHistory.Back))
+	}
+
+	outliner.JumpBackward()
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "before"})
+}
+
+func TestRefocusRestoredTaskAdvertisesNoOriginWhenTheCursorIsAlreadyThere(t *testing.T) {
+	outliner, _ := jumpHistoryFixture("restored", "after")
+	outliner.Cursor = 0
+
+	_, seated, originRecorded := outliner.RefocusRestoredTask(taskref.TaskIdentity{ProjectID: "alpha", TaskID: "restored"})
+	if !seated || originRecorded {
+		t.Fatalf("refocus = seated %v origin %v, want true/false", seated, originRecorded)
+	}
+	if len(outliner.RelocationHistory.Back) != 0 {
+		t.Fatalf("unmoved cursor recorded %d jump entries", len(outliner.RelocationHistory.Back))
+	}
+}
+
+func TestRefocusRestoredTaskLeavesAnUndrawnTaskAndAVisualSelectionAlone(t *testing.T) {
+	t.Run("not drawn", func(t *testing.T) {
+		outliner, _ := jumpHistoryFixture("before", "after")
+		outliner.Cursor = 1
+		_, seated, originRecorded := outliner.RefocusRestoredTask(taskref.TaskIdentity{ProjectID: "alpha", TaskID: "restored"})
+		if seated || originRecorded {
+			t.Fatalf("refocus = seated %v origin %v, want false/false", seated, originRecorded)
+		}
+		if outliner.Cursor != 1 {
+			t.Fatalf("cursor = %d, want 1", outliner.Cursor)
+		}
+	})
+
+	t.Run("visual selection", func(t *testing.T) {
+		outliner, _ := jumpHistoryFixture("before", "restored")
+		outliner.Cursor = 0
+		outliner.StartRangeSelection(taskref.TaskIdentity{ProjectID: "alpha", TaskID: "before"})
+		_, seated, _ := outliner.RefocusRestoredTask(taskref.TaskIdentity{ProjectID: "alpha", TaskID: "restored"})
+		if seated {
+			t.Fatal("refocus moved the cursor out of a standing visual selection")
+		}
+		if outliner.Cursor != 0 {
+			t.Fatalf("cursor = %d, want 0", outliner.Cursor)
+		}
+	})
+
+	t.Run("unaddressed", func(t *testing.T) {
+		outliner, _ := jumpHistoryFixture("before", "after")
+		outliner.Cursor = 1
+		if _, seated, _ := outliner.RefocusRestoredTask(taskref.TaskIdentity{}); seated {
+			t.Fatal("an unaddressed identity seated the cursor")
+		}
+	})
+}

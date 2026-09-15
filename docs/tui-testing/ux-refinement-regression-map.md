@@ -433,19 +433,30 @@ declared their text required, while this reads the finished screen.
 
 ### Session 15 — Make undo focus and feedback match committed work
 
-- Go: `internal/tui/handler_task_undo_identity_test.go`,
+- Go: `internal/tui/coordinator/undo_focus_controller_test.go`,
+  `internal/tui/handler_task_undo_identity_test.go`,
+  `internal/tui/outliner/outliner_jump_history_outlinersplit_test.go`,
   `internal/tui/undo_context_title_test.go`,
   `internal/tui/workspace_ledger_undo_test.go`
-- Scenarios: `docs/tui-testing/scenarios/cleanup-undo-redo.json`,
+- Scenarios: `docs/tui-testing/scenarios/undo-focus-committed-target.json`,
+  `docs/tui-testing/scenarios/undo-focus-restart-uncorrelated.json`,
+  `docs/tui-testing/scenarios/cleanup-undo-redo.json`,
   `docs/tui-testing/scenarios/outliner-move-to-project-bulk-undo.json`,
   `docs/tui-testing/scenarios/outliner-project-delete-undo.json`,
   `docs/tui-testing/scenarios/outliner-task-reference-undo.json`
 - Contracts: `CLAUDE.md` — undo/redo as one 50-entry workspace ledger where a
   successful forward mutation clears redo and a failure records nothing, a lens
   mutation recording no ledger entry so `u` never takes a lens back,
-  `supersedeDueStepsForEffect` reading `Edits`/`Removed` and never `Steps`, and a
-  step's toast naming the outcome through `RecoveryContext`.
-  `docs/architecture/persistence-and-transactions.md`.
+  `supersedeDueStepsForEffect` reading `Edits`/`Removed` and never `Steps`, a
+  step's toast naming the outcome through `RecoveryContext`, and the new
+  paragraph on `UndoFocusController`: bounded session-local pairs keyed by
+  transaction ID whose stacks are a subsequence of the ledger's, the seams that
+  may stamp a single target, `RefocusRestoredTask` seating the cursor only on a
+  task already drawn and refusing under a visual selection, and the restore
+  naming the location otherwise.
+  `docs/architecture/persistence-and-transactions.md`,
+  `docs/architecture/tui-architecture.md`,
+  `docs/architecture/presentation-chrome.md`, `docs/guide/outliner-chrome.md`.
 
 ### Session 16 — Quiet shell chrome and make Escape guidance accurate
 

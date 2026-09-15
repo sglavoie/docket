@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/outliner"
@@ -292,6 +293,15 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 		m.setInfoStatus("No task changes")
 		return status.DefaultStatusTimeout()
 	}
+	// A row edit names both halves outright: the identity the editor was opened on
+	// and the address the commit left the task at, which a `%project` token can
+	// have moved to another project entirely. Unlike the clock memory above it is
+	// recorded past the no-op return, because an edit that changed nothing wrote no
+	// ledger entry for an undo to correlate with.
+	m.undoFocus.ObserveCommit(msg.Result.TransactionID, coordinator.CommittedFocusTarget{
+		Before: msg.Source.Locator(),
+		After:  app.TaskLocator{ProjectID: msg.Result.Task.ProjectID, TaskID: msg.Result.Task.TaskID},
+	})
 	for _, projectID := range msg.Result.AffectedProjectIDs {
 		m.reloadProjectByID(projectID)
 		m.reloadCrossProjectOutlinerProject(projectID)

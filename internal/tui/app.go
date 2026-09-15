@@ -173,6 +173,15 @@ type AppModel struct {
 	// persisted: a restart starts empty. See due_clock_memory.go.
 	dueClocks coordinator.DueClockController
 
+	// undoFocus is the session's memory of which single task each committed
+	// transaction was aimed at, so undoing one can put the cursor back on the work
+	// it restored instead of inferring a target from a reloaded workspace. It sits
+	// beside dueClocks for the same reason and on the same terms: only the shell
+	// sees both the commit that names a target and the ledger restore that spends
+	// it, and nothing about it is persisted, so a restart correlates nothing. See
+	// handler_task_crud.go.
+	undoFocus coordinator.UndoFocusController
+
 	// dueSteps serializes the deadline gestures the + and - keys record. It sits
 	// beside dueClocks for the same reason: a burst of keypresses is one chain of
 	// transactions, and only the shell sees both the keypress that freezes a

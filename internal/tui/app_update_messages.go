@@ -257,6 +257,10 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 		m.crossOutliner.SettleRelocationCursor()
 	}
 	m.observeCommittedDueEffect(msg.Result.TransactionID, msg.DueEffect)
+	// A single-task result already names its one target, at the address the commit
+	// left it at; the move map is what recovers where it started.
+	m.undoFocus.ObserveCommit(msg.Result.TransactionID, coordinator.FocusTargetFromResult(
+		app.TaskLocator{ProjectID: msg.Result.ProjectID, TaskID: msg.Result.TaskID}, msg.DueEffect.Moves))
 	m.revealCommittedChecklistItemAt(msg.RevealChecklistFor, msg.RevealChecklistIndex)
 	m.revealCommittedTask(msg.RevealTaskFor, taskref.TaskIdentity{
 		ProjectID: msg.Result.ProjectID,
@@ -355,6 +359,11 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 		m.crossOutliner.SettleRelocationCursor()
 	}
 	m.observeCommittedDueEffect(msg.TransactionID, msg.DueEffect)
+	// Only a batch that carries one named target correlates. A bulk gesture leaves
+	// the zero value here, which records nothing, which is what keeps a later undo
+	// of it from moving the cursor out of the selection the user still holds.
+	m.undoFocus.ObserveCommit(msg.TransactionID,
+		coordinator.FocusTargetFromSource(msg.CommittedTarget, msg.DueEffect.Moves))
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
 	// selection intact for the user to retry.

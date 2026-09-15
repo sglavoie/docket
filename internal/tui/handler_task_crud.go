@@ -112,6 +112,14 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	if msg.Result != nil {
 		transactionID = msg.Result.TransactionID
 	}
+	// A creation has no before address, so undoing it correlates to nothing and
+	// leaves the view alone; redoing it puts the cursor back on the task it mints
+	// again. A multiline capture created several tasks and names none of them.
+	created := coordinator.CommittedFocusTarget{}
+	if msg.Result != nil && msg.CreatedCount <= 1 {
+		created.After = app.TaskLocator{ProjectID: msg.Result.ProjectID, TaskID: msg.Result.TaskID}
+	}
+	m.undoFocus.ObserveCommit(transactionID, created)
 	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, false)
 
 	// Delegate to the current view so it can reload its state
@@ -386,14 +394,79 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	m.refreshLoadedTaskWorkspace()
 	// The entry's transaction ID is read only here, after the restore actually
 	// succeeded: a refused or failed restore changed no durable state and must
-	// leave the remembered clocks exactly as it found them.
+	// leave the remembered clocks — and the correlated focus target below —
+	// exactly as it found them.
 	m.observeRestoredDueClocks(entry.TransactionID, redo)
+	// The cursor moves before the views fan out, because the disk-backed reload
+	// refreshTaskViewsAfterSave starts captures the cursor's own task: seating it
+	// first is what makes the reload land back on the restored row by identity
+	// rather than drag the view to wherever it started.
+	focusCmd, detail := m.refocusRestoredTask(entry.TransactionID, redo)
 	m.clearToggleHistory()
-	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
+	m.setSuccessStatus(appendRestoreDetail(fmt.Sprintf("%s: %s", verb, desc), detail))
 	m.refreshProjectHubIfActive()
 	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, m.refreshActiveNotesManager(), status.DefaultStatusTimeout())
+	cmds = append(cmds, focusCmd, m.refreshActiveNotesManager(), status.DefaultStatusTimeout())
 	return tea.Batch(cmds...)
+}
+
+// refocusRestoredTask spends this restore's correlation, if there is one, and
+// reports the command the cursor move produced together with the detail the
+// status line owes.
+//
+// The three outcomes are distinct and each says something different. An
+// uncorrelated entry — a bulk change, a project mutation, a transaction from
+// before this session started — moves nothing and says nothing extra, which is
+// the ordinary ledger undo unchanged. A correlated task the projection already
+// draws is seated, and only a seating that actually vacated a row advertises the
+// return. A correlated task the view does not admit leaves the view exactly as
+// it was and names where the restored work now lives, so the answer is on screen
+// instead of the user having to go looking for it.
+func (m *AppModel) refocusRestoredTask(transactionID string, redo bool) (tea.Cmd, string) {
+	address, ok := m.undoFocus.ObserveRestore(transactionID, redo)
+	if !ok {
+		return nil, ""
+	}
+	identity := taskref.FromLocator(address)
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil || project == nil {
+		// The restore removed the task at that address — undoing a creation, for
+		// instance — so there is nothing to point at and nothing to name.
+		return nil, ""
+	}
+	out := m.crossOutliner
+	if out == nil {
+		return nil, m.restoredTaskLocation(task, project)
+	}
+	cmd, seated, originRecorded := out.RefocusRestoredTask(identity)
+	if !seated {
+		return nil, m.restoredTaskLocation(task, project)
+	}
+	if !originRecorded {
+		return cmd, ""
+	}
+	return cmd, "Ctrl+O origin"
+}
+
+// restoredTaskLocation names where a restored task now lives, in the same terms
+// a creation reports its own destination: the owning project and the lane the
+// task landed in, planning membership included.
+func (m *AppModel) restoredTaskLocation(task *models.Task, project *models.Project) string {
+	label := m.createdTaskSectionLabel(task, project)
+	if label == "" {
+		return fmt.Sprintf("now in %s", project.Name)
+	}
+	return fmt.Sprintf("now in %s (%s)", project.Name, label)
+}
+
+// appendRestoreDetail folds the restore's own detail onto the status line in the
+// canonical trailing position. An empty detail leaves the line exactly as the
+// ledger worded it.
+func appendRestoreDetail(message, detail string) string {
+	if detail == "" {
+		return message
+	}
+	return message + " · " + detail
 }
 
 func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {
