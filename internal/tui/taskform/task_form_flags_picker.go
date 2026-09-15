@@ -64,8 +64,7 @@ func (p *formFlagsPicker) render(width int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set Flags")
 
-	maxWidth := min(max(width*2/5, 40), width-4)
-	innerWidth := min(maxWidth, max(width-4, 1))
+	innerWidth := formOverlayInnerWidth(width, max(width*2/5, 40), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter confirm", "Space/x toggle", "j/k navigate",
 	), max(innerWidth-4, 1))

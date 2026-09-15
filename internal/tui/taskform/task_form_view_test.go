@@ -6,27 +6,23 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // TestTaskFormMinimumLayout guards the expanded form at the common 80x24
-// terminal, where the form is allotted 80x22 (terminalHeight-2). The guard now
-// derives from the app floor (formMinHeight = chrome.MinTerminalHeight - 2 = 18) and
-// the body is clamped to the available rows, so the form must actually render
-// (no "terminal too small" notice) and fit both width and height at:
+// terminal, where the form is allotted 80x22 (terminalHeight-2), and at the
+// floor itself. Both dimensions of that floor are now the app's own
+// (chrome.MinTerminalWidth by chrome.MinTerminalHeight-2): the body resizes from
+// the available width and travels through scrollFormBody, so the form must
+// actually render — no "terminal too small" notice — and fit both width and
+// height at:
 //   - the 80x24 terminal's allotted size, SetSize(80, 22)
-//   - the form's genuine floor, SetSize(formMinWidth, chrome.MinTerminalHeight-2)
-//
-// The floor uses formMinWidth (68), not the app's chrome.MinTerminalWidth (60): the
-// form body is fixed-width, so width genuinely cannot go below it and the
-// min-size notice still (correctly) appears below formMinWidth. Only the height
-// floor changed.
+//   - the form's floor, SetSize(formMinWidth, formMinHeight)
 func TestTaskFormMinimumLayout(t *testing.T) {
 	sizes := []struct {
 		w, h int
 	}{
 		{80, 22},
-		{formMinWidth, chrome.MinTerminalHeight - 2},
+		{formMinWidth, formMinHeight},
 	}
 	for _, sz := range sizes {
 		m := newTestTaskForm()

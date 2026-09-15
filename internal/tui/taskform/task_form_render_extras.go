@@ -1,9 +1,6 @@
 package taskform
 
 import (
-	"fmt"
-	"strings"
-
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -11,15 +8,15 @@ import (
 
 // renderExtrasTab renders the Extras tab: the collapsible Attachments and
 // Comments sections.
-func (m *TaskFormModel) renderExtrasTab(b *formBodyBuilder) {
-	m.renderExtrasAttachmentsSection(b)
-	m.renderExtrasCommentsSection(b)
+func (m *TaskFormModel) renderExtrasTab(b *formBodyBuilder, bodyWidth int) {
+	m.renderExtrasAttachmentsSection(b, bodyWidth)
+	m.renderExtrasCommentsSection(b, bodyWidth)
 }
 
 // renderExtrasAttachmentsSection renders the Attachments collapsible section.
 // focusIndex == 0 is the attachments header; 1..N are individual drafts (when
 // expanded).
-func (m *TaskFormModel) renderExtrasAttachmentsSection(b *formBodyBuilder) {
+func (m *TaskFormModel) renderExtrasAttachmentsSection(b *formBodyBuilder, bodyWidth int) {
 	b.field(0)
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == 0
 	count := len(m.draft.attachments)
@@ -27,32 +24,17 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection(b *formBodyBuilder) {
 	if m.attachmentsExpanded {
 		expandIcon = theme.IconExpanded
 	}
-	headerLabel := fmt.Sprintf("%s Attachments (%d)", expandIcon, count)
-	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
-
-	if headerFocused {
-		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(theme.MutedStyle.Render("  a toggle · Ctrl+L add"))
-	} else {
-		b.WriteString(theme.FieldLabelStyle.Render("  "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-	}
-	b.WriteString("\n")
+	m.renderFormSectionHeader(b, expandIcon, "Attachments", count, headerFocused,
+		"a toggle · Ctrl+L add", bodyWidth)
 
 	if m.attachmentsExpanded {
 		for i, att := range m.draft.attachments {
 			itemFocused := m.activeTab == formTabExtras && m.focusIndex == 1+i
 			b.field(1 + i)
-			b.WriteString(renderAttachmentItemRow(att, itemFocused))
+			b.WriteString(renderAttachmentItemRow(att, itemFocused, bodyWidth))
 		}
 		if count == 0 {
-			b.WriteString(theme.MutedStyle.Render("    No attachments. Press Ctrl+L to add one."))
-			b.WriteString("\n")
+			renderFormSectionEmptyState(b, "No attachments. Press Ctrl+L to add one.", bodyWidth)
 		}
 	}
 }
@@ -60,7 +42,7 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection(b *formBodyBuilder) {
 // renderExtrasCommentsSection renders the Comments collapsible section. Its
 // header sits immediately after the Attachments section, so its focus index
 // depends on whether that section is expanded.
-func (m *TaskFormModel) renderExtrasCommentsSection(b *formBodyBuilder) {
+func (m *TaskFormModel) renderExtrasCommentsSection(b *formBodyBuilder, bodyWidth int) {
 	headerIdx := m.extrasCommentsHeaderIdx()
 	b.field(headerIdx)
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == headerIdx
@@ -69,48 +51,29 @@ func (m *TaskFormModel) renderExtrasCommentsSection(b *formBodyBuilder) {
 	if m.commentsExpanded {
 		expandIcon = theme.IconExpanded
 	}
-	headerLabel := fmt.Sprintf("%s Comments (%d)", expandIcon, count)
-	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
-
-	if headerFocused {
-		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(theme.MutedStyle.Render("  c toggle · Ctrl+Y add"))
-	} else {
-		b.WriteString(theme.FieldLabelStyle.Render("  "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-	}
-	b.WriteString("\n")
+	m.renderFormSectionHeader(b, expandIcon, "Comments", count, headerFocused,
+		"c toggle · Ctrl+Y add", bodyWidth)
 
 	if m.commentsExpanded {
 		for i, comment := range m.draft.comments {
 			itemFocused := m.activeTab == formTabExtras && m.focusIndex == headerIdx+1+i
 			b.field(headerIdx + 1 + i)
-			b.WriteString(renderCommentItemRow(comment, itemFocused))
+			b.WriteString(renderCommentItemRow(comment, itemFocused, bodyWidth))
 		}
 		if count == 0 {
-			b.WriteString(theme.MutedStyle.Render("    No comments. Press Ctrl+Y to add one."))
-			b.WriteString("\n")
+			renderFormSectionEmptyState(b, "No comments. Press Ctrl+Y to add one.", bodyWidth)
 		}
 	}
 }
 
 // renderCommentItemRow renders a single comment draft row. Comments are not
 // reorderable, so the focused hint names only edit and delete.
-func renderCommentItemRow(comment formCommentDraft, focused bool) string {
+func renderCommentItemRow(comment formCommentDraft, focused bool, bodyWidth int) string {
 	line := comment.text
 	if line == "" {
 		line = theme.MutedStyle.Render("(empty)")
 	}
-	if focused {
-		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete")
-		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
-	}
-	return "    " + line + "\n"
+	return renderFormItemRow(line, focused, "Enter edit · Ctrl+D delete", bodyWidth)
 }
 
 // renderCommentEditOverlay renders the inline comment text editor. The text is
@@ -120,9 +83,7 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Comment")
 
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	innerWidth := formOverlayInnerWidth(m.width, max(m.width*2/3, 40), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))
@@ -135,17 +96,13 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 }
 
 // renderAttachmentItemRow renders a single attachment draft row.
-func renderAttachmentItemRow(att formAttachmentDraft, focused bool) string {
+func renderAttachmentItemRow(att formAttachmentDraft, focused bool, bodyWidth int) string {
 	value := att.value
 	if value == "" {
 		value = theme.MutedStyle.Render("(empty)")
 	}
-	line := value
-	if focused {
-		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
-		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
-	}
-	return "    " + line + "\n"
+	return renderFormItemRow(value, focused,
+		"Enter edit · Ctrl+D delete · Ctrl+J/K move", bodyWidth)
 }
 
 // renderAttachmentEditOverlay renders the inline attachment value editor. The
@@ -155,9 +112,7 @@ func (m *TaskFormModel) renderAttachmentEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Attachment")
 
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	innerWidth := formOverlayInnerWidth(m.width, max(m.width*2/3, 40), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))

@@ -231,6 +231,55 @@ composer's already-budgeted layout — and the help column is cut to the body's 
 height by `clampFormHelpPane` before the two are joined, so reference text beside
 the field can never spend the position row that says where the reader is.
 
+Width was the other half of the same defect, and it failed harder: the form
+refused to draw at all below 68 columns, showing the same "terminal too small"
+notice the app shows below 60, because every tab renderer had been written
+against `chrome.DefaultFormFieldFactory().TitleWidth`. That 68 was never a
+requirement — it was one field factory's preference, read by four files as a
+floor. `formMinWidth` and `formMinHeight` are now `chrome.MinTerminalWidth` and
+`chrome.MinTerminalHeight-2`, the app's own floor and the rows the shell allots
+the form, so the form needs no more room than the surfaces it is opened from,
+and `formBodyPreferredWidth` keeps the 68 as a ceiling: `View` computes one
+`bodyWidth` of `min(formBodyPreferredWidth, m.width)` and hands it to whichever
+tab renderer runs. At 68 columns and above the body is laid out exactly as it
+always was, which is why this change moved no committed wide-terminal contract;
+below it, every control shortens instead of spilling past the frame.
+
+`task_form_widths.go` is the one place a preferred width meets the columns
+chrome actually spends, and its constants are measured rather than guessed: a
+bubbles `textinput` renders `SetWidth(n)+3` columns, `chrome.RenderOverlayBox`
+spends six columns and four rows outside its inner width, a
+`RenderFormLabelWithWidth` marker takes two, and
+`theme.SelectorOptionSelectedStyle` adds two more to any value it renders.
+`formValueWidth` subtracts the label column, the marker, and that selection pad
+from the body; `formInputWidth` fits a preferred input width into what is left;
+`formOverlayInnerWidth` is what every nested picker and inline editor calls
+instead of restating the frame arithmetic, with `formOverlayTitleMinInner`
+keeping a title from being the thing that overflows. The selection pad is
+charged whether or not the row is focused, deliberately: paying it only when
+focused would make a row change length as the focus lands on it.
+
+`renderFormSectionHeader` and `renderFormItemRow` are the four collapsible
+sections' one shape, so a fifth inherits the fitting rather than restating it.
+Where a row cannot have everything, the value wins: `formFitHint` drops whole
+`" · "` entries from the right and returns nothing when nothing fits, and a
+section header gives up its trailing rule down to `formSectionTrailRuleMin`
+before a single key is shed. That trade is safe because the keys a hint names
+are also in the tab's guidance footer, while the value is the row's whole point.
+An item value longer than the body is truncated on the row and recovered with
+`Enter`, which opens it in its own editor at full length — the counterpart a
+truncation owes.
+
+Nested overlays took the last of it. Five pickers and four inline editors open
+inside the form, and at the floor their frames were taller than the rows left
+between the tab bar and the footer, so the priority picker lost its bottom
+border at 60 and the state, due, and check-in overlays had been losing theirs at
+68 without a test watching. `renderOverlayView` gives an open overlay the form's
+whole allotted area instead: hidden, not shrunk, the same choice the Outliner
+menu bar makes. It costs nothing, because an overlay owns every key while it is
+open, so the tab bar and the footer underneath it were naming routes that were
+not live.
+
 `;comment;` sits at parse-order position 0, ahead of the attachment entry, and it
 is there for a stronger version of the same reason. A comment is free prose that
 may legitimately contain any other sigil, and RE2 cannot express "not inside a

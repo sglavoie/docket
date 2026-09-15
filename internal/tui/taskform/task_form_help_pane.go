@@ -13,17 +13,12 @@ type helpEntry struct {
 }
 
 // renderFormHelpPane renders contextual keybinding hints for the current
-// tab + focusIndex as a narrow column. width is the available character width.
-func (m *TaskFormModel) renderFormHelpPane(width int) string {
+// tab + focusIndex as a narrow column, at the width its own entries need. It is
+// reference text, so it is never shortened: the caller measures what comes back
+// and drops the whole column when the body cannot spare those columns, which is
+// the one honest answer when the alternative is half a key name.
+func (m *TaskFormModel) renderFormHelpPane() string {
 	entries := m.helpPaneEntries()
-
-	title := theme.MutedStyle.Render(m.helpPaneHeader())
-	sep := theme.MutedStyle.Render(strings.Repeat("─", width))
-
-	var sb strings.Builder
-	sb.WriteString(title)
-	sb.WriteString("\n")
-	sb.WriteString(sep)
 
 	maxKeyW := 0
 	for _, e := range entries {
@@ -31,15 +26,25 @@ func (m *TaskFormModel) renderFormHelpPane(width int) string {
 			maxKeyW = w
 		}
 	}
+
+	lines := make([]string, 0, len(entries))
+	width := lipgloss.Width(m.helpPaneHeader())
 	for _, e := range entries {
-		sb.WriteString("\n ")
-		pad := maxKeyW - lipgloss.Width(e.key)
-		padded := e.key + strings.Repeat(" ", pad)
-		sb.WriteString(theme.MutedStyle.Render(padded))
+		line := " " + theme.MutedStyle.Render(e.key+strings.Repeat(" ", maxKeyW-lipgloss.Width(e.key)))
 		if e.desc != "" {
-			sb.WriteString("  ")
-			sb.WriteString(e.desc)
+			line += "  " + e.desc
 		}
+		lines = append(lines, line)
+		width = max(width, lipgloss.Width(line))
+	}
+
+	var sb strings.Builder
+	sb.WriteString(theme.MutedStyle.Render(m.helpPaneHeader()))
+	sb.WriteString("\n")
+	sb.WriteString(theme.MutedStyle.Render(strings.Repeat("─", width)))
+	for _, line := range lines {
+		sb.WriteString("\n")
+		sb.WriteString(line)
 	}
 
 	return sb.String()

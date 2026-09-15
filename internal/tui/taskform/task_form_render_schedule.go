@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -14,13 +15,15 @@ const formScheduleLabelWidth = 16
 // renderScheduleTab keeps the real deadline independent from the paired
 // check-in schedule. The latter two rows both open the shared schedule editor,
 // so the form and existing-task action cannot drift on parsing or repeat rules.
-func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder) {
+func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder, bodyWidth int) {
 	const lw = formScheduleLabelWidth
+	valueWidth := formValueWidth(bodyWidth, lw)
 
 	// 0: Due — inline textinput when focused, plain text otherwise.
 	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Due:", lw, m.focusIndex == 0))
 	if m.focusIndex == 0 {
+		m.dueTextInput.SetWidth(formInputWidth(formDueInputWidth, valueWidth))
 		theme.ApplyThemedTextInput(&m.dueTextInput)
 		b.WriteString(m.dueTextInput.View())
 	} else {
@@ -28,7 +31,7 @@ func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder) {
 		if val == "" && m.draft.dueDate == nil {
 			b.WriteString(theme.MutedStyle.Render("(none)"))
 		} else if val != "" {
-			b.WriteString(val)
+			b.WriteString(textfit.TruncateToVisualWidth(val, valueWidth))
 		} else {
 			b.WriteString(scheduleDueDateDisplay(m.draft.dueDate))
 		}

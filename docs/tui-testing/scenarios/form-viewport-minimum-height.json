@@ -89,6 +89,16 @@
     { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "resize", "label": "the same window semantics at the app's own minimum width", "width": 60, "height": 20 },
+    { "type": "assert", "label": "the body resizes from the available width instead of refusing it", "assert": "not_contains", "value": "Terminal too small" },
+    { "type": "assert", "label": "the focused field is still the one on screen", "assert": "not_clipped", "value": "Comments (0)" },
+    { "type": "assert", "label": "the window is the height's, not the width's: narrowing shortens rows, never the count of them", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "not_contains", "value": "resize terminal to view all" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "back to the starting width, window intact", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "an eleventh draft the application layer will refuse", "key": "ctrl+l" },
     { "type": "text", "text": "nope.pdf" },
     { "type": "key", "key": "enter" },

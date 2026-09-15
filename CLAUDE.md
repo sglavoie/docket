@@ -285,7 +285,22 @@ overflows, so a tab that fits loses none. The error banner stays chrome, since a
 refusal seats the focus on the field it names and the two are read together.
 `clampFormBody` is the last defensive cut and not the height policy, and
 `clampFormHelpPane` cuts the help column first, so reference text never spends
-the position row. The width guard is unchanged.
+the position row.
+
+The form's floor is the app's own, `chrome.MinTerminalWidth` by
+`chrome.MinTerminalHeight-2`, and `formBodyPreferredWidth` is a ceiling: one
+`bodyWidth` of `min(preferred, terminal)` reaches every tab renderer, so a
+control's budget is its row's remainder and never a per-file guess at the
+terminal. `task_form_widths.go` is the one place a preferred width meets the
+columns chrome spends, and the focused value's padding is charged at every
+width, so moving focus never moves where a row ends. The value wins that width:
+`formFitHint` drops whole hint entries from the right, and the tab's guidance
+still spells every key it shed. A value shortened on an item row is recovered by
+`Enter`, which opens it at full length, and that editor is the counterpart the
+truncation owes. An open inline overlay is the whole view rather than a block
+inside it — hidden, not shrunk — since the tab bar and the footer name no live
+route while it holds every key, and the rows they cost are the rows a picker's
+list needs at the floor.
 
 Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort

@@ -73,9 +73,7 @@ func (p *formPriorityPicker) render(width, current int) string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set Priority")
 
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	maxWidth := min(max(width*2/5, 36), width-4)
-	innerWidth := min(max(maxWidth, titleMinInner), max(width-4, 1))
+	innerWidth := formOverlayInnerWidth(width, max(width*2/5, 36), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter select", "j/k navigate", "0-3 pick",
 	), max(innerWidth-4, 1))

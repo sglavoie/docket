@@ -35,9 +35,7 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Checklist Item")
 
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	innerWidth := formOverlayInnerWidth(m.width, max(m.width*2/3, 40), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))
@@ -80,9 +78,7 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Subtask")
 
-	titleMinInner := lipgloss.Width(title) + 6 - 2
-	maxWidth := min(max(m.width*2/3, 40), m.width-4)
-	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
+	innerWidth := formOverlayInnerWidth(m.width, max(m.width*2/3, 40), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save", "Ctrl+E save & edit description",
 	), max(innerWidth-4, 1))

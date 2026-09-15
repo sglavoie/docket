@@ -37,6 +37,16 @@ func (m *TaskFormModel) focusTitleInput() {
 	}
 }
 
+// formContextInputWidth and formDueInputWidth are the widths those two inline
+// fields would take given the room. The row that renders them resets the width
+// from its own budget every frame, so these are the opening preference rather
+// than the field's size; the value and the caret survive that resize, which is
+// what lets the width follow the terminal without the edit noticing.
+const (
+	formContextInputWidth = 40
+	formDueInputWidth     = 40
+)
+
 // initContextInput creates and configures the context textinput with an
 // optional initial value. An empty value is the field's cleared state, and the
 // bound is the durable tag length the context shares rather than a second
@@ -45,7 +55,7 @@ func (m *TaskFormModel) initContextInput(value string) {
 	m.contextInput = textinput.New()
 	m.contextInput.Placeholder = "client-acme (empty clears)"
 	m.contextInput.CharLimit = models.MaxTagLength
-	m.contextInput.SetWidth(40)
+	m.contextInput.SetWidth(formContextInputWidth)
 	theme.ApplyThemedTextInput(&m.contextInput)
 	if value != "" {
 		m.contextInput.SetValue(value)
@@ -74,7 +84,7 @@ func (m *TaskFormModel) initDueInput(value string) {
 	m.dueTextInput = textinput.New()
 	m.dueTextInput.Placeholder = "tomorrow, +3d, fri 15:30, 2026-01-15 09:00"
 	m.dueTextInput.CharLimit = 40
-	m.dueTextInput.SetWidth(40)
+	m.dueTextInput.SetWidth(formDueInputWidth)
 	theme.ApplyThemedTextInput(&m.dueTextInput)
 	if value != "" {
 		m.dueTextInput.SetValue(value)

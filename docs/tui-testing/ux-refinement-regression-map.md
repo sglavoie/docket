@@ -262,7 +262,9 @@ declared their text required, while this reads the finished screen.
 ### Session 9 — Make all full-form fields reachable by scrolling
 
 - Go: `internal/tui/taskform/task_form_viewport_test.go` — the done-when itself:
-  every field of every tab reached by `Tab` and by `Shift+Tab` at 68×18, the
+  every field of every tab reached by `Tab` and by `Shift+Tab` at the form's own
+  floor — 68×18 when session 9 wrote it, 60×18 since session 10 lowered the
+  floor to the app's — the
   position row naming what is off screen, a fitting body costing no row, a
   refusal readable beside the field it seats the focus on, a resize in both
   directions, the return from a nested picker, and the pinning rule for a field
@@ -294,6 +296,7 @@ declared their text required, while this reads the finished screen.
   `internal/tui/narrow_layout_helpers_test.go`
 - Scenarios:
   `docs/tui-testing/scenarios/form-extras-attachments-minimum-layout.json`,
+  `docs/tui-testing/scenarios/form-minimum-width-tabs-and-pickers.json`,
   `docs/tui-testing/scenarios/date-picker-narrow-resize-key-confinement.json`,
   `docs/tui-testing/scenarios/defer-picker-minimum-layout.json`,
   `docs/tui-testing/scenarios/task-form-edit-minimum-layout.json`

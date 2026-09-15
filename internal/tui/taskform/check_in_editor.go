@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -316,11 +317,14 @@ func (model *CheckInEditorModel) Render(width int) string {
 	if model == nil {
 		return ""
 	}
-	innerWidth := min(max(width*3/5, 52), max(width-6, 28))
+	innerWidth := formOverlayInnerWidth(width, max(width*3/5, 52), 28)
 	contentWidth := max(innerWidth-4, 16)
 	var content strings.Builder
 	if model.subtitle != "" {
-		content.WriteString(theme.MutedStyle.Render(model.subtitle))
+		// The single-task subtitle is that task's whole title, so it is wrapped
+		// rather than left to widen the box past the frame it was sized for.
+		content.WriteString(theme.MutedStyle.Render(
+			strings.Join(textfit.WrapText(model.subtitle, contentWidth), "\n")))
 		content.WriteString("\n\n")
 	}
 	switch model.picker {

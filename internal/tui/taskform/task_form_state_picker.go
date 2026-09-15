@@ -55,8 +55,7 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 	states := models.AllWorkflowStates()
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set State")
-	minInnerWidth := lipgloss.Width(title) + 4
-	innerWidth := min(max(max(width*2/5, 36), minInnerWidth), max(width-4, 1))
+	innerWidth := formOverlayInnerWidth(width, max(width*2/5, 36), formOverlayTitleMinInner(title))
 	footer := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter select", "j/k navigate",
 	), max(innerWidth-4, 1))

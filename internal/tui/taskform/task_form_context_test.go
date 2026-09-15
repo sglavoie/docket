@@ -47,18 +47,33 @@ func TestTaskFormContextFieldIsReachableAndTypable(t *testing.T) {
 	}
 }
 
-func TestTaskFormContextRowStaysVisibleAtMinimumSize(t *testing.T) {
+// TestTaskFormContextRowStaysReachableAtMinimumSize keeps the last Basics row
+// honest at the floor the form now renders at. At 60 columns the footer spends a
+// second line, so the window is a row shorter than the expanded body and the
+// Context row sits below the fold — which is the windowing working, not a clip:
+// tabbing to it brings it on screen, and the body says how many rows are down
+// there while it does not.
+func TestTaskFormContextRowStaysReachableAtMinimumSize(t *testing.T) {
 	m := newTestTaskForm()
 	m.SetSize(formMinWidth, formMinHeight)
 	plain := ansi.Strip(m.View().Content)
 	if strings.Contains(plain, "Terminal too small") {
 		t.Fatalf("form should render at its floor:\n%s", plain)
 	}
-	if !strings.Contains(plain, "Context:") {
-		t.Fatalf("Context row was clipped at the minimum size:\n%s", plain)
-	}
 	if !strings.Contains(plain, "Ctrl+S save") || !strings.Contains(plain, "Esc cancel") {
-		t.Fatalf("save/cancel guidance is not visible beside the Context row:\n%s", plain)
+		t.Fatalf("save/cancel guidance is not visible at the floor:\n%s", plain)
+	}
+	assertFitsWithin(t, m.View().Content, formMinWidth, formMinHeight)
+
+	for range formBasicsFieldCount - 1 {
+		m = sendFormKey(m, syntheticSpecialKey(tea.KeyTab))
+	}
+	if m.focusIndex != formBasicsContextField {
+		t.Fatalf("focus after tabbing the Basics tab = %d, want %d", m.focusIndex, formBasicsContextField)
+	}
+	focused := ansi.Strip(m.View().Content)
+	if !strings.Contains(focused, "Context:") {
+		t.Fatalf("Context row is unreachable at the minimum size:\n%s", focused)
 	}
 	assertFitsWithin(t, m.View().Content, formMinWidth, formMinHeight)
 }

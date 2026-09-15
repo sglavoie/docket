@@ -7,39 +7,42 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // Form layout thresholds.
 const (
-	// tabContentMinWidth is the natural rendered width of the widest tab body
-	// (the Basics tab). The form body is fixed-width and is NOT clamped to the
-	// terminal, so it is the minimum width the form needs to render without
-	// overflowing even in single-column mode. The two-column help-pane gate
-	// measures the actual body width per render (see View), but this constant
-	// is the baseline used for the min-size guard below.
-	tabContentMinWidth = 68
+	// formBodyPreferredWidth is the width the tab bodies are laid out at when the
+	// terminal can spare it: the title textarea's own width, and therefore the
+	// widest natural row. It is a ceiling, not a floor — the body is rendered at
+	// min(formBodyPreferredWidth, terminal width), so a wide terminal draws
+	// exactly what it always drew while a narrow one shortens its controls
+	// instead of spilling past the frame.
+	formBodyPreferredWidth = 68
 	// helpPaneGap is the spacer column count between the body and the help pane.
 	helpPaneGap = 2
 )
 
 // formMinWidth / formMinHeight are the minimum dimensions below which the form
-// cannot render without overflowing. The form body is fixed-width
-// (tabContentMinWidth), so width genuinely cannot go below it. Height, however,
-// only needs to match the app's own floor: the form is allotted terminalHeight-2
-// rows (see AppModel.handleWindowSize), so formMinHeight is derived from
-// chrome.MinTerminalHeight rather than a second literal. Above formMinHeight the body
-// is clamped to the available rows (see View) so it never overflows the height.
-// Below either dimension a "terminal too small" notice is shown, mirroring the
-// app-level guard in app_view.go.
+// cannot render at all. Both are the app's own floor rather than a second
+// literal: the body resizes from the available width, so the form needs no more
+// room than the surfaces it is opened from, and it is allotted terminalHeight-2
+// rows (see AppModel.handleWindowSize). Above formMinHeight the body travels
+// through scrollFormBody so it never overflows the height. Below either
+// dimension a "terminal too small" notice is shown, mirroring the app-level
+// guard in app_view.go.
 const (
-	formMinWidth  = tabContentMinWidth
+	formMinWidth  = chrome.MinTerminalWidth
 	formMinHeight = chrome.MinTerminalHeight - 2
 )
 
 func (m *TaskFormModel) View() tea.View {
 	if m.width < formMinWidth || m.height < formMinHeight {
 		return tea.NewView(m.renderMinSizeNotice())
+	}
+	if m.activeOverlay != formOverlayNone {
+		return tea.NewView(m.renderOverlayView())
 	}
 
 	// ── Title ────────────────────────────────────────────────────────────────
@@ -53,22 +56,20 @@ func (m *TaskFormModel) View() tea.View {
 	// ── Tab bar ───────────────────────────────────────────────────────────────
 	tabBar := chrome.RenderTabBar(formTabNames, m.activeTab, m.width-chrome.CreatorTabBarPadding, 1)
 
-	// ── Per-tab content (or inline overlay) ───────────────────────────────────
+	// ── Per-tab content ───────────────────────────────────────────────────────
+	// One width reaches every renderer, so a control's budget is the row's
+	// remainder rather than a per-file guess at the terminal.
+	bodyWidth := min(formBodyPreferredWidth, m.width)
 	var tabBody formBodyBuilder
-	overlay := m.activeOverlay != formOverlayNone
-	if overlay {
-		tabBody.WriteString(m.renderFormOverlay())
-	} else {
-		switch m.activeTab {
-		case formTabBasics:
-			m.renderBasicsTab(&tabBody)
-		case formTabSchedule:
-			m.renderScheduleTab(&tabBody)
-		case formTabChildren:
-			m.renderChildrenTab(&tabBody)
-		case formTabExtras:
-			m.renderExtrasTab(&tabBody)
-		}
+	switch m.activeTab {
+	case formTabBasics:
+		m.renderBasicsTab(&tabBody, bodyWidth)
+	case formTabSchedule:
+		m.renderScheduleTab(&tabBody, bodyWidth)
+	case formTabChildren:
+		m.renderChildrenTab(&tabBody, bodyWidth)
+	case formTabExtras:
+		m.renderExtrasTab(&tabBody, bodyWidth)
 	}
 	// Normalize trailing blank rows so the body's line count reflects only its
 	// visible content before it is windowed to the available height.
@@ -77,19 +78,22 @@ func (m *TaskFormModel) View() tea.View {
 	// The two-column gate measures the WHOLE tab content, before the viewport
 	// windows it, so scrolling a tall body never moves the help pane in and out
 	// of the layout as the focus travels.
-	helpWidth := max(min(m.width*35/100, 30), 20)
-	helpPane := ""
-	if !overlay && m.width >= lipgloss.Width(tabContent)+helpPaneGap+helpWidth {
-		// Two-column: form content left, help pane right. Only shown when
-		// the (fixed-width) body, the gap, and the help pane all genuinely
-		// fit within the terminal — otherwise the join overflows the width.
-		helpPane = m.renderFormHelpPane(helpWidth)
+	// Two-column: form content left, help pane right. The pane is measured as
+	// rendered rather than as requested, because it is reference text drawn at
+	// the width its own entries need — a gate reading an intended width instead
+	// would let a wider pane overflow the join.
+	helpPane := m.renderFormHelpPane()
+	if m.width < lipgloss.Width(tabContent)+helpPaneGap+lipgloss.Width(helpPane) {
+		helpPane = ""
 	}
 
 	// ── Error banner ──────────────────────────────────────────────────────────
+	// A refusal names the field the viewport is about to scroll to, so it is the
+	// one piece of text the form may not shorten: it wraps to the terminal and
+	// pays for every row it takes out of the body's budget below.
 	var errBanner string
 	if m.err != nil {
-		errBanner = theme.ValidationErrorStyle.Render(m.err.Error())
+		errBanner = theme.ValidationErrorStyle.Render(strings.Join(textfit.WrapText(m.err.Error(), m.width), "\n"))
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
@@ -138,6 +142,19 @@ func (m *TaskFormModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
+// renderOverlayView gives an open inline overlay the form's whole allotted
+// area. The overlay owns every key while it is open, so the tab bar and the
+// footer would name routes that are not live — and the rows they cost are
+// exactly the rows a picker's own list needs at the minimum size. Hidden, not
+// shrunk: a frame that loses its bottom border, or a state list that loses a
+// state, is worse than a form that waits one Esc to come back.
+func (m *TaskFormModel) renderOverlayView() string {
+	return lipgloss.NewStyle().
+		Width(m.width).
+		Height(m.height).
+		Render(clampFormBody(m.renderFormOverlay(), m.height))
+}
+
 func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 	commit := "Ctrl+S save"
 	if m.err != nil {
@@ -176,9 +193,9 @@ func clampFormBody(body string, maxRows int) string {
 }
 
 // renderMinSizeNotice renders a centered "terminal too small" message that fills
-// the form's allotted area. The edit form body is inherently tall (up to 25
-// rows) and fixed-width; on smaller terminals this notice replaces the
-// overflowing form. It mirrors the app-level guard in app_view.go.
+// the form's allotted area. It answers the one size the form genuinely cannot
+// serve — smaller than the app's own floor, which every other surface already
+// refuses — and mirrors the app-level guard in app_view.go.
 func (m *TaskFormModel) renderMinSizeNotice() string {
 	msg := fmt.Sprintf("Terminal too small (need %d×%d, have %d×%d)",
 		formMinWidth, formMinHeight, m.width, m.height)

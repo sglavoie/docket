@@ -778,7 +778,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// help column's own cut is what stops it from spending the body's last row.
 	// The width guard is named as unchanged so session 10 still owns it. The
 	// mechanism lives in docs/architecture/capture-and-outline-editor.md.
-	const budget = 52637
+	// Fortieth raise, 52637 to 53633, for the form that fits the app's own floor.
+	// 996 bytes retire "the width guard is unchanged" and buy the guard that
+	// replaced it. The floor being the app's rather than a second literal is the
+	// rule a reader would otherwise re-derive from whichever renderer they opened,
+	// and the preferred width being a ceiling is the one fact that stops the next
+	// contributor from reading 68 as a minimum again and reinstating the notice.
+	// One bodyWidth reaching every renderer and one file owning the chrome
+	// arithmetic are a pair: the first makes a control's budget knowable, the
+	// second makes it correct, and without both the fix decays into a per-file
+	// guess the moment a tab is added. Charging the focused pad at every width is
+	// counterintuitive enough to be undone as dead arithmetic, and the symptom —
+	// a row that changes length when focus lands on it — is cosmetic enough to
+	// survive review. The hint-before-value order and the Enter counterpart are
+	// stated because this file forbids a truncation with no counterpart, so a
+	// renderer that shortens a value has to say where the whole one is read. The
+	// overlay owning the view is last because shrinking it is the natural repair
+	// and it is the one that loses a picker's bottom border. The mechanism lives
+	// in docs/architecture/capture-and-outline-editor.md.
+	const budget = 53633
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

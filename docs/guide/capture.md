@@ -154,6 +154,18 @@ shows no such row. A refused save keeps its message on screen and moves the focu
 to the field it names, so the two stay readable together, and a taller terminal
 simply gives the rows back.
 
+Every field is reachable at any supported width too. The expanded composer opens
+wherever the rest of `tt` opens — down to the same 60-column minimum every other
+surface accepts — rather than replacing itself with a "terminal too small"
+notice on anything under 68 columns. A narrow terminal shortens what a row can
+spare and nothing else: the grey key hints beside a focused row go before its
+value does, and a value too long for the row is shortened there and read whole by
+pressing `Enter` on it, which opens it in its own editor. The nested pickers —
+priority, state, flags, due date, the check-in editor, and the checklist,
+subtask, attachment, and comment editors — take the whole screen while they are
+open, so at every width they keep a complete frame and a complete list; `Esc`
+hands the form back exactly as it was.
+
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
 project. A project header row is the one exception, because it names a project
 explicitly rather than incidentally, so `a` there captures into that project.

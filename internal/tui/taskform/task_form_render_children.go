@@ -2,7 +2,6 @@ package taskform
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
@@ -10,14 +9,14 @@ import (
 )
 
 // renderChildrenTab renders the Children tab: collapsible Checklist and Subtasks sections.
-func (m *TaskFormModel) renderChildrenTab(b *formBodyBuilder) {
-	m.renderChildrenChecklistSection(b)
-	m.renderChildrenSubtasksSection(b)
+func (m *TaskFormModel) renderChildrenTab(b *formBodyBuilder, bodyWidth int) {
+	m.renderChildrenChecklistSection(b, bodyWidth)
+	m.renderChildrenSubtasksSection(b, bodyWidth)
 }
 
 // renderChildrenChecklistSection renders the Checklist collapsible section.
 // focusIndex == 0 is the checklist header; 1..N are individual items (when expanded).
-func (m *TaskFormModel) renderChildrenChecklistSection(b *formBodyBuilder) {
+func (m *TaskFormModel) renderChildrenChecklistSection(b *formBodyBuilder, bodyWidth int) {
 	b.field(0)
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == 0
 	count := len(m.draft.checklist)
@@ -25,38 +24,23 @@ func (m *TaskFormModel) renderChildrenChecklistSection(b *formBodyBuilder) {
 	if m.checklistExpanded {
 		expandIcon = theme.IconExpanded
 	}
-	headerLabel := fmt.Sprintf("%s Checklist (%d)", expandIcon, count)
-	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
-
-	if headerFocused {
-		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(theme.MutedStyle.Render("  c toggle · Ctrl+A add"))
-	} else {
-		b.WriteString(theme.FieldLabelStyle.Render("  "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-	}
-	b.WriteString("\n")
+	m.renderFormSectionHeader(b, expandIcon, "Checklist", count, headerFocused,
+		"c toggle · Ctrl+A add", bodyWidth)
 
 	if m.checklistExpanded {
 		for i, item := range m.draft.checklist {
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == 1+i
 			b.field(1 + i)
-			b.WriteString(m.renderChecklistItemRow(item, itemFocused))
+			b.WriteString(renderChecklistItemRow(item, itemFocused, bodyWidth))
 		}
 		if count == 0 {
-			b.WriteString(theme.MutedStyle.Render("    No checklist items. Press Ctrl+A to add one."))
-			b.WriteString("\n")
+			renderFormSectionEmptyState(b, "No checklist items. Press Ctrl+A to add one.", bodyWidth)
 		}
 	}
 }
 
 // renderChecklistItemRow renders a single checklist item row.
-func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focused bool) string {
+func renderChecklistItemRow(item models.ChecklistItem, focused bool, bodyWidth int) string {
 	checkIcon := icons.Get("checkbox.unchecked")
 	if item.Done {
 		checkIcon = icons.Get("checkbox.checked")
@@ -65,18 +49,14 @@ func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focuse
 	if text == "" {
 		text = theme.MutedStyle.Render("(empty)")
 	}
-	line := fmt.Sprintf("%s %s", checkIcon, text)
-	if focused {
-		hint := theme.MutedStyle.Render("  Enter edit · Space check · Ctrl+D delete · Ctrl+J/K move")
-		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
-	}
-	return "    " + line + "\n"
+	return renderFormItemRow(fmt.Sprintf("%s %s", checkIcon, text), focused,
+		"Enter edit · Space check · Ctrl+D delete · Ctrl+J/K move", bodyWidth)
 }
 
 // renderChildrenSubtasksSection renders the Subtasks collapsible section.
 // The subtasks header is at focusIndex == m.childrenSubtasksHeaderIdx().
 // Subtask items follow at subsequent indices (when expanded).
-func (m *TaskFormModel) renderChildrenSubtasksSection(b *formBodyBuilder) {
+func (m *TaskFormModel) renderChildrenSubtasksSection(b *formBodyBuilder, bodyWidth int) {
 	headerIdx := m.childrenSubtasksHeaderIdx()
 	b.field(headerIdx)
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == headerIdx
@@ -85,47 +65,28 @@ func (m *TaskFormModel) renderChildrenSubtasksSection(b *formBodyBuilder) {
 	if m.subtasksExpanded {
 		expandIcon = theme.IconExpanded
 	}
-	headerLabel := fmt.Sprintf("%s Subtasks (%d)", expandIcon, count)
-	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
-
-	if headerFocused {
-		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(theme.MutedStyle.Render("  S toggle · Ctrl+T add"))
-	} else {
-		b.WriteString(theme.FieldLabelStyle.Render("  "))
-		b.WriteString(sep)
-		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
-	}
-	b.WriteString("\n")
+	m.renderFormSectionHeader(b, expandIcon, "Subtasks", count, headerFocused,
+		"S toggle · Ctrl+T add", bodyWidth)
 
 	if m.subtasksExpanded {
 		for i, st := range m.draft.subtasks {
 			itemIdx := headerIdx + 1 + i
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == itemIdx
 			b.field(itemIdx)
-			b.WriteString(renderSubtaskItemRow(st, itemFocused))
+			b.WriteString(renderSubtaskItemRow(st, itemFocused, bodyWidth))
 		}
 		if count == 0 {
-			b.WriteString(theme.MutedStyle.Render("    No subtasks. Press Ctrl+T to add one."))
-			b.WriteString("\n")
+			renderFormSectionEmptyState(b, "No subtasks. Press Ctrl+T to add one.", bodyWidth)
 		}
 	}
 }
 
 // renderSubtaskItemRow renders a single subtask draft row.
-func renderSubtaskItemRow(st formSubtaskDraft, focused bool) string {
+func renderSubtaskItemRow(st formSubtaskDraft, focused bool, bodyWidth int) string {
 	title := st.title
 	if title == "" {
 		title = theme.MutedStyle.Render("(empty)")
 	}
-	line := title
-	if focused {
-		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
-		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
-	}
-	return "    " + line + "\n"
+	return renderFormItemRow(title, focused,
+		"Enter edit · Ctrl+D delete · Ctrl+J/K move", bodyWidth)
 }

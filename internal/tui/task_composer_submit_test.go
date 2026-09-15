@@ -270,8 +270,17 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 	expanded := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, appModel.domain.runtime)
 	expanded.ExpandRequest(app.CaptureRequest{ProjectID: project.ID})
 	expanded.SetSize(60, 18)
-	if !strings.Contains(expanded.View().Content, "Terminal too small") {
-		t.Fatal("narrow expanded composer did not use the safe responsive guard")
+	// The expanded form's floor is the app's own, so the size every other surface
+	// serves is a size it lays out rather than refuses: it shortens its controls
+	// from the width it was given instead of spilling past the frame.
+	expandedContent := expanded.View().Content
+	if strings.Contains(expandedContent, "Terminal too small") {
+		t.Fatal("expanded composer refused a size the app itself accepts")
+	}
+	for _, line := range strings.Split(expandedContent, "\n") {
+		if width := lipgloss.Width(line); width > 60 {
+			t.Fatalf("narrow expanded line width = %d: %q", width, line)
+		}
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -12,23 +13,29 @@ import (
 // formBasicsLabelWidth is the fixed label column width for all Basics-tab rows.
 const formBasicsLabelWidth = 13 // "Description:" (12 chars) + 1 pad = 13
 
+// formBasicsPreviewWidth is how much of a read-only value the row would rather
+// show. It is a preference, not a reservation: the row's own budget only ever
+// shortens it, so a wide terminal previews exactly what it always previewed.
+const formBasicsPreviewWidth = 40
+
 // renderBasicsTab renders the generic task fields.
-func (m *TaskFormModel) renderBasicsTab(b *formBodyBuilder) {
+func (m *TaskFormModel) renderBasicsTab(b *formBodyBuilder, bodyWidth int) {
 	if m.collapsedBasics {
-		m.renderBasicsTabCollapsed(b)
+		m.renderBasicsTabCollapsed(b, bodyWidth)
 		return
 	}
-	m.renderBasicsTabExpanded(b)
+	m.renderBasicsTabExpanded(b, bodyWidth)
 }
 
 // renderBasicsTabCollapsed renders Title, Priority, and the expand row.
-func (m *TaskFormModel) renderBasicsTabCollapsed(b *formBodyBuilder) {
+func (m *TaskFormModel) renderBasicsTabCollapsed(b *formBodyBuilder, bodyWidth int) {
 	const lw = formBasicsLabelWidth
 
 	// 0: Title
 	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
+	m.titleInput.SetWidth(bodyWidth)
 	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
@@ -63,13 +70,17 @@ func (m *TaskFormModel) renderBasicsTabCollapsed(b *formBodyBuilder) {
 }
 
 // renderBasicsTabExpanded renders the full generic task form.
-func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
+func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder, bodyWidth int) {
 	const lw = formBasicsLabelWidth
+	// Every labeled row spends the focus marker and the label column before its
+	// own value starts, so one budget answers for all of them.
+	valueWidth := formValueWidth(bodyWidth, lw)
 
 	// 0: Title (inline textarea)
 	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
+	m.titleInput.SetWidth(bodyWidth)
 	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
@@ -83,7 +94,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
 		if val == "" {
 			display = theme.MutedStyle.Render("(none)")
 		} else {
-			preview := textfit.TruncateToVisualWidth(val, 40)
+			preview := textfit.TruncateToVisualWidth(val, min(formBasicsPreviewWidth, valueWidth))
 			if m.focusIndex == 1 {
 				display = theme.SelectorOptionSelectedStyle.Render(preview)
 			} else {
@@ -116,7 +127,9 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
 		var val string
 		if m.draft.parentID != nil {
 			if p := formFindTask(m.project.Tasks, *m.draft.parentID); p != nil {
-				val = fmt.Sprintf("#%d %s", p.ShortID, textfit.TruncateToVisualWidth(p.Title, 40))
+				ref := fmt.Sprintf("#%d ", p.ShortID)
+				titleWidth := min(formBasicsPreviewWidth, valueWidth-lipgloss.Width(ref))
+				val = ref + textfit.TruncateToVisualWidth(p.Title, max(titleWidth, formMinValueWidth))
 			} else {
 				val = theme.MutedStyle.Render("(not found)")
 			}
@@ -158,7 +171,9 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
 		if len(m.draft.tags) == 0 {
 			val = theme.MutedStyle.Render("(none)")
 		} else {
-			val = strings.Join(m.draft.tags, ", ")
+			// The whole set is one Enter away in the tag selector, so the row
+			// shows what it can rather than widening the body to show all of it.
+			val = textfit.TruncateToVisualWidth(strings.Join(m.draft.tags, ", "), valueWidth)
 		}
 		if m.focusIndex == 6 {
 			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
@@ -174,12 +189,13 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
 	b.field(formBasicsContextField)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Context:", lw, focused))
 	if focused {
+		m.contextInput.SetWidth(formInputWidth(formContextInputWidth, valueWidth))
 		theme.ApplyThemedTextInput(&m.contextInput)
 		b.WriteString(m.contextInput.View())
 	} else if m.draft.context == "" {
 		b.WriteString(theme.MutedStyle.Render("(none)"))
 	} else {
-		b.WriteString(m.draft.context)
+		b.WriteString(textfit.TruncateToVisualWidth(m.draft.context, valueWidth))
 	}
 	b.WriteString("\n")
 }
