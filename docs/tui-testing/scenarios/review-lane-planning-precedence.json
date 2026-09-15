@@ -18,6 +18,8 @@
     { "type": "assert", "label": "the review flag draws exactly one row", "assert": "count_contains", "value": "□ [client-alpha] Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "the flag moved the row to the promoted lane and the cursor kept sweeping Backlog", "key": "home" },
+    { "type": "key", "label": "onto the flagged row in the Review lane", "key": "down" },
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "plan the flagged task into Next", "key": "n" },
     { "type": "wait" },
@@ -25,6 +27,8 @@
     { "type": "assert", "label": "Next outranks the review flag, emptying the lane", "assert": "not_contains", "value": "@ Review" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "planning moved the row again, so walk back to it", "key": "home" },
+    { "type": "key", "label": "onto the planned row in the Next lane", "key": "down" },
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "leave Next again", "key": "n" },
     { "type": "wait" },

@@ -149,8 +149,14 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	}
 }
 
-func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testing.T) {
-	makeOutliner := func() (*outliner.OutlinerModel, *models.Project, *models.Project, *models.Task) {
+// TestTaskLineEditRelocationFollowsInGroupResultAndRecoversOtherwise is the row
+// editor's half of the one retention rule. The block the edit was typed from is
+// what decides: a task that block still holds is followed and records the origin
+// `Ctrl+O` returns to, while a task that left it — for another project, or for a
+// value the projection no longer draws — is a departure the cursor does not
+// chase. Both departures land on the neighbor the edit did not touch.
+func TestTaskLineEditRelocationFollowsInGroupResultAndRecoversOtherwise(t *testing.T) {
+	makeOutliner := func() (*outliner.OutlinerModel, *models.Project, *models.Project, *models.Task, *models.Task) {
 		task := &models.Task{ID: "moving", ShortID: 1, Title: "Moving", WorkflowState: models.StateBacklog}
 		neighbor := &models.Task{ID: "neighbor", ShortID: 2, Title: "Neighbor", WorkflowState: models.StateBacklog}
 		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
@@ -166,21 +172,40 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 			}
 		}
 		out.SyncJumpProjection()
-		return out, source, destination, task
+		return out, source, destination, task, neighbor
 	}
 
-	out, source, destination, task := makeOutliner()
+	// A reparent inside the source project: the same block still holds the task,
+	// one row further down, which is exactly what an origin is recorded for.
+	out, source, _, task, neighbor := makeOutliner()
 	capture := out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
+	task.ParentID = &neighbor.ID
+	neighbor.Children = []*models.Task{task}
+	source.Tasks = []*models.Task{neighbor, task}
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	_, recorded := out.FinishTaskLineEditRelocation(capture, taskref.For(task, source))
+	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, source) || len(out.RelocationHistory.Back) != 1 {
+		t.Fatalf("in-group relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.RelocationHistory.Back))
+	}
+
+	// The same edit spelling another project is a departure, even though the task
+	// is still on screen under that project's own header.
+	out, source, destination, task, _ := makeOutliner()
+	capture = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	destination.Tasks = append(destination.Tasks, task)
 	out.Population.Invalidate()
 	out.CrossProjectRebuildRows()
-	_, recorded := out.FinishTaskLineEditRelocation(capture, taskref.For(task, destination))
-	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, destination) || len(out.RelocationHistory.Back) != 1 {
-		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.RelocationHistory.Back))
+	if _, visible := out.RowIndexForTask(taskref.For(task, destination)); !visible {
+		t.Fatal("the moved task left the projection, so this half proves nothing about following it")
+	}
+	_, recorded = out.FinishTaskLineEditRelocation(capture, taskref.For(task, destination))
+	if recorded || out.CurrentTaskIdentity().TaskID != "neighbor" || len(out.RelocationHistory.Back) != 0 {
+		t.Fatalf("cross-project relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.RelocationHistory.Back))
 	}
 
-	out, source, _, task = makeOutliner()
+	out, source, _, task, _ = makeOutliner()
 	capture = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	out.Population.Invalidate()

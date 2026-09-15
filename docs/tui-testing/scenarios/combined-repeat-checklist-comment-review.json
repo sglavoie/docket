@@ -80,6 +80,8 @@
     { "type": "assert", "label": "the flag promotes an All-mode lane", "assert": "contains", "value": "Review" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "the flag moved the row to the lane it promoted, so the cursor kept sweeping the one it left", "key": "home" },
+    { "type": "key", "label": "onto the flagged row", "key": "j" },
     { "type": "key", "label": "R acknowledges the one candidate the pass has", "key": "R" },
     { "type": "wait" },
     { "type": "assert", "label": "clearing the flag retires the lane it promoted", "assert": "not_contains", "value": "Review  (" },

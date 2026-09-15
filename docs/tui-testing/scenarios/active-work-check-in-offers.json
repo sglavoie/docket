@@ -23,6 +23,8 @@
     { "type": "key", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "review today" },
+    { "type": "key", "label": "blocking it emptied the Doing lane, so the cursor swept into Backlog", "key": "home" },
+    { "type": "key", "label": "back onto the captured task, now owed a review", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "key": "g" },
     { "type": "wait" },

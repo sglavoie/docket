@@ -20,9 +20,9 @@ func TestInboxAdvanceIgnoresFailedMutations(t *testing.T) {
 	one := primaryRowsTask("one", models.StateInbox)
 	two := primaryRowsTask("two", models.StateInbox)
 	alpha := primaryRowsProject("alpha", one, two)
-	outlinerView := inboxAdvanceOutliner(t, alpha)
+	outlinerView := inboxModeOutliner(t, alpha)
 
-	inboxCursorTo(t, outlinerView, one.ID)
+	cursorToTaskRow(t, outlinerView, one.ID)
 	before := outlinerView.Cursor
 	capture := outlinerView.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(one, alpha)})
 	failure := coordinator.TransactionErrorMsg{Err: errors.New("commit refused")}
@@ -57,7 +57,7 @@ func requireCursorRow(t *testing.T, outlinerView *outliner.OutlinerModel, taskID
 	}
 }
 
-func inboxCursorTo(t *testing.T, outlinerView *outliner.OutlinerModel, taskID string) {
+func cursorToTaskRow(t *testing.T, outlinerView *outliner.OutlinerModel, taskID string) {
 	t.Helper()
 	for i, row := range outlinerView.Rows {
 		if row.IsTaskRow() && row.Task != nil && row.Task.ID == taskID {
@@ -65,14 +65,14 @@ func inboxCursorTo(t *testing.T, outlinerView *outliner.OutlinerModel, taskID st
 			return
 		}
 	}
-	t.Fatalf("task %q has no Inbox row", taskID)
+	t.Fatalf("task %q has no task row", taskID)
 }
 
-// inboxAdvanceOutliner builds the real Inbox row pipeline over the given
-// projects. Every advance test runs against these rows rather than a hand-rolled
-// slice, so the [projectHeader][task...] group shape is the one the product
-// renders.
-func inboxAdvanceOutliner(t *testing.T, projects ...*models.Project) *outliner.OutlinerModel {
+// inboxModeOutliner builds the real Inbox row pipeline over the given
+// projects. Every recovery test that wants the Inbox shape runs against these
+// rows rather than a hand-rolled slice, so the [projectHeader][task...] group
+// shape is the one the product renders.
+func inboxModeOutliner(t *testing.T, projects ...*models.Project) *outliner.OutlinerModel {
 	t.Helper()
 	outlinerView, _ := primaryRowsOutliner(projects...)
 	outlinerView.SelectOutlinerMode(chrome.ModeInbox)

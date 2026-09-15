@@ -23,6 +23,8 @@
     {"type": "key", "key": "u"},
     {"type": "wait"},
     {"type": "assert", "assert": "contains", "value": "▶   [rich-project] Build login form"},
+    {"type": "key", "label": "blocking it emptied the Doing lane, so the cursor swept on and the undos left it there", "key": "home"},
+    {"type": "key", "label": "back onto the restored row", "key": "j"},
     {"type": "key", "key": "w"},
     {"type": "key", "key": "w"},
     {"type": "wait"},

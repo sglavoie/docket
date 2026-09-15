@@ -149,7 +149,14 @@ func requireCurrentJumpTask(t *testing.T, outlinerView *outliner.OutlinerModel, 
 	}
 }
 
-func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) {
+// TestDirectStateMutationRecoversWithoutAnOriginAfterCommittedReload travels the
+// whole app-level chain — executor, committed batch, in-memory refresh, disk
+// reload — for the mutation All cannot express as an in-group move: a state
+// change is always another lane. The task stays on screen one lane down, which
+// is exactly what bare visibility used to follow, and the committed reload has
+// to leave the cursor sweeping the block the keypress was aimed from with no
+// jump entry behind it, since nothing was vacated for `Ctrl+O` to return from.
+func TestDirectStateMutationRecoversWithoutAnOriginAfterCommittedReload(t *testing.T) {
 	before := newBulkPickerTestTask(t, 1, "before")
 	target := newBulkPickerTestTask(t, 2, "target")
 	after := newBulkPickerTestTask(t, 3, "after")
@@ -199,10 +206,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	if outlinerView.RelocationHistory.Pending == nil {
 		t.Fatal("committed direct state update did not arm relocation history")
 	}
-	if got := outlinerView.CurrentTaskIdentity(); got != targetIdentity {
-		t.Fatalf("refresh cursor = %+v, want relocated target %+v", got, targetIdentity)
-	}
-	if outlinerView.Cursor == originRow {
+	if outlinerView.Cursor == originRow && outlinerView.CurrentTaskIdentity() == targetIdentity {
 		t.Fatalf("Doing update left target at row %d; fixture did not exercise relocation", originRow)
 	}
 
@@ -219,15 +223,18 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 		t.Fatalf("nested reload command = %T, want crossProjectsLoadedMsg", loadedMsg)
 	}
 	outlinerView.HandleCrossProjectsLoaded(loaded)
-	if len(outlinerView.RelocationHistory.Back) != 1 {
-		t.Fatalf("committed reload recorded %d jump entries, want 1", len(outlinerView.RelocationHistory.Back))
+	if _, visible := outlinerView.RowIndexForTask(targetIdentity); !visible {
+		t.Fatal("the started task left the projection, so this fixture proves nothing about following it")
 	}
-	requireCurrentJumpTask(t, outlinerView, targetIdentity)
+	if len(outlinerView.RelocationHistory.Back) != 0 {
+		t.Fatalf("a departure recorded %d jump entries, want none", len(outlinerView.RelocationHistory.Back))
+	}
+	requireCurrentJumpTask(t, outlinerView, taskref.For(after, env.projects[0]))
 
+	// Nothing was pushed, so the jump keys have nothing to spend and the sweep's
+	// own landing row stands.
 	outlinerView.JumpBackward()
-	if outlinerView.CurrentTaskIdentity() == targetIdentity {
-		t.Fatal("Ctrl+O equivalent did not leave the relocated task")
-	}
+	requireCurrentJumpTask(t, outlinerView, taskref.For(after, env.projects[0]))
 	outlinerView.JumpForward()
-	requireCurrentJumpTask(t, outlinerView, targetIdentity)
+	requireCurrentJumpTask(t, outlinerView, taskref.For(after, env.projects[0]))
 }

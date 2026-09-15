@@ -232,6 +232,20 @@ block by scanning for a header or by comparing lane markers. It identifies a
 block inside one projection and never across two, because two modes may spell one
 project fold alike: `modeCursorAnchor` therefore holds no group.
 
+That group is also what a mutation's cursor recovery is measured against, in
+every mode: no mode declares the behavior. `OutlinerRelocationCapture` freezes
+the cursor row's group, its unselected neighbors, and its promotable children at
+the keypress, and `rowIndexForTaskInGroup` — never bare visibility — is the
+retention test, so a task All still draws one lane down has departed. A task the
+block still holds is followed and records the origin `Ctrl+O` returns to; one
+that left records none, and `relocationRecoveryTarget` continues the sweep from
+the vacated position: a surviving promoted child inside that group, else the
+following unselected task, else the preceding one, else whatever the rebuild's
+own clamp left. `recoverCursorAfterDeparture` writes `m.Cursor` alone.
+`FinishTaskLineEditRelocation` takes that same rule and keeps the one numeric
+fallback, since an edit may be what emptied the block. `R` branches ahead of all
+of it on `ReviewAdvance`, and navigation voids a pending capture as it happens.
+
 A projection draws no heading over an expanded group and every key still reaches
 it: `appendProjectGroupHeader` emits the header only while the group is folded,
 and that summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —

@@ -176,7 +176,7 @@ func TestMarkReviewedClearsTheFlagAndAdvancesAcrossAProjectHeader(t *testing.T) 
 		[]*models.Task{betaSettled, betaCandidate})
 	before := *source
 
-	inboxCursorTo(t, async.outliner, source.ID)
+	cursorToTaskRow(t, async.outliner, source.ID)
 	saveCmd := async.acknowledge(t)
 	if cmd := async.applyReload(t, saveCmd); cmd != nil {
 		if msg, ok := collectStatus(cmd); ok {
@@ -214,7 +214,7 @@ func TestMarkReviewedReportsExhaustionOnTheLastCandidate(t *testing.T) {
 	trailing := reviewSettledTask(t, 3, "trailing")
 	async := newReviewAsyncEnv(t, []*models.Task{leading, source, trailing})
 
-	inboxCursorTo(t, async.outliner, source.ID)
+	cursorToTaskRow(t, async.outliner, source.ID)
 	saveCmd := async.acknowledge(t)
 	msg, ok := collectStatus(async.applyReload(t, saveCmd))
 	if !ok {
@@ -237,7 +237,7 @@ func TestMarkReviewedRefusesATaskNoAxisAdmits(t *testing.T) {
 	candidate := reviewCandidateTask(t, 2, "candidate")
 	async := newReviewAsyncEnv(t, []*models.Task{settled, candidate})
 
-	inboxCursorTo(t, async.outliner, settled.ID)
+	cursorToTaskRow(t, async.outliner, settled.ID)
 	before := async.outliner.Cursor
 
 	result := async.execute()
@@ -268,7 +268,7 @@ func TestMarkReviewedRefusesUnderAVisualSelection(t *testing.T) {
 	other := reviewCandidateTask(t, 2, "other")
 	async := newReviewAsyncEnv(t, []*models.Task{source, other})
 
-	inboxCursorTo(t, async.outliner, source.ID)
+	cursorToTaskRow(t, async.outliner, source.ID)
 	async.outliner.ReplaceSelection([]taskref.TaskIdentity{
 		async.identity(t, 0, source.ID),
 		async.identity(t, 0, other.ID),
@@ -293,7 +293,7 @@ func TestMarkReviewedUndoRestoresTheFlagAndLeavesTheCursor(t *testing.T) {
 	successor := reviewCandidateTask(t, 2, "successor")
 	async := newReviewAsyncEnv(t, []*models.Task{source, successor})
 
-	inboxCursorTo(t, async.outliner, source.ID)
+	cursorToTaskRow(t, async.outliner, source.ID)
 	async.applyReload(t, async.acknowledge(t))
 	requireCursorRow(t, async.outliner, successor.ID)
 	landed := async.outliner.CurrentTaskIdentity()
@@ -332,7 +332,7 @@ func TestMarkReviewedAnswersAWaitingCheckInWithoutResettingItsWait(t *testing.T)
 	async.outliner.SelectOutlinerMode(chrome.ModeAll)
 	before := *waiting
 
-	inboxCursorTo(t, async.outliner, waiting.ID)
+	cursorToTaskRow(t, async.outliner, waiting.ID)
 	async.applyReload(t, async.acknowledge(t))
 
 	stored := async.storedTask(t, waiting.ShortID)

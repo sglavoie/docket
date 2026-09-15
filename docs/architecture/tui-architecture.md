@@ -53,19 +53,41 @@ The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
 straight to one of them. A project focus is a scope frame in the same Outliner,
 never a second root.
 
-Inbox alone advances the cursor when a mutation removes the row under it. The
-mode catalog carries that as `AdvancesOnDeparture`, read through
-`SupportsCursorAdvance()`, so the gate is a catalog fact rather than an inline
-mode test. The successor is the one `CaptureOutlinerRelocation` already recorded
-as the origin's `Following` — the first task row after the cursor that is not
-itself a mutation target — so the advance reads the projection the user is
-looking at, crosses a project group header instead of stopping on it, and lands
-on a child promoted into its departing parent's place. `advanceAfterDeparture`
-writes `m.cursor` and nothing else: `ComputeOutlinerViewport` remains the single
-window authority and no flash is emitted, since the user's own keypress caused
-the move. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
+Every mode recovers the cursor when a mutation takes the row out from under it,
+and no catalog entry gates that. The question a mutation asks is not whether the
+task is still visible somewhere but whether it is still in the block the keypress
+was aimed from: `CaptureOutlinerRelocation` records the cursor row's own
+`OutlinerRowGroup`, and `rowIndexForTaskInGroup` looks the committed task up
+inside that group alone. Found there, it is followed and the vacated origin goes
+on the jump stack. Found only outside it — another lifecycle lane, the Pinned
+lane, another project's group — or not found at all, it departed, and bare
+visibility must not carry the cursor after it.
+
+`relocationRecoveryTarget` is where the sweep continues from, in one order for
+every surface: the first surviving child promoted into the position the parent
+vacated, then the origin's `Following` — the first task row after the cursor that
+is not itself a mutation target — then its `Preceding`. Every candidate is a task
+row by construction, so headers, separators, and checklist rows are skipped
+without a second predicate. The children are recorded at the keypress rather than
+read back off the rebuilt rows, because a folded parent renders none of them. The
+child is looked for inside the captured group, since that is what promotion
+means; the two neighbors are looked for anywhere, since the sweep crosses a group
+boundary the moment the vacated group runs out of rows.
+`recoverCursorAfterDeparture` writes `m.Cursor` and nothing else:
+`ComputeOutlinerViewport` remains the single window authority and no flash is
+emitted, since the user's own keypress caused the move. With nothing to recover
+onto, the rebuild's own clamp stands, which is what keeps the empty-projection
+anchoring. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
 and the undo path arms no capture at all, so restoring a task never moves the
 cursor.
+
+`FinishTaskLineEditRelocation` takes that same retention rule with the identity
+the edit resolved to, so an edit that renamed or reparented the task inside its
+block is followed and one that spelled a destination — another state, another
+project, a value the narrowing no longer admits — recovers instead. It alone
+keeps the numeric fallback underneath `relocationRecoveryTarget`, because a row
+edit is the one mutation that can empty its own block with no surviving neighbor
+left to name where the user was.
 
 Mark Reviewed rides the same capture with a different question. `R` is not a
 relocation — a Waiting task acknowledged keeps its row — so the capture carries
@@ -82,9 +104,10 @@ surface changed while the transaction was in flight is skipped rather than
 selected. The wider `models.TaskAllowsExplicitReview` belongs to the keypress
 rather than to the advance: naming one task admits any scheduled check-in, which
 is what lets a person answer one early. `finishReviewAdvance`
-writes `m.Cursor` alone on the same terms as `advanceAfterDeparture`, adds no
-jump entry because nothing was vacated, and consults no catalog flag: a sweep
-the user asked for by name works in every mode. When no successor survives it
+writes `m.Cursor` alone on the same terms as `recoverCursorAfterDeparture`, adds
+no jump entry because nothing was vacated, and reads no group: a sweep the user
+asked for by name is about the next candidate, not about where the acknowledged
+task stayed. When no successor survives it
 prefers the source over the reload's nearest-row reconciliation and emits the
 one `status.InfoStatusMsg` that ends the pass. Everything else the advance owes
 is inherited rather than restated — the projection guard covers mode, scope,

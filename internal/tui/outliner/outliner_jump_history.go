@@ -67,6 +67,26 @@ func (m *OutlinerModel) RowIndexForTask(identity taskref.TaskIdentity) (int, boo
 	return 0, false
 }
 
+// rowIndexForTaskInGroup finds the task inside one block of the current
+// projection. It is the retention test and the promoted-child test both: All
+// draws one task in several lanes, so asking whether an identity is visible
+// somewhere cannot tell a task that held its place apart from one that left for
+// the Pinned lane, the Done lane, or another project's group.
+func (m *OutlinerModel) rowIndexForTaskInGroup(identity taskref.TaskIdentity, group OutlinerRowGroup) (int, bool) {
+	if !identity.Valid() {
+		return 0, false
+	}
+	for i, row := range m.Rows {
+		if row.Group != group || !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		if m.TaskIdentityForRow(row) == identity {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 func (m *OutlinerModel) resolveJumpPosition(position OutlinerJumpPosition) (int, bool) {
 	if index, ok := m.RowIndexForTask(position.Task); ok {
 		return index, true
@@ -244,12 +264,27 @@ func projectIDForJumpProjection(m *OutlinerModel) string {
 // exactly as that refresh left it, so the reload guard can accept an untouched
 // cursor and still discard a moved one.
 type OutlinerRelocationCapture struct {
-	Task          taskref.TaskIdentity
-	Origin        OutlinerJumpPosition
-	Projection    string
-	TransactionID string
-	Settled       bool
-	SettledCursor int
+	Task taskref.TaskIdentity
+	// Group is the block the cursor row belonged to when the mutation was issued,
+	// and it is what decides retention: a committed task found again inside it is
+	// the row the user is still pointing at, while one found only outside it left
+	// the block and vacated a position the sweep continues from. The row index is
+	// deliberately not that test — a rebuild moves every index below an edit — and
+	// neither is bare visibility, which is what used to carry the cursor into
+	// another lane or another project behind a single keypress.
+	Group OutlinerRowGroup
+	// PromotedChildren are the cursor task's direct children as the projection
+	// held them, minus any that are themselves mutation targets. A parent leaving
+	// its group promotes its surviving children into the position it vacated, and
+	// that child is the first thing the sweep should land on; it is recorded here
+	// because a folded parent renders none of them, so the rebuilt rows cannot be
+	// asked afterwards which child took its place.
+	PromotedChildren []taskref.TaskIdentity
+	Origin           OutlinerJumpPosition
+	Projection       string
+	TransactionID    string
+	Settled          bool
+	SettledCursor    int
 
 	// ReviewAdvance marks a capture that carries a review acknowledgement rather
 	// than a relocation. The two are different questions about the same commit:
@@ -310,6 +345,7 @@ func (m *OutlinerModel) CaptureOutlinerRelocation(targets []taskref.TaskIdentity
 		return nil
 	}
 
+	cursorRow := m.Rows[m.Cursor]
 	origin := OutlinerJumpPosition{RowIndex: m.Cursor, ScrollOffset: m.ViewScrollOffset}
 	for i := m.Cursor + 1; i < len(m.Rows); i++ {
 		row := m.Rows[i]
@@ -334,10 +370,40 @@ func (m *OutlinerModel) CaptureOutlinerRelocation(targets []taskref.TaskIdentity
 		}
 	}
 	return &OutlinerRelocationCapture{
-		Task:       cursorTask,
-		Origin:     origin,
-		Projection: m.RelocationHistory.Projection,
+		Task:             cursorTask,
+		Group:            cursorRow.Group,
+		PromotedChildren: promotableChildIdentities(cursorRow, cursorTask.ProjectID, targetSet),
+		Origin:           origin,
+		Projection:       m.RelocationHistory.Projection,
 	}
+}
+
+// promotableChildIdentities reads the cursor row's own direct children, in the
+// order the projection holds them, and drops the ones the mutation also names.
+// The row's task carries the projection's tree rather than the stored one, so a
+// child already promoted past a filtered ancestor is recorded here exactly as the
+// rebuild will re-root it, and a child that is itself a target is left out on the
+// same terms as the surrounding tasks: a sweep continues onto work the keypress
+// did not touch.
+func promotableChildIdentities(row OutlinerRow, projectID string, targets map[taskref.TaskIdentity]bool) []taskref.TaskIdentity {
+	if row.Task == nil || len(row.Task.Children) == 0 || projectID == "" {
+		return nil
+	}
+	identities := make([]taskref.TaskIdentity, 0, len(row.Task.Children))
+	for _, child := range row.Task.Children {
+		if child == nil || child.ID == "" {
+			continue
+		}
+		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: child.ID}
+		if targets[identity] {
+			continue
+		}
+		identities = append(identities, identity)
+	}
+	if len(identities) == 0 {
+		return nil
+	}
+	return identities
 }
 
 // armOutlinerRelocation retains a committed asynchronous mutation for the next
@@ -456,11 +522,14 @@ func (m *OutlinerModel) FinishOutlinerRelocation(capture *OutlinerRelocationCapt
 		return m.finishReviewAdvance(capture), false
 	}
 	// A departure is checked before the forceFollow guard so the synchronous and
-	// asynchronous callers reach the same advance. The task is gone from this
-	// projection, so there is nothing to follow and no origin worth recording.
-	destination, visible := m.RowIndexForTask(capture.Task)
-	if !visible {
-		m.advanceAfterDeparture(capture)
+	// asynchronous callers reach the same recovery. The task left the block the
+	// keypress was aimed from — into another lane, another project's group, or out
+	// of the projection entirely — so there is nothing here to follow and no origin
+	// worth recording: the cursor never went anywhere for `Ctrl+O` to come back
+	// from.
+	destination, retained := m.rowIndexForTaskInGroup(capture.Task, capture.Group)
+	if !retained {
+		m.recoverCursorAfterDeparture(capture)
 		return nil, false
 	}
 	if !forceFollow && m.CurrentTaskIdentity() != capture.Task {
@@ -476,32 +545,67 @@ func (m *OutlinerModel) FinishOutlinerRelocation(capture *OutlinerRelocationCapt
 	return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), true
 }
 
-// advanceAfterDeparture carries the cursor onto the successor the relocation
-// capture already recorded, for the modes whose catalog entry asks for it. It
-// writes m.cursor and nothing else: computeOutlinerViewport remains the single
-// window authority, so no ViewScrollOffset write belongs here. No projection
-// check is needed either — every caller sits behind finishOutlinerRelocation's
-// projection guard, which already covers mode, scope, search, filters, sort,
-// zoom, collapsed sections, folds, and focus. No flash is emitted: the user's own
-// keypress caused the move and the next row to triage is under the cursor.
-func (m *OutlinerModel) advanceAfterDeparture(capture *OutlinerRelocationCapture) {
+// relocationRecoveryTarget names the row that continues the sweep the departing
+// task was part of, in the one order every surface uses: the first surviving
+// child promoted into the position the parent vacated, then the first unselected
+// task that followed it, then the one that preceded it. Every candidate is a task
+// row by construction — CaptureOutlinerRelocation records none other and
+// rowIndexForTaskInGroup and RowIndexForTask match none other — so a header, a
+// separator, a checklist item, and a note row are all skipped without a second
+// predicate.
+//
+// The child is looked for inside the captured group alone, because that is what
+// "promoted into the vacated position" means: a child of another lane was
+// already rendering somewhere else and the departure did not move it. The two
+// neighbors are looked for anywhere, because the sweep crosses a group boundary
+// the moment the vacated group runs out of rows.
+//
+// No projection check is needed: every caller sits behind a projection guard that
+// already covers mode, scope, search, filters, sort, zoom, collapsed sections,
+// folds, and focus.
+func (m *OutlinerModel) relocationRecoveryTarget(capture *OutlinerRelocationCapture) (int, bool) {
 	if m == nil || capture == nil {
-		return
+		return 0, false
 	}
-	if !m.ActiveOutlinerModeEntry().SupportsCursorAdvance() {
-		return
+	for _, child := range capture.PromotedChildren {
+		if index, ok := m.rowIndexForTaskInGroup(child, capture.Group); ok {
+			return index, true
+		}
 	}
-	successor, ok := m.RowIndexForTask(capture.Origin.Following)
-	if !ok {
-		return
+	if index, ok := m.RowIndexForTask(capture.Origin.Following); ok {
+		return index, true
 	}
-	m.Cursor = successor
+	if index, ok := m.RowIndexForTask(capture.Origin.Preceding); ok {
+		return index, true
+	}
+	return 0, false
+}
+
+// recoverCursorAfterDeparture seats the cursor where the sweep continues. It
+// writes m.Cursor and nothing else: ComputeOutlinerViewport remains the single
+// window authority, so no ViewScrollOffset write belongs here. No flash is
+// emitted: the user's own keypress caused the move and the next row to act on is
+// under the cursor. With nothing left to recover onto, the rebuild's own clamp
+// stands, which is what keeps the existing empty-projection anchoring.
+func (m *OutlinerModel) recoverCursorAfterDeparture(capture *OutlinerRelocationCapture) {
+	if index, ok := m.relocationRecoveryTarget(capture); ok {
+		m.Cursor = index
+	}
 }
 
 // finishTaskLineEditRelocation resolves the final project-qualified identity
-// after an atomic row edit. A visible result is followed and records the vacated
-// origin; a result hidden by the unchanged search/mode/filter/scope projection
-// leaves history intact and lands on the nearest surviving origin neighbor.
+// after an atomic row edit, on the same retention rule every other mutation
+// takes. An edit that renamed, reprioritized, or reparented the task inside its
+// own block is followed to wherever that block now holds it and records the
+// vacated origin, so `Ctrl+O` returns to the row the edit was typed from. An edit
+// that spelled a destination — another state, another project, a value the
+// narrowing no longer admits — is a departure like any other: the cursor is not
+// carried after it, and the sweep continues from the former location instead.
+//
+// Only this surface keeps the numeric fallback. A row edit is the one mutation
+// whose result can be hidden by the projection with no surviving neighbor at all
+// — the edit may be the thing that emptied the block — and the origin's own row
+// and scroll offset are the last thing left that names where the user was.
 func (m *OutlinerModel) FinishTaskLineEditRelocation(capture *OutlinerRelocationCapture, final taskref.TaskIdentity) (tea.Cmd, bool) {
 	if m == nil || capture == nil || !final.Valid() {
 		return nil, false
@@ -510,7 +614,7 @@ func (m *OutlinerModel) FinishTaskLineEditRelocation(capture *OutlinerRelocation
 	if capture.Projection != m.RelocationHistory.Projection {
 		return nil, false
 	}
-	if destination, ok := m.RowIndexForTask(final); ok {
+	if destination, ok := m.rowIndexForTaskInGroup(final, capture.Group); ok {
 		oldCursor := m.Cursor
 		m.Cursor = destination
 		if destination == capture.Origin.RowIndex {
@@ -520,9 +624,11 @@ func (m *OutlinerModel) FinishTaskLineEditRelocation(capture *OutlinerRelocation
 		m.RelocationHistory.forward = nil
 		return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), true
 	}
-	nearest, ok := m.resolveJumpPosition(capture.Origin)
+	nearest, ok := m.relocationRecoveryTarget(capture)
 	if !ok {
-		return nil, false
+		if nearest, ok = m.resolveJumpPosition(capture.Origin); !ok {
+			return nil, false
+		}
 	}
 	oldCursor := m.Cursor
 	m.Cursor = nearest

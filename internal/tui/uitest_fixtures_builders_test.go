@@ -289,13 +289,14 @@ func buildMultiProjectFixture(w *uitestWorkspace) error {
 }
 
 // buildInboxTriageFixture is the only fixture whose Inbox spans more than one
-// project group, which is the single row shape where the Inbox cursor advance
-// is observable: the last task of a non-final group has to hand the cursor to
-// the first task of the next one. The `busy` fixture keeps its whole Inbox in
-// one project and every other multi-project fixture carries backlog work only,
-// so neither can express the crossing. Its second group also holds the nested
-// Inbox parent whose surviving child is promoted into its place when the parent
-// is triaged away.
+// project group, which is the single row shape where a recovery that crosses a
+// group boundary is observable: the last task of a non-final group has to hand
+// the cursor to the first task of the next one. The `busy` fixture keeps its
+// whole Inbox in one project and every other multi-project fixture carries
+// backlog work only, so neither can express the crossing. Its second group also
+// holds the nested Inbox parent whose surviving child is promoted into its place
+// when the parent is triaged away, and its first group is two tasks of one
+// project, which is the shape an in-group relocation needs to move a row at all.
 //
 // It is deliberately its own fixture rather than an extension of
 // `multi-project`, whose four projects are read by twenty-one committed

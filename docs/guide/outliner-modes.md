@@ -116,13 +116,28 @@ to put down. A lens is only put down, not forgotten: the same lens opens again
 at the next launch, which is what makes `0` a reset of the view rather than of
 what you saved.
 
-## Inbox and the cursor advance
+## Where the cursor lands after a mutation
 
-Inbox is the one mode that hands the cursor along. When a triage act takes the
-row out of Inbox, the cursor lands on the next task in the sweep rather than
-on whatever the row index happens to hold, so it crosses a project group header
-instead of stopping on it and lands on a child promoted into its departing
-parent's place. Every other mode leaves the cursor where it was, because you
-read those modes as much as you empty them. The advance is not a relocation
-jump: a departure records nothing for `Ctrl+O`, and undo restores the task
-without moving the cursor back to it.
+Every mode keeps the cursor on the work you were reading. What decides this is
+the group the row was in — the lifecycle lane, the planning lane, or the project
+block the cursor sat in when you pressed the key — not whether the task is still
+drawn somewhere.
+
+A task that is still in that group is followed to wherever the group now holds
+it, and the row you acted from goes on the jump stack, so `Ctrl+O` comes back to
+it. That is what happens when you reorder, reparent, rename, or reprioritize
+something in place.
+
+A task that left the group — completed out of Backlog, moved to another project,
+edited into a value your filters no longer admit, deferred out of the mode
+entirely — is not followed. The cursor continues the sweep from the position it
+vacated: first a child promoted into its parent's place, then the next task you
+did not select, then the previous one. Group headers and checklist rows are
+skipped, and in a bulk act the rest of the selection is skipped too, so the
+cursor crosses a project group header instead of stopping on it. If nothing is
+left to land on, the cursor stays where the rebuilt list puts it.
+
+None of that is a relocation jump: a departure records nothing for `Ctrl+O`, and
+undo restores the task without moving the cursor back to it. A mutation you
+started and then walked away from cannot take the cursor either — moving it
+yourself before the write lands cancels the follow.

@@ -1,21 +1,43 @@
 {
   "name": "recovery-origin-guidance",
-  "fixture": "multi-project",
+  "fixture": "inbox-triage",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "move onto the Client Alpha task", "key": "j" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "onto the first intake, the one the edit will move", "key": "j" },
+
     { "type": "key", "label": "edit the task inline", "key": "e" },
-    { "type": "text", "label": "append the exact Unfiled destination token", "text": " %unfiled" },
-    { "type": "key", "label": "accept the open project suggestion", "key": "enter" },
-    { "type": "key", "label": "commit the atomic subtree move", "key": "enter" },
+    { "type": "text", "label": "reparent it under the intake below it, which is a move inside its own lane", "text": " >2" },
+    { "type": "key", "label": "accept the open parent suggestion", "key": "enter" },
+    { "type": "key", "label": "commit the reparent", "key": "enter" },
     { "type": "wait" },
+    { "type": "assert", "label": "the row kept its lane and took its new place under the successor", "assert": "contains", "value": "└── □ Alpha intake ready for triage" },
     { "type": "assert", "label": "the correlated transaction advertises undo", "assert": "status_contains", "value": "u undo" },
-    { "type": "assert", "label": "the recorded relocation advertises its origin", "assert": "status_contains", "value": "Ctrl+O origin" },
-    { "type": "key", "label": "jump to the recorded origin", "key": "ctrl+o" },
+    { "type": "assert", "label": "a task its own block still holds is followed, so the vacated origin is recorded", "assert": "status_contains", "value": "Ctrl+O origin" },
     { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "jump to the recorded origin", "key": "ctrl+o" },
+    { "type": "key", "label": "Peek names the row the cursor came back to", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Detail line belonging to the successor intake." },
+    { "type": "key", "label": "close Peek", "key": "b" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "undo the correlated transaction", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the reparent is taken back whole", "assert": "contains", "value": "├── □ [triage-alpha] Alpha intake ready for triage" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "back onto that same intake", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "completing it is a departure: All draws no terminal work, so the block the keypress was aimed from no longer holds it", "key": "w" },
+    { "type": "key", "key": "d" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Done" },
+    { "type": "assert", "label": "nothing was vacated for a jump to return from, so a departure advertises no origin", "assert": "not_contains", "value": "Ctrl+O origin" },
+    { "type": "key", "label": "and the sweep continued onto the successor the departure left behind", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Detail line belonging to the successor intake." },
+    { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

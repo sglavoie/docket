@@ -48,10 +48,10 @@ func outlinerHasTask(outlinerView *outliner.OutlinerModel, projectID, taskID str
 
 func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
-	// The destination is named so it sorts after the source. Project groups no
-	// longer cost a heading row apiece, so a task moving into the group that
-	// already sits above it would land on the very row index it left, and a
-	// relocation that changes no index records no origin to jump back to.
+	// The destination is named so it sorts after the source, which keeps the moved
+	// task on screen after the refresh: the cursor declines to follow it because it
+	// left the block the edit was aimed from, not because it went out of sight. The
+	// neighbor is what the vacated position hands the sweep on to.
 	source := newSession2Project(t, dataDir, "line edit source")
 	destination := newSession2Project(t, dataDir, "line edit target")
 	moving := source.Tasks[0]
@@ -126,20 +126,31 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		Source:     sourceIdentity,
 		Relocation: capture,
 	})
-	if got := outlinerView.CurrentTaskIdentity(); got != finalIdentity {
-		t.Fatalf("post-edit cursor = %+v, want destination %+v", got, finalIdentity)
+	// The refresh is what this test is for, so the moved task has to be readable
+	// in its new project before anything is claimed about the cursor.
+	if !outlinerHasTask(outlinerView, destination.ID, moving.ID) {
+		t.Fatal("handler refresh did not adopt the committed cross-project snapshot")
 	}
-	if len(outlinerView.RelocationHistory.Back) != 1 {
-		t.Fatalf("post-edit origin history = %d, want 1", len(outlinerView.RelocationHistory.Back))
+	originNeighbor := taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}
+	if got := outlinerView.CurrentTaskIdentity(); got != originNeighbor {
+		t.Fatalf("post-edit cursor = %+v, want the origin neighbor %+v", got, originNeighbor)
+	}
+	if len(outlinerView.RelocationHistory.Back) != 0 {
+		t.Fatalf("a cross-project departure recorded %d jump entries, want none", len(outlinerView.RelocationHistory.Back))
+	}
+	if _, followed := outlinerView.RowIndexForTask(finalIdentity); !followed {
+		t.Fatal("the moved task is not visible at all, so this fixture proves nothing about following it")
 	}
 
+	// With no origin pushed, both jump keys are inert and the sweep's own landing
+	// row stands.
 	outlinerView.JumpBackward()
-	if got := outlinerView.CurrentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
-		t.Fatalf("Ctrl+O destination = %+v, want origin neighbor", got)
+	if got := outlinerView.CurrentTaskIdentity(); got != originNeighbor {
+		t.Fatalf("Ctrl+O destination = %+v, want the unchanged neighbor", got)
 	}
 	outlinerView.JumpForward()
-	if got := outlinerView.CurrentTaskIdentity(); got != finalIdentity {
-		t.Fatalf("Ctrl+I destination = %+v, want moved task", got)
+	if got := outlinerView.CurrentTaskIdentity(); got != originNeighbor {
+		t.Fatalf("Ctrl+I destination = %+v, want the unchanged neighbor", got)
 	}
 }
 

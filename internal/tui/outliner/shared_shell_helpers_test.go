@@ -99,7 +99,7 @@ func requireCursorRow(t *testing.T, outliner *OutlinerModel, taskID string) {
 	}
 }
 
-func inboxCursorTo(t *testing.T, outliner *OutlinerModel, taskID string) {
+func cursorToTaskRow(t *testing.T, outliner *OutlinerModel, taskID string) {
 	t.Helper()
 	for i, row := range outliner.Rows {
 		if row.IsTaskRow() && row.Task != nil && row.Task.ID == taskID {
@@ -107,14 +107,14 @@ func inboxCursorTo(t *testing.T, outliner *OutlinerModel, taskID string) {
 			return
 		}
 	}
-	t.Fatalf("task %q has no Inbox row", taskID)
+	t.Fatalf("task %q has no task row", taskID)
 }
 
-// inboxAdvanceOutliner builds the real Inbox row pipeline over the given
-// projects. Every advance test runs against these rows rather than a hand-rolled
-// slice, so the [projectHeader][task...] group shape is the one the product
-// renders.
-func inboxAdvanceOutliner(t *testing.T, projects ...*models.Project) *OutlinerModel {
+// inboxModeOutliner builds the real Inbox row pipeline over the given
+// projects. Every recovery test that wants the Inbox shape runs against these
+// rows rather than a hand-rolled slice, so the [projectHeader][task...] group
+// shape is the one the product renders.
+func inboxModeOutliner(t *testing.T, projects ...*models.Project) *OutlinerModel {
 	t.Helper()
 	outliner, _ := primaryRowsOutliner(projects...)
 	outliner.SelectOutlinerMode(chrome.ModeInbox)

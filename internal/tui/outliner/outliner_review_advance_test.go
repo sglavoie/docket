@@ -94,7 +94,7 @@ func settleReviewAcknowledgement(
 	capture *OutlinerRelocationCapture,
 ) tea.Cmd {
 	t.Helper()
-	inboxAdvanceRebuild(outliner)
+	relocationRebuild(outliner)
 	cmd, recorded := outliner.FinishOutlinerRelocation(capture, true)
 	if recorded {
 		t.Fatal("a review acknowledgement recorded a jump-history origin")
@@ -154,7 +154,7 @@ func TestReviewAdvanceRecordsTheEligibleRowsBelowTheCursor(t *testing.T) {
 	beta := primaryRowsProject("beta", betaOne, betaTwo)
 	outliner := reviewAdvanceOutliner(alpha, beta)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := outliner.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(source, alpha)})
 	if capture == nil {
 		t.Fatal("relocation capture = nil")
@@ -179,7 +179,7 @@ func TestReviewAdvanceCrossesAProjectGroupHeader(t *testing.T) {
 	beta := primaryRowsProject("beta", betaOne, betaTwo)
 	outliner := reviewAdvanceOutliner(alpha, beta)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, source, alpha))
 
 	requireCursorRow(t, outliner, betaTwo.ID)
@@ -198,7 +198,7 @@ func TestReviewAdvanceLandsOnANestedCandidate(t *testing.T) {
 	alpha := primaryRowsProject("alpha", source, parent, child, trailing)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, source, alpha))
 
 	requireCursorRow(t, outliner, child.ID)
@@ -214,7 +214,7 @@ func TestReviewAdvanceSkipsAVanishedSuccessor(t *testing.T) {
 	alpha := primaryRowsProject("alpha", source, vanishing, survivor)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	if len(capture.ReviewSuccessors) != 2 {
 		t.Fatalf("successors = %+v, want both candidates", capture.ReviewSuccessors)
@@ -235,7 +235,7 @@ func TestReviewAdvanceSkipsASuccessorThatStoppedQualifying(t *testing.T) {
 	alpha := primaryRowsProject("alpha", source, answered, survivor)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	if ackErr := answered.AcknowledgeReview(time.Now()); ackErr != nil {
 		t.Fatalf("AcknowledgeReview: %v", ackErr)
@@ -255,7 +255,7 @@ func TestReviewAdvanceReportsExhaustionAndHoldsTheSource(t *testing.T) {
 	alpha := primaryRowsProject("alpha", leading, source, trailing)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	if len(capture.ReviewSuccessors) != 0 {
 		t.Fatalf("successors = %+v, want none below the cursor", capture.ReviewSuccessors)
@@ -274,7 +274,7 @@ func TestReviewAdvanceNeverWraps(t *testing.T) {
 	alpha := primaryRowsProject("alpha", skipped, source)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	requireExhaustionReported(t, acknowledgeAtCursor(t, outliner, source, alpha))
 
 	requireCursorRow(t, outliner, source.ID)
@@ -296,12 +296,12 @@ func TestReviewAdvanceFollowsTheFilteredRows(t *testing.T) {
 	outliner := reviewAdvanceOutliner(alpha)
 	outliner.Filter.Tags = map[string]bool{"triage": true}
 	adoptFilterCarriers(outliner)
-	inboxAdvanceRebuild(outliner)
+	relocationRebuild(outliner)
 
 	if got := countTaskRows(outliner, hidden.ID); got != 0 {
 		t.Fatalf("filtered Backlog rendered %q %d time(s), want hidden", hidden.ID, got)
 	}
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, source, alpha))
 
 	requireCursorRow(t, outliner, survivor.ID)
@@ -322,9 +322,9 @@ func TestReviewAdvanceFollowsTheSortedOrder(t *testing.T) {
 	outliner := reviewAdvanceOutliner(alpha)
 	outliner.Sort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outliner.TreeSort = outliner.Sort
-	inboxAdvanceRebuild(outliner)
+	relocationRebuild(outliner)
 
-	inboxCursorTo(t, outliner, first.ID)
+	cursorToTaskRow(t, outliner, first.ID)
 	capture := planReviewAcknowledgement(t, outliner, first, alpha)
 	want := []taskref.TaskIdentity{taskref.For(second, alpha), taskref.For(stored, alpha)}
 	if !slices.Equal(capture.ReviewSuccessors, want) {
@@ -346,7 +346,7 @@ func TestReviewAdvanceStaysInsideFocus(t *testing.T) {
 	alpha := primaryRowsProject("alpha", root, inside, outside)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, root.ID)
+	cursorToTaskRow(t, outliner, root.ID)
 	if !outliner.FocusSubtreeAtCursor() {
 		t.Fatal("Focus did not enter the root subtree")
 	}
@@ -354,7 +354,7 @@ func TestReviewAdvanceStaysInsideFocus(t *testing.T) {
 		t.Fatalf("focused projection rendered %q %d time(s), want none", outside.ID, got)
 	}
 
-	inboxCursorTo(t, outliner, inside.ID)
+	cursorToTaskRow(t, outliner, inside.ID)
 	requireExhaustionReported(t, acknowledgeAtCursor(t, outliner, inside, alpha))
 
 	requireCursorRow(t, outliner, inside.ID)
@@ -375,12 +375,12 @@ func TestReviewAdvanceDoesNotEnterACollapsedGroup(t *testing.T) {
 	gamma := primaryRowsProject("gamma", gammaOne)
 	outliner := reviewAdvanceOutliner(alpha, beta, gamma)
 	outliner.Folds.CollapsedSections[modeProjectCollapseKey(chrome.ModeBacklog, beta.ID)] = true
-	inboxAdvanceRebuild(outliner)
+	relocationRebuild(outliner)
 
 	if got := countTaskRows(outliner, betaOne.ID); got != 0 {
 		t.Fatalf("collapsed group rendered %q %d time(s), want none", betaOne.ID, got)
 	}
-	inboxCursorTo(t, outliner, alphaOne.ID)
+	cursorToTaskRow(t, outliner, alphaOne.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, alphaOne, alpha))
 
 	requireCursorRow(t, outliner, gammaOne.ID)
@@ -399,10 +399,10 @@ func TestReviewAdvanceIsAbandonedWhenTheProjectionChanges(t *testing.T) {
 	alpha := primaryRowsProject("alpha", source, successor)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
-	inboxAdvanceRebuild(outliner)
+	relocationRebuild(outliner)
 	before := outliner.Cursor
 
 	cmd, recorded := outliner.FinishOutlinerRelocation(capture, true)
@@ -428,7 +428,7 @@ func TestReviewAdvanceCarriesARepeatingPassWithoutRepeatingItself(t *testing.T) 
 	alpha := primaryRowsProject("alpha", first, second)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, first.ID)
+	cursorToTaskRow(t, outliner, first.ID)
 	requireNoExhaustionReported(t, acknowledgeAtCursor(t, outliner, first, alpha))
 
 	requireCursorRow(t, outliner, second.ID)
@@ -457,7 +457,7 @@ func TestReviewAdvanceIgnoresAFutureCheckIn(t *testing.T) {
 	alpha := primaryRowsProject("alpha", source, ahead, owed)
 	outliner := reviewAdvanceOutliner(alpha)
 
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	want := []taskref.TaskIdentity{taskref.For(owed, alpha)}
 	if !slices.Equal(capture.ReviewSuccessors, want) {
@@ -494,7 +494,7 @@ func TestReviewAdvanceIgnoresStalenessAndWaiting(t *testing.T) {
 			t.Fatalf("%q is not visible; a skip over an invisible row proves nothing", id)
 		}
 	}
-	inboxCursorTo(t, outliner, source.ID)
+	cursorToTaskRow(t, outliner, source.ID)
 	capture := planReviewAcknowledgement(t, outliner, source, alpha)
 	if len(capture.ReviewSuccessors) != 0 {
 		t.Fatalf("successors = %+v, want none: neither staleness nor Waiting is a candidate",

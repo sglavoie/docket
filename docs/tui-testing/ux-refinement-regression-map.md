@@ -412,20 +412,24 @@ declared their text required, while this reads the finished screen.
 
 - Go: `internal/tui/async_reload_navigation_test.go`,
   `internal/tui/outliner/task_locator_coordinator_test.go`,
-  `internal/tui/outliner/outliner_inbox_advance_outlinersplit_test.go`,
+  `internal/tui/outliner/outliner_relocation_recovery_outlinersplit_test.go`,
   `internal/tui/outliner/outliner_review_advance_test.go`
 - Scenarios:
   `docs/tui-testing/scenarios/inbox-triage-advance-across-project-groups.json`,
   `docs/tui-testing/scenarios/inbox-triage-advance-promotes-children.json`,
   `docs/tui-testing/scenarios/inbox-triage-undo-does-not-advance.json`,
   `docs/tui-testing/scenarios/review-acknowledge-and-advance.json`,
+  `docs/tui-testing/scenarios/recovery-origin-guidance.json`,
+  `docs/tui-testing/scenarios/workflow-chord-destinations.json`,
   `docs/tui-testing/scenarios/combined-promote-deadline-step-move.json`
-- Contracts: `CLAUDE.md` — `R`'s successor sequence being captured before the
-  commit and rechecked after it, expanding no fold and never wrapping, "a refusal
-  advances nothing; undo takes the mutation back and leaves the cursor", the
-  periodic tick's invalidation remaining owed under an overlay and restoring the
-  cursor by qualified task identity, and `revealCommittedTask` opening the
-  child's ancestor chain alone. `docs/guide/outliner-modes.md`.
+- Contracts: `CLAUDE.md` — retention being group-scoped rather than a bare
+  visibility test, the recovery order of promoted child then following then
+  preceding task, `R`'s successor sequence being captured before the commit and
+  rechecked after it, expanding no fold and never wrapping, "a refusal advances
+  nothing; undo takes the mutation back and leaves the cursor", the periodic
+  tick's invalidation remaining owed under an overlay and restoring the cursor by
+  qualified task identity, and `revealCommittedTask` opening the child's ancestor
+  chain alone. `docs/guide/outliner-modes.md`.
 
 ### Session 15 — Make undo focus and feedback match committed work
 

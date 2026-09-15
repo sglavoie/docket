@@ -36,6 +36,8 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Step Due Date: Due " },
     { "type": "assert", "assert": "contains", "value": "14:30" },
+    { "type": "key", "label": "landing on today took the row to the planning lane, so the cursor kept sweeping Backlog", "key": "home" },
+    { "type": "key", "label": "back onto the row the step moved", "key": "j" },
     { "type": "key", "label": "no deadline at all is the stop below today", "key": "-" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Step Due Date: Due date cleared" },

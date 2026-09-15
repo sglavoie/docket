@@ -844,7 +844,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// instead is honest advertising, which is why one SearchExitHint answers for
 	// the footer, the guidance, and the empty state.
 	// The mechanism lives in docs/architecture/named-lenses.md.
-	const budget = 56600
+	// Forty-fourth raise, 56600 to 57620, for mutation cursor recovery measured
+	// against the row group. 1020 bytes buy the one rule the code reads as an
+	// accident: rowIndexForTaskInGroup rather than RowIndexForTask. Bare
+	// visibility is the obvious simplification — the identity is right there and
+	// the projection already holds it — and it silently reintroduces the defect
+	// this replaced, because All draws a state change one lane down and a move
+	// draws it under another project, so "still on screen" and "still where the
+	// user was pointing" are different questions with the same answer most of the
+	// time. The recovery order is stated because it has no other home: the child
+	// is looked for inside the captured group and the neighbors anywhere, which is
+	// what makes a sweep cross a boundary only when the block it swept has run
+	// out. The capture being frozen at the keypress is what a refactor undoes
+	// first — a folded parent renders no child rows, so asking the rebuilt rows is
+	// the natural rewrite and it silently drops every promotion. And no mode may
+	// declare any of it: an OutlinerMode field gating recovery is exactly what was
+	// removed here.
+	// The mechanism lives in docs/architecture/tui-architecture.md.
+	const budget = 57620
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
