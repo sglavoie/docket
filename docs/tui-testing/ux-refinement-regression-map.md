@@ -206,21 +206,34 @@ declared their text required, while this reads the finished screen.
 
 ### Session 7 — Decouple folding and navigation from visible headings
 
-- Go: `internal/tui/simplified_navigation_test.go`,
+- Go: `internal/tui/outliner/outliner_headerless_groups_outlinersplit_test.go`,
+  `internal/tui/simplified_navigation_test.go`,
   `internal/tui/input_strategy_navigation_test.go`,
   `internal/tui/outliner_fold_all_test.go`,
+  `internal/tui/outliner_section_toggle_test.go`,
+  `internal/tui/outliner_project_group_toggle_test.go`,
   `internal/tui/view_navigation_controller_test.go`,
   `internal/tui/outliner/outliner_focused_project_header_test.go`
 - Scenarios: `docs/tui-testing/scenarios/outliner-header-jump.json`,
   `docs/tui-testing/scenarios/outliner-fold-all.json`,
   `docs/tui-testing/scenarios/outliner-project-header-fold.json`,
+  `docs/tui-testing/scenarios/outliner-project-peek-group-header.json`,
   `docs/tui-testing/scenarios/navigate-outliner.json`,
   `docs/tui-testing/scenarios/outliner-navigation-aliases.json`
 - Contracts: `CLAUDE.md` — `s`, `p`, and `t` folding the section, project, and
   task axes, root `w`/`z`/`g` as chord prefixes with cursor-top at `gg` or
-  `Home`, `IsCollapsibleHeader` taking no `h`/`l`, `p`, or `Enter`, and
-  `HasProjectHeaderCursor` still answering for every other project operation.
-  `docs/guide/outliner-keys.md`, `docs/architecture/operation-grammar.md`.
+  `Home`, `IsCollapsibleHeader` taking no `h`/`l`, `p`, or `Enter`,
+  `HasProjectHeaderCursor` still answering for every other project operation,
+  and a group staying reachable whether or not its heading is drawn —
+  `rowStartsGroup` as `n`/`N`'s stop set, `VisibleSections` and
+  `VisibleProjectGroups` as what `s` and `p` fold, `h`'s last rung folding the
+  cursor's own group, `l` on a summary landing on the task the fold covered, and
+  `foldState.GroupFocus` living exactly as long as that fold.
+  `docs/guide/outliner-keys.md`, `docs/architecture/operation-grammar.md`,
+  `docs/architecture/tui-architecture.md`.
+- Headerless coverage: `CompactProjectGroups` is the production switch the model
+  tests throw to assert both presentations answer alike before Session 8 lands
+  the row labels that make the compact one readable.
 
 ### Session 8 — Switch to compact project labels
 

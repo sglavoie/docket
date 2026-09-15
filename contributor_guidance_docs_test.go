@@ -736,7 +736,18 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// header, and modeCursorAnchor holding none is what keeps a mode switch landing
 	// where its own arithmetic put it. The mechanism lives in
 	// docs/architecture/tui-architecture.md.
-	const budget = 50484
+	// Thirty-seventh raise, 50484 to 51328, for folding and navigation that no
+	// longer read the heading. 844 bytes buy the rule that a group is reachable
+	// whether or not its heading is drawn: the stop set n/N walk, the two bulk
+	// folds' populations, h's last rung, l's landing, and the lifetime of the
+	// memory that landing reads. Every one of those is a place a contributor would
+	// otherwise reach for the header row again, which is the inference session 6
+	// removed and this session's presentation switch makes false. The memory's
+	// lifetime is stated because a group focus that outlived its fold would seat
+	// the cursor on a task a restored checkpoint left behind rather than on one the
+	// expanded group holds. The mechanism lives in
+	// docs/architecture/tui-architecture.md.
+	const budget = 51328
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

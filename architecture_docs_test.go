@@ -74,7 +74,11 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
 		"Project grouping is universal, not per-mode",
 		"through the shared `appendProjectGroupHeader` kernel",
-		"`n`/`N` step the cursor between grouping headers, and their stop set is `IsHeaderRow()`",
+		// Session 7 widened that stop set: a group whose heading is not drawn still
+		// starts a block, so the rule is stated over rowStartsGroup rather than over
+		// the row kind that used to be the only way to declare one.
+		"`n`/`N` step the cursor between blocks, and their stop set is `rowStartsGroup`",
+		"a header-only one would leave a whole group unreachable under `CompactProjectGroups`",
 		"There are three fold axes and therefore three bulk keys: `s` for section headers, " +
 			"`p` for project group headers, `t` for task subtrees",
 		"if any member of the set is folded the press expands them all, otherwise it folds them all",
@@ -82,9 +86,23 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		// VisibleProjectGroups() reports, so the half of this rule that named a row
 		// kind for the project axis is stated as the group half it reads instead.
 		"they separate by which half of the row's group they read",
-		"`p` takes the distinct groups `VisibleProjectGroups()` reports and writes each one's " +
-			"`ProjectKey` through `SetProjectGroupFolded`",
-		"Neither matches a key prefix",
+		// Session 7 took s off its header scan as well, so the two axes are now one
+		// sentence over the two halves of the same value.
+		"`s` takes the distinct `SectionKey`s `VisibleSections()` reports and `p` the distinct " +
+			"groups `VisibleProjectGroups()` reports, and each writes its own half through " +
+			"`setGroupFold`",
+		"Neither scans for a header and neither matches a key prefix",
+		"`CompactProjectGroups` is that headerless presentation",
+		"`appendProjectGroupHeader` emits nothing for an expanded group and keeps the summary " +
+			"a folded one is",
+		"`rowStartsGroup` is what `n`/`N` step between",
+		"A task row that has run out of hierarchy — no open checklist, no open children, " +
+			"and no parent at all — folds its own project group through `foldGroupAtCursor`",
+		"`restoreGroupCursor` seats the cursor on the task the matching fold was covering, " +
+			"or on the group's first task when there is none",
+		"That memory is `foldState.GroupFocus`, keyed by the group's own `ProjectKey`",
+		"written by `rememberCursorGroupFocus` when a fold closes and dropped by " +
+			"`setGroupFold` when one opens",
 		"A group is a value before it is a row",
 		"every row a grouped projection emits carries the one its block belongs to",
 		"The rendered row index is never part of it",

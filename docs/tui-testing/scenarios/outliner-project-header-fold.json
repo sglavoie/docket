@@ -13,9 +13,12 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "unfold the same group", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "label": "expanding a summary seats the cursor inside the group it opened, so the footer is the task's", "assert": "contains", "value": "w workflow" },
+    { "type": "assert", "assert": "not_contains", "value": "e project" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "step back onto the heading the expansion left behind", "key": "k" },
     { "type": "key", "label": "h folds one group; p folds every one of them", "key": "h" },
     { "type": "key", "label": "the set is mixed, so p expands rather than folding the rest", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },

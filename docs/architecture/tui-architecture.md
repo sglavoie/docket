@@ -133,6 +133,41 @@ key rather than the header declaring it — the same landing today, because a
 group's header is emitted above its members and carries the group, and a landing
 that survives a projection choosing not to draw one.
 
+Because the group is a value, a projection can decline to draw the heading that
+names it and every key still reaches it. `CompactProjectGroups` is that
+headerless presentation: `appendProjectGroupHeader` emits nothing for an expanded
+group and keeps the summary a folded one is, since that row is the whole of what
+the group shows — it names the project, carries the pressure counts, is what `l`
+expands, and is what every project operation resolves from. The switch exists so
+the headerless reading can be exercised before the row labels that make it
+readable land; both presentations run the same folding, navigation, group cursor
+restoration, and project targeting code, so a test may assert that they answer
+alike.
+
+`rowStartsGroup` is what `n`/`N` step between, and it is one rule covering the
+three cases that used to need a heading: a drawn header starts a block, a folded
+group's summary starts one, and so does the first row of a group whose heading
+was never drawn, because `index == 0 || m.Rows[index-1].Group != row.Group`. A
+separator, a note row, and the keyless focused-project header all carry the zero
+group, so none of them turns the row after it into a second start of the same
+block.
+
+`h` gains one rung at the bottom of its ladder and `l` one landing. A task row
+that has run out of hierarchy — no open checklist, no open children, and no
+parent at all — folds its own project group through `foldGroupAtCursor`, which is
+what keeps a group reachable from inside it when nothing above it can be stood
+on; a parent hidden by narrowing is a hierarchy state rather than a group
+boundary and keeps its existing silence, and a projection carrying no project
+half refuses. Expanding a summary is then the one expansion that moves the
+cursor, because the row it opens is a stand-in for the group's rows rather than a
+heading over them: `restoreGroupCursor` seats the cursor on the task the matching
+fold was covering, or on the group's first task when there is none. That memory
+is `foldState.GroupFocus`, keyed by the group's own `ProjectKey`, written by
+`rememberCursorGroupFocus` when a fold closes and dropped by `setGroupFold` when
+one opens, so it lives exactly as long as the fold that needs it. It is checked
+against the expanded group's own rows, never against the whole projection, so an
+identity a restored presentation checkpoint left behind can only be ignored.
+
 A group identifies a block within one projection and is not a handle across two.
 The fold namespaces two modes emit overlap by design — All's Today lane and the
 Today mode name one project's group with the same key — so `modeCursorAnchor`
@@ -199,16 +234,17 @@ row count — is what decides that a projection is empty, and
 `renderOutlinerEmptyState` paints the header above the existing explanation at
 full width, since one row can never overflow the window.
 
-`n`/`N` step the cursor between grouping headers, and their stop set is
-`IsHeaderRow()` — section headers and project headers both — because the header
-kind is not uniform across modes: All, Due, and Recent emit section headers
-while Inbox, Backlog, Today, and Next group by project only, so a section-only
-stop set would leave the keys dead in four of the seven modes. `h`/`l` and the
-`p` toggle narrow that to `IsCollapsibleHeader()`, since the focused-project
-header is a stop without a fold. The walk wraps at either end, and a projection
-holding no header at all — the flat ranked list outside a focused project —
-reports so through `OperationHandlerResult.Status` rather than leaving the key
-silent.
+`n`/`N` step the cursor between blocks, and their stop set is `rowStartsGroup` —
+any header row, plus the first row of a project group whose heading was not drawn
+— because neither the header kind nor the presence of a header is uniform: All,
+Due, and Recent emit section headers while Inbox, Backlog, Today, and Next group
+by project only, so a section-only stop set would leave the keys dead in four of
+the seven modes, and a header-only one would leave a whole group unreachable
+under `CompactProjectGroups`. `h`/`l` and the `p` toggle narrow that to
+`IsCollapsibleHeader()`, since the focused-project header is a stop without a
+fold. The walk wraps at either end, and a projection holding no block at all —
+the flat ranked list outside a focused project — reports so through
+`OperationHandlerResult.Status` rather than leaving the key silent.
 
 There are three fold axes and therefore three bulk keys: `s` for section
 headers, `p` for project group headers, `t` for task subtrees. Each is one
@@ -217,9 +253,10 @@ direction rule — if any member of the set is folded the press expands them all
 otherwise it folds them all — so the key never advertises a direction it does
 not always go. `s` and `p` share `CollapsedSections`, since a fold is a fold
 whichever axis declares it, and they separate by which half of the row's group
-they read: `s` still scans `IsSectionHeader` rows, while `p` takes the distinct
-groups `VisibleProjectGroups()` reports and writes each one's `ProjectKey`
-through `SetProjectGroupFolded`. Neither matches a key prefix — the ~13
+they read: `s` takes the distinct `SectionKey`s `VisibleSections()` reports and
+`p` the distinct groups `VisibleProjectGroups()` reports, and each writes its own
+half through `setGroupFold`. Neither scans for a header and neither matches a key
+prefix — the ~13
 collapse-key constructors are disjoint by construction but not by spelling — so
 `p` reaches all five project-group namespaces without enumerating any of them and
 without a project header having to be on screen to be named. `t` owns

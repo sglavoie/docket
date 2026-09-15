@@ -51,7 +51,15 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
 		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +
 			"`Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
-		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
+		// Session 7 moved n/N off the header row onto the block: a group whose
+		// heading is not drawn still starts one, so the guide names what is stepped
+		// between rather than the row kind that used to declare it.
+		"`n`/`N` jump to the next/previous block — a section, a project group, or a " +
+			"folded group's summary — wrapping at either end",
+		"a task with no checklist, no children, and no parent left to step to folds its " +
+			"own project group",
+		"`l` on the summary that replaces it puts the cursor back on the task the fold " +
+			"covered, or on the group's first task when there is none",
 		"`s`, `p`, and `t` are the three bulk fold toggles — every visible section header, " +
 			"every project group header, every task subtree — and each expands its whole set if " +
 			"any part of it is folded and otherwise folds the set",

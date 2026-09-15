@@ -13,6 +13,21 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
+// visibleSectionHeaderRows is the header-row reading of the section axis these
+// tests were written against. The Outliner itself no longer takes one: s reads
+// the section keys off the rows' own groups through VisibleSections, so that a
+// projection drawing no heading still folds. The scan survives here because a
+// test that zooms or collapses one named section needs the row that names it.
+func visibleSectionHeaderRows(m *outliner.OutlinerModel) []outliner.OutlinerRow {
+	headers := make([]outliner.OutlinerRow, 0)
+	for _, row := range m.Rows {
+		if row.IsSectionHeader {
+			headers = append(headers, row)
+		}
+	}
+	return headers
+}
+
 func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T) {
 	now := time.Now()
 	pinned := primaryRowsTask("pinned", models.StateBacklog)
@@ -52,7 +67,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 		t.Fatal("cross-project All mode is missing a project header")
 	}
 
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) < 4 {
 		t.Fatalf("visible section count = %d, want Pinned, Today, and workflow sections", len(headers))
 	}
@@ -85,7 +100,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	if !outlinerView.ToggleVisibleSections() {
 		t.Fatal("collapsed sections did not expand")
 	}
-	for _, header := range outlinerView.VisibleSectionHeaders() {
+	for _, header := range visibleSectionHeaderRows(outlinerView) {
 		if outlinerView.Folds.CollapsedSections[header.EffectiveCollapseKey()] {
 			t.Errorf("section %q remained collapsed", header.SectionName)
 		}
@@ -109,7 +124,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	outlinerView, _ := primaryRowsOutliner(project)
 	outlinerView.SelectOutlinerMode(chrome.ModeDue)
 
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) != 2 {
 		t.Fatalf("Due section count = %d, want Today and Next Seven Days", len(headers))
 	}
@@ -118,7 +133,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	if !outlinerView.ToggleVisibleSections() {
 		t.Fatal("mixed computed sections did not expand")
 	}
-	for _, header := range outlinerView.VisibleSectionHeaders() {
+	for _, header := range visibleSectionHeaderRows(outlinerView) {
 		if outlinerView.Folds.CollapsedSections[header.EffectiveCollapseKey()] {
 			t.Errorf("computed section %q remained collapsed", header.SectionName)
 		}
@@ -126,7 +141,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 
 	plain := outliner.NewOutlinerModel(project, nil, nil)
 	plain.SelectOutlinerMode(chrome.ModeInbox)
-	if len(plain.VisibleSectionHeaders()) != 0 {
+	if len(visibleSectionHeaderRows(plain)) != 0 {
 		t.Fatal("un-pinned Inbox fixture unexpectedly has section headers")
 	}
 	if plain.ToggleVisibleSections() {
@@ -181,7 +196,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("s = handled %v, cmd %v; want handled with no command", handled, cmd)
 	}
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) != 1 || !outlinerView.Folds.CollapsedSections[headers[0].EffectiveCollapseKey()] {
 		t.Fatalf("s did not collapse the visible section: headers=%+v collapsed=%v", headers, outlinerView.Folds.CollapsedSections)
 	}
@@ -210,7 +225,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) != 1 {
 		t.Fatalf("section header count = %d, want exactly one to zoom into", len(headers))
 	}

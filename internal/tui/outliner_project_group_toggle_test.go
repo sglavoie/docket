@@ -54,7 +54,7 @@ func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*outli
 // project-axis press can be shown to have written none of them.
 func sectionFoldStates(m *outliner.OutlinerModel) map[string]bool {
 	states := make(map[string]bool)
-	for _, row := range m.VisibleSectionHeaders() {
+	for _, row := range visibleSectionHeaderRows(m) {
 		states[row.EffectiveCollapseKey()] = m.IsSectionRowCollapsed(row)
 	}
 	return states
@@ -125,7 +125,7 @@ func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.
 func TestToggleVisibleProjectGroupsFoldsInsideASectionZoom(t *testing.T) {
 	outlinerView, _ := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) == 0 {
 		t.Fatal("All mode emitted no section headers to zoom into")
 	}
@@ -170,7 +170,7 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outlinerView, _ := primaryRowsOutliner(alpha, primaryRowsProject("beta", betaOne))
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	sections := outlinerView.VisibleSectionHeaders()
+	sections := visibleSectionHeaderRows(outlinerView)
 	if len(sections) < 2 {
 		t.Fatalf("section header count = %d, want a folded one and an expanded one", len(sections))
 	}

@@ -47,7 +47,10 @@
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "key": "l" },
+    { "type": "key", "label": "expanding the summary lands the cursor on the task it was standing in for", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "key", "label": "so hand Peek back to the project before undoing", "key": "k" },
+    { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
 
     { "type": "key", "label": "undo takes the comment back and the pane says so", "key": "u" },
     { "type": "wait" },

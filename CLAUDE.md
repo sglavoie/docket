@@ -232,6 +232,18 @@ block by scanning for a header or by comparing lane markers. It identifies a
 block inside one projection and never across two, because two modes may spell one
 project fold alike: `modeCursorAnchor` therefore holds no group.
 
+A projection may draw no heading over a group and every key still reaches it:
+`CompactProjectGroups` emits the header only while the group is folded, and that
+summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —
+a header row, or a row whose predecessor carried another group — and
+`VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
+the three scans for a header. `h`'s last rung folds the cursor's own group, after
+the checklist, the children, and a parent that exists, and refuses where there is
+no project half; `l` on a summary seats the cursor on the task the fold covered,
+else on the group's first task. `foldState.GroupFocus` is that memory, keyed by
+`ProjectKey`, written when a fold closes and dropped when one opens, and matched
+against the expanded group's own rows alone.
+
 That kernel still suppresses both single-project forms, which instead lead with
 one `IsFocusedProjectHeader` row over the owner `FocusedProjectHeaderOwner`
 resolves — `m.Project`, else the scoped project, else nothing, so an unavailable

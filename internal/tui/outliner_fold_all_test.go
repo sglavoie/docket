@@ -122,7 +122,7 @@ func TestToggleAllSubtreesLeavesTheOtherFoldAxesAlone(t *testing.T) {
 
 	checklistOwner := taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["parent"].ID}
 	outlinerView.Folds.SetChecklist(checklistOwner, true)
-	headers := outlinerView.VisibleSectionHeaders()
+	headers := visibleSectionHeaderRows(outlinerView)
 	if len(headers) == 0 {
 		t.Fatal("All mode emitted no section headers")
 	}

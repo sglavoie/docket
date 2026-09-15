@@ -545,6 +545,14 @@ type foldState struct {
 	// sectionToggleRestore preserves a task focus across one s-driven
 	// collapse/expand cycle. It is deliberately session-only.
 	SectionToggleRestore *sectionToggleRestoreAnchor
+
+	// groupFocus remembers, per project-group collapse key, the task the fold that
+	// closed that group was standing on, so expanding the group again puts the
+	// cursor back inside it instead of on the row that replaced it. Its lifetime is
+	// exactly the fold's: a key is written when the group closes and dropped when it
+	// opens, which is why a stale identity can never outlive the summary that was
+	// covering it.
+	GroupFocus map[string]taskref.TaskIdentity
 }
 
 // setNodes adopts a captured task-fold map. Deep-copying is the caller's,
@@ -604,8 +612,8 @@ func (s *foldState) clearSection(key string) {
 	delete(s.CollapsedSections, key)
 }
 
-// clearSections drops every section and project-group fold, and the anchor with
-// them. The anchor names a section key to return the cursor to, so it cannot
+// clearSections drops every section and project-group fold, and the two cursor
+// memories with them. Both name a key to return the cursor to, so neither can
 // outlive the folds that made it necessary.
 func (s *foldState) clearSections() {
 	if s == nil {
@@ -613,6 +621,43 @@ func (s *foldState) clearSections() {
 	}
 	s.setSections(make(map[string]bool))
 	s.SectionToggleRestore = nil
+	s.GroupFocus = nil
+}
+
+// rememberGroupFocus records the task one project group's fold has just hidden.
+// An invalid identity forgets instead of writing: a fold taken from a header row
+// stands on no task, and remembering an empty identity would make the next
+// expansion fall back to the group's first task twice over.
+func (s *foldState) rememberGroupFocus(key string, identity taskref.TaskIdentity) {
+	if s == nil || key == "" {
+		return
+	}
+	if !identity.Valid() {
+		s.forgetGroupFocus(key)
+		return
+	}
+	if s.GroupFocus == nil {
+		s.GroupFocus = make(map[string]taskref.TaskIdentity)
+	}
+	s.GroupFocus[key] = identity
+}
+
+// groupFocus reads the task a folded project group is covering.
+func (s *foldState) groupFocus(key string) (taskref.TaskIdentity, bool) {
+	if s == nil || key == "" {
+		return taskref.TaskIdentity{}, false
+	}
+	identity, ok := s.GroupFocus[key]
+	return identity, ok && identity.Valid()
+}
+
+// forgetGroupFocus drops one group's memory. Every write of an expanded fold
+// goes through it, so the memory exists exactly while the group is closed.
+func (s *foldState) forgetGroupFocus(key string) {
+	if s == nil {
+		return
+	}
+	delete(s.GroupFocus, key)
 }
 
 // setChecklists adopts a captured checklist-fold map on the same terms as
