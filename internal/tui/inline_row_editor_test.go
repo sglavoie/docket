@@ -210,10 +210,21 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	out.QuickEdit.Input.CursorEnd()
 	out.QuickEdit.RefreshDraft()
 	errorLine := ansi.Strip(out.QuickEditMetadataLine(row, project, 72))
-	for _, want := range []string{"EDIT TASK", "invalid priority", "[project]", "backlog"} {
+	// A refusal is readable nowhere else, so it is served first and the route
+	// shrinks to quickEditRouteFloor beneath it rather than the two splitting
+	// the width evenly and both arriving as stubs.
+	for _, want := range []string{"EDIT TASK", "invalid priority: !9", "backlog"} {
 		if !strings.Contains(errorLine, want) {
 			t.Errorf("error metadata missing %q: %q", want, errorLine)
 		}
+	}
+	// The floor is chosen so both route endpoints stay recognizable: the project
+	// chip at the front, the immediate parent at the back.
+	if !strings.Contains(errorLine, "[p") || !strings.Contains(errorLine, "› P") {
+		t.Errorf("error metadata dropped an endpoint of the compacted route: %q", errorLine)
+	}
+	if got := lipgloss.Width(errorLine); got > 72 {
+		t.Errorf("error metadata is %d columns: %q", got, errorLine)
 	}
 }
 
@@ -307,5 +318,67 @@ func TestInlineRowEditorRendersOnFoldedParentWithoutLeakingChildren(t *testing.T
 	}
 	if strings.Contains(plain, child.Title) {
 		t.Fatalf("folded editor leaked hidden child:\n%s", plain)
+	}
+}
+
+// TestInlineRowEditorLaysTheCaretOverTheReclaimedTitleColumns is the editor's
+// half of the row budget. The inline editor is the one surface that has to agree
+// with the row about arithmetic rather than about content: its buffer is laid
+// over exactly the columns the committed title occupies, so widening the title
+// widens the editor, and the caret cell after the scroll window has to be inside
+// the row rather than one column past it.
+func TestInlineRowEditorLaysTheCaretOverTheReclaimedTitleColumns(t *testing.T) {
+	out, project, _, child := inlineEditorFixture(t)
+	const buffer = "Child revised at length so the caret runs off the window"
+	// The fixture's child is deferred into the future, so All never lists it;
+	// the row is spelled here instead, with the nesting the editor has to lay
+	// its buffer past.
+	row := outliner.OutlinerRow{Task: child, ProjectID: project.ID, Prefix: "│   │   └── "}
+
+	for _, width := range []int{60, 80, 120} {
+		t.Run(fmt.Sprint(width), func(t *testing.T) {
+			out.QuickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+
+			committed := ansi.Strip(out.RenderOutlinerTaskRow(row, true, width, 0, nil))
+			cut := strings.Index(committed, child.Title)
+			if cut < 0 {
+				t.Fatalf("committed row did not show its title: %q", committed)
+			}
+			titleColumn := lipgloss.Width(committed[:cut])
+
+			out.QuickEdit.Input.SetValue(buffer)
+			out.QuickEdit.Input.CursorEnd()
+			out.QuickEdit.RefreshDraft()
+			lines := strings.Split(out.RenderOutlinerQuickEditRow(row, width), "\n")
+			if len(lines) < 2 {
+				t.Fatalf("editor rendered %d lines, want a metadata row and an input row", len(lines))
+			}
+			for index, line := range lines {
+				if got := lipgloss.Width(line); got > width {
+					t.Fatalf("editor line %d is %d columns of %d: %q", index, got, width, ansi.Strip(line))
+				}
+			}
+
+			input := ansi.Strip(lines[1])
+			// Same cells before the buffer as before the title: the editor
+			// borrows the row's own gutter, badges, and tree prefix rather than
+			// measuring a second one, so the buffer opens on the title's column.
+			if got, want := ansi.Truncate(input, titleColumn, ""), ansi.Truncate(committed, titleColumn, ""); got != want {
+				t.Fatalf("editor prefix differs from the row's:\n%q\n%q", got, want)
+			}
+			if strings.TrimSpace(ansi.Truncate(input, titleColumn, "")) == strings.TrimSpace(input) {
+				t.Fatalf("editor drew no buffer past the prefix: %q", input)
+			}
+			// The caret sits after the last character of the scroll window, so the
+			// window must stop one column short of the row. A buffer this long is
+			// scrolled, which is what puts the caret on the row's last column
+			// rather than somewhere in the middle of the text.
+			if !strings.Contains(lines[1], "\x1b[7;") {
+				t.Fatalf("no caret block on a scrolled buffer: %q", lines[1])
+			}
+			if !strings.HasSuffix(strings.TrimRight(input, " "), "off the window") {
+				t.Fatalf("scroll window did not follow the caret to the end: %q", input)
+			}
+		})
 	}
 }

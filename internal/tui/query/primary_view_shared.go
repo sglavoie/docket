@@ -149,20 +149,10 @@ func FormatDueDate(task *models.Task) string {
 // task came back. Past it the task is ordinary work again, not news.
 const DeferWakeWindow = 72 * time.Hour
 
-// FormatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
-// or 3d. Prose relative time is too wide for a row, and the day bucket header
-// already carries the coarse grouping; the chip only disambiguates within it.
-func FormatRecencyChip(key, now time.Time) string {
-	age := FormatRecencyAge(key, now)
-	if age == "" {
-		return ""
-	}
-	return theme.MutedStyle.Render(age)
-}
-
-// FormatRecencyAge is the unstyled age token. Peek composes several of them into
-// one styled line, so it needs the token without the chip's own styling; two
-// formatters would let the same age read two ways on adjacent lines.
+// FormatRecencyAge is the one age token in the product. Peek composes several of
+// them into one styled line and supplies that line's own styling, so the token is
+// minted unstyled; the task row carries no age at all now that an elapsed
+// duration is read beside the instants it is measured from rather than alone.
 func FormatRecencyAge(key, now time.Time) string {
 	if key.IsZero() {
 		return ""

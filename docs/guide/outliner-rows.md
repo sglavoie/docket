@@ -84,23 +84,29 @@ items, and `Esc` brings back exactly the rows that were open.
 
 ## Peek and multi-select
 
-The Outliner uses the full terminal width at every supported size. Task rows
-show workflow state, priority, due and defer dates, and
-checklist progress; short task IDs are hidden.
+The Outliner uses the full terminal width at every supported size. A task row is
+its title first: what the work is, in as many columns as the row can spare.
+Beside it the row carries only what you would act on without opening anything —
+workflow state, priority, whether it is pinned, when it is due, whether it owes
+a review, and how many other tasks it points at. Short task IDs are hidden, and
+so now are tags, context, the neutral Waiting and Doing ages, deferral markers,
+and the checklist, comment, and attachment counts. None of those is gone: `b`
+opens Peek on the same row and shows every one of them at full value, unclipped,
+rather than in a fixed-width badge the row had to buy out of the title.
 
-The bold `[context]` segment is reserved like the relation marker: it never
-drops when a row narrows. Its value uses at most 12 columns in the row, while
-Peek shows the complete value when truncation was necessary. Tags remain a
-separate, lower-salience segment and may drop first.
+The trade is deliberate. A row is a list you scan; Peek is the one you read. A
+title that fits is worth more on every row than a badge that only matters on
+some, and a value shown whole one keypress away is worth more than an
+abbreviation shown always.
 
-A deferral reads as `defer <date>` only while it is still pending, and the date
-carries a clock whenever the task comes back partway through a day. A deferral
-to a whole day stays a bare `defer Sep 2`; one that returns later today reads as
-`defer 15:04`, and one on another day as `defer Sep 2 15:04`, with the year
-added when it falls outside this one. Once the deferral lapses the row says
-`woke <age>` for three days, because a task that came back is work again and a
-past-dated `defer` would read as still hidden. After that the marker disappears
-and the task is ordinary work.
+A deferral is one of those. Peek's dates line reads `defer <date>` while it is
+still pending, and the date carries a clock whenever the task comes back partway
+through a day: a deferral to a whole day stays a bare `defer Sep 2`, one that
+returns later today reads as `defer 15:04`, and one on another day as
+`defer Sep 2 15:04`, with the year added when it falls outside this one. Once
+the deferral lapses Peek says `woke <age>` for three days, because a task that
+came back is work again and a past-dated `defer` would read as still hidden.
+After that the field disappears and the task is ordinary work.
 
 A row that wakes while the Outliner is open returns on its own within a minute,
 without a key press. The return waits if an overlay, picker, inline row editor,
@@ -110,27 +116,28 @@ that is only narrowing the mode's own lanes is not one of those states: it is
 re-answered on every rebuild, so the woken task is matched against it like any
 other row and returns with them.
 
-A Waiting task reads as `waiting <age>`, measured from the moment it entered
-Waiting rather than from the last time anything touched it, so recording a chase
-in the comments does not reset how long the work has been blocked. A due date
-beside it remains a deadline and keeps the ordinary due chip. A check-in is a
-separate schedule: once its day arrives the row additionally says `review today`
-or `review +<age>`, unless the task is deferred; before then it appears only in
-Peek and scheduling controls. A task you flagged with `=` and owe no date for
-says a bare `review`, so the row always names what it is asking for. Moving a
-task to Waiting with `ww` still asks for the deadline immediately; `Esc` there
-declines the date and the Waiting move still stands.
+A Waiting task carries its state badge and nothing else about the waiting. Peek
+reads `waiting <age>`, measured from the moment it entered Waiting rather than
+from the last time anything touched it, so recording a chase in the comments
+does not reset how long the work has been blocked. A due date beside it remains
+a deadline and keeps the ordinary due chip on the row. A check-in is a separate
+schedule: once its day arrives the row says `review today` or `review +<age>`,
+unless the task is deferred; before then it appears only in Peek and scheduling
+controls. A task you flagged with `=` and owe no date for says a bare `review`,
+so the row always names what it is asking for. Moving a task to Waiting with
+`ww` still asks for the deadline immediately; `Esc` there declines the date and
+the Waiting move still stands.
 
-Waiting by itself is quiet. The row says `waiting`, and that is the whole
-signal: no background tint, and nothing that makes it read as more urgent than
-the work you could actually do something about today. Waiting says where a task
-is, not how loudly it is asking. A Waiting task still shouts when it earns it —
-a deadline that has passed, a check-in whose day has come, a priority you
-set — on exactly the same terms as any other task.
+Waiting by itself is quiet. The badge says where the task is, and that is the
+whole signal: no background tint, no age competing for the eye, and nothing that
+makes it read as more urgent than the work you could actually do something about
+today. Waiting says where a task is, not how loudly it is asking. A Waiting task
+still shouts when it earns it — a deadline that has passed, a check-in whose day
+has come, a priority you set — on exactly the same terms as any other task.
 
 Due dates and arrived check-ins both render as a filled chip rather than as colored
-text, so a date reads as one bounded object beside the titles, tags, and context
-badges that share the row. All three tiers are chips — overdue, today, and
+text, so a date reads as one bounded object at the end of a row the title now
+owns. All three tiers are chips — overdue, today, and
 upcoming — and they share one hue that no section header uses, so a date is
 never mistaken for a section; urgency is carried by how saturated the fill is
 rather than by its hue. The two tiers that demand an answer — overdue and today
@@ -141,15 +148,14 @@ the cursor the chip keeps its own colors like every other colored segment, and
 under `--no-color` the fill drops away, the bold survives, and the `⊡` glyph
 marks the date on its own.
 
-A Doing task similarly reads as `doing <age>`, measured from the moment it
-entered Doing rather than from its last touch. The neutral age remains beside a
-due date when both apply; it reports how long work has stayed active without
-turning age alone into another urgency badge.
+A Doing task similarly reads `doing <age>` in Peek, measured from the moment it
+entered Doing rather than from its last touch. It reports how long work has
+stayed active without spending a row column on an age that is never itself the
+thing you act on.
 
-From the third deferral onward, a row also reads `deferred ×N`. Moving the date
-of a still-pending deferral does not add to the count; deferring the task again
-after it woke does. This supporting count drops before every other row indicator
-under width pressure, while Peek keeps the same token on its existing dates line.
+From the third deferral onward, Peek's dates line also reads `deferred ×N`.
+Moving the date of a still-pending deferral does not add to the count; deferring
+the task again after it woke does.
 
 A task holding soft dependencies ends its indicators with `~S/N`: `N` counts the
 references it stores and `S` how many of them are settled. `N` is a count of what
@@ -171,12 +177,13 @@ an archived or parked one; the row stays muted rather than green there because i
 cannot see whether that work is done, and saying green would claim otherwise.
 Peek is still where the targets themselves are named.
 
-A row that cannot fit every indicator sheds them in a fixed order rather than
-squeezing the title: the repeated-deferral count goes first, then checklist,
-comment, and attachment counts because the checklist rows and Peek still carry
-them, then the dependency count because Peek still names it, then the recency
-and defer markers, then the neutral waiting and Doing ages, then the arrived
-check-in; the deadline goes last.
+A row that still cannot fit its three indicators sheds them in a fixed order
+rather than squeezing the title: the reference census goes first, because Peek
+names every target in full and neither the deadline nor the review depends on
+it; the owed review follows, because it says the task wants looking at while the
+deadline says when something is actually due; the deadline goes last. The order
+is short because the budget is short — the counts, ages, and markers that used
+to fill the lower rungs did not move down it, they left the row for Peek.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -197,7 +204,7 @@ they neither eat the title on a wide row nor disappear on a crowded one.
 The pin marker reads the same way. A pinned task drawn anywhere but the Pinned
 lane — Inbox, Next, Backlog, Due, Recent, the flat ranked list, or a filter that
 admits a terminal or deferred pinned row into All or Today — wears a bold `*`
-before its context badge and title. Rows inside the Pinned lane wear nothing,
+before its title. Rows inside the Pinned lane wear nothing,
 because the section header already says it. The marker is reserved columns like
 the relation mark and is never dropped.
 

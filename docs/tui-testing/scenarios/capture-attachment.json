@@ -18,7 +18,7 @@
     { "type": "assert", "label": "the attachment value left the title", "assert": "not_contains", "value": "example.com/spec.pdf" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "assert", "label": "the row carries the attachment indicator", "assert": "contains", "value": "⊕ 1" },
+    { "type": "assert", "label": "the row leaves the attachment count to Peek and the panel below", "assert": "not_contains", "value": "⊕ 1" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },

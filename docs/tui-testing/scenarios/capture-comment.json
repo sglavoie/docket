@@ -19,7 +19,7 @@
     { "type": "assert", "label": "no tag was minted from the comment text", "assert": "not_contains", "value": "auth" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "assert", "label": "the row carries the comment indicator", "assert": "contains", "value": "▪ 1" },
+    { "type": "assert", "label": "the row leaves the comment count to Peek and the panel below", "assert": "not_contains", "value": "▪ 1" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },

@@ -707,7 +707,21 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// exception, the empty projection, is named because it is the one path with no
 	// list beneath the dock to protect. The mechanism lives in
 	// docs/architecture/search-filters-and-sorting.md.
-	const budget = 48761
+	// Thirty-fifth raise, 48761 to 49636, for the simplified row budget. 875
+	// bytes buy the rule that the row promotes three indicators and no more, and
+	// that indicatorDropLadder is exactly that list reversed. The old ladder had
+	// ten rungs, so "a new indicator gets a position" read as an invitation to
+	// add an eleventh; naming the three and naming where everything else went is
+	// what makes the ceiling enforceable rather than advisory, and what keeps a
+	// contributor from re-adding a tag chip or an age the row deliberately stopped
+	// buying out of its title. The counterpart is the editor: the title budget a
+	// row reclaims is worth nothing if the caret is laid out against a second copy
+	// of the row's arithmetic, so titlePrefix() is named as the one source, and
+	// the refusal-over-route precedence is named because a validation error the
+	// user cannot read is the one way widening the title makes the editor worse.
+	// The mechanism lives in docs/architecture/row-indicators.md and
+	// docs/decisions/behavioral-signals-contracts.md.
+	const budget = 49636
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -768,7 +782,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`TruncateToVisualWidth` has no counterpart: its dropped tail is not\n  recoverable",
 		"Nothing sits outside that window and the document has no header",
 		"Checklist and comments stay counts; their items are rows and their panel",
-		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
+		"A task row promotes three indicators and no more \u2014 the deadline, an owed\n  review, the reference census \u2014 and `indicatorDropLadder` is that list in\n  reverse",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",
 		"amber blocked, green settled, muted unreadable",
 		"an addition naming a task inside the selection",
@@ -777,8 +791,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`~task` is the one repeatable reference crossing a project boundary",
 		"`DependencyPatch`'s zero value is no intent, so a save that never mentions a reference " +
 			"preserves the set",
-		"The relation marker, the task context segment, and the pin marker stay out of it",
-		"`taskRowSegments` reserves all three at every width",
+		"The relation marker and the pin marker stay\n  out of that ladder",
+		"`taskRowSegments` reserves both at every width",
+		"`taskRowSegments.titlePrefix()` is where the inline row editor gets its indent\n  and its width",
+		"`quickEditMandatoryMetadata` serves it first and shrinks the\n  route to `quickEditRouteFloor` beneath it",
 		"`taskRelationMarker` is one segment both ways",
 		"The four-step pulse ladder drops done, inbox, overdue, then today",
 		"pace outranks the workspace pulse: exhaust that ladder first, then shorten and remove pace before " +

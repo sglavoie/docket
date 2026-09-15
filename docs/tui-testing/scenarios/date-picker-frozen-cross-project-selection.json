@@ -63,7 +63,7 @@
     { "type": "key", "key": "m" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
-    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist now  ⊡ Tomorrow" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist  ⊡ Tomorrow" },
     { "type": "assert", "label": "a deadline is not a deferral", "assert": "not_contains", "value": "defer" },
     { "type": "key", "label": "a terminal row paints no deadline, so read its detail", "key": "esc" },
     { "type": "key", "key": "g" },

@@ -399,17 +399,6 @@ func (r *recencyState) frozenKeys() map[taskref.TaskIdentity]time.Time {
 	return r.keys
 }
 
-// frozenAt answers for one row, so the chip a render draws agrees with the
-// bucket the ordering pass put that row in. A task the freeze does not name is
-// the caller's to fall back on.
-func (r *recencyState) frozenAt(identity taskref.TaskIdentity) (time.Time, bool) {
-	if r == nil {
-		return time.Time{}, false
-	}
-	frozen, ok := r.keys[identity]
-	return frozen, ok
-}
-
 // thaw drops the freeze and the projection together, so the next pass re-reads
 // activity from the world. Entering Recent over an already-open Recent is the
 // manual refresh, and this is what makes it one.

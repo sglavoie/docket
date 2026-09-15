@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -38,13 +37,11 @@ const EmptyStateNoTasks = "No tasks yet. Press a to capture one."
 // caller's overflow count stays honest by construction and each surface keeps
 // its own rules about which tags are renderable at all.
 //
-// Semantic tags are deprioritized, never excluded: a row that can afford two
-// chips spends them on the tags a reader cannot guess from the six-name
-// vocabulary every task shares, and Peek still names the complete set. The rule
-// predates neutral titles, where a semantic tag was deprioritized because the
-// title color had already said it; the ordering outlived that reason, and which
-// chips a narrowed row keeps is the row-budget work's to revisit rather than the
-// sort's to decide unilaterally. Membership in that deprioritized group is the
+// Semantic tags are deprioritized, never excluded: the descriptive tags a reader
+// cannot guess lead, and the six-name vocabulary every task shares follows them.
+// Peek is now the one surface that renders a chip at all — the task row carries
+// no tags — so the order decides reading sequence rather than which chips survive
+// a width. Membership in that deprioritized group is the
 // models.SemanticTaskTagByName lookup, the same one the pickers build their
 // SEMANTIC section from.
 //
@@ -73,54 +70,12 @@ func OrderedTaskTags(tags []string) []string {
 	return ordered
 }
 
-// RenderTruncatedTags renders a compact inline tag string with per-tag truncation
-// and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
-// Each tag wears its own chip color from TagChipStyle; the +N overflow stays
-// muted because it counts tags rather than naming one.
-// Returns an empty string if there are no tags.
-func RenderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
-	if len(tags) == 0 {
-		return ""
-	}
-	var parts []string
-	for i, tag := range OrderedTaskTags(tags) {
-		if i >= maxTags {
-			break
-		}
-		// The full tag decides the color; truncation is presentation only, so a
-		// clipped chip keeps the color its Peek counterpart shows in full.
-		display := textfit.TruncateToVisualWidth(tag, maxTagLen)
-		parts = append(parts, theme.TagChipStyle(tag).Render("#"+display))
-	}
-	result := strings.Join(parts, " ")
-	if len(tags) > maxTags {
-		result += theme.MutedStyle.Render(fmt.Sprintf(" +%d", len(tags)-maxTags))
-	}
-	return result
-}
-
 // PinnedMarker is the one pin vocabulary every surface that lists a pinnable
 // thing shares: the bold `*` the `*` key writes and the `*pin` sigil names. It
 // is a glyph rather than a color because SelectedLine strips styling from the
 // cursor row, so a colored name says nothing about the row the user is on.
 func PinnedMarker() string {
 	return theme.PinnedMarkerStyle.Render("*") + " "
-}
-
-// RenderCommentIndicator renders a compact comment count indicator.
-func RenderCommentIndicator(task *models.Task) string {
-	if len(task.Comments) == 0 {
-		return ""
-	}
-	return theme.MutedStyle.Render(fmt.Sprintf("%s %d", theme.IconComment(), len(task.Comments)))
-}
-
-// RenderAttachmentIndicator renders a compact attachment count indicator.
-func RenderAttachmentIndicator(task *models.Task) string {
-	if !task.HasAttachments() {
-		return ""
-	}
-	return theme.MutedStyle.Render(fmt.Sprintf("%s %d", theme.IconAttachment(), task.AttachmentCount()))
 }
 
 // formatGitHubIssueRef renders the compact owner/repo#number form. It carries
@@ -151,24 +106,4 @@ func AttachmentDisplayName(att models.Attachment) string {
 		return fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
 	}
 	return att.Filename
-}
-
-// RenderChecklistIndicator renders a compact checklist progress indicator.
-func RenderChecklistIndicator(task *models.Task) string {
-	if len(task.Checklist) == 0 {
-		return ""
-	}
-	completed, total := checklistCounts(task)
-	return theme.MutedStyle.Render(fmt.Sprintf("%s%d/%d", theme.IconChecklist(), completed, total))
-}
-
-// checklistCounts returns (completed, total) for a task's checklist.
-func checklistCounts(task *models.Task) (int, int) {
-	completed := 0
-	for _, item := range task.Checklist {
-		if item.Done {
-			completed++
-		}
-	}
-	return completed, len(task.Checklist)
 }

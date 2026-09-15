@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
@@ -165,9 +166,11 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 			"created 3h",
 		},
 		{
-			"a pending deferral is not a wake-up",
+			// The row carries no deferral now, so Peek names the pending one — and
+			// still names it as the deferral it is rather than as a wake-up.
+			"a pending deferral names the day it comes back, not a wake-up",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
-			"created 1d",
+			"created 1d · defer " + chrome.FormatDeferDate(pending, now),
 		},
 		{
 			"a lapsed deferral past the wake window falls silent",

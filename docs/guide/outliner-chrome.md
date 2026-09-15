@@ -147,7 +147,7 @@ bright column at the far left says where the cursor is, and the empty columns
 past the row's text carry a dim recess saying how far the row reaches. Nothing
 between them changes: the multi-select box, the tree connectors and the fold
 arrow keep the colors they wear on every other row, and so do the state badge,
-the priority badge, the tag chips, the due tier, the project badge and the
+the priority badge, the due tier, the project badge and the
 search-match highlight — all of which read the same under the cursor as beside
 it, leaving an overdue row visibly overdue while you stand on it. The bar is the
 row's leftmost column on every row type: a blank
@@ -158,7 +158,7 @@ parent selectors, notes, the project hub — still inverts the whole row, becaus
 flat list row has no margins to paint.
 
 Every tag carries a color, and it is the same color everywhere a tag is rendered
-as itself: the chips on a task row, the `Tags:` line in Peek, and every row of
+as itself: the `Tags:` line in Peek, and every row of
 the tag list the composer's expanded detail opens. Nothing needs configuring — a
 tag earns its color from its own name the first time you type it and keeps it
 for good, and `T` re-resolves the whole set for the new theme so a tag stays
@@ -183,16 +183,15 @@ Read a chip color as a mnemonic, not a legend. It tells you `#billing` is
 reliably that one color; it never tells you what that color means. Six chip
 colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
 share one, and nothing in `tt` ever decides anything from a chip color. A `bug`,
-`question`, `epic`, `story`, `feature`, or `idea` tag is a tag like any other on
-a row: it wears its chip and nothing else. The task title stays ordinary text
+`question`, `epic`, `story`, `feature`, or `idea` tag is a tag like any other:
+it wears its chip in Peek and the pickers and nothing else. The task title stays ordinary text
 whatever a task is tagged, how urgent it is, or when it is due.
 
-A row shows at most two chips, and it chooses them instead of showing the first
-two you typed: descriptive tags come first in alphabetical order, then the
-semantic ones, with a `+N` counting whatever did not fit. A task tagged `ux`,
-`bug`, and `billing` reads `#billing #ux +1` however you typed it: the six
-semantic names are a vocabulary every task shares, so the two row slots go to
-the tags you cannot guess. Peek names the whole set in the same order and
-the same colors, so a row is always the beginning of its own Peek line. A task
-carrying nothing but semantic tags still shows them, because the chip is the
-only place its row says so.
+A task row shows no chips at all. Its columns go to the title, and Peek names
+the whole tag set on one `Tags:` line, in an order that does not depend on how
+you typed them: descriptive tags first in alphabetical order, then the semantic
+ones, also alphabetical. A task tagged `ux`, `bug`, and `billing` reads
+`#billing #ux #bug` however it was captured — the six semantic names are a
+vocabulary every task shares, so the tags you cannot guess lead. Nothing is
+dropped and nothing is counted away, because Peek wraps rather than clips: the
+order decides reading sequence, not survival.

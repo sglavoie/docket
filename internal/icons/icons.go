@@ -6,8 +6,7 @@ var registry = map[string]string{
 	"status.waiting": "⊘", "status.paused": "‖", "status.someday": "¿",
 	"status.done": "✓", "status.canceled": "✕",
 	"priority.1": "◉", "priority.2": "●", "priority.3": "◆",
-	"comment": "▪", "attachment": "⊕", "github_issue": "GH",
-	"checklist":        "☑",
+	"github_issue":     "GH",
 	"checkbox.checked": "☑", "checkbox.unchecked": "☐",
 	"warning": "⚠", "success": "✓", "error": "✕",
 }

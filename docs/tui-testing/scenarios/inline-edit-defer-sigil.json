@@ -10,7 +10,8 @@
     { "type": "key", "key": "down" },
     { "type": "key", "label": "highlight Deferred only, below the four due-date rows", "key": "down" },
     { "type": "key", "label": "isolate the pending deferrals", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Alpha still hidden defer" },
+    { "type": "assert", "label": "the facet is what names the deferral; the row is a title", "assert": "contains", "value": "Alpha still hidden" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha still hidden defer" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the project header", "key": "j" },
@@ -22,7 +23,8 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #4 Alpha still hidden" },
-    { "type": "assert", "label": "the task now carries both a deferral and a due day; the due chip is a padded badge, so it sits between two spaces", "assert": "contains", "value": "Alpha still hidden  ⊡ Tomorrow  defer" },
+    { "type": "assert", "label": "the deadline is a row signal, so the due chip arrives as a padded badge", "assert": "contains", "value": "Alpha still hidden  ⊡ Tomorrow" },
+    { "type": "assert", "label": "the deferral it still carries stays off the row; the deferred-only facet holding this row is the proof it survived", "assert": "not_contains", "value": "Tomorrow  defer" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "edit the same row again", "key": "e" },
@@ -34,8 +36,7 @@
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },
     { "type": "key", "label": "clear every facet", "key": "x" },
-    { "type": "assert", "label": "@@0 cleared the deferral without touching the due day @ owns", "assert": "contains", "value": "Alpha still hidden  ⊡ Tomorrow" },
-    { "type": "assert", "label": "the defer token left the row, which the badge spacing alone would not prove", "assert": "not_contains", "value": "Alpha still hidden  ⊡ Tomorrow  defer" },
+    { "type": "assert", "label": "@@0 cleared the deferral without touching the due day @ owns, and the row the deferred facet just dropped is visible again", "assert": "contains", "value": "Alpha still hidden  ⊡ Tomorrow" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "step onto the Today membership, which holds no deferral", "key": "home" },

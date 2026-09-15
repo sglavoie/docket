@@ -137,7 +137,10 @@ func attentionMatrix() []attentionCase {
 					WorkflowState: models.StateWaiting, StateChangedAt: now.AddDate(0, 0, -5),
 				}
 			},
-			plain:      []string{"Blocked on someone", "waiting"},
+			plain: []string{"Blocked on someone"},
+			// The state badge is identity and says it; the age it used to wear
+			// beside it is Peek's now, so an ordinary Waiting row stays quiet.
+			absent:     []string{"waiting"},
 			titleStyle: normal,
 		},
 		{
@@ -150,7 +153,8 @@ func attentionMatrix() []attentionCase {
 					DueDate: &due, Priority: 1, Review: true,
 				}
 			},
-			plain:      []string{"Blocked and late", "waiting", "review"},
+			plain:      []string{"Blocked and late", "review"},
+			absent:     []string{"waiting"},
 			tinted:     true,
 			titleStyle: normal,
 		},
@@ -188,7 +192,11 @@ func attentionMatrix() []attentionCase {
 					WorkflowState: models.StateBacklog, Tags: []string{"bug"}, Priority: 1,
 				}
 			},
-			plain:      []string{"Crash on save", "#bug"},
+			plain: []string{"Crash on save"},
+			// A semantic tag reaches the reader as a Peek chip. It was never
+			// allowed to reach them through the title, and it no longer reaches
+			// them through a row chip either.
+			absent:     []string{"#bug"},
 			titleStyle: normal,
 		},
 	}

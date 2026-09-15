@@ -401,17 +401,28 @@ Row and Peek budget:
 - `TruncateToVisualWidth` has no counterpart: its dropped tail is not
   recoverable, so a surface needing the whole text renders the whole text,
   wrapped.
-- `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append. The trailing `~S/N` counts stored locators in `N` regardless of target
-  state or availability, degrades with the content counts, and is gated by no
+- A task row promotes three indicators and no more — the deadline, an owed
+  review, the reference census — and `indicatorDropLadder` is that list in
+  reverse: a new indicator earns a position or it does not go on the row. Tags,
+  context, the Waiting and Doing ages, the deferral, and the checklist, comment,
+  and attachment counts are Peek's, whole; every reclaimed column is the title's.
+  The trailing `~S/N` counts stored locators in `N` regardless of target
+  state or availability and is gated by no
   column. Only `S`, the `?` suffix, and the color read the targets, one hop and
   never transitively: amber blocked, green settled, muted unreadable. Peek's two
   lines repeat those numbers and add no line.
-  The relation marker, the task context segment, and the pin marker stay
-  out of it — `taskRowSegments` reserves all three at every width, and Peek
+  The relation marker and the pin marker stay
+  out of that ladder — `taskRowSegments` reserves both at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
-  `ShowsPinned`.
+  `ShowsPinned`. The match cue is shed ahead of the whole ladder and is now the
+  one on-row explanation of a hit the row cannot show.
+- `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent
+  and its width, so the title budget reaches the caret by construction and never
+  as a second copy of the row's arithmetic. A validation refusal is readable
+  nowhere else, so `quickEditMandatoryMetadata` serves it first and shrinks the
+  route to `quickEditRouteFloor` beneath it rather than halving both; that floor
+  keeps the route's two endpoints, the project chip and the immediate parent.
 - The 60-second periodic tick invalidates a projection when its frozen local day
   is no longer current, so `?review`, Review counts, rows, and Peek answer an
   arrived check-in without a key press. The invalidation remains owed under an
@@ -551,9 +562,9 @@ metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
 names. No renderer resolves several semantic tags to one; each reaches a row as
 its own chip.
 
-A task title is neutral text: priority, a deadline, an owed review, a pin, and a
-semantic tag each reach the row through their own badge, chip, or segment and
-never through the title. `theme.TaskTitleStyleFor` is that one authority and
+A task title is neutral text: priority, a deadline, an owed review, and a pin
+each reach the row through their own badge or segment, a semantic tag reaches
+Peek through its chip, and none reaches the title. `theme.TaskTitleStyleFor` is that one authority and
 answers lifecycle alone — muted, canceled, cursor-selected.
 `chrome.PickHeroAttribute` is the attention ladder — overdue, review over
 `models.TaskNeedsAttention`, due today, then priority 1 — and it demotes one

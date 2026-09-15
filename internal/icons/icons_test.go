@@ -16,7 +16,7 @@ import (
 func TestGetUsesStableUnicodeRegistry(t *testing.T) {
 	for key, want := range map[string]string{
 		"date": "⊡", "status.backlog": "□", "priority.1": "◉",
-		"attachment": "⊕", "checkbox.checked": "☑", "github_issue": "GH",
+		"checkbox.checked": "☑", "github_issue": "GH",
 	} {
 		if got := Get(key); got != want {
 			t.Errorf("Get(%q) = %q, want %q", key, got, want)

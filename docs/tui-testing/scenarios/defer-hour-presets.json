@@ -44,8 +44,13 @@
     { "type": "key", "key": "down" },
     { "type": "key", "label": "highlight Deferred only, below the four due-date rows", "key": "down" },
     { "type": "key", "label": "isolate the pending deferrals", "key": "enter" },
-    { "type": "assert", "label": "the hidden task is still there, wearing its wake marker", "assert": "contains", "value": "Triage support inbox defer" },
+    { "type": "assert", "label": "the hidden task is still there, named by the facet rather than by a row marker", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox defer" },
+    { "type": "key", "label": "onto the deferred row", "key": "end" },
+    { "type": "key", "label": "Peek is where the wake time lives now", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "defer " },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close Peek", "key": "esc" },
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },
     { "type": "key", "label": "clear every facet", "key": "x" },
@@ -53,8 +58,7 @@
     { "type": "wait" },
     { "type": "key", "label": "back to Inbox, where the task started", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "assert", "label": "undo restores the row to ordinary triage", "assert": "contains", "value": "Triage support inbox" },
-    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox defer" },
+    { "type": "assert", "label": "undo restores the row to ordinary triage, which a still-deferred task could not reach", "assert": "contains", "value": "Triage support inbox" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

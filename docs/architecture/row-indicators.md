@@ -2,14 +2,23 @@
 
 #### Row indicators
 
-A defer indicator is state-dependent, not a field dump. `formatDeferIndicator`
-renders `defer <date>` only while `IsDeferredAt(now)` holds, then `woke <age>`
-for `DeferWakeWindow` (72h, defined in
-`internal/tui/query/primary_view_shared.go`), then nothing.
-The age reuses `FormatRecencyChip` so a lapsed deferral is not formatted a
-second way. `taskWokeRecently` is the one lapsed-deferral predicate and
-`FormatRecencyAge` is the one age token; the Peek dates line reads both rather
-than re-deriving either, so the row and the line beneath it can never disagree.
+A task row promotes three operational signals and no more: the deadline, an
+owed review, and the outgoing-reference census. Everything a row used to
+abbreviate beside them — the tag chips, the context badge, the Waiting and Doing
+ages, the deferral, the checklist tally, the comment and attachment counts, the
+recency chip — is now read in Peek, at full value rather than in a fixed-width
+badge. The trade is deliberate and one-directional: a row is scanned to decide
+what to do next, so it carries required interaction context and spends every
+other column on the title, while Peek is the complete document one `b` away.
+Nothing was deleted from the product; each signal has exactly one surface now
+instead of a truncated copy and a whole one.
+
+A deferral is therefore state-dependent prose on the Peek dates line rather than
+a row segment. `inlinePeekDatesLine` names `defer <date>` while
+`IsDeferredAt(now)` holds, then `woke <age>` for `DeferWakeWindow` (72h, defined
+in `internal/tui/query/primary_view_shared.go`), then nothing.
+`taskWokeRecently` is the one lapsed-deferral predicate and `FormatRecencyAge`
+the one age token, so the two halves cannot be formatted two ways.
 The workspace pulse deliberately carries no `woke` component: lapsed deferrals
 name work that requires navigation before action. Its fourth component is instead
 the current local day's Done count, a non-deficit progress signal, and the ladder
@@ -17,7 +26,7 @@ in `formatWorkspacePulseComponents` drops Done, Inbox, overdue, then Today.
 
 `chrome.FormatDeferDate` renders the pending half of that ladder against `now`,
 because
-a deferral is an instant and the row has to say when the task comes back. It
+a deferral is an instant and Peek has to say when the task comes back. It
 resolves the value into `now`'s zone first — instants read from disk keep the
 fixed-offset zone `parseProjectDocumentInstant` preserves for byte-stable
 revisions — and then reads one clock for all three decisions. A midnight-valued
@@ -53,12 +62,15 @@ runs the same refresh and then restores Inbox, Today, and Overdue whenever
 `deferWakeOwedAt` still reports a lapsed clock: the new day's `Done` advances
 while those three counters wait for the rebuild that makes their rows visible.
 
-Waiting age reads the state clock, never the touch time.
-`formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
-formats `StateChangedAt` through `FormatRecencyChip`, so a comment, a tag, or a
-reparent on a blocked task cannot reset how long it has been blocked. A Waiting
-deadline remains the ordinary `FormatDueDate` segment; check-ins are a separate
-schedule and never reinterpret or suppress it.
+Waiting and Doing ages read the state clock, never the touch time, and they are
+one value on one surface: `inlinePeekStateValue` appends
+`FormatRecencyAge(task.StateChangedAt, now)` to the state for those two states
+alone, so Peek says `waiting 12d` or `doing now` and the row says neither. A
+comment, a tag, or a reparent on a blocked task therefore cannot reset how long
+it has been blocked, and the state badge on the row carries the fact while the
+age carries the duration. A Waiting deadline remains the ordinary
+`FormatDueDate` segment on the row; check-ins are a separate schedule and never
+reinterpret or suppress it.
 
 `formatReviewIndicator` spells `models.TaskNeedsAttention` and nothing else, so
 the row and `chrome.PickHeroAttribute` read one predicate and a row can never
@@ -74,8 +86,8 @@ overlay, picker, editor, visual selection, or ranked result, and the eventual
 rebuild restores the cursor by qualified task identity.
 
 Every due reading is a background badge rather than colored text, so a date
-reads as one bounded object in a row whose title is neutral and whose tags and
-context carry their own colors. `ClassifyDueDate`'s three tiers and
+reads as one bounded object in a row whose title is neutral and whose other
+signals are badges of their own. `ClassifyDueDate`'s three tiers and
 `formatReviewIndicator`'s three share the `makeDueBadgeStyle` family, which holds the section header's
 contrast contract — a tone-aware fill under a high-contrast foreground. A tier
 passes that constructor one `dueBadgeTone`: the fill and the ink that reads on
@@ -120,17 +132,10 @@ survives as the six-name vocabulary's reserved accent with the `SEMANTIC` picker
 rows as its one consumer; its `...Title` palette keys are historical names kept
 because the palette is a published surface.
 
-Doing age follows the same state-clock contract.
-`formatDoingAgeIndicator` is gated on `IsInState(models.StateDoing)` and formats
-`StateChangedAt` through `FormatRecencyChip`, so edits to active work do not
-reset how long it has remained in Doing. It stays neutral and renders alongside
-a due date rather than competing with the row's one hero attribute.
-
-Repeated deferral starts at `DeferCount >= 3`. The row renders the supporting
-segment as `deferred ×N`; Peek appends the identical token to
-`inlinePeekDatesLine`, so it opens no section of its own in the Peek body.
-The row segment is the first `indicatorDropLadder` entry and therefore yields
-before every operational date or age signal under width pressure.
+Repeated deferral starts at `DeferCount >= 3` and is Peek's alone:
+`inlinePeekDatesLine` appends `deferred ×N`, so it opens no section of its own in
+the Peek body and costs the row nothing at any width. `taskHasRepeatedDeferrals`
+stays the one threshold predicate.
 
 A task holding soft references renders a trailing `~S/N` from
 `renderDependencyIndicator`. It is deliberately ungated by a `ColumnConfig`
@@ -185,14 +190,19 @@ population.
 `quickEditOptionalMetadata` builds its own unstyled `~N`: that is a grammar echo
 of the edit buffer, not a row indicator, and it is deliberately left uncolored.
 
-`indicatorDropLadder` is the row's drop order, and it is a list rather than a set
-because eleven segments cannot all fit at minimum width. Counts go first, since
-the row's own badges and Peek still carry them; the reference count follows them
-for the same reason and stays ahead of every operational signal, because a
-reference changes nothing about when the task is due or how long it has been
-waiting. Recency, defer, Waiting age, and Doing age follow; an arrived eligible
-check-in leaves after those elapsed signals, and the deadline goes last. A new
-indicator gets a position in that list, not an append.
+`indicatorDropLadder` is the row's drop order, and it stays a list rather than a
+set even now that it holds three entries, because the order is the contract and
+an append is not a position. The reference census goes first: Peek names every
+target in full, and no deadline or owed review depends on it. The owed review
+follows, because it says a task wants looking at while the deadline says when
+something is actually due. The deadline goes last — it is the final commitment
+width pressure may hide. A new indicator gets a position in that list, not an
+append.
+
+The ladder is short because the budget is: the seven entries it lost were not
+demoted within it, they left the row for Peek. Adding one back means arguing that
+it is required to decide what to do next from the list alone, not merely that it
+is useful.
 
 The search match cue sits above that ladder rather than in it. A projected row
 whose hit came from a field the title cannot show carries one muted
@@ -200,10 +210,12 @@ whose hit came from a field the title cannot show carries one muted
 `· attachment`, `· project`, or `· details` segment, mapped from
 `outlinerRow.MatchSource` by `matchSourceLabels`; a title hit and every ordinary
 row carry none. It is a `taskRowSegments` field, so `titleWidth` charges it once
-like any other segment, and it is the first thing a crowded row sheds — before
-the tag chips and before every `indicatorDropLadder` entry — because an
-explanation is worth nothing beside an unreadable title, and because shedding it
-first leaves a non-search row's degradation exactly as it was.
+like any other segment, and it is still the first thing a crowded row sheds,
+ahead of every `indicatorDropLadder` entry, because an explanation is worth
+nothing beside an unreadable title and because shedding it first leaves a
+non-search row's degradation exactly as it was. It carries more now than it did:
+`· tag` and `· context` used to explain a hit the row itself also showed, and
+they are now the only thing on the row that says why a result is there.
 
 The relation marker is not in that ladder and never drops.
 `taskRelationMarker` writes both directions of the hidden-family relation into

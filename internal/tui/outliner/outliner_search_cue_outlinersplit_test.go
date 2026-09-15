@@ -178,12 +178,12 @@ func TestSearchCueIsChargedOnceAtEveryWidth(t *testing.T) {
 	}
 }
 
-// cueLadderTask is a row wearing as many indicators at once as the lifecycle
-// permits, so the pressure ladder has something to shed after the cue goes.
+// cueLadderTask is a row wearing every indicator the simplified row still
+// draws, so the pressure ladder has something to shed after the cue goes.
 func cueLadderTask(state models.WorkflowState) *models.Task {
 	now := time.Now()
 	due := util.StartOfDay(now.AddDate(0, 0, -4))
-	deferred := now.Add(48 * time.Hour)
+	checkIn := util.StartOfDay(now.AddDate(0, 0, -2))
 	return &models.Task{
 		ID:             "ladder-" + string(state),
 		ShortID:        1,
@@ -194,8 +194,9 @@ func cueLadderTask(state models.WorkflowState) *models.Task {
 		StateChangedAt: now.AddDate(0, 0, -120),
 		UpdatedAt:      now,
 		DueDate:        &due,
-		DeferredUntil:  &deferred,
+		NextCheckIn:    &checkIn,
 		DeferCount:     3,
+		Dependencies:   []models.TaskReference{{ProjectID: "project", TaskID: "absent"}},
 		Checklist:      []models.ChecklistItem{{Text: "Draft the notes"}},
 		Comments:       []*models.Comment{{Text: "One"}},
 		Attachments:    []models.Attachment{{Filename: "trace.log"}},
@@ -204,7 +205,7 @@ func cueLadderTask(state models.WorkflowState) *models.Task {
 
 // TestSearchCueDropsBeforeEveryIndicator locks the cue's place under width
 // pressure: it is the first thing a crowded row sheds, so no member of
-// indicatorDropLadder — and no tag chip — can be missing while the cue survives.
+// indicatorDropLadder can be missing while the cue survives.
 func TestSearchCueDropsBeforeEveryIndicator(t *testing.T) {
 	// Doing and Waiting are exclusive, and the check-back countdown only exists on
 	// the waiting row, so the invariant is stated against both.
@@ -215,7 +216,7 @@ func TestSearchCueDropsBeforeEveryIndicator(t *testing.T) {
 			row := OutlinerRow{Task: task, ProjectID: project.ID, MatchSource: MatchSourceChecklist}
 
 			full := outliner.renderTaskIndicatorSegments(row, time.Now()).render()
-			for _, want := range []string{"deferred ×3", "☑", "▪ 1", "⊕ 1"} {
+			for _, want := range []string{"review", "~", "d"} {
 				if !strings.Contains(ansi.Strip(full), want) {
 					t.Fatalf("fixture did not wear %q: %q", want, ansi.Strip(full))
 				}
@@ -232,9 +233,6 @@ func TestSearchCueDropsBeforeEveryIndicator(t *testing.T) {
 				if segments.indicators != full {
 					t.Fatalf("width %d dropped an indicator while the cue survived: %q vs %q",
 						width, ansi.Strip(segments.indicators), ansi.Strip(full))
-				}
-				if segments.tagSegment == "" {
-					t.Fatalf("width %d dropped the tag chip while the cue survived", width)
 				}
 			}
 			if !sawCue || !sawDrop {

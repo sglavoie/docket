@@ -19,18 +19,18 @@
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "assert": "contains", "value": "waiting now"},
+    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form"},
     {"type": "assert", "assert": "not_contains", "value": "review today"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "assert": "contains", "value": "doing now"},
+    {"type": "assert", "assert": "contains", "value": "▶   Build login form"},
     {"type": "key", "key": "w"},
     {"type": "key", "key": "w"},
     {"type": "wait"},
     {"type": "assert", "assert": "contains", "value": "Set Check-In"},
     {"type": "key", "key": "esc"},
     {"type": "assert", "assert": "not_contains", "value": "Set Check-In"},
-    {"type": "assert", "assert": "contains", "value": "waiting now"},
+    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form"},
     {"type": "assert", "assert": "no_layout_issues"}
   ]
 }

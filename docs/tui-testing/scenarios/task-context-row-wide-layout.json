@@ -4,8 +4,18 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the task-level context is a dedicated badge before the title", "assert": "contains", "value": "[platform] Add password validation" },
-    { "type": "assert", "label": "wide rows retain the task's independent tag axis", "assert": "contains", "value": "#backend #security" },
+    { "type": "assert", "label": "even a wide row spends its columns on the title alone", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "label": "the context badge is Peek's", "assert": "not_contains", "value": "[platform]" },
+    { "type": "assert", "label": "and so is the tag axis", "assert": "not_contains", "value": "#backend #security" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "Add password validation" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "the search keeps the ancestry, so the deepest row is the result", "key": "end" },
+    { "type": "key", "label": "Peek names both axes in full", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Context: [platform]" },
+    { "type": "assert", "assert": "contains", "value": "Tags: #backend #security" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

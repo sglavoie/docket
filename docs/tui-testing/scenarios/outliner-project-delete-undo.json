@@ -40,7 +40,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[rich-project]" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
-    { "type": "assert", "assert": "contains", "value": "Add password validation #backend #security" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the restored workspace still fits the narrowest supported terminal", "width": 60, "height": 20 },

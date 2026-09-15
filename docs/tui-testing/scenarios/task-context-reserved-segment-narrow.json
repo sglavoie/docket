@@ -4,7 +4,7 @@
   "size": "60x20",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "an over-budget context keeps its reserved row segment", "assert": "contains", "value": "[distributed…]" },
+    { "type": "assert", "label": "an over-budget context no longer costs the row a reserved segment", "assert": "not_contains", "value": "[distributed…]" },
     { "type": "key", "label": "select the long-context task", "key": "end" },
     { "type": "key", "label": "Peek carries the complete context beyond the row budget", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Context: [distributed-systems]" },

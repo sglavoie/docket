@@ -247,7 +247,7 @@ rather than a defect. Nothing reads a chip color back, so no behavior can depend
 on one. Do not engineer that ambiguity away by adding meaning to a slot.
 
 Which surfaces resolve through it splits in two. A surface that renders a tag
-*as itself* takes the chip: the task row chips, the Peek `Tags:` line, and every
+*as itself* takes the chip: the Peek `Tags:` line and every
 row of the retained tag selector, whose `TagInfo` payload answers
 `ListSurfacePrimaryStyle` (`internal/tui/listsurface/list_surface_adapters.go`) so the
 initial adaptation and each `ReplaceItems` land one color without either call
@@ -273,14 +273,15 @@ rather than a tag. The Project Hub is outside the split entirely:
 per-tag style hook, so those tags render in the row's one secondary color.
 
 `OrderedTaskTags` (`internal/tui/listsurface/shared_render_helpers.go`) is the matching
-order authority over both chip surfaces: every non-semantic tag alphabetically,
-then every semantic tag, also alphabetically. Storage keeps tags in insertion
-order, so this is what makes the tag set rather than the typing history decide
-what a row shows. It is a pure permutation, which keeps `RenderTruncatedTags`'
-`+N` overflow honest by construction and makes the row a strict prefix of the
-Peek line. Semantic tags are deprioritized, never excluded: the six names are a vocabulary
-every task shares, so a row spends its two chips on the tags that cannot be
-guessed, and `RunOptions.DisableColor` only reaches `tea.WithEnvironment` where no
+order authority: every non-semantic tag alphabetically, then every semantic tag,
+also alphabetically. Storage keeps tags in insertion order, so this is what makes
+the tag set rather than the typing history decide the reading sequence. Peek is
+now the one surface rendering a task's chips — the row carries no tags — so the
+order no longer decides which chips survive a width, and there is no overflow
+count to keep honest; it stays a pure permutation so nothing can be dropped on
+the way to a wrapped line. Semantic tags are deprioritized, never excluded: the
+six names are a vocabulary every task shares, so the tags that cannot be guessed
+lead, and `RunOptions.DisableColor` only reaches `tea.WithEnvironment` where no
 renderer can detect it, so a task tagged only `bug` must still show `#bug`.
 
 `#` is bound to two descriptors, `tui.task.set-tags` and

@@ -15,14 +15,19 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// This file covers the segments a row reserves rather than earns: the context
-// badge, the relation and pin markers, the counts a project header carries, and
-// the badges a cross-project row must not repeat. Each is reserved at every
-// width, which is why these cases assert at narrow widths too. The indicators
-// are in outliner_render_indicators_test.go and the width ladder itself in
-// outliner_render_rows_pressure_test.go.
+// This file covers the segments a row reserves rather than earns: the relation
+// and pin markers, the counts a project header carries, and the badges a
+// cross-project row must not repeat. Each is reserved at every width, which is
+// why these cases assert at narrow widths too. It also covers what the row no
+// longer reserves — context, tags, and the supporting counts — and where each
+// went. The indicators are in outliner_render_indicators_test.go and the width
+// ladder itself in outliner_render_rows_pressure_test.go.
 
-func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
+// TestTaskContextAndTagsLeaveTheRowForPeek is the two removals as one rule. The
+// row said both in fixed-width badges that cost the title a dozen columns at
+// every width; Peek says both at full value, which is the trade the simplified
+// budget makes.
+func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
 	task := &models.Task{
 		ID:      "task",
 		Title:   "Readable title",
@@ -34,23 +39,30 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
-	if got := ansi.Strip(segments.contextSegment); got != "[abcdefghijk…] " {
-		t.Fatalf("context segment = %q, want a 12-column value budget", got)
-	}
-	if got := lipgloss.Width(segments.contextSegment); got != 15 {
-		t.Fatalf("context segment width = %d, want 15", got)
-	}
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.pinMarker, segments.contextSegment,
-		segments.tagSegment, segments.indicators, segments.relationMarker, segments.matchCue,
+		segments.statusIcon, segments.prioritySegment, segments.pinMarker,
+		segments.indicators, segments.relationMarker, segments.matchCue,
 	) {
-		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
+		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")
 	}
 
+	// 24 columns is where a reserved badge used to leave the title four of them.
 	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 24, 0, nil))
-	if !strings.Contains(plain, "[abcde…]") {
-		t.Fatalf("narrow row dropped its reserved context badge: %q", plain)
+	for _, gone := range []string{"[abcde", "abcdefghijk", "#secondary"} {
+		if strings.Contains(plain, gone) {
+			t.Fatalf("narrow row still reserves %q: %q", gone, plain)
+		}
+	}
+	if !strings.Contains(plain, "Readable title") {
+		t.Fatalf("narrow row did not spend the reclaimed width on the title: %q", plain)
+	}
+
+	peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 60), "\n"))
+	for _, want := range []string{"abcdefghijklmnop", "secondary"} {
+		if !strings.Contains(peek, want) {
+			t.Fatalf("Peek lost %q:\n%s", want, peek)
+		}
 	}
 }
 
@@ -186,27 +198,41 @@ func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
 	}
 }
 
-func TestOutlinerTaskRowShowsCompactCommentAndAttachmentCounts(t *testing.T) {
+// TestOutlinerTaskRowLeavesSupportingCountsToPeek keeps the checklist, comment,
+// and attachment counts out of the row at its widest. They were never a reason
+// to act on a task, only a reason to open one, and opening one is what Peek is.
+func TestOutlinerTaskRowLeavesSupportingCountsToPeek(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
 		Title:         "Review compact metadata",
 		WorkflowState: models.StateBacklog,
 		Comments:      []*models.Comment{{Text: "One"}, {Text: "Two"}},
 		Attachments:   []models.Attachment{{Filename: "design.pdf"}},
+		Checklist:     []models.ChecklistItem{{Text: "Read", Done: true}, {Text: "Reply"}},
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
-	for _, want := range []string{"▪ 2", "⊕ 1"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("task row missing %q: %q", want, plain)
+	for _, gone := range []string{"▪ 2", "⊕ 1", "1/2"} {
+		if strings.Contains(plain, gone) {
+			t.Fatalf("task row still carries %q at its widest: %q", gone, plain)
+		}
+	}
+
+	peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 120), "\n"))
+	for _, want := range []string{"1/2 done", "design.pdf", "Comments"} {
+		if !strings.Contains(peek, want) {
+			t.Fatalf("Peek lost %q:\n%s", want, peek)
 		}
 	}
 }
 
-func TestOutlinerTaskRowShowsSemanticTitleWithoutMarkerPrefix(t *testing.T) {
+// TestOutlinerTaskRowTitleStaysNeutralWithoutTagChips is the neutral-title rule
+// at the row's widest: a semantic tag reaches the reader through Peek's chips
+// now, and it was never allowed to reach them through the title.
+func TestOutlinerTaskRowTitleStaysNeutralWithoutTagChips(t *testing.T) {
 	task := &models.Task{
 		ID:            "bug-task",
 		Title:         "Fix capture grammar",
@@ -218,13 +244,20 @@ func TestOutlinerTaskRowShowsSemanticTitleWithoutMarkerPrefix(t *testing.T) {
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil))
-	for _, want := range []string{"Fix capture grammar", "#bug", "#composer"} {
-		if !strings.Contains(plain, want) {
-			t.Fatalf("task row missing %q: %q", want, plain)
+	if !strings.Contains(plain, "Fix capture grammar") {
+		t.Fatalf("task row missing its title: %q", plain)
+	}
+	for _, gone := range []string{"#bug", "#composer", " B Fix capture grammar"} {
+		if strings.Contains(plain, gone) {
+			t.Fatalf("task row carries %q: %q", gone, plain)
 		}
 	}
-	if strings.Contains(plain, " B Fix capture grammar") {
-		t.Fatalf("task row retained retired bug marker prefix: %q", plain)
+
+	peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 120), "\n"))
+	for _, want := range []string{"bug", "composer"} {
+		if !strings.Contains(peek, want) {
+			t.Fatalf("Peek lost the %q chip:\n%s", want, peek)
+		}
 	}
 }
 

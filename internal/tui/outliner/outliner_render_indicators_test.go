@@ -16,97 +16,126 @@ import (
 
 // This file covers one indicator at a time: what each signal spells, which
 // states may wear it, and the two orders the set is held to — the order they
-// render in and the order they are dropped in. What a whole row does with them
-// under width pressure is in outliner_render_rows_pressure_test.go, and the
-// reserved row segments are in outliner_render_rows_test.go.
+// render in and the order they are dropped in. The row keeps three indicators
+// now, so the signals it shed are covered here too — by the Peek line that
+// inherited them, which is the whole justification for dropping them from the
+// row. What a whole row does with them under width pressure is in
+// outliner_render_rows_pressure_test.go, and the reserved row segments are in
+// outliner_render_rows_test.go.
 
-func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
+// TestPeekDatesLineSeparatesPendingFromWokenDeferral is the row's defer
+// indicator, relocated. A deferral has two halves that never co-occur, and Peek
+// must keep telling them apart now that it is the only place either is said.
+func TestPeekDatesLineSeparatesPendingFromWokenDeferral(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
 		name     string
 		deferred time.Time
 		want     string
+		absent   string
 	}{
-		{"pending", now.AddDate(0, 0, 3), "defer "},
-		{"woken inside the window", now.Add(-30 * time.Hour), "woke "},
-		{"woken past the window", now.Add(-query.DeferWakeWindow - time.Hour), ""},
+		{"pending", now.AddDate(0, 0, 3), "defer ", "woke "},
+		{"woken inside the window", now.Add(-30 * time.Hour), "woke ", "defer "},
+		{"woken past the window", now.Add(-query.DeferWakeWindow - time.Hour), "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{ID: "task", Title: "Task", DeferredUntil: &tc.deferred}
-			plain := ansi.Strip(formatDeferIndicator(task, now))
+			plain := ansi.Strip(inlinePeekDatesLine(task, now, 80))
 			if tc.want == "" {
-				if plain != "" {
+				if strings.Contains(plain, "defer") || strings.Contains(plain, "woke") {
 					t.Fatalf("lapsed deferral past the wake window still rendered %q", plain)
 				}
 				return
 			}
-			if !strings.HasPrefix(plain, tc.want) {
-				t.Fatalf("defer indicator %q does not start with %q", plain, tc.want)
+			if !strings.Contains(plain, tc.want) {
+				t.Fatalf("Peek dates line %q does not name %q", plain, tc.want)
+			}
+			if tc.absent != "" && strings.Contains(plain, tc.absent) {
+				t.Fatalf("Peek dates line %q named both halves of the deferral", plain)
 			}
 		})
 	}
 }
 
-func TestDeferCountIndicatorStartsAtThirdDeferral(t *testing.T) {
+// TestRepeatedDeferralCountStartsAtThirdDeferralInPeek keeps the threshold that
+// decides when a repeated deferral is worth saying. Only the surface moved: the
+// count is a Peek field now, so the predicate and the line are checked together.
+func TestRepeatedDeferralCountStartsAtThirdDeferralInPeek(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
-		count         int
-		wantRepeated  bool
-		wantIndicator string
+		count        int
+		wantRepeated bool
+		wantField    string
 	}{
-		{count: repeatedDeferralThreshold - 1, wantRepeated: false, wantIndicator: ""},
-		{count: repeatedDeferralThreshold, wantRepeated: true, wantIndicator: "deferred ×3"},
-		{count: 12, wantRepeated: true, wantIndicator: "deferred ×12"},
+		{count: repeatedDeferralThreshold - 1, wantRepeated: false, wantField: ""},
+		{count: repeatedDeferralThreshold, wantRepeated: true, wantField: "deferred ×3"},
+		{count: 12, wantRepeated: true, wantField: "deferred ×12"},
 	} {
 		task := &models.Task{DeferCount: tc.count}
 		if got := taskHasRepeatedDeferrals(task); got != tc.wantRepeated {
 			t.Errorf("count %d repeated = %v, want %v", tc.count, got, tc.wantRepeated)
 		}
-		if got := ansi.Strip(formatDeferCountIndicator(task)); got != tc.wantIndicator {
-			t.Errorf("count %d indicator = %q, want %q", tc.count, got, tc.wantIndicator)
+		plain := ansi.Strip(inlinePeekDatesLine(task, now, 80))
+		if tc.wantField == "" {
+			if strings.Contains(plain, "deferred") {
+				t.Errorf("count %d named a repeated deferral: %q", tc.count, plain)
+			}
+			continue
+		}
+		if !strings.Contains(plain, tc.wantField) {
+			t.Errorf("count %d Peek line %q does not name %q", tc.count, plain, tc.wantField)
 		}
 	}
 }
 
-func TestRepeatedDeferralSurfacesIgnoreHiddenDeferColumn(t *testing.T) {
+// TestTaskRowCarriesNoDeferralAtAnyCount is the removal stated as a rule rather
+// than as an absence. The row's indicator set is three signals wide and a
+// deferral — pending, woken, or repeated — is none of them, whatever the count.
+func TestTaskRowCarriesNoDeferralAtAnyCount(t *testing.T) {
 	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
 	pending := now.Add(24 * time.Hour)
-	outliner := &OutlinerModel{
-		columnConfig: listsurface.NewColumnConfig(map[string]bool{listsurface.ColDefer: false}, nil, nil),
-	}
+	outliner := &OutlinerModel{columnConfig: listsurface.NewColumnConfig(nil, nil, nil)}
 
-	for _, tc := range []struct {
-		count int
-		want  string
-	}{
-		{count: repeatedDeferralThreshold - 1, want: ""},
-		{count: repeatedDeferralThreshold, want: "deferred ×3"},
-	} {
-		task := &models.Task{DeferCount: tc.count, DeferredUntil: &pending}
-		segments := outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task}, time.Now())
-		if segments.deferred != "" {
-			t.Fatalf("count %d hidden defer column rendered defer date %q", tc.count, ansi.Strip(segments.deferred))
+	for _, count := range []int{0, repeatedDeferralThreshold - 1, repeatedDeferralThreshold, 12} {
+		task := &models.Task{DeferCount: count, DeferredUntil: &pending}
+		segments := outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task}, now)
+		rendered := ansi.Strip(segments.render())
+		if strings.Contains(rendered, "defer") || strings.Contains(rendered, "woke") {
+			t.Fatalf("count %d row indicators named a deferral: %q", count, rendered)
 		}
-
-		rowCount := ansi.Strip(segments.deferCount)
-		peekCount := ansi.Strip(inlinePeekDatesLine(task, now, 80))
-		if rowCount != tc.want || peekCount != tc.want {
-			t.Fatalf("count %d hidden-column surfaces = row %q, Peek %q; want %q", tc.count, rowCount, peekCount, tc.want)
+		if peek := ansi.Strip(inlinePeekDatesLine(task, now, 80)); !strings.Contains(peek, "defer") {
+			t.Fatalf("count %d lost the deferral entirely; Peek line = %q", count, peek)
 		}
 	}
 }
 
-func TestWaitingAgeIndicatorReadsTheStateClock(t *testing.T) {
+// TestPeekStateValueCarriesTheWaitingAndDoingAges is the two age indicators the
+// row shed. They read StateChangedAt, so commenting on a blocked task still must
+// not reset how long it has been blocked, and no other state wears an age.
+func TestPeekStateValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
-	waiting := &models.Task{
-		ID:             "blocked",
-		Title:          "Blocked",
-		WorkflowState:  models.StateWaiting,
-		StateChangedAt: now.AddDate(0, 0, -12),
-		UpdatedAt:      now,
-	}
-	if got := ansi.Strip(formatWaitingAgeIndicator(waiting, now)); got != "waiting 12d" {
-		t.Fatalf("waiting age = %q, want %q; a comment must not reset it", got, "waiting 12d")
+	for _, tc := range []struct {
+		state models.WorkflowState
+		days  int
+		want  string
+	}{
+		{models.StateWaiting, 12, "waiting 12d"},
+		{models.StateDoing, 9, "doing 9d"},
+	} {
+		task := &models.Task{
+			ID:             "aged",
+			Title:          "Aged",
+			WorkflowState:  tc.state,
+			StateChangedAt: now.AddDate(0, 0, -tc.days),
+			UpdatedAt:      now,
+		}
+		if got := inlinePeekStateValue(task, now); got != tc.want {
+			t.Fatalf("state value = %q, want %q; a touch must not reset it", got, tc.want)
+		}
+		if rendered := ansi.Strip(segmentsRenderedFor(task, now)); strings.Contains(rendered, tc.want) {
+			t.Fatalf("the row still wore the age: %q", rendered)
+		}
 	}
 
 	for _, state := range []models.WorkflowState{models.StateBacklog, models.StatePaused, models.StateDone} {
@@ -116,57 +145,29 @@ func TestWaitingAgeIndicatorReadsTheStateClock(t *testing.T) {
 			WorkflowState:  state,
 			StateChangedAt: now.AddDate(0, 0, -12),
 		}
-		if got := formatWaitingAgeIndicator(other, now); got != "" {
-			t.Fatalf("state %q wore a waiting age: %q", state, ansi.Strip(got))
+		if got := inlinePeekStateValue(other, now); got != state.String() {
+			t.Fatalf("state %q wore an age: %q", state, got)
 		}
 	}
 }
 
-func TestDoingAgeIndicatorReadsTheStateClock(t *testing.T) {
-	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
-	doing := &models.Task{
-		ID:             "active",
-		Title:          "Active",
-		WorkflowState:  models.StateDoing,
-		StateChangedAt: now.AddDate(0, 0, -9),
-		UpdatedAt:      now,
-	}
-	if got := ansi.Strip(formatDoingAgeIndicator(doing, now)); got != "doing 9d" {
-		t.Fatalf("doing age = %q, want %q; touching the task must not reset it", got, "doing 9d")
-	}
-
-	for _, state := range []models.WorkflowState{models.StateBacklog, models.StateWaiting, models.StateDone} {
-		other := &models.Task{
-			ID:             "other",
-			Title:          "Other",
-			WorkflowState:  state,
-			StateChangedAt: now.AddDate(0, 0, -9),
-		}
-		if got := formatDoingAgeIndicator(other, now); got != "" {
-			t.Fatalf("state %q wore a doing age: %q", state, ansi.Strip(got))
-		}
-	}
+func segmentsRenderedFor(task *models.Task, now time.Time) string {
+	outliner := &OutlinerModel{columnConfig: listsurface.NewColumnConfig(nil, nil, nil)}
+	return outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task}, now).render()
 }
 
-func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
+// TestTaskIndicatorSegmentsRenderInOrder pins the three that survived and the
+// order they read in: the attention the task is owed, the deadline it is held
+// to, then the references it names.
+func TestTaskIndicatorSegmentsRenderInOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
-		deferCount:   "deferCount",
-		Recency:      "recency",
-		waiting:      "waiting",
-		doing:        "doing",
 		review:       "review",
 		due:          "due",
-		deferred:     "deferred",
-		checklist:    "checklist",
-		comments:     "comments",
-		attachments:  "attachments",
 		dependencies: "dependencies",
 	}
 	plain := ansi.Strip(segments.render())
 	previous := -1
-	for _, part := range []string{
-		"recency", "waiting", "doing", "review", "due", "deferred", "deferCount", "checklist", "comments", "attachments", "dependencies",
-	} {
+	for _, part := range []string{"review", "due", "dependencies"} {
 		index := strings.Index(plain, part)
 		if index <= previous {
 			t.Fatalf("indicator %q rendered out of order in %q", part, plain)
@@ -175,47 +176,27 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 	}
 }
 
+// TestIndicatorDropLadderOrder holds the shedding order to the reverse of what
+// the row is for: the reference census goes first because it is a count of other
+// work, then the attention the user can find again in Review, and the deadline
+// last because nothing else on the row says a task is late.
 func TestIndicatorDropLadderOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
-		deferCount:   "deferCount",
-		Recency:      "recency",
-		waiting:      "waiting",
-		doing:        "doing",
 		review:       "review",
 		due:          "due",
-		deferred:     "deferred",
-		checklist:    "checklist",
-		comments:     "comments",
-		attachments:  "attachments",
 		dependencies: "dependencies",
 	}
 	want := segments
-	if got := len(indicatorDropLadder); got != 11 {
-		t.Fatalf("indicator drop ladder has %d entries, want 11", got)
+	if got := len(indicatorDropLadder); got != 3 {
+		t.Fatalf("indicator drop ladder has %d entries, want 3", got)
 	}
 	for index, drop := range indicatorDropLadder {
 		switch index {
 		case 0:
-			want.deferCount = ""
-		case 1:
-			want.checklist = ""
-		case 2:
-			want.comments = ""
-		case 3:
-			want.attachments = ""
-		case 4:
 			want.dependencies = ""
-		case 5:
-			want.Recency = ""
-		case 6:
-			want.deferred = ""
-		case 7:
-			want.waiting = ""
-		case 8:
-			want.doing = ""
-		case 9:
+		case 1:
 			want.review = ""
-		case 10:
+		case 2:
 			want.due = ""
 		}
 		drop(&segments)

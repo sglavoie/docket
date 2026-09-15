@@ -234,7 +234,12 @@ func TestPeekModeSurvivesModeAndScopeChanges(t *testing.T) {
 	}
 }
 
-func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
+// TestOutlinerRowsKeepTheDeadlineAndSendSupportingSignalsToPeek is the row
+// budget stated as a pair. The deadline is required interaction context, so it
+// stays on the row beside the title; the checklist tally and the wake a
+// deferral left behind are supporting detail, so the same task names them in
+// Peek and nowhere else. The short ID was never on either surface.
+func TestOutlinerRowsKeepTheDeadlineAndSendSupportingSignalsToPeek(t *testing.T) {
 	task := &models.Task{
 		ID: "task", ShortID: 73, Title: "Operational task",
 		WorkflowState: models.StateBacklog,
@@ -251,13 +256,24 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 	outlinerView.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	plain := ansi.Strip(outlinerView.View().Content)
-	for _, want := range []string{"Operational task", due.Format("Jan 2"), "woke", "1/2"} {
+	for _, want := range []string{"Operational task", due.Format("Jan 2")} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("row missing %q:\n%s", want, plain)
 		}
 	}
-	if strings.Contains(plain, "#73") {
-		t.Fatalf("row leaked short ID:\n%s", plain)
+	for _, unwanted := range []string{"woke", "1/2", "#73"} {
+		if strings.Contains(plain, unwanted) {
+			t.Fatalf("row spent a column on %q:\n%s", unwanted, plain)
+		}
+	}
+
+	outlinerView.PeekMode = true
+	peek := ansi.Strip(strings.Join(
+		outlinerView.PeekDocumentBodyForRow(outlinerView.Rows[outlinerView.Cursor]), "\n"))
+	for _, want := range []string{"woke", "Checklist: 1/2 done"} {
+		if !strings.Contains(peek, want) {
+			t.Fatalf("Peek did not carry %q the row stopped naming:\n%s", want, peek)
+		}
 	}
 }
 
@@ -288,12 +304,20 @@ func TestNarrowOperationalRowProtectsUrgencyBeforeOptionalSignals(t *testing.T) 
 
 	const width = 60
 	plain := ansi.Strip(outlinerView.RenderOutlinerTaskRow(row, true, width, 0, nil))
-	for _, want := range []string{"Readable", "Today", "woke"} {
+	for _, want := range []string{"Readable title", "Today"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("narrow urgency row missing %q:\n%s", want, plain)
 		}
 	}
-	if strings.Contains(plain, "#9") {
-		t.Fatalf("narrow urgency row leaked short ID:\n%s", plain)
+	// Four levels of tree prefix and a deadline used to leave this title
+	// competing with a wake marker and a tally for the same columns; on the
+	// reclaimed budget it arrives whole instead.
+	if strings.Contains(plain, "…") {
+		t.Fatalf("narrow urgency row clipped a title the budget now fits:\n%s", plain)
+	}
+	for _, unwanted := range []string{"woke", "0/2", "#9"} {
+		if strings.Contains(plain, unwanted) {
+			t.Fatalf("narrow urgency row spent a column on %q:\n%s", unwanted, plain)
+		}
 	}
 }

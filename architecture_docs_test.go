@@ -166,7 +166,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`inlinePeekDocument` is that split",
 		"the height the viewport reserves and the height the renderer draws are the same number",
 		"The Outliner remains full-width at every supported terminal size",
-		"The task context badge is reserved beside the ancestor and pin markers",
+		"The\nancestor and pin markers are reserved beside them and never enter the drop\nladder",
 		"`taskPinnedMarker` renders a bold `*` when `task.Pinned && !row.IsPinnedSection`",
 		"`zt`, `zz`, and `zb` move the window under the cursor and leave the cursor alone",
 		"The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`",

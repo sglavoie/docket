@@ -28,7 +28,29 @@ This preserves the existing rationale documented with `indicatorDropLadder` in
 operational quiet-work signal leaves last. The draw order may group related
 segments, but pressure must follow the table above.
 
-The Doing-age text is `doing <age>`, reads `StateChangedAt`, and stays neutral:
+That ladder has since been consolidated to three positions. Seven of the ten
+segments — `deferCount`, `checklist`, `comments`, `attachments`, `recency`,
+`deferred`, `waiting`, and `doing` — were not repositioned within it; they left
+the task row entirely for Peek, which shows each of them whole rather than in a
+fixed-width badge. The row now promotes the deadline, an owed review, and the
+outgoing-reference census, and sheds them in that reverse order:
+
+| Position | Segment | Reason |
+| ---: | --- | --- |
+| 1 | `dependencies` | Peek names every target in full, and neither the deadline nor the review depends on the census. |
+| 2 | `review` | It says a task wants looking at, while the deadline says when something is actually due. |
+| 3 | `due` | The final commitment on the row, and the last thing width pressure may hide. |
+
+The ordering rule is unchanged, only its input: pressure still removes the least
+operationally specific survivor first. What changed is the definition of a
+survivor. A row is scanned to decide what to do next, so it carries required
+interaction context and spends every remaining column on the title; a signal
+that is read rather than scanned belongs in the complete document `b` opens.
+This supersedes the ten-row table above for drop positions, and nothing else in
+this document: every threshold, wording, and precedence lock below still holds
+at the surface that now renders it.
+
+The Doing-age text is `doing <age>`, now on Peek's state line, reads `StateChangedAt`, and stays neutral:
 it does not participate in `chrome.PickHeroAttribute` at
 `internal/tui/chrome/hero_attribute.go`. Adding Doing as a competing urgency
 badge would contradict the existing `chrome.HeroKind` and
@@ -50,13 +72,13 @@ top of the ladder alone. Waiting held a second tint until this consolidation,
 which made the quietest work in the workspace look like the most urgent.
 
 The repeated-deferral signal starts at the third deferral. For
-`DeferCount >= 3`, its row segment is `deferred ×N`; smaller values render no
-count. Peek adds the same `deferred ×N` token to its existing dates line
-rather than consuming a new line in the five-line Peek ladder. This gives the
-early-dropping row segment a durable detail surface without displacing another
-Peek line. Repeated deferral is an independent behavioral signal: hiding the
-`defer` column hides only the pending defer date or recent wake marker, while
-the row and Peek still show counts at or above the shared threshold.
+`DeferCount >= 3`, the `deferred ×N` token joins Peek's existing dates line
+rather than consuming a new line in the five-line Peek ladder; smaller values
+render no count. The threshold and the wording are unchanged by the
+consolidation — what changed is that the dates line is now the signal's only
+surface rather than its durable copy. Repeated deferral stays an independent
+behavioral signal: the pending `defer` date and the recent `woke` marker come
+and go on their own schedule while the count holds at or above the threshold.
 
 ## Stale work
 

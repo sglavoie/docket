@@ -12,64 +12,46 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
+// TestPeekTagChipsWearOneColorPerTag is the chip color rule with one surface
+// left to hold it to. The row carries no tags now, so Peek is where
+// theme.TagChipStyle has to keep answering per tag rather than per line.
+func TestPeekTagChipsWearOneColorPerTag(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	// infra and ux hold different slots, so a row that styled the whole join
-	// under one color could not pass this. Which slot each holds is theme's to
-	// know — the fixture proves they differ by rendering the same text through
-	// both chips, which is all a caller outside theme may ask.
+	// infra and ux hold different slots, so a line styled whole under one color
+	// could not pass this. Which slot each holds is theme's to know — the fixture
+	// proves they differ by rendering the same text through both chips, which is
+	// all a caller outside theme may ask.
 	task := &models.Task{ID: "task", Tags: []string{"infra", "ux"}}
 	if theme.TagChipStyle("infra").Render("x") == theme.TagChipStyle("ux").Render("x") {
 		t.Fatalf("fixture tags share one chip color; pick two that differ")
 	}
-	row := listsurface.RenderTruncatedTags(task.Tags, 2, 8)
 	peek := strings.Join(inlinePeekTagsLines(task, "", 80), "\n")
 
 	for _, tag := range task.Tags {
 		chip := theme.TagChipStyle(tag).Render("#" + tag)
-		if !strings.Contains(row, chip) {
-			t.Errorf("row %q is missing the %q chip %q", row, tag, chip)
-		}
 		if !strings.Contains(peek, chip) {
 			t.Errorf("Peek %q is missing the %q chip %q", peek, tag, chip)
 		}
 	}
 }
 
-func TestRenderTruncatedTagsClipsTheTextButNotTheColor(t *testing.T) {
+// TestPeekRendersTheWholeStoredTag is the counterpart to the row's old clip. A
+// tag was cut to eight columns on a row that had no room for it; Peek has a
+// wrapped line, so the stored spelling arrives whole in its own color.
+func TestPeekRendersTheWholeStoredTag(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	// The full stored tag decides the color and the clip is presentation only, so
-	// a chip cut to the row's eight columns wears the color its untruncated Peek
-	// counterpart shows. A wider budget renders the same tag whole in that color.
 	const tag = "observability"
-	for _, tc := range []struct {
-		maxTagLen int
-		want      string
-	}{
-		{8, "#observa…"},
-		{20, "#observability"},
-	} {
-		rendered := listsurface.RenderTruncatedTags([]string{tag}, 2, tc.maxTagLen)
-		if got := ansi.Strip(rendered); got != tc.want {
-			t.Errorf("chip at %d columns = %q, want %q", tc.maxTagLen, got, tc.want)
-		}
-		if want := theme.TagChipStyle(tag).Render(tc.want); rendered != want {
-			t.Errorf("chip at %d columns = %q, want the whole tag's color %q", tc.maxTagLen, rendered, want)
-		}
+	task := &models.Task{ID: "task", Tags: []string{tag}}
+	rendered := strings.Join(inlinePeekTagsLines(task, "", 80), "\n")
+	if got := ansi.Strip(rendered); got != "Tags: #"+tag {
+		t.Errorf("Peek tags = %q, want the whole stored spelling", got)
 	}
-}
-
-func TestRenderTruncatedTagsKeepsTheOverflowCountMuted(t *testing.T) {
-	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
-
-	rendered := listsurface.RenderTruncatedTags([]string{"billing", "ux", "refactor"}, 2, 8)
-	if want := theme.MutedStyle.Render(" +1"); !strings.HasSuffix(rendered, want) {
-		t.Errorf("overflow suffix of %q is not the muted %q", rendered, want)
+	if !strings.Contains(rendered, theme.TagChipStyle(tag).Render("#"+tag)) {
+		t.Errorf("Peek %q dropped the tag's own color", rendered)
 	}
 }
 
@@ -138,73 +120,32 @@ func TestOrderedTaskTagsDeprioritizesSemanticTagsWithoutDroppingThem(t *testing.
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	// Deprioritize, never exclude: with nothing else competing, the semantic tag
-	// still reaches the row. The chip is now the only place a semantic tag is
-	// said at all — the title is neutral text — so dropping it would lose the tag.
-	if got := ansi.Strip(listsurface.RenderTruncatedTags([]string{"bug"}, 2, 8)); got != "#bug" {
-		t.Errorf("a bug-only task rendered %q, want #bug", got)
-	}
-
-	// With descriptive tags competing, the two row slots go to the tags a reader
-	// cannot guess from the six-name vocabulary, and the dropped semantic tag is
-	// still counted.
-	rendered := listsurface.RenderTruncatedTags([]string{"bug", "ux", "billing"}, 2, 8)
-	if got, want := ansi.Strip(rendered), "#billing #ux +1"; got != want {
-		t.Errorf("row tags = %q, want %q", got, want)
+	// Deprioritize, never exclude. Peek is the only place a semantic tag is said
+	// at all — the title is neutral text and the row carries no chip — so a tag
+	// pushed to the back of the order must still arrive.
+	task := &models.Task{ID: "task", Tags: []string{"bug", "ux", "billing"}}
+	got := ansi.Strip(strings.Join(inlinePeekTagsLines(task, "", 120), "\n"))
+	if want := "Tags: #billing #ux #bug"; got != want {
+		t.Errorf("Peek tags = %q, want %q", got, want)
 	}
 }
 
-func TestRenderTruncatedTagsOverflowCountSurvivesReordering(t *testing.T) {
+// TestPeekTagOrderIsIndependentOfInsertionOrder is the stored-set rule at the
+// one surface that renders it: reordering the stored tags never changes what a
+// reader sees, because OrderedTaskTags decides and nothing is dropped.
+func TestPeekTagOrderIsIndependentOfInsertionOrder(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	// Reordering moves which tags are visible, never how many exist: every
-	// permutation of one set shows the same +N.
 	for _, tags := range [][]string{
 		{"bug", "story", "ux", "billing", "infra"},
 		{"ux", "bug", "infra", "billing", "story"},
 		{"infra", "billing", "story", "ux", "bug"},
 	} {
-		got := ansi.Strip(listsurface.RenderTruncatedTags(tags, 2, 8))
-		if want := "#billing #infra +3"; got != want {
-			t.Errorf("row tags for %v = %q, want %q", tags, got, want)
+		task := &models.Task{ID: "task", Tags: tags}
+		got := ansi.Strip(strings.Join(inlinePeekTagsLines(task, "", 120), "\n"))
+		if want := "Tags: #billing #infra #ux #bug #story"; got != want {
+			t.Errorf("Peek tags for %v = %q, want %q", tags, got, want)
 		}
-	}
-
-	// The remainder is arithmetic over the budget rather than a constant, so the
-	// budget the task row happens to use is not the only one that has to add up.
-	// A set the budget exactly fits is the case an off-by-one would show as a
-	// stray "+0".
-	tags := []string{"bug", "story", "ux", "billing", "infra"}
-	for _, tc := range []struct {
-		maxTags int
-		want    string
-	}{
-		{1, "#billing +4"},
-		{2, "#billing #infra +3"},
-		{5, "#billing #infra #ux #bug #story"},
-	} {
-		if got := ansi.Strip(listsurface.RenderTruncatedTags(tags, tc.maxTags, 8)); got != tc.want {
-			t.Errorf("row tags at a budget of %d = %q, want %q", tc.maxTags, got, tc.want)
-		}
-	}
-}
-
-func TestRowAndPeekAgreeOnTagOrder(t *testing.T) {
-	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
-
-	// One helper serves both surfaces, so the row's two chips must be the Peek
-	// line's first two — a row is a prefix of Peek, never a different selection.
-	task := &models.Task{ID: "task", Tags: []string{"bug", "ux", "billing"}}
-	row := ansi.Strip(listsurface.RenderTruncatedTags(task.Tags, 2, 8))
-	peek := ansi.Strip(strings.Join(inlinePeekTagsLines(task, "", 120), "\n"))
-
-	if want := "Tags: #billing #ux #bug"; peek != want {
-		t.Fatalf("Peek tags = %q, want %q", peek, want)
-	}
-	rowChips, _, _ := strings.Cut(row, " +")
-	if !strings.HasPrefix(strings.TrimPrefix(peek, "Tags: "), rowChips) {
-		t.Errorf("row chips %q are not the leading chips of Peek %q", rowChips, peek)
 	}
 }

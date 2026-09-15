@@ -60,7 +60,11 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 						}
 					}
 				}
-				capture("rows", "Migrated", "Apr 1 15:30", "today 0")
+				// The whole title, not a prefix of it: 60 columns is the narrowest
+				// layout the product supports, and on the simplified row budget the
+				// check-in fixture's longest title fits there beside the review
+				// countdown and the deadline rather than clipping against a badge.
+				capture("rows", "Migrated vendor wait", "review +", "Apr 1 15:30", "today 0")
 				out := driver.App().crossOutliner
 				var id taskref.TaskIdentity
 				for _, row := range out.Rows {
@@ -73,7 +77,10 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 					t.Fatal("no migrated task")
 				}
 				out.ReplaceSelection([]taskref.TaskIdentity{id})
-				capture("selected", "Migrated", "Apr 1 15:30")
+				// A selection buys its checkbox out of the title's columns, so at
+				// 60 the same title clips here; the deadline and the countdown are
+				// what may not be what it pays with.
+				capture("selected", "Migrated vendor", "review +", "Apr 1 15:30")
 				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
 					t.Fatal(err)
 				}

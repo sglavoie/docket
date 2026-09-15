@@ -245,10 +245,10 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		inlinePeekReferenceLines(dependentLabel, opts.Dependents, opts.Indent, width),
 	)
 
-	// Context is its own section rather than a prefix on the tags line. The row
-	// reserves a segment for it at every width and truncates it there, so Peek
-	// is where the whole value is readable, and a value long enough to need
-	// wrapping is exactly the one the row could not show.
+	// Context is its own section rather than a prefix on the tags line. Neither
+	// reaches the row any more — a row is scanned for what to do next, and a
+	// label is not that — so these two sections are the only place either is
+	// readable, and both are rendered whole rather than truncated.
 	add("context:"+task.Context, inlinePeekContextLines(task, opts.Indent, width))
 	add("tags:"+strings.Join(listsurface.OrderedTaskTags(task.Tags), ","), inlinePeekTagsLines(task, opts.Indent, width))
 	return sections
@@ -374,10 +374,11 @@ func inlinePeekStatusKey(task *models.Task, planning string) string {
 	}, "|")
 }
 
-// inlinePeekChecklistLines keeps the checklist a count, as the row's indicator
-// did. The items themselves are rows of their own under the task, where they are
-// edited, ticked, and promoted; repeating their text here would spend the window
-// on content the outline already holds one keypress away.
+// inlinePeekChecklistLines keeps the checklist a count. It is the only place the
+// tally is stated now that the row carries none, but it stays a tally: the items
+// themselves are rows of their own under the task, where they are edited, ticked,
+// and promoted, and repeating their text here would spend the window on content
+// the outline already holds one keypress away.
 func inlinePeekChecklistLines(task *models.Task, indent string, width int) []string {
 	if task == nil || len(task.Checklist) == 0 {
 		return nil
@@ -400,9 +401,11 @@ func inlinePeekChecklistKey(task *models.Task) string {
 	return strings.Join(states, ",")
 }
 
-// inlinePeekDatesLine names the task clock the row has no width for: how long
-// ago it was created and last touched, its deadline and check-in schedule, when
-// it was last reviewed, and whether it recently came back from a deferral.
+// inlinePeekDatesLine names the task clock the row does not carry: how long ago
+// it was created and last touched, its deadline and check-in schedule, when it
+// was last reviewed, when a pending deferral brings it back, whether it recently
+// came back from one, and how many times it has been deferred. The row keeps the
+// deadline alone, so every other instant on a task is read here.
 // Labels stay muted and values take the footer's key color, so the durations
 // read as data rather than as prose.
 func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
@@ -433,6 +436,12 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	}
 	if task.LastReviewedAt != nil {
 		field("last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
+	}
+	// The deferral's two halves, in the one order they can occur. The row carries
+	// neither now, so this is where a pending deferral names the day the task
+	// comes back and where a lapsed one still says it came back recently.
+	if task.DeferredUntil != nil && task.IsDeferredAt(now) {
+		field("defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if taskWokeRecently(task, now) {
 		field("woke", query.FormatRecencyAge(*task.DeferredUntil, now))

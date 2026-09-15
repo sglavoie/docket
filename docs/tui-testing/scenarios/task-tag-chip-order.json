@@ -12,28 +12,33 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the invoice redesign to the billing portal" },
 
-    { "type": "assert", "label": "the row spends its two chips on the tags the title cannot say, alphabetically", "assert": "contains", "value": "#billing #ux +1" },
-    { "type": "assert", "label": "insertion order never reaches the row", "assert": "not_contains", "value": "#ux #bug" },
-    { "type": "assert", "label": "the demoted semantic tag is counted, not silently dropped", "assert": "not_contains", "value": "#billing #ux #bug" },
+    { "type": "assert", "label": "the row spends every column on the title; tags are Peek's", "assert": "not_clipped", "value": "Ship the invoice redesign to the billing portal" },
+    { "type": "assert", "assert": "not_contains", "value": "#billing" },
+    { "type": "assert", "assert": "not_contains", "value": "#ux" },
+    { "type": "assert", "assert": "not_contains", "value": "#bug" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },
     { "type": "key", "label": "past the project header onto the captured row", "key": "j" },
-    { "type": "key", "label": "open Peek on the row the +1 abbreviated", "key": "b" },
-    { "type": "assert", "label": "Peek completes the set in the row's own order, the semantic tag last", "assert": "contains", "value": "Tags: #billing #ux #bug" },
+    { "type": "key", "label": "open Peek, the one surface that renders a chip at all", "key": "b" },
+    { "type": "assert", "label": "the whole set, alphabetically, with the semantic tag demoted rather than dropped", "assert": "contains", "value": "Tags: #billing #ux #bug" },
+    { "type": "assert", "label": "insertion order never reaches a surface", "assert": "not_contains", "value": "Tags: #ux #bug" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Esc closes Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Tags: #billing #ux #bug" },
 
-    { "type": "resize", "label": "the minimum width truncates the title before it spends the chip pair", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "Ship the invoice redesign" },
-    { "type": "assert", "label": "chip order is a property of the tag set, not of the width", "assert": "contains", "value": "#billing #ux +1" },
+    { "type": "resize", "label": "the minimum width now holds the whole title, because nothing competes for it", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "not_clipped", "value": "Ship the invoice redesign to the billing portal" },
+    { "type": "assert", "assert": "not_contains", "value": "#billing" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "resize", "label": "widening restores the whole title beside the same two chips", "width": 100, "height": 35 },
-    { "type": "assert", "assert": "contains", "value": "Ship the invoice redesign to the billing portal" },
-    { "type": "assert", "assert": "contains", "value": "#billing #ux +1" },
+    { "type": "key", "label": "the narrow dock keeps the same order", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Tags: #billing #ux #bug" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "chip order is a property of the tag set, not of the width", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "contains", "value": "Tags: #billing #ux #bug" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

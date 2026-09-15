@@ -24,15 +24,14 @@ import (
 type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker           string
-	contextSegment, tagSegment                       string
 	indicators, relationMarker, matchCue             string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
-		s.statusIcon, s.prioritySegment, s.pinMarker, s.contextSegment,
-		s.tagSegment, s.indicators, s.relationMarker, s.matchCue,
+		s.statusIcon, s.prioritySegment, s.pinMarker,
+		s.indicators, s.relationMarker, s.matchCue,
 	), 1)
 }
 
@@ -44,19 +43,26 @@ func (s taskRowSegments) gutter() string {
 	return s.cursorPrefix + s.checkbox + s.prefixStr + s.foldIndicator
 }
 
+// titlePrefix is every column drawn before the title: the structural gutter and
+// the leading badges. It is the row's own arithmetic rather than a second copy of
+// it, so the inline editor opens its input in the column the title occupied and
+// sizes it to the columns the title actually had. A widened title budget reaches
+// the editor by construction, which is the whole point of naming this once.
+func (s taskRowSegments) titlePrefix() string {
+	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.pinMarker
+}
+
 // content is everything from the state badge on, the region that keeps its own
 // colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
 // counts.
 func (s taskRowSegments) content(title string) string {
-	return fmt.Sprintf("%s %s%s%s%s%s%s%s%s",
+	return fmt.Sprintf("%s %s%s%s%s%s%s",
 		s.statusIcon,
 		s.prioritySegment,
 		s.pinMarker,
-		s.contextSegment,
 		title,
 		s.relationMarker,
 		s.matchCue,
-		s.tagSegment,
 		s.indicators,
 	)
 }
@@ -138,18 +144,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		statusIcon = theme.PadBadge(statusIcon, colLayout.StatusWidth)
 	}
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
-	contextSegment := ""
-	if task.Context != "" {
-		contextBudget := max(min(rowWidth/5, 12), 6)
-		display := textfit.TruncateToVisualWidth(task.Context, contextBudget)
-		contextSegment = theme.TaskContextBadgeStyle(task).Render("["+display+"]") + " "
-	}
-	tagSegment := ""
-	if m.columnConfig.IsVisible(listsurface.ColTags) {
-		if rendered := listsurface.RenderTruncatedTags(task.Tags, 2, 8); rendered != "" {
-			tagSegment = " " + rendered
-		}
-	}
 	// One instant for the whole row. The ladder and the review segment ask the
 	// same calendar-day question, so reading the clock twice could demote a badge
 	// for a review the row does not name.
@@ -179,8 +173,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
 		pinMarker:       m.taskPinnedMarker(row),
-		contextSegment:  contextSegment,
-		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
 		matchCue:        taskMatchSourceCue(row),
@@ -196,9 +188,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	// leaves an ordinary row's degradation exactly as it was.
 	if segments.titleWidth(rowWidth) < titleTarget {
 		segments.matchCue = ""
-	}
-	if segments.titleWidth(rowWidth) < titleTarget {
-		segments.tagSegment = ""
 	}
 	for _, dropSegment := range indicatorDropLadder {
 		if segments.titleWidth(rowWidth) >= titleTarget {
@@ -242,19 +231,6 @@ func (m *OutlinerModel) rowIdentity(row OutlinerRow) taskref.TaskIdentity {
 	return identity
 }
 
-// rowRecencyKey returns the frozen Recent ordering timestamp so the chip agrees
-// with the bucket the row was placed in, falling back to live activity for a
-// task the snapshot does not name.
-func (m *OutlinerModel) rowRecencyKey(row OutlinerRow) time.Time {
-	if frozen, ok := m.Recency.frozenAt(m.rowIdentity(row)); ok {
-		return frozen
-	}
-	if row.Task == nil {
-		return time.Time{}
-	}
-	return row.Task.UpdatedAt
-}
-
 // renderTaskFoldIndicator reports the fold `h`/`l` would act on next. Children
 // answer first because the ladder collapses the checklist before them, so a task
 // whose only foldable content is its checklist is the one that reports the
@@ -293,17 +269,17 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task) lipgloss.Style {
 	return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
 }
 
+// taskIndicatorSegments is the whole of what a row says beside its title,
+// badges, and structural marks. It is three segments rather than eleven because
+// a row is scanned, not read: the deadline and the owed review are the two
+// facts that change what a reader does next, and the reference census is the
+// one cue that work the row cannot show may be unreadable or unfinished.
+// Everything a row used to carry beside them — tags, context, elapsed ages,
+// deferral dates, and the checklist, comment and attachment counts — is spelled
+// in full in Peek, one keypress below the cursor.
 type taskIndicatorSegments struct {
-	deferCount  string
-	Recency     string
-	waiting     string
-	doing       string
-	review      string
-	due         string
-	deferred    string
-	checklist   string
-	comments    string
-	attachments string
+	review string
+	due    string
 	// dependencies is the trailing `~S/N` reading of outgoing soft references.
 	// N is a count of what the task stores, not a reading of what those targets
 	// are: a reference to closed, deleted, or unloaded work counts exactly like a
@@ -316,16 +292,8 @@ type taskIndicatorSegments struct {
 
 func (segments taskIndicatorSegments) render() string {
 	rendered := listsurface.JoinGroupParts(
-		segments.Recency,
-		segments.waiting,
-		segments.doing,
 		segments.review,
 		segments.due,
-		segments.deferred,
-		segments.deferCount,
-		segments.checklist,
-		segments.comments,
-		segments.attachments,
 		segments.dependencies,
 	)
 	if rendered == "" {
@@ -335,46 +303,27 @@ func (segments taskIndicatorSegments) render() string {
 }
 
 // indicatorDropLadder orders which indicators a narrow row sheds, shallowest
-// signal first. Counts go early because the row's own badges and Peek still
-// carry them; elapsed ages leave before a due check-in, and the task's deadline
-// goes last because it is the final commitment width pressure may hide.
+// signal first. The reference census goes first because Peek names every target
+// in full and no deadline or owed review depends on it; the owed review follows,
+// because it says a task wants looking at while the deadline says when something
+// is actually due. The deadline goes last: it is the final commitment width
+// pressure may hide.
 var indicatorDropLadder = []func(*taskIndicatorSegments){
-	func(segments *taskIndicatorSegments) { segments.deferCount = "" },
-	func(segments *taskIndicatorSegments) { segments.checklist = "" },
-	func(segments *taskIndicatorSegments) { segments.comments = "" },
-	func(segments *taskIndicatorSegments) { segments.attachments = "" },
-	// The reference count sheds with the other optional content counts and after
-	// them, because Peek is the only surface that names the targets at all while
-	// checklist rows, the Comments panel, and the Attachments panel each restate
-	// their own. It stays ahead of every operational signal below: a reference
-	// changes nothing about when the task is due or how long it has been waiting.
 	func(segments *taskIndicatorSegments) { segments.dependencies = "" },
-	func(segments *taskIndicatorSegments) { segments.Recency = "" },
-	func(segments *taskIndicatorSegments) { segments.deferred = "" },
-	func(segments *taskIndicatorSegments) { segments.waiting = "" },
-	func(segments *taskIndicatorSegments) { segments.doing = "" },
 	func(segments *taskIndicatorSegments) { segments.review = "" },
 	func(segments *taskIndicatorSegments) { segments.due = "" },
 }
 
-// renderTaskIndicatorSegments promotes operational task state and concise
-// activity counts into the row. Rich content stays in Peek. The caller drops
-// segments along indicatorDropLadder when preserving all signals would leave an
-// unreadably small title.
+// renderTaskIndicatorSegments promotes the row's three surviving operational
+// signals: the deadline, the owed review, and the outgoing-reference census.
+// Every other detail the row once abbreviated is Peek's, in full. The caller
+// drops segments along indicatorDropLadder when preserving all three would leave
+// an unreadably small title.
 func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow, now time.Time) taskIndicatorSegments {
 	var segments taskIndicatorSegments
 	task := row.Task
 	if task == nil {
 		return segments
-	}
-	if m.PrimaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(listsurface.ColRecency) {
-		segments.Recency = query.FormatRecencyChip(m.rowRecencyKey(row), now)
-	}
-	if task.IsInState(models.StateWaiting) {
-		segments.waiting = formatWaitingAgeIndicator(task, now)
-	}
-	if task.IsInState(models.StateDoing) {
-		segments.doing = formatDoingAgeIndicator(task, now)
 	}
 	segments.review = formatReviewIndicator(task, now)
 	// A deadline remains a deadline in every lifecycle state. Check-ins have
@@ -382,25 +331,6 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow, now time.Ti
 	// date as a check-back or suppresses the ordinary due chip.
 	if m.columnConfig.IsVisible(listsurface.ColDueDate) {
 		segments.due = query.FormatDueDate(task)
-	}
-	if m.columnConfig.IsVisible(listsurface.ColDefer) {
-		if task.DeferredUntil != nil {
-			segments.deferred = formatDeferIndicator(task, now)
-		}
-	}
-	// deferCount is deliberately outside that branch. Repeated deferral is its
-	// own behavioral signal, and docs/decisions/behavioral-signals-contracts.md
-	// locks the split: hiding the defer column hides the pending instant and the
-	// wake marker, while the count survives at or above the threshold.
-	segments.deferCount = formatDeferCountIndicator(task)
-	if m.columnConfig.IsVisible(listsurface.ColChecklist) {
-		segments.checklist = listsurface.RenderChecklistIndicator(task)
-	}
-	if m.columnConfig.IsVisible(listsurface.ColComments) {
-		segments.comments = listsurface.RenderCommentIndicator(task)
-	}
-	if m.columnConfig.IsVisible(listsurface.ColAttachments) {
-		segments.attachments = listsurface.RenderAttachmentIndicator(task)
 	}
 	// Deliberately ungated by a column: a reference count is not a column the
 	// user can hide, and naming one would put a dependency back in the column
@@ -437,32 +367,6 @@ func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) st
 	return census.Outlook().style().Render(count)
 }
 
-// formatWaitingAgeIndicator reads the state clock rather than UpdatedAt, so
-// commenting on a blocked task does not reset how long it has been blocked.
-func formatWaitingAgeIndicator(task *models.Task, now time.Time) string {
-	if !task.IsInState(models.StateWaiting) {
-		return ""
-	}
-	age := query.FormatRecencyChip(task.StateChangedAt, now)
-	if age == "" {
-		return ""
-	}
-	return theme.MutedStyle.Render("waiting") + " " + age
-}
-
-// formatDoingAgeIndicator reads the state clock rather than UpdatedAt, so
-// touching active work does not reset how long it has remained in Doing.
-func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
-	if !task.IsInState(models.StateDoing) {
-		return ""
-	}
-	age := query.FormatRecencyChip(task.StateChangedAt, now)
-	if age == "" {
-		return ""
-	}
-	return theme.MutedStyle.Render("doing") + " " + age
-}
-
 // formatReviewIndicator announces a task that is asking to be looked at, which
 // models.TaskNeedsAttention answers and this only spells: the stored review flag,
 // or a scheduled check-in whose calendar day has arrived and whose task is
@@ -490,37 +394,17 @@ func formatReviewIndicator(task *models.Task, now time.Time) string {
 	return theme.OverdueStyle.Render(fmt.Sprintf("review +%dd", daysLate))
 }
 
-// formatDeferIndicator separates a pending deferral from one that has lapsed. A
-// woken task still wearing a past-dated `defer` reads as deferred, so the row
-// says it came back and how long ago, then falls silent once the wake window
-// closes and the task is ordinary work again.
-func formatDeferIndicator(task *models.Task, now time.Time) string {
-	if task.IsDeferredAt(now) {
-		return theme.MutedStyle.Render("defer " + chrome.FormatDeferDate(*task.DeferredUntil, now))
-	}
-	if !taskWokeRecently(task, now) {
-		return ""
-	}
-	return theme.MutedStyle.Render("woke") + " " + query.FormatRecencyChip(*task.DeferredUntil, now)
-}
-
 const repeatedDeferralThreshold = 3
 
 func taskHasRepeatedDeferrals(task *models.Task) bool {
 	return task != nil && task.DeferCount >= repeatedDeferralThreshold
 }
 
-func formatDeferCountIndicator(task *models.Task) string {
-	if !taskHasRepeatedDeferrals(task) {
-		return ""
-	}
-	return theme.MutedStyle.Render(fmt.Sprintf("deferred ×%d", task.DeferCount))
-}
-
 // taskWokeRecently reports whether a lapsed deferral is still inside the wake
-// window. The row indicator and the Peek dates line both ask before announcing
-// that a task came back, and a second copy of the predicate would let one
-// surface keep saying `woke` after the other went quiet.
+// window. Peek's dates line is its one reader now that the row carries no
+// deferral of its own, and it stays a named predicate because the pending and
+// lapsed halves of a deferral are one ladder: `defer <date>` until the instant
+// passes, then `woke <age>` for the window, then nothing.
 func taskWokeRecently(task *models.Task, now time.Time) bool {
 	if task == nil || task.DeferredUntil == nil || task.IsDeferredAt(now) {
 		return false
@@ -598,13 +482,12 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 	return m.LensTextQuery(), m.LensCaseSensitive()
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, contextSegment, tagSegment, indicators, relationMarker, matchCue string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, indicators, relationMarker, matchCue string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
-		lipgloss.Width(contextSegment) +
-		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
+		lipgloss.Width(indicators) +
 		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }
 

@@ -214,7 +214,7 @@ func TestPresentationCheckpointRestoresRecentFrozenOrdering(t *testing.T) {
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	identity := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "stale"}
-	frozen, ok := outlinerView.Recency.frozenAt(identity)
+	frozen, ok := outlinerView.Recency.frozenKeys()[identity]
 	if !ok {
 		t.Fatal("Recent did not freeze the seeded activity")
 	}
@@ -224,7 +224,7 @@ func TestPresentationCheckpointRestoresRecentFrozenOrdering(t *testing.T) {
 	stale.UpdatedAt = time.Now()
 	outlinerView.RestoreOutlinerPresentationCheckpoint(checkpoint)
 
-	restored, ok := outlinerView.Recency.frozenAt(identity)
+	restored, ok := outlinerView.Recency.frozenKeys()[identity]
 	if !ok || !restored.Equal(frozen) {
 		t.Fatalf("restored freeze = %v/%v, want the captured %v", restored, ok, frozen)
 	}

@@ -188,12 +188,12 @@ the loaded projects, otherwise a facet could never be widened back out from
 inside it.
 
 The Outliner remains full-width at every supported terminal size. Rows carry
-operational scan signals directly: workflow state, priority,
-due, deferral, and checklist progress.
-The task context badge is reserved beside the ancestor and pin markers: none of
-them enter the drop ladder at narrow widths. Context values use at most 12
-columns in the row and move to Peek in full when longer.
-Outliner rows omit short task IDs.
+the scan signals a reader acts on without opening anything: workflow state,
+priority, the deadline, an owed review, and the outgoing-reference census. The
+ancestor and pin markers are reserved beside them and never enter the drop
+ladder. Deferral, the Waiting and Doing ages, the checklist tally, the context,
+and the tags are Peek's, in full rather than abbreviated. Outliner rows omit
+short task IDs.
 
 `zt`, `zz`, and `zb` move the window under the cursor and leave the cursor
 alone, the one scroll family beside the list-relative `gg`/`G` and the half-page

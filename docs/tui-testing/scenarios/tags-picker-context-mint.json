@@ -36,14 +36,19 @@
     { "type": "key", "label": "apply the tag and the context together", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "[deep-work]" },
-    { "type": "assert", "assert": "contains", "value": "#bug" },
+    { "type": "key", "label": "both axes are Peek's now", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Context: [deep-work]" },
+    { "type": "key", "label": "the tag line is one row past the window", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "Tags: #bug" },
+    { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "one transaction means one undo entry reverts both", "key": "u" },
     { "type": "wait" },
+    { "type": "key", "key": "b" },
     { "type": "assert", "assert": "not_contains", "value": "[deep-work]" },
     { "type": "assert", "assert": "not_contains", "value": "#bug" },
+    { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

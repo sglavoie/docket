@@ -51,28 +51,43 @@ func (m *OutlinerModel) quickEditExtraLineCount() int {
 	return 1 + m.QuickEdit.SuggestionLineCount(m.QuickEditSuggestionBudget())
 }
 
+// quickEditSuggestionIndentShare bounds how much of the row the completion pane
+// gives back to the caret's own column. A deep subtree can push the title well
+// into the row, and a dropdown that followed it there would have a handful of
+// columns left for the values it exists to show. Alignment is worth having and
+// worth losing: past this share the pane leaves the caret's column and keeps its
+// width.
+const quickEditSuggestionIndentShare = 3
+
 func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int) string {
 	project := m.ResolveProjectForRow(row)
 	m.QuickEdit.SetContext(project, m.quickEditProjects())
 
 	metadata := chrome.SelectedLine(m.QuickEditMetadataLine(row, project, rowWidth), rowWidth)
-	previewTask := m.quickEditDisplayTask()
-	status := m.renderTaskStatusIcon(previewTask)
-	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefix := theme.MutedStyle.Render(compactOutlinerTreePrefix(row.Prefix, prefixBudget))
-	// The quick-edit row is a transient input overlay, not a row grammar: it owns
-	// its own selection paint, so the fold indicator takes no cursor background.
-	fold := m.renderTaskFoldIndicator(row, nil)
-	inputPrefix := theme.RenderCursorPrefix() + prefix + fold + status + " "
+	// The draft, not the stored task: the state badge, the priority badge, and the
+	// pin the editor draws are the ones the buffer currently spells, so a `$doing`
+	// or a `*pin` typed into the line is answered in the same column the committed
+	// row will answer in. The quick-edit row is a transient input overlay rather
+	// than a row grammar, so it owns its own selection paint and passes the zero
+	// cursorPaint, which leaves the gutter unbackgrounded.
+	previewRow := row
+	if previewTask := m.quickEditDisplayTask(); previewTask != nil {
+		previewRow.Task = previewTask
+	}
+	inputPrefix := m.buildTaskRowSegments(previewRow, rowWidth, nil, cursorPaint{}).titlePrefix()
 	indentWidth := lipgloss.Width(inputPrefix)
 	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus
-	// the cursor cell after it, so the window must leave that column free.
+	// the cursor cell after it, so the window must leave that column free. The
+	// prefix is the row's own, so the columns the input is given are exactly the
+	// columns the title had — which is what keeps the caret on screen as the row
+	// budget changes.
 	m.QuickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
 	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.QuickEdit.RenderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}
-	if suggestions := m.QuickEdit.RenderSuggestions(strings.Repeat(" ", indentWidth), m.QuickEditSuggestionBudget()); suggestions != "" {
+	suggestionIndent := min(indentWidth, max(rowWidth/quickEditSuggestionIndentShare, 0))
+	if suggestions := m.QuickEdit.RenderSuggestions(strings.Repeat(" ", suggestionIndent), m.QuickEditSuggestionBudget()); suggestions != "" {
 		for _, line := range strings.Split(suggestions, "\n") {
 			lines = append(lines, textfit.TruncateToVisualWidth(line, rowWidth))
 		}
@@ -123,6 +138,12 @@ func (m *OutlinerModel) QuickEditMetadataLine(row OutlinerRow, project *models.P
 	return textfit.TruncateToVisualWidth(line, width)
 }
 
+// quickEditRouteFloor is the columns the route keeps while a validation message
+// is on screen. compactQuickEditRoute collapses deep ancestry between its two
+// endpoints above this, so the floor is what leaves a recognizable project chip
+// and parent rather than a bare ellipsis.
+const quickEditRouteFloor = 8
+
 func quickEditMandatoryMetadata(label, errorText, route, workflow string, width int) []string {
 	separatorWidth := lipgloss.Width(" · ")
 	if errorText == "" {
@@ -130,19 +151,16 @@ func quickEditMandatoryMetadata(label, errorText, route, workflow string, width 
 		return []string{label, compactQuickEditRoute(route, routeBudget), workflow}
 	}
 
+	// A refusal is the one thing on this line the user cannot read anywhere else:
+	// the route and the workflow restate what the row already shows, while the
+	// message names why the buffer will not commit. So it is served whole first
+	// and the route shrinks to the floor beneath it, rather than the two splitting
+	// the width evenly and both arriving as stubs.
 	error := "! " + errorText
 	available := max(width-lipgloss.Width(label)-lipgloss.Width(workflow)-3*separatorWidth, 2)
-	routeBudget := min(lipgloss.Width(route), max(available/2, 1))
-	errorBudget := min(lipgloss.Width(error), max(available-routeBudget, 1))
-	remaining := max(available-routeBudget-errorBudget, 0)
-	if errorBudget < lipgloss.Width(error) {
-		added := min(remaining, lipgloss.Width(error)-errorBudget)
-		errorBudget += added
-		remaining -= added
-	}
-	if routeBudget < lipgloss.Width(route) {
-		routeBudget += min(remaining, lipgloss.Width(route)-routeBudget)
-	}
+	routeFloor := min(lipgloss.Width(route), quickEditRouteFloor)
+	errorBudget := min(lipgloss.Width(error), max(available-routeFloor, 1))
+	routeBudget := max(available-errorBudget, 1)
 
 	return []string{
 		label,

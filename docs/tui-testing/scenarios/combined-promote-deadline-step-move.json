@@ -13,14 +13,12 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "a new item is unticked, which is the shape S converts", "assert": "contains", "value": "[ ] Confirm the cutover window" },
-    { "type": "assert", "assert": "contains", "value": "0/1" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "S promotes the item the append revealed", "key": "S" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the item is consumed", "assert": "not_contains", "value": "[ ] Confirm the cutover window" },
-    { "type": "assert", "label": "and the emptied checklist takes its badge with it", "assert": "not_contains", "value": "0/1" },
     { "type": "assert", "label": "the committed child is revealed under its owner", "assert": "contains", "value": "Confirm the cutover window" },
     { "type": "assert", "assert": "no_layout_issues" },
 

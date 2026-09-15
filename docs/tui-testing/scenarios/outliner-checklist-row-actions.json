@@ -13,11 +13,9 @@
     { "type": "key", "label": "x unticks the item under the cursor", "key": "x" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[ ] Outline the rollback steps" },
-    { "type": "assert", "label": "the owner badge follows the item", "assert": "contains", "value": "0/3" },
     { "type": "key", "label": "x ticks it back", "key": "x" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
-    { "type": "assert", "assert": "contains", "value": "1/3" },
 
     { "type": "key", "label": "K refuses to move the first item further up", "key": "K" },
     { "type": "assert", "assert": "contains", "value": "already first" },
@@ -32,17 +30,15 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "[ ] Verify the rollback drill" },
-    { "type": "assert", "assert": "contains", "value": "1/4" },
+    { "type": "assert", "label": "the item row is its own evidence; the owner leaves the count to Peek", "assert": "contains", "value": "[ ] Verify the rollback drill" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "x proves the cursor followed the committed item", "key": "x" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[x] Verify the rollback drill" },
-    { "type": "assert", "assert": "contains", "value": "2/4" },
     { "type": "key", "label": "untick it again", "key": "x" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "1/4" },
+    { "type": "assert", "assert": "contains", "value": "[ ] Verify the rollback drill" },
     { "type": "key", "label": "step back onto the item the rest of this scenario acts on", "key": "k" },
     { "type": "key", "key": "k" },
 
@@ -69,7 +65,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Outline the rollback steps" },
     { "type": "assert", "assert": "contains", "value": "[ ] Name the on-call owner" },
     { "type": "assert", "assert": "contains", "value": "[ ] Verify the rollback drill" },
-    { "type": "assert", "assert": "contains", "value": "0/3" },
+    { "type": "assert", "label": "the three survivors are the deleted checklist's own evidence", "assert": "contains", "value": "[ ] Attach the comms draft" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

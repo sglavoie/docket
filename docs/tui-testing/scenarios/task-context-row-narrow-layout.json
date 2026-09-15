@@ -4,8 +4,16 @@
   "size": "60x20",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the reserved context badge survives at minimum width", "assert": "contains", "value": "[platform]" },
-    { "type": "assert", "assert": "contains", "value": "Add password" },
+    { "type": "assert", "label": "the badge the row used to reserve at minimum width is Peek's now", "assert": "not_contains", "value": "[platform]" },
+    { "type": "assert", "label": "so a title that once lost its tail to it arrives whole at 60 columns", "assert": "not_clipped", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "Add password validation" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "the search keeps the ancestry, so the deepest row is the result", "key": "end" },
+    { "type": "key", "label": "the narrow dock still carries the context whole", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Context: [platform]" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

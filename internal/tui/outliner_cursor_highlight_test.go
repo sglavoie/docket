@@ -47,8 +47,9 @@ func cursorHighlightOutlinerTheme(t *testing.T, themeName string, tasks ...*mode
 
 // TestCursorTaskRowKeepsEveryColorItEarned is the inverse of what SelectedLine
 // guarantees: the row under the cursor is the one row that must still say what
-// it is, so its chip and badges survive intact. Its title is the one thing that
-// was never earned — a title is neutral text on every row, cursor included.
+// it is, so the badges it earned survive intact. Its title is the one thing that
+// was never earned — a title is neutral text on every row, cursor included — and
+// the tag axis is Peek's, so the cursor does not buy a chip back.
 func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	task := &models.Task{
 		ID:            "t1",
@@ -64,7 +65,6 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
 	for name, want := range map[string]string{
-		"tag chip":       theme.TagChipStyle("infra").Render("#infra"),
 		"state badge":    theme.GetStateBadge(models.StateDoing),
 		"priority badge": chrome.RenderPriorityBadge(2),
 	} {
@@ -82,6 +82,9 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 		if strings.Contains(line, unwanted) {
 			t.Fatalf("cursor row repainted its title with the %s:\n%q", name, line)
 		}
+	}
+	if strings.Contains(ansi.Strip(line), "#infra") {
+		t.Fatalf("cursor row spent a column on a tag chip Peek already names:\n%q", ansi.Strip(line))
 	}
 }
 
@@ -301,7 +304,8 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 // TestWaitingRowWearsNoTint is the other half of that rule. A row tint is the
 // loudest mark the list has, so the overdue row above is the only row that earns
 // one: an ordinary Waiting task is the quietest work in the workspace and says
-// so through its badge and its `waiting <age>` segment alone.
+// so through its badge alone. The age that badge used to carry is Peek's, which
+// is the quieter claim, not a weaker one.
 func TestWaitingRowWearsNoTint(t *testing.T) {
 	task := &models.Task{
 		ID: "waiting", ShortID: 1, Title: "Blocked on review",
@@ -318,9 +322,16 @@ func TestWaitingRowWearsNoTint(t *testing.T) {
 		if !strings.Contains(line, theme.GetStateBadge(models.StateWaiting)) {
 			t.Fatalf("%s waiting row lost the badge that says it is waiting:\n%q", name, line)
 		}
-		if !strings.Contains(ansi.Strip(line), "waiting") {
-			t.Fatalf("%s waiting row named no waiting age:\n%q", name, ansi.Strip(line))
+		if strings.Contains(ansi.Strip(line), "waiting") {
+			t.Fatalf("%s waiting row spelled the age its badge already implies:\n%q", name, ansi.Strip(line))
 		}
+	}
+
+	outlinerView.SetSize(80, 24)
+	outlinerView.PeekMode = true
+	peek := ansi.Strip(strings.Join(outlinerView.PeekDocumentBodyForRow(row), "\n"))
+	if !strings.Contains(peek, "waiting 2d") {
+		t.Fatalf("Peek did not carry the age the row stopped naming:\n%s", peek)
 	}
 }
 

@@ -159,8 +159,12 @@ declared their text required, while this reads the finished screen.
 
 - Go: `internal/tui/outliner/outliner_render_rows_test.go`,
   `internal/tui/outliner/outliner_render_indicators_test.go`,
+  `internal/tui/outliner/outliner_row_budget_acceptance_test.go`,
   `internal/tui/inline_row_editor_test.go`,
   `internal/tui/inline_row_editor_commit_test.go`,
+  `internal/tui/check_in_visual_acceptance_test.go`,
+  `internal/tui/outliner_cursor_highlight_test.go`,
+  `internal/tui/responsive_peek_test.go`,
   `internal/tui/textfit/text_width_helpers_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json`,
   `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json`,
@@ -169,8 +173,9 @@ declared their text required, while this reads the finished screen.
   `docs/tui-testing/scenarios/doing-age-narrow.json`
 - Contracts: `CLAUDE.md` — `indicatorDropLadder` as a list where a new indicator
   gets a position, the trailing `~S/N` counting stored locators regardless of
-  target state, `taskRowSegments` reserving the relation marker, the context
-  segment, and the pin marker at every width, `taskPinnedMarker` reading
+  target state, `taskRowSegments` reserving the relation marker and the pin
+  marker at every width while the context and tags are Peek's,
+  `taskPinnedMarker` reading
   `task.Pinned && !row.IsPinnedSection`, `TruncateToVisualWidth` having no
   counterpart because its dropped tail is not recoverable, and the four-step
   pulse ladder. `docs/decisions/behavioral-signals-contracts.md`,

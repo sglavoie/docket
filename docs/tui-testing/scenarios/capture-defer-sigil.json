@@ -24,7 +24,8 @@
     { "type": "key", "key": "down" },
     { "type": "key", "label": "highlight Deferred only, below the four due-date rows", "key": "down" },
     { "type": "key", "label": "isolate the pending deferrals", "key": "enter" },
-    { "type": "assert", "label": "the captured task is deferred, not merely backlogged", "assert": "contains", "value": "Sigil deferred intake defer" },
+    { "type": "assert", "label": "the deferred-only facet is what proves the capture deferred rather than merely backlogged", "assert": "contains", "value": "Sigil deferred intake" },
+    { "type": "assert", "label": "the deferral itself is Peek's; the row stays a title", "assert": "not_contains", "value": "Sigil deferred intake defer" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },

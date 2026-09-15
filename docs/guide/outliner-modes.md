@@ -15,7 +15,7 @@ Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole;
-a pinned task there wears a bold `*` left of its context badge and title.
+a pinned task there wears a bold `*` left of its title.
 Pinned tasks appear once in project groups, each promoted child wearing the bare
 `‹` parent marker whose chain Peek names. Tasks inside a group start
 newest-first and `J`/`K` reorder them manually; a pinned subtree ranks by its

@@ -30,7 +30,7 @@
     { "type": "key", "key": "G" },
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "assert", "label": "the narrow row clips the title harder", "assert": "contains", "value": "Restore …" },
+    { "type": "assert", "label": "the narrow row still clips, but on the reclaimed budget it reaches the third word rather than the first", "assert": "contains", "value": "Restore the overdue billing rec…" },
     { "type": "assert", "label": "Peek wraps the whole title rather than eliding it", "assert": "contains", "value": "Restore the overdue billing reconciliation export" },
     { "type": "assert", "assert": "contains", "value": "the audit closes" },
     { "type": "assert", "label": "wrapping costs rows, so the same document has further to go", "assert": "contains", "value": "0 above · 10 below" },
