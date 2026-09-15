@@ -7,7 +7,7 @@
     { "type": "key", "label": "capture into Unfiled", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "text", "label": "flag the task as it is created", "text": "Flagged task =review " },
-    { "type": "assert", "label": "the preview names the review group", "assert": "contains", "value": "Review" },
+    { "type": "assert", "label": "the bounded panel's preview still names every recognized attribute", "assert": "contains", "value": "Flagged task · □ $inbox (default) · =review" },
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

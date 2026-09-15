@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -14,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -136,12 +138,6 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "task composer", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, nil)
-			m.SetSize(140, 30)
-			m.SetWorkspacePulse(workspacePulse)
-			return m.View().Content
-		}},
 		{name: "task form", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := taskform.NewTaskFormModelCreate(project, nil, nil)
 			m.SetSize(140, 30)
@@ -198,6 +194,32 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestPresentationChromeHostedPanelLeavesThePulseToItsHost is the other side of
+// that contract. The compact composer is a bounded panel with no title row, and
+// the presentation it is drawn over keeps painting its own, so the composition
+// still carries the pulse exactly once. A panel that painted one too would
+// double it; one that replaced its host would lose it.
+func TestPresentationChromeHostedPanelLeavesThePulseToItsHost(t *testing.T) {
+	model := typedTestApp(t)
+	model.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 30})
+	model.crossOutliner.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4})
+
+	handled, _ := model.handleViewMessages(model.captureComposerMessage(model.currentProject, model.taskWorkspaceProjects()))
+	if !handled || model.currentView() != presentation.ViewTaskComposer {
+		t.Fatalf("composer did not open: handled=%v view=%v", handled, model.currentView())
+	}
+	model.taskComposer.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4})
+	model.syncHostedPanelHost()
+
+	plain := ansi.Strip(model.View().Content)
+	if want := "workspace: inbox 3 · today 2 · overdue 1 · done 4"; !strings.Contains(plain, want) {
+		t.Fatalf("hosted composition missing workspace pulse %q:\n%s", want, plain)
+	}
+	if got := strings.Count(plain, "workspace:"); got != 1 {
+		t.Fatalf("workspace pulse count = %d, want one:\n%s", got, plain)
 	}
 }
 

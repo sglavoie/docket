@@ -57,6 +57,51 @@ identity, `ShortID`, timestamps, checklist persistence, and the single undo
 entry all come from the one creation transaction. Opening a draft and
 abandoning it writes nothing at all.
 
+#### The capture panel and its host
+
+Compact capture is a bounded panel pinned to the bottom of the content area,
+drawn over the presentation it was raised from. `route.HostedPanelView` is how a
+view declares that, and `chrome.HostedPanelLayout` is the value it returns: one
+`HostRows` budget and one `HostDrawn` flag, with the zero value meaning the view
+owns the whole area. That is what lets the composer declare both of its
+presentations without a second type — `ComposerExpanded` returns the zero layout
+and the full form takes the screen.
+
+The shell does not draw the panel on top of its host; it resizes the host and
+re-renders it into the rows the panel left, then stacks the two with
+`chrome.ComposeHostedPanel`. Overlaying would hide the host's bottom rows, and
+the row a list surface most needs to keep is the one its cursor is on. That
+resize is also why `composerPanelRows` reads the frame and nothing else — not the
+draft, not the preview, not the error list. `OutlinerModel.SetSize` drops
+`ViewScrollOffset`, so a host budget that moved with the panel's own content
+would re-anchor the outline under every keystroke. For the same reason
+`syncHostedPanelHost` runs once per `Update`, in the shell's one deferred
+closure, rather than once per frame, and expanding the syntax guide sets
+`HostDrawn` false — the panel takes the frame while the guide is up, and the host
+keeps the size it already had so closing the guide costs it no scroll window.
+`hostedPanelHostRecord` names the one view owed its budget back, since a sweep
+over the registry would reset every other surface's window to say so;
+`syncHostedPanelHost` still reads the host's own `Width()`/`Height()` rather than
+trusting that record, so a re-registration that reset the host to the full budget
+is corrected on the next update instead of silently clipping its cursor row away.
+
+The panel has no title row, so it also has no workspace pulse: the host under it
+is still painting its own, and `TestPresentationChromeHostedPanelLeavesThePulseToItsHost`
+holds the composition to exactly one. `chrome.RenderLabeledDivider` is the
+heading form it uses instead — `── Capture → Client Alpha ─────`, one row, the
+plain rule when there is no room for a label. Its styles are built locally rather
+than taken from `theme.SubtitleStyle`, which carries a bottom margin that on a
+single row is a newline through the middle of the divider.
+
+`ComposeBoundedPreviewBlock` is the preview's form of the same bound. Where
+`ComposePreviewBlock` protects a lower pane, the panel has none, so the choice is
+between the grouped preview while it fits whole and the compact wrapped run that
+names every recognized attribute. Keeping the first few groups and clipping the
+rest would read as a complete preview, which is the one outcome a capture surface
+may not produce. The discard question is left to the shell's own confirm dialog
+for the same accounting: a second copy inside the panel would spend a preview row
+repeating what the overlay already asks.
+
 `##context` is the singleton task-context sigil. It shares tag normalization,
 but projects one optional field rather than a repeatable tag set. Capture and
 outline input reject `##0`; inline edit consumes it as the explicit clear while
@@ -226,8 +271,8 @@ returned untouched — the common case loses no row to a scroll it never perform
 The error banner stays chrome rather than body for the same reason the focus
 drives the window: `handleSave` seats a refusal on the offending field, so the
 banner and the field it names are read together or not at all. What still reaches
-`clampFormBody` is only what no focus indexes — an inline overlay and the compact
-composer's already-budgeted layout — and the help column is cut to the body's own
+`clampFormBody` is only what no focus indexes — an inline overlay, and the
+expanded form's own body as the last defensive cut — and the help column is cut to the body's own
 height by `clampFormHelpPane` before the two are joined, so reference text beside
 the field can never spend the position row that says where the reader is.
 

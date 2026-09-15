@@ -56,6 +56,11 @@ type AppModel struct {
 	// Capture/form presentation IDs remain observations for embedded modes.
 	taskComposer *taskform.TaskComposerModel
 
+	// hostedPanelHost records which presentation the shell last shrank to make
+	// room for a bounded bottom panel, so closing the panel hands that one view
+	// its whole budget back. See app_hosted_panel.go.
+	hostedPanelHost hostedPanelHostRecord
+
 	// viewNav is the view and navigation cluster: the authoritative route and
 	// overlay stacks, the renderer registry, and the terminal geometry both are
 	// sized against. See view_navigation_controller.go.

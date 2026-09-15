@@ -8,13 +8,13 @@
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "text", "label": "name the project first, since it decides how an alias is spelled", "text": "Wire the importer %client-alpha ~" },
     { "type": "assert", "assert": "contains", "value": "Client Alpha" },
-    { "type": "assert", "label": "every loaded project's open work is addressable", "assert": "contains", "value": "Beta rollout checklist" },
-    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+    { "type": "assert", "label": "every loaded project's open work is addressable", "assert": "contains", "value": "Client Beta #1 Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "Home Errands #1 Renew passport" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "text", "label": "a title prefix inside the effective project", "text": "alpha" },
     { "type": "assert", "label": "a local target inserts the bare short ID", "assert": "contains", "value": "~1 □ Client Alpha #1 Alpha migration kickoff" },
-    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "label": "the outline behind the panel still names it, so the candidate list is read by its qualified row", "assert": "not_contains", "value": "Home Errands #1 Renew passport" },
     { "type": "key", "label": "accept the highlighted candidate", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Wire the importer %client-alpha ~1" },
 

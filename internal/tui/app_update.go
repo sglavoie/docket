@@ -49,6 +49,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if interactive || checkInOfferInput(msg) {
 			outCmd = withCheckInOfferOrigin(outCmd, origin)
 		}
+		// Every branch above returns early, so this closure is also the one place
+		// a bottom panel's host can be resized exactly when the panel opened,
+		// moved, or closed rather than on every frame.
+		m.syncHostedPanelHost()
 		if flash := m.armFooterFlashSince(statusBefore); flash != nil {
 			outCmd = tea.Batch(outCmd, flash)
 		}

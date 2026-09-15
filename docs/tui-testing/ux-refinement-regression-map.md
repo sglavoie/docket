@@ -309,22 +309,35 @@ declared their text required, while this reads the finished screen.
 
 ### Session 11 — Present capture as a contextual bottom modal
 
-- Go: `internal/tui/taskform/task_composer_test.go`,
+- Go: `internal/tui/chrome/hosted_panel_test.go`,
+  `internal/tui/taskform/task_composer_test.go`,
   `internal/tui/taskform/task_composer_expand_test.go`,
   `internal/tui/taskform/task_composer_seed_test.go`,
+  `internal/tui/app_view_test.go`,
+  `internal/tui/presentation_chrome_policy_test.go`,
   `internal/tui/chrome/capture_footer_test.go`,
   `internal/tui/capture_footer_test.go`
-- Scenarios: `docs/tui-testing/scenarios/capture-grammar.json`,
+- Scenarios: `docs/tui-testing/scenarios/capture-bottom-panel.json`,
+  `docs/tui-testing/scenarios/capture-review.json`,
+  `docs/tui-testing/scenarios/capture-dependency-cross-project.json`,
+  `docs/tui-testing/scenarios/capture-grammar.json`,
   `docs/tui-testing/scenarios/capture-attachment.json`,
   `docs/tui-testing/scenarios/capture-comment.json`,
   `docs/tui-testing/scenarios/capture-project-header-destination.json`,
   `docs/tui-testing/scenarios/capture-due-time.json`
-- Contracts: `CLAUDE.md` — transient input overlays being exempt from the
-  one-key-one-act rule, `&link` and `;comment;` riding the capturing task's own
-  ChangeSet so one undo entry covers task, bytes, and comments, multiline capture
-  validating every nonblank line before committing one transaction, and the
-  composer preset carrying a typed seed rather than `InitialText`.
-  `docs/guide/capture.md`, `docs/architecture/capture-and-outline-editor.md`.
+- Contracts: `CLAUDE.md` — the hosted panel: `route.HostedPanelView` and
+  `chrome.HostedPanelLayout` as the one seam a view declares a bounded bottom
+  presentation through, `HostRows` being a pure function of the frame, the panel
+  never painting a title or a pulse because its host keeps painting both, the
+  bounded preview taking the compact run rather than a clipped group list, and
+  the expanded composer still owning the whole content area. Also the standing
+  capture rules this session preserved: transient input overlays being exempt
+  from the one-key-one-act rule, `&link` and `;comment;` riding the capturing
+  task's own ChangeSet so one undo entry covers task, bytes, and comments,
+  multiline capture validating every nonblank line before committing one
+  transaction, and the composer preset carrying a typed seed rather than
+  `InitialText`. `docs/guide/capture.md`,
+  `docs/architecture/capture-and-outline-editor.md`.
 
 ### Session 12 — Make ordinary slash search ranked by default
 

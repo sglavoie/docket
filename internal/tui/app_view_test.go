@@ -77,8 +77,10 @@ func countFullWidthDividers(content string) int {
 	return count
 }
 
-// TestAppViewQuickCaptureUsesAppShellFooter guards the composer-section divider
-// plus the single app-shell footer contract for the unified Task Composer.
+// TestAppViewQuickCaptureUsesAppShellFooter guards the bounded capture panel's
+// composition: the panel names itself on its own labeled divider instead of
+// spending a row on a fullscreen title, and the app shell still contributes the
+// one plain rule on screen.
 func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.viewNav.width = 80
@@ -92,14 +94,64 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 		t.Fatalf("currentView should be QuickCapture, got %v", app.currentView())
 	}
 
-	content := app.View().Content
+	content := ansi.Strip(app.View().Content)
 
-	if !strings.Contains(content, "Task Composer") {
-		t.Fatal("composed output should keep the Task Composer title/body")
+	if !strings.Contains(content, "── Capture → Test Project ") {
+		t.Fatalf("composed output should keep the panel's labeled divider:\n%s", content)
+	}
+	if !strings.Contains(content, "Project: Test Project · Destination: ") {
+		t.Fatalf("composed output should keep the panel's route row:\n%s", content)
 	}
 
-	if got := countFullWidthDividers(content); got != 2 {
-		t.Fatalf("expected composer and app-shell separators, got %d\n%s", got, ansi.Strip(content))
+	if got := countFullWidthDividers(content); got != 1 {
+		t.Fatalf("expected the app-shell separator alone, got %d\n%s", got, content)
+	}
+}
+
+// TestAppViewHostedCapturePanelKeepsItsHostVisible is the composition the panel
+// exists for: capture is raised over the outline rather than instead of it, the
+// panel is pinned to the bottom of the content area, and closing it hands the
+// host back every row it lent.
+func TestAppViewHostedCapturePanelKeepsItsHostVisible(t *testing.T) {
+	model := typedTestApp(t)
+	model.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 30})
+	_, hostHeight := model.viewNav.viewSize()
+
+	handled, _ := model.handleViewMessages(model.captureComposerMessage(model.currentProject, model.taskWorkspaceProjects()))
+	if !handled || model.currentView() != presentation.ViewTaskComposer {
+		t.Fatalf("composer did not open: handled=%v view=%v", handled, model.currentView())
+	}
+	model.syncHostedPanelHost()
+
+	frame, ok := model.hostedPanelFrame()
+	if !ok || frame.host != presentation.ViewCrossProjectOutliner {
+		t.Fatalf("capture panel host = %v (ok=%v), want the outline it was raised from", frame.host, ok)
+	}
+	if got := model.crossOutliner.Height(); got != frame.layout.HostRows {
+		t.Fatalf("host height = %d, want the %d rows the panel left it", got, frame.layout.HostRows)
+	}
+
+	lines := strings.Split(ansi.Strip(model.View().Content), "\n")
+	divider := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, "── Capture → ") {
+			divider = i
+			break
+		}
+	}
+	if divider <= 0 {
+		t.Fatalf("panel divider at line %d, want the outline drawn above it:\n%s", divider, strings.Join(lines, "\n"))
+	}
+	if !strings.Contains(lines[0], "workspace:") {
+		t.Fatalf("host title is not the first row under a hosted panel:\n%s", strings.Join(lines, "\n"))
+	}
+
+	// Closing the panel is the release: one view is owed its budget back.
+	model.taskComposer = nil
+	model.viewNav.navigation.Overlays.CloseTop()
+	model.syncHostedPanelHost()
+	if got := model.crossOutliner.Height(); got != hostHeight {
+		t.Fatalf("host height after close = %d, want its whole budget %d", got, hostHeight)
 	}
 }
 

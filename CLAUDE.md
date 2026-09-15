@@ -276,6 +276,27 @@ and a description capped at `listSurfacePreviewBodyLines`, declares no `Fields`,
 and paints the project's tasks with `RenderOutlinerTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.
 
+Capture is a bounded panel over a live presentation, not a fullscreen view.
+`route.HostedPanelView` is the one seam a view asks for that through and
+`chrome.HostedPanelLayout` the whole of what it says: `HostRows` is the content
+height left to whatever is underneath and `HostDrawn` whether that presentation
+is painted this frame, so the zero value is a view owning the area outright and
+one view declares both presentations without a second route. `HostRows` is a
+pure function of the frame — never of the cursor, the draft, or the document —
+because `OutlinerModel.SetSize` drops `ViewScrollOffset`, and the syntax guide
+therefore flips `HostDrawn` instead of moving it. `syncHostedPanelHost` resizes
+that host once per `Update` and never per frame, and `ComposeHostedPanel` pins
+the panel to the bottom, spending the rows it declined on blank lines when no
+host resolves, since a bottom panel that floated to the first row reads as a
+full view. The panel draws `chrome.RenderLabeledDivider` and no title, so the
+workspace pulse stays the host's and appears exactly once; the discard question
+stays the shell's confirm dialog, and a second copy underneath would cost the
+preview a row. A bounded preview elides nothing: `ComposeBoundedPreviewBlock`
+falls to the compact wrapped run rather than clipping the grouped one, because a
+truncated group list reads as a complete one. `Ctrl+F` is the composer's other
+presentation and declares no layout, so the expanded form owns the whole content
+area.
+
 The full task form windows rather than clips. `formBodyBuilder` records each
 focusable field once, where it starts, so its extent is the next declaration;
 `formViewportOffset` is the pure window authority, scrolling the focused field in

@@ -217,18 +217,8 @@ func (q *QuickCaptureInput) renderCompactPreview() string {
 // whether a trailing blank separator should follow it (1 when non-empty). Shared
 // by Quick Capture and the Linked Task Creator so both budget the preview identically.
 func (q *QuickCaptureInput) ComposePreviewBlock(remaining, lowerMin int) (block string, rows, blankAfter int) {
-	renderFull := func() string {
-		if q.err != nil {
-			return theme.ValidationErrorStyle.Render(q.err.Error())
-		}
-		return q.renderPreview()
-	}
-	renderCompact := func() string {
-		if q.err != nil {
-			return q.clampToRows(theme.ValidationErrorStyle.Render(q.err.Error()), 2)
-		}
-		return q.renderCompactPreview()
-	}
+	renderFull := q.renderFullPreviewBlock
+	renderCompact := q.renderCompactPreviewBlock
 
 	block = renderFull()
 	if block != "" {
@@ -256,6 +246,41 @@ func (q *QuickCaptureInput) ComposePreviewBlock(remaining, lowerMin int) (block 
 		}
 	}
 	return block, rows, blankAfter
+}
+
+// renderFullPreviewBlock is the grouped preview, or the refusal that stands in
+// for it. A parse error is what the preview has to say about the line.
+func (q *QuickCaptureInput) renderFullPreviewBlock() string {
+	if q.err != nil {
+		return theme.ValidationErrorStyle.Render(q.err.Error())
+	}
+	return q.renderPreview()
+}
+
+// renderCompactPreviewBlock is the same content as one wrapped run of chunks.
+func (q *QuickCaptureInput) renderCompactPreviewBlock() string {
+	if q.err != nil {
+		return q.clampToRows(theme.ValidationErrorStyle.Render(q.err.Error()), 2)
+	}
+	return q.renderCompactPreview()
+}
+
+// ComposeBoundedPreviewBlock renders the preview into a fixed row budget with
+// no lower pane to protect. It is the panel's form of the same choice
+// ComposePreviewBlock makes for a full-height view: the grouped preview while
+// it fits whole, and otherwise the compact run, which wraps every recognized
+// attribute rather than keeping the first few groups and silently dropping the
+// rest. Clipping is the last resort, since a truncated group list reads as a
+// complete one.
+func (q *QuickCaptureInput) ComposeBoundedPreviewBlock(rows int) string {
+	if rows < 1 {
+		return ""
+	}
+	block := q.renderFullPreviewBlock()
+	if block == "" || lipgloss.Height(block) <= rows {
+		return block
+	}
+	return q.clampToRows(q.renderCompactPreviewBlock(), rows)
 }
 
 // clampToRows wraps a styled string to q.width and keeps at most rows lines,

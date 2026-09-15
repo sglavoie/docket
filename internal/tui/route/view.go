@@ -43,6 +43,18 @@ type ViewStatusStripProvider interface {
 	ViewStatusStrip(width int) string
 }
 
+// HostedPanelView is implemented by a view that presents as a bounded panel
+// pinned to the bottom of the content area, drawn over the presentation it was
+// opened from rather than replacing it. It is how one view declares which of its
+// two presentations is live: a compact panel, or the whole content area.
+//
+// The shell is the only caller. It hands the host the rows the panel left it and
+// re-renders it there, so the host stays a live projection under the panel
+// instead of a covered one — the row its cursor is on is never hidden.
+type HostedPanelView interface {
+	HostedPanelLayout(width, height int) chrome.HostedPanelLayout
+}
+
 // StatusBarLabeler is implemented by views that provide their own status bar label.
 // Views without this interface show an empty label in the status bar.
 type StatusBarLabeler interface {

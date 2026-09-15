@@ -1,18 +1,15 @@
 package taskform
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -100,92 +97,15 @@ func renderComposerDestination(destination app.CaptureDestination) string {
 	return destination.WorkflowState().Icon() + " $" + string(destination)
 }
 
-// compactContentHeight converts the shell's conventional height-minus-two view
-// budget into the rows actually available above this composer's contextual
-// footer. The footer can wrap beyond its usual divider-plus-one-row shape at
-// narrower widths, and every extra footer row must be removed from the lower
-// pane budget before the shell performs its final safety clip.
-func (m *TaskComposerModel) compactContentHeight() int {
-	contentHeight := m.height
-	if spec, ok := m.ContextualGuidance(); ok {
-		footerRows := lipgloss.Height(chrome.RenderGuidance(spec, m.width))
-		contentHeight -= max(footerRows-2, 0)
-	}
-	return max(contentHeight, 1)
-}
-
+// View renders whichever presentation the composer currently owns: the expanded
+// form over the whole content area, or the bounded capture panel the shell
+// stacks under the presentation this capture was raised from.
 func (m *TaskComposerModel) View() tea.View {
 	if m.Mode == ComposerExpanded && m.Expanded != nil {
 		return m.Expanded.View()
 	}
 	theme.ApplyThemedTextarea(&m.Input)
-	contentHeight := m.compactContentHeight()
-	project, destination := m.effectiveRouteHeader()
-	var b strings.Builder
-	b.WriteString(chrome.RenderFullscreenTitleWithPulse("Task Composer", m.Preset.label(), m.CurrentWorkspacePulse(), m.width))
-	b.WriteString("\n\n")
-	b.WriteString(theme.SubtitleStyle.Render("Project: ") + textfit.TruncateToVisualWidth(project, max(m.width-12, 1)))
-	b.WriteString("\n")
-	b.WriteString(theme.SubtitleStyle.Render("Destination: ") + textfit.TruncateToVisualWidth(destination, max(m.width-16, 1)))
-	b.WriteString("\n\n")
-	b.WriteString(m.Input.View())
-	b.WriteString("\n")
-	b.WriteString(chrome.RenderHorizontalDivider(m.width))
-
-	var errorsBlock strings.Builder
-	for _, lineErr := range m.Errors {
-		errorsBlock.WriteString(theme.ValidationErrorStyle.Render(fmt.Sprintf("Line %d: %s", lineErr.Line, lineErr.Message)))
-		errorsBlock.WriteString("\n")
-	}
-	errors := strings.TrimRight(errorsBlock.String(), "\n")
-	confirm := ""
-	if m.ConfirmDiscard {
-		confirm = theme.ValidationErrorStyle.Render("Discard input? (y/n)")
-	}
-
-	blockRows := func(blocks ...string) int {
-		rows := 0
-		for _, block := range blocks {
-			if block != "" {
-				rows += 1 + lipgloss.Height(block)
-			}
-		}
-		return rows
-	}
-	appendBlock := func(block string) {
-		if block == "" {
-			return
-		}
-		b.WriteString("\n\n")
-		b.WriteString(block)
-	}
-
-	prefixRows := lipgloss.Height(b.String())
-	remaining := max(contentHeight-prefixRows-blockRows(errors, confirm), 1)
-	preview := ""
-	if count := m.nonblankLineCount(); count > 1 {
-		preview = theme.MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
-	} else if m.PreviewErr != "" || m.Preview != nil {
-		lowerMin := 0
-		if m.IsAutocompleteActive() {
-			lowerMin = min(len(m.AC.Items), 3)
-		}
-		preview, _, _ = m.ComposePreviewBlock(max(remaining-1, 1), lowerMin)
-	}
-
-	appendBlock(preview)
-	fixedRows := prefixRows + blockRows(preview, errors, confirm)
-	if m.IsAutocompleteActive() {
-		rowBudget := max(contentHeight-fixedRows-1, 1)
-		appendBlock(strings.TrimRight(m.AC.RenderDropdownWithLimit("", rowBudget), "\n"))
-	} else if m.HelpExpanded {
-		helpBudget := max(contentHeight-fixedRows-1, 1)
-		m.SetSyntaxViewportHeight(helpBudget)
-		appendBlock(m.SyntaxVP.View())
-	}
-	appendBlock(errors)
-	appendBlock(confirm)
-	return tea.NewView(clampFormBody(strings.TrimRight(b.String(), "\n"), contentHeight))
+	return tea.NewView(m.renderCompactPanel(m.compactPanelRows()))
 }
 
 func (m *TaskComposerModel) nonblankLineCount() int {

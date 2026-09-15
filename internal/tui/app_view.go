@@ -91,8 +91,9 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	statusBarHeight := lipgloss.Height(statusBar)
 
 	// Pad content so the status bar is always at the bottom of the terminal
-	contentHeight := lipgloss.Height(content)
 	targetContentHeight := m.viewNav.height - statusBarHeight
+	content = m.composeHostedPanelContent(content, targetContentHeight)
+	contentHeight := lipgloss.Height(content)
 	if contentHeight > targetContentHeight {
 		content = clipContentHeight(content, targetContentHeight)
 		contentHeight = lipgloss.Height(content)

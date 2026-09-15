@@ -796,7 +796,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// overlay owning the view is last because shrinking it is the natural repair
 	// and it is the one that loses a picker's bottom border. The mechanism lives
 	// in docs/architecture/capture-and-outline-editor.md.
-	const budget = 53633
+	// Forty-first raise, 53633 to 55137, for capture drawn over a live host. 1504
+	// bytes buy the rule that a view may own part of the content area rather than
+	// all of it, and the consequences that are invisible from either side alone.
+	// Naming the seam and the two fields is what stops the next bounded surface
+	// from overlaying its host or registering a second view: HostRows and
+	// HostDrawn are separate because the syntax guide needs the rows without the
+	// paint, and collapsing them is the natural simplification. HostRows being a
+	// pure function of the frame is the one that decays silently — a height read
+	// off the cursor or the draft resizes the host mid-interaction, and SetSize
+	// drops the scroll offset, so the symptom is an outline that jumps while the
+	// contributor is typing somewhere else. The once-per-Update resize and the
+	// blank rows above a declined host are each a bug this session fixed and would
+	// otherwise be refixed by moving the arithmetic back into the render. The
+	// pulse and the discard dialog are stated as the host's and the shell's
+	// because a panel that paints either duplicates it, and duplication reads as
+	// correctness. The bounded preview is last because clipping is what a row
+	// budget suggests and it is the one outcome a capture surface may not produce.
+	// The mechanism lives in docs/architecture/capture-and-outline-editor.md.
+	const budget = 55137
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -1,0 +1,46 @@
+{
+  "name": "capture-bottom-panel",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "step onto the first task", "key": "j" },
+    { "type": "key", "label": "open Peek on it", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+
+    { "type": "key", "label": "raise capture over the outline", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "label": "the panel names the capture on its own divider rather than a title row", "assert": "contains", "value": "── Capture → Unfiled" },
+    { "type": "assert", "label": "and states the effective route on one row", "assert": "contains", "value": "Project: Unfiled · Destination: □ $inbox" },
+    { "type": "assert", "label": "the outline it was raised from is still a live projection", "assert": "contains", "value": "@ Backlog  (4)" },
+    { "type": "assert", "label": "including the Peek dock the cursor had open", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "text": "Panel capture !2 #panel" },
+    { "type": "assert", "label": "the preview of what Enter would create is inside the panel", "assert": "contains", "value": "Task     Panel capture" },
+    { "type": "assert", "assert": "contains", "value": "Priority !2" },
+    { "type": "assert", "assert": "contains", "value": "Tags     #panel" },
+
+    { "type": "key", "label": "the expanded form is the composer's other presentation", "key": "ctrl+f" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "Task Composer · Expanded" },
+    { "type": "assert", "label": "which owns the whole content area rather than a share of it", "assert": "not_contains", "value": "@ Backlog  (4)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel the capture", "key": "esc" },
+    { "type": "key", "label": "discarding the draft", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the host has its whole budget back", "assert": "contains", "value": "@ Backlog  (4)" },
+    { "type": "assert", "label": "with the cursor and the Peek dock capture found", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "not_contains", "value": "Panel capture" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the panel still leaves outline rows at the app's own floor", "width": 60, "height": 20 },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "── Capture → Unfiled" },
+    { "type": "assert", "label": "the host is windowed rather than covered, so its cursor row is never the row the panel hid", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -162,6 +162,19 @@ func TestTaskComposerAutocompleteKeepsUnusedTagsRepeatable(t *testing.T) {
 	}
 }
 
+// countDropdownRows counts the autocomplete rows the panel actually painted.
+// Every one of them names the destination it would insert, so the marker column
+// is the only thing that varies between the selected row and its neighbors.
+func countDropdownRows(rendered string) int {
+	count := 0
+	for _, line := range strings.Split(rendered, "\n") {
+		if strings.HasPrefix(strings.TrimLeft(strings.TrimSpace(line), "> "), "$") {
+			count++
+		}
+	}
+	return count
+}
+
 func TestTaskComposerAutocompleteUsesAvailableHeight(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
@@ -171,47 +184,99 @@ func TestTaskComposerAutocompleteUsesAvailableHeight(t *testing.T) {
 	composer.RefreshAutocomplete()
 
 	tall := ansi.Strip(composer.View().Content)
-	if strings.Contains(tall, "more") || !strings.Contains(tall, "$canceled") {
-		t.Fatalf("tall composer did not show every destination:\n%s", tall)
+	tallRows := countDropdownRows(tall)
+	if tallRows == 0 || !strings.Contains(tall, "more") {
+		t.Fatalf("tall panel did not show a bounded destination list:\n%s", tall)
 	}
 
 	composer.SetSize(80, 18)
 	short := ansi.Strip(composer.View().Content)
-	if !strings.Contains(short, "more") {
-		t.Fatalf("short composer did not show an overflow hint:\n%s", short)
+	shortRows := countDropdownRows(short)
+	if shortRows == 0 || shortRows >= tallRows {
+		t.Fatalf("dropdown did not grow with the frame: short=%d tall=%d\n%s", shortRows, tallRows, tall)
 	}
-	if got := lipgloss.Height(short); got > 18 {
-		t.Fatalf("short composer height = %d, want at most 18", got)
+	if !strings.Contains(short, "more") {
+		t.Fatalf("short panel did not show an overflow hint:\n%s", short)
+	}
+	if got, want := lipgloss.Height(short), composer.compactPanelRows(); got != want {
+		t.Fatalf("panel height = %d, want the %d rows it claimed", got, want)
 	}
 }
 
-func TestTaskComposerInputDividerSpacing(t *testing.T) {
+func TestTaskComposerCompactPanelShape(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetSize(80, 30)
 	composer.Input.SetValue("Draft task")
 	composer.UpdatePreview()
 
-	lines := strings.Split(ansi.Strip(composer.View().Content), "\n")
-	inputLine := -1
-	for i, line := range lines {
-		if strings.Contains(line, "Draft task") {
-			inputLine = i
-			break
+	rendered := ansi.Strip(composer.View().Content)
+	lines := strings.Split(rendered, "\n")
+	if len(lines) < 4 {
+		t.Fatalf("panel is too short to read:\n%s", rendered)
+	}
+	// The panel leads with a divider naming the capture rather than a fullscreen
+	// title row: the rows a title would spend belong to the host underneath.
+	if !strings.HasPrefix(lines[0], "── Project task ") {
+		t.Fatalf("panel does not lead with its labeled divider:\n%s", rendered)
+	}
+	if !strings.HasPrefix(lines[1], "Project: Project · Destination: ") {
+		t.Fatalf("panel does not state its effective route on one row:\n%s", rendered)
+	}
+	if !strings.Contains(lines[2], "Draft task") {
+		t.Fatalf("input does not follow the route row:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "Task     Draft task") {
+		t.Fatalf("panel does not preview what Enter would create:\n%s", rendered)
+	}
+	// A bounded panel spends no row separating its own blocks, so the leading
+	// divider is the only rule it draws.
+	for i, line := range lines[1:] {
+		if strings.TrimSpace(line) == strings.Repeat("─", 80) {
+			t.Fatalf("panel row %d is a second full-width rule:\n%s", i+1, rendered)
 		}
 	}
-	if inputLine < 0 || inputLine+5 >= len(lines) {
-		t.Fatalf("could not locate input and lower pane:\n%s", strings.Join(lines, "\n"))
+
+	height := lipgloss.Height(rendered)
+	if want := composer.compactPanelRows(); height != want {
+		t.Fatalf("panel height = %d, want the %d rows it claimed", height, want)
 	}
-	if strings.TrimSpace(lines[inputLine+1]) != "" || strings.TrimSpace(lines[inputLine+2]) != "" {
-		t.Fatalf("expected two blank rows above divider:\n%s", strings.Join(lines[inputLine:inputLine+6], "\n"))
+	layout := composer.HostedPanelLayout(80, 30)
+	if !layout.Active() || layout.HostRows+height > 30 {
+		t.Fatalf("panel took %d rows beside a host of %d in a 30-row area", height, layout.HostRows)
 	}
-	divider := strings.TrimSpace(lines[inputLine+3])
-	if divider != strings.Repeat("─", 80) {
-		t.Fatalf("divider = %q, want 80-column rule", divider)
+}
+
+func TestTaskComposerHostedPanelLayout(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(80, 18)
+
+	layout := composer.HostedPanelLayout(80, 18)
+	if !layout.Active() || !layout.HostDrawn {
+		t.Fatalf("compact capture is not a panel over a drawn host: %+v", layout)
 	}
-	if strings.TrimSpace(lines[inputLine+4]) != "" || !strings.HasPrefix(lines[inputLine+5], "Task") {
-		t.Fatalf("expected one blank row below divider before preview:\n%s", strings.Join(lines[inputLine:inputLine+6], "\n"))
+	if layout.HostRows < composerHostMinRows {
+		t.Fatalf("host kept %d rows, want at least %d", layout.HostRows, composerHostMinRows)
+	}
+
+	// The syntax guide is read instead of the outline, not beside it, so it takes
+	// the frame without moving the budget the host will get back.
+	composer.HelpExpanded = true
+	help := composer.HostedPanelLayout(80, 18)
+	if help.HostDrawn || help.HostRows != layout.HostRows {
+		t.Fatalf("expanded syntax guide changed the host budget: %+v want undrawn %+v", help, layout)
+	}
+	if got, want := help.PanelRows(18), 18; got != want {
+		t.Fatalf("undrawn host left the panel %d rows, want %d", got, want)
+	}
+	composer.HelpExpanded = false
+
+	// The expanded form is the composer's other presentation and owns the whole
+	// content area, which it declares with the zero layout.
+	composer.Mode = ComposerExpanded
+	if expanded := composer.HostedPanelLayout(80, 18); expanded.Active() {
+		t.Fatalf("expanded composer still claims a host: %+v", expanded)
 	}
 }
 
