@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/models"
@@ -274,74 +275,67 @@ func (m *OutlinerModel) VisibleSectionHeaders() []OutlinerRow {
 	return headers
 }
 
-// visibleProjectGroupHeaders is the p-side counterpart to
-// visibleSectionHeaders. The two header kinds share collapsedSections and are
-// told apart by scanned row kind rather than by a key prefix, which is what lets
-// one helper serve the five project-header namespaces across all seven modes.
-func (m *OutlinerModel) VisibleProjectGroupHeaders() []OutlinerRow {
-	headers := make([]OutlinerRow, 0)
+// VisibleProjectGroups is the p-side counterpart to visibleSectionHeaders: the
+// distinct project groups the current projection holds, in first-appearance
+// order. It reads the structural identity every member row carries rather than
+// scanning for header rows, which is what lets one helper serve the five
+// project-group namespaces across all seven modes and keeps a group nameable
+// whether or not its header is drawn. A projection with no project groups — both
+// single-project forms — returns none, so p stays unavailable there rather than
+// toggling nothing.
+func (m *OutlinerModel) VisibleProjectGroups() []OutlinerRowGroup {
+	groups := make([]OutlinerRowGroup, 0)
+	seen := make(map[OutlinerRowGroup]bool)
 	for _, row := range m.Rows {
-		// The focused-project header is a project header without a fold, so p
-		// passes it over: in a focused projection it is the only one, and p stays
-		// unavailable there rather than toggling nothing.
-		if row.IsProjectHeader && row.IsCollapsibleHeader() {
-			headers = append(headers, row)
+		if !row.Group.ProjectGrouped() || seen[row.Group] {
+			continue
 		}
+		seen[row.Group] = true
+		groups = append(groups, row.Group)
 	}
-	return headers
+	return groups
 }
 
 // topLevelSectionAtCursor returns the visible section that owns the cursor's
-// current row. Pinned and Today task rows have explicit membership markers;
-// those avoid treating the ungrouped Inbox/Next/Backlog rows after Pinned as
-// Pinned content. A checklist row carries its owner's markers, so it answers
-// the same membership question its owner does.
+// current row. Membership is the group the row carries, so a row after Pinned
+// that belongs to the mode below it is never read as Pinned content and no lane
+// marker has to be consulted to say so. A checklist row carries its owner's
+// group, so it answers the same membership question its owner does.
 func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (OutlinerRow, bool) {
 	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return OutlinerRow{}, false
 	}
-	selected := m.Rows[m.Cursor]
-	for i := m.Cursor; i >= 0; i-- {
-		header := m.Rows[i]
-		if !header.IsSectionHeader {
-			continue
+	key := m.Rows[m.Cursor].Group.SectionKey
+	if key == "" || !sectionKeys[key] {
+		return OutlinerRow{}, false
+	}
+	for _, header := range m.Rows {
+		if header.IsSectionHeader && header.EffectiveCollapseKey() == key {
+			return header, true
 		}
-		if !sectionKeys[header.EffectiveCollapseKey()] {
-			return OutlinerRow{}, false
-		}
-		if selected.IsTaskRow() || selected.IsChecklistItem {
-			if header.IsPinnedSection && !selected.IsPinnedSection {
-				return OutlinerRow{}, false
-			}
-			if header.IsTodaySection && !selected.IsTodaySection {
-				return OutlinerRow{}, false
-			}
-			if header.IsNextSection && !selected.IsNextSection {
-				return OutlinerRow{}, false
-			}
-			if header.PromotedTag != "" && selected.PromotedTag != header.PromotedTag {
-				return OutlinerRow{}, false
-			}
-		}
-		return header, true
 	}
 	return OutlinerRow{}, false
 }
 
-// moveCursorToHeaderKey parks the cursor on the grouping header holding key.
-// Section and project keys are disjoint by construction, so one lookup over
-// both kinds serves the section toggle, the project toggle, and the zoom alike.
-func (m *OutlinerModel) moveCursorToHeaderKey(key string) {
+// moveCursorToGroupKey parks the cursor on the first row belonging to the group
+// the key names, reporting whether one was found. A group's header is emitted
+// above its members and carries the same identity, so this lands on the header
+// wherever one is drawn and on the group's first task where none is.
+//
+// An empty key is refused rather than matched: it is not a namespace, and the
+// focused-project header carries no group precisely so no unmatched seek can
+// land on it.
+func (m *OutlinerModel) moveCursorToGroupKey(key string) bool {
+	if m == nil || key == "" {
+		return false
+	}
 	for i, row := range m.Rows {
-		// Only a header that owns a fold can be named by one: the focused-project
-		// header's key is empty, and an empty key must not become a seat every
-		// unmatched seek lands on.
-		if row.IsCollapsibleHeader() && row.EffectiveCollapseKey() == key {
+		if slices.Contains(row.Group.CollapseKeys(), key) {
 			m.Cursor = i
-			return
+			return true
 		}
 	}
-	m.ClampCursor()
+	return false
 }
 
 func (m *OutlinerModel) restoreSectionToggleFocus() bool {
@@ -352,7 +346,9 @@ func (m *OutlinerModel) restoreSectionToggleFocus() bool {
 	if m.MoveCursorToIdentity(anchor.task) {
 		return true
 	}
-	m.moveCursorToHeaderKey(anchor.sectionKey)
+	if !m.moveCursorToGroupKey(anchor.sectionKey) {
+		m.ClampCursor()
+	}
 	return true
 }
 
@@ -392,16 +388,39 @@ func (m *OutlinerModel) ClearAllFolds() bool {
 	return true
 }
 
-// setSectionRowCollapsed is the single write of a header row's fold, so it is
-// also the single place the one header that owns no fold is refused. The
-// focused-project header's EffectiveCollapseKey is empty, and an empty key is
-// not a namespace: writing it would make one nameless fold that every future
-// keyless header would share.
+// setGroupFold is the single write of a grouping fold, whether a header row or a
+// group identity named it, so it is also the single place an empty key is
+// refused. An empty key is not a namespace: writing it would make one nameless
+// fold that every keyless header and every ungrouped projection would share.
+func (m *OutlinerModel) setGroupFold(key string, collapsed bool) {
+	if m == nil || key == "" {
+		return
+	}
+	m.Folds.setSection(key, collapsed)
+}
+
+// setSectionRowCollapsed is the header-row spelling of that write, so it is also
+// where the one header that owns no fold is refused. The focused-project
+// header's EffectiveCollapseKey is empty, and setGroupFold would refuse it
+// anyway; refusing the row kind here keeps the reason readable at the call site.
 func (m *OutlinerModel) SetSectionRowCollapsed(row OutlinerRow, collapsed bool) {
 	if !row.IsCollapsibleHeader() {
 		return
 	}
-	m.Folds.setSection(row.EffectiveCollapseKey(), collapsed)
+	m.setGroupFold(row.EffectiveCollapseKey(), collapsed)
+}
+
+// SetProjectGroupFolded writes one project group's fold from its structural
+// identity, which is how the p axis reaches a group without holding its header
+// row. A group carrying no project half owns no fold and is refused.
+func (m *OutlinerModel) SetProjectGroupFolded(group OutlinerRowGroup, collapsed bool) {
+	m.setGroupFold(group.ProjectKey, collapsed)
+}
+
+// IsProjectGroupFolded reports whether the group's own fold is closed, reading
+// the same zoom exemption every other fold read goes through.
+func (m *OutlinerModel) IsProjectGroupFolded(group OutlinerRowGroup) bool {
+	return m.sectionCollapsed(group.ProjectKey)
 }
 
 // ExpandAncestorsOfTask opens the task subtree folds between task and its
@@ -698,9 +717,13 @@ func (m *OutlinerModel) ToggleVisibleSections() bool {
 	}
 
 	cursorAnchor := m.captureModeCursor()
-	selectedHeaderKey := ""
+	// A cursor already parked on a section header rides that section's own group
+	// through the reshape, because the header is the only thing the press leaves
+	// standing there. The key comes off the row's group rather than off the header
+	// row, so the same capture serves a projection that draws no header for it.
+	selectedSectionKey := ""
 	if m.Cursor >= 0 && m.Cursor < len(m.Rows) && m.Rows[m.Cursor].IsSectionHeader {
-		selectedHeaderKey = m.Rows[m.Cursor].EffectiveCollapseKey()
+		selectedSectionKey = m.Rows[m.Cursor].Group.SectionKey
 	}
 	if allExpanded {
 		m.Folds.setSectionToggleAnchor(nil)
@@ -715,7 +738,9 @@ func (m *OutlinerModel) ToggleVisibleSections() bool {
 				m.SetSectionRowCollapsed(section, true)
 			}
 			m.RebuildRows()
-			m.moveCursorToHeaderKey(header.EffectiveCollapseKey())
+			if !m.moveCursorToGroupKey(header.EffectiveCollapseKey()) {
+				m.ClampCursor()
+			}
 			return true
 		}
 		for _, section := range headers {
@@ -733,20 +758,21 @@ func (m *OutlinerModel) ToggleVisibleSections() bool {
 	if m.restoreSectionToggleFocus() {
 		return true
 	}
-	if selectedHeaderKey != "" {
-		m.moveCursorToHeaderKey(selectedHeaderKey)
+	if selectedSectionKey != "" {
+		if !m.moveCursorToGroupKey(selectedSectionKey) {
+			m.ClampCursor()
+		}
 		return true
 	}
 	m.restoreModeCursor(cursorAnchor)
 	return true
 }
 
-// toggleVisibleProjectGroups is p: it expands every visible project group header
-// when any is collapsed; otherwise it collapses them all. It is the third bulk
-// fold beside s and t, and the only one that reaches the header
-// appendProjectGroupHeader emits in all seven modes — Today, Next, Inbox, and
-// Backlog carry no section headers at all, so project groups are the whole
-// structure there.
+// toggleVisibleProjectGroups is p: it expands every visible project group when
+// any is collapsed; otherwise it collapses them all. It is the third bulk fold
+// beside s and t, and the only one that reaches the groups emitted in all seven
+// modes — Today, Next, Inbox, and Backlog carry no section headers at all, so
+// project groups are the whole structure there.
 //
 // It diverges from toggleVisibleSections twice, deliberately:
 //
@@ -763,29 +789,34 @@ func (m *OutlinerModel) ToggleVisibleProjectGroups() bool {
 	if m == nil {
 		return false
 	}
-	headers := m.VisibleProjectGroupHeaders()
-	if len(headers) == 0 {
+	groups := m.VisibleProjectGroups()
+	if len(groups) == 0 {
 		return false
 	}
 
 	allExpanded := true
-	for _, header := range headers {
-		if m.IsSectionRowCollapsed(header) {
+	for _, group := range groups {
+		if m.IsProjectGroupFolded(group) {
 			allExpanded = false
 		}
 	}
 
 	cursorAnchor := m.captureModeCursor()
-	selectedHeaderKey := ""
+	// Same rule as s, one axis over: a cursor already on a project header rides
+	// that group's key through the reshape, read off the row's group rather than
+	// off the header.
+	selectedProjectKey := ""
 	if m.Cursor >= 0 && m.Cursor < len(m.Rows) && m.Rows[m.Cursor].IsProjectHeader {
-		selectedHeaderKey = m.Rows[m.Cursor].EffectiveCollapseKey()
+		selectedProjectKey = m.Rows[m.Cursor].Group.ProjectKey
 	}
-	for _, header := range headers {
-		m.SetSectionRowCollapsed(header, allExpanded)
+	for _, group := range groups {
+		m.SetProjectGroupFolded(group, allExpanded)
 	}
 	m.RebuildRows()
-	if selectedHeaderKey != "" {
-		m.moveCursorToHeaderKey(selectedHeaderKey)
+	if selectedProjectKey != "" {
+		if !m.moveCursorToGroupKey(selectedProjectKey) {
+			m.ClampCursor()
+		}
 		return true
 	}
 	m.restoreModeCursor(cursorAnchor)

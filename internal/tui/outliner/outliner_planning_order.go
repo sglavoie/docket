@@ -100,16 +100,21 @@ func (m *OutlinerModel) PlanningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 // visiblePlanningMembers returns every durable planning member (present in
 // order) reachable by scanning m.rows from the cursor in the direction of delta,
-// nearest first. Separators, section headers, and project headers bound the
-// active planning run. The list is empty at a visible boundary.
+// nearest first. The cursor row's own group bounds the active planning run, as
+// does a separator. The list is empty at a visible boundary.
 //
-// A project header stops the scan even though it does not partition the durable
-// order, because a planning group's display position follows that order: a move
-// reaching past the header would lift the cursor's whole project above its
-// neighbor rather than reorder tasks within it.
+// The project half of that group stops the scan even though it does not
+// partition the durable order, because a planning group's display position
+// follows that order: a move reaching past it would lift the cursor's whole
+// project above its neighbor rather than reorder tasks within it. A checklist
+// row carries its owner's group, so an expanded checklist is stepped over rather
+// than read as the end of the run.
 func (m *OutlinerModel) visiblePlanningMembers(
 	order []config.ProjectTaskLocator, delta int,
 ) []config.ProjectTaskLocator {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return nil
+	}
 	members := make(map[config.ProjectTaskLocator]bool, len(order))
 	for _, loc := range order {
 		members[loc] = true
@@ -118,10 +123,11 @@ func (m *OutlinerModel) visiblePlanningMembers(
 	if delta < 0 {
 		step = -1
 	}
+	cursorGroup := m.Rows[m.Cursor].Group
 	var visible []config.ProjectTaskLocator
 	for i := m.Cursor + step; i >= 0 && i < len(m.Rows); i += step {
 		row := m.Rows[i]
-		if row.IsSectionHeader || row.IsSeparator || row.IsPinnedSection || row.IsProjectHeader {
+		if row.IsSeparator || row.Group != cursorGroup {
 			break
 		}
 		if !row.IsTaskRow() || row.Task == nil {

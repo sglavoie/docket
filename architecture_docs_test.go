@@ -78,8 +78,20 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"There are three fold axes and therefore three bulk keys: `s` for section headers, " +
 			"`p` for project group headers, `t` for task subtrees",
 		"if any member of the set is folded the press expands them all, otherwise it folds them all",
-		"they separate by scanning row kind, `IsSectionHeader` against `IsProjectHeader`, " +
-			"rather than by matching a key prefix",
+		// Session 6 moved p off a header scan: it now writes the groups
+		// VisibleProjectGroups() reports, so the half of this rule that named a row
+		// kind for the project axis is stated as the group half it reads instead.
+		"they separate by which half of the row's group they read",
+		"`p` takes the distinct groups `VisibleProjectGroups()` reports and writes each one's " +
+			"`ProjectKey` through `SetProjectGroupFolded`",
+		"Neither matches a key prefix",
+		"A group is a value before it is a row",
+		"every row a grouped projection emits carries the one its block belongs to",
+		"The rendered row index is never part of it",
+		"`groupsRowsByProject()` — `m.Project == nil && !m.IsProjectScoped()` — is the one " +
+			"predicate deciding whether the project half is written",
+		"A group identifies a block within one projection and is not a handle across two",
+		"`modeCursorAnchor` deliberately holds no group",
 		"`t` owns `ExpandedNodes` alone, and its walk covers every loaded project",
 		"`s` refuses under a section zoom and `p` does not, which is the one place the family diverges",
 		"The walk wraps at either end",

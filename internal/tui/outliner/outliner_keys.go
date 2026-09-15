@@ -231,14 +231,15 @@ func parentIDOf(t *models.Task) string {
 
 // visibleSiblings returns the visible sibling rows in m.rows around cursorIdx —
 // tasks sharing the same parent ID and ProjectID as the cursor row, gathered
-// across a window bounded by section headers, project headers, and separators.
-// Non-sibling task rows inside the window (e.g. expanded descendants of a
-// sibling) are skipped rather than treated as hard stops, so J/K reorders and
-// move-to-top/bottom can target siblings on either side of an expanded parent.
-// Returns nil when cursorIdx is out of range or points at a header/separator/nil
-// task row. The window boundaries confine reorders to a single section bucket
-// (and to a single project in cross-project mode) without dereferencing
-// potentially stale cloned-parent Children slices.
+// across a window bounded by the cursor row's own group. Non-sibling task rows
+// inside the window (e.g. expanded descendants of a sibling) are skipped rather
+// than treated as hard stops, so J/K reorders and move-to-top/bottom can target
+// siblings on either side of an expanded parent. Returns nil when cursorIdx is
+// out of range or points at a header/separator/nil task row. The group boundary
+// confines reorders to a single section bucket (and to a single project in
+// cross-project mode) without dereferencing potentially stale cloned-parent
+// Children slices, and without depending on a header row being drawn between
+// two groups.
 func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	if cursorIdx < 0 || cursorIdx >= len(m.Rows) {
 		return nil
@@ -250,17 +251,15 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	cursorParentID := parentIDOf(cursorRow.Task)
 	cursorProjectID := cursorRow.ProjectID
 
-	// isBoundary reports whether a row terminates the reorder window. Section
-	// headers, project sub-headers, and separators delimit buckets; a task row
-	// in a different project also bounds the window in cross-project mode.
+	// isBoundary reports whether a row terminates the reorder window. Anything
+	// that is not a task row ends it — headers, separators, checklist items — and
+	// so does a task row belonging to another group, which is what keeps a
+	// reorder inside one section bucket and one project.
 	isBoundary := func(row OutlinerRow) bool {
 		if !row.IsTaskRow() {
 			return true
 		}
-		if row.Task != nil && row.ProjectID != cursorProjectID {
-			return true
-		}
-		return false
+		return row.Group != cursorRow.Group
 	}
 
 	// isSibling reports whether a task row shares the cursor's parent (and

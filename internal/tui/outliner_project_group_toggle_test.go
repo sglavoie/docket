@@ -74,9 +74,9 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("toggleVisibleProjectGroups reported no change on all-expanded groups")
 	}
-	for _, row := range outlinerView.VisibleProjectGroupHeaders() {
-		if !outlinerView.IsSectionRowCollapsed(row) {
-			t.Errorf("project group %q did not fold", row.ProjectID)
+	for _, group := range outlinerView.VisibleProjectGroups() {
+		if !outlinerView.IsProjectGroupFolded(group) {
+			t.Errorf("project group %q did not fold", group.ProjectID)
 		}
 	}
 	if got := visibleTaskIDs(outlinerView); len(got) != 0 {
@@ -99,8 +99,8 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.T) {
 	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	first := outlinerView.VisibleProjectGroupHeaders()[0]
-	outlinerView.SetSectionRowCollapsed(first, true)
+	first := outlinerView.VisibleProjectGroups()[0]
+	outlinerView.SetProjectGroupFolded(first, true)
 	outlinerView.RebuildRows()
 	if got := visibleTaskIDs(outlinerView); len(got) == 0 || len(got) == len(tasks) {
 		t.Fatalf("hand-folded rows = %v, want a genuinely mixed state", got)
@@ -109,9 +109,9 @@ func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.
 	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("a mixed set of groups reported no change")
 	}
-	for _, row := range outlinerView.VisibleProjectGroupHeaders() {
-		if outlinerView.IsSectionRowCollapsed(row) {
-			t.Errorf("project group %q stayed folded", row.ProjectID)
+	for _, group := range outlinerView.VisibleProjectGroups() {
+		if outlinerView.IsProjectGroupFolded(group) {
+			t.Errorf("project group %q stayed folded", group.ProjectID)
 		}
 	}
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tasks) {
@@ -136,8 +136,8 @@ func TestToggleVisibleProjectGroupsFoldsInsideASectionZoom(t *testing.T) {
 	if len(zoomed) == 0 {
 		t.Fatal("the zoomed section rendered no tasks")
 	}
-	if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) == 0 {
-		t.Fatal("the zoomed section rendered no project headers")
+	if groups := outlinerView.VisibleProjectGroups(); len(groups) == 0 {
+		t.Fatal("the zoomed section rendered no project groups")
 	}
 
 	if !outlinerView.ToggleVisibleProjectGroups() {
@@ -205,8 +205,8 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	outlinerView.PushProjectScope(project.ID)
-	if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) != 0 {
-		t.Fatalf("project scope rendered %d redundant group headers", len(groups))
+	if groups := outlinerView.VisibleProjectGroups(); len(groups) != 0 {
+		t.Fatalf("project scope rendered %d redundant project groups", len(groups))
 	}
 	foldsBefore := maps.Clone(outlinerView.Folds.CollapsedSections)
 
@@ -232,8 +232,8 @@ func TestToggleVisibleProjectGroupsReachesEveryGroupingNamespace(t *testing.T) {
 	} {
 		t.Run(string(mode), func(t *testing.T) {
 			outlinerView, tasks := projectGroupToggleFixture(t, mode)
-			if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) != 2 {
-				t.Fatalf("%s project headers = %d, want one per project", mode, len(groups))
+			if groups := outlinerView.VisibleProjectGroups(); len(groups) != 2 {
+				t.Fatalf("%s project groups = %d, want one per project", mode, len(groups))
 			}
 
 			if !outlinerView.ToggleVisibleProjectGroups() {

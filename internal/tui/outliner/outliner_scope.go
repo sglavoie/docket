@@ -684,7 +684,9 @@ func (m *OutlinerModel) EnterSectionZoom(row OutlinerRow) bool {
 	m.PeekMode = false
 	m.Population.Invalidate()
 	m.RebuildRows()
-	m.moveCursorToHeaderKey(key)
+	if !m.moveCursorToGroupKey(key) {
+		m.ClampCursor()
+	}
 	return true
 }
 

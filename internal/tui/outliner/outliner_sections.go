@@ -122,7 +122,12 @@ func taskAncestorBreadcrumbAfter(task *models.Task, boundaryID string) string {
 	return strings.Join(reversed, " › ") + " ›"
 }
 
-func (m *OutlinerModel) flattenSectionForest(forest *sectionTaskForest, projectID string, rows *[]OutlinerRow) {
+func (m *OutlinerModel) flattenSectionForest(
+	forest *sectionTaskForest,
+	projectID string,
+	group OutlinerRowGroup,
+	rows *[]OutlinerRow,
+) {
 	if forest == nil {
 		return
 	}
@@ -138,6 +143,7 @@ func (m *OutlinerModel) flattenSectionForest(forest *sectionTaskForest, projectI
 			}
 			*rows = append(*rows, OutlinerRow{
 				Task:               task,
+				Group:              group,
 				Prefix:             prefix,
 				Breadcrumb:         breadcrumb,
 				HasVisibleChildren: len(children) > 0,
@@ -206,6 +212,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
+		Group:           OutlinerRowGroup{SectionKey: pinnedSectionCollapseKey},
 		IsSectionHeader: true,
 		IsPinnedSection: true,
 		SectionName:     pinnedSectionName,
@@ -219,6 +226,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 	m.appendProjectGroupedForests(
 		section.groups,
 		OutlinerRow{IsPinnedSection: true},
+		pinnedSectionCollapseKey,
 		pinnedProjectSectionCollapseKey,
 	)
 }
@@ -243,9 +251,10 @@ func (m *OutlinerModel) IsPinnedReorderRow() bool {
 // pinnedSectionParentAt returns the section-local parent of the pinned row at
 // index, or the zero identity when the row sits at the section's root level.
 // It reproduces the edge rule buildSectionRowForestWith applies: a parent link is
-// retained only when the parent is itself projected into the same group. The
-// backward scan is sufficient because the flattener always emits a parent above
-// its children and only descends into expanded parents.
+// retained only when the parent is itself projected into the same group, which
+// the row's own group identity answers without reading a header. The backward
+// scan is sufficient because the flattener always emits a parent above its
+// children and only descends into expanded parents.
 func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 	if index < 0 || index >= len(m.Rows) {
 		return taskref.TaskIdentity{}
@@ -260,8 +269,7 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 	}
 	for i := index - 1; i >= 0; i-- {
 		candidate := m.Rows[i]
-		if !candidate.IsPinnedSection || !candidate.IsTaskRow() ||
-			candidate.Task == nil || candidate.ProjectID != row.ProjectID {
+		if !candidate.IsTaskRow() || candidate.Task == nil || candidate.Group != row.Group {
 			return taskref.TaskIdentity{}
 		}
 		if m.TaskIdentityForRow(candidate) == parent {
@@ -273,9 +281,9 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 
 // visiblePinnedSiblings returns every visible pinned row index in the delta
 // direction that shares the cursor's section-local parent, nearest first. Rows
-// belonging to a sibling's expanded subtree are stepped over; a section header,
-// project header, separator, non-pinned row, or foreign project bounds the
-// search, so a move can never leave the cursor's project group.
+// belonging to a sibling's expanded subtree are stepped over; anything that is
+// not a task row and any task row outside the cursor's group bounds the search,
+// so a move can never leave the cursor's Pinned project group.
 func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
 	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return nil
@@ -289,8 +297,7 @@ func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
 	var siblings []int
 	for i := m.Cursor + step; i >= 0 && i < len(m.Rows); i += step {
 		row := m.Rows[i]
-		if !row.IsPinnedSection || !row.IsTaskRow() ||
-			row.Task == nil || row.ProjectID != cursorRow.ProjectID {
+		if !row.IsTaskRow() || row.Task == nil || row.Group != cursorRow.Group {
 			break
 		}
 		if m.pinnedSectionParentAt(i) == cursorParent {
@@ -456,7 +463,11 @@ func planningProjectCollapseKey(projectID string, group models.WorkflowStateGrou
 // first, then project groups are ordered alphabetically, and all of a
 // project's roots are rendered under one header while retaining their relative
 // durable order.
-func (m *OutlinerModel) appendPlanningRows(rows []OutlinerRow, group models.WorkflowStateGroup) {
+func (m *OutlinerModel) appendPlanningRows(
+	rows []OutlinerRow,
+	group models.WorkflowStateGroup,
+	sectionKey string,
+) {
 	if len(rows) == 0 {
 		return
 	}
@@ -467,6 +478,7 @@ func (m *OutlinerModel) appendPlanningRows(rows []OutlinerRow, group models.Work
 			IsNextSection:  group == models.StateGroupNext,
 			StateGroup:     group,
 		},
+		sectionKey,
 		func(projectID string) string {
 			return planningProjectCollapseKey(projectID, group)
 		},
@@ -487,6 +499,7 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
+		Group:           OutlinerRowGroup{SectionKey: collapseKey},
 		IsSectionHeader: true,
 		IsTodaySection:  isToday,
 		IsNextSection:   isNext,
@@ -496,7 +509,7 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		CollapseKey:     collapseKey,
 	})
 	if !m.sectionCollapsed(collapseKey) {
-		m.appendPlanningRows(section.rows, section.group)
+		m.appendPlanningRows(section.rows, section.group, collapseKey)
 	}
 }
 
@@ -589,6 +602,7 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
+		Group:           OutlinerRowGroup{SectionKey: reviewSectionCollapseKey},
 		IsSectionHeader: true,
 		SectionName:     "Review",
 		SectionCount:    section.count,
@@ -601,6 +615,7 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 	m.appendProjectGroupedForests(
 		section.groups,
 		OutlinerRow{PromotedTag: reviewLaneKey},
+		reviewSectionCollapseKey,
 		func(projectID string) string {
 			return reviewProjectSectionCollapsePrefix + projectID
 		},

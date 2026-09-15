@@ -183,7 +183,8 @@ declared their text required, while this reads the finished screen.
 
 ### Session 6 — Represent project groups independently of header rows
 
-- Go: `internal/tui/outliner/outliner_project_grouping_outlinersplit_test.go`,
+- Go: `internal/tui/outliner/outliner_row_group_outlinersplit_test.go`,
+  `internal/tui/outliner/outliner_project_grouping_outlinersplit_test.go`,
   `internal/tui/outliner/outliner_projection_forest_test.go`,
   `internal/tui/outliner/outliner_primary_rows_test.go`,
   `internal/tui/outliner_project_grouping_test.go`,
@@ -195,8 +196,13 @@ declared their text required, while this reads the finished screen.
 - Contracts: `CLAUDE.md` — `appendProjectGroupHeader` as the one kernel with no
   per-mode copy, each grouping surface owning a disjoint `CollapsedSections`
   namespace that is never cleared on a mode change, grouping never reordering a
-  mode's primary sort, and `finalizeModeRows` as the one seam every
-  `buildCanonicalModeRows` exit takes. `docs/architecture/tui-architecture.md`.
+  mode's primary sort, `finalizeModeRows` as the one seam every
+  `buildCanonicalModeRows` exit takes, and `OutlinerRowGroup` as what a group is
+  — two existing fold keys, no row index, stamped on every row of a block,
+  `groupsRowsByProject` as the one predicate the emitter and the metadata share,
+  no reconstruction by header scan or lane marker, and `modeCursorAnchor` holding
+  no group because two modes may spell one project fold alike.
+  `docs/architecture/tui-architecture.md`.
 
 ### Session 7 — Decouple folding and navigation from visible headings
 

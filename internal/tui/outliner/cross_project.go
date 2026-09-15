@@ -710,13 +710,16 @@ func (m *OutlinerModel) RestoreCrossOutlinerCursorAfterReload(fallbackCursor, fa
 	m.moveCursorToNearestTask(fallbackCursor)
 }
 
-// projectHeaderAnchorAfterRemoval names the project sub-header the cursor should
-// hold once the named projects' rows leave: the first surviving header below the
-// topmost departing one, else the closest surviving header above it. With no
+// projectHeaderAnchorAfterRemoval names the project group the cursor should hold
+// once the named projects' rows leave: the first surviving group below the
+// topmost departing one, else the closest surviving group above it. With no
 // survivor it returns a departing project's own ID, which stops resolving after
 // the reload and therefore lands the cursor on the owning section header rather
 // than an arbitrary row. The second result is false when none of the named
-// projects has a header on screen at all.
+// projects has a group on screen at all.
+//
+// It walks group identities rather than header rows, so the anchor is the same
+// whether the group leads with a header or with its first task.
 func (m *OutlinerModel) ProjectHeaderAnchorAfterRemoval(projectIDs ...string) (string, bool) {
 	leaving := make(map[string]bool, len(projectIDs))
 	for _, projectID := range projectIDs {
@@ -726,7 +729,7 @@ func (m *OutlinerModel) ProjectHeaderAnchorAfterRemoval(projectIDs ...string) (s
 	}
 	index := -1
 	for candidate, row := range m.Rows {
-		if row.IsProjectHeader && leaving[row.ProjectID] {
+		if row.Group.ProjectGrouped() && leaving[row.Group.ProjectID] {
 			index = candidate
 			break
 		}
@@ -734,23 +737,31 @@ func (m *OutlinerModel) ProjectHeaderAnchorAfterRemoval(projectIDs ...string) (s
 	if index < 0 {
 		return "", false
 	}
+	survivor := func(row OutlinerRow) bool {
+		return row.Group.ProjectGrouped() && row.Group.ProjectID != "" && !leaving[row.Group.ProjectID]
+	}
 	for _, row := range m.Rows[index+1:] {
-		if row.IsProjectHeader && row.ProjectID != "" && !leaving[row.ProjectID] {
-			return row.ProjectID, true
+		if survivor(row) {
+			return row.Group.ProjectID, true
 		}
 	}
 	for candidate := index - 1; candidate >= 0; candidate-- {
-		row := m.Rows[candidate]
-		if row.IsProjectHeader && row.ProjectID != "" && !leaving[row.ProjectID] {
-			return row.ProjectID, true
+		if row := m.Rows[candidate]; survivor(row) {
+			return row.Group.ProjectID, true
 		}
 	}
-	return m.Rows[index].ProjectID, true
+	return m.Rows[index].Group.ProjectID, true
 }
 
+// moveCursorToProjectHeader parks the cursor on the named project's group. The
+// group's header is emitted above its members and carries the same identity, so
+// this lands on that header wherever one is drawn.
 func (m *OutlinerModel) moveCursorToProjectHeader(projectID string) bool {
+	if projectID == "" {
+		return false
+	}
 	for index, row := range m.Rows {
-		if row.IsProjectHeader && row.ProjectID == projectID {
+		if row.Group.ProjectGrouped() && row.Group.ProjectID == projectID {
 			m.Cursor = index
 			m.ClampCursor()
 			return true

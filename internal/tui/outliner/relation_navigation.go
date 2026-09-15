@@ -216,25 +216,14 @@ func (m *OutlinerModel) expandFoldsRevealing(task *models.Task, identity taskref
 	return true
 }
 
-// enclosingCollapseKeys names the section and project-group headers one row sits
-// under, nearest first. It stops at the first of each: a header further up
-// cannot fold the row without folding one of those two first.
+// enclosingCollapseKeys names the folds that can hide one row, nearest first. It
+// reads the row's own group rather than walking up to the two headers above it:
+// the group names exactly the section and project-group folds the projection
+// emitted for it, so a projection that draws no header for one of them is
+// answered the same way. A row nothing can fold names nothing.
 func (m *OutlinerModel) enclosingCollapseKeys(index int) []string {
-	keys := make([]string, 0, 2)
-	haveSection, haveProject := false, false
-	for i := index - 1; i >= 0 && (!haveSection || !haveProject); i-- {
-		row := m.Rows[i]
-		switch {
-		// The focused-project header folds nothing, so it can hide nothing and is
-		// not one of the two headers this walk has to reopen.
-		case row.IsProjectHeader && row.IsCollapsibleHeader() && !haveProject:
-			haveProject = true
-		case row.IsSectionHeader && !haveSection:
-			haveSection = true
-		default:
-			continue
-		}
-		keys = append(keys, row.EffectiveCollapseKey())
+	if m == nil || index < 0 || index >= len(m.Rows) {
+		return nil
 	}
-	return keys
+	return m.Rows[index].Group.CollapseKeys()
 }

@@ -220,6 +220,18 @@ never a per-mode copy. Each grouping surface owns a disjoint `CollapsedSections`
 namespace, since it is never cleared on a mode change; grouping never reorders a
 mode's primary sort.
 
+`OutlinerRowGroup` is what a group is, and a header is one row carrying it. Its
+two keys are the folds that already hide the block, so it mints no namespace and
+a row index is never part of it; `m.rowGroupFor` writes it and
+`groupsRowsByProject` is the one predicate `appendProjectGroupHeader` also reads,
+so the header drawn and the identity stamped cannot disagree. Every row of a
+block carries it, checklist rows included, and a row nothing can fold carries the
+zero value. Membership, discovery, `CollapseKeys`, and the sibling, pinned, and
+planning run boundaries read it off the cursor's own row; never reconstruct a
+block by scanning for a header or by comparing lane markers. It identifies a
+block inside one projection and never across two, because two modes may spell one
+project fold alike: `modeCursorAnchor` therefore holds no group.
+
 That kernel still suppresses both single-project forms, which instead lead with
 one `IsFocusedProjectHeader` row over the owner `FocusedProjectHeaderOwner`
 resolves — `m.Project`, else the scoped project, else nothing, so an unavailable

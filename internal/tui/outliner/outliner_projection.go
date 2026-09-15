@@ -198,24 +198,47 @@ func projectGroupSortLabel(project *models.Project, fallbackID string) string {
 	return strings.ToLower(strings.TrimSpace(fallbackID))
 }
 
+// groupsRowsByProject reports whether the current projection splits its sections
+// into per-project groups. Both single-project forms name their project in the
+// chrome, so they emit no project header and the section alone is the group.
+// This is the one predicate: the emitter and the group metadata read it together
+// so they can never disagree about which groups exist.
+func (m *OutlinerModel) groupsRowsByProject() bool {
+	return m.Project == nil && !m.IsProjectScoped()
+}
+
+// rowGroupFor builds the structural identity of one group from the collapse keys
+// the fold state already stores. A projection that is not project-grouped keeps
+// both project halves empty, so a group never names a fold the projection cannot
+// draw.
+func (m *OutlinerModel) rowGroupFor(sectionKey, projectKey, projectID string) OutlinerRowGroup {
+	group := OutlinerRowGroup{SectionKey: sectionKey}
+	if m.groupsRowsByProject() {
+		group.ProjectKey = projectKey
+		group.ProjectID = projectID
+	}
+	return group
+}
+
 // appendProjectGroupHeader emits one synthetic project sub-header and reports
 // whether the group's rows should follow. A project-scoped Outliner emits no
-// header because its chrome already names the project.
+// header because its chrome already names the project, which is exactly the
+// group carrying no project half.
 func (m *OutlinerModel) appendProjectGroupHeader(
 	template OutlinerRow,
-	projectID string,
+	group OutlinerRowGroup,
 	tasks []*models.Task,
-	collapseKey string,
 ) bool {
-	if m.Project != nil || m.IsProjectScoped() {
+	if !group.ProjectGrouped() {
 		return true
 	}
 	header := template
+	header.Group = group
 	header.IsProjectHeader = true
-	header.ProjectID = projectID
+	header.ProjectID = group.ProjectID
 	header.SectionCount = len(tasks)
-	header.CollapseKey = collapseKey
-	header.OverdueCount, header.TodayCount = m.projectGroupPressure(tasks, projectID)
+	header.CollapseKey = group.ProjectKey
+	header.OverdueCount, header.TodayCount = m.projectGroupPressure(tasks, group.ProjectID)
 	// A Today group is today-planned by construction, so the count there could
 	// only restate the group's own size.
 	if header.IsTodaySection {
@@ -259,17 +282,20 @@ func (m *OutlinerModel) todayPlanIdentities() map[taskref.TaskIdentity]bool {
 	return identities
 }
 
-// appendProjectGroupedForests emits every project group of one section.
+// appendProjectGroupedForests emits every project group of one section, stamping
+// each header and each member row with the same group identity. sectionKey is
+// the owning section's collapse key, empty for a projection that draws no
+// section header at all.
 func (m *OutlinerModel) appendProjectGroupedForests(
 	groups []projectRowGroup,
 	template OutlinerRow,
+	sectionKey string,
 	collapseKeyFor func(projectID string) string,
 ) {
 	for _, group := range groups {
-		if m.appendProjectGroupHeader(
-			template, group.projectID, group.forest.tasks(), collapseKeyFor(group.projectID),
-		) {
-			m.flattenSectionRowForest(group.forest, &m.Rows)
+		identity := m.rowGroupFor(sectionKey, collapseKeyFor(group.projectID), group.projectID)
+		if m.appendProjectGroupHeader(template, identity, group.forest.tasks()) {
+			m.flattenSectionRowForest(group.forest, identity, &m.Rows)
 		}
 	}
 }
@@ -288,16 +314,25 @@ func (f sectionRowForest) tasks() []*models.Task {
 	return tasks
 }
 
-func (m *OutlinerModel) flattenSectionRowForest(forest sectionRowForest, rows *[]OutlinerRow) {
-	m.flattenSectionRowRoots(forest.roots, rows)
+func (m *OutlinerModel) flattenSectionRowForest(
+	forest sectionRowForest,
+	group OutlinerRowGroup,
+	rows *[]OutlinerRow,
+) {
+	m.flattenSectionRowRoots(forest.roots, group, rows)
 }
 
-func (m *OutlinerModel) flattenSectionRowRoots(roots []*sectionRowNode, rows *[]OutlinerRow) {
+func (m *OutlinerModel) flattenSectionRowRoots(
+	roots []*sectionRowNode,
+	group OutlinerRowGroup,
+	rows *[]OutlinerRow,
+) {
 	var walk func([]*sectionRowNode, []bool)
 	walk = func(nodes []*sectionRowNode, ancestorIsLast []bool) {
 		for index, node := range nodes {
 			isLast := index == len(nodes)-1
 			row := node.row
+			row.Group = group
 			row.Prefix = BuildTreePrefix(ancestorIsLast, isLast)
 			row.HasVisibleChildren = len(node.children) > 0
 			if len(ancestorIsLast) > 0 {
@@ -391,6 +426,7 @@ func (m *OutlinerModel) appendStateGroupForests(
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
+		Group:           OutlinerRowGroup{SectionKey: collapseKey},
 		IsSectionHeader: true,
 		SectionName:     group.Label(),
 		SectionCount:    total,
@@ -416,12 +452,11 @@ func (m *OutlinerModel) appendStateGroupForests(
 		if m.Project == nil {
 			projectID = item.project.ID
 		}
-		if !m.appendProjectGroupHeader(
-			OutlinerRow{}, projectID, item.forest.tasks(), projectSectionCollapseKey(projectID, group),
-		) {
+		identity := m.rowGroupFor(collapseKey, projectSectionCollapseKey(projectID, group), projectID)
+		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, item.forest.tasks()) {
 			continue
 		}
-		m.flattenSectionForest(item.forest, projectID, &m.Rows)
+		m.flattenSectionForest(item.forest, projectID, identity, &m.Rows)
 	}
 }
 
@@ -489,13 +524,14 @@ func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, m
 		if tree.project == nil {
 			continue
 		}
-		if !m.appendProjectGroupHeader(
-			OutlinerRow{}, tree.project.ID, flattenTaskPointers(tree.roots), modeProjectCollapseKey(mode, tree.project.ID),
-		) {
+		// These modes emit no section header, so the project group is the whole
+		// group identity and the section half stays empty.
+		identity := m.rowGroupFor("", modeProjectCollapseKey(mode, tree.project.ID), tree.project.ID)
+		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, flattenTaskPointers(tree.roots)) {
 			continue
 		}
 		for i, task := range tree.roots {
-			m.flattenPrimaryTask(task, tree.project, nil, i == len(tree.roots)-1)
+			m.flattenPrimaryTask(task, tree.project, identity, nil, i == len(tree.roots)-1)
 		}
 	}
 }
@@ -526,6 +562,7 @@ func (m *OutlinerModel) primaryModeFocusBoundary(project *models.Project) string
 func (m *OutlinerModel) flattenPrimaryTask(
 	task *models.Task,
 	project *models.Project,
+	group OutlinerRowGroup,
 	ancestorIsLast []bool,
 	isLast bool,
 ) {
@@ -542,6 +579,7 @@ func (m *OutlinerModel) flattenPrimaryTask(
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
 		Task:               task,
+		Group:              group,
 		Prefix:             BuildTreePrefix(ancestorIsLast, isLast),
 		Breadcrumb:         breadcrumb,
 		HasVisibleChildren: len(task.Children) > 0,
@@ -556,7 +594,7 @@ func (m *OutlinerModel) flattenPrimaryTask(
 	}
 	nextAncestors := append(slices.Clone(ancestorIsLast), isLast)
 	for i, child := range task.Children {
-		m.flattenPrimaryTask(child, project, nextAncestors, i == len(task.Children)-1)
+		m.flattenPrimaryTask(child, project, group, nextAncestors, i == len(task.Children)-1)
 	}
 }
 
@@ -772,7 +810,9 @@ func (m *OutlinerModel) appendPlanningModeRows(
 	if mode == chrome.ModeNext {
 		group = models.StateGroupNext
 	}
-	m.appendPlanningRows(rows, group)
+	// The dedicated modes draw no section header, so their groups name the
+	// planning project fold alone.
+	m.appendPlanningRows(rows, group, "")
 }
 
 func (m *OutlinerModel) buildPrimaryProjectTrees(

@@ -24,7 +24,7 @@ func TestSectionRowForestUsesEarliestMemberRankAndSourceSiblingOrder(t *testing.
 		{Task: parent},
 	}, sectionForestOptions{rankRootsBySubtree: true})
 	var rows []OutlinerRow
-	outliner.flattenSectionRowForest(forest, &rows)
+	outliner.flattenSectionRowForest(forest, OutlinerRowGroup{}, &rows)
 
 	got := make([]string, 0, len(rows))
 	for _, row := range rows {
@@ -55,7 +55,7 @@ func TestSectionRowForestDoesNotLinkDuplicateTaskIDsAcrossProjects(t *testing.T)
 		{Task: betaParent, ProjectID: beta.ID},
 	}, sectionForestOptions{rankRootsBySubtree: true})
 	var rows []OutlinerRow
-	outliner.flattenSectionRowForest(forest, &rows)
+	outliner.flattenSectionRowForest(forest, OutlinerRowGroup{}, &rows)
 
 	if len(rows) != 2 || rows[0].HasVisibleChildren || rows[1].HasVisibleChildren {
 		t.Fatalf("cross-project duplicate parent IDs formed an edge: %+v", rows)

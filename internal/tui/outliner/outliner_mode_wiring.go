@@ -336,6 +336,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 			total += group.forest.count
 		}
 		m.Rows = append(m.Rows, OutlinerRow{
+			Group:            OutlinerRowGroup{SectionKey: section.CollapseKey},
 			IsSectionHeader:  true,
 			IsComputedHeader: true,
 			SectionName:      section.Name,
@@ -345,7 +346,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 		if m.sectionCollapsed(section.CollapseKey) {
 			continue
 		}
-		m.appendProjectGroupedForests(groups, OutlinerRow{}, func(projectID string) string {
+		m.appendProjectGroupedForests(groups, OutlinerRow{}, section.CollapseKey, func(projectID string) string {
 			return modeSectionProjectCollapseKey(section.CollapseKey, projectID)
 		})
 	}
@@ -535,9 +536,17 @@ func (m *OutlinerModel) ActiveOutlinerModeEntry() chrome.OutlinerMode {
 	return mode
 }
 
-// modeCursorAnchor captures the cursor's project-qualified task identity plus
-// the viewport (numeric row index and persistent scroll offset) before a mode
+// modeCursorAnchor captures the cursor's project-qualified task identity and
+// viewport (numeric row index and persistent scroll offset) before a mode
 // transition rebuilds the row list, so continuity can be restored afterward.
+//
+// It deliberately holds no group. A mode transition reshapes the structure
+// itself, and the fold namespaces two modes emit overlap by design — All's Today
+// lane and the Today mode group one project under the same key — so a group-wide
+// seek across the transition would land the cursor on the destination's header
+// rather than where the arithmetic of the old view put it. Group-driven restores
+// belong to the fold toggles, which reshape one axis of a projection that stays
+// the same mode.
 type modeCursorAnchor struct {
 	identity     taskref.TaskIdentity
 	hasTask      bool
@@ -547,8 +556,8 @@ type modeCursorAnchor struct {
 
 // captureModeCursor snapshots the selected task identity and viewport before a
 // mode transition. The identity is project-qualified even in single-project mode
-// (where task rows omit ProjectID) so restoreModeCursor can match on the same
-// key the cross-project view uses.
+// (where task rows omit ProjectID) so restoreModeCursor can match on the same key
+// the cross-project view uses.
 func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
 	anchor := modeCursorAnchor{prevCursor: m.Cursor, scrollOffset: m.ViewScrollOffset}
 	if m.Cursor >= 0 && m.Cursor < len(m.Rows) {
@@ -569,9 +578,11 @@ func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
 // rows. When the previously selected task is still visible its row is restored
 // exactly (identity match, project-qualified in the cross-project view) and the
 // captured scroll offset is preserved so the persistent viewport keeps it on
-// screen without an unconditional top reset. When the task is absent the cursor
-// falls back deterministically to the nearest navigable row at the pre-transition
-// index, clamped into the (possibly differently shaped) new row list.
+// screen without an unconditional top reset.
+//
+// When the task is absent — or the cursor never held one, as on a header row —
+// the anchor degrades to the nearest navigable row at the pre-transition index,
+// clamped into the (possibly differently shaped) new row list.
 func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	m.ViewScrollOffset = anchor.scrollOffset
 	if anchor.hasTask {

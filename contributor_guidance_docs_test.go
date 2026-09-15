@@ -721,7 +721,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// user cannot read is the one way widening the title makes the editor worse.
 	// The mechanism lives in docs/architecture/row-indicators.md and
 	// docs/decisions/behavioral-signals-contracts.md.
-	const budget = 49636
+	// Thirty-sixth raise, 49636 to 50484, for the group as a value. 848 bytes buy
+	// the rule that a project group is an identity every row of a block carries,
+	// not something read back off the header above it. Four separate helpers used
+	// to reconstruct a block by scanning upward and then re-testing lane markers to
+	// tell a Pinned row from the row that merely follows one, which is exactly the
+	// inference a projection that stops drawing a header would break; naming the
+	// value, naming its two keys as the folds that already exist, and forbidding
+	// the scan is what keeps a fifth one from being written. The one predicate is
+	// named because the emitter and the metadata disagreeing is the failure mode
+	// that produces a fold nothing can open. The last sentence is the boundary:
+	// All's Today lane and the Today mode spell one project fold alike, so a group
+	// carried across a mode transition seats the cursor on the destination's
+	// header, and modeCursorAnchor holding none is what keeps a mode switch landing
+	// where its own arithmetic put it. The mechanism lives in
+	// docs/architecture/tui-architecture.md.
+	const budget = 50484
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

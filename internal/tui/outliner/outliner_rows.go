@@ -457,9 +457,50 @@ const (
 	connectorSpace    = "    "
 )
 
+// OutlinerRowGroup is the structural identity of one block of a grouped
+// projection: the section it belongs to and the project group inside that
+// section. Both halves are the collapse keys the fold state already stores, so a
+// group names exactly the folds that can hide it and mints no namespace of its
+// own; the rendered row index is never part of it.
+//
+// It is stamped on a group's header rows and on every member row alike, which is
+// what lets group discovery, membership, and boundaries be read off the row the
+// cursor is on rather than reconstructed by scanning upward for a header. A
+// projection that draws no project headers — either single-project form — is not
+// project-grouped, so its section alone is the group and both project halves stay
+// empty. A row nothing can fold carries the zero value.
+type OutlinerRowGroup struct {
+	SectionKey string // Collapse key of the owning section; empty when the projection emits none
+	ProjectKey string // Collapse key of the project group; empty when the projection is not project-grouped
+	ProjectID  string // Project that owns the group; empty alongside ProjectKey
+}
+
+// ProjectGrouped reports whether the row sits inside a foldable project group.
+// It is the one read that separates a project-grouped projection from the two
+// single-project forms, so discovery and the fold write cannot disagree about
+// which groups own a key.
+func (g OutlinerRowGroup) ProjectGrouped() bool {
+	return g.ProjectKey != ""
+}
+
+// CollapseKeys names the folds that hide the group, nearest first. A reveal
+// walks it instead of scanning for the two headers above a row, so it stays
+// correct for a group that draws no header at all.
+func (g OutlinerRowGroup) CollapseKeys() []string {
+	keys := make([]string, 0, 2)
+	if g.ProjectKey != "" {
+		keys = append(keys, g.ProjectKey)
+	}
+	if g.SectionKey != "" {
+		keys = append(keys, g.SectionKey)
+	}
+	return keys
+}
+
 // outlinerRow represents a single flattened row for rendering.
 type OutlinerRow struct {
 	Task                   *models.Task
+	Group                  OutlinerRowGroup // Structural group this row belongs to; zero when nothing can fold it
 	Prefix                 string
 	Breadcrumb             string                    // Ancestor path for tasks promoted across a section boundary.
 	HasVisibleChildren     bool                      // Children rendered in this row's section-local tree.

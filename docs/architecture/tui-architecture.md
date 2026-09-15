@@ -100,6 +100,47 @@ of them emit those headers through the shared `appendProjectGroupHeader`
 kernel, and each grouping surface owns a disjoint `CollapsedSections` key
 namespace, because that map is never cleared on a mode change.
 
+A group is a value before it is a row. `OutlinerRowGroup` is that value —
+`SectionKey`, `ProjectKey`, `ProjectID` — and every row a grouped projection
+emits carries the one its block belongs to: the section header, the project
+header, each task, each descendant, and, because `expandChecklistRows` copies the
+owner row, each checklist item. Both key halves are the collapse keys the fold
+state already stores, so a group mints no namespace of its own and names exactly
+the folds that can hide it; `CollapseKeys()` returns them nearest first. The
+rendered row index is never part of it, which is what makes the identity survive
+a rebuild that moved the row.
+
+`m.rowGroupFor` builds it and `groupsRowsByProject()` — `m.Project == nil &&
+!m.IsProjectScoped()` — is the one predicate deciding whether the project half is
+written. `appendProjectGroupHeader` reads that same value rather than re-deriving
+the condition, so the header the projection draws and the identity its rows carry
+cannot disagree about which groups exist. Both single-project forms therefore
+leave both project halves empty: their rows are sectioned but not project-grouped
+and `ProjectGrouped()` says so. A row nothing can fold — a separator, a ranked
+search result, the keyless focused-project header — carries the zero value.
+
+Reading the group off the cursor's own row replaces four separate reconstructions
+that each had to infer a block from the headers around it. `visibleSiblings`,
+`visiblePinnedSiblings`, `pinnedSectionParentAt`, and `visiblePlanningMembers`
+all bound their run at the first row whose group differs, so a reorder stays
+inside one section bucket and one project without any of them consulting
+`IsPinnedSection`, `IsTodaySection`, `PromotedTag`, or a `ProjectID` comparison.
+`topLevelSectionAtCursor` reads `Group.SectionKey` instead of scanning upward and
+then re-testing those lane markers to reject a row that merely follows the header.
+`enclosingCollapseKeys` is `Group.CollapseKeys()`. `VisibleProjectGroups()`
+replaces a header scan, and `moveCursorToGroupKey` seeks the first row carrying a
+key rather than the header declaring it — the same landing today, because a
+group's header is emitted above its members and carries the group, and a landing
+that survives a projection choosing not to draw one.
+
+A group identifies a block within one projection and is not a handle across two.
+The fold namespaces two modes emit overlap by design — All's Today lane and the
+Today mode name one project's group with the same key — so `modeCursorAnchor`
+deliberately holds no group and a mode transition still degrades from the task
+identity straight to the pre-transition row index. Group-driven restores belong
+to `s`, `p`, and the section zoom, which reshape one axis of a projection that
+stays the same mode.
+
 That kernel takes the group's tasks rather than a count, because it computes the
 header's own `OverdueCount` and `TodayCount` from them; the Today membership
 comes from `Planning().GetToday()` directly, so no projection has to thread its
@@ -175,11 +216,13 @@ toggle rather than a collapse/expand pair, and all three take the same
 direction rule — if any member of the set is folded the press expands them all,
 otherwise it folds them all — so the key never advertises a direction it does
 not always go. `s` and `p` share `CollapsedSections`, since a fold is a fold
-whichever header kind declares it, and they separate by scanning row kind,
-`IsSectionHeader` against `IsProjectHeader`, rather than by matching a key
-prefix: the ~13 collapse-key constructors are disjoint by construction but not
-by spelling, so one scan over the rendered rows is what lets `p` reach all five
-project-header namespaces without enumerating any of them. `t` owns
+whichever axis declares it, and they separate by which half of the row's group
+they read: `s` still scans `IsSectionHeader` rows, while `p` takes the distinct
+groups `VisibleProjectGroups()` reports and writes each one's `ProjectKey`
+through `SetProjectGroupFolded`. Neither matches a key prefix — the ~13
+collapse-key constructors are disjoint by construction but not by spelling — so
+`p` reaches all five project-group namespaces without enumerating any of them and
+without a project header having to be on screen to be named. `t` owns
 `ExpandedNodes` alone, and its walk covers every loaded project rather than the
 active projection, matching `markAllExpanded`, because folds are
 project-qualified and outlive a mode change; folding only what a filter happens
