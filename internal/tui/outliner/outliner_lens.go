@@ -139,9 +139,11 @@ func (m *OutlinerModel) PublishLens(lens config.NamedLens, state LensState, proj
 
 	// A lens replaces the projection, so an ordinary search projection cannot
 	// survive underneath it. The baseline above already holds search's own
-	// restoration point, which is what one Esc later hands back.
+	// restoration point, which is what one Esc later hands back — and a lens that
+	// search had suspended travels inside that same baseline, so applying a lens
+	// from a temporary search leaves two Escs between here and the lens the slash
+	// was pressed under.
 	m.clearSearchProjectionWithoutRestore()
-	m.endLensQueryEdit()
 
 	if projects != nil {
 		m.setLoadedProjects(projects)
@@ -223,7 +225,6 @@ func (m *OutlinerModel) RestoreLensBaseline() {
 	}
 	m.closeMenuBar()
 	frame := m.Lens.takeActive()
-	m.endLensQueryEdit()
 	m.discardPendingLensApplication()
 	m.restoreOutlinerViewSnapshot(frame.Origin)
 	m.noteActiveLens("")
@@ -274,8 +275,13 @@ func (m *OutlinerModel) forgetActiveLensFrame() {
 	}
 	m.Lens.clearActive()
 	m.discardPendingLensApplication()
-	m.endLensQueryEdit()
 	m.SetLensQuery("")
+	// A lens a temporary search suspended is forgotten on the same terms. The
+	// resets that reach here are replacing the projection outright, and a
+	// suspension left behind would have the next Esc reinstate a lens over a view
+	// it was never suspended under. suspendActiveLensForSearch calls this before
+	// it records its own frame, so the one suspension that must survive does.
+	m.Search.suspendedLens = nil
 }
 
 // lensModified reports whether the live view has diverged from the definition
@@ -294,8 +300,25 @@ func (m *OutlinerModel) LensModified() bool {
 
 // activeLensLabel is the operational-title segment: the lens name, marked when
 // the view has diverged from it.
+//
+// A lens a temporary search suspended keeps that segment and says so. It is the
+// one place the suspension is visible, and it has to be: the mode, the query,
+// and the rows on screen are all the search's, so a title that fell silent would
+// read as a lens the slash had dismissed rather than one the next Esc puts back.
+// The divergence marker is the one read while the lens was still live, because
+// the suspended definition is not what the current view would be compared with.
 func (m *OutlinerModel) ActiveLensLabel() string {
-	if m == nil || !m.Lens.hasActive() {
+	if m == nil {
+		return ""
+	}
+	if suspended := m.Search.suspendedLens; suspended != nil && suspended.lens != nil && !m.Lens.hasActive() {
+		label := "Lens: " + suspended.lens.Name
+		if suspended.modified {
+			label += "*"
+		}
+		return label + " (suspended)"
+	}
+	if !m.Lens.hasActive() {
 		return ""
 	}
 	label := "Lens: " + m.Lens.Active.Name
@@ -303,86 +326,6 @@ func (m *OutlinerModel) ActiveLensLabel() string {
 		label += "*"
 	}
 	return label
-}
-
-// editingLensQuery reports whether the search input currently holds the lens's
-// narrowing query rather than an ordinary search query.
-func (m *OutlinerModel) EditingLensQuery() bool {
-	return m != nil && m.Lens.queryEditing && m.IsSearchMode()
-}
-
-// beginLensQueryEdit points `/` at the narrowing query. No search projection is
-// created: the lens keeps deciding the mode, facets, and order, and the query
-// only decides which of its rows survive.
-func (m *OutlinerModel) beginLensQueryEdit() tea.Cmd {
-	if !m.Lens.beginQueryEdit() {
-		return nil
-	}
-	// Suggestions describe the ordinary search grammar's candidate set and its
-	// projection, neither of which exists here.
-	m.Search.Autocomplete.clear()
-	m.SetSearchInputValue(m.Lens.Query)
-	m.SetSearchInputCursor(len([]rune(m.Lens.Query)))
-	cmd := m.BaseSearchableView.ActivateSearch()
-	// The ordinary query stays empty throughout, so no consumer of it — scoring,
-	// the work-mode predicate, the empty-state cause — ever sees the lens's query
-	// and applies it a second time.
-	m.BaseSearchableView.SetSearchQuery("")
-	return cmd
-}
-
-// handleLensQueryKey is the input loop for that edit. Enter accepts the typed
-// query, Esc restores the one the edit opened on, and every other key retypes
-// the narrowing live.
-func (m *OutlinerModel) handleLensQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.cancelLensQueryEdit()
-		return m, nil
-	case "enter":
-		m.commitLensQueryEdit()
-		return m, nil
-	}
-	_, cmd, changed := m.HandleSearchInput(msg)
-	m.BaseSearchableView.SetSearchQuery("")
-	if changed {
-		m.SetLensQuery(m.SearchInputValue())
-		m.Population.Invalidate()
-		RebuildOutlinerPreservingCursor(m)
-	}
-	return m, cmd
-}
-
-func (m *OutlinerModel) commitLensQueryEdit() {
-	if !m.Lens.queryEditing {
-		return
-	}
-	query := m.SearchInputValue()
-	m.endLensQueryEdit()
-	m.SetLensQuery(query)
-	m.Population.Invalidate()
-	RebuildOutlinerPreservingCursor(m)
-}
-
-func (m *OutlinerModel) cancelLensQueryEdit() {
-	if !m.Lens.queryEditing {
-		return
-	}
-	origin := m.Lens.queryEditOrigin
-	m.endLensQueryEdit()
-	m.SetLensQuery(origin)
-	m.Population.Invalidate()
-	RebuildOutlinerPreservingCursor(m)
-}
-
-// endLensQueryEdit leaves the input mode without deciding the query. Both the
-// commit and the cancel above name that decision themselves.
-func (m *OutlinerModel) endLensQueryEdit() {
-	if m == nil || !m.Lens.endQueryEdit() {
-		return
-	}
-	m.Search.Autocomplete.clear()
-	m.DeactivateSearch()
 }
 
 // lensProjectLoadRequired reports whether installing the lens changes which

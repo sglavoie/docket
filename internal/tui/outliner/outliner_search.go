@@ -47,6 +47,16 @@ type searchState struct {
 	Projection *outlinerSearchSnapshot
 	rankedList bool
 
+	// suspendedLens is the lens this query is standing in front of, if the slash
+	// was pressed under one. It belongs to the frame rather than beside it because
+	// the lens and the presentation it owned are put back in the same act the
+	// query is dropped in; holding it anywhere else would let a discard leave a
+	// lens nothing will ever restore. The pointer is what keeps the type from
+	// containing itself: the checkpoint it carries holds this state's own
+	// snapshot, which is also what makes a lens survive a relation hop or a second
+	// lens taken on top of the search.
+	suspendedLens *lensSuspension
+
 	// The compiled query. remainder is the free text left after the sigil gate was
 	// lifted out of it and gate is that gate; scoring, smart case, highlighting and
 	// the work-mode predicate all read the remainder, so a predicate token is never
@@ -101,6 +111,45 @@ func (s *searchState) begin(snapshot outlinerSearchSnapshot, ranked bool) {
 	s.rankedList = ranked
 }
 
+// lensSuspension is the return frame a temporary search takes when the slash is
+// pressed under a live lens. It is the relationship trail's frame in every
+// respect but its subject: one presentation checkpoint and one lens frame,
+// restored lens-first for the same reason PopRelationReturn gives, because the
+// checkpoint owns the narrowing query and writing it second would put an empty
+// query over the lens just reinstalled.
+//
+// modified is read off the live view while the lens still owns it, because the
+// marker is a comparison against a fingerprint the suspended view no longer
+// produces. Nothing here names a task or a project: the checkpoint's cursor
+// anchor is the whole of what a restore aims at, so a target deleted or moved
+// meanwhile lands on the nearest surviving row rather than on a stale pointer.
+type lensSuspension struct {
+	presentation OutlinerPresentationCheckpoint
+	lens         *activeLensFrame
+	modified     bool
+}
+
+// suspend installs the lens frame this query displaced. A nil frame is not a
+// suspension to record: a second slash into an open search has no lens to take,
+// and letting it write through would drop the one the first slash suspended.
+func (s *searchState) suspend(frame *lensSuspension) {
+	if s == nil || frame == nil {
+		return
+	}
+	s.suspendedLens = frame
+}
+
+// takeSuspendedLens hands the frame back and puts it down in one act, so a
+// restoration cannot be replayed onto whatever opens next.
+func (s *searchState) takeSuspendedLens() *lensSuspension {
+	if s == nil {
+		return nil
+	}
+	frame := s.suspendedLens
+	s.suspendedLens = nil
+	return frame
+}
+
 // toggleRanked switches the held query between narrowing the mode and the flat
 // ranked list, and reports which presentation now stands. What else the switch
 // costs stays the caller's: the section zoom belongs to the projection rather
@@ -123,9 +172,15 @@ func (s *searchState) take() *outlinerSearchSnapshot {
 // back on the way out; the two clear paths differ in nothing else, because an
 // intentional navigation reset replaces the projection rather than dismissing
 // it and so leaves nobody to restore the frame onto.
+//
+// A suspended lens goes down with it for that same reason: the resets that reach
+// here are installing a whole projection over this one, and a lens left standing
+// would be reinstated by the next Esc over a view it was never suspended under.
+// Whatever needs it kept has already captured a checkpoint, which carries it.
 func (s *searchState) discard() {
 	s.Projection = nil
 	s.rankedList = false
+	s.suspendedLens = nil
 }
 
 // searchSnapshot is the part of this state a lens restoration point carries: the
@@ -134,9 +189,14 @@ func (s *searchState) discard() {
 // rebuild's reading of a query, and the rebuild that follows a restore produces
 // its own; the suggestion pane and the recall ring are absent for the same
 // reason and because the ring is not scoped to a projection at all.
+// The lens this frame suspended travels with it, which is what makes the two
+// nestings compose: a relation hop or a second lens taken inside a temporary
+// search captures a checkpoint holding this snapshot, so unwinding that hop
+// hands the search back with the lens it still owes an Esc.
 type searchSnapshot struct {
-	Projection *outlinerSearchSnapshot
-	rankedList bool
+	Projection    *outlinerSearchSnapshot
+	rankedList    bool
+	suspendedLens *lensSuspension
 }
 
 // capture reads the frame out. The pointer is retained rather than copied
@@ -146,7 +206,11 @@ func (s *searchState) capture() searchSnapshot {
 	if s == nil {
 		return searchSnapshot{}
 	}
-	return searchSnapshot{Projection: s.Projection, rankedList: s.rankedList}
+	return searchSnapshot{
+		Projection:    s.Projection,
+		rankedList:    s.rankedList,
+		suspendedLens: s.suspendedLens,
+	}
 }
 
 // restore installs a captured frame and the presentation it stood under, then
@@ -162,6 +226,7 @@ func (s *searchState) restore(snapshot searchSnapshot) {
 	}
 	s.Projection = snapshot.Projection
 	s.rankedList = snapshot.rankedList
+	s.suspendedLens = snapshot.suspendedLens
 	s.resetCompilation()
 }
 
@@ -376,14 +441,17 @@ func (m *OutlinerModel) beginSearchProjection(ranked bool) {
 // A second slash edits the existing query without replacing its restoration
 // snapshot and without restating the presentation: the toggle is a deliberate
 // act, so reopening the input over a query already narrowed back into its mode
-// must not silently undo it. Under an active lens the same key edits that lens's
-// narrowing query instead: the lens already owns the projection, and replacing
-// it with a scope-wide result set is the one thing the key must not do there.
+// must not silently undo it. Under an active lens the same key suspends that
+// lens rather than refusing or editing it: search asks one question of the
+// workspace, the answer is worth the same inside a lens as outside it, and the
+// suspension is what makes the visit temporary.
 func (m *OutlinerModel) ActivateSearch() tea.Cmd {
-	if m.HasActiveLens() && !m.HasSearchProjection() {
-		return m.beginLensQueryEdit()
-	}
+	// Taken before the open, because the checkpoint is the view the search is
+	// about to replace. A second slash finds no lens to take and so records
+	// nothing, leaving the first slash's suspension exactly as it was.
+	suspended := m.suspendActiveLensForSearch()
 	m.beginRankedSearchProjection()
+	m.Search.suspend(suspended)
 	// Every open starts a fresh walk: the ring survives the input closing, the
 	// position in it does not, so the first Up always names the newest query.
 	m.Search.history.resetRecall()
@@ -406,6 +474,59 @@ func (m *OutlinerModel) SetSearchQuery(query string) {
 	}
 }
 
+// suspendActiveLensForSearch puts the live lens down for the duration of one
+// temporary search and hands back the frame that reinstates it. The checkpoint
+// is the whole return: mode, facets, sort, folds, focus, zoom, cursor,
+// selection, Peek, the frozen Recent ordering, and the lens's own narrowing
+// query. Scope is deliberately not disturbed — search never leaves the scope it
+// was pressed in, so the lens gets back the one it owned by never losing it.
+//
+// forgetActiveLensFrame is the seam for the reason the relationship hop gives:
+// it drops the frame, the application still reading a population for it, and the
+// narrowing it installed, while leaving the machine-local resume pointer exactly
+// as it was. A temporary search is not a lens being put down, so the next launch
+// still opens the lens whatever the search did.
+func (m *OutlinerModel) suspendActiveLensForSearch() *lensSuspension {
+	if m == nil || !m.HasActiveLens() || m.HasSearchProjection() {
+		return nil
+	}
+	checkpoint := m.CaptureOutlinerPresentationCheckpoint()
+	// Read while the lens still owns the view: the marker is a comparison the
+	// suspended projection cannot make for itself.
+	modified := m.LensModified()
+	frame := m.Lens.takeActive()
+	m.forgetActiveLensFrame()
+	return &lensSuspension{presentation: checkpoint, lens: frame, modified: modified}
+}
+
+// HasSuspendedLens reports that a temporary search is standing in front of a
+// lens one Esc puts back. It is not HasActiveLens: no lens owns this projection,
+// which is why the mode, the query, and every operation reading them answer for
+// the search instead.
+func (m *OutlinerModel) HasSuspendedLens() bool {
+	return m != nil && m.Search.suspendedLens != nil
+}
+
+// SearchExitHint names what Esc does to the held query in the footer's register,
+// and searchExitClause says the same thing inside a sentence. Over a suspended
+// lens the key clears nothing: it puts a projection back, and a footer promising
+// "clear search" would send the user looking for the lens it silently restored.
+// The live-input hint, the empty-state guidance, and the empty-state message all
+// read these two, so one key cannot be advertised three ways.
+func (m *OutlinerModel) SearchExitHint() string {
+	if m.HasSuspendedLens() {
+		return "Esc restore lens"
+	}
+	return "Esc clear search"
+}
+
+func (m *OutlinerModel) searchExitClause() string {
+	if m.HasSuspendedLens() {
+		return "Esc to restore the lens"
+	}
+	return "Esc to clear"
+}
+
 // ClearSearch exits the temporary projection and restores the exact ordinary
 // Outliner state. If the original task vanished while search operations were
 // mutating data, focus falls back to the nearest surviving task row.
@@ -416,6 +537,18 @@ func (m *OutlinerModel) ClearSearch() {
 		return
 	}
 	m.closeMenuBar()
+	// A suspended lens is restored instead of the bare presentation snapshot, and
+	// it is the same restore the relationship trail performs: the lens frame
+	// first, because the checkpoint carries the narrowing query and installing it
+	// second would write an empty one over the lens just put back. The checkpoint
+	// subsumes the snapshot begin took — it holds that snapshot — so this path
+	// owes neither a second restore nor a second cursor seat.
+	if suspended := m.Search.takeSuspendedLens(); suspended != nil {
+		m.BaseSearchableView.ClearSearch()
+		m.Lens.setActive(suspended.lens)
+		m.RestoreOutlinerPresentationCheckpoint(suspended.presentation)
+		return
+	}
 	snapshot := m.Search.take()
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()

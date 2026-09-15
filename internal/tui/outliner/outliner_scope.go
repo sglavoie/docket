@@ -386,7 +386,10 @@ func (m *OutlinerModel) ResetToLaunchView() ([]string, bool) {
 		}
 		return active
 	}
-	note(m.HasActiveLens(), "lens")
+	// A lens a temporary search suspended is still a lens this key clears: it owns
+	// no axis right now, but an Esc would put it back, so a reset that stayed
+	// silent about it would report nothing to clear while still having work to do.
+	note(m.HasActiveLens() || m.HasSuspendedLens(), "lens")
 	note(m.HasSearchProjection(), "query")
 	note(m.Focus.Active(), "focus")
 	note(m.Focus.Zoom.Active(), "zoom")

@@ -332,12 +332,6 @@ type outlinerLensState struct {
 	// never learns where machine-local state is committed; a nil seam is inert and
 	// simply remembers nothing.
 	Persist func(id string) error
-
-	// The input mode. queryEditing points the shared search input at the
-	// narrowing query instead of the ordinary search query, and queryEditOrigin is
-	// the query Esc restores when that edit is abandoned.
-	queryEditing    bool
-	queryEditOrigin string
 }
 
 // hasActive reports whether a lens owns the current projection.
@@ -502,29 +496,4 @@ func (s *outlinerLensState) setCompilation(remainder string, gate *query.SearchP
 	s.remainder = remainder
 	s.Gate = gate
 	s.NarrowRelaxed = relaxed
-}
-
-// beginQueryEdit points the shared input at the narrowing query and freezes the
-// query an abandoned edit restores, reporting whether the mode was actually
-// opened. Capturing the origin is part of arming it: an edit opened without one
-// has nothing to hand back.
-func (s *outlinerLensState) beginQueryEdit() bool {
-	if s == nil || s.queryEditing {
-		return false
-	}
-	s.queryEditing = true
-	s.queryEditOrigin = s.Query
-	return true
-}
-
-// endQueryEdit leaves the input mode without deciding the query, reporting
-// whether there was an edit to leave. The commit and the cancel above it each
-// name that decision themselves.
-func (s *outlinerLensState) endQueryEdit() bool {
-	if s == nil || !s.queryEditing {
-		return false
-	}
-	s.queryEditing = false
-	s.queryEditOrigin = ""
-	return true
 }

@@ -1,0 +1,48 @@
+{
+  "name": "named-lens-search-suspension",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "without a lens, / is an ordinary scope-wide search", "key": "/" },
+    { "type": "text", "text": "login" },
+    { "type": "assert", "assert": "contains", "value": "Search: > login" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+
+    { "type": "key", "label": "apply a lens", "key": "\\" },
+    { "type": "key", "label": "two moves clear the Save and Add rows", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "assert": "not_contains", "value": "suspended" },
+
+    { "type": "key", "label": "under a lens the same key suspends it and searches the scope", "key": "/" },
+    { "type": "text", "text": "redirect" },
+    { "type": "assert", "assert": "contains", "value": "Search: > redirect" },
+    { "type": "assert", "label": "the lens is named as suspended rather than dropped", "assert": "contains", "value": "Lens: High Priority (suspended)" },
+    { "type": "assert", "label": "Esc is advertised for what it does here", "assert": "contains", "value": "Esc restore lens" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the search answers across the scope, not inside the lens", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority (suspended)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one Esc restores the lens exactly as it was left", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "label": "a visit is not an edit, so nothing diverged", "assert": "not_contains", "value": "Lens: High Priority*" },
+    { "type": "assert", "assert": "not_contains", "value": "suspended" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the next Esc is the lens's own, as it always was", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

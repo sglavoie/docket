@@ -52,10 +52,11 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	}
 }
 
-// TestSlashUnderALensEditsTheLensQueryRatherThanStartingASearch is the other
-// half of that boundary: the key never mints a scope-wide projection beneath a
-// lens, so no rebuild can reach both narrowings at once.
-func TestSlashUnderALensEditsTheLensQueryRatherThanStartingASearch(t *testing.T) {
+// TestSlashUnderALensSuspendsItRatherThanNarrowingIt is the other half of that
+// boundary: the key takes the lens down before it mints the projection, so the
+// two narrowings still never stand at once — and the suspension is what puts the
+// lens back, rather than the lens having survived underneath.
+func TestSlashUnderALensSuspendsItRatherThanNarrowingIt(t *testing.T) {
 	task := primaryRowsTask("task", models.StateBacklog)
 	task.Title = "Needle groundwork"
 	outliner := scopeTestOutliner(primaryRowsProject("alpha", task))
@@ -63,24 +64,28 @@ func TestSlashUnderALensEditsTheLensQueryRatherThanStartingASearch(t *testing.T)
 	outliner.SetLensQuery("needle")
 
 	_ = outliner.ActivateSearch()
-	if !outliner.EditingLensQuery() {
-		t.Fatal("/ under a lens did not open the lens query editor")
+	if outliner.HasActiveLens() {
+		t.Fatal("/ under a lens left the lens owning the projection")
 	}
-	if outliner.HasSearchProjection() {
-		t.Fatal("/ under a lens started a scope-wide search projection")
+	if !outliner.HasSuspendedLens() {
+		t.Fatal("/ under a lens recorded no suspension to restore")
 	}
-	if got := outliner.SearchInputValue(); got != "needle" {
-		t.Fatalf("lens query editor seeded with %q, want the lens's own query", got)
+	if !outliner.HasSearchProjection() || !outliner.ShowsRankedList() {
+		t.Fatalf("/ under a lens did not open the ranked search: projection=%v ranked=%v",
+			outliner.HasSearchProjection(), outliner.ShowsRankedList())
 	}
-	if got := outliner.SearchQuery(); got != "" {
-		t.Fatalf("ordinary search query = %q, want it left empty under a lens", got)
+	if outliner.Lens.Gate != nil || outliner.Lens.Query != "" {
+		t.Fatalf("the suspended lens kept narrowing: gate=%v query=%q", outliner.Lens.Gate != nil, outliner.Lens.Query)
+	}
+	if got := outliner.SearchInputValue(); got != "" {
+		t.Fatalf("the search input opened holding %q, want an empty query", got)
 	}
 
 	_, _ = outliner.HandleKeyMsg(syntheticSpecialKey(tea.KeyEsc))
-	if outliner.EditingLensQuery() {
-		t.Fatal("Esc did not close the lens query editor")
+	if outliner.HasSearchProjection() || outliner.HasSuspendedLens() {
+		t.Fatal("Esc left the search projection or its suspension behind")
 	}
-	if outliner.HasSearchProjection() {
-		t.Fatal("Esc left a search projection behind")
+	if !outliner.HasActiveLens() || outliner.Lens.Query != "needle" {
+		t.Fatalf("Esc did not restore the lens: active=%v query=%q", outliner.HasActiveLens(), outliner.Lens.Query)
 	}
 }

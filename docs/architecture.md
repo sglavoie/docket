@@ -36,7 +36,7 @@ mechanism, or jump straight to the one that owns your concern.
   - [Sorting axis](architecture/search-filters-and-sorting.md#sorting-axis) —
     manual-order exemption, group order, fixed-order modes
   - [Named lenses](architecture/named-lenses.md#named-lenses) — portable domain,
-    commit before publish, the single restoration point, lens query editing, the
+    commit before publish, the single restoration point, search suspension, the
     built-in view catalog
   - [Selection and subordinate tools](architecture/selection-and-project-tags.md#selection-and-subordinate-tools)
     — visual selection, Select Project, `Ctrl+T` axis

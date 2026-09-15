@@ -125,9 +125,12 @@ func (m *OutlinerModel) QueryReadoutRows() []queryReadoutRow {
 			note:  "peels to All",
 		})
 	}
-	// A lens's narrowing query and an ordinary search projection are two
-	// different axes that can never both be live: slash search under a lens edits
-	// that lens's query rather than opening a projection of its own.
+	// A lens's narrowing query and an ordinary search projection are two different
+	// axes that can never both be live: slash search under a lens suspends the
+	// lens outright, so while the projection stands there is no lens to carry a
+	// query of its own. That suspension is why the query row names its own peel:
+	// removing this query hands the lens back, and a row promising only that a
+	// search goes away would be describing half the act.
 	switch {
 	case m.HasActiveLens() && m.Lens.Query != "":
 		rows = append(rows, queryReadoutRow{
@@ -136,11 +139,15 @@ func (m *OutlinerModel) QueryReadoutRows() []queryReadoutRow {
 			value: m.Lens.Query,
 		})
 	case m.SearchQuery() != "":
-		rows = append(rows, queryReadoutRow{
+		row := queryReadoutRow{
 			Axis:  queryReadoutAxisQuery,
 			Label: "query",
 			value: m.SearchQuery(),
-		})
+		}
+		if m.HasSuspendedLens() {
+			row.note = "restores the suspended lens"
+		}
+		rows = append(rows, row)
 	}
 	rows = append(rows, commonFilterReadoutRows(&m.Filter.CommonFilterState)...)
 	return append(rows, projectFilterReadoutRows(&m.ProjectFilter)...)

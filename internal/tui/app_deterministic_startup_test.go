@@ -137,8 +137,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outlinerView.Cursor != 0 || outlinerView.IsMultiSelectActive() || outlinerView.SelectedCount() != 0 {
 		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outlinerView.Cursor, outlinerView.IsMultiSelectActive(), outlinerView.SelectedCount())
 	}
-	if outlinerView.HasActiveLens() || outlinerView.Lens.Query != "" || outlinerView.EditingLensQuery() {
-		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outlinerView.HasActiveLens(), outlinerView.Lens.Query, outlinerView.EditingLensQuery())
+	if outlinerView.HasActiveLens() || outlinerView.Lens.Query != "" || outlinerView.HasSuspendedLens() {
+		t.Fatalf("launch retained lens state: active=%v query=%q suspended=%v", outlinerView.HasActiveLens(), outlinerView.Lens.Query, outlinerView.HasSuspendedLens())
 	}
 	if len(outlinerView.Folds.CollapsedSections) != 0 || len(outlinerView.Folds.ExpandedNodes) != 0 || len(outlinerView.Focus.Stack) != 0 || len(outlinerView.Focus.CrossStack) != 0 {
 		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outlinerView.Folds.CollapsedSections, outlinerView.Folds.ExpandedNodes, outlinerView.Focus.Stack, outlinerView.Focus.CrossStack)

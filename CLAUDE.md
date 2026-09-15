@@ -523,6 +523,19 @@ the presentation in the same act it captures the return frame, so a repeated
 slash restates neither: it edits the held query, `or` survives it, and `Esc`
 spends the first open's snapshot over current data.
 
+That same open suspends an active lens rather than narrowing it, so the two
+queries still never stand at once and there is no lens-query edit mode. The
+`lensSuspension` — presentation checkpoint, frame, and the modified marker read
+while the lens could still be compared — lives in `searchState`, so it travels in
+that snapshot and in every checkpoint holding one; a repeated slash suspends
+nothing further. Scope and facets stay standing, `forgetActiveLensFrame` is the
+put-down, so no lens definition and no machine-local pointer is written, and
+`ClearSearch` reinstates the frame before the checkpoint, since the checkpoint
+carries the narrowing query. `HasSuspendedLens` is not `HasActiveLens`: the mode,
+the query, and every operation reading them answer for the search, while
+`ActiveLensLabel` says `(suspended)` and `SearchExitHint` names the restore
+wherever a footer, guidance, or empty state would otherwise promise a clear.
+
 Entering visual selection closes Peek; while one exists, structural, edit, Peek,
 and relation operations must reject rather than fall back to the cursor. The
 three clipboard projections instead copy that whole explicit selection, hidden

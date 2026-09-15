@@ -660,10 +660,6 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	var indicator string
 	switch {
-	case m.EditingLensQuery():
-		// The lens badge reads the lens compilation rather than the search one,
-		// because those are the rows on screen.
-		return m.appendLensQueryBadge(theme.MutedStyle.Render("Lens query: ")+m.SearchInputView(), width)
 	case m.HasActiveLens() && m.Lens.Query != "":
 		return m.appendLensQueryBadge(theme.MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.Lens.Query)), width)
 	case m.IsSearchMode():
@@ -882,13 +878,19 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	case outlinerEmptyProjectFiltered:
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:
-		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
+		return fmt.Sprintf("No tasks match search %q. Press %s.", m.SearchQuery(), m.searchExitClause())
 	case OutlinerEmptySearchFiltered:
+		// The second exit is spelled out here rather than taken from the shared
+		// clause: beside "clear filters" a bare "clear" would read as clearing them.
+		exit := "Esc to clear the search"
+		if m.HasSuspendedLens() {
+			exit = "Esc to restore the lens"
+		}
 		return fmt.Sprintf(
-			"No tasks match search %q under the active filters. Press fx to clear filters or Esc to clear the search.",
-			m.SearchQuery())
+			"No tasks match search %q under the active filters. Press fx to clear filters or %s.",
+			m.SearchQuery(), exit)
 	case outlinerEmptySearchInvalid:
-		return fmt.Sprintf("%s. Press Esc to clear.", m.Search.Gate.GuidanceText())
+		return fmt.Sprintf("%s. Press %s.", m.Search.Gate.GuidanceText(), m.searchExitClause())
 	case outlinerEmptyLens:
 		return "No tasks match this lens. Press Esc to restore the view it replaced."
 	case outlinerEmptyFiltered:

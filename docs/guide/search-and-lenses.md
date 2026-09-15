@@ -347,20 +347,36 @@ failure on screen.
 
 An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
 as soon as the live view stops matching what was saved — a mode change, a
-filter, a sort, or an edited query. `Esc` restores the exact view the lens
+filter, a sort, or a scope move. `Esc` restores the exact view the lens
 replaced, not an intermediate one: switching straight from one lens to another
 keeps the original restoration point, so a single `Esc` still lands where you
 left. Lenses never stack.
 
-While a lens is active `/` edits the lens's own narrowing query instead of
-opening a scope-wide search, and the title row reads `Lens query:` while you
-type. `Enter` keeps what was typed, `Esc` puts back the query the edit opened
-on. A lens query marks the titles it matched exactly as a search does, since
-those are the rows it narrowed to.
+While a lens is active `/` is the ordinary scope-wide search, and it puts the
+lens down for as long as that search is standing. The title row says so —
+`Lens: <name> (suspended)` — and the footer reads `Esc restore lens` rather than
+`Esc clear search`, because that is what the key does here. The search itself is
+unchanged: it ranks across the scope you were in, your filters stay standing, and
+`Enter` opens its results, so it finds the work the lens was hiding instead of
+narrowing further into what the lens already chose. Pressing `/` again edits the
+query you are holding; there is only ever one lens waiting underneath.
+
+One `Esc` puts that lens back as you left it — its mode, its own narrowing query,
+sort, folds, focus, cursor, selection, and Peek — resolved against whatever the
+data looks like by then, so work you completed, moved, or deleted during the
+search is simply gone from the restored view rather than restored with it. The
+visit is not an edit: the saved definition is untouched, the `*` marker reads
+exactly as it did before, and the lens that reopens at your next launch is still
+this one. The `Esc` after that is the lens's own, as it always was.
+
+A lens query marks the titles it matched exactly as a search does, since those
+are the rows it narrowed to.
 The two queries never stack: an ordinary search cannot survive underneath a
-lens, so applying or saving one from accepted search results installs the
+lens, which is why `/` suspends rather than narrows. Applying or saving a lens
+from accepted search results installs the
 projection and leaves the search behind — and the same `Esc` that dismisses the
-lens hands that search back with the rest of the view. Saving keeps the query
+lens hands that search back with the rest of the view, with the lens that search
+had suspended one further `Esc` behind it. Saving keeps the query
 itself, though: a lens saved or replaced from accepted search results records
 the query those rows came from as its own narrowing query, so reopening it
 narrows the saved mode and facets by it.

@@ -48,13 +48,6 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.HandleQueryReadoutKey(key)
 	}
 
-	// A lens query edit owns the input outright: it carries no suggestion pane and
-	// no projection, so it must be read before the ordinary search cascade below
-	// mistakes it for one.
-	if m.EditingLensQuery() {
-		return m.handleLensQueryKey(msg)
-	}
-
 	// An open suggestion pane claims Tab, Esc, and the four navigation keys before
 	// the search cascade below sees them, which is what makes the first Esc close
 	// the pane and the next one clear or restore the search.
@@ -554,21 +547,12 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			hints = append(hints, chrome.OptionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
-	case m.EditingLensQuery():
-		// The shared input is holding the lens's narrowing query, not an ordinary
-		// search: Enter keeps what was typed and Esc puts back the query the edit
-		// opened on, neither of which is what the search wording promises.
-		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints("Enter narrow lens", "Esc cancel edit"),
-				chrome.OptionalGuidanceHints(10, "lens query narrows this lens only")...),
-			Rows: 2,
-		}, true
 	case m.IsSearchMode() && m.Search.Autocomplete.Active():
 		// Only while the pane is open: an Esc here closes suggestions rather than
 		// the search, and saying so is the whole point of the swap.
 		return m.searchAutocompleteGuidance(), true
 	case m.IsSearchMode():
-		hints := chrome.RequiredGuidanceHints("Enter apply search", "Esc clear search")
+		hints := chrome.RequiredGuidanceHints("Enter apply search", m.SearchExitHint())
 		if m.hasSearchHistory() {
 			// Only once something has been submitted: an empty ring would advertise
 			// a walk that does nothing on its first press.
@@ -607,18 +591,18 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	case m.HasSearchProjection():
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints("Esc clear search"),
+			Hints: append(chrome.RequiredGuidanceHints(m.SearchExitHint()),
 				chrome.OptionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
 			Rows: 1,
 		}, true
 	case m.HasActiveLens():
 		// One press leaves the whole saved projection, so it is the required hint
 		// here exactly as clearing search is above. `/` is named beside it because
-		// under a lens that key edits the lens's narrowing query rather than
-		// opening a scope-wide search, which nothing else on screen says.
+		// under a lens that key suspends the lens for one scope-wide search rather
+		// than narrowing it further, which nothing else on screen says.
 		return chrome.GuidanceSpec{
 			Hints: append(chrome.RequiredGuidanceHints("Esc restore lens"),
-				chrome.OptionalGuidanceHints(10, `/ lens query`, `\ lenses`, "a capture", "? help")...),
+				chrome.OptionalGuidanceHints(10, `/ search scope`, `\ lenses`, "a capture", "? help")...),
 			Rows: 1,
 		}, true
 	case m.cursorNamesHeader():
@@ -770,7 +754,7 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 	case outlinerEmptyProjectFiltered:
 		required = "Fx clear project filters"
 	case outlinerEmptySearch, outlinerEmptySearchInvalid:
-		required = "Esc clear search"
+		required = m.SearchExitHint()
 	case OutlinerEmptySearchFiltered:
 		// The query is what the user is holding, so widening the facets is the act
 		// that keeps it; leaving search is named beside it rather than in its place.
@@ -787,7 +771,7 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 		optional = []string{"? help"}
 	}
 	if cause == OutlinerEmptySearchFiltered {
-		optional = append([]string{"Esc clear search"}, optional...)
+		optional = append([]string{m.SearchExitHint()}, optional...)
 	}
 	hints := append(chrome.RequiredGuidanceHints(required), chrome.OptionalGuidanceHints(10, optional...)...)
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}

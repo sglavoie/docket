@@ -101,11 +101,28 @@ unwinds the lens after search and before the focus stack, and
 the whole narrowing, the sort, and the scope at once, so naming any
 one of them would send the user to a key that cannot widen the list.
 
-Under an active lens `/` calls `beginLensQueryEdit` and the shared search input
-holds the lens's narrowing query instead of a scope-wide search: `Enter` commits
-it, `Esc` restores `lens.queryEditOrigin`, and `buildOutlinerSearchIndicator`
-reads the lens compilation rather than the search one for its badges, because
-those are the rows on screen. `renderTaskTitle` reads the same compilation for
+Under an active lens `/` calls `suspendActiveLensForSearch` and opens the
+ordinary scope-wide ranked search: the lens is put down for the duration rather
+than narrowed further, so the two narrowing queries still never stand at once.
+What the key mints is a `lensSuspension` — the presentation checkpoint, the frame
+itself, and the modified marker read while the lens could still be compared —
+held in `searchState.suspendedLens`, which is why a relation hop or a nested lens
+applied from inside the search carries the suspension in its own checkpoint
+instead of stranding it. Scope and facets are deliberately left standing, because
+a search never leaves the scope it was pressed in. `ClearSearch` takes the frame
+back out, reinstates the lens *first* and the checkpoint second — the checkpoint
+carries the narrowing query, so installing it second would write an empty one
+over the lens just restored — and the whole of it lands against current data.
+`forgetActiveLensFrame` is the seam, so nothing writes a lens definition and the
+machine-local resume pointer is untouched: the next launch opens the lens
+whatever the search did. `ActiveLensLabel` says `(suspended)` for the same
+reason `HasSuspendedLens` is not `HasActiveLens` — no lens owns this projection,
+so the mode, the query, the empty state, and `SearchExitHint`'s `Esc restore
+lens` all answer for the search while naming what the exit puts back.
+
+`buildOutlinerSearchIndicator` reads the lens compilation rather than the search
+one for its badges whenever a lens owns the projection, because those are the
+rows on screen. `renderTaskTitle` reads the same compilation for
 the same reason: `titleHighlightQuery` returns the search remainder and its case
 mode when a search owns the projection and the lens remainder and
 `LensCaseSensitive()` when a lens does, so a marked title always names the query

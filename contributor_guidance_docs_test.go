@@ -825,7 +825,26 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// way: making the second press restate the presentation reads as consistency
 	// and costs the user both a deliberate `or` and the return frame `Esc` spends.
 	// The mechanism lives in docs/architecture/search-filters-and-sorting.md.
-	const budget = 55580
+	// Forty-third raise, 55580 to 56600, for a temporary search suspending the
+	// lens it was pressed under. 1020 bytes buy the rules that survive no reading
+	// of the code. The suspension living in searchState is the one a refactor
+	// undoes first — outlinerLensState is where a lens frame obviously belongs —
+	// and moving it there strands the frame the moment a relation hop or a nested
+	// lens application carries the search's own checkpoint somewhere else. The
+	// restore order is stated because it is invisible and wrong in exactly one
+	// direction: the checkpoint carries the narrowing query, so installing it
+	// after the frame is the correct order and installing it before silently
+	// erases the lens just put back. Scope and facets staying standing is the
+	// difference between a search and a reset, and forgetActiveLensFrame being
+	// the put-down is what keeps a visit from writing a definition or the
+	// machine-local pointer — a persistence call added here would make every
+	// search a lens edit. HasSuspendedLens not being HasActiveLens is last
+	// because the natural simplification is to keep the lens "active underneath",
+	// which would put two narrowing queries on one projection; what is owed
+	// instead is honest advertising, which is why one SearchExitHint answers for
+	// the footer, the guidance, and the empty state.
+	// The mechanism lives in docs/architecture/named-lenses.md.
+	const budget = 56600
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

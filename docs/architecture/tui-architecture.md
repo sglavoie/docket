@@ -353,13 +353,13 @@ distributed into any of them: a method that names six sub-states is honest, and
 six sub-states that quietly knew about each other would not be.
 
 The whole of the named-lens facility is the model's `lens` field on the same
-terms, and `outlinerLensState` holds five things rather than one because each is
+terms, and `outlinerLensState` holds four things rather than one because each is
 the live lens seen from a different side: the frame, the application whose
 population is still being read behind it, the narrowing query that frame
-installs together with the compiled reading of it, the machine-local seam that
-remembers which lens to reopen with, and the input mode that retypes the query.
+installs together with the compiled reading of it, and the machine-local seam
+that remembers which lens to reopen with.
 `forgetActiveLensFrame` is the argument for one owner — putting a lens down
-drops the frame, the pending application, the edit mode and the query in one act,
+drops the frame, the pending application and the query in one act,
 and has to, or a narrowing outlives the lens that installed it. That type is
 deliberately not `LensState`, which is one saved definition's six axes: one
 describes a lens and the other the Outliner holding one. It is deliberately not
@@ -368,9 +368,13 @@ which is what lets `activeNarrowingGate` answer for both, and
 `compileActiveNarrowing` writes each carrier's remainder, gate, and case reading
 through that carrier's own sub-state rather than merging them into one. The
 dependency between the two runs one way: `ActivateSearch` asks
-`HasActiveLens()` and delegates to `beginLensQueryEdit`, because `PublishLens`
-already reaches into the search projection, the population, the scope, and the
-cursor, and reversing it would put the lens above the search it has to put down.
+`HasActiveLens()` and suspends the lens into `searchState` before it opens the
+projection, because `PublishLens` already reaches into the search projection, the
+population, the scope, and the cursor, and reversing it would put the lens above
+the search it has to put down. The suspension lives inside `searchState` for the
+same reason — the search is what is standing in front of the lens, so the frame
+that puts it back travels in the search's own snapshot and in every checkpoint
+that snapshot is part of.
 
 `recencyState` is the smallest of these and the clearest about why the axis has
 an owner: Recent's frozen ordering timestamps and the projection fingerprint
