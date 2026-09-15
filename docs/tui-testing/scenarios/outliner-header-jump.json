@@ -38,15 +38,18 @@
     { "type": "key", "key": "y" },
     { "type": "assert", "assert": "clipboard_contains", "value": "Finish the distributed systems book" },
 
-    { "type": "key", "label": "a query narrows the mode and keeps its sections", "key": "/" },
+    { "type": "key", "label": "slash opens the query as the flat ranked list, which holds no header", "key": "/" },
     { "type": "text", "text": "Alpha" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "label": "the narrowed mode still emits its own section header", "assert": "contains", "value": "@ Backlog" },
-
-    { "type": "key", "label": "the flat ranked list holds no header", "key": "o" },
-    { "type": "key", "key": "r" },
     { "type": "key", "key": "n" },
     { "type": "assert", "assert": "status_contains", "value": "No sections to jump between" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the ranked toggle narrows the same query back into the mode", "key": "o" },
+    { "type": "key", "key": "r" },
+    { "type": "assert", "label": "the narrowed mode emits its own section header again", "assert": "contains", "value": "@ Backlog" },
+    { "type": "key", "label": "and n reaches it", "key": "n" },
+    { "type": "assert", "assert": "not_contains", "value": "No sections to jump between" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

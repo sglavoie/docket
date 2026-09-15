@@ -341,20 +341,53 @@ declared their text required, while this reads the finished screen.
 
 ### Session 12 — Make ordinary slash search ranked by default
 
-- Go: `internal/tui/outliner/outliner_search_tiers_test.go`,
-  `internal/tui/outliner/outliner_search_projection_outlinersplit_test.go`,
+- Go: `internal/tui/outliner/outliner_search_projection_outlinersplit_test.go` —
+  the two presentations being declared at the open rather than by the query:
+  slash opening the flat ranked list across the mode's lanes while
+  `SetSearchQuery` keeps the narrowing, and one return frame surviving a repeated
+  slash so a deliberate `or` holds and `Esc` still hands back the section zoom the
+  ranked open suspended. Also `internal/tui/outliner/outliner_search_tiers_test.go`,
   `internal/tui/outliner/outliner_search_gate_outlinersplit_test.go`,
-  `internal/tui/outliner/outliner_search_notes_tier_outlinersplit_test.go`
-- Scenarios: `docs/tui-testing/scenarios/outliner-search-sigils.json`,
-  `docs/tui-testing/scenarios/search-compose-filters.json`,
-  `docs/tui-testing/scenarios/search-restoration.json`,
-  `docs/tui-testing/scenarios/outliner-search-history-recall.json`,
-  `docs/tui-testing/scenarios/outliner-rich-search-autocomplete.json`
-- Contracts: `CLAUDE.md` — slash search as the fourth surface of the same
+  `internal/tui/outliner/outliner_search_notes_tier_outlinersplit_test.go`, which
+  reach the ranked list through `searchRankedList` and so pin the tiers, the gate,
+  and the notes tier independently of which presentation the key chooses.
+- Scenarios: `docs/tui-testing/scenarios/search-compose-filters.json` and
+  `docs/tui-testing/scenarios/outliner-header-jump.json` carry the round trip —
+  slash showing no lanes and no section header, `or` narrowing the same query back
+  into the mode, and both readings naming the same results. The rest record the
+  new default at the point they already searched:
+  `docs/tui-testing/scenarios/outliner-search-sigils.json`,
+  `docs/tui-testing/scenarios/outliner-search-notes-tier.json`,
+  `docs/tui-testing/scenarios/outliner-search-notes-scoped.json`,
+  `docs/tui-testing/scenarios/outliner-rich-search-autocomplete.json`,
+  `docs/tui-testing/scenarios/outliner-search-focus-jump.json`,
+  `docs/tui-testing/scenarios/outliner-focus-esc-priority.json`,
+  `docs/tui-testing/scenarios/sort-fixed-order-modes.json`,
+  `docs/tui-testing/scenarios/stale-lane-and-filter.json`,
+  `docs/tui-testing/scenarios/project-selection-one-axis.json`,
+  `docs/tui-testing/scenarios/search-context-repeats-union.json`,
+  `docs/tui-testing/scenarios/outliner-set-parent-picker.json`,
+  `docs/tui-testing/scenarios/outliner-set-parent-detach.json`,
+  `docs/tui-testing/scenarios/outliner-set-parent-disabled-rows.json`,
+  `docs/tui-testing/scenarios/outliner-indent-outdent-brackets.json`,
+  `docs/tui-testing/scenarios/task-context-row-wide-layout.json`,
+  `docs/tui-testing/scenarios/filter-tag-merge-undo.json`,
+  `docs/tui-testing/scenarios/check-in-integrated-lifecycle.json`,
+  `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json`.
+  `docs/tui-testing/scenarios/search-restoration.json` and
+  `docs/tui-testing/scenarios/outliner-search-history-recall.json` are the two
+  that had to keep passing untouched: the return frame and the recall ring belong
+  to the open, not to the presentation it declares.
+- Contracts: `CLAUDE.md` — the slash key opening the ranked list while
+  `BeginSearchProjection` opens the narrowing, `SetSearchQuery` never gaining the
+  ranked open, and the open declaring the presentation in the same act it captures
+  the return frame, so a repeated slash restates neither. Also the standing search
+  rules this session preserved: slash search as the fourth surface of the same
   registry rather than a parallel query language, sigils compiling to an AND gate
   applied before scoring with the case-relaxed retry re-running that same gate,
   the notes tier as the lowest and omitted whenever the query carries a sigil,
   and `fs` being unavailable in Recent. `docs/guide/search-and-lenses.md`,
+  `docs/guide/outliner-keys.md`,
   `docs/architecture/search-filters-and-sorting.md`,
   `docs/architecture/canonical-query.md`.
 

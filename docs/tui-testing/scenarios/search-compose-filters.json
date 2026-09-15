@@ -10,8 +10,15 @@
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Explore social login" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
-    { "type": "assert", "label": "the query narrows the mode rather than replacing it, so the lanes stand", "assert": "contains", "value": "@ Doing" },
+    { "type": "assert", "label": "slash opened the flat ranked list, which has no lanes to show", "assert": "not_contains", "value": "@ Doing" },
+
+    { "type": "key", "label": "the ranked toggle narrows the same query back into the mode", "key": "o" },
+    { "type": "key", "key": "r" },
+    { "type": "assert", "assert": "status_contains", "value": "Ranked list off · results narrow the mode" },
+    { "type": "assert", "label": "narrowing leaves the mode standing, so its lanes decide the rows again", "assert": "contains", "value": "@ Doing" },
     { "type": "assert", "assert": "contains", "value": "@ Someday" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login" },
 
     { "type": "key", "label": "the order axis reorders the narrowed rows in place", "key": "o" },
     { "type": "key", "key": "@" },

@@ -204,3 +204,87 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 		t.Fatal("ClearSearch left the relaxed flag set")
 	}
 }
+
+// Slash is the user's own entry path, so it opens the flat ranked list: a typed
+// query is a question about the workspace rather than about the lane the cursor
+// was standing in. The programmatic seam keeps the other presentation, because a
+// caller installing a query without a keystroke is asking the mode it left
+// standing to answer it.
+func TestSlashOpensTheRankedListWhileTheProgrammaticSeamNarrowsTheMode(t *testing.T) {
+	doing := primaryRowsTask("doing", models.StateDoing)
+	doing.Title = "Needle in doing"
+	backlog := primaryRowsTask("backlog", models.StateBacklog)
+	backlog.Title = "Needle in backlog"
+	outliner := scopeTestOutliner(primaryRowsProject("alpha", doing, backlog))
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+
+	outliner.ActivateSearch()
+	if !outliner.HasSearchProjection() || !outliner.ShowsRankedList() {
+		t.Fatalf("slash opened projection=%v ranked=%v, want the flat ranked list",
+			outliner.HasSearchProjection(), outliner.ShowsRankedList())
+	}
+	outliner.SetSearchQuery("needle")
+	if !outliner.ShowsRankedList() {
+		t.Fatal("typing into the open input restated the presentation slash chose")
+	}
+	if names := sectionHeaderNames(outliner); len(names) != 0 {
+		t.Fatalf("the ranked list drew sections %v, want the mode's lanes left behind", names)
+	}
+	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{doing.ID, backlog.ID}) &&
+		!slices.Equal(got, []string{backlog.ID, doing.ID}) {
+		t.Fatalf("ranked rows = %v, want both hits across the modes' lanes", got)
+	}
+
+	outliner.ClearSearch()
+	outliner.SetSearchQuery("needle")
+	if !outliner.HasSearchProjection() {
+		t.Fatal("the programmatic seam opened no projection")
+	}
+	if outliner.ShowsRankedList() {
+		t.Fatal("the programmatic seam opened the ranked list, which no keystroke asked for")
+	}
+	if names := sectionHeaderNames(outliner); len(names) == 0 {
+		t.Fatal("the narrowed query dropped the mode's own lanes")
+	}
+}
+
+// One slash press captures one return frame and declares one presentation. A
+// second press edits the query inside that frame: it must not replace the
+// snapshot Esc spends, and it must not silently undo a narrowing the user asked
+// for with the ranked toggle.
+func TestRepeatedSlashKeepsOneReturnFrameAndTheDeliberatePresentation(t *testing.T) {
+	doing := primaryRowsTask("doing", models.StateDoing)
+	doing.Title = "Needle in doing"
+	backlog := primaryRowsTask("backlog", models.StateBacklog)
+	backlog.Title = "Needle in backlog"
+	outliner := scopeTestOutliner(primaryRowsProject("alpha", doing, backlog))
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+
+	doingLabel := models.StateGroupDoing.Label()
+	if !outliner.EnterSectionZoom(outliner.Rows[sectionHeaderIndex(t, outliner, doingLabel)]) {
+		t.Fatal("the Doing header refused the zoom")
+	}
+
+	outliner.ActivateSearch()
+	outliner.SetSearchQuery("needle")
+	if outliner.Focus.Zoom.Active() {
+		t.Fatal("the ranked open left the section zoom standing, though the flat list runs none of its emitters")
+	}
+
+	if !outliner.ToggleRankedList() {
+		t.Fatal("the held query refused the ranked toggle")
+	}
+	outliner.ActivateSearch()
+	if outliner.ShowsRankedList() {
+		t.Fatal("a second slash undid the narrowing the toggle deliberately asked for")
+	}
+
+	outliner.ClearSearch()
+	if !outliner.Focus.Zoom.Active() || outliner.Focus.Zoom.Name != doingLabel {
+		t.Fatalf("restored zoom = %q active=%v, want the %q zoom the first open suspended",
+			outliner.Focus.Zoom.Name, outliner.Focus.Zoom.Active(), doingLabel)
+	}
+	if outliner.HasSearchProjection() {
+		t.Fatal("ClearSearch left a projection behind")
+	}
+}

@@ -814,7 +814,18 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// correctness. The bounded preview is last because clipping is what a row
 	// budget suggests and it is the one outcome a capture surface may not produce.
 	// The mechanism lives in docs/architecture/capture-and-outline-editor.md.
-	const budget = 55137
+	// Forty-second raise, 55137 to 55580, for slash search opening the ranked
+	// list. 443 bytes buy the one rule a reader cannot recover from the code: the
+	// presentation is chosen by the seam the caller took, not by the query, so
+	// there are two opens and SetSearchQuery is deliberately not the ranked one.
+	// Collapsing them is the natural simplification — both install the same
+	// compiled query — and it would silently rewrite every programmatic and test
+	// caller's projection into a flat list that has no lanes, no folds, and no
+	// mode order. The repeated-slash half is stated because it decays the other
+	// way: making the second press restate the presentation reads as consistency
+	// and costs the user both a deliberate `or` and the return frame `Esc` spends.
+	// The mechanism lives in docs/architecture/search-filters-and-sorting.md.
+	const budget = 55580
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

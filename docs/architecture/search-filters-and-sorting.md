@@ -2,12 +2,12 @@
 
 ### Search, filters, and Peek
 
-A slash query is one more facet over the mode's own projection.
-`compileActiveNarrowing` compiles whichever carrier holds a query — a lens's
-saved one or the search input's — and `constrainModeFilterToNarrowing` composes
-it into the mode input's task predicate, so the section emitters, the pinned
-promotion, the project grouping, and the mode's saved order all keep deciding the
-rows. A match's stored ancestry is retained for context, and it is retained
+A slash query is one more facet over the mode's own projection, read one of two
+ways. `compileActiveNarrowing` compiles whichever carrier holds a query — a
+lens's saved one or the search input's — and `constrainModeFilterToNarrowing`
+composes it into the mode input's task predicate, which is the narrowed reading:
+the section emitters, the pinned promotion, the project grouping, and the mode's
+saved order all keep deciding the rows. A match's stored ancestry is retained for context, and it is retained
 against the matches that survive the rest of the gate, so a facet that removes
 the only hit in a branch removes the branch. Every axis stays live under a held
 query: mode changes, folds, facets, and reordering all apply, because a query is
@@ -27,8 +27,21 @@ an exact qualifier. `ShowsRankedList()` is the one predicate that gates what tha
 presentation takes away — the population filters, the `F` family, which need a
 reload rather than a rebuild — and what it alone offers: the notes tier, the relevance
 ordering a sort reorders within, an order a fixed-order mode would otherwise keep
-for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result. It is reached
-by toggling it, never by typing, and it dies with the query that gave it rows.
+for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result.
+
+That presentation is also where the slash key starts. `ActivateSearch` opens
+through `beginRankedSearchProjection`, because a typed query is a question about
+the workspace rather than about the lane the cursor happened to be standing in;
+the open declares the presentation in the same act it captures the return frame,
+and clears the section zoom for the one reason `ToggleRankedList` does — the flat
+list runs none of the emitters the zoom gates — so the captured frame is what
+hands that zoom back. `BeginSearchProjection` is the other seam, the one
+`SetSearchQuery`, navigation, and tests reach through, and it keeps the narrowed
+reading deliberately: a caller installing a query without a keystroke is asking
+the mode it left standing to answer it. Both open the same frame, so a repeated
+slash restates neither axis — the held query is edited in place, a deliberate
+`or` survives it, and Esc still spends the first open's snapshot over the data as
+it then stands. Either presentation dies with the query that gave it rows.
 
 Terminal and deferred admission has one rule in both presentations: the query
 says so. `AdmitsTerminalPopulation` and `admitsDeferredPopulation` read the

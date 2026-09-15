@@ -12,8 +12,9 @@
     { "type": "key", "key": "/" },
     { "type": "text", "text": "Add password validation" },
     { "type": "key", "key": "enter" },
-    { "type": "key", "label": "the search keeps the ancestry, so the deepest row is the result", "key": "end" },
+    { "type": "key", "label": "the ranked list is flat, so the one result is the row", "key": "end" },
     { "type": "key", "label": "Peek names both axes in full", "key": "b" },
+    { "type": "key", "label": "a ranked row names its ancestry, so both axes are one scroll down the window", "key": "ctrl+d" },
     { "type": "assert", "assert": "contains", "value": "Context: [platform]" },
     { "type": "assert", "assert": "contains", "value": "Tags: #backend #security" },
     { "type": "assert", "assert": "no_layout_issues" }

@@ -190,9 +190,18 @@
       "key": "j"
     },
     {
+      "type": "key",
+      "label": "the ranked list draws no lane, so the state is read in Peek",
+      "key": "b"
+    },
+    {
       "type": "assert",
       "assert": "contains",
-      "value": "Doing"
+      "value": "state doing"
+    },
+    {
+      "type": "key",
+      "key": "b"
     },
     {
       "type": "key",

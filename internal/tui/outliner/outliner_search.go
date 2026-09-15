@@ -91,10 +91,15 @@ func (s *searchState) Active() bool { return s.Projection != nil }
 // operations that reshape lanes, grouping, manual order and the zoom refuse on.
 func (s *searchState) showsRanked() bool { return s.rankedList && s.Projection != nil }
 
-// begin opens the frame over the presentation the caller captured. Taking the
-// snapshot by value is what guarantees the retained frame is the caller's
-// capture and not an alias of anything still being written.
-func (s *searchState) begin(snapshot outlinerSearchSnapshot) { s.Projection = &snapshot }
+// begin opens the frame over the presentation the caller captured and declares
+// which presentation the new query stands in. Taking the snapshot by value is
+// what guarantees the retained frame is the caller's capture and not an alias of
+// anything still being written; taking the presentation beside it is what keeps
+// opening one act, exactly as restore below hands both axes back together.
+func (s *searchState) begin(snapshot outlinerSearchSnapshot, ranked bool) {
+	s.Projection = &snapshot
+	s.rankedList = ranked
+}
 
 // toggleRanked switches the held query between narrowing the mode and the flat
 // ranked list, and reports which presentation now stands. What else the switch
@@ -333,34 +338,63 @@ func (m *OutlinerModel) ToggleRankedList() bool {
 	return true
 }
 
+// BeginSearchProjection opens the frame with the query narrowing the mode's own
+// lanes. It is the programmatic seam — SetSearchQuery and the navigation and
+// tests that reach through it — and it keeps that presentation deliberately: a
+// caller installing a query without a keystroke is asking the mode it left
+// standing to answer it, not asking for the flat list instead of it.
 func (m *OutlinerModel) BeginSearchProjection() {
+	m.beginSearchProjection(false)
+}
+
+// beginRankedSearchProjection is the slash key's own open. A typed query is a
+// question about the workspace rather than about the lane the cursor happened to
+// be standing in, so the user's entry path starts the flat relevance-ordered
+// list across modes and the ranked toggle is what narrows it back. Entering
+// ranked suspends the section zoom for the one reason ToggleRankedList does —
+// the flat list runs none of the emitters that zoom gates — and the frame
+// captured in the same act is what hands the zoom back when the query is
+// dropped.
+func (m *OutlinerModel) beginRankedSearchProjection() {
+	m.beginSearchProjection(true)
+}
+
+func (m *OutlinerModel) beginSearchProjection(ranked bool) {
 	if m == nil || m.Search.Active() {
 		return
 	}
 	m.closeMenuBar()
-	m.Search.begin(m.capturePresentationSnapshot())
+	m.Search.begin(m.capturePresentationSnapshot(), ranked)
+	if ranked {
+		m.clearSectionZoom()
+	}
 	m.Population.Invalidate()
 	m.RebuildRows()
 }
 
-// ActivateSearch starts or resumes the one temporary search projection. A
-// second slash edits the existing query without replacing its restoration
-// snapshot. Under an active lens the same key edits that lens's narrowing query
-// instead: the lens already owns the projection, and replacing it with a
-// scope-wide result set is the one thing the key must not do there.
+// ActivateSearch starts or resumes the one temporary search projection, ranked.
+// A second slash edits the existing query without replacing its restoration
+// snapshot and without restating the presentation: the toggle is a deliberate
+// act, so reopening the input over a query already narrowed back into its mode
+// must not silently undo it. Under an active lens the same key edits that lens's
+// narrowing query instead: the lens already owns the projection, and replacing
+// it with a scope-wide result set is the one thing the key must not do there.
 func (m *OutlinerModel) ActivateSearch() tea.Cmd {
 	if m.HasActiveLens() && !m.HasSearchProjection() {
 		return m.beginLensQueryEdit()
 	}
-	m.BeginSearchProjection()
+	m.beginRankedSearchProjection()
 	// Every open starts a fresh walk: the ring survives the input closing, the
 	// position in it does not, so the first Up always names the newest query.
 	m.Search.history.resetRecall()
 	return m.BaseSearchableView.ActivateSearch()
 }
 
-// SetSearchQuery retains the programmatic seam used by tests and navigation,
-// but gives it the same scope-wide projection semantics as slash search.
+// SetSearchQuery retains the programmatic seam used by tests and navigation. It
+// opens the same one temporary projection slash does and answers the same
+// compiled query; what it does not do is choose the flat list, because only a
+// keystroke asks for that. Called into an open frame it restates nothing, so
+// typing into the input slash opened keeps the presentation slash declared.
 func (m *OutlinerModel) SetSearchQuery(query string) {
 	if strings.TrimSpace(query) != "" {
 		m.BeginSearchProjection()

@@ -9,9 +9,7 @@
 
     { "type": "key", "label": "the same query the unscoped tier answers with two notes", "key": "/" },
     { "type": "text", "text": "launch" },
-    { "type": "key", "key": "enter" },
-    { "type": "key", "label": "the notes tier is the flat ranked list's lowest tier", "key": "o" },
-    { "type": "key", "key": "r" },
+    { "type": "key", "label": "the notes tier is the lowest tier of the ranked list slash opens", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "label": "the scope owns the notes tier too", "assert": "contains", "value": "Rich Project delivery plan" },
     { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },

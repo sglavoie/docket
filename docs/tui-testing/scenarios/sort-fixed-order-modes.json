@@ -39,12 +39,10 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
     { "type": "key", "label": "search out of it", "key": "/" },
     { "type": "text", "text": "triage" },
-    { "type": "key", "label": "accept the query so the chord reaches the projection", "key": "enter" },
+    { "type": "key", "label": "accept the query, which slash opened as the flat ranked list, owning no mode order", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Search: \"triage\"" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
 
-    { "type": "key", "label": "the flat ranked list owns no mode order", "key": "o" },
-    { "type": "key", "key": "r" },
     { "type": "key", "label": "so the sort installs there, where Today refused it", "key": "o" },
     { "type": "key", "key": "@" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by due date" },

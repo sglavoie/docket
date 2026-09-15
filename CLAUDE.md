@@ -516,6 +516,13 @@ what the dump printed, never `project.Tasks`. There is no `$delete` sigil: a dum
 is deleted, under one confirmation, in the same transaction and undo entry as
 the edits beside it.
 
+The slash key opens the flat ranked list and `BeginSearchProjection` opens the
+narrowing; a query installed without a keystroke leaves the mode standing to
+answer it, so `SetSearchQuery` must not gain the ranked open. The open declares
+the presentation in the same act it captures the return frame, so a repeated
+slash restates neither: it edits the held query, `or` survives it, and `Esc`
+spends the first open's snapshot over current data.
+
 Entering visual selection closes Peek; while one exists, structural, edit, Peek,
 and relation operations must reject rather than fall back to the cursor. The
 three clipboard projections instead copy that whole explicit selection, hidden
