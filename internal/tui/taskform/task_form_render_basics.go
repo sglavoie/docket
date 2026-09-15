@@ -13,19 +13,20 @@ import (
 const formBasicsLabelWidth = 13 // "Description:" (12 chars) + 1 pad = 13
 
 // renderBasicsTab renders the generic task fields.
-func (m *TaskFormModel) renderBasicsTab() string {
+func (m *TaskFormModel) renderBasicsTab(b *formBodyBuilder) {
 	if m.collapsedBasics {
-		return m.renderBasicsTabCollapsed()
+		m.renderBasicsTabCollapsed(b)
+		return
 	}
-	return m.renderBasicsTabExpanded()
+	m.renderBasicsTabExpanded(b)
 }
 
 // renderBasicsTabCollapsed renders Title, Priority, and the expand row.
-func (m *TaskFormModel) renderBasicsTabCollapsed() string {
-	var b strings.Builder
+func (m *TaskFormModel) renderBasicsTabCollapsed(b *formBodyBuilder) {
 	const lw = formBasicsLabelWidth
 
 	// 0: Title
+	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
 	theme.ApplyThemedTextarea(&m.titleInput)
@@ -33,6 +34,7 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	b.WriteString("\n")
 
 	// 1: Priority
+	b.field(1)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 1))
 	{
 		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
@@ -47,6 +49,7 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	b.WriteString("\n")
 
 	// 2: Expand row
+	b.field(2)
 	expandLabel := theme.MutedStyle.Render("+ more fields")
 	if m.focusIndex == 2 {
 		expandLabel = theme.SelectorOptionSelectedStyle.Render("+ more fields")
@@ -57,16 +60,14 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 		b.WriteString(theme.HelpStyle.Render("  (Enter to expand)"))
 	}
 	b.WriteString("\n")
-
-	return b.String()
 }
 
 // renderBasicsTabExpanded renders the full generic task form.
-func (m *TaskFormModel) renderBasicsTabExpanded() string {
-	var b strings.Builder
+func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder) {
 	const lw = formBasicsLabelWidth
 
 	// 0: Title (inline textarea)
+	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
 	theme.ApplyThemedTextarea(&m.titleInput)
@@ -74,6 +75,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 1: Description — read-only row; Enter opens TextEditorModel.
+	b.field(1)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Description:", lw, m.focusIndex == 1))
 	{
 		val := m.draft.desc
@@ -93,6 +95,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 2: Priority
+	b.field(2)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
 	{
 		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
@@ -107,6 +110,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 3: Parent
+	b.field(3)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Parent:", lw, m.focusIndex == 3))
 	{
 		var val string
@@ -128,6 +132,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 4: State
+	b.field(4)
 	b.WriteString(chrome.RenderFormLabelWithWidth("State:", lw, m.focusIndex == 4))
 	{
 		val := m.draft.state.String()
@@ -140,11 +145,13 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 5: Flags
+	b.field(5)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Flags:", lw, m.focusIndex == 5))
 	b.WriteString(renderFormFlagsValue(m.draft.pinned, m.draft.review, m.focusIndex == 5))
 	b.WriteString("\n")
 
 	// 6: Tags
+	b.field(6)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Tags:", lw, m.focusIndex == 6))
 	{
 		var val string
@@ -164,6 +171,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	// 7: Context — inline textinput when focused, plain text otherwise, exactly
 	// as the Schedule tab's Due row behaves.
 	focused := m.focusIndex == formBasicsContextField
+	b.field(formBasicsContextField)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Context:", lw, focused))
 	if focused {
 		theme.ApplyThemedTextInput(&m.contextInput)
@@ -174,8 +182,6 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 		b.WriteString(m.draft.context)
 	}
 	b.WriteString("\n")
-
-	return b.String()
 }
 
 // renderFormFlagsValue renders the flag badges for a row value.

@@ -1,7 +1,6 @@
 package taskform
 
 import (
-	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -15,11 +14,11 @@ const formScheduleLabelWidth = 16
 // renderScheduleTab keeps the real deadline independent from the paired
 // check-in schedule. The latter two rows both open the shared schedule editor,
 // so the form and existing-task action cannot drift on parsing or repeat rules.
-func (m *TaskFormModel) renderScheduleTab() string {
-	var b strings.Builder
+func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder) {
 	const lw = formScheduleLabelWidth
 
 	// 0: Due — inline textinput when focused, plain text otherwise.
+	b.field(0)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Due:", lw, m.focusIndex == 0))
 	if m.focusIndex == 0 {
 		theme.ApplyThemedTextInput(&m.dueTextInput)
@@ -37,6 +36,7 @@ func (m *TaskFormModel) renderScheduleTab() string {
 	b.WriteString("\n")
 
 	// 1: Next check-in — the shared editor owns both this row and Repeat.
+	b.field(1)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Next check-in:", lw, m.focusIndex == 1))
 	if m.draft.checkIn.Next == nil {
 		b.WriteString(theme.MutedStyle.Render("(none)"))
@@ -46,6 +46,7 @@ func (m *TaskFormModel) renderScheduleTab() string {
 	b.WriteString("\n")
 
 	// 2: Repeat — opening from here starts the shared editor on its repeat row.
+	b.field(2)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Repeat:", lw, m.focusIndex == 2))
 	if m.draft.checkIn.Next == nil {
 		b.WriteString(theme.MutedStyle.Render("Off"))
@@ -53,7 +54,6 @@ func (m *TaskFormModel) renderScheduleTab() string {
 		b.WriteString(repeatDisplay(m.draft.checkIn.RepeatDays))
 	}
 	b.WriteString("\n")
-	return b.String()
 }
 
 // scheduleDueDateDisplay formats a due date for display in the Schedule tab row.

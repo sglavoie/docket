@@ -10,20 +10,15 @@ import (
 )
 
 // renderChildrenTab renders the Children tab: collapsible Checklist and Subtasks sections.
-func (m *TaskFormModel) renderChildrenTab() string {
-	var b strings.Builder
-
-	b.WriteString(m.renderChildrenChecklistSection())
-	b.WriteString(m.renderChildrenSubtasksSection())
-
-	return b.String()
+func (m *TaskFormModel) renderChildrenTab(b *formBodyBuilder) {
+	m.renderChildrenChecklistSection(b)
+	m.renderChildrenSubtasksSection(b)
 }
 
 // renderChildrenChecklistSection renders the Checklist collapsible section.
 // focusIndex == 0 is the checklist header; 1..N are individual items (when expanded).
-func (m *TaskFormModel) renderChildrenChecklistSection() string {
-	var b strings.Builder
-
+func (m *TaskFormModel) renderChildrenChecklistSection(b *formBodyBuilder) {
+	b.field(0)
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == 0
 	count := len(m.draft.checklist)
 	expandIcon := theme.IconCollapsed
@@ -50,6 +45,7 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 	if m.checklistExpanded {
 		for i, item := range m.draft.checklist {
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == 1+i
+			b.field(1 + i)
 			b.WriteString(m.renderChecklistItemRow(item, itemFocused))
 		}
 		if count == 0 {
@@ -57,8 +53,6 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
 
 // renderChecklistItemRow renders a single checklist item row.
@@ -82,10 +76,9 @@ func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focuse
 // renderChildrenSubtasksSection renders the Subtasks collapsible section.
 // The subtasks header is at focusIndex == m.childrenSubtasksHeaderIdx().
 // Subtask items follow at subsequent indices (when expanded).
-func (m *TaskFormModel) renderChildrenSubtasksSection() string {
-	var b strings.Builder
-
+func (m *TaskFormModel) renderChildrenSubtasksSection(b *formBodyBuilder) {
 	headerIdx := m.childrenSubtasksHeaderIdx()
+	b.field(headerIdx)
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == headerIdx
 	count := len(m.draft.subtasks)
 	expandIcon := theme.IconCollapsed
@@ -113,6 +106,7 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 		for i, st := range m.draft.subtasks {
 			itemIdx := headerIdx + 1 + i
 			itemFocused := m.activeTab == formTabChildren && m.focusIndex == itemIdx
+			b.field(itemIdx)
 			b.WriteString(renderSubtaskItemRow(st, itemFocused))
 		}
 		if count == 0 {
@@ -120,8 +114,6 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
 
 // renderSubtaskItemRow renders a single subtask draft row.

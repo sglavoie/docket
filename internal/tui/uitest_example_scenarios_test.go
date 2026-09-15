@@ -58,6 +58,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"capture-project-header-destination.json",
 		"form-extras-attachments-narrow.json",
 		"form-extras-attachments-minimum-layout.json",
+		"form-viewport-minimum-height.json",
 		"form-extras-comments-narrow.json",
 		"cleanup-undo-redo.json",
 		"daily-loop.json",

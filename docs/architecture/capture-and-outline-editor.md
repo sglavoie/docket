@@ -202,6 +202,35 @@ checklist toggle, so the Schedule, Children, and Extras blocks are each scoped
 to `m.activeTab` wholesale rather than row by row, following the precedent
 `guidanceSpec` set.
 
+Two collapsible sections of drafts are also how the form outgrew its height. The
+body used to be cut to the rows that were left and the cut row replaced with
+`↓ more (resize terminal to view all)`, which was accurate and useless: the
+fields below the fold were unreachable at any focus, so a reader holding a
+twelve-item checklist at the minimum supported height had no remedy but a bigger
+terminal. The four tab renderers now write into a `formBodyBuilder`, which is a
+`strings.Builder` that also records the body line each focusable field starts on.
+A field is declared once, where it starts, and `formFieldSpan` reads its extent
+off the next declaration, so a renderer that already emits its rows in focus
+order gains bounds without bracketing anything, and a value row, a wrapped
+textarea, and a section's empty state are all measured the same way.
+
+`formViewportOffset` turns that into the first visible line, purely: it takes the
+body's height, the marks, the focus, and the row budget, and no render writes
+scroll state, so two renders of one form cannot disagree about where the window
+sits. A focused field is scrolled into view whole when it fits and pinned to its
+own first line when it is taller than the window, since a control whose start is
+off screen cannot be read at all while its tail is one `Tab` away from being the
+next field's problem. `scrollFormBody` spends the window's last row on `N above ·
+N below`, in the words Peek's position row already uses, and a body that fits is
+returned untouched — the common case loses no row to a scroll it never performs.
+The error banner stays chrome rather than body for the same reason the focus
+drives the window: `handleSave` seats a refusal on the offending field, so the
+banner and the field it names are read together or not at all. What still reaches
+`clampFormBody` is only what no focus indexes — an inline overlay and the compact
+composer's already-budgeted layout — and the help column is cut to the body's own
+height by `clampFormHelpPane` before the two are joined, so reference text beside
+the field can never spend the position row that says where the reader is.
+
 `;comment;` sits at parse-order position 0, ahead of the attachment entry, and it
 is there for a stronger version of the same reason. A comment is free prose that
 may legitimately contain any other sigil, and RE2 cannot express "not inside a

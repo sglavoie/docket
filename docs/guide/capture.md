@@ -145,6 +145,15 @@ Clear behavior used by Set Check-In on an existing task. A schedule chosen there
 travels through expansion and the task-creation transaction as one paired value;
 a check-in due today does not add the new task to Today.
 
+Every field on every tab is reachable at any supported height. When a tab holds
+more than the terminal can show — a long checklist, a dozen attachments, a
+comments list — the form scrolls instead of cutting: `Tab` and `Shift+Tab` move
+the focus as usual and the window follows it, and the last row reads `3 above · 1
+below` so what is off screen is named rather than lost. A tab that already fits
+shows no such row. A refused save keeps its message on screen and moves the focus
+to the field it names, so the two stay readable together, and a taller terminal
+simply gives the rows back.
+
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
 project. A project header row is the one exception, because it names a project
 explicitly rather than incidentally, so `a` there captures into that project.

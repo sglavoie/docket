@@ -54,36 +54,37 @@ func (m *TaskFormModel) View() tea.View {
 	tabBar := chrome.RenderTabBar(formTabNames, m.activeTab, m.width-chrome.CreatorTabBarPadding, 1)
 
 	// ── Per-tab content (or inline overlay) ───────────────────────────────────
-	var body string
-	if m.activeOverlay != formOverlayNone {
-		body = m.renderFormOverlay()
+	var tabBody formBodyBuilder
+	overlay := m.activeOverlay != formOverlayNone
+	if overlay {
+		tabBody.WriteString(m.renderFormOverlay())
 	} else {
-		var tabContent string
 		switch m.activeTab {
 		case formTabBasics:
-			tabContent = m.renderBasicsTab()
+			m.renderBasicsTab(&tabBody)
 		case formTabSchedule:
-			tabContent = m.renderScheduleTab()
+			m.renderScheduleTab(&tabBody)
 		case formTabChildren:
-			tabContent = m.renderChildrenTab()
+			m.renderChildrenTab(&tabBody)
 		case formTabExtras:
-			tabContent = m.renderExtrasTab()
-		}
-
-		helpWidth := max(min(m.width*35/100, 30), 20)
-		if m.width >= lipgloss.Width(tabContent)+helpPaneGap+helpWidth {
-			// Two-column: form content left, help pane right. Only shown when
-			// the (fixed-width) body, the gap, and the help pane all genuinely
-			// fit within the terminal — otherwise the join overflows the width.
-			helpPane := m.renderFormHelpPane(helpWidth)
-			body = lipgloss.JoinHorizontal(lipgloss.Top, tabContent, "  ", helpPane)
-		} else {
-			body = tabContent
+			m.renderExtrasTab(&tabBody)
 		}
 	}
 	// Normalize trailing blank rows so the body's line count reflects only its
-	// visible content before it is clamped to the available height.
-	body = strings.TrimRight(body, "\n")
+	// visible content before it is windowed to the available height.
+	tabContent := strings.TrimRight(tabBody.String(), "\n")
+
+	// The two-column gate measures the WHOLE tab content, before the viewport
+	// windows it, so scrolling a tall body never moves the help pane in and out
+	// of the layout as the focus travels.
+	helpWidth := max(min(m.width*35/100, 30), 20)
+	helpPane := ""
+	if !overlay && m.width >= lipgloss.Width(tabContent)+helpPaneGap+helpWidth {
+		// Two-column: form content left, help pane right. Only shown when
+		// the (fixed-width) body, the gap, and the help pane all genuinely
+		// fit within the terminal — otherwise the join overflows the width.
+		helpPane = m.renderFormHelpPane(helpWidth)
+	}
 
 	// ── Error banner ──────────────────────────────────────────────────────────
 	var errBanner string
@@ -94,16 +95,30 @@ func (m *TaskFormModel) View() tea.View {
 	// ── Footer ────────────────────────────────────────────────────────────────
 	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
 
-	// Clamp the interior body so the fullscreen title, tab bar, and footer stay
-	// visible even when the body is inherently taller than the allotted height.
-	// Chrome = title + tab bar + two structural blank rows + rendered guidance,
-	// plus the error banner when present (it occupies the pre-separator slot).
+	// Window the interior body so the fullscreen title, tab bar, error banner,
+	// and footer stay visible even when the body is inherently taller than the
+	// allotted height. Chrome = title + tab bar + two structural blank rows +
+	// rendered guidance, plus the error banner when present (it occupies the
+	// pre-separator slot). The banner is chrome rather than body for exactly this
+	// reason: a refusal names a field the viewport then scrolls to, and the two
+	// are read together or not at all.
 	chrome := lipgloss.Height(title) + lipgloss.Height(tabBar) + 2 +
 		lipgloss.Height(guidance)
 	if m.err != nil {
 		chrome += lipgloss.Height(errBanner)
 	}
-	body = clampFormBody(body, m.height-chrome)
+	bodyRows := m.height - chrome
+
+	// The viewport travels the form body alone. The help pane is anchored to the
+	// top because it describes the focused field, so scrolling it away at the one
+	// moment its text changed would be the opposite of what the travel is for.
+	body := scrollFormBody(tabContent, tabBody.marks, m.focusIndex, bodyRows)
+	if helpPane != "" {
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, "  ", clampFormHelpPane(helpPane, bodyRows))
+	}
+	// A help pane taller than the windowed body is the one thing the viewport
+	// cannot shorten, so the clamp stays as the last defensive cut.
+	body = clampFormBody(body, bodyRows)
 
 	var out strings.Builder
 	out.WriteString(title)
@@ -140,11 +155,14 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 	return chrome.RequiredActionGuidanceSpec(commit, optional...)
 }
 
-// clampFormBody limits the form body to maxRows lines so the surrounding
-// fullscreen title, tab bar, and footer always remain visible. When the body is
-// taller than maxRows it is clipped and the final visible row is replaced with a
-// muted overflow indicator. maxRows is floored at 1 to stay defensive; the
-// min-size guard in View keeps the real height well above that.
+// clampFormBody limits a body to maxRows lines so the surrounding fullscreen
+// title, tab bar, and footer always remain visible. It is the last defensive cut
+// rather than the form's height policy: the form's own fields travel through
+// scrollFormBody, which reaches every one of them, and what reaches this are the
+// two blocks no focus indexes — an inline overlay and a help pane taller than
+// the window it sits beside — plus the compact composer's already-budgeted
+// layout. maxRows is floored at 1 to stay defensive; the min-size guard in View
+// keeps the real height well above that.
 func clampFormBody(body string, maxRows int) string {
 	if maxRows < 1 {
 		maxRows = 1

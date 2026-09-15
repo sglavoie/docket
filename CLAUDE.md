@@ -276,6 +276,17 @@ and a description capped at `listSurfacePreviewBodyLines`, declares no `Fields`,
 and paints the project's tasks with `RenderOutlinerTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.
 
+The full task form windows rather than clips. `formBodyBuilder` records each
+focusable field once, where it starts, so its extent is the next declaration;
+`formViewportOffset` is the pure window authority, scrolling the focused field in
+whole and pinning one taller than the window to its own first line.
+`scrollFormBody` spends a row on `N above · N below` only when the body
+overflows, so a tab that fits loses none. The error banner stays chrome, since a
+refusal seats the focus on the field it names and the two are read together.
+`clampFormBody` is the last defensive cut and not the height policy, and
+`clampFormHelpPane` cuts the help column first, so reference text never spends
+the position row. The width guard is unchanged.
+
 Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.

@@ -761,7 +761,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// nested row's connectors already answer, so a label there would spend the
 	// columns the row can least afford on a repetition. The mechanism lives in
 	// docs/architecture/row-indicators.md and docs/architecture/tui-architecture.md.
-	const budget = 51904
+	// Thirty-ninth raise, 51904 to 52637, for the form that windows instead of
+	// clipping. 733 bytes buy the rule that the full task form has a viewport at
+	// all, and the four consequences a contributor would otherwise undo one at a
+	// time. Naming the field bounds is what keeps the next renderer from writing
+	// rows the window cannot find — a tab that declares no field is silently
+	// unscrollable, and the symptom is a control that will not come on screen
+	// rather than an error. The offset being pure and the position row being paid
+	// for only by a body that overflows are a pair: the first forbids a second
+	// writer, and the second is why the rule is not "always reserve a row", which
+	// is what a reader copying Peek's dock would assume. The banner staying chrome
+	// is stated because moving it into the body is the natural simplification and
+	// it hides the one message the focus was seated to explain. The demotion of
+	// clampFormBody is the last: a helper that used to be the height policy reads
+	// like one forever unless the file says it is now the defensive cut, and the
+	// help column's own cut is what stops it from spending the body's last row.
+	// The width guard is named as unchanged so session 10 still owns it. The
+	// mechanism lives in docs/architecture/capture-and-outline-editor.md.
+	const budget = 52637
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -11,21 +11,16 @@ import (
 
 // renderExtrasTab renders the Extras tab: the collapsible Attachments and
 // Comments sections.
-func (m *TaskFormModel) renderExtrasTab() string {
-	var b strings.Builder
-
-	b.WriteString(m.renderExtrasAttachmentsSection())
-	b.WriteString(m.renderExtrasCommentsSection())
-
-	return b.String()
+func (m *TaskFormModel) renderExtrasTab(b *formBodyBuilder) {
+	m.renderExtrasAttachmentsSection(b)
+	m.renderExtrasCommentsSection(b)
 }
 
 // renderExtrasAttachmentsSection renders the Attachments collapsible section.
 // focusIndex == 0 is the attachments header; 1..N are individual drafts (when
 // expanded).
-func (m *TaskFormModel) renderExtrasAttachmentsSection() string {
-	var b strings.Builder
-
+func (m *TaskFormModel) renderExtrasAttachmentsSection(b *formBodyBuilder) {
+	b.field(0)
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == 0
 	count := len(m.draft.attachments)
 	expandIcon := theme.IconCollapsed
@@ -52,6 +47,7 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection() string {
 	if m.attachmentsExpanded {
 		for i, att := range m.draft.attachments {
 			itemFocused := m.activeTab == formTabExtras && m.focusIndex == 1+i
+			b.field(1 + i)
 			b.WriteString(renderAttachmentItemRow(att, itemFocused))
 		}
 		if count == 0 {
@@ -59,17 +55,14 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
 
 // renderExtrasCommentsSection renders the Comments collapsible section. Its
 // header sits immediately after the Attachments section, so its focus index
 // depends on whether that section is expanded.
-func (m *TaskFormModel) renderExtrasCommentsSection() string {
-	var b strings.Builder
-
+func (m *TaskFormModel) renderExtrasCommentsSection(b *formBodyBuilder) {
 	headerIdx := m.extrasCommentsHeaderIdx()
+	b.field(headerIdx)
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == headerIdx
 	count := len(m.draft.comments)
 	expandIcon := theme.IconCollapsed
@@ -96,6 +89,7 @@ func (m *TaskFormModel) renderExtrasCommentsSection() string {
 	if m.commentsExpanded {
 		for i, comment := range m.draft.comments {
 			itemFocused := m.activeTab == formTabExtras && m.focusIndex == headerIdx+1+i
+			b.field(headerIdx + 1 + i)
 			b.WriteString(renderCommentItemRow(comment, itemFocused))
 		}
 		if count == 0 {
@@ -103,8 +97,6 @@ func (m *TaskFormModel) renderExtrasCommentsSection() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
 
 // renderCommentItemRow renders a single comment draft row. Comments are not

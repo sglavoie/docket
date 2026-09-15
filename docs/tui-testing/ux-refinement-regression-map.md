@@ -261,18 +261,29 @@ declared their text required, while this reads the finished screen.
 
 ### Session 9 — Make all full-form fields reachable by scrolling
 
-- Go: `internal/tui/taskform/task_form_guidance_test.go`,
+- Go: `internal/tui/taskform/task_form_viewport_test.go` — the done-when itself:
+  every field of every tab reached by `Tab` and by `Shift+Tab` at 68×18, the
+  position row naming what is off screen, a fitting body costing no row, a
+  refusal readable beside the field it seats the focus on, a resize in both
+  directions, the return from a nested picker, and the pinning rule for a field
+  taller than the window — `internal/tui/taskform/task_form_guidance_test.go`,
   `internal/tui/taskform/task_form_schedule_test.go`,
   `internal/tui/taskform/task_form_extras_test.go`,
   `internal/tui/chrome/fullscreen_helpers_test.go`,
   `internal/tui/form_editor_guidance_test.go`
-- Scenarios: `docs/tui-testing/scenarios/form-extras-attachments-narrow.json`,
+- Scenarios: `docs/tui-testing/scenarios/form-viewport-minimum-height.json`,
+  `docs/tui-testing/scenarios/form-extras-attachments-narrow.json`,
   `docs/tui-testing/scenarios/form-extras-comments-narrow.json`,
   `docs/tui-testing/scenarios/task-form-edit-standard-layout.json`
 - Contracts: `CLAUDE.md` — a value provider being exactly one of `TextEntry()`,
-  `TagEntry()`/`DateEntry()`, or a plain list, and "a value the presets cannot
-  express belongs in an inline mode on that picker, never a standalone form".
-  `docs/architecture/operation-grammar.md`.
+  `TagEntry()`/`DateEntry()`, or a plain list, "a value the presets cannot
+  express belongs in an inline mode on that picker, never a standalone form",
+  and the form viewport: `formBodyBuilder` recording a field once where it
+  starts, `formViewportOffset` as the pure window authority, `scrollFormBody`
+  spending a row only on a body that overflows, `clampFormBody` reduced to the
+  last defensive cut, and the width guard retained for session 10.
+  `docs/architecture/operation-grammar.md`,
+  `docs/architecture/capture-and-outline-editor.md`, `docs/guide/capture.md`.
 
 ### Session 10 — Make forms and nested pickers work at 60 columns
 
