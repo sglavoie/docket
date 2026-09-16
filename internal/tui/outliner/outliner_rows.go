@@ -223,15 +223,16 @@ func (m *OutlinerModel) ClampCursor() {
 }
 
 // contentHeight returns the number of task rows visible on screen after the
-// one-row operational title and, when it is shown, the one-row menu bar above
-// it. Focus and scope context are part of that title and never consume a second
-// breadcrumb row.
+// one-row operational title, the one-row menu bar above it when it is shown,
+// and the context row below it when some axis is live. Scope and mode are part
+// of that title and context is exactly one further row, so neither ever
+// consumes a third breadcrumb.
 //
 // This is the one definition of the row budget, and every caller wants the
 // reduced value: the window, the page size, and the suggestion budgets are all
-// measured against the list the bar leaves behind.
+// measured against the list the chrome leaves behind.
 func (m *OutlinerModel) ContentHeight() int {
-	height := m.Height() - 1 - m.menuBarRows()
+	height := m.Height() - 1 - m.menuBarRows() - m.contextRowRows()
 	if height < 1 {
 		return 1
 	}

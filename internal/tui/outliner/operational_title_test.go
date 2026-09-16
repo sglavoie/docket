@@ -92,45 +92,81 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, width := range widths {
 				m := newOutliner()
+				m.SetSize(width, 30)
 				tt.configure(m)
-				rendered := m.BuildOutlinerTitleLine(width)
-				plain := ansi.Strip(rendered)
-				if strings.Contains(rendered, "\n") {
-					t.Fatalf("width %d produced multiple rows: %q", width, plain)
+				title := m.BuildOutlinerTitleLine(width)
+				context := m.BuildOutlinerContextRow(width)
+				titlePlain := ansi.Strip(title)
+				// The header is at most two rows, and each of them is exactly one row:
+				// what the fitters give up is content, never a wrap.
+				for label, row := range map[string]string{"title": title, "context": context} {
+					plain := ansi.Strip(row)
+					if strings.Contains(row, "\n") {
+						t.Fatalf("width %d %s row produced multiple rows: %q", width, label, plain)
+					}
+					if got := lipgloss.Width(row); got > width {
+						t.Fatalf("width %d %s row rendered %d cells: %q", width, label, got, plain)
+					}
 				}
-				if got := lipgloss.Width(rendered); got > width {
-					t.Fatalf("width %d rendered %d cells: %q", width, got, plain)
-				}
-				if strings.Contains(plain, "Outliner") {
-					t.Fatalf("width %d kept the retired surface label: %q", width, plain)
-				}
-				if strings.Count(plain, m.ActiveOutlinerModeEntry().Label) != 1 {
-					t.Fatalf("width %d mode identity count != 1: %q", width, plain)
+				if strings.Contains(titlePlain, "Outliner") {
+					t.Fatalf("width %d kept the retired surface label: %q", width, titlePlain)
 				}
 				modeLabel := m.ActiveOutlinerModeEntry().Label
-				if strings.Contains(plain, operationalTitleSeparator+" "+modeLabel) {
-					t.Fatalf("width %d mode identity has incidental leading chip padding: %q", width, plain)
+				if strings.Count(titlePlain, modeLabel) != 1 {
+					t.Fatalf("width %d mode identity count != 1: %q", width, titlePlain)
 				}
-				if len(m.BuildOutlinerInteractionContext(width)) > 0 &&
-					strings.Contains(plain, modeLabel+operationalTitleContextGap+" ") {
-					t.Fatalf("width %d mode identity has incidental trailing chip padding: %q", width, plain)
+				if strings.Contains(titlePlain, operationalTitleSeparator+" "+modeLabel) {
+					t.Fatalf("width %d mode identity has incidental leading chip padding: %q", width, titlePlain)
 				}
+				if strings.HasSuffix(titlePlain, modeLabel+operationalTitleContextGap+" ") {
+					t.Fatalf("width %d mode identity has incidental trailing chip padding: %q", width, titlePlain)
+				}
+				header := titlePlain + "\n" + ansi.Strip(context)
 				if width == 40 {
 					for _, want := range tt.wantNarrow {
-						if !strings.Contains(plain, want) {
-							t.Errorf("narrow title missing %q: %q", want, plain)
+						if !strings.Contains(header, want) {
+							t.Errorf("narrow header missing %q:\n%s", want, header)
 						}
 					}
 				}
 				if width == 160 {
 					for _, want := range tt.wantWide {
-						if !strings.Contains(plain, want) {
-							t.Errorf("wide title missing %q: %q", want, plain)
+						if !strings.Contains(header, want) {
+							t.Errorf("wide header missing %q:\n%s", want, header)
 						}
 					}
 				}
 			}
 		})
+	}
+}
+
+// The context row exists only while some axis is live, so a default view spends
+// no second header row on saying that nothing is narrowing it — and the row it
+// does spend is charged to the list exactly once.
+func TestOutlinerContextRowIsAbsentFromADefaultView(t *testing.T) {
+	project := scopeTestProject("alpha", "Alpha", "launch")
+	project.Tasks[0].Title = "Launch"
+	project.BuildTaskTree()
+	m := scopeTestOutliner(project)
+	m.SetSize(100, 20)
+	m.Population.Invalidate()
+	m.CrossProjectRebuildRows()
+
+	if row := m.BuildOutlinerContextRow(100); row != "" {
+		t.Fatalf("default view drew a context row: %q", ansi.Strip(row))
+	}
+	baseline := m.ContentHeight()
+
+	m.SetSearchQuery("needle")
+	if row := m.BuildOutlinerContextRow(100); row == "" {
+		t.Fatalf("a live query drew no context row")
+	}
+	if got := m.ContentHeight(); got != baseline-1 {
+		t.Fatalf("ContentHeight with a context row = %d, want %d", got, baseline-1)
+	}
+	if got := lipgloss.Height(m.RenderOutlinerTreeContent(100)); got > m.Height() {
+		t.Fatalf("header row was not charged: frame height %d exceeds %d", got, m.Height())
 	}
 }
 
@@ -155,7 +191,7 @@ func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
 	}
 }
 
-func TestOutlinerFocusContextStaysOnHeaderRow(t *testing.T) {
+func TestOutlinerFocusContextStaysOnTheContextRow(t *testing.T) {
 	project := scopeTestProject("alpha", "Alpha", "launch")
 	project.Tasks[0].Title = "Launch"
 	project.BuildTaskTree()
@@ -168,8 +204,13 @@ func TestOutlinerFocusContextStaysOnHeaderRow(t *testing.T) {
 	rendered := m.RenderOutlinerTreeContent(100)
 	plain := ansi.Strip(rendered)
 	lines := strings.Split(plain, "\n")
-	if len(lines) == 0 || !strings.Contains(lines[0], "Focus: [Alpha] › Launch") {
-		t.Fatalf("Focus context is not on the operational title row:\n%s", plain)
+	// Row 0 is identity; the context row is row 1, immediately under it and above
+	// the list, which is the one place any axis is named.
+	if len(lines) < 2 || !strings.Contains(lines[1], "Focus: [Alpha] › Launch") {
+		t.Fatalf("Focus context is not on the context row:\n%s", plain)
+	}
+	if strings.Contains(lines[0], "Focus:") {
+		t.Fatalf("Focus context stayed on the identity row:\n%s", plain)
 	}
 	if strings.Count(plain, "Focus: [Alpha] › Launch") != 1 {
 		t.Fatalf("Focus context was duplicated into a breadcrumb row:\n%s", plain)

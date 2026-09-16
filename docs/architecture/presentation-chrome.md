@@ -10,11 +10,36 @@ exemptions: every reachable presentation has shell, surface, or overlay guidance
 ownership.
 
 `RenderOperationalTitle` is the one-line title fitter. Identity on the left
-contains surface, scope, and mode exactly once; selection, search, filters,
-focus, or editor state forms the interaction context; and the workspace pulse is
-the right region. Today is normally mandatory. When width is constrained, the
-fitter removes Done, Inbox, overdue, and Today in that order before truncating
-required interaction context.
+contains surface, scope, and mode exactly once, and the workspace pulse is the
+right region. Today is normally mandatory. When width is constrained, the fitter
+removes Done, Inbox, overdue, and Today in that order.
+`formatWorkspacePulseComponents` omits a component at zero and returns the empty
+string when nothing is left, so the `workspace: ` prefix never stands alone; the
+drop ladder's order and every counter are unchanged, since the ladder decides
+what may be shown and the zero test decides what is worth showing.
+
+Selection, lens, search, filters, sort, focus, and section zoom are no longer in
+that line. `OutlinerModel.BuildViewContextEntries` describes them once as typed
+`ViewContextEntry` values — label, value, a rendered `Row`, a `RowCompact`, and
+whether anything peels them — and two consumers read that one description rather
+than each other's rendered text: `pulse.RenderContextRow` draws the optional
+second header row, and `queryReadoutDetailLines` lists the read-only half under
+`Q`. The row tries every segment whole, then every segment compact, then drops
+whole segments from the right, spending the reclaimed room on
+`+N more · Q details`; only a single segment that still does not fit is
+truncated, and that case still names the readout. Existing meanings survive
+because the entries are built from the same predicates the title used:
+`ActiveLensLabel` carries `(suspended)` and `(modified)`, the search entry
+distinguishes ranked from narrowing, the selection entry names hidden members,
+and `effectiveSort` returns no sort under a fixed-order mode.
+
+`contextRowRows()` is presence-only — width chooses between full and compact
+segments, never whether the row exists — which is what lets `ContentHeight`,
+which takes no width, and `outlinerHostHeaderRows`, which anchors modals and the
+hosted capture panel, charge the same row without a second arithmetic.
+`writeOutlinerHeader` is the one writer, taken by the populated path and
+`renderOutlinerEmptyState` alike, so the two cannot disagree about the header's
+height.
 
 Today mode adds a reference-class pace comparison to the middle region:
 `today 9 · median 3/day (30d)`. `ActivityCoordinator` refreshes one cached
@@ -273,9 +298,32 @@ Outliner. While the readout is open it is a modal sub-state with its own gated
 keymap: `queryReadoutGuidance` supplies the footer, so the readout takes no
 footer rank of its own, and an unlisted key closes it rather than acting behind a
 footer that is not on screen. `queryReadoutRowLimit` is the digit set rather than
-a display budget, so a deeper stack names its remainder instead of dropping it,
-and `queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis
-that fails to clear itself.
+a display budget: the first nine axes carry digits wherever the window sits, a
+tenth is drawn without one and reached by scrolling, and
+`queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis that
+fails to clear itself.
+
+The readout is a bounded viewport because the context row now forwards to it.
+`queryReadoutWindow` is its one measurement — the wrapped document, how many
+lines the window draws, and whether anything is off it — and the render, every
+scroll write, `queryReadoutPageRows`, and `queryReadoutOverflows` all read it, so
+none of them can disagree about where the window ends. `queryReadoutBodyRows`
+mirrors `outlinerListRows`' own arithmetic (`ExcessRows`, the
+`peekDockFooterWrapRows` floor under an open dock, the dock, the strip's signal
+rows, then `queryReadoutChromeRows`) rather than calling `StatusStripHeight`,
+which would be asking for the height this function is still deciding;
+`queryReadoutMinBodyRows` is the floor and the reserved outline row is inside
+that chrome constant, so the readout can never take the list's last row.
+`clampQueryReadoutOffset` is pure and applied at render as well as at every
+write, which is how a peel that shortened the document or a resize that shortened
+the window re-seats itself without either having to be noticed;
+`PeelQueryReadoutRow` still calls `scrollQueryReadout(0)` so the stored offset the
+next key adds to is already in range. `scrollQueryReadout` and
+`scrollQueryReadoutTo` write `QueryReadout.Offset` and nothing else, which is
+what lets the six scrolling keys borrow `j`/`k`, `PgUp`/`PgDn`, and `Home`/`End`
+while the cursor, the list's own offset, and the selection stay put. They are
+consumed whether or not the document moves, since the readout owns input
+outright, but the footer advertises them only over a document that can move.
 
 Peek's dock is the frame's other fixed reservation, and it is fixed in the
 stronger sense: `peekDockHeight` returns `PeekDockRows` or zero and measures

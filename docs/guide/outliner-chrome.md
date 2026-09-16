@@ -5,13 +5,22 @@ pulse, the menu bar, contextual guidance, the status strip and the advisories it
 carries, the conflict browser, how the cursor row is marked, and the colors a
 tag wears.
 
-Every full-screen presentation keeps one operational title row. Its left side
-names the surface, scope, and mode once; active selection, search, filters,
-focus, or editor context occupies the middle; and the right side reports the
-workspace pulse as `workspace: inbox 3 · today 0 · overdue 1 · done 4`. Today
-and the current local day's Done count are shown even at zero whenever the pulse
-region fits; zero Inbox and overdue counts disappear. Narrow terminals drop
-Done, Inbox, overdue, then Today before shortening required interaction context.
+Every full-screen presentation keeps one operational title row. It names the
+surface, scope, and mode once on the left, and reports the workspace pulse on the
+right as `workspace: inbox 3 · today 2 · overdue 1 · done 4`. A component at zero
+is left out, and a pulse with nothing to report is left out whole rather than
+leaving a bare `workspace:` behind. Narrow terminals drop Done, Inbox, overdue,
+then Today before shortening required interaction context.
+
+What is narrowing the view gets a second row, immediately under that one and
+above the list. It appears only while some axis is live — a selection, a lens, a
+search, filters, a sort you chose, a focus, or a section zoom — so a resting view
+spends no row saying that nothing is happening. Each axis is one segment, and a
+terminal too narrow for all of them drops whole segments from the right rather
+than cutting one in half, ending in `+2 more · Q details`: the count is what it
+could not draw and `Q` is where the whole of it is written out. Press `Q` and
+every one of those values is there in full, wrapped rather than cut, in a
+readout you can scroll.
 
 `M` puts a menu bar above that title row: a single band reading
 `Task  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
@@ -186,9 +195,11 @@ themselves are untouched: hiding the count resolves nothing, and `gc` and
 `tt conflict list` still find every bundle.
 
 The strip is also where `Q` expands the narrowing readout: one numbered row per
-narrowing the view is under, with the conflict indicator keeping the lead above
-it. It grows the strip rather than floating over the list, so the rows it pushes
-off are rows the strip was already entitled to.
+narrowing the view is under, then an `Also in view` block for the axes nothing
+peels — your selection, the effective sort, a focus, a section zoom — with the
+conflict indicator keeping the lead above it all. It grows the strip rather than
+floating over the list, so the rows it pushes off are rows the strip was already
+entitled to, and it never takes the last one.
 [`search-and-lenses.md`](search-and-lenses.md) has the readout and its peels.
 
 `gc` answers the question that indicator raises. It opens a read-only overlay

@@ -31,7 +31,7 @@
     { "type": "assert", "assert": "contains", "value": "today 5" },
     { "type": "key", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "today 0" },
+    { "type": "assert", "assert": "not_contains", "value": "today " },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

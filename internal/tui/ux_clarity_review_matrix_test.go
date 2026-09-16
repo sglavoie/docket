@@ -166,7 +166,7 @@ func TestUXClarityReviewMatrix(t *testing.T) {
 						width:        size[0],
 						height:       size[1],
 						frame:        frame,
-						headerRows:   lipgloss.Height(view.BuildOutlinerTitleLine(size[0])),
+						headerRows:   uxClarityHeaderRows(view, size[0]),
 						contentRows:  view.ContentHeight(),
 						peekDockRows: len(view.PeekDockLines()),
 						footerRows:   lipgloss.Height(driver.App().renderStatusBar()),
@@ -184,6 +184,18 @@ func TestUXClarityReviewMatrix(t *testing.T) {
 	}
 	uxClarityWriteManifest(t, root, records)
 	t.Logf("UX clarity review frames: %s (set %s to keep them)", root, uxClarityReviewDirEnv)
+}
+
+// uxClarityHeaderRows measures what the header costs the list: the identity row
+// plus the context row when some axis is live. Recording only the title would
+// understate every frame that narrows the view, which is most of the ones worth
+// reviewing.
+func uxClarityHeaderRows(view *outliner.OutlinerModel, width int) int {
+	rows := lipgloss.Height(view.BuildOutlinerTitleLine(width))
+	if context := view.BuildOutlinerContextRow(width); context != "" {
+		rows += lipgloss.Height(context)
+	}
+	return rows
 }
 
 // uxClarityReviewRoot resolves the artifact directory. A caller that named one

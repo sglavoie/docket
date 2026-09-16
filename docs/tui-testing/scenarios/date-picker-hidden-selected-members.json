@@ -30,7 +30,7 @@
     { "type": "assert", "assert": "count_contains", "value": "⊡ Today", "count": 5 },
     { "type": "key", "label": "one entry covers the whole batch", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "today 0" },
+    { "type": "assert", "assert": "not_contains", "value": "today " },
     { "type": "assert", "assert": "not_contains", "value": "⊡ Today" },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "assert": "no_layout_issues" }

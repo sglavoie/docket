@@ -107,7 +107,14 @@ func TaskIsOverdueAt(task *models.Task, now time.Time) bool {
 
 // formatWorkspacePulseComponents is the title-fitting seam for the fixed
 // pressure ladder: Done, Inbox, Overdue, then Today. The full form keeps the
-// semantic component order stable, and Today and Done render even at zero.
+// semantic component order stable.
+//
+// A zero component is omitted rather than rendered, because "today 0 · done 0"
+// spends the header's scarcest columns saying that nothing is there. The ladder
+// is unchanged by that: it still drops Done, then Inbox, then Overdue, then
+// Today, and it decides which of the nonzero components survive a narrow row.
+// When none of them is nonzero there is no readout at all, so the "workspace: "
+// prefix goes with them rather than standing over an empty list.
 func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLevel) string {
 	if level >= workspacePulseHidden {
 		return ""
@@ -117,12 +124,17 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 	if level < workspacePulseWithoutInbox && pulse.Inbox > 0 {
 		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("inbox %d", pulse.Inbox)))
 	}
-	parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("today %d", pulse.Today)))
+	if pulse.Today > 0 {
+		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("today %d", pulse.Today)))
+	}
 	if level < workspacePulseTodayOnly && pulse.Overdue > 0 {
 		parts = append(parts, theme.PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
 	}
-	if level < workspacePulseWithoutDone {
+	if level < workspacePulseWithoutDone && pulse.Done > 0 {
 		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("done %d", pulse.Done)))
+	}
+	if len(parts) == 0 {
+		return ""
 	}
 	return theme.MutedStyle.Render("workspace: ") + strings.Join(parts, theme.MutedStyle.Render(" · "))
 }

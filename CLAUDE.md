@@ -437,6 +437,16 @@ once, never over another modal of its own.
 borrows that row and the close gives it back; `M` alone writes the pinned flag
 the View checkbox reads.
 
+The title row is identity and pulse; the live axes take a second row under it.
+`BuildViewContextEntries` is their one structured description, and the row and
+`Q` both read it rather than parsing each other's rendered text.
+`contextRowRows()` is presence-only — width picks full or compact segments, never
+existence — so `ContentHeight` and `outlinerHostHeaderRows` charge it once from
+one answer, and `writeOutlinerHeader` is the one writer the empty path takes too.
+`pulse.RenderContextRow` drops whole segments from the right and spends the room
+on `+N more · Q details`; a value it shortened is readable in `Q` and nowhere
+else.
+
 `Q` expands the query readout in that strip, below the conflict line, from a pure
 `QueryReadoutBody` `StatusStripHeight` measures. It names one row per peelable
 axis and nothing it cannot prove: a mode declares no clauses, so it names the
@@ -444,8 +454,19 @@ mode. Facet rows spell `FilterClauseParts`. `peelQueryReadoutAxis` is the one
 write and routes each axis through the call its own key uses; a peel needing a
 population reload refuses under `ShowsRankedList()` and otherwise hands the
 shell `QueryReadoutReloadRequestMsg`, as `s` hands it `SaveViewAsLensRequestMsg`.
-Peel is idempotent at zero, `queryReadoutRowLimit` is the digit set and names its
-overflow, and the open readout is a gated keymap taking no footer rank.
+Peel is idempotent at zero and the open readout is a gated keymap taking no
+footer rank. The read-only axes are an `Also in view` block off those same
+entries, last and digitless, since a digit promises a peel.
+`queryReadoutWindow` is its one measurement — document, window, overflow — that
+the render, every scroll write, and the footer read, and `queryReadoutBodyRows`
+mirrors `outlinerListRows`' arithmetic rather than asking `StatusStripHeight` for
+the height it is deciding; the last outline row is inside that chrome, so the
+readout never takes it. `clampQueryReadoutOffset` is pure and runs at render as
+well as at every write, which is what re-seats a window a peel or a resize
+stranded. The six scrolling keys write `QueryReadout.Offset` alone and are
+consumed whether or not the document moves; `queryReadoutRowLimit` is the digit
+set, so digits stay on the first nine of `QueryReadoutRows()` at any offset and a
+tenth axis is scrolled to rather than dropped or bound.
 
 Only warning and error status text arms footer flash; cleared text, a quiet
 severity, and other chrome do not. `footerFlashSeverity.animates()` is that
@@ -605,9 +626,12 @@ Row and Peek budget:
   arrived check-in without a key press. The invalidation remains owed under an
   overlay, picker, inline editor, visual selection, or ranked result; its later
   rebuild restores the cursor by qualified task identity.
-- The four-step pulse ladder drops done, inbox, overdue, then today. In Today,
-  pace outranks the workspace pulse: exhaust that ladder first, then shorten and
-  remove pace before truncating required interaction context.
+- The four-step pulse ladder drops done, inbox, overdue, then today, and decides
+  what may be shown; the zero test decides what is worth showing, so a component
+  at zero is omitted and an empty pulse renders no bare `workspace:`. Neither
+  changes a counter. In Today, pace outranks the workspace pulse: exhaust that
+  ladder first, then shorten and remove pace before truncating required
+  interaction context.
 
 `O` refuses under a visual selection and outside `OrderPolicyTree`; its scope is
 what the dump printed, never `project.Tasks`. There is no `$delete` sigil: a dumped task whose line is gone

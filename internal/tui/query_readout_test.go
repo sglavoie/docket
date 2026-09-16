@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -269,6 +270,205 @@ func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
 	for _, line := range lines {
 		if ansi.StringWidth(line) > width {
 			t.Errorf("strip line overflows the width: %q", line)
+		}
+	}
+}
+
+// overflowingReadoutApp narrows the view past what a short terminal can draw at
+// once, which is the only state in which the readout's window has a position to
+// move. The size is the lever rather than the axis count: the budget is what the
+// view has left over, so a small frame reaches the overflow with a stack a
+// reader can still check by hand.
+func overflowingReadoutApp(t *testing.T) *AppModel {
+	t.Helper()
+	app := readoutTestApp(t)
+	out := app.crossOutliner
+	out.SetSize(60, 14)
+	out.Filter.Priority = models.PriorityHigh
+	out.Filter.Tags = map[string]bool{"deep": true}
+	out.Filter.Pinned = true
+	out.Filter.Stale = true
+	out.Filter.Review = true
+	out.Filter.Deferred = true
+	adoptFilterCarriers(out)
+	out.SelectOutlinerMode(chrome.ModeBacklog)
+	out.Sort.Field = query.SortByPriority
+	out.MultiSelectMode = true
+	out.Selected = map[taskref.TaskIdentity]bool{{ProjectID: "project", TaskID: "one"}: true}
+	out.ToggleQueryReadout()
+	if !strings.Contains(readoutBodyText(out, 60), "below") {
+		t.Fatalf("the staged readout fits its window, so there is nothing to scroll:\n%s",
+			readoutBodyText(out, 60))
+	}
+	return app
+}
+
+// TestQueryReadoutScrollsItsOwnWindowAndNothingElse is the bounded viewport's
+// contract from both sides: the six keys walk the readout's own window to each
+// document bound, and the outline they are borrowed from does not move while
+// they do. A reader scrolling a readout is reading, not navigating.
+func TestQueryReadoutScrollsItsOwnWindowAndNothingElse(t *testing.T) {
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	app := overflowingReadoutApp(t)
+	out := app.crossOutliner
+	cursor, scroll := out.Cursor, out.ViewScrollOffset
+
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 above") {
+		t.Fatalf("the readout opens mid-document:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("j")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "1 above") {
+		t.Fatalf("j did not move the window:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("k")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 above") {
+		t.Fatalf("k did not move the window back:\n%s", got)
+	}
+	// k at the top and j at the bottom are the clamp, not a wrap: the document has
+	// two ends and the window stops at each of them.
+	out.HandleQueryReadoutKey("k")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 above") {
+		t.Fatalf("k past the top left the window off the document:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("end")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 below") {
+		t.Fatalf("End did not reach the document's end:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("j")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 below") {
+		t.Fatalf("j past the end left the window off the document:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("pgup")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 above") {
+		t.Fatalf("a page up from the end did not reach the top of this short document:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("pgdown")
+	if got := readoutBodyText(out, 60); strings.Contains(got, "0 above") {
+		t.Fatalf("PgDn did not move the window:\n%s", got)
+	}
+	out.HandleQueryReadoutKey("home")
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "0 above") {
+		t.Fatalf("Home did not return to the first line:\n%s", got)
+	}
+
+	if !out.QueryReadout.Expanded {
+		t.Fatal("a scrolling key closed the readout; all six are listed")
+	}
+	if out.Cursor != cursor || out.ViewScrollOffset != scroll {
+		t.Fatalf("the outline moved to cursor %d offset %d while the readout scrolled, want %d/%d",
+			out.Cursor, out.ViewScrollOffset, cursor, scroll)
+	}
+	if out.SelectionCounts().Total != 1 {
+		t.Fatalf("selection = %d after scrolling the readout, want the staged one untouched",
+			out.SelectionCounts().Total)
+	}
+	guidance, ok := out.ContextualGuidance()
+	if !ok || !strings.Contains(guidanceHintLabels(guidance), "j/k scroll") {
+		t.Fatalf("the overflowing readout's footer omits the scroll keys: %q", guidanceHintLabels(guidance))
+	}
+}
+
+// TestQueryReadoutDigitsStayOnTheFirstNineAxesWhileScrolled keeps the digits a
+// peel vocabulary rather than a numbering of what is on screen. A reader who
+// scrolled away from row one still removes row one by pressing 1, which is what
+// lets the window move without minting a binding.
+func TestQueryReadoutDigitsStayOnTheFirstNineAxesWhileScrolled(t *testing.T) {
+	app := overflowingReadoutApp(t)
+	out := app.crossOutliner
+	first := out.QueryReadoutRows()[0]
+	if first.Axis != outliner.QueryReadoutAxisMode {
+		t.Fatalf("first row = %+v, want the mode row", first)
+	}
+
+	out.HandleQueryReadoutKey("end")
+	out.HandleQueryReadoutKey("1")
+	if out.ActiveOutlinerModeEntry().ID != chrome.ModeAll {
+		t.Fatalf("1 from a scrolled window peeled %v, want the first axis", out.ActiveOutlinerModeEntry().ID)
+	}
+	if !out.QueryReadout.Expanded {
+		t.Fatal("peeling from a scrolled window closed the readout")
+	}
+	// The document just got shorter, so the window it left is re-seated rather than
+	// stranded past the end where the next key would look inert.
+	if got := readoutBodyText(out, 60); strings.Contains(got, "above") && !strings.Contains(got, "0 below") {
+		t.Fatalf("the window was not re-seated after the peel shortened the document:\n%s", got)
+	}
+}
+
+// TestQueryReadoutNamesTheAxesNothingPeels is the other half of what the context
+// row promises: an axis it shortened or dropped is readable here whether or not
+// a digit could take it away. They are listed last and carry no digit, because a
+// digit is a promise the read-only axes cannot keep.
+func TestQueryReadoutNamesTheAxesNothingPeels(t *testing.T) {
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	app := readoutTestApp(t)
+	out := app.crossOutliner
+	out.Sort.Field = query.SortByPriority
+	out.MultiSelectMode = true
+	out.Selected = map[taskref.TaskIdentity]bool{{ProjectID: "project", TaskID: "one"}: true}
+	out.ToggleQueryReadout()
+
+	body := readoutBodyText(out, 80)
+	if !strings.Contains(body, "Also in view") {
+		t.Fatalf("readout omits the read-only block:\n%s", body)
+	}
+	for _, entry := range out.BuildViewContextEntries(80) {
+		if !entry.ReadOnly {
+			continue
+		}
+		if !strings.Contains(body, entry.Value) {
+			t.Errorf("readout omits the %s axis %q:\n%s", entry.Label, entry.Value, body)
+		}
+	}
+	// The peel vocabulary is the peelable rows alone, so a read-only axis takes no
+	// digit and the digits below it do not shift when one appears.
+	details := strings.Split(body[strings.Index(body, "Also in view"):], "\n")
+	for _, line := range details[1:] {
+		if line != "" && line[0] >= '1' && line[0] <= '9' {
+			t.Errorf("a read-only row opens on a peel digit: %q", line)
+		}
+	}
+}
+
+// TestQueryReadoutScrollableEmptyStackAdvertisesNoPeel is the seam between the
+// two halves of the readout. A document long enough to scroll says nothing about
+// whether anything on it can be peeled: the read-only block is what made it long,
+// and the footer over it must name the scroll keys without offering a digit that
+// would take nothing away.
+func TestQueryReadoutScrollableEmptyStackAdvertisesNoPeel(t *testing.T) {
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	app := readoutTestApp(t)
+	out := app.crossOutliner
+	out.SetSize(60, 8)
+	out.Sort.Field = query.SortByPriority
+	out.MultiSelectMode = true
+	out.Selected = map[taskref.TaskIdentity]bool{{ProjectID: "project", TaskID: "one"}: true}
+	out.ToggleQueryReadout()
+
+	if got := out.QueryReadoutRows(); len(got) != 0 {
+		t.Fatalf("staged stack has %d peelable rows, want an empty one: %+v", len(got), got)
+	}
+	if got := readoutBodyText(out, 60); !strings.Contains(got, "below") {
+		t.Fatalf("the staged readout fits its window, so there is nothing to scroll:\n%s", got)
+	}
+
+	guidance, ok := out.ContextualGuidance()
+	if !ok {
+		t.Fatal("the open readout produced no guidance")
+	}
+	labels := guidanceHintLabels(guidance)
+	if !strings.Contains(labels, "j/k scroll") {
+		t.Fatalf("the scrollable readout's footer omits the scroll keys: %q", labels)
+	}
+	for _, dead := range []string{"peel one", "peel all"} {
+		if strings.Contains(labels, dead) {
+			t.Errorf("the empty stack's footer names %q, which can take nothing away: %q", dead, labels)
 		}
 	}
 }

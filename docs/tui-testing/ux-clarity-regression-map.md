@@ -54,11 +54,11 @@ Run the same command after a session with a different directory and diff the two
 
 | Frame | Records | Replaced by |
 | --- | --- | --- |
-| `launch` | The resting Outliner: one header row, no feedback, the surface's own ranks. | Session 5 |
+| `launch` | The resting Outliner: one header row, no feedback, the surface's own ranks. | Session 5 — done (kept: a resting view narrows nothing, so it still spends one row) |
 | `feedback-over-guidance` | A routine success standing where the capture controls were. | Session 4 — done |
 | `picker-over-outline` | A value picker owning the one instruction set over a quiet host outline. | Session 3 — done |
 | `nested-discard-prompt` | A discard confirmation over a capture draft over the outline. | Session 3 — done |
-| `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 |
+| `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 — done (the axes take a second row and `Q` holds what it drops) |
 | `capture-over-peek` | Capture raised over an open Peek dock of fixed height. | Session 7 |
 
 ## Current layout measurements
@@ -79,10 +79,13 @@ shell-composed bottom bar.
 
 Three facts these record, which shape the sessions that follow:
 
-- The header is **one row at every size**, and the context axes past its fit are
-  on screen nowhere. At 120×40 all three axes and the workspace pulse fit; at
-  60×20 the line truncates mid-value. Session 5 owns the second row and the `Q`
-  details that recover the remainder.
+- The header was **one row at every size**, and the context axes past its fit
+  were on screen nowhere. At 120×40 all three axes and the workspace pulse fit;
+  at 60×20 the line truncated mid-value. Session 5 replaced this: identity keeps
+  the first row, the live axes take an optional second one charged once against
+  the list, and what that row cannot draw it drops whole and forwards to `Q`,
+  whose bounded scrollable document is where the full value is read. A resting
+  view narrows nothing, so `launch` still measures one header row.
 - The Peek dock is **seven rows at every height**, 60×20 and 120×40 alike, so
   every row a short terminal lacks comes out of the list instead. At 60×20 with
   capture open the list is left with 9 rows of window. Session 7 replaces this
@@ -108,8 +111,8 @@ contract in the same change.
 | A discard prompt stands on an open composer over the outline, three deep. Kept by session 3 and extended: the footer answers for the prompt, and neither presentation underneath it speaks. | `TestUXClarityDiscardPromptStandsOnTheOpenComposer` | Session 3 — done |
 | ~~Status displaces the capture controls rather than standing beside them.~~ Replaced by session 4: the footer says both, feedback on its own row above the controls, at every size in the matrix. | `TestUXClarityFeedbackStandsBesideTheCaptureControls`, formerly `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 — done |
 | ~~Transient messages replace capture controls in the footer.~~ Replaced by session 4: the message takes a row beside them and clearing it restores the footer byte for byte. | `TestCaptureFooterKeepsControlsBesideATemporaryStatus`, formerly `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 — done |
-| Every context axis competes for one header row and the overflow is unreadable. | `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 |
-| The Outliner's content height counts exactly one header row. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows.go` | Session 5 |
+| ~~Every context axis competes for one header row and the overflow is unreadable.~~ Replaced by session 5: the axes take an optional second row, it drops whole segments and names what it dropped, and every dropped value is readable in the bounded `Q` document. | `TestUXClarityCombinedContextIsReadableAtEverySize`, formerly `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 — done |
+| ~~The Outliner's content height counts exactly one header row.~~ Replaced by session 5: it counts the identity row plus `contextRowRows()`, which is presence-only and charged exactly once. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows.go`, `TestOutlinerContextRowIsAbsentFromADefaultView` | Session 5 — done |
 | Peek's dock costs the same rows at every terminal height. | `TestUXClarityCaptureOverPeekKeepsAFixedDock` | Session 7 |
 | Peek's body, window, and page sizes are constants. | `inlinePeekBodyRows` in `internal/tui/outliner/inline_peek_document.go` | Session 7 |
 
@@ -296,6 +299,24 @@ contract in the same change.
   other things read: `ContentHeight`, the hosted capture host, and the modal
   anchor `chrome.OverlayPopupDimmedAt` composites below. It must be counted
   exactly once, the same way the menu bar row already is.
+
+Landed as: `BuildViewContextEntries` is the one structured description, and the
+compact row and `Q` both read it rather than parsing each other's rendered text.
+`contextRowRows()` is presence-only, which is what lets `ContentHeight` (which
+takes no width) and `outlinerHostHeaderRows` charge the same row without a second
+arithmetic; `renderOutlinerEmptyState` reaches it through the shared
+`writeOutlinerHeader`, so the populated and empty paths cannot disagree.
+`pulse.RenderContextRow` drops whole segments from the right and spends the
+reclaimed room on `+N more · Q details`, so a shortened value always names where
+the whole of it is. `queryReadoutWindow` is the readout's one measurement — the
+document, the window, and whether anything is off it — read by the render, every
+scroll write, and the footer alike, and `queryReadoutBodyRows` mirrors
+`outlinerListRows`' own arithmetic rather than asking `StatusStripHeight` for a
+height it is still deciding. The digits stay `QueryReadoutRows()`' first nine
+wherever the window sits; the read-only axes are an `Also in view` block with no
+digits. `formatWorkspacePulseComponents` now omits a zero component and returns
+the empty string rather than a bare `workspace:` prefix, which changes neither
+the drop ladder's order nor any counter.
 
 ### Session 6 — Reorder Peek around current work
 

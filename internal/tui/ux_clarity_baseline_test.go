@@ -236,72 +236,104 @@ func TestUXClarityDiscardPromptStandsOnTheOpenComposer(t *testing.T) {
 	}
 }
 
-// TestUXClarityCombinedContextExceedsTheOneRowHeader records what the single
-// header row does when every context axis is true at once: the segments are
-// joined into one line, the line is fitted to the terminal, and the axes past
-// the fit are dropped with no counterpart anywhere on screen. At the widest
-// reviewed size all of them fit; at the floor the line truncates mid-value, and
-// what it cut is readable nowhere.
+// TestUXClarityCombinedContextIsReadableAtEverySize states session 5's outcome
+// for the imbalance the baseline recorded: every context axis used to be joined
+// into the one title row, fitted to the terminal, and cut mid-value with no
+// counterpart anywhere on screen.
 //
-// Session 5 owns this. It adds an optional second context row and scrollable
-// details under `Q`, after which the header is still counted once and the
-// dropped axes are expected to have somewhere to go.
-func TestUXClarityCombinedContextExceedsTheOneRowHeader(t *testing.T) {
+// Identity now keeps the first row on its own and the axes take a second one
+// under it, which is counted once against the list. That row still cannot hold
+// everything at the floor, so what it cannot draw it drops whole and names — and
+// the readout it points at is where the dropped value is readable, at every
+// reviewed size.
+//
+// Session 5 owns this; it is the rewritten form of
+// TestUXClarityCombinedContextExceedsTheOneRowHeader.
+func TestUXClarityCombinedContextIsReadableAtEverySize(t *testing.T) {
 	widest := uxClarityMatrixSizes[len(uxClarityMatrixSizes)-1]
 	narrowest := uxClarityMatrixSizes[0]
 
 	_, wideView := uxClarityStagedDriver(t, "combined-context", widest[0], widest[1])
 	// The axes are named by the model rather than by this test, so the contract
-	// cannot drift from the view's own vocabulary; the styling is dropped because
-	// what is under test is whether the text reaches the screen at all.
-	segments := make([]string, 0, 4)
-	for _, segment := range wideView.BuildOutlinerInteractionContext(widest[0]) {
-		segments = append(segments, ansi.Strip(segment))
-	}
-	if len(segments) < 3 {
-		t.Fatalf("the staged state carries %d context segments, which is not the combination under test: %q",
-			len(segments), segments)
+	// cannot drift from the view's own vocabulary.
+	entries := wideView.BuildViewContextEntries(widest[0])
+	if len(entries) < 3 {
+		t.Fatalf("the staged state carries %d context axes, which is not the combination under test: %+v",
+			len(entries), entries)
 	}
 
-	// The header stays one row and inside its terminal at every reviewed size,
-	// which is the measurement session 5 has to keep counting once.
-	dropped := make(map[[2]int][]string, len(uxClarityMatrixSizes))
 	for _, size := range uxClarityMatrixSizes {
 		t.Run(uxClaritySizeName(size), func(t *testing.T) {
 			driver, view := uxClarityStagedDriver(t, "combined-context", size[0], size[1])
-			header := view.BuildOutlinerTitleLine(size[0])
-			if got := lipgloss.Height(header); got != 1 {
-				t.Fatalf("the header is %d rows tall at %dx%d; today it is exactly one", got, size[0], size[1])
+			title := view.BuildOutlinerTitleLine(size[0])
+			context := view.BuildOutlinerContextRow(size[0])
+			if got := lipgloss.Height(title) + lipgloss.Height(context); got != 2 {
+				t.Fatalf("the header is %d rows tall at %dx%d; with context live it is exactly two",
+					got, size[0], size[1])
 			}
-			if got := ansi.StringWidth(ansi.Strip(header)); got > size[0] {
-				t.Fatalf("the header is %d cells in a %d-cell terminal", got, size[0])
-			}
-			// Every axis is still true, and the header is the only place any of
-			// them is spelled, so whichever ones do not fit are on screen nowhere.
-			obs := driver.Observe(ObserveOptions{})
-			missing := make([]string, 0, len(segments))
-			for _, segment := range segments {
-				if !strings.Contains(obs.PlainScreen, segment) {
-					missing = append(missing, segment)
+			for name, row := range map[string]string{"title": title, "context": context} {
+				if got := ansi.StringWidth(ansi.Strip(row)); got > size[0] {
+					t.Fatalf("the %s row is %d cells in a %d-cell terminal", name, got, size[0])
 				}
 			}
-			dropped[size] = missing
+
+			// Whatever the row could not draw, it says so and names where the whole
+			// of it is: a shortened value with no forwarding address is the failure
+			// this session removes.
+			plainContext := ansi.Strip(context)
+			readout := uxClarityReadoutText(t, driver)
+			for _, entry := range entries {
+				if strings.Contains(plainContext, ansi.Strip(entry.Row)) {
+					continue
+				}
+				if !strings.Contains(plainContext, "details") {
+					t.Fatalf("the context row dropped %q without naming the readout: %q", entry.Label, plainContext)
+				}
+				if !strings.Contains(readout, entry.Value) {
+					t.Fatalf("axis %q is on neither the context row nor the readout:\ncontext: %q\nreadout:\n%s",
+						entry.Label, plainContext, readout)
+				}
+			}
 		})
 	}
 
-	if got := dropped[widest]; len(got) > 0 {
-		t.Fatalf("the widest reviewed terminal already drops %q, so the combination is not the one recorded here", got)
-	}
-	if got := dropped[narrowest]; len(got) == 0 {
-		t.Fatalf("every context axis survives %dx%d, which is session 5's outcome, not today's",
-			narrowest[0], narrowest[1])
-	}
+	// The two ends of the matrix are the two behaviors: the widest draws every
+	// axis outright, and the floor is where dropping and forwarding start.
 	_, narrowView := uxClarityStagedDriver(t, "combined-context", narrowest[0], narrowest[1])
-	narrow := ansi.Strip(narrowView.BuildOutlinerTitleLine(narrowest[0]))
-	if !strings.Contains(narrow, "…") {
-		t.Fatalf("the header at %dx%d drops axes without marking the cut: %q",
-			narrowest[0], narrowest[1], narrow)
+	if got := ansi.Strip(narrowView.BuildOutlinerContextRow(narrowest[0])); !strings.Contains(got, "more") {
+		t.Fatalf("the context row at %dx%d fits every axis, so the floor is not where it runs out: %q",
+			narrowest[0], narrowest[1], got)
 	}
+	wide := ansi.Strip(wideView.BuildOutlinerContextRow(widest[0]))
+	for _, entry := range entries {
+		if !strings.Contains(wide, ansi.Strip(entry.Row)) {
+			t.Fatalf("the widest reviewed terminal already drops %q: %q", entry.Label, wide)
+		}
+	}
+}
+
+// uxClarityReadoutText opens the query readout and pages it to the end,
+// returning everything it drew along the way. The readout is bounded, so
+// "readable in Q" is a claim about a document a reader can reach rather than
+// about one frame of it.
+func uxClarityReadoutText(t *testing.T, driver *UITestDriver) string {
+	t.Helper()
+	uxClarityPress(t, driver, uxClarityKeys("Q")...)
+	defer uxClarityPress(t, driver, uxClarityKeys("esc")...)
+
+	var seen strings.Builder
+	previous := ""
+	for range 20 {
+		frame := driver.Observe(ObserveOptions{}).PlainScreen
+		seen.WriteString(frame)
+		seen.WriteString("\n")
+		if frame == previous {
+			break
+		}
+		previous = frame
+		uxClarityPress(t, driver, uxClarityKeys("pgdown")...)
+	}
+	return seen.String()
 }
 
 // TestUXClarityCaptureOverPeekKeepsAFixedDock records Peek's geometry as a

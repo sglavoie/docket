@@ -39,7 +39,7 @@
     { "type": "key", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "label": "four presses undo to the deadline the fixture wrote", "assert": "contains", "value": "⊡ Tomorrow" },
-    { "type": "assert", "assert": "contains", "value": "today 0" },
+    { "type": "assert", "assert": "not_contains", "value": "today " },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

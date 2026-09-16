@@ -141,8 +141,14 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 	if strings.Contains(title, "\n") || lipgloss.Width(title) > 42 {
 		t.Fatalf("narrow Focus title width=%d title=%q", lipgloss.Width(title), ansi.Strip(title))
 	}
-	if !strings.Contains(ansi.Strip(title), "Focus:") {
-		t.Fatalf("narrow title dropped active Focus context: %q", ansi.Strip(title))
+	// Focus is interaction context, so it answers on the row under the title. Both
+	// rows are still exactly one row each at this width.
+	context := out.BuildOutlinerContextRow(42)
+	if strings.Contains(context, "\n") || lipgloss.Width(context) > 42 {
+		t.Fatalf("narrow Focus context row width=%d row=%q", lipgloss.Width(context), ansi.Strip(context))
+	}
+	if !strings.Contains(ansi.Strip(context), "Focus:") {
+		t.Fatalf("narrow context row dropped active Focus context: %q", ansi.Strip(context))
 	}
 
 	out.SetSearchQuery("child")

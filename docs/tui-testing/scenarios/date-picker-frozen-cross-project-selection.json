@@ -30,7 +30,7 @@
     { "type": "key", "label": "and one entry covers both", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "⊡ Today" },
-    { "type": "assert", "assert": "contains", "value": "today 0" },
+    { "type": "assert", "assert": "not_contains", "value": "today " },
 
     { "type": "key", "label": "finish the first task", "key": "g" },
     { "type": "key", "key": "g" },

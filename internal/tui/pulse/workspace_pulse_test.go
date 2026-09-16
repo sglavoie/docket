@@ -40,8 +40,33 @@ func TestWorkspacePulseFormattingFollowsFourStepLadder(t *testing.T) {
 		}
 	}
 
-	if got := ansi.Strip(formatWorkspacePulseComponents(WorkspacePulse{}, workspacePulseFull)); got != "workspace: today 0 · done 0" {
-		t.Fatalf("zero pulse = %q, want Today and Done zeroes", got)
+	for _, level := range []workspacePulseLevel{workspacePulseFull, workspacePulseWithoutDone, workspacePulseWithoutInbox, workspacePulseTodayOnly, workspacePulseHidden} {
+		if got := ansi.Strip(formatWorkspacePulseComponents(WorkspacePulse{}, level)); got != "" {
+			t.Errorf("zero pulse at level %d = %q, want no readout and no workspace prefix", level, got)
+		}
+	}
+}
+
+// A component nobody has any of says nothing, but the ladder is still the ladder:
+// dropping a zero component must not promote a lower-priority one, and the levels
+// keep removing the same components in the same order over what remains.
+func TestWorkspacePulseOmitsZeroComponentsWithoutDisturbingTheLadder(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		pulse WorkspacePulse
+		level workspacePulseLevel
+		want  string
+	}{
+		{"only overdue", WorkspacePulse{Overdue: 2}, workspacePulseFull, "workspace: overdue 2"},
+		{"only done", WorkspacePulse{Done: 5}, workspacePulseFull, "workspace: done 5"},
+		{"only done dropped first", WorkspacePulse{Done: 5}, workspacePulseWithoutDone, ""},
+		{"zero today omitted", WorkspacePulse{Inbox: 1, Overdue: 2}, workspacePulseFull, "workspace: inbox 1 · overdue 2"},
+		{"zero today stays omitted alone", WorkspacePulse{Inbox: 1, Overdue: 2}, workspacePulseTodayOnly, ""},
+		{"zero inbox omitted", WorkspacePulse{Today: 4, Done: 1}, workspacePulseFull, "workspace: today 4 · done 1"},
+	} {
+		if got := ansi.Strip(formatWorkspacePulseComponents(tt.pulse, tt.level)); got != tt.want {
+			t.Errorf("%s = %q, want %q", tt.name, got, tt.want)
+		}
 	}
 }
 

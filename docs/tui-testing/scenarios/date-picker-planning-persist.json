@@ -30,7 +30,7 @@
     { "type": "key", "label": "cross to the deferral", "key": "tab" },
     { "type": "key", "label": "defer until tomorrow", "key": "m" },
     { "type": "wait" },
-    { "type": "assert", "label": "deferring took the membership with it", "assert": "contains", "value": "today 0" },
+    { "type": "assert", "label": "deferring took the membership with it", "assert": "not_contains", "value": "today " },
     { "type": "assert", "assert": "not_contains", "value": "⊡ Today" },
     { "type": "key", "label": "one entry covers the date and the planning", "key": "u" },
     { "type": "wait" },

@@ -23,7 +23,10 @@ func modeBadge(label string) string {
 }
 
 func TestOperationalTitlePulseFittingOrder(t *testing.T) {
-	pulse := WorkspacePulse{Inbox: 12, Today: 0, Overdue: 4, Done: 6}
+	// Every component is nonzero because this test is about the drop ladder, and a
+	// zero component is omitted at every level, which would make its absence say
+	// nothing about the order the ladder removes things in.
+	pulse := WorkspacePulse{Inbox: 12, Today: 3, Overdue: 4, Done: 6}
 	spec := OperationalTitleSpec{
 		Surface: theme.TitleStyle.Render("Outliner"),
 		Scope:   theme.TitleStyle.Render(scopeLabel),
@@ -61,7 +64,7 @@ func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 			}
 			for token, want := range map[string]bool{
 				"inbox 12":  tt.wantInbox,
-				"today 0":   tt.wantToday,
+				"today 3":   tt.wantToday,
 				"overdue 4": tt.wantOverdue,
 				"done 6":    tt.wantDone,
 			} {
@@ -70,6 +73,68 @@ func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestContextRowDropsWholeSegmentsAndNamesWhatItDropped(t *testing.T) {
+	segments := []ContextRowSegment{
+		{Full: `Search: "quarterly planning"`, Compact: `Search: "quarter…"`},
+		{Full: "Filters: priority 1-2 · tag ops", Compact: "[2 filters]"},
+		{Full: "Sort: Priority ↑"},
+		{Full: "Selected: 4 (1 hidden)", Compact: "Selected: 4"},
+	}
+	full := ansi.Strip(RenderContextRow(segments, 200, "Q details"))
+	wantFull := `Search: "quarterly planning" · Filters: priority 1-2 · tag ops · Sort: Priority ↑ · Selected: 4 (1 hidden)`
+	if full != wantFull {
+		t.Fatalf("wide context row = %q, want %q", full, wantFull)
+	}
+	if strings.Contains(full, "Q details") {
+		t.Fatalf("wide context row advertised details it did not omit: %q", full)
+	}
+
+	compact := ansi.Strip(RenderContextRow(segments, lipgloss.Width(wantFull)-1, "Q details"))
+	wantCompact := `Search: "quarter…" · [2 filters] · Sort: Priority ↑ · Selected: 4`
+	if compact != wantCompact {
+		t.Fatalf("compact context row = %q, want %q", compact, wantCompact)
+	}
+
+	// Every width from the floor up to the compact form fits on one row, never
+	// splits a segment apart from its label, and says how many axes it dropped
+	// together with where the whole of them is readable.
+	sawDrop := false
+	for width := 10; width <= lipgloss.Width(wantCompact); width++ {
+		rendered := RenderContextRow(segments, width, "Q details")
+		plain := ansi.Strip(rendered)
+		if strings.Contains(rendered, "\n") {
+			t.Fatalf("width %d wrapped the context row: %q", width, plain)
+		}
+		if got := lipgloss.Width(rendered); got > width {
+			t.Fatalf("width %d rendered %d cells: %q", width, got, plain)
+		}
+		if !strings.Contains(plain, "more") {
+			continue
+		}
+		sawDrop = true
+		if !strings.Contains(plain, "Q details") {
+			t.Fatalf("width %d dropped context without naming where to read it: %q", width, plain)
+		}
+		for _, orphan := range []string{"Filters", "Sort", "Selected"} {
+			if strings.Contains(plain, orphan) && !strings.Contains(plain, orphan+":") {
+				t.Fatalf("width %d cut a label apart from its value: %q", width, plain)
+			}
+		}
+	}
+	if !sawDrop {
+		t.Fatalf("width sweep never exercised whole-segment dropping")
+	}
+}
+
+func TestContextRowIsEmptyWithoutSegments(t *testing.T) {
+	if got := RenderContextRow(nil, 80, "Q details"); got != "" {
+		t.Fatalf("empty context row = %q, want no row at all", got)
+	}
+	if got := RenderContextRow([]ContextRowSegment{{Full: "Selected: 2"}}, 0, "Q details"); got != "" {
+		t.Fatalf("zero-width context row = %q, want empty", got)
 	}
 }
 

@@ -277,12 +277,12 @@ and `Enter` afterwards still applies the filter it always did.
 
 ### Reading and peeling the narrowing
 
-Narrowings stack, and after a few of them the title row is a summary rather than
-an inventory. `Q` expands that summary into the status strip under the heading
-`Narrowing this view`: one numbered row per narrowing you can take away on its
-own, read off the live view every time it is drawn. When nothing is narrowing the
-view it says so — `nothing: every axis is at its default` — rather than showing an
-empty list.
+Narrowings stack, and after a few of them the context row under the title is a
+summary rather than an inventory. `Q` expands that summary into the status strip
+under the heading `Narrowing this view`: one numbered row per narrowing you can
+take away on its own, read off the live view every time it is drawn. When nothing
+is narrowing the view it says so — `nothing: every axis is at its default` —
+rather than showing an empty list.
 
 The rows are ordered the way the title reads, widest context first: the lens, the
 project scope, the mode, the query, then the facets. A facet row is spelled in
@@ -298,7 +298,16 @@ membership rather than by a clause, so its row names the mode and says
 | `1`–`9` | Peel that row alone, leaving every other narrowing standing; a digit past the stack reports `Nothing to peel there` and writes nothing |
 | `x` | Peel every row, from the top down, until the view is at its defaults |
 | `s` | Save the narrowing as a named lens, the same Create the lens picker runs |
+| `j`/`k` or up/down | Scroll the readout one line; the outline underneath does not move |
+| `PgDn`/`PgUp` | Scroll it a page, a page being whatever is on screen |
+| `Home`/`End` | Jump to the first or last line of the readout |
 | `Q`, `Esc` | Put the readout down; any other key closes it rather than acting behind it |
+
+Below the peelable rows the readout lists the axes nothing peels, under `Also in
+view`: how much is selected and how much of it is hidden, the effective sort, the
+focus you are inside, the section you zoomed into. They carry no digit, because a
+digit is a promise that pressing it takes the axis away, and these are context
+rather than narrowing.
 
 Peeling is the ordinary key's own act, so it can never reach a state you could
 not have typed: peeling the lens row leaves the lens the way `Esc` does,
@@ -309,10 +318,17 @@ nothing. Peel-all can report a higher count than the rows you were looking at,
 since leaving a search restores the projection it was typed over and that can put
 a mode row back for the loop to peel in turn.
 
-A stack deeper than nine rows keeps the digits as its vocabulary and names the
-remainder on a line of its own — `N more narrowing(s) below the peel digits; peel
-one to reach them` — rather than dropping rows the readout cannot offer a key
-for. Under the flat ranked list, peeling a population row refuses with
+The readout is bounded: it takes what the view has to spare and never the last
+outline row, and anything past that is scrolled to rather than dropped. A line
+too long for the width wraps instead of being cut, which is what makes this the
+place a value the context row shortened is readable in full. When the document
+runs past its window it says how much is above and below it, the way Peek does.
+
+A stack deeper than nine rows keeps the digits as its vocabulary: they stay
+attached to the first nine narrowings wherever the window sits, so scrolling
+never moves what `1` removes. A tenth narrowing is listed without a digit and
+reached by scrolling rather than dropped, and no new key is minted to press it.
+Under the flat ranked list, peeling a population row refuses with
 `Exit search before changing filters`, the same refusal the `F` family gives
 there and for the same reason.
 

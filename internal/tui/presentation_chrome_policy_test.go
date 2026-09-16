@@ -34,18 +34,29 @@ func (r *staticCompletionActivityReader) CompletionActivity() (app.CompletionAct
 	return r.activity, r.err
 }
 
+// TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates holds the pulse
+// to the zero test: a component with nothing to count is omitted rather than
+// reported, and a pulse with nothing at all to say leaves no bare `workspace:`
+// prefix behind. An empty want spells that absence.
 func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) {
 	tests := []struct {
 		name  string
 		pulse pulse.WorkspacePulse
 		want  string
 	}{
-		{name: "zero", pulse: pulse.WorkspacePulse{}, want: "workspace: today 0 · done 0"},
+		{name: "zero", pulse: pulse.WorkspacePulse{}},
+		{name: "partial", pulse: pulse.WorkspacePulse{Inbox: 3, Overdue: 1}, want: "workspace: inbox 3 · overdue 1"},
 		{name: "nonzero", pulse: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rendered := ansi.Strip(chrome.RenderFullscreenTitleWithPulse("Notes", "All Notes", tt.pulse, 100))
+			if tt.want == "" {
+				if strings.Contains(rendered, "workspace") {
+					t.Fatalf("a pulse with nothing to count still named itself:\n%s", rendered)
+				}
+				return
+			}
 			if !strings.Contains(rendered, tt.want) {
 				t.Fatalf("title missing pulse %q:\n%s", tt.want, rendered)
 			}
@@ -170,22 +181,30 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 		}},
 	}
 
-	// The two expectations are spelled out rather than read back from the
-	// formatter internal/tui/pulse owns, which is what this file already does
-	// for the same two pulses above and below. The formatter's own component
-	// order and ladder are asserted inside that package; what this test adds is
-	// that every eligible family paints the full form exactly once.
+	// The expectations are spelled out rather than read back from the formatter
+	// internal/tui/pulse owns, which is what this file already does for the same
+	// pulses above and below. The formatter's own component order, zero test, and
+	// ladder are asserted inside that package; what this test adds is that every
+	// eligible family paints the full form exactly once — and paints nothing at
+	// all where the workspace has nothing to report.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, pulse := range []struct {
 				value pulse.WorkspacePulse
 				want  string
 			}{
-				{value: pulse.WorkspacePulse{}, want: "workspace: today 0 · done 0"},
+				{value: pulse.WorkspacePulse{}},
+				{value: pulse.WorkspacePulse{Inbox: 3, Overdue: 1}, want: "workspace: inbox 3 · overdue 1"},
 				{value: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
 			} {
 				plain := ansi.Strip(tt.view(pulse.value))
 				want := pulse.want
+				if want == "" {
+					if strings.Contains(plain, "workspace") {
+						t.Fatalf("a pulse with nothing to count still named itself:\n%s", plain)
+					}
+					continue
+				}
 				if !strings.Contains(plain, want) {
 					t.Fatalf("view missing workspace pulse %q:\n%s", want, plain)
 				}

@@ -142,7 +142,11 @@ func TestAppViewHostedCapturePanelKeepsItsHostVisible(t *testing.T) {
 	if divider <= 0 {
 		t.Fatalf("panel divider at line %d, want the outline drawn above it:\n%s", divider, strings.Join(lines, "\n"))
 	}
-	if !strings.Contains(lines[0], "workspace:") {
+	// The host's own title row, byte for byte: a fixture whose pulse is all zeros
+	// reports no pulse at all, so the presence of `workspace:` answers a different
+	// question than whose row this is.
+	title := ansi.Strip(model.crossOutliner.BuildOutlinerTitleLine(model.crossOutliner.Width()))
+	if strings.TrimRight(lines[0], " ") != strings.TrimRight(title, " ") {
 		t.Fatalf("host title is not the first row under a hosted panel:\n%s", strings.Join(lines, "\n"))
 	}
 

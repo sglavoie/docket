@@ -996,7 +996,35 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// dock back to the cursor. The mechanism lives in
 	// docs/architecture/presentation-chrome.md; the geometry examples are in
 	// docs/guide/outliner-chrome.md. No rule elsewhere was trimmed to pay for it.
-	const budget = 63400
+	// Fifty-third raise, 63400 to 65100, for the context row and the bounded
+	// readout it forwards to. 1700 bytes buy five rules a reader would otherwise
+	// have to break to find. The first is the shared structured description: a
+	// second row and a `Q` block naming the same axes are two renderers, and the
+	// tidy way to keep them in step is to have one read the other's text, which
+	// works until a compact segment is what the readout quotes back. The second
+	// is that the row's height is presence-only — the obvious signature takes a
+	// width, and `ContentHeight` has none, so a width-dependent row is charged
+	// from a guessed width in one place and a real one in another and the list
+	// ends up a row short at exactly the sizes nobody tests. The third is the one
+	// writer: `renderOutlinerEmptyState` builds its own frame, so a header
+	// appended only to the populated path is missing from every empty projection,
+	// which reads as an intermittent row rather than a missed branch. The fourth
+	// is that `queryReadoutBodyRows` may not call `StatusStripHeight` — asking it
+	// is the obvious way to find out what the strip costs, and it is the height
+	// this function is deciding, so the call is either infinite or answered with
+	// a stale number. Saying the clamp is pure and runs at render as well as at
+	// every write is the same rule from the other side: a peel shortens the
+	// document under a window that is already past its end, and clamping only on
+	// the next scroll makes that key look inert. The fifth is that the digits are
+	// the peel vocabulary and not a numbering of the window — renumbering what is
+	// on screen reads as the helpful thing and silently makes `1` remove a
+	// different axis depending on where the reader scrolled. The scroll keys
+	// being consumed at both bounds is stated with them for the reason Peek's
+	// are: a shared binding that declines falls through and scrolls the outline
+	// under a readout the user was reading. The mechanism lives in
+	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
+	// pay for it.
+	const budget = 65100
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

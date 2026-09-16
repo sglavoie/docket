@@ -112,6 +112,11 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 	}
 }
 
+// TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth is the context row's
+// overflow contract read through the section axis. Section is the last entry, so
+// it is the first segment the row gives up; what the row must never do is end
+// where it ran out of room, and what it gives up must still be readable whole
+// under the key its suffix names.
 func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 	app := zoomChromeApp(t)
 	out := app.crossOutliner
@@ -120,32 +125,45 @@ func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 	out.Population.Invalidate()
 	out.RebuildRows()
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())
+	// The query is installed after the zoom, because zooming resolves a section
+	// header the ranked projection does not draw.
+	out.SetSearchQuery("authentication")
+	out.RebuildRows()
 
-	context := out.BuildOutlinerInteractionContext(160)
-	if len(context) == 0 {
-		t.Fatal("the zoomed title carries no interaction context")
+	context := out.BuildViewContextEntries(160)
+	if len(context) < 2 {
+		t.Fatalf("the zoomed view carries %d context entries, want the axes this test narrows", len(context))
 	}
-	if last := ansi.Strip(context[len(context)-1]); last != "Section: "+models.StateGroupBacklog.Label() {
-		t.Fatalf("last context segment = %q, want the Section segment", last)
+	if last := context[len(context)-1]; last.Label != "section" || last.Value != models.StateGroupBacklog.Label() {
+		t.Fatalf("last context entry = %+v, want the section entry", last)
 	}
 
-	wide := ansi.Strip(out.BuildOutlinerTitleLine(160))
+	wide := ansi.Strip(out.BuildOutlinerContextRow(160))
 	if !strings.Contains(wide, "Filters:") || !strings.Contains(wide, "Section: "+models.StateGroupBacklog.Label()) {
-		t.Fatalf("wide title = %q, want the filter and section segments whole", wide)
+		t.Fatalf("wide context row = %q, want the filter and section segments whole", wide)
 	}
 
-	// The Context region is joined before it is fitted, so the trailing Section
-	// segment is cut rather than dropped: the filter segment ahead of it survives.
-	const narrow = 42
-	title := out.BuildOutlinerTitleLine(narrow)
-	if lipgloss.Width(title) > narrow {
-		t.Fatalf("narrow title rendered %d cells: %q", lipgloss.Width(title), ansi.Strip(title))
+	// Segments go whole and from the right, and every step past the first reserves
+	// the overflow suffix, so the narrowed row still names how much it shed and
+	// where the whole of it is.
+	const narrow = 48
+	row := out.BuildOutlinerContextRow(narrow)
+	if lipgloss.Width(row) > narrow {
+		t.Fatalf("narrow context row rendered %d cells: %q", lipgloss.Width(row), ansi.Strip(row))
 	}
-	plain := ansi.Strip(title)
-	if !strings.Contains(plain, "Filters:") {
-		t.Fatalf("narrow title = %q, want the earlier filter segment kept", plain)
-	}
+	plain := ansi.Strip(row)
 	if strings.Contains(plain, "Section: "+models.StateGroupBacklog.Label()) {
-		t.Fatalf("narrow title = %q, want the Section segment to be the first content cut", plain)
+		t.Fatalf("narrow context row = %q, want the Section segment dropped first", plain)
+	}
+	if !strings.Contains(plain, "more") || !strings.Contains(plain, "Q details") {
+		t.Fatalf("narrow context row = %q, want it to name what it dropped and where to read it", plain)
+	}
+
+	// The shed value is not lost, only moved: the readout the suffix names spells
+	// every axis the row could not.
+	out.ToggleQueryReadout()
+	readout := ansi.Strip(out.QueryReadoutBody(160))
+	if !strings.Contains(readout, models.StateGroupBacklog.Label()) {
+		t.Fatalf("readout body = %q, want the section the row shed", readout)
 	}
 }

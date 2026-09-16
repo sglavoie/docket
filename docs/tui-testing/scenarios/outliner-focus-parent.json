@@ -16,11 +16,11 @@
     { "type": "key", "label": "widen Focus to the cursor task's parent", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
     { "type": "assert", "label": "the frame names the project the rows no longer have to", "assert": "contains", "value": "Add password validation" },
-    { "type": "assert", "assert": "not_contains", "value": "User authentication" },
+    { "type": "assert", "label": "the focus root is the frame, so it draws no row of its own", "assert": "not_contains", "value": "● User authentication" },
     { "type": "key", "label": "climb one level, so the cursor task's siblings widen into view", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "› User authe" },
-    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "contains", "value": "● User authentication" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "key", "label": "climb off a root task, which leaves Focus", "key": "shift+enter" },
     { "type": "assert", "assert": "not_contains", "value": "Focus:" },
@@ -29,11 +29,11 @@
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
     { "type": "key", "label": "h reaches the rowless focus root by leaving that one frame", "key": "left" },
     { "type": "assert", "assert": "not_contains", "value": "Focus:" },
-    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "contains", "value": "● User authentication" },
     { "type": "key", "label": "the cursor sits on the former focus root, so its parent focuses next", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "› User authe" },
-    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "contains", "value": "● User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

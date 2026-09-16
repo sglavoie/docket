@@ -66,13 +66,14 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				// two indicators still outrank the title's tail, so the title is
 				// what pays. At 60 the fitter sheds the countdown first instead and
 				// the whole title comes back. The deadline survives all three, which
-				// is the ladder's own promise.
-				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 15:30", "today 0"}
+				// is the ladder's own promise. The pulse rides along at every width,
+				// naming the one component this fixture has anything to count.
+				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 15:30", "workspace: overdue 1"}
 				switch size[0] {
 				case 62:
-					rowsRequired = []string{"Migrate", "review +", "Apr 1 15:30", "today 0"}
+					rowsRequired = []string{"Migrate", "review +", "Apr 1 15:30", "workspace: overdue 1"}
 				case 60:
-					rowsRequired = []string{"Migrated vendor wait", "Apr 1 15:30", "today 0"}
+					rowsRequired = []string{"Migrated vendor wait", "Apr 1 15:30", "workspace: overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

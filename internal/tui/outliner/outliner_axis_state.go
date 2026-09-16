@@ -1180,17 +1180,26 @@ func retainedProjectWithCurrentMetadata(retained, current *models.Project) *mode
 	return &refreshed
 }
 
-// queryReadoutState is the expanded readout's whole sub-state. One flag is all
-// there is: the rows themselves are read off the live axes each frame by the
-// pure queryReadoutBody that statusStripHeight measures, so there is no second
-// copy of the readout here that could go stale against the view it describes.
+// queryReadoutState is the expanded readout's whole sub-state: whether it is
+// open, and where its window sits. The rows themselves are still read off the
+// live axes each frame by the pure queryReadoutBody that statusStripHeight
+// measures, so there is no second copy of the readout here that could go stale
+// against the view it describes.
 //
-// It is a named field on OutlinerModel rather than a promoted bool for the same
-// reason the menu bar beside it is: the flag is written in exactly two places
+// Offset is a line offset into that document and nothing else. It is not a
+// cursor: the readout has no selection, the digits address axes rather than
+// screen rows, and the outline's own cursor is untouched by every key the
+// readout claims. It is session-only and it is put down with the readout,
+// because a window into a document built from axes that have since changed is a
+// position remembered about nothing.
+//
+// It is a named field on OutlinerModel rather than promoted fields for the same
+// reason the menu bar beside it is: the flag is written in a handful of places
 // and read by the gate, the guidance, and the body, and naming the cluster is
 // what lets those readers say which sub-state they are asking about.
 type queryReadoutState struct {
 	Expanded bool
+	Offset   int
 }
 
 // toggle opens or closes the stack. It is the whole of the operation's handler:
@@ -1200,6 +1209,7 @@ func (s *queryReadoutState) toggle() {
 		return
 	}
 	s.Expanded = !s.Expanded
+	s.Offset = 0
 }
 
 // close puts the stack down without asking what it was showing. The resets that
@@ -1210,4 +1220,5 @@ func (s *queryReadoutState) close() {
 		return
 	}
 	s.Expanded = false
+	s.Offset = 0
 }
