@@ -35,6 +35,19 @@ type ContextualGuidanceProvider interface {
 	ContextualGuidance() (spec chrome.GuidanceSpec, ok bool)
 }
 
+// SelfGuidedPresentation is the other half of the guidance-provider contract: a
+// view says here that it has already drawn its instructions inside its own
+// content, so the shell footer must not publish a second set underneath it.
+//
+// It exists because a PresentationID names a view, not a presentation, and one
+// view may own two. The task composer is that case — a compact panel the shell
+// speaks for, and an expanded form that draws its own footer — so the static
+// policy cannot answer for it and the view answers per frame instead. A view
+// that never implements this is answered by ChromePolicyForPresentation alone.
+type SelfGuidedPresentation interface {
+	PublishesOwnGuidance() bool
+}
+
 // ViewStatusStripProvider is implemented by views that own a status strip the
 // shell pins directly above the footer, under its own dim divider. The view
 // reserves the strip's height in its own layout budget; the shell only

@@ -87,6 +87,28 @@ so the way out of a state is never half a sentence. Transient pickers and action
 sheets own their local guidance while leaving the host title and workspace pulse
 visible.
 
+Only one set of shortcuts is on screen at a time, and it always belongs to
+whatever your next key press reaches. Open a picker, an action sheet, a lens
+list, the check-in editor, or the conflict browser over the outline and the
+outline's own row of shortcuts goes quiet: it is describing keys that picker has
+taken. The same is true of a confirmation, and of the expanded capture form,
+which prints its own controls where its content ends. The row does not collapse
+while it is quiet — the space stays reserved, so nothing on screen jumps when
+the picker opens — and closing the picker brings the outline's shortcuts back
+exactly as they were.
+
+A panel that takes over the whole screen is a different case, because nothing is
+left underneath it to go quiet. Comments, attachments, Notes, the project editor
+and the Hub each print their own controls where their content ends, and the row
+at the very bottom is still theirs: it carries where you are, `Esc back`, and
+`? help`, which is the only place either is offered. That is one instruction set
+in two places rather than two sets.
+
+A message is not a set of shortcuts, so a status line or an error still reaches
+that row with a picker open: it is telling you what just happened rather than
+what to press next. An unfinished chord, likewise, keeps its `w …` row, since
+those are the keys really waiting for you.
+
 The `Esc` entry names what the next press does, not what you are in. Standing in
 a Focus inside a lens it reads `Esc leave Focus`, because that is the layer the
 key takes first; once the Focus is gone it reads `Esc leave lens`. Open Peek and

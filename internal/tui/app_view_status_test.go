@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
@@ -19,7 +20,16 @@ func pickerStatusBarApp(t *testing.T) *AppModel {
 	return app
 }
 
-func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
+// TestOpenPickerTakesTheStatusBarAndGivesItBack is the unit-level statement of
+// the ownership rule: a mounted picker is the interaction receiving input, so
+// the host's hints leave the status bar, the rows they cost stay reserved, and
+// unmounting the picker restores the bar byte for byte.
+//
+// The picker's own explainer must not arrive in their place. The bar is the
+// shell's, and the picker speaks inside its own box; a suppression that let the
+// overlay's text through would be the same two-sets problem with the layers
+// swapped.
+func TestOpenPickerTakesTheStatusBarAndGivesItBack(t *testing.T) {
 	app := pickerStatusBarApp(t)
 
 	hints := ansi.Strip(app.renderStatusBar())
@@ -32,8 +42,11 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 	if strings.Contains(withPicker, valuepicker.SemanticTaskTagExplainerSummary) {
 		t.Fatalf("picker explainer leaked into status bar:\n%s", withPicker)
 	}
-	if !strings.Contains(withPicker, "capture") {
-		t.Fatalf("expected Outliner hints while picker is open, got:\n%s", withPicker)
+	if strings.Contains(withPicker, "capture") {
+		t.Fatalf("the status bar still names the host's hints while the picker owns every key:\n%s", withPicker)
+	}
+	if got, want := lipgloss.Height(withPicker), lipgloss.Height(hints); got != want {
+		t.Fatalf("the status bar is %d rows with the picker open and %d rows without it; the space is not retained", got, want)
 	}
 
 	app.operations.ValuePicker = nil

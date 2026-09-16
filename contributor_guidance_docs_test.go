@@ -947,7 +947,28 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// animation it was stepping, or a message expiring cancels frames its text
 	// already earned.
 	// The mechanism lives in docs/architecture/row-indicators.md.
-	const budget = 61200
+	// Fifty-first raise, 61200 to 62000, for one instruction set at a time. 800
+	// bytes buy the five things a reader would otherwise have to rediscover by
+	// breaking one of them. Naming the resolution order is what stops the obvious
+	// per-overlay repair: a footer speaking under a picker looks like the
+	// picker's bug, so the natural fix is a check at the picker's own render
+	// site, and the next overlay gets its own. Naming what the last rung asks —
+	// is a host still drawn under this presentation, not did this presentation
+	// draw its own acts — is the one distinction the whole rule turns on, and it
+	// is the one a reader gets backwards: a fullscreen panel that draws its acts
+	// in its content looks like a presentation owner, and blanking the footer
+	// under it takes away the only statement of its breadcrumb and its `? help`
+	// rather than a duplicate. Saying the occupant is blanked at its own height
+	// rather than dropped is the measurement the layout depends on, and it is
+	// counter-intuitive enough that the tidy version — return the empty string —
+	// reads as correct while it moves every row above the footer twice per
+	// overlay. Saying an unclassified presentation publishes states the safe
+	// direction of the default, since the symmetric-looking choice blanks the
+	// only instructions a new view has. And saying a view-local modal answers
+	// through its own surface is what keeps the shell resolver from growing a
+	// second list of things it cannot see.
+	// The mechanism lives in docs/architecture/presentation-chrome.md.
+	const budget = 62000
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

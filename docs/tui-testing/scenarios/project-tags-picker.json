@@ -15,11 +15,12 @@
     { "type": "assert", "label": "the effect is on screen the whole time the choice is open", "assert": "contains", "value": "Parks this project" },
     { "type": "assert", "label": "the non-focusable effect wraps completely inside the overlay", "assert": "contains", "value": "notes and attachments, hides them from" },
     { "type": "assert", "assert": "contains", "value": "Active Projects." },
-    { "type": "assert", "label": "the picker preserves the header-row guidance beneath the overlay", "assert": "contains", "value": "Space actions · e project · # project tags · * project pin" },
+    { "type": "assert", "label": "the picker is the one active instruction set: the header-row ranks it covered say nothing", "assert": "not_contains", "value": "Space actions · e project · # project tags · * project pin" },
     { "type": "assert", "assert": "contains", "value": "Enter apply · Esc back · Space toggle · a add tag" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
+    { "type": "assert", "label": "closing the picker hands the header row its ranks back", "assert": "contains", "value": "Space actions · e project · # project tags · * project pin" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Project Tags: Client Alpha" },
     { "type": "assert", "label": "the inline explainer leaves with its picker", "assert": "not_contains", "value": "hides them from" },

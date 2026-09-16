@@ -194,6 +194,13 @@ func (c *Controller) ResolveParkKey(key string) chrome.ConfirmAnswer {
 	return answer
 }
 
+// ConfirmationArmed reports whether any project confirmation is standing. It is
+// the reading without the rendering, so the shell can resolve who owns guidance
+// without composing an overlay box it may not draw.
+func (c *Controller) ConfirmationArmed() bool {
+	return c.archiveConfirm.IsActive() || c.deleteConfirm.IsActive() || c.parkConfirm.IsActive()
+}
+
 // ConfirmOverlay renders whichever project confirmation is armed, in the order
 // the shell has always checked them. All three are modal, so at most one can
 // answer here.

@@ -146,6 +146,18 @@ key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
 five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
+The active interaction owns guidance. `route.ActiveGuidanceOwner` resolves it in
+dispatch order — shell confirmation, shell-mounted modal, pending chord, then
+the presentation — and `SuppressesShellGuidance` is its closed table. The last
+rung asks `HostGuidanceStandsBeneath`, which is whether a host is still drawn
+under this presentation and not whether it drew its own acts, so a fullscreen
+surface keeps the footer holding its own breadcrumb and `? help`;
+`route.SelfGuidedPresentation` overrides it per frame where one view owns two
+presentations. A suppressed occupant is blanked whole at its own height, so the
+close returns the host's rows unchanged; an unclassified presentation publishes,
+feedback is never displaced, and a view-local modal answers through its own
+surface.
+
 Esc has one source too, and it is an act rather than a state. Each `EscStep`
 carries its own `Action`, `NextEscAction` walks them as `RunEscCascade` does, and
 `EscAction`/`EscHint` are what every Outliner profile, empty-state sentence, and

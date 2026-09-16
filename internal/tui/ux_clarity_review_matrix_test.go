@@ -76,7 +76,7 @@ var uxClarityFrames = []uxClarityFrame{
 	},
 	{
 		name:    "picker-over-outline",
-		records: "a value picker's instructions and the host Outliner's ranks on screen together",
+		records: "a value picker owning the one instruction set over a quiet host Outliner",
 		owner:   3,
 		stage:   stageUXClarityPickerOverOutline,
 	},

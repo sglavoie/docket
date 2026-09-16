@@ -129,6 +129,12 @@ func (c *taskMutationController) resolveOutlineKey(key string) chrome.ConfirmAns
 	return chrome.ResolveConfirmKey(&c.outlineConfirm, key)
 }
 
+// confirmationArmed is confirmOverlay's reading half, so guidance ownership can
+// be resolved without rendering a box the frame may not use.
+func (c *taskMutationController) confirmationArmed() bool {
+	return c.deleteConfirm.IsActive() || c.outlineConfirm.IsActive()
+}
+
 // confirmOverlay renders whichever task-mutation confirmation is armed, delete
 // first. Both dialogs are modal, so at most one can answer here.
 func (c *taskMutationController) confirmOverlay(width int) (string, bool) {

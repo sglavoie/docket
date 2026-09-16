@@ -33,6 +33,56 @@ preserves provider order, and drops supplemental state before controls.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
+#### One active instruction set
+
+A composed frame stacks presentations, and only one of them answers the next key
+press. `route.ActiveGuidanceOwner` names that layer, resolved in the order
+`handleGlobalKeyPress` dispatches input: a shell-owned confirmation, then a
+shell-mounted modal, then a pending chord, then the presentation itself.
+`AppModel.activeGuidance` is the one resolution and `SuppressesShellGuidance` the
+closed table it is read through, so an owner added to the vocabulary declares
+whether it silences the footer instead of inheriting an answer.
+
+The three shell confirmations are `projectops.Controller.ConfirmationArmed`,
+`taskMutationController.confirmationArmed`, and `operations.Confirm`; each draws
+its own answers inside its box. A confirmation the active view owns — the
+composer's discard question — is deliberately not among them, because there the
+surface is still the layer speaking and its `ContextualGuidance` has already
+swapped the draft's controls for the prompt's exits. `shellModalMounted` covers
+what `handleActiveKeyOverlay` routes to: the check-in setup pass, the
+action-sheet flow through its own `OverlayMounted`, the lens picker, and the
+conflict browser.
+
+Whether the footer is a presentation's voice at all is
+`PresentationChromePolicy.HostGuidanceStandsBeneath`, and the question it asks is
+not whether this presentation drew its own acts but whether anyone else is still
+under it. A transient presentation is composited over a host that is still drawn
+and still filling that footer, so the ranks there describe a grammar no press
+reaches. A fullscreen presentation replaced that host: even where it draws its
+acts inside its content, as the Comments panel, the project editor, Notes, and
+the Hub all do, the footer beneath it holds that same surface's breadcrumb and
+its `Esc back · ? help` — the second half of one instruction set and the only
+statement of either on the screen. That is why the predicate reads `kind` rather
+than `guidance`, and why it is the exact complement of
+`WorkspacePulseEligible`: one classification, asked twice.
+
+`route.SelfGuidedPresentation` is the per-frame override for the case a
+`PresentationID` cannot answer, where one view owns two presentations: the task
+composer's compact panel publishes through the shell, and its expanded form
+draws its own footer over the whole content area and answers `true`. An
+unclassified presentation publishes, so a footer that may be the only
+instructions on screen is never emptied on a guess.
+
+Suppression is `suppressGuidanceRows`: the occupant is replaced by blank lines of
+its own height. The frame is laid out against that height, so returning fewer
+rows would move everything above the footer when an overlay opened and move it
+back when it closed. It also takes the occupant whole rather than keeping part —
+while a modal owns every key, the breadcrumb's `← <prev>` preview names a
+destination that press would not reach. A view-local modal, such as the
+Outliner's menu bar, relation picker, or query readout, needs none of this: it is
+answered inside its surface's own `ContextualGuidance` ordering, and the shell
+keeps publishing whatever that surface says.
+
 Escape names an act rather than a state, and no profile spells that act itself.
 On the Outliner the cascade is the authority: each `listsurface.EscStep` carries
 its own `Action`, `listsurface.NextEscAction` walks that list the way

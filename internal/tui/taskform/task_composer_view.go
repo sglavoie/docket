@@ -133,6 +133,14 @@ func (m *TaskComposerModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	return m.DiscardConfirmState.GetConfirmDialog()
 }
 
+// PublishesOwnGuidance answers for the composer's two presentations. The
+// expanded form draws its own footer over the whole content area, so the shell
+// footer underneath it would be a second instruction set; the compact panel
+// publishes through ContextualGuidance and the shell speaks for it.
+func (m *TaskComposerModel) PublishesOwnGuidance() bool {
+	return m.Mode == ComposerExpanded
+}
+
 func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.Mode == ComposerExpanded {
 		return chrome.GuidanceSpec{}, false

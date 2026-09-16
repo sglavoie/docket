@@ -56,8 +56,8 @@ Run the same command after a session with a different directory and diff the two
 | --- | --- | --- |
 | `launch` | The resting Outliner: one header row, no feedback, the surface's own ranks. | Session 5 |
 | `feedback-over-guidance` | A routine success standing where the capture controls were. | Session 4 |
-| `picker-over-outline` | A value picker's instructions and the host's ranks on screen together. | Session 3 |
-| `nested-discard-prompt` | A discard confirmation over a capture draft over the outline. | Session 3 |
+| `picker-over-outline` | A value picker owning the one instruction set over a quiet host outline. | Session 3 — done |
+| `nested-discard-prompt` | A discard confirmation over a capture draft over the outline. | Session 3 — done |
 | `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 |
 | `capture-over-peek` | Capture raised over an open Peek dock of fixed height. | Session 7 |
 
@@ -102,8 +102,8 @@ contract in the same change.
 | Recorded expectation | Test | Owner |
 | --- | --- | --- |
 | ~~A routine copy success arms the animated footer divider.~~ Replaced by session 2: a routine success reports and animates nothing, a warning still does, and the quiet line retires the warning's animation. | `TestUXClarityRoutineSuccessIsQuiet`, formerly `TestUXClarityRoutineSuccessArmsTheFooterFlash` | Session 2 — done |
-| A picker owns every key while the host below still publishes its ranks. | `TestUXClarityPickerLeavesHostGuidanceOnScreen` | Session 3 |
-| A discard prompt stands on an open composer over the outline, three deep. | `TestUXClarityDiscardPromptStandsOnTheOpenComposer` | Session 3 |
+| ~~A picker owns every key while the host below still publishes its ranks.~~ Replaced by session 3: the picker is the only layer publishing, the rows its host's ranks occupied stay reserved, and closing it restores the footer byte for byte. | `TestUXClarityPickerOwnsGuidanceAndKeepsHostRows`, formerly `TestUXClarityPickerLeavesHostGuidanceOnScreen` | Session 3 — done |
+| A discard prompt stands on an open composer over the outline, three deep. Kept by session 3 and extended: the footer answers for the prompt, and neither presentation underneath it speaks. | `TestUXClarityDiscardPromptStandsOnTheOpenComposer` | Session 3 — done |
 | Status displaces the capture controls rather than standing beside them. | `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 |
 | Transient messages replace capture controls in the footer. | `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 |
 | Every context axis competes for one header row and the overflow is unreadable. | `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 |
@@ -147,7 +147,10 @@ contract in the same change.
 
 ### Session 3 — Give the active interaction sole ownership of guidance
 
-- Go: `internal/tui/overlay_guidance_test.go`,
+- Go: `internal/tui/guidance_ownership_test.go`,
+  `internal/tui/app_view_status_test.go`,
+  `internal/tui/route/presentation_chrome_policy_test.go`,
+  `internal/tui/overlay_guidance_test.go`,
   `internal/tui/outliner_guidance_test.go`,
   `internal/tui/outliner_escape_guidance_test.go`,
   `internal/tui/footer_ranked_guidance_test.go`,
@@ -169,9 +172,46 @@ contract in the same change.
 - `TestReplaceFooterRemovesEveryStructuredGuidanceRow` in
   `internal/tui/overlay_guidance_test.go` is the existing statement about what a
   composed footer may carry, and
-  `TestUXClarityPickerLeavesHostGuidanceOnScreen` is the one this session
-  inverts: it requires the host's ranks to be present today so that requiring
-  their absence is a visible edit rather than a silently relaxed assertion.
+  `TestUXClarityPickerLeavesHostGuidanceOnScreen` was the one this session
+  inverted: it required the host's ranks to be present so that requiring their
+  absence would be a visible edit rather than a silently relaxed assertion.
+- Landed: `route.ActiveGuidanceOwner` in
+  `internal/tui/route/presentation_chrome_policy.go` is the ownership vocabulary
+  and `AppModel.activeGuidance` in `internal/tui/app_view_status.go` the one
+  resolution, with `suppressGuidanceRows` blanking the occupant at its own
+  height and `surfaceFooterContent` holding the branches it takes whole.
+  `route.SelfGuidedPresentation` in `internal/tui/route/view.go` is the
+  per-frame override the task composer answers, since one `PresentationID` names
+  its compact panel and its expanded form alike.
+  `internal/tui/guidance_ownership_test.go` enumerates the covered surfaces —
+  every arm of `shellModalMounted`, the three shell confirmations, the chord's
+  place in the order, the expanded composer, and the Outliner's view-local menu —
+  and each case asserts the same three properties, because they fail
+  differently: the text is gone, the height is unchanged, and putting the
+  interaction down restores the frame byte for byte.
+- The boundary the last rung stands on is `HostGuidanceStandsBeneath`, which asks
+  whether a host is still drawn under this presentation rather than whether this
+  presentation drew its own acts. The two read alike and only one is right: the
+  Comments panel, the project editor, Notes, and the Hub all print their controls
+  inside their content, but each replaced the host outright, so the footer
+  beneath holds that same surface's breadcrumb and its `Esc back · ? help` — the
+  one statement of either, not a duplicate. `TestExampleScenariosPass` states
+  both halves already: `task-comments-help.json` requires `? help` under a panel
+  that draws its own row, and `project-editor-minimum-layout.json` requires the
+  breadcrumb, while `tags-picker-direct.json`, `project-tags-picker.json`, and
+  `semantic-task-tags-split.json` now require the host's ranks to be absent under
+  a picker and back after its close.
+- The regression to watch for is not a footer that speaks under an overlay but
+  one that goes quiet under nothing: a new presentation left unclassified, or an
+  owner added beside the wrong branch of `SuppressesShellGuidance`, would blank
+  the only instructions a surface has.
+  `TestActiveGuidanceOwnerSuppressionIsAClosedTable` and
+  `TestHostGuidanceStandsBeneathNamesExactlyTheTransientPresentations` in
+  `internal/tui/route/presentation_chrome_policy_test.go` state both defaults in
+  full rather than asserting only the cases the product reaches today, and the
+  second holds the predicate to being the exact complement of
+  `WorkspacePulseEligible`, so the two questions cannot drift into two
+  classifications.
 
 ### Session 4 — Separate feedback from controls and measure the complete frame
 

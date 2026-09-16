@@ -19,14 +19,14 @@
     { "type": "assert", "label": "the complete explanation wraps inside the overlay", "assert": "contains", "value": "a fixed vocabulary," },
     { "type": "assert", "assert": "contains", "value": "strongest first." },
     { "type": "assert", "label": "the section jump keys name the populated sections", "assert": "contains", "value": "jump  s semantic · c contexts · t tags" },
-    { "type": "assert", "label": "the picker preserves workflow-first task guidance beneath the overlay", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "label": "the picker owns the one instruction set, so the task ranks it covered are quiet", "assert": "not_contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "enter add-tag mode, which replaces the explainer entirely", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Add New Tag" },
     { "type": "assert", "label": "add mode replaces the inline explainer", "assert": "not_contains", "value": "a fixed vocabulary," },
     { "type": "assert", "label": "add mode replaces the jump hint too", "assert": "not_contains", "value": "jump  s semantic" },
-    { "type": "assert", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "label": "an inline add mode is one more layer over the host, not a route back to its ranks", "assert": "not_contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "back to the tag list", "key": "esc" },
@@ -42,7 +42,7 @@
     { "type": "resize", "label": "minimum layout wraps the explainer and shrinks the scrollable list", "width": 72, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "bug › question" },
     { "type": "assert", "assert": "contains", "value": "strongest first." },
-    { "type": "assert", "label": "the status bar remains independent from the inline explainer", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "label": "a resize does not give the covered host its ranks back at any width", "assert": "not_contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "width": 100, "height": 35 },
@@ -60,6 +60,7 @@
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the close hands the footer back whole: the refusal the picker raised is drawn there, which a blanked occupant could not show", "assert": "contains", "value": "a task holds one context: press # to set it" },
     { "type": "assert", "assert": "not_contains", "value": "Set Tags" },
 
     { "type": "key", "label": "reopen the picker", "key": "#" },

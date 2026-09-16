@@ -33,6 +33,75 @@ func (p PresentationChromePolicy) WorkspacePulseEligible() bool {
 	return p.kind == presentationChromeFullscreen
 }
 
+// HostGuidanceStandsBeneath reports whether the footer under this presentation
+// belongs to a different layer. A transient presentation is composited over a
+// host that is still drawn and still filling that footer, so the ranks there
+// describe a grammar no press reaches while the overlay stands. A fullscreen
+// presentation replaced that host outright, so the footer beneath it is its own
+// breadcrumb and its own help hint — the second half of one instruction set
+// rather than a competing one — whether it publishes guidance through the shell
+// or draws its acts inside its content.
+func (p PresentationChromePolicy) HostGuidanceStandsBeneath() bool {
+	return p.kind == presentationChromeTransient
+}
+
+// ActiveGuidanceOwner names the one layer of a composed frame whose instructions
+// are live. It is resolved in the order the input dispatcher visits its layers,
+// because the layer that answers the next key press is the only layer entitled
+// to describe it.
+type ActiveGuidanceOwner uint8
+
+const (
+	// GuidanceOwnerShell is the ordinary case: the active surface hands the
+	// shell footer its guidance and the footer publishes it.
+	GuidanceOwnerShell ActiveGuidanceOwner = iota
+	// GuidanceOwnerPendingChord is an unfinished chord's which-key row, which
+	// is live input feedback and outranks the surface it was typed over.
+	GuidanceOwnerPendingChord
+	// GuidanceOwnerConfirmation is a shell-owned confirmation standing over
+	// whatever raised it. A confirmation a surface owns and answers for through
+	// its own guidance is not this: there the surface is still speaking.
+	GuidanceOwnerConfirmation
+	// GuidanceOwnerModal is a shell-mounted picker, action sheet, check-in
+	// editor, text prompt, lens picker, or conflict browser.
+	GuidanceOwnerModal
+	// GuidanceOwnerPresentation is a view that has already drawn its own
+	// instructions inside its own content.
+	GuidanceOwnerPresentation
+)
+
+// SuppressesShellGuidance reports whether the shell footer must stop publishing
+// the active surface's instructions. It never means the footer loses its rows:
+// the frame is measured against that height, so suppression spends the rows on
+// blanks and hands them back whole when the owner goes away.
+func (o ActiveGuidanceOwner) SuppressesShellGuidance() bool {
+	switch o {
+	case GuidanceOwnerConfirmation, GuidanceOwnerModal, GuidanceOwnerPresentation:
+		return true
+	case GuidanceOwnerShell, GuidanceOwnerPendingChord:
+		return false
+	default:
+		return false
+	}
+}
+
+func (o ActiveGuidanceOwner) String() string {
+	switch o {
+	case GuidanceOwnerShell:
+		return "shell"
+	case GuidanceOwnerPendingChord:
+		return "pending chord"
+	case GuidanceOwnerConfirmation:
+		return "confirmation"
+	case GuidanceOwnerModal:
+		return "modal"
+	case GuidanceOwnerPresentation:
+		return "presentation"
+	default:
+		return "unknown"
+	}
+}
+
 func (p PresentationChromePolicy) valid() bool {
 	switch p.kind {
 	case presentationChromeFullscreen:

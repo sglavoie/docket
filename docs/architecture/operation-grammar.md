@@ -151,6 +151,13 @@ descriptions that can drift apart, and
 it: every key their footer advertises is one their strategy binds, except the
 three modal keys a comment composer owns while its textarea has focus.
 
+One source per surface is not yet one set per frame, because a frame stacks
+surfaces. That second half is `route.ActiveGuidanceOwner`, in
+[`presentation-chrome.md`](presentation-chrome.md): the shell resolves which
+layer of the stack a key press reaches and publishes that layer alone, so the
+ranks a strategy projects are on screen only while its surface is the one being
+answered for.
+
 `?` help meets the same limit from the other side. Core descriptors carry
 `operation.CoreOutlinerApplicability`, so the registry half of a surface's help drops the
 cursor keys, both ends of the list, `u`, `Ctrl+R`, and `?` itself, and only the

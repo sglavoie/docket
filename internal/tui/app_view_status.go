@@ -183,13 +183,18 @@ func (m *AppModel) renderFooterChrome() string {
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
+	owner, chordSpec := m.activeGuidance()
+
 	// An unfinished chord owns the footer: the which-key row is live input
-	// feedback, so it outranks banners and transient status text.
-	if spec, ok := m.pendingChordGuidance(); ok {
-		return renderFooter(chrome.RenderGuidanceText(spec, m.viewNav.width))
+	// feedback, so it outranks banners and transient status text. It only wins
+	// where the keys it describes are still the ones a press would reach, which
+	// is what activeGuidance answers.
+	if owner == route.GuidanceOwnerPendingChord {
+		return renderFooter(chrome.RenderGuidanceText(chordSpec, m.viewNav.width))
 	}
 
-	// Show temporary status message if present.
+	// Show temporary status message if present. Feedback is what just happened
+	// rather than an instruction set, so it is not something a modal displaces.
 	if m.feedback.message != "" {
 		var msg string
 		if m.feedback.info {
@@ -200,23 +205,122 @@ func (m *AppModel) renderFooterChrome() string {
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
+	content := m.surfaceFooterContent()
+	if owner.SuppressesShellGuidance() {
+		// The interaction receiving input has already drawn its own
+		// instructions, so this occupant is the second set. It is measured out
+		// of the frame either way, so it is blanked at its own height rather
+		// than dropped: closing the overlay hands the host back the same rows.
+		content = suppressGuidanceRows(content)
+	}
+	return renderFooter(content)
+}
+
+// activeGuidance resolves the one layer of the composed frame whose
+// instructions are live, in the order handleGlobalKeyPress visits its layers: a
+// standing confirmation, then a shell-mounted modal, then an unfinished chord,
+// then the presentation itself. Whatever it names is the only layer allowed to
+// speak, because it is the only one a key press reaches.
+//
+// The chord spec is returned with the owner so the caller renders exactly what
+// the resolution read, rather than asking a second time.
+func (m *AppModel) activeGuidance() (route.ActiveGuidanceOwner, chrome.GuidanceSpec) {
+	if m.shellConfirmationArmed() {
+		return route.GuidanceOwnerConfirmation, chrome.GuidanceSpec{}
+	}
+	if m.shellModalMounted() {
+		return route.GuidanceOwnerModal, chrome.GuidanceSpec{}
+	}
+	if spec, ok := m.pendingChordGuidance(); ok {
+		return route.GuidanceOwnerPendingChord, spec
+	}
+	if !m.activePresentationPublishesToShell() {
+		return route.GuidanceOwnerPresentation, chrome.GuidanceSpec{}
+	}
+	return route.GuidanceOwnerShell, chrome.GuidanceSpec{}
+}
+
+// shellConfirmationArmed reports whether one of the three shell-owned
+// confirmations is standing over the view that raised it.
+//
+// A confirmation the active view owns and answers for through its own
+// ContextualGuidance is deliberately not here: there the surface is still the
+// layer speaking, and a draft-discard prompt whose exits reach the footer must
+// keep reaching it.
+func (m *AppModel) shellConfirmationArmed() bool {
+	return m.project.ConfirmationArmed() ||
+		m.taskMutation.confirmationArmed() ||
+		m.operations.Confirm.IsActive()
+}
+
+// shellModalMounted covers exactly what handleActiveKeyOverlay routes to:
+// whatever that dispatcher hands the next key press is the interaction that owns
+// guidance. The action-sheet flow answers through its own OverlayMounted rather
+// than a second copy of its four levels, so a level added there is covered here
+// without a second edit.
+func (m *AppModel) shellModalMounted() bool {
+	return m.checkInSetup != nil ||
+		m.operations.OverlayMounted() ||
+		m.lenses.Mounted() ||
+		m.conflictBrowser != nil
+}
+
+// activePresentationPublishesToShell asks whether the footer is still this
+// presentation's voice. A view answering SelfGuidedPresentation decides per
+// frame, since a PresentationID names a view and one view may own two
+// presentations and only one of them may have drawn its acts inside its own
+// content; otherwise the static chrome policy answers, and it answers by whether
+// a host is still standing under this presentation holding that footer.
+//
+// A fullscreen surface keeps it even though its acts are drawn in its content:
+// the footer then holds that same surface's breadcrumb and its `Esc back · ?
+// help`, which is the one statement of either and names keys the surface itself
+// answers.
+//
+// An unclassified presentation publishes, deliberately: a footer that may be the
+// only instructions on screen is never blanked on a guess.
+func (m *AppModel) activePresentationPublishesToShell() bool {
+	if view := m.activeView(); view != nil {
+		if provider, ok := view.(route.SelfGuidedPresentation); ok && provider.PublishesOwnGuidance() {
+			return false
+		}
+	}
+	policy, ok := route.ChromePolicyForPresentation(m.currentView())
+	if !ok {
+		return true
+	}
+	return !policy.HostGuidanceStandsBeneath()
+}
+
+// suppressGuidanceRows empties an occupant without resizing it. The frame was
+// laid out against this height, so returning fewer rows would move the content
+// above it and closing the overlay would move it back.
+func suppressGuidanceRows(content string) string {
+	return strings.Repeat("\n", max(lipgloss.Height(content), 1)-1)
+}
+
+// surfaceFooterContent builds what the shell footer says on behalf of the
+// active surface: its contextual guidance, else the pinned-task bar, else the
+// breadcrumb row with its help hint. It is one occupant, so suppression takes
+// it whole — while a modal owns every key, the breadcrumb's Esc preview names a
+// destination that press would not reach.
+func (m *AppModel) surfaceFooterContent() string {
 	// Show the current view's contextual guidance if it provides any (e.g. the
 	// capture views). This sits above the pinned-task bar and generic breadcrumb
-	// but below the transient loading/error/status overlays handled above, so a
-	// temporary status message still replaces capture controls and the controls
-	// return once it clears. renderGuidance emits its own separator, so
-	// return it directly rather than prefixing the local one.
+	// but below the transient loading/error/status overlays handled by the
+	// caller, so a temporary status message still replaces capture controls and
+	// the controls return once it clears.
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(route.ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
-				return renderFooter(chrome.RenderGuidanceText(spec, m.viewNav.width))
+				return chrome.RenderGuidanceText(spec, m.viewNav.width)
 			}
 		}
 	}
 
 	// Show pinned tasks bar if any tasks are pinned.
 	if pinnedBar := m.renderPinnedTasksBar(m.viewNav.width); pinnedBar != "" {
-		return renderFooter(pinnedBar)
+		return pinnedBar
 	}
 
 	status := m.buildBreadcrumb()
@@ -286,7 +390,7 @@ func (m *AppModel) renderFooterChrome() string {
 		Background(m.footerFlashBackgroundColor()).
 		Render("")
 
-	return renderFooter(lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
 }
 
 func fitStatusBarSegments(left, right string, width int) (string, string) {
