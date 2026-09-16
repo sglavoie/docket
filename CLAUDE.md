@@ -391,8 +391,15 @@ readout, and the every-project-failed refusal are not advisories.
 sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
 It costs one list row, subtracted in `ContentHeight` alone; never measure it
 again. The row is exactly `m.width` and drops whole labels from the right, never
-truncating one. An open menu is bar and dropdown alone: list hidden, not shrunk,
-window still. `MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `Ctrl+M`
+truncating one. An open menu stands on the view it was opened from, and so does
+the relation picker: `composeOutlinerModal` is their one seam, the host renders
+unchanged underneath, and `chrome.OverlayPopupDimmedAt` composites the dropdown
+dimmed under the column its label owns, below the header rows no modal covers.
+A modal covers rows rather than displacing them, so the window, Peek, and a
+selection are all still what the close redraws; the box is bounded by what the
+anchor leaves and scrolls its own list rather than growing, and it composites
+once, never over another modal of its own.
+`MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `Ctrl+M`
 borrows that row and the close gives it back; `M` alone writes the pinned flag
 the View checkbox reads.
 

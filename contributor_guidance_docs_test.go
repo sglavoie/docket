@@ -896,7 +896,20 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// is here because a required entry that does not fit is truncated rather than
 	// dropped, so the failure is a half sentence at 60 columns and nothing else.
 	// The mechanism lives in docs/architecture/presentation-chrome.md.
-	const budget = 59680
+	// Forty-seventh raise, 59680 to 60180, for a view-local modal standing on its
+	// own dimmed host. 500 bytes buy the rule the old code read as the obvious
+	// one: a dropdown that returns a frame instead of a box is a one-file change
+	// that looks tidier and blanks the view behind it, and once the host is gone
+	// the row budget is the modal's to spend, which is how a menu press came to
+	// move the window it was pressed over. Naming composeOutlinerModal as the one
+	// seam is what keeps the second modal from growing its own compositor, and
+	// naming the anchor is what keeps the box off the bar and the operational
+	// title, whose workspace pulse is the one thing a menu may never take. That
+	// the box is bounded by what the anchor leaves, rather than by the frame, is
+	// stated because the natural rewrite fits it to the whole frame and quietly
+	// turns a long menu's scroll into interior rows dropped out of its middle.
+	// The mechanism lives in docs/architecture/presentation-chrome.md.
+	const budget = 60180
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

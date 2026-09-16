@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The bar is chrome with a budget: it must be exactly as wide as every other
@@ -13,12 +14,12 @@ import (
 // it must drop whole menus rather than truncate a label. These are the
 // assertions that hold it to all three.
 
-// An open menu is the whole frame: the bar row, the block under its label, and
-// nothing else. The list is not shrunk to make room for a dropdown, it is not
-// drawn, which is what stops every row on screen from stepping down and back up
-// once per menu press. The window the last list frame drew has to survive that
-// untouched, since it is the one the close redraws.
-func TestAnOpenMenuDrawsNoOutlinerAndMovesNoWindow(t *testing.T) {
+// An open menu is a popup over the view it was opened from: the bar row, the
+// operational title, and every row the box does not reach stay exactly where the
+// last list frame put them, dimmed. The box covers rows rather than displacing
+// them, so nothing steps down and back up once per menu press, and the window
+// the last list frame drew survives untouched — it is the one the close redraws.
+func TestAnOpenMenuStandsOnTheViewItWasOpenedFrom(t *testing.T) {
 	driver, outlinerView := menuBarDriver(t)
 
 	// Show the bar first: revealing it costs a list row, and this test is about
@@ -29,10 +30,7 @@ func TestAnOpenMenuDrawsNoOutlinerAndMovesNoWindow(t *testing.T) {
 	if window.VisibleRows <= 1 {
 		t.Fatalf("the baseline window draws %d rows, too few to prove the list was drawn", window.VisibleRows)
 	}
-	rowTitle := firstVisibleTaskTitle(t, outlinerView)
-	if screen := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(screen, rowTitle) {
-		t.Fatalf("the baseline frame does not draw the row it named:\n%s", screen)
-	}
+	baseline := driver.Observe(ObserveOptions{}).PlainScreen
 
 	pressMenuBarKey(t, driver, "ctrl+m")
 	open := driver.Observe(ObserveOptions{}).PlainScreen
@@ -42,23 +40,39 @@ func TestAnOpenMenuDrawsNoOutlinerAndMovesNoWindow(t *testing.T) {
 	if !strings.Contains(open, "Task") || !strings.Contains(open, "Help") {
 		t.Errorf("the bar left the frame the menu hangs off:\n%s", open)
 	}
-	if strings.Contains(open, "Active Projects · All") {
-		t.Errorf("the operational title is still drawn under an open menu:\n%s", open)
+	if !strings.Contains(open, "Active Projects · All") {
+		t.Errorf("the operational title was covered by an open menu:\n%s", open)
 	}
-	if strings.Contains(open, rowTitle) {
-		t.Errorf("the list is still drawn under an open menu:\n%s", open)
+	assertHostSurvivesBesideDropdown(t, baseline, open)
+	if !strings.Contains(driver.Observe(ObserveOptions{IncludeANSI: true}).ANSIScreen, dimSequence(t)) {
+		t.Errorf("the host under an open menu is not dimmed:\n%s", open)
 	}
 	if got := outlinerView.LastViewport; got != window {
 		t.Errorf("opening a menu moved the window from %+v to %+v", window, got)
 	}
 
+	// The menu owns the keys it lists. A cursor key inside it moves its own
+	// highlight and nothing on the view it is standing on.
+	cursor := outlinerView.Cursor
+	pressMenuBarKey(t, driver, "down")
+	moved := driver.Observe(ObserveOptions{}).PlainScreen
+	if !strings.Contains(moved, "› Capture Child") {
+		t.Errorf("the menu did not take its own cursor key:\n%s", moved)
+	}
+	if got := outlinerView.Cursor; got != cursor {
+		t.Errorf("the menu's cursor key reached the list under it: cursor %d, want %d", got, cursor)
+	}
+	if got := outlinerView.LastViewport; got != window {
+		t.Errorf("moving inside the menu moved the window from %+v to %+v", window, got)
+	}
+
 	pressMenuBarKey(t, driver, "esc")
 	closed := driver.Observe(ObserveOptions{}).PlainScreen
-	if !strings.Contains(closed, "Active Projects · All") {
-		t.Errorf("the title did not come back:\n%s", closed)
+	if closed != baseline {
+		t.Errorf("the close did not redraw the frame the menu was opened on:\nwant:\n%s\ngot:\n%s", baseline, closed)
 	}
-	if !strings.Contains(closed, rowTitle) {
-		t.Errorf("the list did not come back:\n%s", closed)
+	if strings.Contains(closed, "Capture Child") {
+		t.Errorf("the dropdown outlived its close:\n%s", closed)
 	}
 	if got := outlinerView.LastViewport; got != window {
 		t.Errorf("closing the menu redrew window %+v, want the one it left at %+v", got, window)
@@ -193,17 +207,48 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 	}
 }
 
-// firstVisibleTaskTitle names a row the baseline frame drew, so the assertion
-// that the menu hid the list is made against a row that was demonstrably on
-// screen rather than against the fixture's contents in general.
-func firstVisibleTaskTitle(t *testing.T, outlinerView *outliner.OutlinerModel) string {
+// assertHostSurvivesBesideDropdown is the whole claim in one comparison: on every
+// row the box hangs over, the columns it does not reach still read exactly as the
+// frame before it opened. A view that had been replaced, shrunk, or rewrapped
+// could not satisfy that, and naming one title could not prove it, since a narrow
+// fixture's rows fit behind the box entirely.
+func assertHostSurvivesBesideDropdown(t *testing.T, baseline, open string) {
 	t.Helper()
-	start, end := outlinerView.VisibleRowWindow()
-	for index := start; index < end; index++ {
-		if row := outlinerView.Rows[index]; row.Task != nil {
-			return row.Task.Title
+	baseLines := strings.Split(baseline, "\n")
+	openLines := strings.Split(open, "\n")
+	top, bottom, right := -1, -1, -1
+	for index, line := range openLines {
+		corner := strings.Index(line, "╮")
+		switch {
+		case top < 0 && strings.Contains(line, "╭") && corner >= 0:
+			top, right = index, lipgloss.Width(line[:corner])
+		case top >= 0 && strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+			bottom = index
 		}
 	}
-	t.Fatal("the visible window holds no task row")
-	return ""
+	if top < 0 || bottom < 0 {
+		t.Fatalf("the open frame draws no dropdown box:\n%s", open)
+	}
+	// The cell right of the corner is the box's own halo; the host resumes after it.
+	hostStart := right + 2
+	for row := top; row <= bottom && row < len(baseLines) && row < len(openLines); row++ {
+		width := lipgloss.Width(openLines[row])
+		want := ansi.Cut(baseLines[row], hostStart, width)
+		if got := ansi.Cut(openLines[row], hostStart, width); got != want {
+			t.Errorf("row %d lost the host beside the box: %q, want %q", row, got, want)
+		}
+	}
+}
+
+// dimSequence is what DimContent writes, read off the theme rather than spelled
+// as an escape, so the assertion follows a palette change instead of breaking on
+// one.
+func dimSequence(t *testing.T) string {
+	t.Helper()
+	rendered := theme.DimStyle.Render("x")
+	prefix, _, found := strings.Cut(rendered, "x")
+	if !found || prefix == "" {
+		t.Fatal("the dim style renders no escape to look for")
+	}
+	return prefix
 }

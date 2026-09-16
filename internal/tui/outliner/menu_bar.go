@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -781,12 +780,11 @@ func (m *OutlinerModel) renderOutlinerMenuBar(width int) string {
 	return renderMenuBarRow(m.resolvedMenuBar(), width, m.openMenuBarIndex())
 }
 
-// The dropdown is drawn inline, immediately under the bar row and left-padded to
-// the column the layout gave the open label. It is not an overlay: it grows the
-// chrome the list budget is measured against rather than floating over rows, so
-// the rows it covers are rows it paid for. That is the same bargain the status
-// strip and the search suggestion pane already make, and it is why the block
-// this file returns is added to extraFooter by the caller.
+// The dropdown is a popup composited over the view that opened it, anchored to
+// the column the layout gave the open label. This file returns the block and the
+// column alone; the compositing, the dimming, and the rows the block may claim
+// are the render's, so a menu and every other popup in the app agree about
+// geometry by calling one seam rather than by resembling each other.
 
 const (
 	// menuBarDropdownCheckColumn is the width of the checkmark gutter. Every
@@ -811,26 +809,30 @@ func (m *OutlinerModel) openMenuBarIndex() int {
 	return m.MenuBar.MenuIndex
 }
 
-// renderOutlinerMenuDropdown draws the open menu, or the empty string when none
-// is open. It re-resolves the stored item index against the entries this frame
-// actually holds and writes the resolved index back, which is what stops the
-// highlight a user sees and the entry Enter runs from disagreeing after a row
-// left the menu underneath them.
-func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
+// renderOutlinerMenuDropdown draws the open menu and the column it hangs at, or
+// the empty string when none is open. It re-resolves the stored item index
+// against the entries this frame actually holds and writes the resolved index
+// back, which is what stops the highlight a user sees and the entry Enter runs
+// from disagreeing after a row left the menu underneath them.
+//
+// maxBoxRows is the compositor's, not this function's: the block is sized to
+// what the host frame leaves under its header rather than to a budget measured
+// twice.
+func (m *OutlinerModel) renderOutlinerMenuDropdown(width, maxBoxRows int) (string, int) {
 	menus, ok := m.OpenMenuBarMenus()
 	if !ok || width <= 0 {
-		return ""
+		return "", 0
 	}
 	entries := menus[m.MenuBar.MenuIndex].Entries
 	cursor := resolveMenuBarItem(entries, m.MenuBar.ItemIndex)
 	if cursor < 0 {
-		return ""
+		return "", 0
 	}
 	m.MenuBar.selectItem(cursor)
 
 	innerWidth := menuBarDropdownWidth(entries, width)
 	// The box's own rows come off the budget before the list is sized.
-	maxBoxRows := m.menuBarDropdownRowBudget(width)
+	maxBoxRows = max(maxBoxRows, menuBarDropdownMinRows+menuBarDropdownListRows)
 	listHeight := max(min(len(entries), maxBoxRows-menuBarDropdownListRows), 1)
 
 	surface, err := newMenuBarDropdownSurface(entries, innerWidth-4)
@@ -838,38 +840,18 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 		// The surface refuses only a malformed item set, which is this function's
 		// own construction rather than anything a user did. Drawing no dropdown is
 		// the honest failure: the bar above still says which menu is open.
-		return ""
+		return "", 0
 	}
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
 	content := listsurface.RenderCompactListSurface(surface, innerWidth-4, listHeight)
 	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
-	box = chrome.FitOverlayPopupHeight(box, maxBoxRows)
-	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.MenuBar.MenuIndex, box), width)
+	return box, menuBarDropdownStartCol(menus, width, m.MenuBar.MenuIndex, box)
 }
 
-// menuBarDropdownRowBudget is how tall the block may grow. The frame it is drawn
-// on holds the bar row and this box alone, so the budget is everything under the
-// bar: contentHeight subtracts both the bar row and the operational title, and
-// the title is not drawn on this frame, which is the one row added back here.
-//
-// The status strip is subtracted because the shell pins it — AppModel.View sizes
-// and pads content against the status bar's height — so a box that claimed those
-// rows would be clipped from below rather than scrolled, and a menu that says
-// nothing about the entries it dropped is worse than one that scrolls.
-//
-// The floor keeps the shortest drawable box: below it the dropdown says less
-// than the bar above it already does, and at a terminal that short there is
-// nothing better to do than let the frame clip it.
-func (m *OutlinerModel) menuBarDropdownRowBudget(width int) int {
-	available := m.ContentHeight() + 1 - m.StatusStripHeight(width)
-	return max(available, menuBarDropdownMinRows+menuBarDropdownListRows)
-}
-
-// menuBarDropdownStartCol is the column the block is padded to: the open label's
-// own StartCol, clamped so the right edge stays on screen. The clamp is
-// overlayPopup's, copied rather than called because that helper composites rows
-// of a finished frame and this block is written into the content stream.
+// menuBarDropdownStartCol is the column the block is composited at: the open
+// label's own StartCol. The compositor clamps the right edge itself, so this
+// reports the anchor and nothing about the frame.
 //
 // A menu the drop ladder shed at a narrow width has no drawn label to align to,
 // so its dropdown starts at the left margin instead of under a column nothing is
@@ -880,20 +862,6 @@ func menuBarDropdownStartCol(menus []ResolvedMenu, width, openIdx int, box strin
 		startCol = boxes[openIdx].StartCol
 	}
 	return min(max(startCol, 0), max(width-chrome.PopupWidth(box), 0))
-}
-
-// indentMenuBarDropdown moves the finished block right to its column. Every line
-// is padded, including the halo rows, so the frame stays rectangular.
-func indentMenuBarDropdown(box string, startCol, width int) string {
-	if box == "" {
-		return ""
-	}
-	pad := strings.Repeat(" ", max(startCol, 0))
-	lines := strings.Split(box, "\n")
-	for i, line := range lines {
-		lines[i] = textfit.TruncateToVisualWidth(pad+line, width)
-	}
-	return strings.Join(lines, "\n")
 }
 
 // menuBarDropdownWidth sizes the frame to its longest entry rather than to a

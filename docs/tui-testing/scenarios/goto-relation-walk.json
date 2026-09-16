@@ -21,9 +21,11 @@
     { "type": "assert", "assert": "contains", "value": "DEPENDENCIES" },
     { "type": "assert", "label": "the row reads as project, short ID, title, and state", "assert": "contains", "value": "Client Beta #1 Beta rollout checklist" },
     { "type": "assert", "label": "a task pointing at nobody lists no computed half", "assert": "not_contains", "value": "DEPENDENTS" },
+    { "type": "assert", "label": "the picker stands on the view it was opened from: the title and its pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the picker survives the app's own minimum", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "Relationships" },
+    { "type": "assert", "label": "and the one row it may never cover is still the title", "assert": "contains", "value": "Active Projects" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 35 },
 

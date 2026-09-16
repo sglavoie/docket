@@ -487,21 +487,33 @@ declared their text required, while this reads the finished screen.
 
 ### Session 17 — Render menus over a dimmed host
 
-- Go: `internal/tui/menu_bar_render_test.go`, `internal/tui/menu_bar_test.go`,
-  `internal/tui/menu_bar_parity_test.go`,
-  `internal/tui/chrome/overlay_popup_test.go`,
+- Go: `internal/tui/menu_bar_render_test.go` (the host compared column by column
+  beside the open box, the frame after the close compared to the frame before the
+  open, and `LastViewport` held across open, move, and close),
+  `internal/tui/menu_bar_test.go`, `internal/tui/menu_bar_parity_test.go`,
+  `internal/tui/chrome/overlay_popup_test.go` (`OverlayPopupDimmedAt`: the rows
+  above the anchor kept but dimmed, the box at its column, and a popup too tall
+  for what the anchor leaves fitted rather than clipped),
   `internal/tui/outliner/menu_bar_render_outlinersplit_test.go`
-- Scenarios: `docs/tui-testing/scenarios/outliner-menu-bar.json`,
+- Scenarios: `docs/tui-testing/scenarios/menu-over-dimmed-host.json` (the menu
+  over an open Peek dock, over a two-row visual selection, and across a resize to
+  60×20 and back, plus the bulk sheet dimming the same host),
+  `docs/tui-testing/scenarios/outliner-menu-bar.json`,
   `docs/tui-testing/scenarios/outliner-menu-bar-persist.json`,
+  `docs/tui-testing/scenarios/goto-relation-walk.json` (the relation picker
+  keeping the title at both sizes),
   `docs/tui-testing/scenarios/outliner-space-action-catalog.json`,
   `docs/tui-testing/scenarios/action-sheet-picker-cancel.json`
 - Contracts: `CLAUDE.md` — an entity operation being direct-only or menu-only and
   never both in that surface's sheet, the menu bar as a projection of the
   registry rather than a sheet, `M` costing one list row subtracted in
-  `ContentHeight` alone, "An open menu is bar and dropdown alone: list hidden,
-  not shrunk, window still", the row being exactly `m.width` and dropping whole
+  `ContentHeight` alone, the new sentences making `composeOutlinerModal` the one
+  seam both view-local modals take, `chrome.OverlayPopupDimmedAt` the compositing,
+  the header rows the anchor reserves uncoverable, and a modal covering rows
+  rather than displacing them, the row being exactly `m.width` and dropping whole
   labels, and `MenuBarVisible` being `MenuBarPinned() || MenuBar.Open`.
-  `docs/architecture/operation-grammar.md`.
+  `docs/architecture/operation-grammar.md`,
+  `docs/architecture/presentation-chrome.md`, `docs/guide/outliner-chrome.md`.
 
 ### Session 18 — Complete integrated acceptance and final review
 

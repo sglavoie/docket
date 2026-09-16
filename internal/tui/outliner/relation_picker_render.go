@@ -19,10 +19,11 @@ func relationPickerInnerWidth(width int) int {
 	return min(max(width*4/5, 46), max(width-6, 24))
 }
 
-// renderRelationPicker draws the whole frame while the picker is open, or the
-// empty string when it is not. It is a modal overlay rather than a pane: the
-// rows underneath answer none of its keys, so drawing them would advertise a
-// list nothing is listening to.
+// renderRelationPicker draws the box while the picker is open, or the empty
+// string when it is not. The caller composites it over a dimmed host: the rows
+// underneath answer none of its keys, and the dimming is what says so — the view
+// stays visible as the thing the picker is standing on rather than being
+// replaced by it.
 func (m *OutlinerModel) renderRelationPicker(width int) string {
 	if !m.RelationPickerOpen() {
 		return ""
@@ -48,11 +49,13 @@ func (m *OutlinerModel) renderRelationPicker(width int) string {
 	}
 
 	listHeight := min(max(len(state.Surface.Rows()), 4), 14)
-	if height := m.ContentHeight(); height > 0 {
+	if budget := m.outlinerModalBudget(width); budget > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
 		// consume nine rows before any header line of its own, so a minimum-supported
-		// terminal drops list rows rather than the search line or the footer.
-		listHeight = min(listHeight, max(height-9-len(header), 1))
+		// terminal drops list rows rather than the search line or the footer. The
+		// budget is the compositor's, so the box is built at the height it is drawn
+		// at and FitOverlayPopupHeight never has to take the middle out of it.
+		listHeight = min(listHeight, max(budget-9-len(header), 1))
 	}
 	content := listsurface.RenderCompactListSurface(state.Surface, contentWidth, listHeight)
 	if len(header) > 0 {

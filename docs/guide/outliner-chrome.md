@@ -26,11 +26,13 @@ still reachable by the keys its entries carry.
 so reaching a menu is never two presses. The reveal lasts as long as the menu
 does: close the menu and the bar goes back to whatever `M` last left it as, up
 if it was up and away if it was away. The dropdown falls inline under the label
-it belongs to, and while it is open the task list is not drawn at all: the bar
-stays on its row, the menu hangs off its label, and everything below is blank
-until you close it. Nothing shifts down and back up per press, and the view you
-return to is the one you left, scrolled where you left it. A menu too tall for
-the terminal scrolls inside its own box. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
+it belongs to, and the view stays underneath it: the bar stays on its row, the
+title and its workspace pulse stay on theirs, and the task list — with an open
+Peek dock, a multi-select summary, whatever you were looking at — is still there,
+dimmed, everywhere the box does not reach. The box covers those rows rather than
+pushing them anywhere, so nothing shifts down and back up per press and the view
+you return to is the one you left, scrolled where you left it. A menu too tall
+for the room under its label scrolls inside its own box. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
 the open menu and step over the rules between groups, `Enter` runs the
 highlighted entry and closes the menu, and `Esc` or `Ctrl+M` closes it without
 running anything, leaving the bar exactly as it was.

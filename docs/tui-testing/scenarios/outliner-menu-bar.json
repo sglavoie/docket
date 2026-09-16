@@ -42,8 +42,9 @@
     { "type": "assert", "label": "an entry carries the key its own accelerator is bound to", "assert": "contains", "value": "Ctrl+E" },
     { "type": "assert", "label": "the open menu's gated keymap owns the footer", "assert": "contains", "value": "Enter run" },
     { "type": "assert", "label": "and names the key that opened it as the key that closes it", "assert": "contains", "value": "Ctrl+M/Esc close" },
-    { "type": "assert", "label": "an open menu is the whole frame: the list is not shrunk, it is not drawn", "assert": "not_contains", "value": "Release acceptance item 088" },
-    { "type": "assert", "label": "and the operational title goes with it, so nothing below the bar shifts", "assert": "not_contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "the menu stands on the view rather than replacing it: the title and its pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "and the list is still there, dimmed, wherever the box does not reach", "assert": "contains", "value": "with bounded viewport content" },
+    { "type": "assert", "label": "what the box does reach is covered rather than shrunk, so no row moves to make space", "assert": "not_contains", "value": "Release acceptance item 088" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "l moves along the bar to View", "key": "l" },

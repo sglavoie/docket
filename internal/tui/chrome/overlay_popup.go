@@ -21,18 +21,36 @@ func DimContent(content string) string {
 // OverlayPopupDimmed dims the base content before placing the popup at
 // bottom-center. Popup renderers own their complete frame and symmetric halo.
 func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-PopupWidth(popup))/2, 0))
-}
-
-func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) string {
 	if popup == "" {
 		return base
 	}
-	popup = FitOverlayPopupHeight(popup, baseHeight)
+	startCol := max((baseWidth-PopupWidth(popup))/2, 0)
+	fitted := FitOverlayPopupHeight(popup, baseHeight)
+	startRow := bottomPopupTopRow(baseHeight, lipgloss.Height(fitted))
+	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol)
+}
+
+// OverlayPopupDimmedAt is the same compositing under an explicit anchor, for a
+// popup that hangs off something the host is still drawing. The rows above
+// startRow are the host's own and are never covered, so the popup is fitted to
+// what is left below the anchor rather than to the whole frame; a popup taller
+// than that budget loses interior rows the same way a bottom-anchored one does.
+func OverlayPopupDimmedAt(base, popup string, baseWidth, baseHeight, startRow, startCol int) string {
+	if popup == "" {
+		return base
+	}
+	startRow = min(max(startRow, 0), max(baseHeight-1, 0))
+	fitted := FitOverlayPopupHeight(popup, max(baseHeight-startRow, 1))
+	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol)
+}
+
+func overlayPopupAt(base, popup string, baseWidth, baseHeight, startRow, startCol int) string {
+	if popup == "" {
+		return base
+	}
 
 	baseLines := strings.Split(base, "\n")
 	popupLines := strings.Split(popup, "\n")
-	popupHeight := len(popupLines)
 	maxPopupWidth := PopupWidth(popup)
 	startCol = min(max(startCol, 0), max(baseWidth-maxPopupWidth, 0))
 
@@ -40,7 +58,6 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) strin
 		baseLines = append(baseLines, "")
 	}
 
-	startRow := bottomPopupTopRow(baseHeight, popupHeight)
 	for i, popupLine := range popupLines {
 		row := startRow + i
 		if row >= len(baseLines) {

@@ -1,0 +1,63 @@
+{
+  "name": "menu-over-dimmed-host",
+  "fixture": "release",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "label": "stand on a task row", "key": "j" },
+    { "type": "key", "label": "open Peek, so the dock is part of the host the menu will stand on", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open a menu over that view", "key": "ctrl+m" },
+    { "type": "assert", "assert": "contains", "value": "Capture Child" },
+    { "type": "assert", "label": "the operational title and its workspace pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "workspace:" },
+    { "type": "assert", "label": "the dock the cursor opened is still open, in the same place", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
+    { "type": "assert", "label": "and so is the part of the list the box does not cover", "assert": "contains", "value": "with bounded viewport content" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "a key the menu lists is the menu's: it moves the menu's own cursor", "key": "down" },
+    { "type": "assert", "assert": "contains", "value": "› Capture Child" },
+    { "type": "assert", "label": "and moves nothing under it: Peek still describes the row it was opened on", "assert": "contains", "value": "Unicode display-width" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the app's own minimum still holds a bounded menu", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Capture Child" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "closing hands the whole view back", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "put Peek away and take a selection instead", "key": "b" },
+    { "type": "key", "key": "v" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "key", "key": "ctrl+m" },
+    { "type": "assert", "label": "a selection narrows the menu the way it narrows every other projection", "assert": "contains", "value": "Copy Title" },
+    { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
+    { "type": "assert", "label": "a selection is host state, so it survives the menu standing on it", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Copy Title" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and the sheet a selection opens dims the same host", "key": " " },
+    { "type": "assert", "assert": "contains", "value": "Bulk Actions" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Bulk Actions" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

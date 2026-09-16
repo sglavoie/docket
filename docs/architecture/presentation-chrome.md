@@ -256,23 +256,33 @@ the one core operation that reports success as well as refusal — a menu row cl
 its dropdown over the rows it changed, so silence would read as a swallowed press
 rather than as a change already on screen.
 
-The dropdown is drawn inline rather than composited. It is written into the
-content stream immediately under the bar row, left-padded to the open label's
-`StartCol` and clamped by `overlayPopup`'s own arithmetic so the right edge
-stays on screen — and it is the entire frame. `RenderOutlinerTreeContent` branches
-to `renderOutlinerMenuFrame` before it consults the row count, so an open menu
-draws the bar row and the block alone: no operational title, no suggestion pane,
-no rows, and no `ComputeOutlinerViewport` call at all. The list is not shrunk to
-make room for a menu, which is what stops every row on screen from stepping down
-and back up once per press; skipping the window authority is what leaves
-`ViewScrollOffset` and `LastViewport` holding the window the last list frame drew,
-which is both the window the close redraws and the one a key re-emitted through
-the non-modal arm pages against. The branch is keyed on the drawn block rather
-than on the `MenuBar` gate, since a dropdown that resolved to nothing must fall back
-to an ordinary frame rather than blank the view. `menuBarDropdownRowBudget` then
-spends what the hidden list freed: `ContentHeight` plus the undrawn title row,
-less `StatusStripHeight`, because the shell pins that strip and a box claiming
-its rows would be clipped rather than scrolled. It reuses `RenderOverlayBox` and `RenderCompactListSurface`
+The dropdown is composited over the view it was opened from, not written into the
+content stream in place of it. `RenderOutlinerTreeContent` renders the host first
+— bar row, operational title, suggestion pane, the window `ComputeOutlinerViewport`
+returns, the Peek dock — and hands it to `composeOutlinerModal`, the one seam both
+of the Outliner's view-local modals take. A resolved dropdown goes through
+`chrome.OverlayPopupDimmedAt`, anchored at `outlinerHostHeaderRows()` and at the
+open label's `StartCol`, so the bar row and the title carrying the workspace pulse
+are never covered and the box lands under the label it belongs to; the relation
+picker goes through the bottom-anchored `chrome.OverlayPopupDimmed`, fitted to the
+same `outlinerModalBudget`, so it keeps that header too. Both dim the host through
+one `DimContent` call over the composed frame, so the compositing is one pass and
+a modal never renders another modal's frame as its base.
+
+The host is drawn whole and then covered, which is what stops every row on screen
+from stepping down and back up once per press: the box occupies rows rather than
+displacing them, and `MenuBarVisible()` is already true while a menu is open, so
+`ContentHeight()` is the same number the close redraws against. `ViewScrollOffset`
+and `LastViewport` therefore hold the window the list frame just drew — the one
+the close redraws and the one a key re-emitted through the non-modal arm pages
+against — and an open Peek dock, a multi-select summary, and a visual selection
+are all still underneath, in place, for the same reason. The compositing is keyed
+on the drawn block rather than on the `MenuBar` gate, since a dropdown that
+resolved to nothing must leave the host alone rather than dim it for no box.
+`outlinerModalBudget` is what the anchor leaves — the frame height less
+`StatusStripHeight`, less the reserved header rows — and it is the box's own
+budget, so a menu too tall for it scrolls its list inside the box instead of
+losing interior rows to `FitOverlayPopupHeight`. It reuses `RenderOverlayBox` and `RenderCompactListSurface`
 over a surface rebuilt each frame, sized to its longest entry rather than to a
 fraction of the screen, since a box anchored under one label that claimed three
 fifths of the terminal would read as a modal. The two stored indices are the

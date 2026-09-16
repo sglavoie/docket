@@ -143,6 +143,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"notes-responsive-preview.json",
 		"conflict-browser-open.json",
 		"conflict-browser-narrow-layout.json",
+		"menu-over-dimmed-host.json",
 		"outliner-menu-bar.json",
 		"outliner-menu-bar-persist.json",
 		"filter-tag-rename.json",
