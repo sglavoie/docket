@@ -1,0 +1,43 @@
+{
+  "name": "relocation-recovery-subtree-move",
+  "fixture": "inbox-triage",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "past the first group's two tasks", "key": "j" },
+    { "type": "key", "label": "onto the nested Inbox parent, the second group's first row", "key": "j" },
+    { "type": "key", "label": "copy the cursor row's title", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Beta intake parent awaiting triage" },
+    { "type": "key", "label": "move the parent to another project", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: Beta intake parent" },
+    { "type": "key", "label": "pick the first destination, Triage Alpha", "key": "enter" },
+    {
+      "type": "assert",
+      "label": "the parent and the child it carried are drawn in the destination group",
+      "assert": "contains",
+      "value": "[triage-alpha] Beta intake parent"
+    },
+    { "type": "key", "label": "copy whatever the sweep continued onto", "key": "y" },
+    {
+      "type": "assert",
+      "label": "the child left with its parent, so the sweep walks past it to the sibling that stayed instead of turning back to the task already read",
+      "assert": "clipboard_contains",
+      "value": "Beta intake trailing remainder"
+    },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "move the cursor while the cross-project reload is still in flight", "key": "k" },
+    { "type": "wait", "label": "drain the asynchronous reload" },
+    { "type": "key", "label": "copy the row the user chose", "key": "y" },
+    {
+      "type": "assert",
+      "label": "the reload landed on the user's own cursor rather than dragging it back to the recovered successor",
+      "assert": "clipboard_contains",
+      "value": "Beta intake child promoted on departure"
+    },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the 60x20 minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -132,9 +132,13 @@ A task that left the group — completed out of Backlog, moved to another projec
 edited into a value your filters no longer admit, deferred out of the mode
 entirely — is not followed. The cursor continues the sweep from the position it
 vacated: first a child promoted into its parent's place, then the next task you
-did not select, then the previous one. Group headers and checklist rows are
-skipped, and in a bulk act the rest of the selection is skipped too, so the
-cursor crosses a project group header instead of stopping on it. If nothing is
+did not select that is still on screen, then the previous one. Group headers and
+checklist rows are skipped, and in a bulk act the rest of the selection is
+skipped too, so the cursor crosses a project group header instead of stopping on
+it. Subtasks that left with their parent are skipped on the same terms — moving a
+parent to another project takes its children along, and the cursor keeps going
+forward to the next task that stayed rather than turning back to work you have
+already read. If nothing is
 left to land on, the cursor stays where the rebuilt list puts it.
 
 None of that is a relocation jump: a departure records nothing for `Ctrl+O`, and

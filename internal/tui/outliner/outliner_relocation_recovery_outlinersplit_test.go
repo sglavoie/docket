@@ -351,6 +351,123 @@ func TestTaskLineEditFollowsAnInGroupEdit(t *testing.T) {
 	}
 }
 
+// moveSubtreeToProject reproduces the storage half of a `%project` move: the
+// named tasks leave their project together, exactly as the commit relocates a
+// parent and the descendants it carries.
+func moveSubtreeToProject(from, to *models.Project, moved ...*models.Task) {
+	leaving := make(map[string]bool, len(moved))
+	for _, task := range moved {
+		leaving[task.ID] = true
+	}
+	retained := make([]*models.Task, 0, len(from.Tasks))
+	for _, task := range from.Tasks {
+		if !leaving[task.ID] {
+			retained = append(retained, task)
+		}
+	}
+	from.Tasks = retained
+	from.BuildTaskTree()
+	to.Tasks = append(to.Tasks, moved...)
+	to.BuildTaskTree()
+}
+
+// TestRelocationCaptureRecordsTheWholeOrderedNeighborhood pins what the capture
+// freezes: every unselected task on each side in projection order, outward from
+// the cursor. One identity per side cannot answer a departure that takes rows
+// the keypress never named.
+func TestRelocationCaptureRecordsTheWholeOrderedNeighborhood(t *testing.T) {
+	lead := primaryRowsTask("lead", models.StateInbox)
+	parent := primaryRowsTask("parent", models.StateInbox)
+	child := primaryRowsTask("child", models.StateInbox)
+	child.ParentID = &parent.ID
+	trailing := primaryRowsTask("trailing", models.StateInbox)
+	alpha := primaryRowsProject("alpha", lead, parent, child, trailing)
+	outliner := inboxModeOutliner(t, alpha)
+
+	cursorToTaskRow(t, outliner, parent.ID)
+	capture := captureRelocation(t, outliner, taskref.For(parent, alpha))
+
+	wantFollowing := []taskref.TaskIdentity{taskref.For(child, alpha), taskref.For(trailing, alpha)}
+	if got := capture.FollowingNeighbors; !identitiesEqual(got, wantFollowing) {
+		t.Fatalf("following neighbors = %+v, want %+v", got, wantFollowing)
+	}
+	wantPreceding := []taskref.TaskIdentity{taskref.For(lead, alpha)}
+	if got := capture.PrecedingNeighbors; !identitiesEqual(got, wantPreceding) {
+		t.Fatalf("preceding neighbors = %+v, want %+v", got, wantPreceding)
+	}
+	if capture.Origin.Following != wantFollowing[0] {
+		t.Fatalf("jump frame successor = %+v, want the nearest neighbor %+v", capture.Origin.Following, wantFollowing[0])
+	}
+	if capture.Origin.Preceding != wantPreceding[0] {
+		t.Fatalf("jump frame predecessor = %+v, want the nearest neighbor %+v", capture.Origin.Preceding, wantPreceding[0])
+	}
+}
+
+func identitiesEqual(got, want []taskref.TaskIdentity) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestTaskLineEditRecoversPastDescendantsThatLeftWithTheParent is the defect a
+// single captured successor could not answer: a `%project` move takes the
+// cursor task's child with it, so the nearest following identity is gone from
+// the projection too. The sweep continues forward onto the sibling that stayed
+// rather than turning back to the task the user already read.
+func TestTaskLineEditRecoversPastDescendantsThatLeftWithTheParent(t *testing.T) {
+	lead := primaryRowsTask("lead", models.StateInbox)
+	parent := primaryRowsTask("parent", models.StateInbox)
+	child := primaryRowsTask("child", models.StateInbox)
+	child.ParentID = &parent.ID
+	trailing := primaryRowsTask("trailing", models.StateInbox)
+	alpha := primaryRowsProject("alpha", lead, parent, child, trailing)
+	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateInbox))
+	outliner := inboxModeOutliner(t, alpha, beta)
+
+	cursorToTaskRow(t, outliner, parent.ID)
+	capture := captureRelocation(t, outliner, taskref.For(parent, alpha))
+	moveSubtreeToProject(alpha, beta, parent, child)
+	relocationRebuild(outliner)
+	_, recorded := outliner.FinishTaskLineEditRelocation(capture, taskref.For(parent, beta))
+
+	if recorded {
+		t.Fatal("a cross-project edit recorded a jump entry")
+	}
+	requireCursorRow(t, outliner, trailing.ID)
+	requireCursorTask(t, outliner, taskref.For(trailing, alpha))
+}
+
+// TestTaskLineEditRecoversBackwardOnlyWithNoSurvivorAhead is the other half of
+// that order: the preceding task is still the answer, and only when nothing the
+// projection drew after the cursor survived — here because the departing subtree
+// held the last rows in the view.
+func TestTaskLineEditRecoversBackwardOnlyWithNoSurvivorAhead(t *testing.T) {
+	lead := primaryRowsTask("lead", models.StateInbox)
+	parent := primaryRowsTask("parent", models.StateInbox)
+	child := primaryRowsTask("child", models.StateInbox)
+	child.ParentID = &parent.ID
+	alpha := primaryRowsProject("alpha", lead)
+	beta := primaryRowsProject("beta", parent, child)
+	outliner := inboxModeOutliner(t, alpha, beta)
+
+	cursorToTaskRow(t, outliner, parent.ID)
+	capture := captureRelocation(t, outliner, taskref.For(parent, beta))
+	if want := []taskref.TaskIdentity{taskref.For(child, beta)}; !identitiesEqual(capture.FollowingNeighbors, want) {
+		t.Fatalf("following neighbors = %+v, want only the departing child %+v", capture.FollowingNeighbors, want)
+	}
+	moveSubtreeToProject(beta, alpha, parent, child)
+	relocationRebuild(outliner)
+	outliner.FinishTaskLineEditRelocation(capture, taskref.For(parent, alpha))
+
+	requireCursorRow(t, outliner, lead.ID)
+}
+
 // TestTaskLineEditRecoversFromACrossProjectMove is the departure the editor can
 // spell that no other key can: `%project` moves the task out of the block
 // entirely, and the cursor stays with the work the user was reading.

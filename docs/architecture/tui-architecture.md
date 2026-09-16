@@ -65,14 +65,26 @@ visibility must not carry the cursor after it.
 
 `relocationRecoveryTarget` is where the sweep continues from, in one order for
 every surface: the first surviving child promoted into the position the parent
-vacated, then the origin's `Following` — the first task row after the cursor that
-is not itself a mutation target — then its `Preceding`. Every candidate is a task
+vacated, then the first task in the capture's `FollowingNeighbors` that the
+rebuilt rows still draw, then the first one in its `PrecedingNeighbors`. Those
+two runs are every unselected task the projection held after and before the
+cursor row, whole and in the order the sweep reads them, because a mutation moves
+rows it never named: a `%project` move carries the cursor task's descendants with
+it, and those descendants are exactly the nearest neighbors. Recording one
+identity per side would therefore read a departed child as "nothing survived
+ahead" and turn the cursor back onto work the user had already read, so each run
+is walked and the preceding side is reached only once the whole following side
+has failed to resolve. `Origin.Following` and `Origin.Preceding` keep the nearest
+identity on each side for jump-history resolution, which asks where the user was
+standing rather than where a sweep continues.
+
+Every candidate is a task
 row by construction, so headers, separators, and checklist rows are skipped
 without a second predicate. The children are recorded at the keypress rather than
 read back off the rebuilt rows, because a folded parent renders none of them. The
 child is looked for inside the captured group, since that is what promotion
-means; the two neighbors are looked for anywhere, since the sweep crosses a group
-boundary the moment the vacated group runs out of rows.
+means; the two neighbor runs are looked for anywhere, since the sweep crosses a
+group boundary the moment the vacated group runs out of rows.
 `recoverCursorAfterDeparture` writes `m.Cursor` and nothing else:
 `ComputeOutlinerViewport` remains the single window authority and no flash is
 emitted, since the user's own keypress caused the move. With nothing to recover

@@ -317,11 +317,24 @@ type OutlinerRelocationCapture struct {
 	// because a folded parent renders none of them, so the rebuilt rows cannot be
 	// asked afterwards which child took its place.
 	PromotedChildren []taskref.TaskIdentity
-	Origin           OutlinerJumpPosition
-	Projection       string
-	TransactionID    string
-	Settled          bool
-	SettledCursor    int
+	// FollowingNeighbors and PrecedingNeighbors are every unselected task the
+	// projection drew after and before the cursor row, whole and in the order the
+	// sweep reads them: outward from the cursor. One identity on each side is not
+	// enough, because a mutation moves more than the rows it names — a moved parent
+	// carries its descendants into another project, and the nearest neighbor is
+	// exactly the one most likely to be such a descendant. Recording the ordered
+	// neighborhood rather than its first entry is what lets the recovery walk past
+	// the tasks that departed with the target and land on the first one that
+	// survived. They are captured whole and never sampled: a truncated list reads
+	// as "nothing survived ahead" and sends the sweep backward, which is the
+	// failure a cap would reintroduce.
+	FollowingNeighbors []taskref.TaskIdentity
+	PrecedingNeighbors []taskref.TaskIdentity
+	Origin             OutlinerJumpPosition
+	Projection         string
+	TransactionID      string
+	Settled            bool
+	SettledCursor      int
 
 	// ReviewAdvance marks a capture that carries a review acknowledgement rather
 	// than a relocation. The two are different questions about the same commit:
@@ -384,35 +397,51 @@ func (m *OutlinerModel) CaptureOutlinerRelocation(targets []taskref.TaskIdentity
 
 	cursorRow := m.Rows[m.Cursor]
 	origin := OutlinerJumpPosition{RowIndex: m.Cursor, ScrollOffset: m.ViewScrollOffset}
-	for i := m.Cursor + 1; i < len(m.Rows); i++ {
-		row := m.Rows[i]
-		if !row.IsTaskRow() || row.Task == nil {
-			continue
-		}
-		identity := m.TaskIdentityForRow(row)
-		if identity.Valid() && !targetSet[identity] {
-			origin.Following = identity
-			break
-		}
+	following := m.unselectedNeighborIdentities(m.Cursor+1, 1, targetSet)
+	preceding := m.unselectedNeighborIdentities(m.Cursor-1, -1, targetSet)
+	// A jump frame keeps one identity per side: it answers where the user was
+	// standing rather than where a sweep continues, and resolveJumpPosition already
+	// falls back to the recorded row when neither resolves. The nearest neighbor on
+	// each side is that answer, and it is read off the same scan so the frame and
+	// the recovery can never disagree about order.
+	if len(following) > 0 {
+		origin.Following = following[0]
 	}
-	for i := m.Cursor - 1; i >= 0; i-- {
-		row := m.Rows[i]
-		if !row.IsTaskRow() || row.Task == nil {
-			continue
-		}
-		identity := m.TaskIdentityForRow(row)
-		if identity.Valid() && !targetSet[identity] {
-			origin.Preceding = identity
-			break
-		}
+	if len(preceding) > 0 {
+		origin.Preceding = preceding[0]
 	}
 	return &OutlinerRelocationCapture{
-		Task:             cursorTask,
-		Group:            cursorRow.Group,
-		PromotedChildren: promotableChildIdentities(cursorRow, cursorTask.ProjectID, targetSet),
-		Origin:           origin,
-		Projection:       m.RelocationHistory.Projection,
+		Task:               cursorTask,
+		Group:              cursorRow.Group,
+		PromotedChildren:   promotableChildIdentities(cursorRow, cursorTask.ProjectID, targetSet),
+		FollowingNeighbors: following,
+		PrecedingNeighbors: preceding,
+		Origin:             origin,
+		Projection:         m.RelocationHistory.Projection,
 	}
+}
+
+// unselectedNeighborIdentities walks the drawn rows outward from start in the
+// given direction and collects every task the mutation did not name, in the
+// order it meets them. Non-task rows are skipped exactly as the recovery skips
+// them, and a duplicate identity — All draws one task in several lanes — is kept
+// only once, so the sweep never spends two attempts on one task.
+func (m *OutlinerModel) unselectedNeighborIdentities(start, step int, targets map[taskref.TaskIdentity]bool) []taskref.TaskIdentity {
+	var identities []taskref.TaskIdentity
+	seen := make(map[taskref.TaskIdentity]bool)
+	for i := start; i >= 0 && i < len(m.Rows); i += step {
+		row := m.Rows[i]
+		if !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		identity := m.TaskIdentityForRow(row)
+		if !identity.Valid() || targets[identity] || seen[identity] {
+			continue
+		}
+		seen[identity] = true
+		identities = append(identities, identity)
+	}
+	return identities
 }
 
 // promotableChildIdentities reads the cursor row's own direct children, in the
@@ -584,12 +613,19 @@ func (m *OutlinerModel) FinishOutlinerRelocation(capture *OutlinerRelocationCapt
 
 // relocationRecoveryTarget names the row that continues the sweep the departing
 // task was part of, in the one order every surface uses: the first surviving
-// child promoted into the position the parent vacated, then the first unselected
-// task that followed it, then the one that preceded it. Every candidate is a task
-// row by construction — CaptureOutlinerRelocation records none other and
-// rowIndexForTaskInGroup and RowIndexForTask match none other — so a header, a
-// separator, a checklist item, and a note row are all skipped without a second
-// predicate.
+// child promoted into the position the parent vacated, then the first surviving
+// unselected task that followed it, then the first surviving one that preceded
+// it. Every candidate is a task row by construction — CaptureOutlinerRelocation
+// records none other and rowIndexForTaskInGroup and RowIndexForTask match none
+// other — so a header, a separator, a checklist item, and a note row are all
+// skipped without a second predicate.
+//
+// Each side is walked rather than probed once, because a mutation takes rows it
+// never named: the descendants of a moved parent leave with it, and they are the
+// rows nearest the cursor. Stopping at the nearest neighbor would read a
+// departed child as "nothing survived ahead" and send the sweep backward past
+// the successor the user was heading for, so the preceding side is only reached
+// once every following neighbor has been tried.
 //
 // The child is looked for inside the captured group alone, because that is what
 // "promoted into the vacated position" means: a child of another lane was
@@ -609,11 +645,25 @@ func (m *OutlinerModel) relocationRecoveryTarget(capture *OutlinerRelocationCapt
 			return index, true
 		}
 	}
-	if index, ok := m.RowIndexForTask(capture.Origin.Following); ok {
+	if index, ok := m.firstDrawnNeighbor(capture.FollowingNeighbors); ok {
 		return index, true
 	}
-	if index, ok := m.RowIndexForTask(capture.Origin.Preceding); ok {
+	if index, ok := m.firstDrawnNeighbor(capture.PrecedingNeighbors); ok {
 		return index, true
+	}
+	return 0, false
+}
+
+// firstDrawnNeighbor answers with the row of the first captured neighbor the
+// rebuilt projection still draws. Bare visibility is the right test here, unlike
+// the retention test above it: the sweep crosses a group boundary the moment the
+// vacated group runs out of rows, so a survivor found in the next group is still
+// the successor.
+func (m *OutlinerModel) firstDrawnNeighbor(neighbors []taskref.TaskIdentity) (int, bool) {
+	for _, neighbor := range neighbors {
+		if index, ok := m.RowIndexForTask(neighbor); ok {
+			return index, true
+		}
 	}
 	return 0, false
 }

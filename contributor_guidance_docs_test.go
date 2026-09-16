@@ -909,7 +909,19 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// stated because the natural rewrite fits it to the whole frame and quietly
 	// turns a long menu's scroll into interior rows dropped out of its middle.
 	// The mechanism lives in docs/architecture/presentation-chrome.md.
-	const budget = 60180
+	// Forty-eighth raise, 60180 to 60560, for a recovery that walks its captured
+	// neighbors instead of probing one. 380 bytes buy the distinction the old
+	// sentence left to chance: "the following unselected task" reads as one
+	// identity, and one identity is exactly what a subtree move invalidates,
+	// because the row nearest the cursor is usually the child the commit carried
+	// into another project. The failure is silent and backward — the sweep lands
+	// on work the user already read — so it looks like a cursor that merely
+	// stayed put. Saying both runs are frozen whole is what forbids the natural
+	// shrink back to a single successor and the equally natural cap on how far
+	// each run reaches, since a truncated run reads as nothing surviving ahead
+	// and fails the same way.
+	// The mechanism lives in docs/architecture/tui-architecture.md.
+	const budget = 60560
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

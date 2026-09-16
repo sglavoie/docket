@@ -418,13 +418,15 @@ declared their text required, while this reads the finished screen.
   `docs/tui-testing/scenarios/inbox-triage-advance-across-project-groups.json`,
   `docs/tui-testing/scenarios/inbox-triage-advance-promotes-children.json`,
   `docs/tui-testing/scenarios/inbox-triage-undo-does-not-advance.json`,
+  `docs/tui-testing/scenarios/relocation-recovery-subtree-move.json`,
   `docs/tui-testing/scenarios/review-acknowledge-and-advance.json`,
   `docs/tui-testing/scenarios/recovery-origin-guidance.json`,
   `docs/tui-testing/scenarios/workflow-chord-destinations.json`,
   `docs/tui-testing/scenarios/combined-promote-deadline-step-move.json`
 - Contracts: `CLAUDE.md` — retention being group-scoped rather than a bare
-  visibility test, the recovery order of promoted child then following then
-  preceding task, `R`'s successor sequence being captured before the commit and
+  visibility test, the recovery order of promoted child then the first surviving
+  following task then the first surviving preceding one, each side walked whole
+  because a moved parent takes descendants the keypress never named, `R`'s successor sequence being captured before the commit and
   rechecked after it, expanding no fold and never wrapping, "a refusal advances
   nothing; undo takes the mutation back and leaves the cursor", the periodic
   tick's invalidation remaining owed under an overlay and restoring the cursor by

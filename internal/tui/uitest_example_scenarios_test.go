@@ -68,6 +68,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"inbox-triage-advance-across-project-groups.json",
 		"inbox-triage-advance-promotes-children.json",
 		"inbox-triage-undo-does-not-advance.json",
+		"relocation-recovery-subtree-move.json",
 		"fresh-install-capture.json",
 		"fresh-install-default.json",
 		"filter-chord-priority.json",
