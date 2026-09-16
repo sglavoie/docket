@@ -371,13 +371,18 @@ as a glyph — with the age appended for the two states whose age is a question
 about the work, Doing and Waiting, read off `StateChangedAt` — then the priority
 as a number under the same `ValidatePriority` gate the badge takes, the planning
 collection, and the two boolean axes as bare words, since a label beside `pinned`
-would say it twice. `inlinePeekDatesLine` is the task clock: created, updated,
-deadline, check-in with its repeat, last review, a recent wake, and a repeated
-deferral. Both are `label value` pairs joined by middots on one wrapped line
+would say it twice. `inlinePeekScheduleLine` follows it with what the task still
+owes: the deadline, a deferral still pending, and the next check-in with its
+repeat. The task's spent instants are not there — `inlinePeekHistoryLine` carries
+created, updated, last review, a recent wake, and a repeated deferral, and it is
+the last section in the document, because nothing in it is owed and a reader
+consults it after deciding what to do rather than on the way to that decision.
+All three are `label value` pairs joined by middots on one wrapped line
 rather than a section each, because a column of six one-word facts would spend
-the whole window saying what fits in two. Both key on stored values — the state
-clock and the stored instants, never the rendered durations — so the minute tick
-redraws them without throwing a reader back to the top.
+the whole window saying what fits in two, and an empty value is no field, which
+is how each line omits what the task does not carry. All three key on stored
+values — the state clock and the stored instants, never the rendered durations —
+so the minute tick redraws them without throwing a reader back to the top.
 
 Planning membership is the one field neither readable off the task nor derivable
 in a pure renderer: it is an explicit project-qualified collection in the

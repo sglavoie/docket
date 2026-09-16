@@ -8,7 +8,7 @@
     { "type": "key", "label": "select the task with additive detail", "key": "end" },
     { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
-    { "type": "assert", "label": "the dates line survives minimum width", "assert": "contains", "value": "created" },
+    { "type": "assert", "label": "the history line closing the document survives minimum width", "assert": "contains", "value": "created" },
     { "type": "assert", "assert": "contains", "value": "· updated" },
     { "type": "assert", "label": "Peek never restates the checklist the rows already carry", "assert": "not_contains", "value": "Checklist:" },
     { "type": "assert", "assert": "not_contains", "value": "#7" },

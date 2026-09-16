@@ -560,9 +560,13 @@ Row and Peek budget:
   `inlinePeekBodyRows` bounds visibility alone, a short document pads, and
   `positionLine` is a further row drawn for every document, `0 above · 0 below`
   included. Nothing sits outside that window and the document has no header:
-  body order is title, parent, status, dates, resume, description, checklist
-  count, attachments, comment count, `Dependencies`/`Dependents`, context, tags;
-  place a new section deliberately. The whole title and the uncompacted ancestor
+  body order is title, parent, status, schedule, resume, description, checklist
+  count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
+  history; place a new section deliberately. Schedule is what is still owed —
+  deadline, pending deferral, check-in, repeat — and history what is already
+  spent — created, updated, last review, a lapsed wake, the avoidance count — so
+  the two never share a line and history closes the document. The deferral
+  instant keys both, since either half alone may be the one drawn. The whole title and the uncompacted ancestor
   chain lead it, so a clipped row is recovered by scrolling and the row's `…`
   never has a counterpart that reassembles it. Status spells state — with a
   Doing/Waiting age off `StateChangedAt` — priority, planning membership, pinned,
@@ -580,7 +584,7 @@ Row and Peek budget:
   project share one window. Task Peek keeps its comment count.
 - Peek's window is one content-row offset, session-only, keyed by typed Peek
   owner, document fingerprint, and terminal size; schedule date, cadence, and
-  last-review instant are part of that fingerprint. The dates line shows a
+  last-review instant are part of that fingerprint. The schedule line shows a
   future check-in even while the row stays quiet.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
   the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`

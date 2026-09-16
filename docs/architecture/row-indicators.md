@@ -13,12 +13,19 @@ other column on the title, while Peek is the complete document one `b` away.
 Nothing was deleted from the product; each signal has exactly one surface now
 instead of a truncated copy and a whole one.
 
-A deferral is therefore state-dependent prose on the Peek dates line rather than
-a row segment. `inlinePeekDatesLine` names `defer <date>` while
-`IsDeferredAt(now)` holds, then `woke <age>` for `DeferWakeWindow` (72h, defined
-in `internal/tui/query/primary_view_shared.go`), then nothing.
+A deferral is therefore state-dependent prose in the Peek body rather than
+a row segment, and its two halves sit on different lines because they point
+opposite ways. `inlinePeekScheduleLine` names `defer <date>` while
+`IsDeferredAt(now)` holds, since that is work the task still owes; once the
+instant lapses `inlinePeekHistoryLine` names `woke <age>` for `DeferWakeWindow`
+(72h, defined in `internal/tui/query/primary_view_shared.go`), since a wake is
+something that already happened; after that neither line carries it.
 `taskWokeRecently` is the one lapsed-deferral predicate and `FormatRecencyAge`
-the one age token, so the two halves cannot be formatted two ways.
+the one age token, so the two halves cannot be formatted two ways. The stored
+instant is keyed into both `inlinePeekScheduleKey` and `inlinePeekHistoryKey`
+for the same reason a section key identifies its own content: exactly one of the
+two sections is ever drawn from it, so keying it once would drop it from the
+document fingerprint whenever the other half is the one on screen.
 The workspace pulse deliberately carries no `woke` component: lapsed deferrals
 name work that requires navigation before action. Its fourth component is instead
 the current local day's Done count, a non-deficit progress signal, and the ladder
@@ -133,7 +140,8 @@ rows as its one consumer; its `...Title` palette keys are historical names kept
 because the palette is a published surface.
 
 Repeated deferral starts at `DeferCount >= 3` and is Peek's alone:
-`inlinePeekDatesLine` appends `deferred ×N`, so it opens no section of its own in
+`inlinePeekHistoryLine` appends `deferred ×N` — avoidance is something the task
+has already spent, not something it owes — so it opens no section of its own in
 the Peek body and costs the row nothing at any width. `taskHasRepeatedDeferrals`
 stays the one threshold predicate.
 

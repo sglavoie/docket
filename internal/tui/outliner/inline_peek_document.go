@@ -161,7 +161,7 @@ type inlinePeekSection struct {
 // row keeps an abbreviated form of a few signals and drops the rest, and every
 // one of them is spelled here in full. The whole title leads, then the ancestor
 // chain and the two summary lines, then the resume note and description, then
-// the longer supporting material.
+// the longer supporting material, and the task's history last.
 func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 	if opts.Task == nil || opts.Width <= 0 {
 		return inlinePeekDocument{}
@@ -194,7 +194,7 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSection {
 	task := opts.Task
 	now := time.Now()
-	sections := make([]inlinePeekSection, 0, 13)
+	sections := make([]inlinePeekSection, 0, 14)
 	add := func(key string, lines []string) {
 		if len(lines) == 0 {
 			return
@@ -209,11 +209,12 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
 
 	// The two summary lines follow, densest first: what the task is right now,
-	// then when. Both are `label value` pairs on one wrapped line rather than a
-	// section each, because a row of six one-word facts would spend the whole
-	// window saying what fits in two.
+	// then what it still owes. Both are `label value` pairs on one wrapped line
+	// rather than a section each, because a row of six one-word facts would spend
+	// the whole window saying what fits in two. The task's spent instants are not
+	// here: they are history, and history is the last thing in the document.
 	add("status:"+inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width))
-	add("dates:"+inlinePeekDatesKey(task), inlinePeekDatesLines(task, now, opts.Indent, width))
+	add("schedule:"+inlinePeekScheduleKey(task), inlinePeekScheduleLines(task, now, opts.Indent, width))
 
 	// Resume precedes the description because it answers the question Peek is
 	// opened to ask — where was this left — and the description answers a
@@ -251,6 +252,13 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// readable, and both are rendered whole rather than truncated.
 	add("context:"+task.Context, inlinePeekContextLines(task, opts.Indent, width))
 	add("tags:"+strings.Join(listsurface.OrderedTaskTags(task.Tags), ","), inlinePeekTagsLines(task, opts.Indent, width))
+
+	// History is last because nothing in it is owed. How old a task is, when it
+	// was last touched or reviewed, and how often it has been pushed away are
+	// what a reader consults after deciding what to do, so they sit below every
+	// section that answers that question rather than between the schedule and
+	// the task's own text.
+	add("history:"+inlinePeekHistoryKey(task), inlinePeekHistoryLines(task, now, opts.Indent, width))
 	return sections
 }
 
@@ -286,10 +294,12 @@ func inlinePeekTitleLines(task *models.Task, indent string, width int) []string 
 }
 
 // inlinePeekFields collects `label value` pairs into one dense line. Peek has
-// two such lines — what the task is and when it is — and they share this so a
-// label reads the same way on both: muted label, keyed value, a middot between
-// fields. Nothing here measures: the line is handed to the ordinary wrapping
-// layout like every other section.
+// three such lines — what the task is, what it still owes, and what it has
+// already spent — and they share this so a label reads the same way on all
+// three: muted label, keyed value, a middot between fields. An empty value is
+// no field, which is how each line omits what the task does not carry. Nothing
+// here measures: the line is handed to the ordinary wrapping layout like every
+// other section.
 type inlinePeekFields struct {
 	parts []string
 }
@@ -401,74 +411,49 @@ func inlinePeekChecklistKey(task *models.Task) string {
 	return strings.Join(states, ",")
 }
 
-// inlinePeekDatesLine names the task clock the row does not carry: how long ago
-// it was created and last touched, its deadline and check-in schedule, when it
-// was last reviewed, when a pending deferral brings it back, whether it recently
-// came back from one, and how many times it has been deferred. The row keeps the
-// deadline alone, so every other instant on a task is read here.
-// Labels stay muted and values take the footer's key color, so the durations
-// read as data rather than as prose.
-func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
-	if task == nil || width <= 0 {
+// inlinePeekScheduleLine names what the task still owes: its deadline, the day a
+// pending deferral brings it back, and its check-in with the cadence that
+// repeats it. Every field here is a date in front of the task, which is why they
+// are one line beneath the status summary rather than mixed in with the instants
+// the task has already spent — a reader deciding what to do next reads this line
+// and stops.
+//
+// The row keeps the deadline alone, so the other three are read here.
+// Labels stay muted and values take the footer's key color, so the dates read as
+// data rather than as prose.
+func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
+	if task == nil {
 		return ""
 	}
-
-	parts := make([]string, 0, 8)
-	field := func(label, value string) {
-		parts = append(parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
-	}
-	if age := query.FormatRecencyAge(task.CreatedAt, now); age != "" {
-		field("created", age)
-	}
-	if age := query.FormatRecencyAge(task.UpdatedAt, now); age != "" {
-		field("updated", age)
-	}
+	var fields inlinePeekFields
 	if task.DueDate != nil {
-		field("due", chrome.DueGrammarValue(task))
+		fields.add("due", chrome.DueGrammarValue(task))
+	}
+	// The pending half of the deferral alone. Its lapsed half is a wake that
+	// already happened, so it is history and is named there instead.
+	if task.DeferredUntil != nil && task.IsDeferredAt(now) {
+		fields.add("defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		field("check-in", task.NextCheckIn.Format(time.DateOnly))
+		fields.add("check-in", task.NextCheckIn.Format(time.DateOnly))
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
 			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)
 		}
-		field("repeat", repeat)
+		fields.add("repeat", repeat)
 	}
-	if task.LastReviewedAt != nil {
-		field("last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
-	}
-	// The deferral's two halves, in the one order they can occur. The row carries
-	// neither now, so this is where a pending deferral names the day the task
-	// comes back and where a lapsed one still says it came back recently.
-	if task.DeferredUntil != nil && task.IsDeferredAt(now) {
-		field("defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
-	}
-	if taskWokeRecently(task, now) {
-		field("woke", query.FormatRecencyAge(*task.DeferredUntil, now))
-	}
-	if taskHasRepeatedDeferrals(task) {
-		field("deferred", fmt.Sprintf("×%d", task.DeferCount))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	return strings.Join(parts, theme.HelpStyle.Render(" · "))
+	return fields.line()
 }
 
-func inlinePeekDatesLines(task *models.Task, now time.Time, indent string, width int) []string {
-	return inlinePeekStyledLines("", inlinePeekDatesLine(task, now, width), indent, width)
+func inlinePeekScheduleLines(task *models.Task, now time.Time, indent string, width int) []string {
+	return inlinePeekStyledLines("", inlinePeekScheduleLine(task, now), indent, width)
 }
 
-// inlinePeekDatesKey identifies the clock by its stored instants rather than by
-// the rendered durations, which drift with every tick and would otherwise
-// restart Peek's paging on the minute.
-func inlinePeekDatesKey(task *models.Task) string {
-	parts := []string{
-		"created:" + task.CreatedAt.Format(time.RFC3339Nano),
-		"updated:" + task.UpdatedAt.Format(time.RFC3339Nano),
-		"defer-count:" + strconv.Itoa(task.DeferCount),
-		"check-in-repeat:" + strconv.Itoa(task.CheckInRepeatDays),
-	}
+// inlinePeekScheduleKey identifies the schedule by its stored instants rather
+// than by anything rendered from the clock, so a tick that moves no stored value
+// leaves Peek's window where the reader left it.
+func inlinePeekScheduleKey(task *models.Task) string {
+	parts := []string{"check-in-repeat:" + strconv.Itoa(task.CheckInRepeatDays)}
 	if task.DueDate != nil {
 		parts = append(parts, "due:"+task.DueDate.Format(time.RFC3339Nano))
 	}
@@ -477,6 +462,53 @@ func inlinePeekDatesKey(task *models.Task) string {
 	}
 	if task.NextCheckIn != nil {
 		parts = append(parts, "check-in:"+task.NextCheckIn.Format(time.RFC3339Nano))
+	}
+	return strings.Join(parts, "|")
+}
+
+// inlinePeekHistoryLine names the instants the task has already spent: how long
+// ago it was created and last touched, when it was last reviewed, whether it
+// recently came back from a deferral, and how many times it has been deferred.
+// None of them is owed, so they close the document rather than standing between
+// the schedule and the task's own text.
+func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
+	if task == nil {
+		return ""
+	}
+	var fields inlinePeekFields
+	fields.add("created", query.FormatRecencyAge(task.CreatedAt, now))
+	fields.add("updated", query.FormatRecencyAge(task.UpdatedAt, now))
+	if task.LastReviewedAt != nil {
+		fields.add("last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
+	}
+	// The lapsed half of the deferral: a task that came back is work again, and
+	// the row carries no deferral at all, so this is where the wake is said.
+	if taskWokeRecently(task, now) {
+		fields.add("woke", query.FormatRecencyAge(*task.DeferredUntil, now))
+	}
+	if taskHasRepeatedDeferrals(task) {
+		fields.add("deferred", fmt.Sprintf("×%d", task.DeferCount))
+	}
+	return fields.line()
+}
+
+func inlinePeekHistoryLines(task *models.Task, now time.Time, indent string, width int) []string {
+	return inlinePeekStyledLines("", inlinePeekHistoryLine(task, now), indent, width)
+}
+
+// inlinePeekHistoryKey identifies the history by its stored instants rather than
+// by the rendered durations, which drift with every tick and would otherwise
+// restart Peek's paging on the minute. The deferral instant is keyed here as
+// well as in the schedule because the wake is read off it: a section's key must
+// identify that section's own content whether or not the other one is drawn.
+func inlinePeekHistoryKey(task *models.Task) string {
+	parts := []string{
+		"created:" + task.CreatedAt.Format(time.RFC3339Nano),
+		"updated:" + task.UpdatedAt.Format(time.RFC3339Nano),
+		"defer-count:" + strconv.Itoa(task.DeferCount),
+	}
+	if task.DeferredUntil != nil {
+		parts = append(parts, "deferred:"+task.DeferredUntil.Format(time.RFC3339Nano))
 	}
 	if task.LastReviewedAt != nil {
 		parts = append(parts, "last-review:"+task.LastReviewedAt.Format(time.RFC3339Nano))

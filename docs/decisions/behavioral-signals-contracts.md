@@ -12,7 +12,7 @@ first and position 10 disappears last. The final order declared as
 
 | Position | Segment | Reason |
 | ---: | --- | --- |
-| 1 | `deferCount` | It is a supporting count, and Peek repeats it on the existing dates line. |
+| 1 | `deferCount` | It is a supporting count, and Peek repeats it on the existing history line. |
 | 2 | `checklist` | The row badge and Peek still carry the count. |
 | 3 | `comments` | The row badge and Peek still carry the count. |
 | 4 | `attachments` | The row badge and Peek still carry the count. |
@@ -72,12 +72,14 @@ top of the ladder alone. Waiting held a second tint until this consolidation,
 which made the quietest work in the workspace look like the most urgent.
 
 The repeated-deferral signal starts at the third deferral. For
-`DeferCount >= 3`, the `deferred ×N` token joins Peek's existing dates line
+`DeferCount >= 3`, the `deferred ×N` token joins Peek's existing history line
 rather than consuming a new line in the five-line Peek ladder; smaller values
 render no count. The threshold and the wording are unchanged by the
-consolidation — what changed is that the dates line is now the signal's only
-surface rather than its durable copy. Repeated deferral stays an independent
-behavioral signal: the pending `defer` date and the recent `woke` marker come
+consolidation — what changed is that a Peek line is now the signal's only
+surface rather than its durable copy, and that the line is the history one,
+since an avoidance count is something the task already spent. Repeated deferral
+stays an independent behavioral signal: the pending `defer` date on the schedule
+line and the recent `woke` marker beside the count come
 and go on their own schedule while the count holds at or above the threshold.
 
 ## Stale work

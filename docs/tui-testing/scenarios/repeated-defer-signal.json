@@ -17,7 +17,9 @@
     { "type": "key", "label": "the flat ranked list is the one a jump leaves", "key": "o" },
     { "type": "key", "key": "r" },
     { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
-    { "type": "key", "label": "Peek keeps the count on its existing dates line", "key": "b" },
+    { "type": "key", "label": "Peek keeps the count, on the history line the rest of the task's spent instants share", "key": "b" },
+    { "type": "assert", "label": "avoidance is something the task already spent, so the schedule at the top of the document does not name it", "assert": "not_contains", "value": "deferred ×3" },
+    { "type": "key", "label": "page to the history at the end of the document", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "deferred ×3" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

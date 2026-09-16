@@ -342,6 +342,27 @@ the drop ladder's order nor any counter.
   offset. Cover reachability rather than position counts: a section that moved
   and a section that vanished look identical to an index assertion.
 
+Landed as: the one mixed dates line is two sections. `inlinePeekScheduleLine` is
+what the task still owes — deadline, a deferral still pending, the next check-in
+and its repeat — and sits directly under the status line, where the status
+summary already answers "what is this right now". `inlinePeekHistoryLine` is
+what it has already spent — created, updated, last review, a lapsed deferral's
+wake, the avoidance count — and is the last section in the document, below the
+tags that used to close it, because nothing in it is owed. Both are built on the
+shared `inlinePeekFields`, so an empty value is still no field and neither line
+gained a way to render a blank one; the old line's Doing/Waiting ages stayed on
+the status line, untouched. Splitting one line into two grows every document
+carrying both halves by a row, which is why the acceptance scenarios' positions
+moved by one rather than staying put — the count is evidence the section arrived,
+not the assertion that it did, so each one is paired with a `contains` naming the
+content of the page it lands on. The deferral instant is keyed into both
+`inlinePeekScheduleKey` and `inlinePeekHistoryKey`: exactly one of the two
+sections is drawn from it, so keying it once would drop it from the fingerprint
+in the other case. Both keys still read stored instants formatted
+`time.RFC3339Nano` and never a rendered duration, which is what the drift test
+proves directly now — it compares two renders an hour and a half apart and
+asserts the lines moved while the keys did not.
+
 ### Session 7 — Make Peek responsive and integrate constrained capture
 
 - Go: `internal/tui/outliner/inline_peek_paging_test.go`,

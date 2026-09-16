@@ -1024,7 +1024,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// under a readout the user was reading. The mechanism lives in
 	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
 	// pay for it.
-	const budget = 65100
+	// Fifty-fourth raise, 65100 to 65500, for splitting Peek's one dates line
+	// into what the task still owes and what it already spent. 400 bytes buy
+	// three rules. The first is the classification itself: the body order alone
+	// names two sections and says nothing about which one a new field joins, and
+	// every field here is a date, so the obvious reading is that any date goes on
+	// whichever line is nearer — which is how a deadline ends up under the
+	// history a reader scrolled past it to reach. The second is that history
+	// closes the document, which the order states and the reason does not: the
+	// order is what a diff changes and the reason is what stops the change. The
+	// third is the deferral instant keying both sections — a deferral renders as
+	// a pending field on one line or a lapsed wake on the other, never both, so
+	// keying it once looks correct against whichever half the author had open and
+	// drops it from the fingerprint entirely in the other case, which is a paging
+	// window that survives the value it was keyed on changing. The mechanism
+	// lives in docs/architecture/row-indicators.md. No rule elsewhere was trimmed
+	// to pay for it.
+	const budget = 65500
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
