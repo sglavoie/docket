@@ -463,17 +463,26 @@ declared their text required, while this reads the finished screen.
 - Go: `internal/tui/footer_ranked_guidance_test.go`,
   `internal/tui/footer_flash_test.go`,
   `internal/tui/chrome/footer_helpers_test.go`,
-  `internal/tui/narrow_layout_helpers_test.go`
+  `internal/tui/narrow_layout_helpers_test.go`,
+  `internal/tui/outliner_escape_guidance_test.go` (every profile's `Esc` entry
+  read off the cascade, then pressed; and every profile's required entries held
+  to `chrome.MinTerminalWidth`),
+  `internal/tui/chrome/escape_vocabulary_test.go` (the shared draft vocabulary
+  and the same width floor for the editor profiles)
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json`,
   `docs/tui-testing/scenarios/presentation-size-matrix.json`,
   `docs/tui-testing/scenarios/in-app-help.json`,
-  `docs/tui-testing/scenarios/goto-relation-esc-order.json`
+  `docs/tui-testing/scenarios/goto-relation-esc-order.json`,
+  `docs/tui-testing/scenarios/outliner-escape-guidance-ladder.json` (the whole
+  ladder walked at 60×20, plus the draft/discard wording on the composer)
 - Contracts: `CLAUDE.md` — "A footer has one source: the strategy's ranks, or the
   gated keymap where modal sub-states narrow a key", notice and status rendering
   only in the shell-pinned strip whose height `StatusStripHeight` reserves, every
   advisory routing through `AdvisoryLine`/`AdvisoryStatus` with "Never gate a row
-  at its render site", only status text arming footer flash, and the `Esc`
-  unwind order. `docs/guide/outliner-chrome.md`,
+  at its render site", only status text arming footer flash, the `Esc`
+  unwind order, and the new sentence making `EscSteps`' own `Action` the single
+  authority every profile, sentence, and footer entry reads.
+  `docs/guide/outliner-chrome.md`,
   `docs/architecture/presentation-chrome.md`.
 
 ### Session 17 — Render menus over a dimmed host

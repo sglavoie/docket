@@ -330,7 +330,10 @@ func (m *OutlinerModel) queryReadoutGuidance() chrome.GuidanceSpec {
 	rows := m.QueryReadoutRows()
 	if len(rows) == 0 {
 		return chrome.GuidanceSpec{
-			Hints: chrome.RequiredGuidanceHints(closeKey+" close readout", "Esc close readout"),
+			// Two keys, one act, one entry — the same shape the populated readout
+			// below already uses, so the empty stack does not spend a wider footer
+			// than the full one saying less.
+			Hints: chrome.RequiredGuidanceHints(closeKey + "/Esc close readout"),
 			Rows:  1,
 		}
 	}

@@ -93,8 +93,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
-			// Show confirmation if content changed from initial value
-			if m.textarea.Value() != m.initialValue {
+			if m.hasDraft() {
 				m.ConfirmDiscard = true
 				return m, nil
 			}
@@ -164,12 +163,19 @@ func (m *TextEditorModel) View() tea.View {
 	return tea.NewView(b.String())
 }
 
+// hasDraft reports edited content, which is what Esc raises the discard
+// question over. The handler and the footer read this one predicate.
+func (m *TextEditorModel) hasDraft() bool {
+	return m.textarea.Value() != m.initialValue
+}
+
 func (m *TextEditorModel) GuidanceSpec() GuidanceSpec {
 	if m.ConfirmDiscard {
-		return ConfirmationGuidanceSpec()
+		return DiscardGuidanceSpec()
 	}
-	spec := RequiredActionGuidanceSpec(
-		"Ctrl+S save", "Ctrl+E external editor", "Shift+Enter new line",
+	spec := RequiredExitGuidanceSpec(
+		"Ctrl+S save", DraftEscapeHint(m.hasDraft()),
+		"Ctrl+E external editor", "Shift+Enter new line",
 	)
 	if m.ExternalEdit {
 		spec.Supplemental = "External editor open"

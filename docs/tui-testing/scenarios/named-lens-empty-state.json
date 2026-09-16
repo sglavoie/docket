@@ -35,7 +35,7 @@
     { "type": "key", "key": "=" },
     { "type": "wait" },
     { "type": "assert", "label": "the empty state names the lens rather than any one axis it owns", "assert": "contains", "value": "No tasks match this lens." },
-    { "type": "assert", "assert": "contains", "value": "Esc restore lens" },
+    { "type": "assert", "label": "leaving a standing lens is not restoring a suspended one, and the footer says which", "assert": "contains", "value": "Esc leave lens" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "and that Esc does exactly what it said", "key": "esc" },

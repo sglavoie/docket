@@ -38,16 +38,16 @@ type GuidanceSpec struct {
 // interaction. Capture is always active input, so every state receives the
 // two-row budget and marks its essential completion/cancellation controls as
 // required.
-func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, syntaxOverflow bool, scrollPercent int) GuidanceSpec {
+func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, syntaxOverflow bool, scrollPercent int, hasDraft bool) GuidanceSpec {
 	var spec GuidanceSpec
 	switch {
 	case ConfirmDiscard:
-		spec.Hints = RequiredGuidanceHints("Y discard", "N/Esc keep editing")
+		spec = DiscardGuidanceSpec()
 	case autocompleteActive:
 		spec.Hints = []GuidanceHint{
 			NewGuidanceHint("Tab/Enter accept", 0, true),
 			NewGuidanceHint("Ctrl+J/K navigate", 1, false),
-			NewGuidanceHint("Esc dismiss", 0, true),
+			NewGuidanceHint("Esc close suggestions", 0, true),
 		}
 	case helpExpanded && syntaxOverflow:
 		spec.Hints = []GuidanceHint{
@@ -74,11 +74,33 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 			NewGuidanceHint("Ctrl+E create & edit", 1, false),
 			NewGuidanceHint("Ctrl+V paste", 2, false),
 			NewGuidanceHint("? syntax", 3, false),
-			NewGuidanceHint("Esc cancel", 0, true),
+			NewGuidanceHint(DraftEscapeHint(hasDraft), 0, true),
 		}
 	}
 	spec.Rows = 2
 	return spec
+}
+
+// DraftEscapeHint names what Esc does on a surface holding an editable draft:
+// unsaved text raises the discard question, an untouched draft leaves outright.
+// One key, two acts, so the entry is decided here rather than spelled again at
+// each editor; a surface that can hold no draft passes false and keeps cancel.
+func DraftEscapeHint(hasDraft bool) string {
+	if hasDraft {
+		return "Esc discard"
+	}
+	return "Esc cancel"
+}
+
+// DiscardGuidanceSpec is the chrome for the unsaved-work question alone. It is
+// not ConfirmationGuidanceSpec because declining that question keeps the draft
+// and stays in the editor, which "cancel" over an open editor reads as the
+// opposite of.
+func DiscardGuidanceSpec() GuidanceSpec {
+	return GuidanceSpec{
+		Hints: RequiredGuidanceHints("Y discard", "N/Esc keep editing"),
+		Rows:  2,
+	}
 }
 
 // ConfirmationGuidanceSpec is the canonical destructive-confirmation chrome.
@@ -418,8 +440,16 @@ func RenderGuidanceText(spec GuidanceSpec, width int) string {
 // RequiredActionGuidanceSpec builds the common two-row contract for active
 // editors: the commit and cancel exits are reserved before optional controls.
 func RequiredActionGuidanceSpec(commit string, optional ...string) GuidanceSpec {
+	return RequiredExitGuidanceSpec(commit, "Esc cancel", optional...)
+}
+
+// RequiredExitGuidanceSpec is that same contract where Esc does something other
+// than cancel outright — a draft-bearing editor raising the discard question,
+// for one — so the exit entry is named by the caller that knows which act the
+// key will reach.
+func RequiredExitGuidanceSpec(commit, exit string, optional ...string) GuidanceSpec {
 	return GuidanceSpec{
-		Hints: append(RequiredGuidanceHints(commit, "Esc cancel"), OptionalGuidanceHints(10, optional...)...),
+		Hints: append(RequiredGuidanceHints(commit, exit), OptionalGuidanceHints(10, optional...)...),
 		Rows:  2,
 	}
 }

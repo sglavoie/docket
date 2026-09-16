@@ -200,6 +200,13 @@ func (m *TaskComposerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePuls
 	}
 }
 
+// HasDraft reports whether the compact buffer holds work Esc would have to ask
+// about. The key handler and the footer read this one predicate, so the hint and
+// the act it names cannot drift apart.
+func (m *TaskComposerModel) HasDraft() bool {
+	return strings.TrimSpace(m.Input.Value()) != ""
+}
+
 func (m *TaskComposerModel) Init() tea.Cmd {
 	if m.Expanded != nil {
 		return m.Expanded.Init()
@@ -268,7 +275,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.CloseHelp()
 				return m, nil
 			}
-			if strings.TrimSpace(m.Input.Value()) != "" {
+			if m.HasDraft() {
 				m.ConfirmDiscard = true
 				return m, nil
 			}

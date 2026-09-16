@@ -15,6 +15,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 		confirmDiscard     bool
 		autocompleteActive bool
 		helpExpanded       bool
+		hasDraft           bool
 		required           []string
 	}{
 		{
@@ -22,9 +23,16 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 			required: []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"},
 		},
 		{
+			// An empty line leaves outright, a typed one raises the discard
+			// question, and the entry names which of the two this press reaches.
+			name:     "normal with a draft",
+			hasDraft: true,
+			required: []string{"Enter create", "Ctrl+V paste", "Esc discard"},
+		},
+		{
 			name:               "autocomplete",
 			autocompleteActive: true,
-			required:           []string{"Tab/Enter accept", "Ctrl+J/K navigate", "Esc dismiss"},
+			required:           []string{"Tab/Enter accept", "Ctrl+J/K navigate", "Esc close suggestions"},
 		},
 		{
 			name:         "help",
@@ -40,7 +48,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			spec := CaptureGuidanceSpec(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded, false, 0)
+			spec := CaptureGuidanceSpec(tc.confirmDiscard, tc.autocompleteActive, tc.helpExpanded, false, 0, tc.hasDraft)
 			var entries []string
 			for _, hint := range spec.Hints {
 				entries = append(entries, GuidanceHintText(hint))
@@ -59,19 +67,19 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 // multiple state flags are set simultaneously: discard confirmation wins over
 // autocomplete, which wins over expanded syntax.
 func TestCaptureFooterSpecStatePriority(t *testing.T) {
-	if got := CaptureGuidanceSpec(true, true, true, false, 0); GuidanceHintText(got.Hints[0]) != "Y discard" {
+	if got := CaptureGuidanceSpec(true, true, true, false, 0, true); GuidanceHintText(got.Hints[0]) != "Y discard" {
 		t.Fatalf("discard confirmation must take precedence, got %+v", got.Hints)
 	}
-	if got := CaptureGuidanceSpec(false, true, true, false, 0); GuidanceHintText(got.Hints[0]) != "Tab/Enter accept" {
+	if got := CaptureGuidanceSpec(false, true, true, false, 0, true); GuidanceHintText(got.Hints[0]) != "Tab/Enter accept" {
 		t.Fatalf("autocomplete must take precedence over help, got %+v", got.Hints)
 	}
-	if got := CaptureGuidanceSpec(false, false, true, false, 0); GuidanceHintText(got.Hints[len(got.Hints)-1]) != "Esc close syntax" {
+	if got := CaptureGuidanceSpec(false, false, true, false, 0, true); GuidanceHintText(got.Hints[len(got.Hints)-1]) != "Esc close syntax" {
 		t.Fatalf("expanded syntax expected, got %+v", got.Hints)
 	}
 }
 
 func TestCaptureFooterSyntaxOverflowAdvertisesScrolling(t *testing.T) {
-	spec := CaptureGuidanceSpec(false, false, true, true, 73)
+	spec := CaptureGuidanceSpec(false, false, true, true, 73, true)
 	entries := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
 		entries = append(entries, GuidanceHintText(hint))

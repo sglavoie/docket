@@ -507,17 +507,25 @@ func (m *OutlinerModel) HasSuspendedLens() bool {
 	return m != nil && m.Search.suspendedLens != nil
 }
 
-// SearchExitHint names what Esc does to the held query in the footer's register,
-// and searchExitClause says the same thing inside a sentence. Over a suspended
-// lens the key clears nothing: it puts a projection back, and a footer promising
+// SearchExitAction names what Esc does to the held query, in the imperative the
+// Esc cascade carries and the footer spells after the key. Over a suspended lens
+// the key clears nothing: it puts a projection back, and a footer promising
 // "clear search" would send the user looking for the lens it silently restored.
-// The live-input hint, the empty-state guidance, and the empty-state message all
-// read these two, so one key cannot be advertised three ways.
-func (m *OutlinerModel) SearchExitHint() string {
+// It is the search step's own Action, so the cascade and every hint below read
+// one answer.
+func (m *OutlinerModel) SearchExitAction() string {
 	if m.HasSuspendedLens() {
-		return "Esc restore lens"
+		return "restore lens"
 	}
-	return "Esc clear search"
+	return "clear search"
+}
+
+// SearchExitHint is that action as a complete footer entry, and
+// searchExitClause says the same thing inside a sentence. The live-input hint,
+// the empty-state guidance, and the empty-state message all read these, so one
+// key cannot be advertised three ways.
+func (m *OutlinerModel) SearchExitHint() string {
+	return "Esc " + m.SearchExitAction()
 }
 
 func (m *OutlinerModel) searchExitClause() string {

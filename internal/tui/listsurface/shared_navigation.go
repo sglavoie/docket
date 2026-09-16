@@ -94,9 +94,13 @@ func navigateToPrevSection(cursor int, sectionStarts []int) int {
 	return sectionStarts[prev]
 }
 
-// EscStep represents one layer in an Esc-key dismissal cascade.
+// EscStep represents one layer in an Esc-key dismissal cascade. Action names
+// what clearing this layer does, in the imperative a footer spells after the
+// key. Dispatch and guidance read the same slice, so a hint promising an act
+// the cascade will not perform is not expressible.
 type EscStep struct {
 	Active func() bool
+	Action string
 	Clear  func()
 }
 
@@ -108,6 +112,19 @@ func RunEscCascade(steps []EscStep) bool {
 		}
 	}
 	return false
+}
+
+// NextEscAction names the act the next Esc press performs, or "" when no layer
+// is standing. It walks the cascade in the order RunEscCascade walks it, so the
+// answer is the step that press would actually run rather than the widest one
+// available.
+func NextEscAction(steps []EscStep) string {
+	for _, step := range steps {
+		if step.Active() {
+			return step.Action
+		}
+	}
+	return ""
 }
 
 func AnyEscStepActive(steps []EscStep) bool {

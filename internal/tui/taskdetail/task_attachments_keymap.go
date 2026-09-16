@@ -1,6 +1,8 @@
 package taskdetail
 
 import (
+	"strings"
+
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -8,6 +10,8 @@ import (
 func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 	inAddMode := func() bool { return m.AddMode && !m.Confirm.IsActive() }
 	inBrowseMode := func() bool { return !m.AddMode && !m.Confirm.IsActive() }
+	addModeDraft := func() bool { return inAddMode() && strings.TrimSpace(m.TextInput.Value()) != "" }
+	addModeClean := func() bool { return inAddMode() && !addModeDraft() }
 	hasBrowseSelection := func() bool { return inBrowseMode() && m.HasSelection() }
 	hasMultipleAttachments := func() bool {
 		return hasBrowseSelection() && m.Task != nil && len(m.Task.Attachments) > 1
@@ -61,7 +65,10 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("esc", "Close attachments", "Navigation", keymap.WithFooter(11, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 
 		keymap.Bind("enter", "Add attachment", "Actions", keymap.WithFooter(1, addLabel, true), keymap.WithFooterKey("Enter"), keymap.WithGate(inAddMode)),
-		keymap.Bind("esc", "Cancel attachment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inAddMode)),
+		// Two gated rows for one key, as in the comments panel: a typed path is
+		// work Esc asks about, an empty box is not.
+		keymap.Bind("esc", "Discard attachment input", "Navigation", keymap.WithFooter(2, "discard", true), keymap.WithFooterKey("Esc"), keymap.WithGate(addModeDraft)),
+		keymap.Bind("esc", "Cancel attachment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(addModeClean)),
 	}
 
 	return &keymap.KeyMap{Entries: entries}

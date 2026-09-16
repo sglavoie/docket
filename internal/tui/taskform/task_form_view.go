@@ -156,6 +156,9 @@ func (m *TaskFormModel) renderOverlayView() string {
 }
 
 func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
+	if m.ConfirmDiscard {
+		return chrome.DiscardGuidanceSpec()
+	}
 	commit := "Ctrl+S save"
 	if m.err != nil {
 		commit = "Ctrl+S retry"
@@ -169,7 +172,7 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 		optional = []string{"a attachments", "Ctrl+L add", "Enter edit", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"c comments", "Ctrl+Y add comment"}, optional...)
 	}
-	return chrome.RequiredActionGuidanceSpec(commit, optional...)
+	return chrome.RequiredExitGuidanceSpec(commit, chrome.DraftEscapeHint(m.escRaisesDiscard()), optional...)
 }
 
 // clampFormBody limits a body to maxRows lines so the surrounding fullscreen

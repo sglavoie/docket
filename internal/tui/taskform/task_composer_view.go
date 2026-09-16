@@ -143,10 +143,15 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		m.HelpExpanded,
 		m.HelpExpanded && m.SyntaxOverflows(),
 		m.SyntaxScrollPercent(),
+		m.HasDraft(),
 	)
 	if len(m.Errors) > 0 && !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
-		spec = chrome.RequiredActionGuidanceSpec(
-			"Enter retry", "Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
+		// A refused capture is the state most likely to hold text the typist
+		// wants back, so the exit says what it will really raise rather than
+		// implying the line is already gone.
+		spec = chrome.RequiredExitGuidanceSpec(
+			"Enter retry", chrome.DraftEscapeHint(m.HasDraft()),
+			"Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {

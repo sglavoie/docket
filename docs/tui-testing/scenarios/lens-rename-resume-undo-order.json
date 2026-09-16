@@ -34,7 +34,7 @@
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "wait" },
-    { "type": "assert", "label": "the lens was left unchanged, so it now selects nothing", "assert": "contains", "value": "No tasks match this lens. Press Esc to restore the view it replaced." },
+    { "type": "assert", "label": "the lens was left unchanged, so it now selects nothing", "assert": "contains", "value": "No tasks match this lens. Press Esc to leave the lens." },
 
     { "type": "key", "label": "unwind the lens and the query it restored", "key": "esc" },
     { "type": "key", "key": "esc" },

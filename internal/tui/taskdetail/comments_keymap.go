@@ -14,6 +14,14 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 	addMode := func() bool { return m.AddMode && !m.Confirm.IsActive() }
 	editMode := func() bool { return m.EditMode && !m.Confirm.IsActive() }
 	inputMode := func() bool { return addMode() || editMode() }
+	// Esc is one key over two acts in input mode, so it is two gated rows rather
+	// than one label that would have to be right in both states: text the panel
+	// would have to throw away raises the discard question, and an untouched
+	// composer closes outright.
+	inputDraft := func() bool {
+		return (addMode() && m.hasUnsavedAddText()) || (editMode() && m.hasUnsavedEditChanges())
+	}
+	inputClean := func() bool { return inputMode() && !inputDraft() }
 	editableInput := func() bool { return inputMode() && !m.composerReadOnly() }
 	expandedMode := func() bool { return m.ExpandedView && !m.Confirm.IsActive() }
 	saveLabel := "save"
@@ -75,7 +83,8 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		// is advertised wherever text is being written rather than only where it
 		// has already been rescued.
 		keymap.Bind("ctrl+x", "Write draft to a file", "Actions", keymap.WithFooter(5, "to file", false), keymap.WithFooterKey("Ctrl+X"), keymap.WithGate(inputMode)),
-		keymap.Bind("esc", "Cancel comment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inputMode)),
+		keymap.Bind("esc", "Discard comment input", "Navigation", keymap.WithFooter(2, "discard", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inputDraft)),
+		keymap.Bind("esc", "Cancel comment input", "Navigation", keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inputClean)),
 		keymap.Bind("enter", "Close expanded comment", "Navigation", keymap.WithFooter(1, "close", true), keymap.WithFooterKey("Enter"), keymap.WithGate(expandedMode)),
 		keymap.Bind("esc", "Close expanded comment", "Navigation", keymap.WithFooter(2, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(expandedMode)),
 		// The reader's window. These are ranked immediately under the two closes

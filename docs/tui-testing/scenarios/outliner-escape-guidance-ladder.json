@@ -1,0 +1,56 @@
+{
+  "name": "outliner-escape-guidance-ladder",
+  "fixture": "busy",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "label": "the minimum terminal is the whole point: every hint below is read at 60x20", "assert": "no_layout_issues" },
+    { "type": "assert", "label": "a clean browse view stands over nothing, so it promises no Esc", "assert": "not_contains", "value": "Esc " },
+
+    { "type": "key", "label": "step onto the first task row", "key": "j" },
+    { "type": "key", "label": "open the Peek dock", "key": "b" },
+    { "type": "assert", "label": "two keys, one act, one entry", "assert": "contains", "value": "b/Esc close Peek" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "close Peek" },
+
+    { "type": "key", "label": "select the row under the cursor", "key": "v" },
+    { "type": "assert", "label": "the footer names the act the next press performs, not the state it is in", "assert": "contains", "value": "Esc clear selection" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Esc clear selection" },
+
+    { "type": "key", "label": "a live range freezes before it clears, and says so", "key": "V" },
+    { "type": "assert", "assert": "contains", "value": "Esc freeze range" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "label": "the frozen selection is what the next press clears", "assert": "contains", "value": "Esc clear selection" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "open search", "key": "/" },
+    { "type": "text", "text": "report" },
+    { "type": "assert", "label": "the live input names its own exit", "assert": "contains", "value": "Esc clear search" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "and the standing projection names the same one", "assert": "contains", "value": "Esc clear search" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Esc clear search" },
+
+    { "type": "key", "label": "an untouched capture draft leaves outright", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "assert": "not_contains", "value": "Esc discard" },
+    { "type": "text", "text": "Escape names the act" },
+    { "type": "assert", "label": "typed work changes what the one key reaches, so the entry changes with it", "assert": "contains", "value": "Esc discard" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the discard question is not the destructive-delete chrome", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Y discard" },
+    { "type": "assert", "assert": "contains", "value": "N/Esc keep editing" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "declining keeps the draft and stays in the editor", "key": "n" },
+    { "type": "assert", "assert": "contains", "value": "Escape names the act" },
+    { "type": "assert", "assert": "contains", "value": "Esc discard" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "label": "back on the outliner with nothing captured", "assert": "not_contains", "value": "Escape names the act" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

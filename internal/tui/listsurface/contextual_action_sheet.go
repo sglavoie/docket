@@ -324,6 +324,14 @@ func (model *ContextActionSheetModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 
 	switch key {
 	case "esc":
+		// One layer per press, as in the immediate sheet above. A query narrowing
+		// the list survives the Enter that leaves search, so it is still standing
+		// between the cursor and the full list, and it is what this press spends
+		// itself on; the sheet closes once nothing is left to peel.
+		if model.Surface.Query().Raw != "" {
+			model.Surface.SetQuery("")
+			return nil, false, nil
+		}
 		return nil, true, ContextActionSheetClosedMsg{}
 	case "/":
 		model.Searching = true
@@ -438,10 +446,15 @@ func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool)
 	if searching && !immediate {
 		enterLabel = "apply search"
 	}
+	// The ladder is HandleKey's own, in HandleKey's order: a typed query is peeled
+	// first in every sub-state, an open search box is left next, and the sheet
+	// closes only when neither is standing. An immediate sheet has no search
+	// sub-state to leave, so its middle rung is simply absent.
 	escapeLabel := "close"
-	if query != "" {
+	switch {
+	case query != "":
 		escapeLabel = "clear search"
-	} else if searching && !immediate {
+	case searching && !immediate:
 		escapeLabel = "cancel search"
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{

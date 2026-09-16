@@ -5,9 +5,10 @@
   "actions": [
     { "type": "key", "label": "G reaches the last task row through the public grammar", "key": "G" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "b close Peek" },
+    { "type": "assert", "assert": "contains", "value": "b/Esc close Peek" },
     { "type": "key", "label": "entering a visual selection closes Peek", "key": "v" },
-    { "type": "assert", "assert": "not_contains", "value": "b close Peek" },
+    { "type": "assert", "assert": "not_contains", "value": "close Peek" },
+    { "type": "assert", "label": "and Esc now names the selection it would clear instead", "assert": "contains", "value": "Esc clear selection" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
     { "type": "assert", "assert": "no_layout_issues" },
 

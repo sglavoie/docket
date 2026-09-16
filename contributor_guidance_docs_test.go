@@ -879,7 +879,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// user chose. The ordering against refreshTaskViewsAfterSave rides along
 	// because it is invisible and wrong in one direction only.
 	// The mechanism lives in docs/architecture/tui-architecture.md.
-	const budget = 58920
+	// Forty-sixth raise, 58920 to 59680, for Esc having one authority. 760 bytes
+	// buy the rule a footer breaks by looking correct: an entry spelling its own
+	// recovery — "Esc clear search" under a suspended lens, "Esc unzoom" inside a
+	// Focus — reads fine at its own site and names an act the next press does not
+	// perform, and nothing but the cascade knows which layer is on top. Saying
+	// the Action rides on the step is what forbids the natural rewrite, a switch
+	// in the profile; saying SearchExitAction answers for itself is what keeps
+	// the one step whose act varies from being flattened back to a constant. The
+	// draft pair is stated because one key genuinely does two things and the
+	// discard question is not the delete confirmation: reusing
+	// ConfirmationGuidanceSpec there is a one-line "cleanup" that tells the user
+	// declining cancels their editing. Two gated rows rather than a branched
+	// label is the same rule the footer sentence above already states, spelled
+	// where a panel would otherwise reach for a conditional. And the width floor
+	// is here because a required entry that does not fit is truncated rather than
+	// dropped, so the failure is a half sentence at 60 columns and nothing else.
+	// The mechanism lives in docs/architecture/presentation-chrome.md.
+	const budget = 59680
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

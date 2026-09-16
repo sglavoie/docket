@@ -110,7 +110,7 @@ func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), i
 		return m.handleSave()
 	case "esc":
 		commit()
-		if m.hasChanges {
+		if m.escRaisesDiscard() {
 			m.ConfirmDiscard = true
 		} else {
 			return func() tea.Msg { return status.BackMsg{} }

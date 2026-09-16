@@ -243,7 +243,7 @@ func (model *OperationTextPromptModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, 
 	}
 	switch key {
 	case "esc":
-		if model.options.DiscardPrompt != "" && strings.TrimSpace(model.bufferValue()) != "" {
+		if model.raisesDiscard() {
 			model.confirm.Show(discardTextPromptAction, model.options.DiscardPrompt)
 			return nil, false, nil
 		}
@@ -358,14 +358,31 @@ func (model *OperationTextPromptModel) Render(width int) string {
 // submit key is read from the same place HandleKey reads it.
 func (model *OperationTextPromptModel) guidanceSpec() chrome.GuidanceSpec {
 	if model.confirm.IsActive() {
-		return chrome.ConfirmationGuidanceSpec()
+		return chrome.DiscardGuidanceSpec()
 	}
 	apply := "Enter apply"
 	if model.options.Multiline {
 		apply = "Ctrl+S save"
 	}
 	return chrome.GuidanceSpec{
-		Hints: chrome.RequiredGuidanceHints(apply, "Esc back"),
+		Hints: chrome.RequiredGuidanceHints(apply, model.exitHint()),
 		Rows:  2,
 	}
+}
+
+// exitHint names where Esc goes. "back" is the vocabulary the sibling value
+// picker uses for the same return to the surface underneath; only text the
+// prompt would have to throw away changes what the key reaches.
+func (model *OperationTextPromptModel) exitHint() string {
+	if model.raisesDiscard() {
+		return chrome.DraftEscapeHint(true)
+	}
+	return "Esc back"
+}
+
+// raisesDiscard is the Esc handler's own condition: a prompt with no discard
+// question configured leaves outright however full its buffer is, so the footer
+// promises a question only where one exists.
+func (model *OperationTextPromptModel) raisesDiscard() bool {
+	return model.options.DiscardPrompt != "" && strings.TrimSpace(model.bufferValue()) != ""
 }

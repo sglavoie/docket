@@ -80,8 +80,27 @@ workspace pulse disappears first; the comparison then sheds `(30d)`, then
 Contextual guidance is made of complete `key action` entries. Browse states use
 one row; editing, adding, confirming, autocomplete, expanded detail, and pending
 chords may use two. Required commit and cancellation controls survive before
-optional hints. Transient pickers and action sheets own their local guidance
-while leaving the host title and workspace pulse visible.
+optional hints, and they survive whole at the narrowest terminal `tt` runs in,
+so the way out of a state is never half a sentence. Transient pickers and action
+sheets own their local guidance while leaving the host title and workspace pulse
+visible.
+
+The `Esc` entry names what the next press does, not what you are in. Standing in
+a Focus inside a lens it reads `Esc leave Focus`, because that is the layer the
+key takes first; once the Focus is gone it reads `Esc leave lens`. Open Peek and
+one entry covers both keys that close it, `b/Esc close Peek`. Start a range and
+it reads `Esc freeze range`, since freezing is what that press does and clearing
+is the one after. Search typed under a lens reads `Esc restore lens` rather than
+`Esc clear search`, because the lens is what comes back. The empty-state
+sentences use the same words — `Press Esc to unzoom`, `Press Esc to leave
+Focus` — so the footer and the explanation never disagree.
+
+Anywhere you can type, that entry answers for your draft. An untouched composer,
+form, comment box, or editor reads `Esc cancel` and leaves at once. Type
+something and it becomes `Esc discard`, and the press asks first: `Y discard ·
+N/Esc keep editing`. Declining keeps every character and leaves you in the
+editor, which is why that question is worded apart from the `y confirm ·
+n/Esc cancel` used to confirm a deletion.
 
 Pending chord hints dim both the key and label when an action would currently
 do nothing or be refused: for example, conflicts when none are outstanding,

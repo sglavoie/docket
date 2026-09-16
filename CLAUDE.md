@@ -146,6 +146,17 @@ key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
 five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
+Esc has one source too, and it is an act rather than a state. Each `EscStep`
+carries its own `Action`, `NextEscAction` walks them as `RunEscCascade` does, and
+`EscAction`/`EscHint` are what every Outliner profile, empty-state sentence, and
+footer entry spell; a step whose act depends on what it stands over answers for
+itself, as `SearchExitAction` does. A draft-bearing surface reads
+`chrome.DraftEscapeHint` instead — `Esc discard` exactly where the press raises
+`DiscardGuidanceSpec`, `Esc cancel` where it leaves — and that question is not
+`ConfirmationGuidanceSpec`, since declining it keeps the draft. A modal
+sub-state narrowing Esc registers two gated rows rather than branching a label.
+Required entries survive whole at `chrome.MinTerminalWidth`.
+
 An entity operation is direct-only or menu-only, never both, in that surface's
 entity action sheet, enforced by `ValidateOperationOnePath` over its manifest.
 That scope is the whole rule: the sheet is where a second route to an existing

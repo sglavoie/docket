@@ -60,11 +60,24 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 	assertRequiredGuidance(t, "comments add", spec, ok, "Ctrl+S save", "Esc cancel")
 	assertGuidanceContains(t, "comments add", spec, ok, "Ctrl+E editor", "Shift+Enter newline")
 
+	// Esc over typed text raises the discard question instead of closing, so the
+	// entry that key owns changes with the draft rather than with the mode.
+	model.TextInput.SetValue("half a thought")
+	spec, ok = model.guidanceSpec()
+	assertRequiredGuidance(t, "comments drafted add", spec, ok, "Ctrl+S save", "Esc discard")
+
 	model.Confirm.Show("discard-add", "Discard comment?")
 	spec, ok = model.guidanceSpec()
-	assertRequiredGuidance(t, "comments confirmation", spec, ok, "y confirm", "n/Esc cancel")
+	assertRequiredGuidance(t, "comments confirmation", spec, ok, "Y discard", "N/Esc keep editing")
+
+	// A destructive question keeps the ordinary confirmation chrome: declining it
+	// leaves the list alone rather than returning to a composer.
+	model.Confirm.Show("delete", "Delete comment [0]?")
+	spec, ok = model.guidanceSpec()
+	assertRequiredGuidance(t, "comments delete confirmation", spec, ok, "y confirm", "n/Esc cancel")
 
 	model.Confirm.Cancel()
+	model.TextInput.SetValue("")
 	model.AddMode = false
 	// The panel reads its owner's entries rather than the task pointer, so an
 	// out-of-band removal reaches it the way the shell delivers one: through the
@@ -109,6 +122,10 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 	model.AddMode = true
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "attachment add", spec, ok, "Enter add", "Esc cancel")
+
+	model.TextInput.SetValue("/tmp/file.txt")
+	spec, ok = model.guidanceSpec()
+	assertRequiredGuidance(t, "drafted attachment add", spec, ok, "Enter add", "Esc discard")
 }
 
 func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {

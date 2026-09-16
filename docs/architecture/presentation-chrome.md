@@ -33,6 +33,28 @@ preserves provider order, and drops supplemental state before controls.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
+Escape names an act rather than a state, and no profile spells that act itself.
+On the Outliner the cascade is the authority: each `listsurface.EscStep` carries
+its own `Action`, `listsurface.NextEscAction` walks that list the way
+`RunEscCascade` walks it, and `OutlinerModel.EscAction`/`EscHint` are what every
+profile, empty-state sentence, and footer entry reads. A step whose act depends
+on what it stands over answers for itself — a query typed under a lens exits
+through `SearchExitAction`, which says `restore lens` rather than `clear
+search` — so one key is never advertised two ways.
+
+On a surface holding an editable draft the same question is answered by
+`chrome.DraftEscapeHint`: unsaved text raises the discard question and reads
+`Esc discard`, an untouched draft leaves outright and reads `Esc cancel`. The
+question itself is `chrome.DiscardGuidanceSpec` and not the destructive
+confirmation chrome, because declining it keeps the draft and stays in the
+editor. `chrome.RequiredExitGuidanceSpec` is the two-row editor contract whose
+exit entry is the caller's own word; `RequiredActionGuidanceSpec` is that same
+contract at its `Esc cancel` default. A panel whose modal sub-state narrows one
+key spells both halves as two gated `keymap` rows rather than branching a label,
+which is what keeps the footer's one source intact. Required entries are
+reserved before any optional one and are held to `chrome.MinTerminalWidth`, so
+the way out of a state survives the narrowest supported terminal whole.
+
 `ViewStatusStripProvider` is the bottom status strip. `renderStatusBar` composes
 the active view's strip on top of `renderFooterChrome` under a static dim `─`
 divider, so the strip is the top of the status bar rather than the end of the

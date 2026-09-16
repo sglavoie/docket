@@ -892,13 +892,16 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	case outlinerEmptySearchInvalid:
 		return fmt.Sprintf("%s. Press %s.", m.Search.Gate.GuidanceText(), m.searchExitClause())
 	case outlinerEmptyLens:
-		return "No tasks match this lens. Press Esc to restore the view it replaced."
+		// The three sentences below name the act the cascade's top step performs,
+		// in the verb the footer entry beside them uses, so the prose and the hint
+		// are one answer read twice.
+		return "No tasks match this lens. Press Esc to leave the lens."
 	case outlinerEmptyFiltered:
 		return listsurface.EmptyStateFiltered
 	case outlinerEmptyFocus:
-		return "No tasks are visible in this Focus. Press Esc to return."
+		return "No tasks are visible in this Focus. Press Esc to leave Focus."
 	case OutlinerEmptySection:
-		return "No tasks are left in this section. Press Esc to return."
+		return "No tasks are left in this section. Press Esc to unzoom."
 	case outlinerEmptyMode:
 		mode := m.ActiveOutlinerModeEntry()
 		if mode.ID == chrome.ModeInbox {

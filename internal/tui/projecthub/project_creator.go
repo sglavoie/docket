@@ -85,7 +85,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
-			if strings.TrimSpace(m.nameInput.Value()) != "" {
+			if m.hasDraft() {
 				m.ConfirmDiscard = true
 				return m, nil
 			}
@@ -204,11 +204,17 @@ func (m *ProjectCreatorModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
+// hasDraft is the one predicate the Esc handler and the footer share, so the
+// hint names the act the key will reach.
+func (m *ProjectCreatorModel) hasDraft() bool {
+	return strings.TrimSpace(m.nameInput.Value()) != ""
+}
+
 func (m *ProjectCreatorModel) guidanceSpec() chrome.GuidanceSpec {
 	if m.ConfirmDiscard {
-		return chrome.ConfirmationGuidanceSpec()
+		return chrome.DiscardGuidanceSpec()
 	}
-	spec := chrome.RequiredActionGuidanceSpec("Enter create")
+	spec := chrome.RequiredExitGuidanceSpec("Enter create", chrome.DraftEscapeHint(m.hasDraft()))
 	spec.Supplemental = "Create Project"
 	return spec
 }

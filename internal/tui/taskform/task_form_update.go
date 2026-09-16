@@ -13,6 +13,18 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
+// escRaisesDiscard is the condition Esc tests before it leaves, in one place so
+// the footer names the act the key reaches rather than repeating its arithmetic.
+// A non-empty title counts as unsaved work even before hasChanges is set — an
+// expanded compact draft, for one — and only while the title field holds the
+// focus, which is the branch that Esc takes.
+func (m *TaskFormModel) escRaisesDiscard() bool {
+	if m.activeTab == formTabBasics && m.focusIndex == 0 {
+		return m.hasChanges || m.titleInput.Value() != ""
+	}
+	return m.hasChanges
+}
+
 //nolint:gocyclo // main Update dispatch
 func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -116,10 +128,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.draft.title = m.titleInput.Value()
 				m.titleInput.Blur()
-				// A non-empty title counts as unsaved work even if hasChanges has
-				// not been set yet (for example an expanded compact draft).
-				dirty := m.hasChanges || m.draft.title != ""
-				if dirty {
+				if m.escRaisesDiscard() {
 					m.ConfirmDiscard = true
 				} else {
 					return m, func() tea.Msg { return status.BackMsg{} }
@@ -234,7 +243,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			return m, m.handleSave()
 		case "esc":
-			if m.hasChanges {
+			if m.escRaisesDiscard() {
 				m.ConfirmDiscard = true
 			} else {
 				return m, func() tea.Msg { return status.BackMsg{} }

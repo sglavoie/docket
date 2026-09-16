@@ -19,7 +19,9 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 	if !ok || spec.Rows != 2 {
 		t.Fatalf("Peek guidance = (%+v, %v), want two-row profile", spec, ok)
 	}
-	if got := guidanceEntryText(spec); !strings.Contains(got, "b close Peek") || !strings.Contains(got, "Esc close Peek") {
+	// Two keys, one act, one entry: Peek's own key and the cascade's first rung
+	// both put the pane down, so the footer says so once.
+	if got := guidanceEntryText(spec); !strings.Contains(got, "b/Esc close Peek") {
 		t.Fatalf("Peek guidance = %q", got)
 	}
 
@@ -139,8 +141,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.Focus.Stack = []outliner.FocusEntry{{TaskID: "missing"}}
 				out.Rows = nil
 			},
-			wantMessage: "No tasks are visible in this Focus. Press Esc to return.",
-			wantHint:    "Esc return",
+			wantMessage: "No tasks are visible in this Focus. Press Esc to leave Focus.",
+			wantHint:    "Esc leave Focus",
 		},
 	}
 

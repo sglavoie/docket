@@ -423,14 +423,14 @@ func (m *OutlinerModel) TaskLineEditRequest(source taskref.TaskIdentity, result 
 // Focus stack → cross-project Focus stack → section zoom → project scope.
 func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 	return []listsurface.EscStep{
-		{Active: func() bool { return m.PeekDockVisible() }, Clear: func() {
+		{Active: func() bool { return m.PeekDockVisible() }, Action: escActionClosePeek, Clear: func() {
 			m.PeekMode = false
 		}},
-		{Active: func() bool { return m.IsRangeSelectionActive() }, Clear: func() {
+		{Active: func() bool { return m.IsRangeSelectionActive() }, Action: escActionFreezeRange, Clear: func() {
 			m.FreezeRangeSelection()
 			m.UpdateVisualSelectionStatus()
 		}},
-		{Active: func() bool { return m.MultiSelectMode }, Clear: func() {
+		{Active: func() bool { return m.MultiSelectMode }, Action: escActionClearSelection, Clear: func() {
 			m.ToggleMultiSelectMode()
 		}},
 		// One relationship hop unwinds after the selection and before the search,
@@ -438,37 +438,82 @@ func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 		// and scope steps below it are all axes the return frame is about to restore
 		// wholesale, and stepping through them first would unwind the destination's
 		// state on the way back to the origin's.
-		{Active: func() bool { return m.HasRelationTrail() }, Clear: func() {
+		{Active: func() bool { return m.HasRelationTrail() }, Action: escActionReturnToOrigin, Clear: func() {
 			m.PopRelationReturn()
 		}},
-		{Active: func() bool { return m.HasSearchProjection() }, Clear: func() {
+		// The search step is the one whose act depends on what it is standing over:
+		// a query typed under a lens put that lens down, so this press puts it back
+		// instead of clearing anything. SearchExitAction is the one answer the
+		// footer, the guidance, and the empty-state sentence all read.
+		{Active: func() bool { return m.HasSearchProjection() }, Action: m.SearchExitAction(), Clear: func() {
 			m.ClearSearch()
 		}},
 		// A lens is one atomic context over the mode, facets, sort, query, and
 		// population, so it unwinds before the narrowings taken inside it: leaving
 		// it restores the focus, zoom, and scope the user had anyway, and stepping
 		// through those first would unwind state the lens is about to replace.
-		{Active: func() bool { return m.HasActiveLens() }, Clear: func() {
+		{Active: func() bool { return m.HasActiveLens() }, Action: escActionLeaveLens, Clear: func() {
 			m.RestoreLensBaseline()
 		}},
-		{Active: func() bool { return len(m.Focus.Stack) > 0 }, Clear: func() {
+		{Active: func() bool { return len(m.Focus.Stack) > 0 }, Action: escActionLeaveFocus, Clear: func() {
 			m.PopFocusLevel()
 		}},
-		{Active: func() bool { return len(m.Focus.CrossStack) > 0 }, Clear: func() {
+		{Active: func() bool { return len(m.Focus.CrossStack) > 0 }, Action: escActionLeaveFocus, Clear: func() {
 			m.PopFocusLevel()
 		}},
 		// A zoom narrows one mode, so it unwinds after task focus and before the
 		// project scope that owns the mode.
-		{Active: func() bool { return m.Focus.Zoom.Active() }, Clear: func() {
+		{Active: func() bool { return m.Focus.Zoom.Active() }, Action: escActionUnzoom, Clear: func() {
 			m.ExitSectionZoom()
 		}},
 		// Task focus and section zoom both unwind before project scope: Esc pops
 		// one scope frame, restoring the previous scope's mode, filter, cursor,
 		// scroll, and zoom.
-		{Active: func() bool { return m.IsProjectScoped() }, Clear: func() {
+		{Active: func() bool { return m.IsProjectScoped() }, Action: escActionLeaveScope, Clear: func() {
 			m.PopProjectScope()
 		}},
 	}
+}
+
+// The cascade's vocabulary. Each is the imperative half of one hint, so the
+// footer never spells an act and the cascade never carries an unnamed step.
+// `leave lens` and `restore lens` are deliberately not one word: leaving puts an
+// active lens down, restoring brings a suspended one back, and a single spelling
+// for both would name opposite acts on the same key.
+const (
+	escActionClosePeek      = "close Peek"
+	escActionFreezeRange    = "freeze range"
+	escActionClearSelection = "clear selection"
+	escActionReturnToOrigin = "return to origin"
+	escActionLeaveLens      = "leave lens"
+	escActionLeaveFocus     = "leave Focus"
+	escActionUnzoom         = "unzoom"
+	escActionLeaveScope     = "all projects"
+)
+
+// EscAction names what the next Esc press does to the standing state, or "" when
+// the cascade is empty. Every Outliner guidance profile spells its Esc entry
+// through this rather than through a literal of its own, which is what keeps a
+// footer from promising an act the cascade would not run.
+//
+// It answers for the cascade alone. The modal claims above it — the relationship
+// picker, the menu, the readout, the confirm, the inline editor, the search
+// input, and the suggestion pane — each own the key outright before the cascade
+// sees it, so each names its own act in its own profile.
+func (m *OutlinerModel) EscAction() string {
+	if m == nil {
+		return ""
+	}
+	return listsurface.NextEscAction(m.EscSteps())
+}
+
+// EscHint is that action as a complete footer entry, empty when nothing stands.
+func (m *OutlinerModel) EscHint() string {
+	action := m.EscAction()
+	if action == "" {
+		return ""
+	}
+	return "Esc " + action
 }
 
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
@@ -574,7 +619,11 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return m.multiSelectGuidance(), true
 	case m.PeekDockVisible():
 		peekKey := m.peekOperationKey(operation.OperationCorePeek, peekDisplayKey)
-		hints := chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek")
+		// One entry for two keys that do one thing. Peek is the cascade's first
+		// step, so the act is read off the cascade rather than spelled here, and
+		// the columns a second copy of the same sentence used to spend go to the
+		// scrolling offers below it.
+		hints := chrome.RequiredGuidanceHints(peekKey + "/" + m.EscHint())
 		// The four scrolling keys are offered only in the direction the document
 		// can actually move: a detail that fits its budget advertises no movement
 		// at all. Their descriptors are applicable on a wider fact — a visible
@@ -591,7 +640,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	case m.HasSearchProjection():
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints(m.SearchExitHint()),
+			Hints: append(chrome.RequiredGuidanceHints(m.EscHint()),
 				chrome.OptionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
 			Rows: 1,
 		}, true
@@ -601,7 +650,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// under a lens that key suspends the lens for one scope-wide search rather
 		// than narrowing it further, which nothing else on screen says.
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints("Esc restore lens"),
+			Hints: append(chrome.RequiredGuidanceHints(m.EscHint()),
 				chrome.OptionalGuidanceHints(10, `/ search scope`, `\ lenses`, "a capture", "? help")...),
 			Rows: 1,
 		}, true
@@ -615,6 +664,16 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		operation.InputStrategySimplified,
 		m.OperationCommandContext(),
 	)
+	// A Focus, a zoom, a scope, and a relationship hop all leave the ordinary row
+	// footer standing, and none of them is a key the cursor names: the strategy's
+	// ranks cannot answer what Esc does, because the answer is what is standing
+	// rather than what is under the cursor. The cascade is asked instead, and the
+	// entry is required so a narrow terminal keeps the way out of the state it is
+	// in. An empty cascade adds nothing, so the browse footer stays as quiet as it
+	// was.
+	if esc := m.EscHint(); esc != "" {
+		hints = append(hints, chrome.NewGuidanceHint(esc, 0, true))
+	}
 	if len(hints) == 0 {
 		return chrome.GuidanceSpec{}, false
 	}
@@ -667,7 +726,11 @@ func (m *OutlinerModel) multiSelectGuidance() chrome.GuidanceSpec {
 		chrome.NewGuidanceHint("v toggle", 2, false),
 		chrome.NewGuidanceHint(rangeAction, 3, false),
 		chrome.NewGuidanceHint("Ctrl+A select visible", 4, false),
-		chrome.NewGuidanceHint("Esc clear selection", 0, true),
+		// A live range is its own cascade step above the selection, so the key
+		// freezes the range here and clears the selection only once it is frozen.
+		// The hint is read off the cascade for exactly that reason: spelling
+		// "clear selection" at both moments would name an act one of them refuses.
+		chrome.NewGuidanceHint(m.EscHint(), 0, true),
 		chrome.NewGuidanceHint("? help", 10, false),
 	}
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
@@ -706,13 +769,19 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 			}
 		}
 	}
+	escHint := m.EscHint()
 	switch {
 	case row.IsFocusedProjectHeader:
 		// The one header with no fold advertises no fold key. Everything below it
 		// is still foldable on its own row, so the outline loses nothing by this
 		// row staying silent about h and l.
 	case zoomed:
-		hints = append(hints, chrome.NewGuidanceHint("Esc unzoom", 1, true))
+		// The way out takes the fold hint's place rather than the tail every other
+		// header gives it, and names the cascade's own act: a zoom reached from
+		// inside a Focus or a lens is left by those first, and "unzoom" would have
+		// promised a press that does something else.
+		hints = append(hints, chrome.NewGuidanceHint(escHint, 1, true))
+		escHint = ""
 	case m.IsSectionRowCollapsed(row):
 		hints = append(hints, chrome.NewGuidanceHint("l/Right expand", 1, false))
 	default:
@@ -732,6 +801,11 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 		)
 	} else if !zoomed {
 		hints = append(hints, chrome.NewGuidanceHint("s sections", 2, false))
+	}
+	// A header row under a Focus, a scope, or a relationship hop owes the way out
+	// as much as a task row does, and the zoomed header has already spent it above.
+	if escHint != "" {
+		hints = append(hints, chrome.NewGuidanceHint(escHint, 0, true))
 	}
 	hints = append(hints, chrome.OptionalGuidanceHints(3, "Tab next mode", "P projects", "/ search", "? help")...)
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
@@ -754,15 +828,16 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 	case outlinerEmptyProjectFiltered:
 		required = "Fx clear project filters"
 	case outlinerEmptySearch, outlinerEmptySearchInvalid:
-		required = m.SearchExitHint()
+		required = m.EscHint()
 	case OutlinerEmptySearchFiltered:
 		// The query is what the user is holding, so widening the facets is the act
 		// that keeps it; leaving search is named beside it rather than in its place.
 		required = "fx clear filters"
-	case outlinerEmptyLens:
-		required = "Esc restore lens"
-	case outlinerEmptyFocus, OutlinerEmptySection:
-		required = "Esc return"
+	case outlinerEmptyLens, outlinerEmptyFocus, OutlinerEmptySection:
+		// All three are cascade steps, so all three name the press the cascade
+		// would actually run: a lens standing over a Focus is left first, and a
+		// profile spelling its own recovery here would say otherwise.
+		required = m.EscHint()
 	default:
 		required = "a capture"
 	}
@@ -771,7 +846,7 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 		optional = []string{"? help"}
 	}
 	if cause == OutlinerEmptySearchFiltered {
-		optional = append([]string{m.SearchExitHint()}, optional...)
+		optional = append([]string{m.EscHint()}, optional...)
 	}
 	hints := append(chrome.RequiredGuidanceHints(required), chrome.OptionalGuidanceHints(10, optional...)...)
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}

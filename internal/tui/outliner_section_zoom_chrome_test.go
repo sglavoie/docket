@@ -56,7 +56,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	if got := out.ClassifyEmptyCause(); got != outliner.OutlinerEmptySection {
 		t.Fatalf("empty cause = %d, want the section cause to outrank the filter cause", got)
 	}
-	const want = "No tasks are left in this section. Press Esc to return."
+	const want = "No tasks are left in this section. Press Esc to unzoom."
 	if got := out.OutlinerEmptyMessage(); got != want {
 		t.Fatalf("empty message = %q, want %q", got, want)
 	}
@@ -69,8 +69,8 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 		t.Fatalf("empty zoom guidance = (%+v, %v), want a required recovery act", spec, ok)
 	}
 	got := guidanceEntryText(spec)
-	if !strings.Contains(got, "Esc return") || strings.Contains(got, "clear filters") {
-		t.Fatalf("empty zoom guidance = %q, want Esc return rather than the filter chord", got)
+	if !strings.Contains(got, "Esc unzoom") || strings.Contains(got, "clear filters") {
+		t.Fatalf("empty zoom guidance = %q, want the unzoom act rather than the filter chord", got)
 	}
 }
 

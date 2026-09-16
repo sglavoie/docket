@@ -90,14 +90,16 @@ func peekGuidanceEntries(spec chrome.GuidanceSpec) []string {
 }
 
 // assertPeekCloseGuidance is the required half of the contract: both keys that
-// put the pane down are named, both are reserved ahead of every optional entry,
-// and no other entry claims Esc. That last check is what keeps the footer from
+// put the pane down share one reserved entry, ahead of every optional one, and
+// no other entry claims Esc. That last check is what keeps the footer from
 // promising an act the first press is not doing, since Esc spends itself on the
-// pane before it reaches the query, the lens, or the scope.
+// pane before it reaches the query, the lens, or the scope. Two keys over one
+// act are one entry rather than two, so the narrow footer spends the row it
+// saves on an act it has not named yet.
 func assertPeekCloseGuidance(t *testing.T, m *OutlinerModel, spec chrome.GuidanceSpec, label string) {
 	t.Helper()
 	closeKey := m.peekOperationKey(operation.OperationCorePeek, peekDisplayKey)
-	required := map[string]bool{closeKey + " close Peek": false, "Esc close Peek": false}
+	required := map[string]bool{closeKey + "/Esc close Peek": false}
 	for _, hint := range spec.Hints {
 		entry := chrome.GuidanceHintText(hint)
 		if _, want := required[entry]; want {
@@ -107,7 +109,7 @@ func assertPeekCloseGuidance(t *testing.T, m *OutlinerModel, spec chrome.Guidanc
 			required[entry] = true
 			continue
 		}
-		if hint.Key == "Esc" {
+		if strings.Contains(hint.Key, "Esc") {
 			t.Errorf("%s: a visible Peek also advertises %q, want Esc to name the pane alone", label, entry)
 		}
 	}

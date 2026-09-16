@@ -97,7 +97,7 @@
     { "type": "key", "label": "complete it so the zoomed section empties", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "assert", "label": "an emptied zoom stays put instead of unwinding under the user", "assert": "contains", "value": "Section: Today" },
-    { "type": "assert", "assert": "contains", "value": "No tasks are left in this section. Press Esc to return." },
+    { "type": "assert", "assert": "contains", "value": "No tasks are left in this section. Press Esc to unzoom." },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Esc still leaves on demand", "key": "esc" },

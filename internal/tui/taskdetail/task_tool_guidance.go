@@ -9,8 +9,18 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap.KeyMap) (chrome.GuidanceSpec, bool) {
-	if confirmActive {
+// discardConfirmAction names the questions these panels raise over unsaved text
+// rather than over stored work. They take the editor's own chrome, since
+// declining one keeps the draft and stays in the composer.
+func discardConfirmAction(action string) bool {
+	return action == "discard-add" || action == "discard-edit"
+}
+
+func taskToolGuidanceSpec(confirm *chrome.ConfirmDialog, activeInteraction bool, km *keymap.KeyMap) (chrome.GuidanceSpec, bool) {
+	if confirm.IsActive() {
+		if discardConfirmAction(confirm.Action()) {
+			return chrome.DiscardGuidanceSpec(), true
+		}
 		return chrome.ConfirmationGuidanceSpec(), true
 	}
 	rows := 1
@@ -21,11 +31,11 @@ func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap
 }
 
 func (m *CommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.AddMode || m.EditMode || m.ExpandedView, m.BuildKeyMap())
+	return taskToolGuidanceSpec(&m.Confirm, m.AddMode || m.EditMode || m.ExpandedView, m.BuildKeyMap())
 }
 
 func (m *TaskAttachmentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.AddMode, m.BuildKeyMap())
+	return taskToolGuidanceSpec(&m.Confirm, m.AddMode, m.BuildKeyMap())
 }
 
 func renderTaskToolGuidance(spec chrome.GuidanceSpec, ok bool, width int, accent ...color.Color) string {

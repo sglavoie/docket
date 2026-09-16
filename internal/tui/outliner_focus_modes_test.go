@@ -196,7 +196,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 
 	insideInbox.WorkflowState = models.StateBacklog
 	out.SelectOutlinerMode(chrome.ModeInbox)
-	if len(out.Rows) != 0 || out.OutlinerEmptyMessage() != "No tasks are visible in this Focus. Press Esc to return." {
+	if len(out.Rows) != 0 || out.OutlinerEmptyMessage() != "No tasks are visible in this Focus. Press Esc to leave Focus." {
 		t.Fatalf("empty Focus = rows %d message %q", len(out.Rows), out.OutlinerEmptyMessage())
 	}
 }

@@ -452,13 +452,18 @@ func (m *ProjectEditorModel) View() tea.View {
 
 func (m *ProjectEditorModel) guidanceSpec() chrome.GuidanceSpec {
 	if m.ConfirmDiscard {
-		return chrome.ConfirmationGuidanceSpec()
+		return chrome.DiscardGuidanceSpec()
 	}
 	commit := "Ctrl+S save"
 	if m.err != nil {
 		commit = "Ctrl+S retry"
 	}
-	spec := chrome.RequiredActionGuidanceSpec(commit, "Tab next", "Shift+Tab previous", "Enter next/save")
+	// checkChanges is what the Esc handler itself asks, so an edited field and
+	// the exit entry change together.
+	spec := chrome.RequiredExitGuidanceSpec(
+		commit, chrome.DraftEscapeHint(m.checkChanges()),
+		"Tab next", "Shift+Tab previous", "Enter next/save",
+	)
 	if m.hasChanges {
 		spec.Supplemental = "Unsaved changes"
 	}
