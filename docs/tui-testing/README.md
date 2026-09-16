@@ -368,6 +368,15 @@ public keys. The four `ux-acceptance-*-baseline.json` scenarios are its recorded
 "before"; `ux-acceptance-daily-loop.json` is the integrated "after" that replays
 a whole day over the same fixture.
 
+[`ux-clarity-regression-map.md`](ux-clarity-regression-map.md) is the separate
+map for the later, independently numbered UX clarity plan, which reads the same
+fixture. It names the regression home for each of that plan's sessions, records
+the layout measurements and the combined states the plan replaces, and documents
+`TT_UX_CLARITY_REVIEW_DIR`, the directory
+`internal/tui/ux_clarity_review_matrix_test.go` exports its reviewable ANSI,
+plain-text, and monochrome before-frames to. The two maps stay separate files
+because both number their sessions from one.
+
 ## Observation contract
 
 Each action observes:
