@@ -63,6 +63,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"cleanup-undo-redo.json",
 		"undo-focus-committed-target.json",
 		"undo-focus-restart-uncorrelated.json",
+		"undo-focus-single-delete.json",
 		"daily-loop.json",
 		"inbox-triage-advance-across-project-groups.json",
 		"inbox-triage-advance-promotes-children.json",

@@ -73,7 +73,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 // address on the result, so a later ledger restore of this transaction can seat
 // the cursor back on the row the gesture moved.
 func runTaskBatch(action string, task taskref.TaskIdentity, mutate func() ([]string, string, string, error)) tea.Cmd {
-	return stampCommittedFocusTarget(runBatch(action, mutate), task.Locator())
+	return StampCommittedFocusTarget(runBatch(action, mutate), task.Locator())
 }
 
 // MoveToTop moves one task to the top of its siblings as one project-scoped

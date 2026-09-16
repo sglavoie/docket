@@ -245,13 +245,19 @@ func FinalizeStaleSelectionBatchResult(cmd tea.Cmd, locators []app.TaskLocator) 
 	}
 }
 
-// stampCommittedFocusTarget names, on the batch a gesture produced, the one
+// StampCommittedFocusTarget names, on the batch a gesture produced, the one
 // task the gesture was aimed at. It decorates rather than threading the address
 // through runBatch because the address is the caller's own argument and the
 // mutation closure never sees it. A canceled or failed gesture resolves to
 // TransactionErrorMsg and is left untouched, so nothing can correlate a
 // transaction that never committed.
-func stampCommittedFocusTarget(cmd tea.Cmd, target app.TaskLocator) tea.Cmd {
+//
+// It is exported for the one dispatch that lives in the shell rather than in a
+// coordinator: the canonical task deletion commits through the batch delete for
+// every cardinality, so only the shell that armed the prompt knows whether the
+// gesture named one task. An invalid target leaves the command undecorated,
+// which is what keeps a multi-target gesture uncorrelated.
+func StampCommittedFocusTarget(cmd tea.Cmd, target app.TaskLocator) tea.Cmd {
 	if cmd == nil || !target.Valid() {
 		return cmd
 	}

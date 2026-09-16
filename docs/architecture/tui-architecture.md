@@ -104,13 +104,29 @@ on and the address the save resolved to, which a `%project` token can have moved
 to another project — and records past the unchanged-edit return, since an edit
 that changed nothing wrote no ledger entry to correlate with. Every other
 committed mutation arrives as `BatchTransactionResultMsg`, whose
-`CommittedTarget` is stamped by `stampCommittedFocusTarget` at the dispatch seams
-that send exactly one task: the reorder, indent, outdent, delete, and
-single-target operation paths. A bulk or project-scoped batch leaves it zero.
+`CommittedTarget` is stamped by `StampCommittedFocusTarget` at the dispatch seams
+that send exactly one task: the reorder, indent, and outdent paths through
+`runTaskBatch`, the single-target operation path through `soleOperationTarget`,
+and the canonical deletion. A bulk or project-scoped batch leaves it zero.
 Nothing elects a target out of `CommittedDueEffect.Moves` or `Removed`, which
 list every relocated or deleted descendant and so cannot say which row the user
 pointed at. A creation records an after address and no before one, so undoing it
 correlates to nothing and redoing it seats the task it mints again.
+
+Deletion is the one of those seams that lives in the shell rather than in a
+coordinator, because `AppModel.confirmTaskDelete` commits through
+`BulkCoordinator.DeleteLocators` for every cardinality: the application service
+expands each subtree, so the coordinator sees only locators and the result's
+`Removed` list is full of descendants nobody pointed at. `soleTaskDeleteTarget`
+is therefore read off the refs the gesture requested, not the roots
+`collapseNestedTaskDeleteRoots` produced — a selection holding a parent and its
+own child collapses to one root but named two rows, and that is a multi-target
+gesture. One requested ref stamps that ref's locator, so undoing a confirmed
+single-row delete seats the cursor back on the restored task or names where it
+went; anything else leaves the batch unstamped and uncorrelated. A canceled
+prompt dispatches no command and a refused transaction resolves to
+`TransactionErrorMsg`, which the decorator passes through untouched, so neither
+records a correlation.
 
 `AppModel.refocusRestoredTask` spends that correlation.
 `OutlinerModel.RefocusRestoredTask` seats the cursor only on a task the current

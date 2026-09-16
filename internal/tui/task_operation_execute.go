@@ -830,6 +830,12 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // selection IDs after the commit (finalizeStaleSelectionBatchResult passes a TransactionError
 // through untouched, leaving state intact on failure). An artifact-build error
 // aborts before any mutation and preserves the pending selection's task data.
+//
+// This is also the seam that knows the gesture's cardinality, so it is the one
+// that names the committed focus target: the batch delete is the only route for
+// both one and many roots, and neither the coordinator nor the removed-locator
+// evidence can tell a row the user pointed at from a descendant that went with
+// it. A gesture naming several tasks stamps nothing and stays uncorrelated.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	pending := m.taskMutation.takeDelete()
 	roots := pending.roots
@@ -844,7 +850,20 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(selected) == 0 {
 		selected = roots
 	}
+	cmd = coordinator.StampCommittedFocusTarget(cmd, soleTaskDeleteTarget(selected))
 	return coordinator.FinalizeStaleSelectionBatchResult(cmd, taskref.TaskLocatorsFromTaskRefs(selected))
+}
+
+// soleTaskDeleteTarget names the one task a deletion gesture pointed at, read
+// off the requested refs rather than the collapsed roots: a selection holding a
+// parent and its own child collapses to one root, but the user named two tasks
+// and that is a multi-target gesture. Any other cardinality returns the zero
+// locator, which leaves the batch unstamped and the transaction uncorrelated.
+func soleTaskDeleteTarget(requested []TaskProjectRef) app.TaskLocator {
+	if len(requested) != 1 {
+		return app.TaskLocator{}
+	}
+	return requested[0].Locator()
 }
 
 // applicationDateOperationRequest keeps deadline planning and deferral effects

@@ -435,11 +435,13 @@ declared their text required, while this reads the finished screen.
 
 - Go: `internal/tui/coordinator/undo_focus_controller_test.go`,
   `internal/tui/handler_task_undo_identity_test.go`,
+  `internal/tui/task_delete_focus_target_test.go`,
   `internal/tui/outliner/outliner_jump_history_outlinersplit_test.go`,
   `internal/tui/undo_context_title_test.go`,
   `internal/tui/workspace_ledger_undo_test.go`
 - Scenarios: `docs/tui-testing/scenarios/undo-focus-committed-target.json`,
   `docs/tui-testing/scenarios/undo-focus-restart-uncorrelated.json`,
+  `docs/tui-testing/scenarios/undo-focus-single-delete.json`,
   `docs/tui-testing/scenarios/cleanup-undo-redo.json`,
   `docs/tui-testing/scenarios/outliner-move-to-project-bulk-undo.json`,
   `docs/tui-testing/scenarios/outliner-project-delete-undo.json`,

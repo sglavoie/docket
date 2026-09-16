@@ -1,0 +1,61 @@
+{
+  "name": "undo-focus-single-delete",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "leave the group header for the first task", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+    { "type": "key", "label": "open the task action sheet", "key": "space" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "delete" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "one row was pointed at, so the prompt names that one task", "assert": "contains", "value": "Delete task #1?" },
+    { "type": "key", "label": "confirm the deletion", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "key", "label": "move the cursor away from where the deleted row stood", "key": "j" },
+    { "type": "key", "label": "undo the deletion", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+    { "type": "key", "label": "copy the cursor row's title", "key": "y" },
+    {
+      "type": "assert",
+      "label": "the restored task is drawn again, so the cursor is on it rather than wherever it had wandered",
+      "assert": "clipboard_contains",
+      "value": "Sketch intake flow"
+    },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "start a visual selection on the restored task", "key": "v" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "add the task below to it", "key": "v" },
+    { "type": "key", "label": "open the bulk action sheet", "key": "space" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "delete" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "two rows were pointed at, so the prompt counts them", "assert": "contains", "value": "Delete 2 tasks?" },
+    { "type": "key", "label": "confirm the bulk deletion", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "contains", "value": "Implement export pipeline" },
+    { "type": "key", "label": "copy the surviving row the cursor came to rest on", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Implement export pipeline" },
+    { "type": "key", "label": "undo the bulk deletion", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+    {
+      "type": "assert",
+      "label": "a gesture naming two tasks correlates to none, so the restore advertises no return frame",
+      "assert": "not_contains",
+      "value": "Ctrl+O origin"
+    },
+    { "type": "key", "label": "copy the cursor row's title again", "key": "y" },
+    {
+      "type": "assert",
+      "label": "the uncorrelated restore left the cursor exactly where the user had it",
+      "assert": "clipboard_contains",
+      "value": "Implement export pipeline"
+    },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
