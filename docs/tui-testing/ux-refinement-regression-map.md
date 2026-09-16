@@ -518,13 +518,32 @@ declared their text required, while this reads the finished screen.
 ### Session 18 — Complete integrated acceptance and final review
 
 - Go: `internal/tui/uitest_example_scenarios_test.go` (the committed-inventory
-  gate and the replay of every scenario), `internal/tui/uitest_clipping_test.go`
-- Scenarios: all four `ux-acceptance-*` baselines,
+  gate and the replay of every scenario), `internal/tui/uitest_clipping_test.go`,
+  `internal/tui/ux_presentation_matrix_acceptance_test.go`
+- Scenarios: all four `ux-acceptance-*-baseline.json` files,
+  `docs/tui-testing/scenarios/ux-acceptance-daily-loop.json`,
   `docs/tui-testing/scenarios/presentation-size-matrix.json`,
   `docs/tui-testing/scenarios/daily-loop.json`
 - Contracts: `CLAUDE.md` in full, plus `docs/baselines/baseline.md`, whose
   committed-scenario count is gated by `TestBaselineDocumentMatchesMeasuredGates`
   and must be updated in the same change that adds or removes a scenario.
+
+`ux-acceptance-daily-loop.json` is the integrated replay: one workspace carried
+through scan, fold and group navigation, Peek paging, a plain capture and one
+carrying metadata, a capture the grammar refuses by name, a discard declined and
+then accepted, every tab of the expanded composer, an inline row edit, a lens
+saved from search results and suspended by a search run inside it, triage and
+undo, an abandoned `w` chord, the `Space` sheet and the menu bar, an empty
+result, and an arrived minute.
+
+`internal/tui/ux_presentation_matrix_acceptance_test.go` is the half a scenario cannot
+assert, because each of its questions compares two renderings rather than
+reading one: display width against the terminal's columns rather than rune
+count, drawn list rows against `ContentHeight()`, task rows against chrome rows,
+the Peek dock's screen position over three unrelated cursor rows, the connector
+indent across three generations, and the ASCII-profile projection against the
+plain screen. It runs the `ux-acceptance` fixture at 60x20, 80x24, 100x35, and
+120x40 in both themes, which is the acceptance matrix this session is judged on.
 
 ## Setup navigation versus tested navigation
 

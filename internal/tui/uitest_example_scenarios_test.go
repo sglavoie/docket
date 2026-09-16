@@ -163,6 +163,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"ux-acceptance-peek-baseline.json",
 		"ux-acceptance-narrow-baseline.json",
 		"ux-acceptance-selection-baseline.json",
+		"ux-acceptance-daily-loop.json",
 	}
 	scenariosDir := exampleScenariosDir(t)
 	for _, name := range required {

@@ -335,6 +335,7 @@ The committed suite exercises the product contracts directly:
 | Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
 | Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `internal/tui/outliner_focus_test.go`, `internal/tui/filter_facets_projection_test.go` |
+| One day's whole loop over one workspace: scan, fold, navigate, Peek, capture plain and with metadata, a refused capture, a declined and then accepted discard, every expanded-form tab, inline edit, a lens saved from results and suspended by a search inside it, triage, undo, an abandoned chord, both menus, an empty result, and an arrived minute | `ux-acceptance-daily-loop.json` plus `internal/tui/ux_presentation_matrix_acceptance_test.go` for the same fixture read at four sizes in dark, light, and monochrome |
 
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and
@@ -362,7 +363,9 @@ deadline-step refusal versus mergeable scheduling.
 planned UX refinement work onto those scenarios and their Go tests: which file
 records each behavior today, which scenarios assert an expanded project-header
 row rather than merely navigating past one, and why that navigation must stay on
-public keys. The four `ux-acceptance-*` baselines are its recorded "before".
+public keys. The four `ux-acceptance-*-baseline.json` scenarios are its recorded
+"before"; `ux-acceptance-daily-loop.json` is the integrated "after" that replays
+a whole day over the same fixture.
 
 ## Observation contract
 
