@@ -157,21 +157,65 @@ func TestConfirmationGuidanceIsMandatoryAndNormalized(t *testing.T) {
 	}
 }
 
-func TestReplaceFooterRemovesEveryStructuredGuidanceRow(t *testing.T) {
-	oldFooter := chrome.RenderGuidance(chrome.GuidanceSpec{
+// A view that draws its own footer keeps every row of it while the shell reports
+// what just happened. Session 4 replaced the footer swap this used to assert:
+// the old composition removed the surface's structured guidance to make room for
+// a transient message, which left a multi-row control set unnamed for as long as
+// the message stood. The feedback now takes a body row above the divider
+// instead, so the frame is the same height and the controls are all still there.
+func TestSurfaceFooterFeedbackStandsAboveEveryStructuredGuidanceRow(t *testing.T) {
+	footer := chrome.RenderGuidance(chrome.GuidanceSpec{
 		Hints: chrome.RequiredGuidanceHints("Enter apply", "Esc cancel", "Tab navigate"),
 		Rows:  2,
-	}, 18)
-	newFooter := chrome.RenderGuidance(chrome.GuidanceSpec{
-		Hints: chrome.RequiredGuidanceHints("Esc dismiss status"),
+	}, 24)
+	content := "first\nsecond\n" + footer
+	composed := composeSurfaceFooterFeedback(content, "Copied title")
+	plain := ansi.Strip(composed)
+
+	for _, want := range []string{"Enter apply", "Esc cancel", "Tab navigate"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("feedback displaced a control the surface published: %q missing from\n%s", want, plain)
+		}
+	}
+	if !strings.Contains(plain, "Copied title") {
+		t.Fatalf("composition lost the feedback it was given:\n%s", plain)
+	}
+	if got, want := strings.Count(composed, "\n"), strings.Count(content, "\n"); got != want {
+		t.Fatalf("frame height changed: %d rows of separators, want %d", got, want)
+	}
+
+	lines := strings.Split(plain, "\n")
+	divider := surfaceFooterDividerIndex(lines)
+	if divider < 1 {
+		t.Fatalf("composed frame lost its footer divider:\n%s", plain)
+	}
+	if !strings.Contains(lines[divider-1], "Copied title") {
+		t.Fatalf("feedback is not the row directly above the footer:\n%s", plain)
+	}
+	// The row it spent is the one nearest the footer, which on a self-padding
+	// full-height view is padding. Rows further up are the surface's own content
+	// and stay where they are.
+	if !strings.Contains(plain, "first") {
+		t.Fatalf("composition spent a row other than the one above the footer:\n%s", plain)
+	}
+}
+
+// The composition is a no-op where there is nothing to spend, because a frame
+// that cannot afford both keeps the controls: they persist and the message does
+// not.
+func TestSurfaceFooterFeedbackLeavesAFrameItCannotPayFrom(t *testing.T) {
+	footer := chrome.RenderGuidance(chrome.GuidanceSpec{
+		Hints: chrome.RequiredGuidanceHints("Esc back"),
 		Rows:  1,
 	}, 18)
-	replaced := ansi.Strip(replaceFooter("content\n"+oldFooter, newFooter))
-	if strings.Contains(replaced, "Enter apply") || strings.Contains(replaced, "Tab navigate") {
-		t.Fatalf("old multi-row guidance survived replacement:\n%s", replaced)
+	if got := composeSurfaceFooterFeedback(footer, "Copied title"); got != footer {
+		t.Fatalf("footer-only frame was rewritten:\n%s", ansi.Strip(got))
 	}
-	if !strings.Contains(replaced, "content") || !strings.Contains(replaced, "Esc dismiss status") {
-		t.Fatalf("replacement lost content or new status:\n%s", replaced)
+	if got := composeSurfaceFooterFeedback("only content", "Copied title"); got != "only content" {
+		t.Fatalf("frame without a footer divider was rewritten:\n%s", ansi.Strip(got))
+	}
+	if got := composeSurfaceFooterFeedback("first\nsecond\n"+footer, ""); got != "first\nsecond\n"+footer {
+		t.Fatalf("empty feedback still moved the frame:\n%s", ansi.Strip(got))
 	}
 }
 

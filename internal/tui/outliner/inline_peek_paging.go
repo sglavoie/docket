@@ -26,6 +26,13 @@ const (
 	// reserves from the list. It is exported because the shell measures frames
 	// against it rather than against a literal seven.
 	PeekDockRows = peekDockDividerRows + inlinePeekWindowRows
+	// peekDockFooterWrapRows is the floor outlinerListRows puts under the shell's
+	// measured footer excess while the dock is open. The dock advertises its own
+	// paging keys only over a document that can move, so at minimum width the
+	// footer wraps for one row and not for the next, and a budget following that
+	// difference would put the dock back under the cursor's control. One row is
+	// reserved either way; a taller footer is still charged in full.
+	peekDockFooterWrapRows = 1
 	// peekDockIndent is the column the dock's content starts in. It is fixed
 	// rather than read off the cursor row: the dock hangs off the frame, not off a
 	// tree node, so a deeply nested task and a root one read at the same margin.

@@ -158,51 +158,79 @@ func (m *AppModel) renderStatusBar() string {
 func (m *AppModel) renderFooterChrome() string {
 	// Top border separator for visual distinction; tinted with current view accent.
 	separator := m.renderFooterDivider(m.viewNav.width)
-	renderFooter := func(content string) string {
-		return separator + "\n" + m.renderFooterContent(content, m.viewNav.width)
-	}
+	return separator + "\n" + m.renderFooterContent(m.footerChromeContent(), m.viewNav.width)
+}
 
-	// Helper to render left-aligned message with spacer.
-	renderLeftAlignedMsg := func(msg string) string {
-		width := m.viewNav.width
-		if width <= 0 {
-			width = 80
-		}
-		msg = textfit.TruncateToVisualWidth(msg, width)
-		gap := max(width-lipgloss.Width(msg), 0)
-		spacer := lipgloss.NewStyle().
-			Width(gap).
-			Background(m.footerFlashBackgroundColor()).
-			Render("")
-		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+// footerChromeContent is everything the footer says under its divider: what just
+// happened, and then what the keys still do. They are two rows rather than one
+// occupant, because a message is a report and the controls are the only
+// statement of how to leave the surface it was reported from — displacing them
+// leaves a user inside a text field whose keys are named nowhere on screen.
+//
+// Feedback leads so the controls keep the terminal's last rows: the footer is
+// pinned to the bottom of the frame, so a line inserted above them grows the
+// footer upward and the commit and cancel entries do not move under a message
+// arriving and expiring.
+//
+// It is pure, which is what lets shellFrameMetrics measure the same two blocks
+// this composes: nothing here mounts, consumes, or clears.
+func (m *AppModel) footerChromeContent() string {
+	feedback := m.footerFeedbackLine()
+	controls := m.footerControlContent()
+	switch {
+	case feedback == "":
+		return controls
+	case controls == "":
+		return feedback
+	default:
+		return feedback + "\n" + controls
 	}
+}
 
-	// Show error message if present.
-	if m.feedback.err != nil {
-		msg := theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.feedback.err.Error())
-		return renderFooter(renderLeftAlignedMsg(msg))
+// footerFeedbackLine is the one line the shell's own status cluster owns: its
+// error, else its transient message, else nothing. The error outranks the
+// message because they are the same channel reporting the same act, and a
+// failure is the half that must not be summarized by a success.
+func (m *AppModel) footerFeedbackLine() string {
+	switch {
+	case m.feedback.err != nil:
+		return m.renderFooterMessageRow(theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.feedback.err.Error()))
+	case m.feedback.message == "":
+		return ""
+	case m.feedback.info:
+		return m.renderFooterMessageRow(theme.InfoStatusStyle.Render("· " + m.feedback.message))
+	default:
+		return m.renderFooterMessageRow(theme.SuccessStyle.Render(icons.Get("success") + " " + m.feedback.message))
 	}
+}
 
+// renderFooterMessageRow left-aligns one status line and fills the rest of the
+// row with the flash wash, so a message never ends in a hole the wash does not
+// cover.
+func (m *AppModel) renderFooterMessageRow(msg string) string {
+	width := m.viewNav.width
+	if width <= 0 {
+		width = 80
+	}
+	msg = textfit.TruncateToVisualWidth(msg, width)
+	gap := max(width-lipgloss.Width(msg), 0)
+	spacer := lipgloss.NewStyle().
+		Width(gap).
+		Background(m.footerFlashBackgroundColor()).
+		Render("")
+	return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+}
+
+// footerControlContent is the footer's other block: the keys a press would
+// reach right now, whoever owns them.
+//
+// An unfinished chord wins over the surface underneath it, because the which-key
+// row describes the very next press; it never competes with feedback, which
+// describes the last one.
+func (m *AppModel) footerControlContent() string {
 	owner, chordSpec := m.activeGuidance()
-
-	// An unfinished chord owns the footer: the which-key row is live input
-	// feedback, so it outranks banners and transient status text. It only wins
-	// where the keys it describes are still the ones a press would reach, which
-	// is what activeGuidance answers.
 	if owner == route.GuidanceOwnerPendingChord {
-		return renderFooter(chrome.RenderGuidanceText(chordSpec, m.viewNav.width))
-	}
-
-	// Show temporary status message if present. Feedback is what just happened
-	// rather than an instruction set, so it is not something a modal displaces.
-	if m.feedback.message != "" {
-		var msg string
-		if m.feedback.info {
-			msg = theme.InfoStatusStyle.Render("· " + m.feedback.message)
-		} else {
-			msg = theme.SuccessStyle.Render(icons.Get("success") + " " + m.feedback.message)
-		}
-		return renderFooter(renderLeftAlignedMsg(msg))
+		return chrome.RenderGuidanceText(chordSpec, m.viewNav.width)
 	}
 
 	content := m.surfaceFooterContent()
@@ -213,7 +241,32 @@ func (m *AppModel) renderFooterChrome() string {
 		// than dropped: closing the overlay hands the host back the same rows.
 		content = suppressGuidanceRows(content)
 	}
-	return renderFooter(content)
+	return content
+}
+
+// shellFrameMetrics measures the footer this frame will draw, without drawing
+// it. It reads the same two blocks footerChromeContent composes, so the height a
+// view reserves and the height the shell paints are one measurement taken twice.
+//
+// It is pure by construction: every call underneath it renders into a string and
+// none of them consumes a one-shot notice. ViewStatusStrip is the one status
+// surface that does consume — it clears the Outliner's focus notice — and it is
+// deliberately not measured here, because the strip is view content the view
+// already reserves out of its own budget.
+func (m *AppModel) shellFrameMetrics() chrome.ShellFrameMetrics {
+	return chrome.ShellFrameMetrics{
+		FeedbackRows: footerBlockRows(m.footerFeedbackLine()),
+		ControlRows:  footerBlockRows(m.footerControlContent()),
+	}
+}
+
+// footerBlockRows is what one footer block costs. An absent block costs nothing,
+// which lipgloss.Height alone would report as one row.
+func footerBlockRows(block string) int {
+	if block == "" {
+		return 0
+	}
+	return lipgloss.Height(block)
 }
 
 // activeGuidance resolves the one layer of the composed frame whose

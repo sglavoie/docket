@@ -119,6 +119,52 @@ wrapped height from `ComputeOutlinerViewport`'s row budget, and
 `AppModel.View` renders the view before the status bar, so the reservation and
 the strip see one frame's inputs.
 
+`renderFooterChrome` is two blocks under one divider, not one line with two
+possible tenants. `footerFeedbackLine` renders the success, info, or error the
+last mutation left, `footerControlContent` renders the pending chord's rows or
+the surface's ranks with `suppressGuidanceRows` already applied, and
+`footerChromeContent` joins whichever of the two are non-empty in that order.
+Feedback is therefore the row directly under the divider and the controls keep
+the terminal's last row: a message arriving grows the footer upward into the
+content area rather than moving the keys the user is reading. Both halves are
+pure functions of the model, which is what lets them be read twice in one frame.
+
+`chrome.ShellFrameMetrics` is that reading. `FooterRows` is the divider plus the
+two blocks, floored at the `ShellFooterBaselineRows` every view has always been
+sized against by `viewNavigationController.viewSize`, and `ExcessRows` is the
+difference — what a view owes back when the footer says more than one thing.
+`AppModel.shellFrameMetrics` builds it from the same two functions the render
+calls, so a measurement that disagreed with the paint would have to be a
+different function. Nothing in that path consumes anything: the focus notice is
+the strip's one-shot and the strip is view content, deliberately outside this
+measurement.
+
+`route.ShellFrameAware` is the delivery, and it reaches exactly one view.
+`syncShellFrameMetrics` runs once per `Update`, from the same deferred closure as
+`syncHostedPanelHost` and for the same reason — it is the one place the footer
+this update produced exists before the frame is drawn. It records the
+`presentation.PresentationID` it told, skips an unchanged reading, and hands the
+zero value back to the previous recipient when the active presentation changes.
+That single-recipient rule is the whole double-reservation defense: with the
+capture panel open over the outline, both views are drawn and both could
+plausibly subtract the same rows, and the panel is the one that does.
+`OutlinerModel.ShellFrame` feeds `outlinerListRows` and
+`TaskComposerModel.shellFrame` feeds `compactPanelRows`; each subtracts
+`ExcessRows` once, and the panel's subtraction leaves `HostedPanelLayout.HostRows`
+untouched, so the host's scroll window is not moved by a message in the footer.
+
+A full-height view skips `renderFooterChrome` and draws its own footer, so the
+shell composes into that frame instead of replacing it.
+`composeSurfaceFooterFeedback` finds the surface's own divider with
+`surfaceFooterDividerIndex` — the last all-`─` row above the final line — and
+spends the body rows immediately above it, which keeps the frame exactly as tall
+as the terminal and leaves every published control row intact. A frame with no
+divider, or one whose divider leaves no body row to spend, keeps its footer whole
+and drops the feedback; Zen mode drops it by classification rather than by
+geometry. The function it replaced, `replaceFooter`, did the opposite: it
+overwrote the surface's own guidance with the message, which is why a Notes or
+Help frame could be left with a success line and no statement of `Esc back`.
+
 The outstanding-conflict indicator leads the strip because it is the one durable
 line there: it stands until the CLI resolves the last bundle, while the two
 below it come and go, so a transient line arriving never moves it to another
@@ -234,8 +280,15 @@ that fails to clear itself.
 Peek's dock is the frame's other fixed reservation, and it is fixed in the
 stronger sense: `peekDockHeight` returns `PeekDockRows` or zero and measures
 neither the cursor nor the document, so `ComputeOutlinerViewport` subtracts the
-same rows — that constant plus one guard row against a footer wrapping to three
-lines at minimum width — under a one-line task and under a forty-line one.
+same rows — that constant, and nothing beside it — under a one-line task and
+under a forty-line one. It subtracts a guard row as well, against a footer
+wrapping at minimum width, and the measured frame budget below is what turned
+that guard from a guess into a floor rather than removing it: the dock advertises
+its own paging keys only over a document that can move, so the footer wraps under
+one cursor and not under the next, and a reservation following the measurement
+raw would hand the dock's position back to the cursor. `peekDockFooterWrapRows`
+is that floor — one row, while the dock is open — and a footer taller than it is
+still charged in full.
 Opening Peek moves the list once and nothing the cursor does afterwards moves it
 again. `writePeekDock` pads the list block out to `VisibleRows` before writing
 the dock, so a projection shorter than its window leaves the dock at the screen

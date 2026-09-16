@@ -3,6 +3,7 @@ package listsurface
 import (
 	"image/color"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
@@ -12,6 +13,7 @@ type BaseView struct {
 	pulse.WorkspacePulseState
 	width       int
 	height      int
+	shellFrame  chrome.ShellFrameMetrics
 	Err         error
 	accentColor color.Color
 }
@@ -41,6 +43,30 @@ func (v *BaseView) Width() int {
 // Height returns the current height.
 func (v *BaseView) Height() int {
 	return v.height
+}
+
+// SetShellFrameMetrics records what the shell's footer costs this frame. It is
+// deliberately not SetSize: a message arriving and expiring must not re-anchor a
+// scroll window, so the size a view was given stands and only the budget below
+// moves. Every embedder gets the method and so satisfies route.ShellFrameAware;
+// a view that never reads FrameHeight simply keeps behaving as it did.
+func (v *BaseView) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	v.shellFrame = metrics
+}
+
+// ShellFrameMetrics is what was last recorded, for a view composing its own
+// budget out of the parts rather than taking FrameHeight whole.
+func (v *BaseView) ShellFrameMetrics() chrome.ShellFrameMetrics {
+	return v.shellFrame
+}
+
+// FrameHeight is the rows this view may actually draw: its height less whatever
+// the footer costs beyond the two rows the shell sized it against. A view that
+// plans a layout against Height instead will have its last row cropped by the
+// shell exactly when the footer has something extra to say, which is exactly
+// when the row it loses is the one naming the way out.
+func (v *BaseView) FrameHeight() int {
+	return max(v.height-v.shellFrame.ExcessRows(), 0)
 }
 
 // SetError sets the current error.

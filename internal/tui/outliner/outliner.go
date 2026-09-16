@@ -50,6 +50,11 @@ type OutlinerModel struct {
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move ViewScrollOffset.
 	LastViewport outlinerViewport
+	// shellFrame is what the shell last said its own footer costs. It is a
+	// budget rather than a size, which is why it is held here instead of folded
+	// into Height: SetSize drops the scroll window, and a footer that grows a row
+	// when a message arrives would re-anchor the list under every keystroke.
+	ShellFrame chrome.ShellFrameMetrics
 	// primaryMode is the authoritative canonical row-strategy identity.
 	PrimaryMode chrome.OutlinerModeID
 

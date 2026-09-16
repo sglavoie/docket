@@ -31,13 +31,13 @@ func (m *CommentsModel) View() tea.View {
 	}
 
 	m.renderCommentsSummary(&b)
-	m.renderMessages(&b)
+	m.renderMessages(&b, true)
 	spec, ok := m.guidanceSpec()
 	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
 	var tail strings.Builder
 	m.renderStatusMessage(&tail)
 	tail.WriteString(footer)
-	m.renderCommentsList(&b, taskToolAvailableRows(b.String(), tail.String(), m.Height()))
+	m.renderCommentsList(&b, taskToolAvailableRows(b.String(), tail.String(), m.FrameHeight()))
 	b.WriteString(tail.String())
 
 	return tea.NewView(b.String())
@@ -137,7 +137,7 @@ func (m *CommentsModel) expandedReaderWindow() expandedReader {
 	spec, ok := m.guidanceSpec()
 	reader.footer = renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
 	reader.lines = strings.Split(textfit.RenderMarkdown(m.entries[m.Cursor].Text, max(m.Width()-4, 1)), "\n")
-	available := taskToolAvailableRows(m.panelTitle()+reader.header, reader.footer, m.Height())
+	available := taskToolAvailableRows(m.panelTitle()+reader.header, reader.footer, m.FrameHeight())
 	reader.visible, reader.counted = expandedReaderVisibleRows(len(reader.lines), available)
 	return reader
 }
@@ -262,6 +262,11 @@ type recoveredDraftPlan struct {
 	// under it. It is a rung of its own because it is the last thing the block
 	// can give up while still saying everything it has to say.
 	trailing bool
+	// refusalGap is the blank row under the refusal above the block. It is not
+	// part of the block at all, which is exactly why it goes last: every rung
+	// above it spends something the block was drawing, and this one spends the
+	// only row left that carries no words.
+	refusalGap bool
 }
 
 // recoveredDraftLadder is that ladder, richest first, and it is a list rather
@@ -277,15 +282,21 @@ type recoveredDraftPlan struct {
 // fewer words — the box is a preview, and one key writes the whole draft out. The
 // hint itself never goes: a block that stopped naming the recovery key would
 // leave the user with a truncated box and no way to know it was not their text.
+//
+// The blank row under the refusal is the one rung below all of that, because it
+// is the only row on the panel that says nothing: at the bottom of the ladder
+// the refusal and the hint stand against each other rather than one of them
+// leaving the screen.
 func recoveredDraftLadder() []recoveredDraftPlan {
-	plans := make([]recoveredDraftPlan, 0, recoveredDraftExcerptRows+4)
+	plans := make([]recoveredDraftPlan, 0, recoveredDraftExcerptRows+5)
 	for rows := recoveredDraftExcerptRows; rows > 0; rows-- {
-		plans = append(plans, recoveredDraftPlan{excerptRows: rows, notice: true, editorRoute: true, trailing: true})
+		plans = append(plans, recoveredDraftPlan{excerptRows: rows, notice: true, editorRoute: true, trailing: true, refusalGap: true})
 	}
 	return append(plans,
-		recoveredDraftPlan{notice: true, editorRoute: true, trailing: true},
-		recoveredDraftPlan{notice: true, trailing: true},
-		recoveredDraftPlan{trailing: true},
+		recoveredDraftPlan{notice: true, editorRoute: true, trailing: true, refusalGap: true},
+		recoveredDraftPlan{notice: true, trailing: true, refusalGap: true},
+		recoveredDraftPlan{trailing: true, refusalGap: true},
+		recoveredDraftPlan{refusalGap: true},
 		recoveredDraftPlan{},
 	)
 }
@@ -383,23 +394,23 @@ func recoveredDraftExcerpt(text string, width, maxRows int) []string {
 // recovery block start down its own ladder. Nothing here touches the retained
 // draft, so a short terminal costs rows and never text.
 func (m *CommentsModel) renderComposerBody(b *strings.Builder, composer *textarea.Model, naturalRows int) tea.View {
-	var refusal strings.Builder
-	m.renderMessages(&refusal)
-
 	var tail strings.Builder
 	m.renderStatusMessage(&tail)
 	spec, ok := m.guidanceSpec()
 	tail.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 
+	// The refusal is measured by the ladder rather than counted as fixed, because
+	// its last rung is the blank row underneath it. Its words are not negotiable
+	// and no rung drops them.
 	boxRows, plan := m.planComposerRows(
-		m.composerBodyRows(b.String()+refusal.String()+tail.String()),
+		m.composerBodyRows(b.String()+tail.String()),
 		naturalRows)
 
 	composer.SetHeight(boxRows)
 	theme.ApplyThemedTextarea(composer)
 	b.WriteString(composer.View())
 	b.WriteString("\n")
-	b.WriteString(refusal.String())
+	m.renderMessages(b, plan.refusalGap)
 	m.renderRecoveredDraft(b, plan)
 	b.WriteString(tail.String())
 	return tea.NewView(b.String())
@@ -408,12 +419,15 @@ func (m *CommentsModel) renderComposerBody(b *strings.Builder, composer *textare
 // composerBodyRows is what is left for the box and the recovery block once the
 // parts that are not negotiable have been measured. A panel with no height yet is
 // unbounded rather than empty, because a measurement taken before the first
-// WindowSizeMsg is not a small terminal.
+// WindowSizeMsg is not a small terminal. The budget is FrameHeight rather than
+// Height because a refused save is exactly when the footer grows a row to carry
+// the refusal, and planning against the taller frame is what would crop the
+// composer's own `Ctrl+S save · Esc discard` off the bottom of it.
 func (m *CommentsModel) composerBodyRows(fixed string) int {
 	if m.Height() <= 0 {
 		return 1 << 20
 	}
-	return max(m.Height()-composedRows(fixed), 0)
+	return max(m.FrameHeight()-composedRows(fixed), 0)
 }
 
 // planComposerRows spends those rows. It walks the drop ladder from the richest
@@ -425,12 +439,20 @@ func (m *CommentsModel) composerBodyRows(fixed string) int {
 func (m *CommentsModel) planComposerRows(available, naturalRows int) (int, recoveredDraftPlan) {
 	ladder := recoveredDraftLadder()
 	for _, plan := range ladder {
-		if boxRows := min(naturalRows, available-m.recoveredDraftRows(plan)); boxRows >= composerMinRows {
+		if boxRows := min(naturalRows, available-m.rungRows(plan)); boxRows >= composerMinRows {
 			return boxRows, plan
 		}
 	}
 	last := ladder[len(ladder)-1]
-	return max(available-m.recoveredDraftRows(last), 1), last
+	return max(available-m.rungRows(last), 1), last
+}
+
+// rungRows is what one rung costs above the box: the recovery block, plus the
+// refusal whose closing blank row is the rung's own last concession.
+func (m *CommentsModel) rungRows(plan recoveredDraftPlan) int {
+	var probe strings.Builder
+	m.renderMessages(&probe, plan.refusalGap)
+	return composedRows(probe.String()) + m.recoveredDraftRows(plan)
 }
 
 func (m *CommentsModel) renderEditMode(b *strings.Builder) tea.View {
@@ -472,12 +494,19 @@ func (m *CommentsModel) renderCommentsSummary(b *strings.Builder) {
 	b.WriteString("\n\n")
 }
 
-func (m *CommentsModel) renderMessages(b *strings.Builder) {
+// renderMessages draws the refusal the panel is standing on. gap is the blank
+// row that closes it, which the composer's drop ladder spends at its last rung;
+// every other caller keeps it, since a block with nothing under it is only
+// readable where the next block is prose that answers it.
+func (m *CommentsModel) renderMessages(b *strings.Builder, gap bool) {
 	if m.Err == nil {
 		return
 	}
 	b.WriteString(wrappedBlock(m.Err.Error(), m.proseWidth(), theme.ValidationErrorStyle.Render))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+	if gap {
+		b.WriteString("\n")
+	}
 }
 
 func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {

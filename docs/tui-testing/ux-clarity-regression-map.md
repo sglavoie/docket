@@ -55,7 +55,7 @@ Run the same command after a session with a different directory and diff the two
 | Frame | Records | Replaced by |
 | --- | --- | --- |
 | `launch` | The resting Outliner: one header row, no feedback, the surface's own ranks. | Session 5 |
-| `feedback-over-guidance` | A routine success standing where the capture controls were. | Session 4 |
+| `feedback-over-guidance` | A routine success standing where the capture controls were. | Session 4 — done |
 | `picker-over-outline` | A value picker owning the one instruction set over a quiet host outline. | Session 3 — done |
 | `nested-discard-prompt` | A discard confirmation over a capture draft over the outline. | Session 3 — done |
 | `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 |
@@ -88,9 +88,11 @@ Three facts these record, which shape the sessions that follow:
   capture open the list is left with 9 rows of window. Session 7 replaces this
   with `clamp(floor(H/3), 7, 12)` — eleven rows at 100×35 — and a three-row
   displayed minimum under pressure.
-- With capture open the footer is **2 rows when a status displaced the controls
-  and 3 when it did not**, because status and guidance are one occupant today.
-  Session 4 budgets them separately.
+- With capture open the footer was **2 rows when a status displaced the controls
+  and 3 when it did not**, because status and guidance were one occupant. Session
+  4 budgeted them separately: it is now 3 rows resting and 4 with a status
+  standing, and `chrome.ShellFrameMetrics` is what the surface underneath
+  reserves the difference from.
 
 ## Expectations later sessions deliberately replace
 
@@ -104,8 +106,8 @@ contract in the same change.
 | ~~A routine copy success arms the animated footer divider.~~ Replaced by session 2: a routine success reports and animates nothing, a warning still does, and the quiet line retires the warning's animation. | `TestUXClarityRoutineSuccessIsQuiet`, formerly `TestUXClarityRoutineSuccessArmsTheFooterFlash` | Session 2 — done |
 | ~~A picker owns every key while the host below still publishes its ranks.~~ Replaced by session 3: the picker is the only layer publishing, the rows its host's ranks occupied stay reserved, and closing it restores the footer byte for byte. | `TestUXClarityPickerOwnsGuidanceAndKeepsHostRows`, formerly `TestUXClarityPickerLeavesHostGuidanceOnScreen` | Session 3 — done |
 | A discard prompt stands on an open composer over the outline, three deep. Kept by session 3 and extended: the footer answers for the prompt, and neither presentation underneath it speaks. | `TestUXClarityDiscardPromptStandsOnTheOpenComposer` | Session 3 — done |
-| Status displaces the capture controls rather than standing beside them. | `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 |
-| Transient messages replace capture controls in the footer. | `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 |
+| ~~Status displaces the capture controls rather than standing beside them.~~ Replaced by session 4: the footer says both, feedback on its own row above the controls, at every size in the matrix. | `TestUXClarityFeedbackStandsBesideTheCaptureControls`, formerly `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 — done |
+| ~~Transient messages replace capture controls in the footer.~~ Replaced by session 4: the message takes a row beside them and clearing it restores the footer byte for byte. | `TestCaptureFooterKeepsControlsBesideATemporaryStatus`, formerly `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 — done |
 | Every context axis competes for one header row and the overflow is unreadable. | `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 |
 | The Outliner's content height counts exactly one header row. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows.go` | Session 5 |
 | Peek's dock costs the same rows at every terminal height. | `TestUXClarityCaptureOverPeekKeepsAFixedDock` | Session 7 |
@@ -170,8 +172,10 @@ contract in the same change.
   rather than displacing them; required entries survive whole at
   `chrome.MinTerminalWidth`.
 - `TestReplaceFooterRemovesEveryStructuredGuidanceRow` in
-  `internal/tui/overlay_guidance_test.go` is the existing statement about what a
-  composed footer may carry, and
+  `internal/tui/overlay_guidance_test.go` was the existing statement about what a
+  composed footer may carry — session 4 replaced both it and the behavior it
+  described with `TestSurfaceFooterFeedbackStandsAboveEveryStructuredGuidanceRow`
+  — and
   `TestUXClarityPickerLeavesHostGuidanceOnScreen` was the one this session
   inverted: it required the host's ranks to be present so that requiring their
   absence would be a visible edit rather than a silently relaxed assertion.
@@ -216,9 +220,10 @@ contract in the same change.
 ### Session 4 — Separate feedback from controls and measure the complete frame
 
 - Go: `internal/tui/capture_footer_test.go`,
-  `internal/tui/chrome/capture_footer_test.go`,
-  `internal/tui/chrome/footer_helpers_test.go`,
-  `internal/tui/chrome/hosted_panel_test.go`,
+  `internal/tui/shell_frame_budget_test.go`,
+  `internal/tui/overlay_guidance_test.go`,
+  `internal/tui/chrome/frame_budget_test.go`,
+  `internal/tui/outliner/peek_dock_test.go`,
   `internal/tui/app_view_status_test.go`,
   `internal/tui/app_handlers_view_capture_test.go`,
   `internal/tui/ux_clarity_baseline_test.go`
@@ -226,17 +231,43 @@ contract in the same change.
   `docs/tui-testing/scenarios/form-extras-comments-narrow.json`,
   `docs/tui-testing/scenarios/global-notes-resize-minimum-layout.json`,
   `docs/tui-testing/scenarios/project-inbox-mode-resize-minimum-layout.json`
-- Contracts: `CLAUDE.md` — notice and status render only in the shell-pinned
-  strip whose height `StatusStripHeight` reserves from
+- Contracts: `CLAUDE.md` — the footer is feedback then controls and feedback
+  never takes the controls' place; `chrome.ShellFrameMetrics` is the one
+  measurement of that footer and `route.ShellFrameAware` the one delivery, once
+  per `Update`, to the active view alone; a view drawing its own footer keeps it
+  and pays for the feedback row out of its body; notice and status still render
+  only in the shell-pinned strip whose height `StatusStripHeight` reserves from
   `ComputeOutlinerViewport`; `route.HostedPanelView` is the one seam and
   `chrome.HostedPanelLayout` the whole of what it says; `HostRows` is a pure
   function of the frame; `syncHostedPanelHost` resizes once per `Update` and
   never per frame; `ComposeHostedPanel` pins the panel to the bottom and spends
   declined rows on blank lines.
-- `TestCaptureFooterYieldsToTemporaryStatusThenReturns` is the test this session
-  replaces by name. The measurement it is replaced with has to stay pure:
-  `HostRows` may not read the cursor, the draft, or the document, so a height
-  derived from an unconsumed notice is the failure mode to watch for.
+- `TestCaptureFooterYieldsToTemporaryStatusThenReturns` was the test this session
+  replaced by name. The measurement it is replaced with has to stay pure:
+  `AppModel.shellFrameMetrics` renders the footer's two blocks into strings and
+  measures those, and nothing under it consumes a one-shot notice —
+  `ViewStatusStrip` is the one status surface that does consume, and it is
+  deliberately not measured there, because the strip is view content the view
+  already reserves.
+  `TestShellFrameMetricsAreAPureMeasurement` holds that by taking the
+  measurement twice around a live focus notice and requiring the notice to
+  survive both.
+- The removals to watch are the compensating reservations, not the footer: each
+  was a local guess at how far the shell footer might overflow, and each is now
+  the one delivered `ExcessRows`. A second one added back beside it is a double
+  reservation: `TestPeekDockReservationRidesTheMeasuredFooter` and
+  `TestShellFrameBudgetIsChargedExactlyOnce` are the two that would catch it,
+  from the list's end and from the composed frame's.
+- The Peek dock's guard row is the one that stayed, and it stayed as a floor
+  rather than as a second charge. The measurement it would have been replaced by
+  is one this view's own cursor moves — the dock advertises `Ctrl+D more` over a
+  document that can page and withholds it over one that cannot, so at minimum
+  width the footer wraps for one row and not for the next — and a dock following
+  that difference is the moving target `dc06394e` locked shut.
+  `peekDockFooterWrapRows` is the floor, `max`'d under `ExcessRows` and never
+  added to it, so a genuinely taller footer is still charged whole.
+  `TestPeekDockCostsTheListOneFixedReservation` and the presentation matrix's
+  60x20 and 80x24 rows are what hold it.
 
 ### Session 5 — Introduce the context row and complete `Q` details
 

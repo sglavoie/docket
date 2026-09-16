@@ -456,8 +456,8 @@ func TestProjectPeekIsReservedByTheViewport(t *testing.T) {
 			if len(outliner.PeekDocumentBodyForRow(header)) == 0 {
 				t.Fatal("the header owns no document for the dock to draw")
 			}
-			if got := plain - peeked; got != PeekDockRows+1 {
-				t.Fatalf("reserved %d rows for the dock, want %d", got, PeekDockRows+1)
+			if want := PeekDockRows + peekDockFooterWrapRows; plain-peeked != want {
+				t.Fatalf("reserved %d rows for the dock, want %d", plain-peeked, want)
 			}
 
 			// The whole frame still fits, which is what the reservation buys.

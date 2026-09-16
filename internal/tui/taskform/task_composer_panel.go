@@ -58,15 +58,26 @@ func (m *TaskComposerModel) HostedPanelLayout(_, height int) chrome.HostedPanelL
 }
 
 // compactPanelRows is the height this panel renders to: the share the layout
-// left it, less whatever a wrapped footer spends beyond its usual two rows. The
-// shell sizes every view against that two-row footer, so a taller one has to
-// come out of the panel rather than off the bottom of the frame.
+// left it, less whatever the shell's footer spends beyond the two rows every
+// view is sized against. A footer carrying feedback beside its controls, or
+// controls wrapped at minimum width, is taller than that, and the panel is what
+// pays — the host below it keeps the rows the layout promised it, so opening
+// capture and then saving costs the outline no scroll window.
+//
+// The excess is taken from the shell's own measurement rather than re-derived
+// from this view's guidance, which is the only way the panel and the footer can
+// be reserving and drawing the same rows.
 func (m *TaskComposerModel) compactPanelRows() int {
 	rows := m.HostedPanelLayout(m.width, m.height).PanelRows(m.height)
-	if spec, ok := m.ContextualGuidance(); ok {
-		rows -= max(lipgloss.Height(chrome.RenderGuidance(spec, m.width))-2, 0)
-	}
-	return max(rows, 1)
+	return max(rows-m.shellFrame.ExcessRows(), 1)
+}
+
+// SetShellFrameMetrics answers route.ShellFrameAware. It is not a resize: the
+// panel is recomputed from the frame on every render, so the budget only has to
+// be current, and routing it through SetSize would reset the input and the
+// preview every time a message arrived.
+func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	m.shellFrame = metrics
 }
 
 // renderCompactPanel draws the bounded capture panel: what the line will do,

@@ -38,15 +38,25 @@ var uxClarityMatrixSizes = uxPresentationMatrixSizes
 // uxClarityDailySize is the size the plan optimizes for.
 var uxClarityDailySize = [2]int{100, 35}
 
-// TestUXClarityFeedbackTakesTheCaptureControlsRow records that a routine success
-// message displaces the capture panel's controls rather than standing beside
-// them: today the footer has one occupant and status outranks contextual
-// guidance, so copying a title and then opening capture leaves the user in a
-// text field whose keys are no longer named anywhere on screen.
+// TestUXClarityFeedbackStandsBesideTheCaptureControls states session 4's outcome
+// for the imbalance the baseline recorded: a routine success message used to
+// displace the capture panel's controls, so copying a title and then opening
+// capture left the user in a text field whose keys were named nowhere on screen.
+// The footer now says both — what just happened on its own row, and what the
+// keys still do on the row under it.
 //
-// Session 4 owns this. It separates feedback from controls, after which the
-// controls are expected to survive the message.
-func TestUXClarityFeedbackTakesTheCaptureControlsRow(t *testing.T) {
+// The order is asserted rather than the mere presence of the two, because the
+// controls are what stays: putting feedback above them keeps commit and cancel
+// on the terminal's last row whether a message is standing or not, so they do
+// not move under a message arriving and expiring.
+//
+// Every size in the matrix is read, the 60-column floor included, because that
+// is where the footer has the least room to hold two things at once and where a
+// composition that only fits one would show it first.
+//
+// Session 4 owns this; it is the rewritten form of
+// TestUXClarityFeedbackTakesTheCaptureControlsRow.
+func TestUXClarityFeedbackStandsBesideTheCaptureControls(t *testing.T) {
 	for _, size := range uxClarityMatrixSizes {
 		t.Run(uxClaritySizeName(size), func(t *testing.T) {
 			driver, _ := uxClarityStagedDriver(t, "feedback-over-guidance", size[0], size[1])
@@ -60,16 +70,39 @@ func TestUXClarityFeedbackTakesTheCaptureControlsRow(t *testing.T) {
 				t.Fatalf("the footer does not carry the copy status:\n%s", footer)
 			}
 			// The capture controls are the guidance the composer publishes. Both
-			// halves are named, because a footer that kept one of them would be a
-			// different arrangement than the one this test is recording.
+			// halves are named, because a footer that kept one of them would leave
+			// the other act unreachable by name.
 			for _, control := range []string{"Enter create", "Esc cancel"} {
-				if strings.Contains(footer, control) {
-					t.Fatalf("the footer still names %q beside the status, which is session 4's outcome, not today's:\n%s",
-						control, footer)
+				if !strings.Contains(footer, control) {
+					t.Fatalf("the status displaced %q, leaving the open draft's control unnamed:\n%s", control, footer)
 				}
+			}
+			if got := strings.Count(footer, "Copied title to clipboard"); got != 1 {
+				t.Fatalf("the status is on %d rows, want exactly one:\n%s", got, footer)
+			}
+
+			status := uxClarityFooterRowIndex(t, footer, "Copied title to clipboard")
+			controls := uxClarityFooterRowIndex(t, footer, "Enter create")
+			if status >= controls {
+				t.Fatalf("the status is on row %d and the controls on row %d; controls keep the last row:\n%s",
+					status, controls, footer)
 			}
 		})
 	}
+}
+
+// uxClarityFooterRowIndex is which row of a rendered footer carries a fragment.
+// The contracts here are about arrangement, so more than one of them needs to
+// ask where something landed rather than only whether it is there.
+func uxClarityFooterRowIndex(t *testing.T, footer, fragment string) int {
+	t.Helper()
+	for index, line := range strings.Split(footer, "\n") {
+		if strings.Contains(line, fragment) {
+			return index
+		}
+	}
+	t.Fatalf("footer does not carry %q:\n%s", fragment, footer)
+	return -1
 }
 
 // uxClarityOutlinerHostRanks are the host's own footer ranks, the text that

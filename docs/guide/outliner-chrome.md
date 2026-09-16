@@ -132,6 +132,30 @@ an already-selected mode or priority, an unavailable workflow transition, or
 clearing empty filters or sort settings. Emphasis is recomputed on every render;
 dimmed shortcuts remain usable. Toggles and Recent's refresh stay prominent.
 
+When an operation finishes, its result and the keys never trade places. The
+footer keeps its controls on the bottom row of the terminal and grows one row
+upward to carry the message, so `✓ Copied title to clipboard` sits directly under
+the divider with `Enter create · … · Esc cancel` still beneath it. Nothing that
+was usable a moment ago goes unnamed because something succeeded or failed. A
+refused save is the case that matters most: the draft is still there, the error
+says why, and the keys that would fix or abandon it are still spelled out at the
+smallest supported terminal.
+
+The row a message costs comes out of the view underneath, once. A 35-row terminal
+resting on the outline spends one row on the divider and one on the controls,
+leaving 33 for the list; a message standing leaves 32. Open capture over that
+same outline and it is the panel, not the outline under it, that gives the row
+back — so the list behind the panel does not shuffle when a message arrives, and
+the panel never overlaps the footer it grew. With Peek open the list has already
+set a row aside for a footer the dock's own paging keys can wrap, so an ordinary
+one-line message costs it nothing further and the dock stays exactly where it
+was: no message and no cursor ever moves it.
+
+Surfaces that draw their own footer — Help, Notes, the Hub, the project editor,
+the comments panel, expanded capture — keep it. The message is placed directly
+above that footer's divider rather than over its keys, and the frame stays
+exactly as tall as the terminal. Zen mode shows neither.
+
 The Outliner's own feedback — a focus notice, or a line such as
 `Latest activity: …` — renders in a status strip pinned directly above the
 footer, introduced by a dim thin divider. The strip never floats mid-screen on a

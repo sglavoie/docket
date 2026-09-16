@@ -69,35 +69,55 @@ func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T)
 	}
 }
 
-func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
+// TestFeedbackStandsBesideGuidanceAndAChordReplacesIt is the precedence this
+// footer actually keeps. Feedback and controls are two blocks rather than two
+// tenants of one row, so a success or an error stands above the guidance instead
+// of taking its place — the one thing that does replace the guidance is another
+// instruction set, because a pending chord owns every key the ranks would name.
+func TestFeedbackStandsBesideGuidanceAndAChordReplacesIt(t *testing.T) {
 	app := pickerStatusBarApp(t)
 	baseline := ansi.Strip(app.renderStatusBar())
 	if !strings.Contains(baseline, "a capture") {
 		t.Fatalf("test requires persistent Outliner guidance, got:\n%s", baseline)
 	}
 
-	assertOwnsStatus := func(name, want string) {
+	assertStandsBeside := func(name, want string) {
 		t.Helper()
 		status := ansi.Strip(app.renderStatusBar())
 		if !strings.Contains(status, want) {
-			t.Fatalf("%s did not own status bar; wanted %q in:\n%s", name, want, status)
+			t.Fatalf("%s is not on screen; wanted %q in:\n%s", name, want, status)
 		}
-		if strings.Contains(status, "a capture") {
-			t.Fatalf("%s leaked persistent guidance:\n%s", name, status)
+		if !strings.Contains(status, "a capture") {
+			t.Fatalf("%s displaced the persistent guidance:\n%s", name, status)
+		}
+		if got, want := lipgloss.Height(status), lipgloss.Height(baseline)+1; got != want {
+			t.Fatalf("%s made the status bar %d rows, want %d — one row above the ranks:\n%s",
+				name, got, want, status)
 		}
 	}
 
 	app.feedback.err = errors.New("storage failed")
-	assertOwnsStatus("error", "storage failed")
+	assertStandsBeside("error", "storage failed")
 	app.feedback.err = nil
 
 	app.feedback.message = "task saved"
-	assertOwnsStatus("transient status", "task saved")
+	assertStandsBeside("transient status", "task saved")
 	app.feedback.message = ""
 
+	// The chord is the exception, and only over the controls: it replaces the
+	// ranks it has suspended while the message it did not cause stays put.
 	app.operations.Chord = []string{"w"}
-	app.feedback.message = "hidden status"
-	assertOwnsStatus("pending chord", "Esc cancel")
+	app.feedback.message = "task saved"
+	chord := ansi.Strip(app.renderStatusBar())
+	if !strings.Contains(chord, "Esc cancel") {
+		t.Fatalf("the pending chord does not name its own exit:\n%s", chord)
+	}
+	if strings.Contains(chord, "a capture") {
+		t.Fatalf("the ranks the chord suspended are still named:\n%s", chord)
+	}
+	if !strings.Contains(chord, "task saved") {
+		t.Fatalf("the chord swallowed a message it did not cause:\n%s", chord)
+	}
 	app.operations.Chord = nil
 	app.feedback.message = ""
 

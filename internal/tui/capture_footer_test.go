@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -67,11 +69,20 @@ func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
 	}
 }
 
-// TestCaptureFooterYieldsToTemporaryStatusThenReturns verifies the status-bar
-// precedence at the transient boundary: a temporary app status message
-// outranks the contextual footer, and once it clears the capture controls
-// return.
-func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
+// TestCaptureFooterKeepsControlsBesideATemporaryStatus is the transient
+// boundary: a temporary app status message takes a row of its own above the
+// contextual footer rather than the footer's place, and when it clears the
+// footer is exactly what it was before the message arrived.
+//
+// Session 4 replaced TestCaptureFooterYieldsToTemporaryStatusThenReturns here.
+// That test required the displacement — a message about the last keystroke
+// silencing the only statement of what the next one does, while a draft stood
+// open underneath it.
+//
+// The equality at the end is the whole second half: the controls have to come
+// back to the same row and say the same thing, or "it returns" would be
+// satisfied by a footer that merely mentions them again somewhere.
+func TestCaptureFooterKeepsControlsBesideATemporaryStatus(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.viewNav.width = 80
 	app.viewNav.height = 24
@@ -81,18 +92,59 @@ func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 
+	before := ansi.Strip(app.renderStatusBar())
+	if !strings.Contains(before, "Enter create") {
+		t.Fatalf("the capture controls are not on screen, so the state under test was not reached:\n%s", before)
+	}
+
 	app.feedback.message = "task saved"
 	withStatus := ansi.Strip(app.renderStatusBar())
 	if !strings.Contains(withStatus, "task saved") {
 		t.Fatalf("expected temporary status message to show, got:\n%s", withStatus)
 	}
-	if strings.Contains(withStatus, "Enter create") {
-		t.Fatalf("temporary status message must replace capture controls, got:\n%s", withStatus)
+	for _, control := range []string{"Enter create", "Esc cancel"} {
+		if !strings.Contains(withStatus, control) {
+			t.Fatalf("temporary status displaced %q while a draft was open, got:\n%s", control, withStatus)
+		}
+	}
+	if got, want := lipgloss.Height(withStatus), lipgloss.Height(before)+1; got != want {
+		t.Fatalf("status grew the footer by %d rows, want exactly one:\n%s", got-lipgloss.Height(before), withStatus)
 	}
 
 	app.feedback.message = ""
-	afterStatus := ansi.Strip(app.renderStatusBar())
-	if !strings.Contains(afterStatus, "Enter create") {
-		t.Fatalf("expected capture controls to return after status clears, got:\n%s", afterStatus)
+	if afterStatus := ansi.Strip(app.renderStatusBar()); afterStatus != before {
+		t.Fatalf("the footer did not return to what it was before the status:\nbefore:\n%s\nafter:\n%s",
+			before, afterStatus)
+	}
+}
+
+// TestCaptureFooterKeepsControlsBesideAnError is the same boundary for the half
+// that matters most: a refused save is precisely when the keys that would
+// correct or abandon the draft must still be named. The error and the message
+// are one channel, so the error is what the row carries when both are set.
+func TestCaptureFooterKeepsControlsBesideAnError(t *testing.T) {
+	app, project := newTestAppModelWithProject()
+	app.viewNav.width = 60
+	app.viewNav.height = 20
+
+	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
+	if !handled {
+		t.Fatal("ShowTaskComposerMsg should be handled")
+	}
+
+	app.feedback.message = "task saved"
+	app.feedback.err = errors.New("save refused: title is required")
+	footer := ansi.Strip(app.renderStatusBar())
+
+	if !strings.Contains(footer, "save refused: title is required") {
+		t.Fatalf("expected the error on the feedback row, got:\n%s", footer)
+	}
+	if strings.Contains(footer, "task saved") {
+		t.Fatalf("the success survived beside the failure of the same act, got:\n%s", footer)
+	}
+	for _, control := range []string{"Enter create", "Esc cancel"} {
+		if !strings.Contains(footer, control) {
+			t.Fatalf("the error displaced %q, leaving the refused draft with no named way out:\n%s", control, footer)
+		}
 	}
 }

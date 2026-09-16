@@ -68,6 +68,24 @@ type HostedPanelView interface {
 	HostedPanelLayout(width, height int) chrome.HostedPanelLayout
 }
 
+// ShellFrameAware is implemented by a view that has to fit under a shell footer
+// taller than the two rows it was sized against — because feedback is standing
+// beside the controls, or because those controls wrapped. The shell measures its
+// own footer once per update and hands the metrics here; the view reserves
+// ExcessRows out of its own content rather than having the shell clip it away.
+//
+// It is deliberately not a resize. A list surface drops its scroll window every
+// time it is resized, and a footer that grows by a row when a message arrives
+// would re-anchor that window under every keystroke, so the budget travels
+// beside the size instead of through it.
+//
+// The shell hands the zero value back to a view that stops being the active one,
+// so a host drawn under a bounded panel never reserves rows the panel above it
+// is already paying for.
+type ShellFrameAware interface {
+	SetShellFrameMetrics(metrics chrome.ShellFrameMetrics)
+}
+
 // StatusBarLabeler is implemented by views that provide their own status bar label.
 // Views without this interface show an empty label in the status bar.
 type StatusBarLabeler interface {

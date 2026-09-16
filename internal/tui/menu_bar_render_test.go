@@ -160,6 +160,14 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 		t.Errorf("showing the bar changed the row budget from %d to %d, want exactly one row less", hiddenHeight, got)
 	}
 
+	// The toggle also raises "Menu bar shown", and a footer carrying a message is
+	// a row taller than one that is not — a cost the shell measures and the list
+	// pays, exactly as it already pays for the status strip. This test is about
+	// the bar's own row, so the message is retired before the window is read. The
+	// resize is what re-measures: the budget is published once per Update rather
+	// than per frame, so clearing the message alone would leave the stale one.
+	driver.App().feedback.message = ""
+	driver.Resize(100, 35)
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 	lines := strings.Split(screen, "\n")
 	titleRow := -1

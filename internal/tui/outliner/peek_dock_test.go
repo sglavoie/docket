@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // dockFixtureOutliner seats a one-line task beside the paged one, which is the
@@ -96,9 +97,16 @@ func TestPeekDockIsTheSameHeightUnderEveryCursor(t *testing.T) {
 }
 
 // TestPeekDockCostsTheListOneFixedReservation locks what opening Peek spends.
-// The dock plus its guard row comes off the list once, and it is the same
-// subtraction whatever the cursor rests on, so the list moves when Peek opens
-// and never again while it is open.
+// The dock comes off the list once, and it is the same subtraction whatever the
+// cursor rests on, so the list moves when Peek opens and never again while it is
+// open.
+//
+// It is the dock plus the one row that holds it still. That row is the floor
+// session 4 put under the shell's measured footer excess while the dock is open:
+// the dock is the one thing whose guidance this view's cursor decides, since the
+// paging keys are advertised only over a document that can move, so a list
+// following the footer honestly would slide the dock from one row to the next as
+// the cursor crossed a short task. One row is paid either way.
 func TestPeekDockCostsTheListOneFixedReservation(t *testing.T) {
 	outliner := dockFixtureOutliner(t, 80, 24)
 	peekable, _ := peekableRowIndexes(t, outliner)
@@ -113,9 +121,69 @@ func TestPeekDockCostsTheListOneFixedReservation(t *testing.T) {
 	outliner.PeekMode = true
 	outliner.View()
 	open := outliner.LastViewport.VisibleRows
-	if want := closed - PeekDockRows - 1; open != want {
-		t.Fatalf("an open dock left the list %d rows, want %d (%d - %d - 1 guard row)",
-			open, want, closed, PeekDockRows)
+	if want := closed - PeekDockRows - peekDockFooterWrapRows; open != want {
+		t.Fatalf("an open dock left the list %d rows, want %d (%d - %d - %d wrap row)",
+			open, want, closed, PeekDockRows, peekDockFooterWrapRows)
+	}
+}
+
+// TestPeekDockReservationRidesTheMeasuredFooter is the measured half. With the
+// dock closed the list pays whatever the shell measured, exactly once. With it
+// open the reservation has a floor rather than a constant: a footer that costs
+// no more than that floor moves nothing, and one that costs more is still
+// charged in full, so the frame is never over-drawn.
+func TestPeekDockReservationRidesTheMeasuredFooter(t *testing.T) {
+	oneRow := chrome.ShellFrameMetrics{FeedbackRows: 1, ControlRows: 1}
+	if got := oneRow.ExcessRows(); got != 1 {
+		t.Fatalf("a feedback row beside a control row is an excess of %d, want 1", got)
+	}
+	twoRows := chrome.ShellFrameMetrics{FeedbackRows: 1, ControlRows: 2}
+	if got := twoRows.ExcessRows(); got != 2 {
+		t.Fatalf("a feedback row over wrapped controls is an excess of %d, want 2", got)
+	}
+
+	for _, test := range []struct {
+		name string
+		peek bool
+		// lost is what each metric costs the list relative to the resting budget.
+		lostAtOne int
+		lostAtTwo int
+	}{
+		// Closed, nothing stands between the list and the footer, so both
+		// readings are the measurement itself.
+		{name: "dock closed", lostAtOne: 1, lostAtTwo: 2},
+		// Open, the first row is already reserved, so only the second is new.
+		{name: "dock open", peek: true, lostAtOne: 0, lostAtTwo: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			outliner := dockFixtureOutliner(t, 80, 24)
+			peekable, _ := peekableRowIndexes(t, outliner)
+			outliner.Cursor = peekable[0]
+			outliner.PeekMode = test.peek
+
+			outliner.View()
+			baseline := outliner.LastViewport.VisibleRows
+
+			outliner.SetShellFrameMetrics(oneRow)
+			outliner.View()
+			if got, want := outliner.LastViewport.VisibleRows, baseline-test.lostAtOne; got != want {
+				t.Fatalf("a footer one row taller left the list %d rows, want %d", got, want)
+			}
+
+			outliner.SetShellFrameMetrics(twoRows)
+			outliner.View()
+			if got, want := outliner.LastViewport.VisibleRows, baseline-test.lostAtTwo; got != want {
+				t.Fatalf("a footer two rows taller left the list %d rows, want %d", got, want)
+			}
+
+			// The budget is not a size, so handing it back restores the list
+			// without the scroll window having been re-anchored on the way.
+			outliner.SetShellFrameMetrics(chrome.ShellFrameMetrics{})
+			outliner.View()
+			if got := outliner.LastViewport.VisibleRows; got != baseline {
+				t.Fatalf("clearing the budget left the list %d rows, want %d", got, baseline)
+			}
+		})
 	}
 }
 

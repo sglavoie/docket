@@ -968,7 +968,35 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// through its own surface is what keeps the shell resolver from growing a
 	// second list of things it cannot see.
 	// The mechanism lives in docs/architecture/presentation-chrome.md.
-	const budget = 62000
+	// Fifty-second raise, 62000 to 63400, for a footer that says what happened
+	// and what the keys do at once. 1400 bytes buy four rules a reader would
+	// otherwise have to break to find. The composition order is one of them: the
+	// obvious insert puts feedback below the controls, where it is the terminal's
+	// last row and the controls move every time a message arrives, so naming the
+	// order also names which block is anchored. The surface-owned half is the
+	// rule that replaces a deleted one — the old behavior was to take a
+	// self-drawn footer away and put the message in its place, which looked
+	// correct because the message was visible, and the guidance it silently
+	// spent was the only statement of that surface's way out. Purity is stated
+	// because the measurement and the paint read the same blocks a moment apart:
+	// a one-shot consumed by the measuring pass disappears from the frame that
+	// reserved a row for it, and the bug reads as a render fault rather than as
+	// a measurement that had a side effect. And the single-recipient rule is the
+	// double reservation itself: a bounded panel and its host are both on screen
+	// and both plausibly owe the footer rows, so telling both is the local fix a
+	// reader reaches for, and the frame then ends in a blank band nobody can
+	// trace to either view. The clause about the compensating guard is the other
+	// direction of the same defect, and its exception is the one case the
+	// measurement does not simply replace: the Peek dock's fixed extra row
+	// existed to absorb a footer height nothing measured, and the number that
+	// replaced the guess turned out to be one the dock's own cursor moves,
+	// because the dock advertises paging keys only over a document that can page.
+	// So the guard stays as a floor, and the rule has to say when a floor is
+	// legitimate rather than leave the next reader to delete it and hand a fixed
+	// dock back to the cursor. The mechanism lives in
+	// docs/architecture/presentation-chrome.md; the geometry examples are in
+	// docs/guide/outliner-chrome.md. No rule elsewhere was trimmed to pay for it.
+	const budget = 63400
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

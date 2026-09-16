@@ -158,6 +158,23 @@ close returns the host's rows unchanged; an unclassified presentation publishes,
 feedback is never displaced, and a view-local modal answers through its own
 surface.
 
+Feedback and controls are two blocks of one footer, never alternatives.
+`renderFooterChrome` composes divider, feedback, controls in that order, so the
+controls keep the terminal's last row and the footer grows upward; a
+surface-owned footer is never replaced, since `composeSurfaceFooterFeedback`
+spends body rows above that surface's own divider and a frame with no divider or
+no room keeps its footer and drops the feedback.
+`chrome.ShellFrameMetrics` is the one measurement of what that footer costs and
+`ExcessRows` the rows beyond the two `viewSize` already subtracted. Measuring is
+pure, so a one-shot notice is consumed by its own render alone, and
+`route.ShellFrameAware` is the one delivery: pushed once per `Update` beside
+`syncHostedPanelHost`, to the active view alone and put down when the
+presentation changes, which is what stops a host drawn under a panel reserving
+those rows a second time. A view charges that excess once rather than beside a
+compensating guard for the same rows, and a floor under the charge is the one
+exception: where the footer's height is what this view's own cursor decides, a
+fixed reservation stays fixed.
+
 Esc has one source too, and it is an act rather than a state. Each `EscStep`
 carries its own `Action`, `NextEscAction` walks them as `RunEscCascade` does, and
 `EscAction`/`EscHint` are what every Outliner profile, empty-state sentence, and
@@ -501,8 +518,11 @@ Row and Peek budget:
 
 - Peek is a dock below the list, never a block under its row. `PeekDockRows` is
   the divider plus `inlinePeekWindowRows`, and `outlinerListRows` is the one
-  reservation that subtracts it and one guard row whenever `PeekDockVisible()`,
-  reading no cursor and no document, so what the cursor names decides what the
+  reservation that subtracts it and, whenever `PeekDockVisible()`, floors the
+  shell's measured footer excess at `peekDockFooterWrapRows`, since the dock's
+  own paging hints wrap that footer over a document the cursor can page and not
+  over one it cannot; a taller footer is still charged whole. It
+  reads no cursor and no document, so what the cursor names decides what the
   dock says and never where it sits or how tall it is. Both render paths measure
   against that one window and pad the remainder:
   `ComputeOutlinerViewport` spends it on rows, `renderOutlinerEmptyState` on its

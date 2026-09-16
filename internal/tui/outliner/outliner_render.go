@@ -607,10 +607,11 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 		extraFooter += lipgloss.Height(dropdown)
 	}
 	if m.QuickEdit.IsActive() {
+		// Only the editor's own extra rows are charged here. Its guidance is the
+		// shell's footer, already measured once and delivered as the frame budget
+		// outlinerListRows subtracts; re-measuring it here would charge the list
+		// for the same rows twice.
 		extraFooter += m.quickEditExtraLineCount()
-		if spec, ok := m.ContextualGuidance(); ok {
-			extraFooter += max(lipgloss.Height(chrome.RenderGuidance(spec, width))-2, 0)
-		}
 	}
 
 	viewport := m.ComputeOutlinerViewport(width, extraFooter)
@@ -970,18 +971,41 @@ func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 	// dimmed project-cycle/pinned preview backgrounds sized to a couple of
 	// lines) contentHeight()-extraFooterLines can go non-positive, which would
 	// drive a negative window slice.
-	rows := max(m.ContentHeight()-extraFooterLines, 1)
-	if dock := m.peekDockHeight(); dock > 0 {
+	//
+	// The shell's footer is charged here, once, from what it measured rather than
+	// from what this view can guess about it: a footer carrying feedback beside
+	// its controls, or controls wrapped at minimum width, is taller than the two
+	// rows Height() was sized against, and the difference is the list's to pay.
+	// Nothing below re-measures it.
+	reserved := m.ShellFrame.ExcessRows()
+	dock := m.peekDockHeight()
+	if dock > 0 {
+		// While the dock is open that charge has a floor, and the floor is what
+		// keeps the dock on one screen row. The dock's own guidance is the one
+		// footer content this view's cursor decides — `Ctrl+D more` is advertised
+		// over a document that can move and withheld over one that cannot — so at
+		// minimum width the footer wraps for one row and not for the next, and a
+		// list following that difference would slide the dock under the cursor.
+		// One row is paid whether or not this row's document pages; a footer that
+		// genuinely costs more than that is still charged in full.
+		reserved = max(reserved, peekDockFooterWrapRows)
+	}
+	rows := max(m.ContentHeight()-extraFooterLines-reserved, 1)
+	if dock > 0 {
 		// The dock's height is a constant, so the list loses the same rows whatever
 		// the cursor is resting on: opening Peek moves the list once, and nothing
 		// the cursor does afterwards moves it again.
-		//
-		// The shell footer may wrap to three lines at minimum width while views
-		// retain the standard two-line size budget. Reserve one guard row so the
-		// dock's position line is never the line shell clipping removes.
-		rows = max(rows-dock-1, 1)
+		rows = max(rows-dock, 1)
 	}
 	return rows
+}
+
+// SetShellFrameMetrics records the footer budget the shell measured for this
+// frame. It is deliberately not SetSize: the scroll window survives it, so a
+// message arriving and expiring costs the list a row without re-anchoring what
+// it is showing.
+func (m *OutlinerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	m.ShellFrame = metrics
 }
 
 func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {

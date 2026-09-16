@@ -53,6 +53,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		// a bottom panel's host can be resized exactly when the panel opened,
 		// moved, or closed rather than on every frame.
 		m.syncHostedPanelHost()
+		// And the one place the footer this update produced can be measured
+		// before it is drawn, so the surface underneath reserves the rows it
+		// actually costs instead of the two it was sized against.
+		m.syncShellFrameMetrics()
 		if flash := m.armFooterFlashSince(statusBefore); flash != nil {
 			outCmd = tea.Batch(outCmd, flash)
 		}

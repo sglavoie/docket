@@ -123,15 +123,19 @@ func (p TaskComposerPreset) defaultDestination(
 type TaskComposerModel struct {
 	pulse.WorkspacePulseState
 	grammar.QuickCaptureInput
-	Preset             TaskComposerPreset
-	runtime            *config.RuntimeState
-	Mode               TaskComposerMode
-	Expanded           *TaskFormModel
-	capture            coordinator.CaptureCoordinator
-	taskForm           coordinator.TaskFormCoordinator
-	Errors             []grammar.LineError
-	width              int
-	height             int
+	Preset   TaskComposerPreset
+	runtime  *config.RuntimeState
+	Mode     TaskComposerMode
+	Expanded *TaskFormModel
+	capture  coordinator.CaptureCoordinator
+	taskForm coordinator.TaskFormCoordinator
+	Errors   []grammar.LineError
+	width    int
+	height   int
+	// shellFrame is what the shell last said its own footer costs. It travels
+	// beside the size rather than through it, because the panel must not lose its
+	// draft or its preview to a footer that grew a row.
+	shellFrame         chrome.ShellFrameMetrics
 	SubmissionInFlight bool
 	chrome.DiscardConfirmState
 }
