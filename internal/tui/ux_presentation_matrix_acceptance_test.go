@@ -269,6 +269,11 @@ func assertUXPeekGeometryIsStable(t *testing.T, driver *UITestDriver, view *outl
 	seatCursorOnTaskTitled(t, view, uxAcceptanceWaitingTitle)
 	record("quiet Waiting task")
 	onProjectHeaderCursor(t, view, func() { record("folded project summary") })
+	// The empty projection is the fourth cursor, and it is the one the other
+	// three cannot stand in for: it is the only frame with no list to hold the
+	// dock down, so a dock placed after the content rather than at the position
+	// the reservation paid for shows up here and nowhere else.
+	onEmptyProjectionCursor(t, driver, view, func() { record("empty projection") })
 
 	for _, frame := range frames[1:] {
 		if frame.divider != frames[0].divider || frame.position != frames[0].position {
@@ -277,6 +282,52 @@ func assertUXPeekGeometryIsStable(t *testing.T, driver *UITestDriver, view *outl
 				frames[0].what, frames[0].divider, frames[0].position)
 		}
 	}
+}
+
+// onEmptyProjectionCursor puts the view in the one frame with no list under the
+// dock — a single project scoped to a mode it files nothing in — seats the cursor
+// on the focused project header that frame leads with, runs inspect, and returns
+// to the base scope the push captured. Next is that mode here: the fixture files
+// no planning membership and Next promotes no pinned lane, so the projection is
+// the header and the explanation under it. The scope is pushed through the same
+// call `P` commits, because reaching an empty projection is this check's setup
+// and the dock's geometry is the behavior it measures.
+func onEmptyProjectionCursor(t *testing.T, driver *UITestDriver, view *outliner.OutlinerModel, inspect func()) {
+	t.Helper()
+	view.PushProjectScope(uxAcceptanceProjectIDNamed(t, view, uxAcceptancePlatformName))
+	uxSelectMode(t, driver, view, chrome.ModeNext)
+	if view.HasContentRows() {
+		t.Fatalf("the scoped %s projection still draws content rows, so it is not the empty branch", chrome.ModeNext)
+	}
+	seatCursorOnRow(t, view, "focused project header", func(row outliner.OutlinerRow) bool {
+		return row.IsFocusedProjectHeader
+	})
+	// The explanation is the other half of the requirement: a dock that reached
+	// its position by pushing the empty state off the screen would answer the
+	// geometry question and lose the sentence.
+	if obs := driver.Observe(ObserveOptions{}); !strings.Contains(obs.PlainScreen, view.OutlinerEmptyMessage()) {
+		t.Fatalf("the empty projection dropped its explanation %q\n%s", view.OutlinerEmptyMessage(), obs.PlainScreen)
+	}
+	inspect()
+	// Popping restores the base frame the push captured, which is the mode as
+	// well as the scope, so the walk continues from where it stepped aside.
+	if !view.PopProjectScope() {
+		t.Fatal("the scoped projection would not return to the base scope")
+	}
+	uxSelectMode(t, driver, view, chrome.ModeAll)
+}
+
+// uxAcceptanceProjectIDNamed resolves a fixture project by the name the fixture
+// spells, so the caller names a project rather than an identity the fixture mints.
+func uxAcceptanceProjectIDNamed(t *testing.T, view *outliner.OutlinerModel, name string) string {
+	t.Helper()
+	for _, project := range view.Population.Projects {
+		if project != nil && project.Name == name {
+			return project.ID
+		}
+	}
+	t.Fatalf("the fixture carries no project named %q", name)
+	return ""
 }
 
 // assertUXPeekCarriesTheWholeTitle is the counterpart every clipped row is owed.

@@ -840,11 +840,22 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	}
 	b.WriteString(m.BuildOutlinerTitleLine(width))
 	b.WriteString("\n")
+	// The strip and the suggestion pane are charged here exactly as the populated
+	// path charges them, because they are what the list block is measured after:
+	// a reservation that ignored them would dock Peek at a different screen row
+	// the moment a status line or a suggestion arrived.
+	extraFooter := m.StatusStripHeight(width)
 	// A query that matches nothing yet is exactly when suggestions are worth the
 	// most, so the empty state carries the pane too.
 	if dropdown := m.renderSearchAutocompleteDropdown(width); dropdown != "" {
 		b.WriteString(dropdown + "\n")
+		extraFooter += lipgloss.Height(dropdown)
 	}
+
+	// The header and the explanation are this path's list block: they stand where
+	// the rows stand, so they are written into their own builder and measured the
+	// way the rows are measured.
+	//
 	// A focused projection keeps its project header when it holds no content, in
 	// the same place and drawn by the same renderer as when it does: the header is
 	// context for the projection, and the explanation below belongs under it. It
@@ -852,21 +863,27 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	// reserved here — and it is one line, because the detail an empty project is
 	// exactly the place to open is in the dock below rather than hanging off the
 	// row.
+	var body strings.Builder
 	if header, ok := m.focusedProjectHeaderRow(); ok {
-		b.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
-		b.WriteString("\n")
+		body.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
+		body.WriteString("\n")
 	}
-	b.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
-	// The dock follows the explanation rather than the frame's last row: there is
-	// no list window on this path to hold it down, and an empty projection has
-	// nothing between the two to read past. This is also the one path that may
-	// shorten it, because it is the one with no list below for a shortened dock to
-	// shift: there is no viewport here to have reserved the rows, so the dock
-	// spends what the header and the explanation left and an empty projection on a
-	// short terminal keeps the sentence explaining itself.
+	body.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
+	b.WriteString(body.String())
+
+	// The dock sits at the screen row the reservation paid for, on this path for
+	// the same reason as on the populated one: the block above it is padded out to
+	// the whole list window, so an empty projection docks Peek where a full one
+	// docks it instead of hanging it off the explanation. It is drawn whole — a
+	// dock this path shortened would be a different height and a different
+	// position per projection, which is the moving target docking retired — and at
+	// every supported size the window still holds the header and the sentence
+	// above it with room to spare.
 	if dock := m.PeekDockLines(); len(dock) > 0 {
-		room := max(m.ContentHeight()-lipgloss.Height(b.String()), 0)
-		for _, line := range dock[:min(len(dock), room)] {
+		for drawn := lipgloss.Height(body.String()); drawn < m.outlinerListRows(extraFooter); drawn++ {
+			b.WriteString("\n")
+		}
+		for _, line := range dock {
 			b.WriteString("\n")
 			b.WriteString(line)
 		}
@@ -941,13 +958,19 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	}
 }
 
-func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {
+// outlinerListRows is the height of the block between the header chrome and the
+// dock, and it is one definition because both projections have to measure
+// against it: the populated path fills it with rows and pads the remainder, and
+// the empty path fills it with its header and its explanation and pads the same
+// way. That is what puts the dock on one screen row whichever path drew the
+// frame. It is pure — the dock's cost is a constant and the rest is the frame —
+// so nothing here reads the cursor or the document.
+func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 	// Clamp to at least one row: at pathologically small heights (e.g. the
 	// dimmed project-cycle/pinned preview backgrounds sized to a couple of
 	// lines) contentHeight()-extraFooterLines can go non-positive, which would
 	// drive a negative window slice.
-	visibleRows := max(m.ContentHeight()-extraFooterLines, 1)
-
+	rows := max(m.ContentHeight()-extraFooterLines, 1)
 	if dock := m.peekDockHeight(); dock > 0 {
 		// The dock's height is a constant, so the list loses the same rows whatever
 		// the cursor is resting on: opening Peek moves the list once, and nothing
@@ -956,8 +979,13 @@ func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int)
 		// The shell footer may wrap to three lines at minimum width while views
 		// retain the standard two-line size budget. Reserve one guard row so the
 		// dock's position line is never the line shell clipping removes.
-		visibleRows = max(visibleRows-dock-1, 1)
+		rows = max(rows-dock-1, 1)
 	}
+	return rows
+}
+
+func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {
+	visibleRows := m.outlinerListRows(extraFooterLines)
 
 	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &m.ViewScrollOffset)
 	rowWidth := width

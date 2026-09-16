@@ -482,15 +482,19 @@ whole-line authority on every other list surface.
 Row and Peek budget:
 
 - Peek is a dock below the list, never a block under its row. `PeekDockRows` is
-  the divider plus `inlinePeekWindowRows`, `ComputeOutlinerViewport` subtracts it
-  and one guard row whenever `PeekDockVisible()`, reading no cursor and no
-  document, and the list block is padded to the whole window, so what the cursor
-  names decides what the dock says and never where it sits or how tall it is. A
+  the divider plus `inlinePeekWindowRows`, and `outlinerListRows` is the one
+  reservation that subtracts it and one guard row whenever `PeekDockVisible()`,
+  reading no cursor and no document, so what the cursor names decides what the
+  dock says and never where it sits or how tall it is. Both render paths measure
+  against that one window and pad the remainder:
+  `ComputeOutlinerViewport` spends it on rows, `renderOutlinerEmptyState` on its
+  header and its explanation, and each then draws the dock whole. The empty
+  projection is therefore no exception and may not shorten the dock or lift it —
+  it only reads the reservation without computing a window, having no rows to
+  window. A
   row owning no document draws `peekDockPlaceholderDocument` at that same height;
   `b` closes an open dock from any row, through the one shared
-  `CommandContextSatisfiesPeekRequirement`. The empty projection is the one path
-  that reserves nothing and the one that may draw the dock short, after its
-  header and its explanation.
+  `CommandContextSatisfiesPeekRequirement`.
 - `inlinePeekDocument` separates the whole detail from the window of it on
   screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;

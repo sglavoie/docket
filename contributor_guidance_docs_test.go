@@ -921,7 +921,18 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// each run reaches, since a truncated run reads as nothing surviving ahead
 	// and fails the same way.
 	// The mechanism lives in docs/architecture/tui-architecture.md.
-	const budget = 60560
+	// Forty-ninth raise, 60560 to 60820, for one dock reservation both render
+	// paths measure against. 260 bytes buy the exception the old sentence granted
+	// outright: an empty projection has no list under the dock, so appending it
+	// after the explanation and clamping it to whatever height is left is the
+	// obvious way to write that path, and the result is a dock at the top of the
+	// frame on one projection and at the bottom on the other. Naming
+	// outlinerListRows as the one window, and saying the empty path pads to it and
+	// draws the dock whole, is what forbids both halves of that rewrite; saying it
+	// only skips computing a window is what keeps the next reader from concluding
+	// the path owes a viewport and a scroll offset it has no rows to spend.
+	// The mechanism lives in docs/architecture/presentation-chrome.md.
+	const budget = 60820
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

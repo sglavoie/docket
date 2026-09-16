@@ -132,9 +132,11 @@ declared their text required, while this reads the finished screen.
 
 - Go: `internal/tui/outliner/peek_dock_test.go` — the dock's fixed height under
   every cursor at 60×20, 80×24, and 120×40, the one reservation opening it
-  spends, the placeholder over a row owning no document, and the divider landing
+  spends, the placeholder over a row owning no document, the divider landing
   on the same screen row as the cursor crosses between a one-line task and a
-  paged one — `internal/tui/responsive_peek_test.go`,
+  paged one, and the empty projection docking Peek at the same rendered rows as
+  the populated one at 60×20, 80×24, 100×35, and 120×40 with the explanation
+  still above it — `internal/tui/responsive_peek_test.go`,
   `internal/tui/outliner/inline_peek_paging_test.go`,
   `internal/tui/outliner/inline_peek_empty_project_width_test.go`,
   `internal/tui/outliner/empty_project_peek_guidance_test.go`
@@ -544,7 +546,9 @@ result, and an arrived minute.
 assert, because each of its questions compares two renderings rather than
 reading one: display width against the terminal's columns rather than rune
 count, drawn list rows against `ContentHeight()`, task rows against chrome rows,
-the Peek dock's screen position over three unrelated cursor rows, the connector
+the Peek dock's screen position over four unrelated cursor rows — three
+populated and one on an empty projection, which is the frame with no list to
+hold the dock down — the connector
 indent across three generations, and the ASCII-profile projection against the
 plain screen. It runs the `ux-acceptance` fixture at 60x20, 80x24, 100x35, and
 120x40 in both themes, which is the acceptance matrix this session is judged on.

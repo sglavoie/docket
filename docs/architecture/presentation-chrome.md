@@ -189,11 +189,21 @@ lines at minimum width — under a one-line task and under a forty-line one.
 Opening Peek moves the list once and nothing the cursor does afterwards moves it
 again. `writePeekDock` pads the list block out to `VisibleRows` before writing
 the dock, so a projection shorter than its window leaves the dock at the screen
-row the reservation already paid for rather than pulling it up the frame. The
-empty projection is the one path that may draw the dock short, because it
-computes no viewport and has no list below a shortened dock to shift: it clamps
-the block to the rows `ContentHeight` still has after the header and the
-explanation, which always survive.
+row the reservation already paid for rather than pulling it up the frame.
+`outlinerListRows` is that reservation, and it is one definition because both
+render paths measure against it: `ComputeOutlinerViewport` spends it on rows and
+`renderOutlinerEmptyState` spends it on the focused project header and the
+explanation under it, padding the remainder the same way and then drawing the
+dock whole. The empty projection is no exception — a dock it shortened or pulled
+up would be a different height and a different position per projection, which is
+the moving target docking retired. It differs in one way that changes nothing
+about the geometry: it reads that reservation without computing a window, because
+it has no rows to window and no scroll offset to write, which is why
+`outlinerListRows` is pure and charges the status strip and the suggestion pane
+the populated path charges. Below the supported floor the clamp leaves it a
+single row and the shell's own clipping decides what fits; at every supported
+size the divider, the five content rows, and the position row are all on screen
+with the header and the explanation above them.
 
 The menu bar and its open menu are the same kind of thing one level apart. The
 bar is machine-local chrome: `M` writes `MenuBarVisible`, which `MenuBarPinned`
