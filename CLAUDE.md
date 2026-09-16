@@ -418,7 +418,13 @@ shell `QueryReadoutReloadRequestMsg`, as `s` hands it `SaveViewAsLensRequestMsg`
 Peel is idempotent at zero, `queryReadoutRowLimit` is the digit set and names its
 overflow, and the open readout is a gated keymap taking no footer rank.
 
-Only status text arms footer flash; cleared text and other chrome do not. Arming
+Only warning and error status text arms footer flash; cleared text, a quiet
+severity, and other chrome do not. `footerFlashSeverity.animates()` is that
+closed table, read off the severity every setter records, and `retireFlash` the
+supersession: quiet feedback cancels the live animation and advances `flashSeq`,
+voiding its queued ticks. Whether a status changed is answered before whether it
+animates, so an `Update` changing none retires nothing and expiry never cancels
+frames; a message's clock is `scheduleViewStatusExpiry` alone. Arming
 stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
 to all three `renderFooterChrome` dividers and keep the strip divider outside.
 The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still

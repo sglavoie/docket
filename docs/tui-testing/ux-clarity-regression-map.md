@@ -101,7 +101,7 @@ contract in the same change.
 
 | Recorded expectation | Test | Owner |
 | --- | --- | --- |
-| A routine copy success arms the animated footer divider. | `TestUXClarityRoutineSuccessArmsTheFooterFlash` | Session 2 |
+| ~~A routine copy success arms the animated footer divider.~~ Replaced by session 2: a routine success reports and animates nothing, a warning still does, and the quiet line retires the warning's animation. | `TestUXClarityRoutineSuccessIsQuiet`, formerly `TestUXClarityRoutineSuccessArmsTheFooterFlash` | Session 2 — done |
 | A picker owns every key while the host below still publishes its ranks. | `TestUXClarityPickerLeavesHostGuidanceOnScreen` | Session 3 |
 | A discard prompt stands on an open composer over the outline, three deep. | `TestUXClarityDiscardPromptStandsOnTheOpenComposer` | Session 3 |
 | Status displaces the capture controls rather than standing beside them. | `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 |
@@ -123,17 +123,27 @@ contract in the same change.
   `internal/tui/ux_clarity_baseline_test.go`
 - Scenarios: `docs/tui-testing/scenarios/outliner-status-strip.json`,
   `docs/tui-testing/scenarios/ux-acceptance-daily-loop.json`
-- Contracts: `CLAUDE.md` — only status text arms footer flash, cleared text and
-  other chrome do not; arming stays in the one deferred closure in
+- Contracts: `CLAUDE.md` — only warning and error status text arms footer flash,
+  and cleared text and other chrome arm nothing; quiet feedback supersedes
+  through `retireFlash`; arming stays in the one deferred closure in
   `AppModel.Update`; divider appearance is fed to all three `renderFooterChrome`
   dividers and the strip divider stays outside; a view status is transient except
   the multi-select summary; advisories route through `AdvisoryLine` or
   `AdvisoryStatus` and are never gated at a render site.
-- `internal/tui/footer_flash_test.go` already separates the two halves this
-  session has to keep apart: `TestFooterFlashArmsOnError` is the emphasis that
-  survives, `TestFooterFlashDoesNotArmOnStatusClear` the quietness that already
-  exists, and `TestFooterFlashAdvancesThroughFramesThenClears` the tick ladder a
-  superseded animation has to invalidate.
+- Landed: `footerFlashSeverity.animates()` in
+  `internal/tui/app_view_status.go` is the closed severity table, and
+  `feedbackController.retireFlash` in `internal/tui/feedback_controller.go` is
+  the supersession. `internal/tui/footer_flash_test.go` holds the two halves
+  apart — `TestFooterFlashStaysQuietOnRoutineShellStatus` and
+  `TestFooterFlashStaysQuietOnViewStatusLine` against
+  `TestFooterFlashArmsOnWarningStatus` and `TestFooterFlashArmsOnError` — with
+  `TestQuietFeedbackRetiresAnAnimatedWarning` on the stale ticks and
+  `TestViewStatusExpiryStaysIndependentOfTheFlash` on the clock that must not
+  follow the animation.
+- The regression to watch for is not a loud success but a quiet warning: a
+  future severity added next to the wrong branch inherits silence, which is why
+  `TestFooterFlashSeverityAnimatesOnlyWarningAndError` states the table in full
+  rather than asserting only the cases the product reaches today.
 
 ### Session 3 — Give the active interaction sole ownership of guidance
 

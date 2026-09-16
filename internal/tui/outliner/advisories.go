@@ -50,7 +50,9 @@ func (m *OutlinerModel) AdvisoryLine(text string) string {
 }
 
 // advisoryStatus gates one ambient status message. A nil Cmd is the whole
-// suppression: the message is never sent, so it never arms the footer flash.
+// suppression: the message is never sent, so it neither reaches the footer nor
+// supersedes the line already there. An advisory that is shown is informational
+// and therefore quiet — it says what the workspace holds and moves nothing.
 func (m *OutlinerModel) AdvisoryStatus(text string) tea.Cmd {
 	if text == "" || m.AdvisoriesSuppressed() {
 		return nil

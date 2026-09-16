@@ -23,6 +23,11 @@ import (
 // It is the session's own signal that it reached the behavior it was aimed at,
 // and the session that reaches it owns rewriting the contract in the same change.
 // docs/tui-testing/ux-clarity-regression-map.md is the index of who owns what.
+//
+// A rewritten one stays here rather than moving out, and stops being a baseline
+// when it does: it now states the behavior its session reached and is an
+// ordinary contract over it. The map records which session did the rewriting, so
+// the two kinds stay tellable apart without reading every doc comment.
 
 // uxClarityMatrixSizes is the review's floor, its two working sizes, and its
 // widest; the same four the exported frames are taken at. The combined-state
@@ -250,14 +255,16 @@ func TestUXClarityCaptureOverPeekKeepsAFixedDock(t *testing.T) {
 	}
 }
 
-// TestUXClarityRoutineSuccessArmsTheFooterFlash records that an ordinary,
-// expected, undramatic success — copying a title — arms the same animated
-// divider a storage failure does. Nothing about the gesture asked for motion at
-// the bottom of the screen, and the flash is scheduled anyway.
+// TestUXClarityRoutineSuccessIsQuiet is the contract session 2 replaced the
+// baseline with. An ordinary, expected, undramatic success — copying a title —
+// used to arm the same twenty-frame divider animation a storage failure does.
+// Now it reports and stops there: the footer says what happened, and the motion
+// is kept for the messages that are asking to be noticed.
 //
-// Session 2 owns this. It makes routine feedback quiet, after which a success of
-// this kind is expected to arm nothing.
-func TestUXClarityRoutineSuccessArmsTheFooterFlash(t *testing.T) {
+// Both halves are asserted from the same staged frame through real key presses,
+// because the risk the split introduces is not that the success stays loud but
+// that the warning goes quiet with it.
+func TestUXClarityRoutineSuccessIsQuiet(t *testing.T) {
 	driver, view := uxClarityStagedDriver(t, "launch", uxClarityDailySize[0], uxClarityDailySize[1])
 	app := driver.App()
 	seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)
@@ -270,16 +277,42 @@ func TestUXClarityRoutineSuccessArmsTheFooterFlash(t *testing.T) {
 	if !strings.Contains(uxClarityFooter(driver), "Copied title to clipboard") {
 		t.Fatalf("y did not report a routine success:\n%s", uxClarityFooter(driver))
 	}
-	if got := app.feedback.flash.severity; got != flashSuccess {
-		t.Fatalf("flash severity = %v, want flashSuccess", got)
+	if app.feedback.severity != flashSuccess {
+		t.Fatalf("recorded severity = %v, want flashSuccess; the severity is what the split reads", app.feedback.severity)
 	}
-	if app.feedback.flash.seq == 0 {
-		t.Fatal("a routine copy armed no flash generation, which is session 2's outcome, not today's")
+	if app.feedback.flash.active() {
+		t.Fatalf("a routine copy animated the divider: %+v", app.feedback.flash)
 	}
-	// The whole ladder is scheduled, not a single frame: this is what "routine
-	// footer animation" names, and it is what session 2 is expected to withhold.
+	if app.feedback.flash.seq != 0 {
+		t.Fatalf("a routine copy spent flash generation %d", app.feedback.flash.seq)
+	}
+
+	// The abandoned chord is the warning that reaches the footer on the same
+	// path, from the same view, by the same kind of keystroke — so it is the one
+	// that proves the divider still moves for the messages that earn it.
+	uxClarityPress(t, driver, uxClarityKeys("w", "q")...)
+
+	if !strings.Contains(uxClarityFooter(driver), "wq is not a workflow action") {
+		t.Fatalf("wq did not report the abandoned chord:\n%s", uxClarityFooter(driver))
+	}
+	if got := app.feedback.flash.severity; got != flashWarning {
+		t.Fatalf("flash severity = %v, want flashWarning", got)
+	}
 	if app.feedback.flash.frame != 0 {
 		t.Fatalf("flash frame = %d, want the first of %d", app.feedback.flash.frame, footerFlashFrames)
+	}
+
+	// And the quiet line that follows takes the warning's animation down with
+	// it, rather than leaving a wash and a moving glyph under text nobody needs
+	// alerting to.
+	warned := app.feedback.flash.seq
+	uxClarityPress(t, driver, uxClarityKeys("y")...)
+
+	if app.feedback.flash.active() {
+		t.Fatalf("the superseded warning kept animating under a routine success: %+v", app.feedback.flash)
+	}
+	if app.feedback.flashSeq <= warned {
+		t.Fatalf("flash generation = %d, want it past the retired %d", app.feedback.flashSeq, warned)
 	}
 }
 

@@ -224,8 +224,8 @@ offset only when the cursor falls outside the window, so the next render leaves
 the write standing. The handler clamps to `len(rows)-height` rather than
 scrolling past the end, because that clamp is shared by every index-window view
 and the scrollbar math; `zt` near the end of the list therefore scrolls as far as
-it can and stops. Success is silent, since a status would arm the footer flash
-for a change already fully on screen.
+it can and stops. Success is silent, since a status would spend the footer on a
+change already fully on screen.
 
 The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`,
 described with its two siblings under project grouping above, and writes

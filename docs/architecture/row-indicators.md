@@ -317,7 +317,8 @@ would give the marker two meanings depending on the mode.
 
 #### Status flash
 
-Changed status text flashes the footer divider: the bar takes a severity color
+Warning and error status text flashes the footer divider: the bar takes a
+severity color
 and runs a 500ms impact–sweep–settle animation over `footerFlashFrames` (20)
 frames of `footerFlashFrameInterval` (25ms): 100ms of full-width `━`, an eased
 heavy segment with a severity head and accent-fading trail, then a short dissolve
@@ -329,13 +330,30 @@ ignores an inherited `NO_COLOR`, while the explicit `--no-color` flag still
 disables color; the moving heavy glyph segment keeps the flash visible even then.
 Non-interactive commands retain the inherited environment.
 
-The trigger is status text only. The three `AppModel` setters advance
+Success, informational, and view-owned text is quiet: it reaches the footer and
+the divider does not move for it. `footerFlashSeverity.animates()` is that
+closed table — `flashWarning` and `flashError` and nothing else — and it is read
+off the severity the setter recorded, which is why every status still records
+one. The reasoning is that a routine outcome is the expected answer to the key
+that was just pressed, so the same motion spent on it is motion the warning no
+longer has to itself. Quiet feedback does not merely decline to arm: it
+supersedes, so `retireFlash` cancels a live animation and advances `flashSeq`,
+and the frames still queued for the warning are rejected on arrival rather than
+picked up by whatever is armed next. Nothing to retire is not a supersession, so
+an idle cluster keeps its generation.
+
+What counts as a change is answered before whether that change animates, and the
+two must stay separate: an `Update` that changed no status arms nothing *and*
+retires nothing, which is what lets a warning keep its remaining frames while its
+own text is still on screen. The three `AppModel` setters advance
 `feedback.seq`, the shell error beside it is compared by text because it has no
 clock, and
 `InteractiveViewState.setStatus` advances its own stamp; a breadcrumb, mode
 badge, or which-key change moves on nearly every keystroke and must never arm it.
 Cleared text arms nothing, because neither `clearStatus` nor the auto-clear
-timers advance a sequence. Arming happens in exactly one place, the deferred
+timers advance a sequence — and for the same reason a message expiring does not
+cancel the animation its text already earned. Arming happens in exactly one
+place, the deferred
 closure in `AppModel.Update`, which is what lets ~50 void setter call sites stay
 untouched; it must remain that one defer, since a second would run first under
 LIFO and see neither the recovery nor the assigned command. The footer divider
@@ -348,11 +366,14 @@ background participates in the footer wash.
 
 A view-owned status message is transient by default and expires like the
 shell's own. `SetTransientStatus` marks it, `scheduleViewStatusExpiry` reads the
-same before/after probe the flash arms on and batches a `ViewStatusClearMsg`
+same before/after probe the flash reads and batches a `ViewStatusClearMsg`
 inside that one deferred closure, and the handler clears only when the message's
 view and `StatusStamp` still match, so an older tick can never dismiss a newer
 message. `setStatus` stays sticky for a live state descriptor such as the
 multi-select summary, which would otherwise leave an active selection unlabeled.
+The two read one probe and answer different questions: a view notice is quiet
+and still expires on its own timer, so how long a message lasts never follows
+from whether it animated.
 Clearing arms no flash, since `clearStatus` advances no sequence. A mode
 transition clears the view status outright rather than waiting for the tick,
 because a message naming its mode misreports the next one.

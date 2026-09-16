@@ -384,7 +384,7 @@ family diverges. A zoom overrides exactly one section's fold, so a bulk section
 write there would move nothing on screen; but the admitted section still emits
 its project headers, so `p` there folds rows the user can see. Each reports
 that refusal through `OperationHandlerResult.Status` and stays silent when it
-acts, since a status would arm the footer flash for a change already fully
+acts, since a status would spend the footer on a change already fully
 rendered.
 
 Checklist items are a fourth row kind, emitted by one `expandChecklistRows`

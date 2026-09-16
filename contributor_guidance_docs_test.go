@@ -932,7 +932,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// only skips computing a window is what keeps the next reader from concluding
 	// the path owes a viewport and a scroll offset it has no rows to spend.
 	// The mechanism lives in docs/architecture/presentation-chrome.md.
-	const budget = 60820
+	// Fiftieth raise, 60820 to 61200, for a footer that moves only when something
+	// is wrong. 380 bytes buy the difference between quiet and broken, which no
+	// test can state on its own: a flash that never arrives reads as a bug, so the
+	// obvious repair is to arm on any status change again, and the obvious
+	// tidy-up is to let the severity switch fall through to "anything that is not
+	// an error". Naming animates() as a closed table is what makes a later
+	// severity declare itself rather than inherit silence. Saying quiet feedback
+	// retires rather than abstains is the other half: leaving the warning's
+	// animation running under the line that replaced it is what the abstaining
+	// version does, and it says the new line is the alert. And separating whether
+	// a status changed from whether that change animates is stated because the two
+	// read as one condition — collapse them and either a tick retires the very
+	// animation it was stepping, or a message expiring cancels frames its text
+	// already earned.
+	// The mechanism lives in docs/architecture/row-indicators.md.
+	const budget = 61200
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

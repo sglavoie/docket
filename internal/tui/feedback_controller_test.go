@@ -234,7 +234,7 @@ func TestFeedbackControllerFlashSequenceRejectsASupersededTick(t *testing.T) {
 	t.Parallel()
 
 	var controller feedbackController
-	first := controller.armFlash(flashInfo)
+	first := controller.armFlash(flashWarning)
 	second := controller.armFlash(flashError)
 	if second == first {
 		t.Fatalf("armFlash reused generation %d, so a stale tick stays acceptable", second)
@@ -253,6 +253,49 @@ func TestFeedbackControllerFlashSequenceRejectsASupersededTick(t *testing.T) {
 	}
 	if controller.flash.active() {
 		t.Fatal("a retired flash is inactive")
+	}
+}
+
+// TestFeedbackControllerRetireFlashInvalidatesTheTicksItCancels pins the
+// cluster's half of supersession: retiring is not the same as letting the
+// animation run out, because the frames already in flight have to be rejected on
+// arrival rather than picked up by whatever is armed next.
+func TestFeedbackControllerRetireFlashInvalidatesTheTicksItCancels(t *testing.T) {
+	t.Parallel()
+
+	var controller feedbackController
+	armed := controller.armFlash(flashWarning)
+	if !controller.advanceFlash(armed) {
+		t.Fatal("the armed flash owes a second frame")
+	}
+
+	controller.retireFlash()
+	if controller.flash.active() {
+		t.Fatalf("a retired flash is inactive, got %+v", controller.flash)
+	}
+	if controller.advanceFlash(armed) {
+		t.Fatal("a tick queued for the retired flash advanced it")
+	}
+	if controller.flashSeq <= armed {
+		t.Fatalf("flashSeq = %d, want it past the retired generation %d", controller.flashSeq, armed)
+	}
+
+	// A later animation is a new generation, so the retired flash's remaining
+	// ticks cannot be mistaken for its frames either.
+	next := controller.armFlash(flashError)
+	if next == armed {
+		t.Fatalf("armFlash reused generation %d across a retirement", next)
+	}
+	if controller.advanceFlash(armed) {
+		t.Fatal("a retired generation's tick advanced the flash that replaced it")
+	}
+
+	// Nothing to retire is not a supersession: an idle cluster keeps its
+	// generation, so a quiet line over a quiet screen spends nothing.
+	idle := feedbackController{flashSeq: 7}
+	idle.retireFlash()
+	if idle.flashSeq != 7 {
+		t.Fatalf("retiring an idle flash advanced the generation to %d", idle.flashSeq)
 	}
 }
 

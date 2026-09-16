@@ -31,10 +31,11 @@ import (
 // workspace-pulse refresh and a ledger read meet; nothing here touches storage,
 // the runtime snapshot, or a view.
 //
-// Only status text arms the footer flash, and the arming itself stays in the one
-// deferred closure in AppModel.Update. This type advances the sequence a setter
-// records and holds the frames a tick steps; it decides nothing about when a
-// flash starts.
+// Only warning and error status text arms the footer flash, and the arming
+// itself stays in the one deferred closure in AppModel.Update. This type
+// advances the sequence a setter records and holds the frames a tick steps; it
+// decides nothing about when a flash starts, which severity is quiet, or which
+// one supersedes another.
 type feedbackController struct {
 	// err is the shell's own failure line. It outranks status text in the
 	// footer and, having no clock of its own, is compared by text rather than by
@@ -62,8 +63,9 @@ type feedbackController struct {
 	recoveryFallback string
 	recoveryContext  string
 
-	// seq is bumped by every status setter and is what the footer flash arms on;
-	// severity is the newest status text's severity. Clearing advances neither,
+	// seq is bumped by every status setter and is what the footer flash reads a
+	// change off; severity is the newest status text's severity and is what
+	// decides whether that change animates at all. Clearing advances neither,
 	// which is what makes cleared text arm nothing.
 	seq      uint64
 	severity footerFlashSeverity
@@ -187,6 +189,22 @@ func (c *feedbackController) armFlash(severity footerFlashSeverity) uint64 {
 	c.flashSeq++
 	c.flash = footerFlashState{severity: severity, seq: c.flashSeq}
 	return c.flashSeq
+}
+
+// retireFlash cancels a live divider animation and advances the generation, so
+// every tick already queued for it is rejected when it arrives. It is what quiet
+// feedback does to the animated warning it replaces: the moving glyph and the
+// footer wash belong to that warning's text, and leaving them running under the
+// line that superseded it would say the new line is the alert.
+//
+// Nothing to retire is not a supersession, so an idle cluster is left alone and
+// the generation only counts animations that actually ran.
+func (c *feedbackController) retireFlash() {
+	if !c.flash.active() {
+		return
+	}
+	c.flash = footerFlashState{}
+	c.flashSeq++
 }
 
 // advanceFlash steps one frame and reports whether another is owed. A tick from

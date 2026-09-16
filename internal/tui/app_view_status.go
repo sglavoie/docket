@@ -411,9 +411,10 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 	return label
 }
 
-// The footer divider takes a severity color the moment status text changes,
-// lands as a full-width impact, then sweeps and dissolves back into the view
-// accent so a message replaced at the bottom of a busy screen is not missed.
+// The footer divider takes a severity color the moment warning or error text
+// arrives, lands as a full-width impact, then sweeps and dissolves back into the
+// view accent so a message that needs attention at the bottom of a busy screen
+// is not missed. Routine outcomes change the text and nothing else.
 // Named flash, not pulse: workspacePulse is the title row's counts chip.
 const (
 	footerFlashFrames        = 20
@@ -449,6 +450,19 @@ func (s footerFlashSeverity) color() color.Color {
 	default:
 		return theme.ColorPrimary
 	}
+}
+
+// animates reports whether this severity earns the divider animation and the
+// footer wash beneath it. Only a warning and an error do.
+//
+// A success or an informational line is the expected answer to the key that was
+// just pressed: the text says what happened and the reader already knew to look
+// for it, so motion at the bottom of the screen buys nothing and spends the one
+// thing the warning needs — that the same motion is unusual. Severity is still
+// recorded for every status, because that record is exactly what tells the two
+// apart here.
+func (s footerFlashSeverity) animates() bool {
+	return s == flashWarning || s == flashError
 }
 
 type footerFlashState struct {
@@ -509,9 +523,17 @@ func (m *AppModel) captureFooterFlashProbe() footerFlashProbe {
 	return probe
 }
 
-// armFooterFlashSince starts a flash when this Update changed status text.
-// Cleared text arms nothing: neither clearStatus nor the auto-clear timers
-// advance a sequence, and a vanished error fails the non-empty test.
+// armFooterFlashSince starts a flash when this Update changed status text to
+// something worth interrupting for. Cleared text arms nothing: neither
+// clearStatus nor the auto-clear timers advance a sequence, and a vanished error
+// fails the non-empty test.
+//
+// Routine text changes nothing about the divider and still supersede: a success,
+// an informational line, and a view-owned notice are all quiet, and the one they
+// replace stops animating under them. The two questions are deliberately
+// separate — which change happened, then whether that change animates — because
+// a change that arms nothing is not the same as no change at all, and only the
+// first of those retires what was running.
 func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 	after := m.captureFooterFlashProbe()
 
@@ -525,6 +547,12 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 		severity = flashInfo
 	}
 	if severity == flashNone {
+		// No status changed, so nothing was superseded either: a flash already
+		// running belongs to text still on screen and keeps its remaining frames.
+		return nil
+	}
+	if !severity.animates() {
+		m.feedback.retireFlash()
 		return nil
 	}
 
@@ -533,8 +561,10 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 
 // scheduleViewStatusExpiry arms the auto-clear for a view-owned status message
 // this Update introduced. It reads the same before/after comparison as the
-// flash, since a new message is exactly what both react to; a sticky message
-// (the multi-select summary) schedules nothing and stays until its view clears it.
+// flash, since a new message is what both observe, but it decides for itself: a
+// view notice is quiet and still expires on time, so how long a message lasts
+// never follows from whether it animated. A sticky message (the multi-select
+// summary) schedules nothing and stays until its view clears it.
 func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
 	after := m.captureFooterFlashProbe()
 	if after.view != before.view || after.viewStatusSeq == before.viewStatusSeq {
