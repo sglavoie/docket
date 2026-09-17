@@ -16,7 +16,7 @@
     { "type": "assert", "assert": "contains", "value": "workspace:" },
     { "type": "assert", "label": "the dock the cursor opened is still open, in the same place", "assert": "contains", "value": "0 above · 0 below" },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
-    { "type": "assert", "label": "and so is the part of the list the box does not cover", "assert": "contains", "value": "with bounded viewport content" },
+    { "type": "assert", "label": "and so is the part of the list the box does not cover", "assert": "contains", "value": "bounded viewport content [release-pro…]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "a key the menu lists is the menu's: it moves the menu's own cursor", "key": "down" },

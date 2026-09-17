@@ -35,28 +35,7 @@ func (m *OutlinerModel) View() tea.View {
 }
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
-	var colLayout *chrome.ColumnLayout
-	if viewport.rowWidth >= chrome.MinColumnAlignWidth {
-		colLayout = ComputeOutlinerColumnLayout(m.Rows[viewport.startIdx:viewport.endIdx])
-		// Augment with status widths from the same row set.
-		var visibleTasks []*models.Task
-		for _, row := range m.Rows[viewport.startIdx:viewport.endIdx] {
-			if !row.IsTaskRow() || row.Task == nil {
-				continue
-			}
-			visibleTasks = append(visibleTasks, row.Task)
-		}
-		if badge := chrome.ComputeBadgeWidths(visibleTasks, chrome.BadgeWidthOpts{
-			IncludeStatus: true,
-		}); badge != nil {
-			if colLayout == nil {
-				colLayout = badge
-			} else {
-				colLayout.HasStatus = badge.HasStatus
-				colLayout.StatusWidth = badge.StatusWidth
-			}
-		}
-	}
+	colLayout := m.ComputeOutlinerRowLayout(m.Rows, viewport.rowWidth)
 
 	var rowBuilder strings.Builder
 	for i := viewport.startIdx; i < viewport.endIdx; i++ {
@@ -75,7 +54,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 		case row.IsNoteRow:
 			rowBuilder.WriteString(m.renderOutlinerNoteRow(row, selected, viewport.rowWidth, i, colLayout))
 		case selected && m.isQuickEditRow(row):
-			rowBuilder.WriteString(m.RenderOutlinerQuickEditRow(row, viewport.rowWidth))
+			rowBuilder.WriteString(m.RenderOutlinerQuickEditRow(row, viewport.rowWidth, colLayout))
 		default:
 			rowBuilder.WriteString(m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, i, colLayout))
 		}
@@ -482,36 +461,71 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	return chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
-// ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
-// visible outliner rows. Non-task rows (section headers, project sub-headers,
-// separators) are skipped via isTaskRow(). Returns nil when no task rows are
-// present.
-func ComputeOutlinerColumnLayout(rows []OutlinerRow) *chrome.ColumnLayout {
-	if len(rows) == 0 {
-		return nil
-	}
-	cl := &chrome.ColumnLayout{}
-	hasRows := false
+// ComputeOutlinerRowLayout is the one measurement of a projection's shared row
+// geometry: the badge columns the leading segments align in, and the trailing
+// column the project field sits in. It reads the whole row set it is handed
+// rather than the slice a window happens to show, which is what keeps the
+// column where it is while the list scrolls past it — a measurement taken from
+// the window would move every row's title each time a wider neighbor scrolled
+// into view.
+//
+// It is the seam every task-row consumer takes: the Outliner's own render, the
+// inline editor that has to open in the column the title was drawn in, and the
+// Hub's preview painter, which is a standalone render of the same rows.
+//
+// Badge alignment keeps its own width floor, because padding a badge is a
+// wide-terminal nicety that a cramped row is better off without. The project
+// column has no floor: the label is reserved at every width the row is drawn
+// at, so the column it is reserved in has to exist at every one of them too.
+func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth int) *chrome.ColumnLayout {
+	tasks := make([]*models.Task, 0, len(rows))
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
-		hasRows = true
-		task := row.Task
-
-		// Priority (pre-title in outliner)
-		badge := chrome.RenderPriorityBadge(task.Priority)
-		if w := lipgloss.Width(badge); w > 0 {
-			cl.HasPriority = true
-			if w > cl.PriorityWidth {
-				cl.PriorityWidth = w
-			}
-		}
+		tasks = append(tasks, row.Task)
 	}
-	if !hasRows {
+	if len(tasks) == 0 {
 		return nil
 	}
-	return cl
+
+	layout := &chrome.ColumnLayout{}
+	if rowWidth >= chrome.MinColumnAlignWidth {
+		if badge := chrome.ComputeBadgeWidths(tasks, chrome.BadgeWidthOpts{IncludeStatus: true}); badge != nil {
+			layout = badge
+		}
+	}
+
+	for _, row := range rows {
+		if !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		if width := lipgloss.Width(m.taskProjectLabel(row, rowWidth)); width > layout.ProjectWidth {
+			layout.ProjectWidth = width
+		}
+	}
+	if layout.ProjectWidth == 0 {
+		return layout
+	}
+
+	// The column is where the longest title in the projection already ended, and
+	// nothing pulls it further right, so it is the right edge of the title region
+	// rather than a position rows are stretched to. Affordability is answered per
+	// row when the row is built: one deep indent or one long deadline would
+	// otherwise buy its whole lane's titles shorter, which is the trade this
+	// column exists to avoid making.
+	maxCueEnd := 0
+	for _, row := range rows {
+		if !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		segments := m.buildTaskRowSegments(row, rowWidth, layout, cursorPaint{})
+		if end := segments.naturalCueEnd(rowWidth, row.Task.Title); end > maxCueEnd {
+			maxCueEnd = end
+		}
+	}
+	layout.ProjectColumn = maxCueEnd
+	return layout
 }
 
 type outlinerViewport struct {

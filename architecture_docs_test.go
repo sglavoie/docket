@@ -93,12 +93,18 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"`setGroupFold`",
 		"Neither scans for a header and neither matches a key prefix",
 		// Session 8 retired the switch: the headerless presentation is now the only
-		// one, and the compact per-row label is what makes it readable.
-		"one compact `[label]` segment per task row, from `taskProjectLabel` under the same " +
-			"`groupsRowsByProject` predicate the emitter reads",
-		"bounded by `projectLabelWidth` and reserved at every width beside the pin and " +
+		// one, and the compact per-row label is what makes it readable. Session 2 of
+		// the daily-use plan moved that label off the front of the title into a
+		// trailing column measured over the whole projection.
+		"one compact `[label]` column after each task row's title, from `taskProjectLabel` " +
+			"under the same `groupsRowsByProject` predicate the emitter reads",
+		"bounded by `projectLabelBudget` and reserved at every width beside the pin and " +
 			"relation markers rather than joining `indicatorDropLadder`",
-		"The truncation that ceiling imposes has the folded summary as its counterpart",
+		"The truncation the ceiling still imposes has the folded summary as its counterpart",
+		"`ComputeOutlinerRowLayout` is the one measurement that makes it one",
+		"It reads the whole projection rather than the window on screen, which is the whole " +
+			"reason the column holds still",
+		"the title is what gives way",
 		"`appendProjectGroupHeader` emits nothing for an expanded group and keeps the summary " +
 			"a folded one is",
 		"`rowStartsGroup` is what `n`/`N` step between",

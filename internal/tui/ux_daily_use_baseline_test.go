@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -46,28 +47,29 @@ func uxDailyUseSizeName(size [2]int) string {
 	return fmt.Sprintf("%dx%d", size[0], size[1])
 }
 
-// TestUXDailyUseProjectLabelPrecedesTheTitle records where project identity sits
-// on a task row today: in a bracketed slug drawn *before* the title, at whatever
-// width the slug happens to need, so the titles of four projects with four
-// different name lengths start in four different columns.
+// TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn is this contract after
+// session 2 rewrote it. Project identity is a bracketed slug drawn *after* the
+// title, in a column measured over the whole projection, so four projects with
+// four different name lengths give their four tasks one title column and one
+// label column instead of four of each.
 //
-// The unequal starts are the point and are asserted directly rather than
-// inferred from the labels, because the labels being different lengths is not by
-// itself a claim about the row: a label column padded to a common width would
-// leave the titles aligned and this test passing on an implementation it is
-// meant to fail on.
+// Both halves are asserted, because either alone passes on an arrangement this
+// is meant to refuse. Equal title starts alone would still hold if the label had
+// simply been deleted, and equal label starts alone would hold if the label had
+// stayed in front of a title padded out to a common width — which is the shape
+// the predecessor contract was written to catch.
 //
-// Session 2 owns this. It moves project identity after the title into an aligned
-// muted column, at which point the correct assertion is the opposite one — every
-// title starts in the same column and the labels line up in theirs — and this
-// contract is rewritten to state that.
-func TestUXDailyUseProjectLabelPrecedesTheTitle(t *testing.T) {
+// Columns are measured with lipgloss rather than by byte offset: the tree
+// connectors and the state badge are multi-byte, so a byte index into the line
+// is not the column the terminal draws the fragment in.
+func TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn(t *testing.T) {
 	for _, size := range uxDailyUseMatrixSizes {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
 			driver, _ := uxDailyUseStagedDriver(t, "project-label-widths", size[0], size[1])
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
 
 			starts := map[string]int{}
+			labels := map[string]int{}
 			for _, title := range uxDailyUseMultiProjectTitles {
 				line := uxDailyUseScreenLine(t, screen, title)
 				label := strings.Index(line, "[")
@@ -75,15 +77,21 @@ func TestUXDailyUseProjectLabelPrecedesTheTitle(t *testing.T) {
 				if label < 0 {
 					t.Fatalf("the row for %q names no project:\n%s", title, line)
 				}
-				if label > start {
-					t.Fatalf("the project label follows the title on %q, which is the arrangement session 2 introduces:\n%s",
+				if label < start {
+					t.Fatalf("the project label precedes the title on %q, which session 2 retired:\n%s",
 						title, line)
 				}
-				starts[title] = start
+				starts[title] = lipgloss.Width(line[:start])
+				labels[title] = lipgloss.Width(line[:label])
 			}
 
-			if len(uxDailyUseDistinct(starts)) < 2 {
-				t.Fatalf("every title starts in the same column, so the label is already an aligned column: %v", starts)
+			if distinct := uxDailyUseDistinct(starts); len(distinct) != 1 {
+				t.Fatalf("the titles start in %d different columns, so the label is still sized per row: %v",
+					len(distinct), starts)
+			}
+			if distinct := uxDailyUseDistinct(labels); len(distinct) != 1 {
+				t.Fatalf("the labels start in %d different columns, so they are segments rather than a column: %v",
+					len(distinct), labels)
 			}
 		})
 	}

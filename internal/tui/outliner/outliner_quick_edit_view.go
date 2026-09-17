@@ -59,7 +59,11 @@ func (m *OutlinerModel) quickEditExtraLineCount() int {
 // width.
 const quickEditSuggestionIndentShare = 3
 
-func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int) string {
+// RenderOutlinerQuickEditRow draws the row being edited in place. colLayout is
+// the projection's own geometry rather than nothing: the caret has to land in
+// the column the committed title will be drawn in, and that column includes the
+// badge padding the rows around it are wearing.
+func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	project := m.ResolveProjectForRow(row)
 	m.QuickEdit.SetContext(project, m.quickEditProjects())
 
@@ -74,13 +78,15 @@ func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int
 	if previewTask := m.quickEditDisplayTask(); previewTask != nil {
 		previewRow.Task = previewTask
 	}
-	inputPrefix := m.buildTaskRowSegments(previewRow, rowWidth, nil, cursorPaint{}).titlePrefix()
+	inputPrefix := m.buildTaskRowSegments(previewRow, rowWidth, colLayout, cursorPaint{}).titlePrefix()
 	indentWidth := lipgloss.Width(inputPrefix)
 	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus
 	// the cursor cell after it, so the window must leave that column free. The
 	// prefix is the row's own, so the columns the input is given are exactly the
 	// columns the title had — which is what keeps the caret on screen as the row
-	// budget changes.
+	// budget changes. The buffer takes the whole remainder rather than the
+	// title's own column budget, because the editor draws no trailing column:
+	// the project field and the indicators are what the commit redraws.
 	m.QuickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
 	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.QuickEdit.RenderSelectedInput(), rowWidth)

@@ -11,17 +11,17 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "All draws the Pinned section", "assert": "contains", "value": "@ Pinned  (1)" },
-    { "type": "assert", "label": "the lane's own row stays bare", "assert": "not_contains", "value": "* [unfiled] Pinned marker task" },
+    { "type": "assert", "label": "the lane's own row stays bare", "assert": "not_contains", "value": "* Pinned marker task" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump to Inbox, which draws no Pinned section", "key": "i" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
-    { "type": "assert", "label": "the pin names itself where no section can", "assert": "contains", "value": "* [unfiled] Pinned marker task" },
+    { "type": "assert", "label": "the pin names itself where no section can", "assert": "contains", "value": "* Pinned marker task [unfiled]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "narrow until the indicators start dropping", "width": 60, "height": 24 },
-    { "type": "assert", "label": "the reserved marker survives what the ladder sheds", "assert": "contains", "value": "* [unfiled] Pinned marker task" },
+    { "type": "assert", "label": "the reserved marker survives what the ladder sheds", "assert": "contains", "value": "* Pinned marker task [unfiled]" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

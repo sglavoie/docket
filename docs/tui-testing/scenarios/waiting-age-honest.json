@@ -3,7 +3,7 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the row says the task is blocked and nothing more", "assert": "contains", "value": "⊘ [signal-deli…] Alpha waiting on vendor" },
+    { "type": "assert", "label": "the row says the task is blocked and nothing more", "assert": "contains", "value": "⊘ Alpha waiting on vendor   [signal-deli…]" },
     { "type": "assert", "label": "how long it has been blocked is Peek's", "assert": "not_contains", "value": "waiting 12d" },
     { "type": "assert", "assert": "no_layout_issues" },
 

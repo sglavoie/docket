@@ -194,7 +194,8 @@ Project grouping is universal, not per-mode: whenever the Outliner is not showin
 one project's own view, every mode groups its rows by project and puts pinned
 projects first and then sorts alphabetically. What differs is how a group states
 its identity. While it is expanded it costs no row at all: each of its task rows
-carries a compact `[label]` ahead of the title and the run of rows is the group.
+carries a compact `[label]` in a column after the title and the run of rows is
+the group.
 While it is folded, the one summary row `appendProjectGroupHeader` emits is that
 whole statement, `IsProjectHeader` and all. Every mode emits that summary
 through the shared `appendProjectGroupHeader` kernel, and each grouping surface
@@ -241,19 +242,39 @@ for an expanded group and keeps the summary a folded one is, since that row is
 the whole of what the group shows — it names the project, carries the pressure
 counts, is what `l` expands, and is what every project operation resolves from.
 What an expanded group spends on identity instead is one compact `[label]`
-segment per task row, from `taskProjectLabel` under the same
+column after each task row's title, from `taskProjectLabel` under the same
 `groupsRowsByProject` predicate the emitter reads, so the two can never both
-speak or both stay silent. The label is bounded by `projectLabelWidth` and
+speak or both stay silent. The label is bounded by `projectLabelBudget` and
 reserved at every width beside the pin and relation markers rather than joining
 `indicatorDropLadder`: a deadline a narrow row sheds is recoverable in Peek,
 while a row whose owner is unknown is a row whose title may name either of two
-projects. The truncation that ceiling imposes has the folded summary as its
-counterpart — `p` or `h` closes the group and the summary spells the slug whole
-— which is why the label may cut where `TruncateToVisualWidth`'s general rule
-would refuse. A row seated under its own parent draws none, on the same grounds
-the pinned lane's rows draw no pin: parents are project-local, so the connectors
-above have already answered, and a promoted root whose parent is elsewhere is
-not seated under it and keeps its label.
+projects. That budget is the row's own rather than a constant: it is
+`projectLabelWidth` for every row up to `projectLabelGrowthFloorWidth` and then
+rises slowly to `projectLabelCeilingWidth`, because a wide terminal is where a
+cut slug is least excusable and where the title can most afford the columns,
+while an ordinary row is charged nothing for a spelling only a wide one can
+spare. The truncation the
+ceiling still imposes has the folded summary as its counterpart — `p` or `h`
+closes the group and the summary spells the slug whole — which is why the label
+may cut where `TruncateToVisualWidth`'s general rule would refuse. A row seated
+under its own parent draws none, on the same grounds the pinned lane's rows draw
+no pin: parents are project-local, so the connectors above have already
+answered, and a promoted root whose parent is elsewhere is not seated under it
+and keeps its label.
+
+It is a column and not a segment, and `ComputeOutlinerRowLayout` is the one
+measurement that makes it one. It reads the whole projection rather than the
+window on screen, which is the whole reason the column holds still: a
+measurement taken from the visible slice would move the label — and every title
+with it — each time a longer neighbor scrolled into view. `ProjectColumn` is
+where the longest title in the projection already ended, pulled left far enough
+that the widest indicator run in the same projection still fits the row, so
+every row reaches one column without any row clipping a deadline to get there:
+the title is what gives way, which is the trade `indicatorDropLadder` already
+makes a rung earlier. Every task-row consumer takes that one seam, the inline
+editor included, since its caret has to open in the column the committed title
+will be drawn in. [Row indicators](row-indicators.md) is where the field, its
+padding, and its width budget are described.
 
 `rowStartsGroup` is what `n`/`N` step between, and it is one rule covering the
 three cases that used to need a heading: a drawn header starts a block, a folded

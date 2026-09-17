@@ -113,7 +113,7 @@ has found a regression.
 
 | Recorded expectation | Test | Owner |
 | --- | --- | --- |
-| A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length. | `TestUXDailyUseProjectLabelPrecedesTheTitle` | 2 |
+| ~~A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length.~~ Rewritten by session 2: the label follows the title in one measured column, so every title and every label starts in one column. | `TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn` | 2 |
 | The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused. | `TestUXDailyUseCursorRowLeavesItsContentUnstyled` | 3 |
 | A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer. | `TestUXDailyUseSelectionCountsAreStatedTwice` | 4 |
 | The `w` chord lists all ten destinations as one flat run, with no Plan/Status division. | `TestUXDailyUseWorkflowChordListsOneFlatRun` | 5 |
@@ -132,9 +132,9 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 
 | Assertion | Where | Owner |
 | --- | --- | --- |
-| "each of its task rows carries a compact `[label]` ahead of the title" | `docs/architecture/tui-architecture.md` line 197 | 2 |
-| The required string "one compact `[label]` segment per task row, from `taskProjectLabel`…" | `architecture_docs_test.go` lines 97–100 | 2 |
-| "`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded" | `CLAUDE.md` lines 627–630 | 2 |
+| ~~"each of its task rows carries a compact `[label]` ahead of the title"~~ Rewritten by session 2 to "in a column after the title". | `docs/architecture/tui-architecture.md` line 197 | 2 |
+| ~~The required string "one compact `[label]` segment per task row, from `taskProjectLabel`…"~~ Rewritten by session 2 to the column form, with `ComputeOutlinerRowLayout` and the clamp's direction added beside it. | `architecture_docs_test.go` lines 97–105 | 2 |
+| ~~"`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded"~~ Rewritten by session 2, which also added the `ComputeOutlinerRowLayout` geometry rule and raised the budget for it. | `CLAUDE.md` lines 627–649 | 2 |
 | "`outlinerCursorRow` marks the cursor row in its first column and trailing fill alone, not its content" | `CLAUDE.md` line 532 | 3 |
 | The cursor-row paint description — `cursorPaint`, the gutter truncation, the `trail()` pad | `docs/architecture/presentation-chrome.md` lines 479–512 | 3 |
 | "A view status is transient except the multi-select summary." | `CLAUDE.md` line 410 | 4 |
@@ -146,7 +146,7 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | "Every launch starts Active Projects, All, with no restored navigation or selection" | `CLAUDE.md` lines 127–131 | 11 |
 | "the class `?` help and the footer ranks belong to" | `CLAUDE.md` line 193 | 12 |
 
-`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 66500-byte rules-only
+`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68000-byte rules-only
 budget. A session that spends more of that budget than it reclaims raises the
 constant in its own diff and says why in the comment ledger above it, the way
 every previous raise did; nobody raises it on another session's behalf.
@@ -157,8 +157,8 @@ every previous raise did; nobody raises it on another session's behalf.
 
 - Go: `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/outliner/outliner_project_label_outlinersplit_test.go`, `internal/tui/outliner/outliner_row_budget_acceptance_test.go`, `internal/tui/inline_row_editor_test.go`
 - Frames: `project-label-widths`, `dense-scrolled`
-- Contracts: `architecture_docs_test.go` lines 97–100; `docs/architecture/tui-architecture.md` line 197; `CLAUDE.md` lines 627–630
-- Landed: —
+- Contracts: `architecture_docs_test.go` lines 97–105; `docs/architecture/tui-architecture.md` line 197; `CLAUDE.md` lines 627–649
+- Landed: `chrome.ColumnLayout.ProjectColumn` and `OutlinerModel.ComputeOutlinerRowLayout` — one geometry measured over the whole projection; `taskRowSegments` split into `preTitleWidth`/`postTitleWidth` with the project field between the cues and the indicators; `projectLabelBudget` holding the label at `projectLabelWidth` up to `projectLabelGrowthFloorWidth` and growing it toward `projectLabelCeilingWidth` past that; `RenderOutlinerQuickEditRow` and the Hub preview painter taking that same layout.
 
 ### Session 3 — Current-row tint and semantic colors
 

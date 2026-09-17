@@ -44,7 +44,8 @@ func TestDueBadgesKeepDistinctFillsAcrossThemes(t *testing.T) {
 					t.Fatalf("%s due badge has no foreground, so the fill has no contrast contract", tier.name)
 				}
 				// The section badge's two padding cells are what bound the chip;
-				// outlinerNonTitleWidth measures them like any other segment.
+				// taskRowSegments.postTitleWidth measures them like any other
+				// segment.
 				if left, right := tier.style.GetPaddingLeft(), tier.style.GetPaddingRight(); left != 1 || right != 1 {
 					t.Fatalf("%s due badge padding = %d/%d, want 1/1", tier.name, left, right)
 				}

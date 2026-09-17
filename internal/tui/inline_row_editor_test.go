@@ -241,7 +241,7 @@ func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *tes
 
 			for _, position := range positions {
 				out.QuickEdit.Input.SetCursor(position)
-				rendered := out.RenderOutlinerQuickEditRow(row, 80)
+				rendered := out.RenderOutlinerQuickEditRow(row, 80, nil)
 				if !strings.Contains(rendered, "\x1b[7;") {
 					t.Errorf("cursor at position %d has no reverse-video block: %q", position, rendered)
 				}
@@ -349,7 +349,7 @@ func TestInlineRowEditorLaysTheCaretOverTheReclaimedTitleColumns(t *testing.T) {
 			out.QuickEdit.Input.SetValue(buffer)
 			out.QuickEdit.Input.CursorEnd()
 			out.QuickEdit.RefreshDraft()
-			lines := strings.Split(out.RenderOutlinerQuickEditRow(row, width), "\n")
+			lines := strings.Split(out.RenderOutlinerQuickEditRow(row, width, nil), "\n")
 			if len(lines) < 2 {
 				t.Fatalf("editor rendered %d lines, want a metadata row and an input row", len(lines))
 			}

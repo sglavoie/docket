@@ -134,7 +134,7 @@ func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label
 		if !slices.Contains(groups, row.Group) {
 			t.Fatalf("%s task row %q carries group %+v, want one of %+v", label, row.Task.ID, row.Group, groups)
 		}
-		if m.taskProjectLabel(row) == "" {
+		if m.taskProjectLabel(row, 120) == "" {
 			t.Fatalf("%s task row %q named no project", label, row.Task.ID)
 		}
 	}

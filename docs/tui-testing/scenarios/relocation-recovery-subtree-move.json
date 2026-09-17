@@ -17,7 +17,7 @@
       "type": "assert",
       "label": "the parent and the child it carried are drawn in the destination group",
       "assert": "contains",
-      "value": "[triage-alpha] Beta intake parent"
+      "value": "Beta intake parent awaiting triage        [triage-alpha]"
     },
     { "type": "key", "label": "copy whatever the sweep continued onto", "key": "y" },
     {

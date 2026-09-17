@@ -15,8 +15,8 @@
     { "type": "key", "label": "choose the system Inbox", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the destination minted its own ShortID for the moved root", "assert": "status_contains", "value": "Move to Project: #1 User authentication → unfiled" },
-    { "type": "assert", "label": "the root and its backlog child left together, and only the root has to say so", "assert": "contains", "value": "[unfiled] User authentication" },
-    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "[rich-project] Launch platform" },
+    { "type": "assert", "label": "the root and its backlog child left together, and only the root has to say so", "assert": "contains", "value": "User authentication       [unfiled]" },
+    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "Launch platform             [rich-project]" },
 
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },

@@ -766,8 +766,9 @@
     },
     {
       "type": "assert",
+      "label": "and the host rows the box does not cover are drawn whole",
       "assert": "contains",
-      "value": "communications plan"
+      "value": "Await the vendor security questionnaire"
     },
     {
       "type": "assert",

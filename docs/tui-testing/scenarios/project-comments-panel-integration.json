@@ -110,7 +110,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "key", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-…] Mix rollout plan" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "Mix rollout plan [mix-active-…]" },
 
     { "type": "key", "label": "walk to the group start of a project that holds work, which is its task", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },

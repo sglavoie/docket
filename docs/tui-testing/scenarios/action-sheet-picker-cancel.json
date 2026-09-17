@@ -18,7 +18,7 @@
     { "type": "key", "label": "cancel the sheet", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
-    { "type": "assert", "label": "the row the sheet came from still names its own project", "assert": "contains", "value": "▶   [rich-project] Build login form" },
+    { "type": "assert", "label": "the row the sheet came from still names its own project", "assert": "contains", "value": "▶   Build login form  ‹             [rich-project]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the attachment sigil opens the panel directly", "key": "&" },

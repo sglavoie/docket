@@ -39,12 +39,12 @@ func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
-	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
-		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.pinMarker, segments.projectLabel,
-		segments.indicators, segments.relationMarker, segments.matchCue,
-	) {
-		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")
+	if segments.titleWidth(60) != 60-segments.preTitleWidth()-segments.postTitleWidth() {
+		t.Fatal("a segment drifted between titleWidth and the two halves it subtracts")
+	}
+	if assembled := lipgloss.Width(ansi.Strip(segments.gutter() + segments.content("x"))); assembled != segments.preTitleWidth()+segments.postTitleWidth()+1 {
+		t.Fatalf("the assembled row is %d columns and the arithmetic says %d, so a segment is measured but not drawn or drawn but not measured",
+			assembled, segments.preTitleWidth()+segments.postTitleWidth()+1)
 	}
 
 	// 24 columns is where a reserved badge used to leave the title four of them.

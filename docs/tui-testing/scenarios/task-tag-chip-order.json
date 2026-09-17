@@ -28,7 +28,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Tags: #billing #ux #bug" },
 
     { "type": "resize", "label": "at the minimum width the compact project label is the one thing still competing for the title", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "[unfiled] Ship the invoice redesign to the billing p…" },
+    { "type": "assert", "assert": "contains", "value": "Ship the invoice redesign to the billing p… [unfiled]" },
     { "type": "assert", "assert": "not_contains", "value": "#billing" },
     { "type": "assert", "assert": "no_layout_issues" },
 

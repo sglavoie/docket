@@ -1065,7 +1065,32 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// `inlinePeekWindowRows`, `inlinePeekBodyRows`, `inlinePeekHalfPageRows`, and
 	// `inlinePeekFullPageRows` were struck from the rules they appeared in rather
 	// than left beside their replacements.
-	const budget = 66500
+	// Fifty-sixth raise, 66500 to 68000, for moving project identity into a
+	// trailing aligned column. 1500 bytes buy three rules. The first is where the
+	// field now sits, which is not derivable from the old rule: "reserved at every
+	// width" said nothing about order, and the two plausible readings — after the
+	// indicators, or between the title and its cues — are both wrong for reasons
+	// the row cannot show. After the indicators puts the column behind the row's
+	// most volatile field, so it moves whenever a deadline arrives; between the
+	// title and its cues separates a search cue from the title it explains. The
+	// second is that the geometry is measured over the projection and never over a
+	// window or a cursor. That is the whole of why the column holds still, and it
+	// is exactly the rule a later reader is tempted to undo, because measuring the
+	// visible slice is cheaper and looks identical until the list scrolls. The
+	// third is who answers affordability. The column is the right edge of the
+	// title region rather than a position rows are stretched to, so a row that
+	// cannot reach it gets as near as its own width allows and never cuts its
+	// title further to arrive. The two moves a reader reaches for first are both
+	// worse: pulling the column left until the deepest indent and the longest
+	// deadline in view both fit is one row buying every other row's title
+	// shorter, which at the app's own minimum width is most of the row, and
+	// letting the row wrap breaks the one-line invariant every row consumer
+	// depends on. The width budget rising with the row is stated in the same rule
+	// because `projectLabelWidth` is now a floor rather than the value, and a rule
+	// naming only the constant would read as a cap. The mechanism lives in
+	// docs/architecture/row-indicators.md. No rule elsewhere was trimmed to pay
+	// for it.
+	const budget = 68000
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

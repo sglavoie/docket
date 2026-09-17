@@ -25,7 +25,7 @@
     { "type": "key", "label": "unfold the groups again", "key": "p" },
     { "type": "key", "key": "home" },
     { "type": "key", "label": "back onto the referring task", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~0/1?" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff             [client-alpha] ~0/1?" },
 
     { "type": "key", "label": "open the relationship picker over a locator nobody can read", "key": "g" },
     { "type": "key", "key": "~" },
@@ -50,7 +50,7 @@
 
     { "type": "key", "label": "dismissal is the picker's alone; the row keeps its count", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Relationships ·" },
-    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~0/1?" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff             [client-alpha] ~0/1?" },
 
     { "type": "key", "label": "the theme is not the picker's to toggle, so switch beneath it", "key": "T" },
     { "type": "assert", "assert": "status_contains", "value": "Theme: light" },

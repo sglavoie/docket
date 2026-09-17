@@ -236,13 +236,13 @@ func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *test
 
 	// The first frame is what installs the row width, so the value has to land
 	// afterwards for the scroll window to be the one an editing session sees.
-	out.RenderOutlinerQuickEditRow(row, 80)
+	out.RenderOutlinerQuickEditRow(row, 80, nil)
 	value := strings.Repeat("overflowing title ", 8) + "ZZEND"
 	out.QuickEdit.Input.SetValue(value)
 	out.QuickEdit.Input.CursorEnd()
 	out.QuickEdit.RefreshDraft()
 
-	lines := strings.Split(out.RenderOutlinerQuickEditRow(row, 80), "\n")
+	lines := strings.Split(out.RenderOutlinerQuickEditRow(row, 80, nil), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("quick edit rendered %d lines, want the metadata and input lines only", len(lines))
 	}
@@ -263,8 +263,8 @@ func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *test
 		t.Errorf("overflowing input line has no reverse-video cursor block: %q", lines[1])
 	}
 
-	narrow := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 40), "\n")[1])
-	wide := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 120), "\n")[1])
+	narrow := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 40, nil), "\n")[1])
+	wide := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 120, nil), "\n")[1])
 	narrowVisible := longestVisibleSuffix(narrow, value)
 	wideVisible := longestVisibleSuffix(wide, value)
 	if wideVisible <= narrowVisible {

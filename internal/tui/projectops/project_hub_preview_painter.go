@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
@@ -20,6 +21,13 @@ import (
 type projectPreviewPainter struct {
 	rows    []outliner.OutlinerRow
 	painter *outliner.OutlinerModel
+	// layout is the pane's own row geometry, measured over every row the pane
+	// can scroll to rather than over the rows it currently shows, and cached
+	// because the pane repaints one row at a time at one width. layoutWidth is
+	// the width it was measured for; a resized pane measures again.
+	layout      *chrome.ColumnLayout
+	layoutWidth int
+	layoutTaken bool
 }
 
 func (p *projectPreviewPainter) RowCount() int { return len(p.rows) }
@@ -29,11 +37,21 @@ func (p *projectPreviewPainter) RenderRow(index, width int) string {
 		return ""
 	}
 	// rowWidth and width are the same pane column budget: the pane has no cursor,
-	// so no row ever opens Peek and the wider measure never applies. The nil column
-	// layout matches what the Outliner passes below its own alignment threshold,
-	// and the absolute row index keeps zebra striping anchored to the task rather
-	// than to the scroll position.
-	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, index, nil)
+	// so no row ever opens Peek and the wider measure never applies. The row
+	// geometry is the Outliner's own, measured over the whole flattened tree, so
+	// the pane's rows are the product's rows down to the column their badges
+	// align in. The absolute row index keeps zebra striping anchored to the task
+	// rather than to the scroll position.
+	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, index, p.rowLayout(width))
+}
+
+func (p *projectPreviewPainter) rowLayout(width int) *chrome.ColumnLayout {
+	if !p.layoutTaken || p.layoutWidth != width {
+		p.layout = p.painter.ComputeOutlinerRowLayout(p.rows, width)
+		p.layoutWidth = width
+		p.layoutTaken = true
+	}
+	return p.layout
 }
 
 // NewProjectPreviewPainter is the Hub's NewPreviewTaskPainter. Building one costs
