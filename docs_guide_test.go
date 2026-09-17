@@ -112,9 +112,15 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"`Shift+Enter` widens in the other direction",
 		"`b` toggles a session-only Peek in a pane docked below the list, whether the\n" +
 			"cursor is on a task or on a project header",
-		"The pane is always the same height —\nseven rows, counted off the list once when you open it",
+		"Its height is a share of the terminal\n" +
+			"— about a third of the outline's own room, never fewer than seven rows and never\n" +
+			"more than twelve — counted off the list once when you open it",
+		"What the pane never reads is the\nrow you are on",
+		"Peek gives them up and comes back to its full height when that panel\ncloses",
 		"the pane stays where it is and reads `No detail to\nshow for this row.`; `b` closes it again from any row",
-		"`Ctrl+D` and `Ctrl+U` scroll\nthrough the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page\nat a time",
+		"Peek shows as many rows as its height allows and `Ctrl+D` and\n" +
+			"`Ctrl+U` scroll through the rest half a pane a press, while `Ctrl+F` and `Ctrl+B`\n" +
+			"move a whole page, one row short of the pane",
 		"Entering multi-select closes Peek",
 		"`v` toggles the cursor task in or out of the selection",
 		"`V` starts a fresh inclusive range at the cursor",

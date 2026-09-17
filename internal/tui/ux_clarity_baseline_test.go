@@ -336,16 +336,21 @@ func uxClarityReadoutText(t *testing.T, driver *UITestDriver) string {
 	return seen.String()
 }
 
-// TestUXClarityCaptureOverPeekKeepsAFixedDock records Peek's geometry as a
-// constant: the dock costs the same rows at the app's floor as it does at the
-// widest reviewed terminal, so every row the terminal does not have is taken
-// out of the list instead. Raising capture over it is where that arithmetic
-// runs out, and the floor is where it runs out first.
+// TestUXClarityPeekDockIsAShareOfTheFrame states session 7's outcome for the
+// geometry the baseline recorded as a constant. The dock used to cost the same
+// seven rows at the app's floor as at the widest reviewed terminal, so a tall
+// terminal read a long document five lines at a time while a short one gave up
+// the same rows a tall one could spare. It is now a share of the frame —
+// clamp(floor(H/3), 7, 12) — and the rows it costs therefore differ by height.
 //
-// Session 7 owns this. It makes the dock responsive — clamp(floor(H/3), 7, 12),
-// eleven rows at 100×35, and a three-row displayed minimum under pressure —
-// after which these row counts are expected to differ by height.
-func TestUXClarityCaptureOverPeekKeepsAFixedDock(t *testing.T) {
+// Capture raised over it is where the arithmetic runs out, so that is the frame
+// every size is measured in: the dock shrinks to fit the panel and is still
+// drawn whole, the list still keeps rows, and closing the panel gives the
+// resting dock back with Peek still open on the same row.
+//
+// Session 7 owns this; it is the rewritten form of
+// TestUXClarityCaptureOverPeekKeepsAFixedDock.
+func TestUXClarityPeekDockIsAShareOfTheFrame(t *testing.T) {
 	docks := make(map[[2]int]int, len(uxClarityMatrixSizes))
 	for _, size := range uxClarityMatrixSizes {
 		t.Run(uxClaritySizeName(size), func(t *testing.T) {
@@ -365,18 +370,67 @@ func TestUXClarityCaptureOverPeekKeepsAFixedDock(t *testing.T) {
 			if !uxPeekPositionLine.MatchString(obs.PlainScreen) {
 				t.Fatalf("the dock's position line is missing at %dx%d:\n%s", size[0], size[1], obs.PlainScreen)
 			}
-			docks[size] = len(view.PeekDockLines())
+			// Under the panel the dock may be shorter than the frame alone would
+			// give it, and it may never be shorter than the three rows a displayed
+			// dock owes: one content line, the divider, and the position line.
+			underCapture := view.PeekDockRows()
+			if underCapture != len(view.PeekDockLines()) {
+				t.Fatalf("the dock reports %d rows and drew %d", underCapture, len(view.PeekDockLines()))
+			}
+			if underCapture < 3 {
+				t.Fatalf("the dock under capture is %d rows, want at least three", underCapture)
+			}
+
+			// Typing is not a resize. The panel's height reads the frame rather
+			// than the draft, so a title, an autocompleting sigil, and a refused
+			// one all leave the dock exactly where the open put it.
+			for _, key := range []string{"R", "e", "v", "i", "e", "w", " ", "#"} {
+				uxClarityPress(t, driver, uxClarityKeys(key)...)
+				if got := view.PeekDockRows(); got != underCapture {
+					t.Fatalf("typing %q moved the dock to %d rows, want %d", key, got, underCapture)
+				}
+			}
+			after := driver.Observe(ObserveOptions{})
+			if len(after.LayoutIssues) > 0 {
+				t.Fatalf("typing under capture at %dx%d: %+v\n%s",
+					size[0], size[1], after.LayoutIssues, after.PlainScreen)
+			}
+
+			// Closing capture restores the presentation and the Peek intent, and
+			// the dock comes back to the height the frame alone gives it.
+			uxClarityPress(t, driver, uxClarityKeys("esc")...)
+			if prompt := driver.Observe(ObserveOptions{}); strings.Contains(prompt.PlainScreen, "Discard") {
+				uxClarityPress(t, driver, uxClarityKeys("y")...)
+			}
+			if !view.PeekDockVisible() {
+				t.Fatal("closing capture closed the Peek dock with it")
+			}
+			resting := view.PeekDockRows()
+			if resting < underCapture {
+				t.Fatalf("the resting dock is %d rows and the one under capture was %d", resting, underCapture)
+			}
+			docks[size] = resting
 		})
 	}
 
 	if len(docks) != len(uxClarityMatrixSizes) {
 		t.Fatalf("measured %d of %d sizes", len(docks), len(uxClarityMatrixSizes))
 	}
-	first := docks[uxClarityMatrixSizes[0]]
-	for size, rows := range docks {
-		if rows != first {
-			t.Fatalf("the dock costs %d rows at %dx%d and %d rows at %dx%d, so it is already responsive; that is session 7's outcome, not today's",
-				rows, size[0], size[1], first, uxClarityMatrixSizes[0][0], uxClarityMatrixSizes[0][1])
+	// The share is what the rewrite bought, so the reviewed extremes must differ:
+	// the floor keeps the seven rows a readable page needs and the tallest
+	// terminal spends more of itself on the document.
+	shortest, tallest := docks[uxClarityMatrixSizes[0]], docks[uxClarityMatrixSizes[len(uxClarityMatrixSizes)-1]]
+	if tallest <= shortest {
+		t.Fatalf("the dock costs %d rows at the floor and %d at the tallest reviewed terminal, want it to grow with the frame",
+			shortest, tallest)
+	}
+	// And it is monotone in height, which is what makes a resize one deliberate
+	// move rather than a number a reader cannot predict.
+	for index := 1; index < len(uxClarityMatrixSizes); index++ {
+		previous, current := uxClarityMatrixSizes[index-1], uxClarityMatrixSizes[index]
+		if docks[current] < docks[previous] {
+			t.Fatalf("the dock costs %d rows at %s and %d at the taller %s",
+				docks[previous], uxClaritySizeName(previous), docks[current], uxClaritySizeName(current))
 		}
 	}
 }

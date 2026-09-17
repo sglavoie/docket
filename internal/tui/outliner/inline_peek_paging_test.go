@@ -94,22 +94,23 @@ func peekOffset(t *testing.T, m *OutlinerModel) int {
 // alternates the two keys must still be able to reach every row, and the window
 // must stay inside its budget and its width at every stop along the way.
 func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
+	window := testPeekWindow()
 	for _, width := range []int{40, 60, 80, 120} {
-		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Indent: "  ", Width: width})
+		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Indent: "  ", Width: width, Window: window})
 		if !doc.Paged() {
 			t.Fatalf("width %d fit the fixture in one window", width)
 		}
 
 		seen := make([]bool, len(doc.Body))
-		offset, step := 0, inlinePeekHalfPageRows
+		offset, step := 0, window.HalfPageRows()
 		for {
-			for i := offset; i < min(offset+inlinePeekBodyRows, len(seen)); i++ {
+			for i := offset; i < min(offset+window.BodyRows(), len(seen)); i++ {
 				seen[i] = true
 			}
 			lines := doc.Lines(offset)
-			if len(lines) != inlinePeekWindowRows {
+			if len(lines) != window.WindowRows() {
 				t.Fatalf("width %d offset %d drew %d rows, want %d",
-					width, offset, len(lines), inlinePeekWindowRows)
+					width, offset, len(lines), window.WindowRows())
 			}
 			for number, line := range lines {
 				if got := lipgloss.Width(line); got > width {
@@ -123,7 +124,7 @@ func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
 			}
 			// Alternating the two distances is the sequence the keys make available,
 			// and a window that only lands on page boundaries would skip rows under it.
-			offset, step = next, inlinePeekHalfPageRows+inlinePeekFullPageRows-step
+			offset, step = next, window.HalfPageRows()+window.FullPageRows()-step
 		}
 		if offset != doc.MaxOffset() {
 			t.Fatalf("width %d stopped at offset %d, want the document end %d", width, offset, doc.MaxOffset())
@@ -137,44 +138,56 @@ func TestInlinePeekWindowsExposeEveryBodyLine(t *testing.T) {
 }
 
 // TestInlinePeekWindowMovesByContentRows locks the two distances and the clamp
-// that ends them. A half page is two content rows and a full page is four, both
-// counted off wherever the window already sits, so the two keys compose instead
-// of each snapping to its own grid.
+// that ends them. Both are derived from the window rather than declared beside
+// it — half of it, and all but one row of it — and both are counted off wherever
+// the window already sits, so the two keys compose instead of each snapping to
+// its own grid.
 func TestInlinePeekWindowMovesByContentRows(t *testing.T) {
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Width: 60})
-	if doc.MaxOffset() < inlinePeekHalfPageRows+inlinePeekFullPageRows {
+	window := testPeekWindow()
+	half, full := window.HalfPageRows(), window.FullPageRows()
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Width: 60, Window: window})
+	if doc.MaxOffset() < half+full {
 		t.Fatalf("fixture ends at offset %d, too short to observe a mixed sequence", doc.MaxOffset())
 	}
 
-	if got := doc.ClampOffset(0 + inlinePeekHalfPageRows); got != inlinePeekHalfPageRows {
-		t.Fatalf("a half page from the top = %d, want %d", got, inlinePeekHalfPageRows)
+	if got := doc.ClampOffset(0 + half); got != half {
+		t.Fatalf("a half page from the top = %d, want %d", got, half)
 	}
-	mixed := doc.ClampOffset(inlinePeekHalfPageRows + inlinePeekFullPageRows)
-	if want := inlinePeekHalfPageRows + inlinePeekFullPageRows; mixed != want {
+	mixed := doc.ClampOffset(half + full)
+	if want := half + full; mixed != want {
 		t.Fatalf("a full page after a half page = %d, want %d", mixed, want)
 	}
-	if got := doc.ClampOffset(mixed - inlinePeekHalfPageRows); got != inlinePeekFullPageRows {
-		t.Fatalf("a half page back = %d, want %d", got, inlinePeekFullPageRows)
+	if got := doc.ClampOffset(mixed - half); got != full {
+		t.Fatalf("a half page back = %d, want %d", got, full)
 	}
 
 	// A full page keeps one content row on screen across the move, which is the
-	// overlap that makes the jump readable.
-	if inlinePeekBodyRows-inlinePeekFullPageRows != 1 {
-		t.Fatalf("a full page of %d rows in a %d-row window leaves %d rows of overlap, want 1",
-			inlinePeekFullPageRows, inlinePeekBodyRows, inlinePeekBodyRows-inlinePeekFullPageRows)
+	// overlap that makes the jump readable. That holds at every window height the
+	// frame can hand the dock, down to the one-row minimum where the two
+	// distances collapse onto the same single row.
+	for body := 1; body <= peekDockPreferredMaxRows; body++ {
+		geometry := peekDockGeometry{bodyRows: body}
+		if overlap := body - geometry.FullPageRows(); overlap != 1 && body != 1 {
+			t.Fatalf("a full page of %d rows in a %d-row window leaves %d rows of overlap, want 1",
+				geometry.FullPageRows(), body, overlap)
+		}
+		if geometry.FullPageRows() < 1 || geometry.HalfPageRows() < 1 {
+			t.Fatalf("a %d-row window moves %d and %d rows, want at least one each",
+				body, geometry.HalfPageRows(), geometry.FullPageRows())
+		}
 	}
 
 	// Both ends clamp, and the last window is full rather than short: scrolling
 	// never leaves blank rows under the final scrap of detail.
-	if got := doc.ClampOffset(-inlinePeekFullPageRows); got != 0 {
+	if got := doc.ClampOffset(-full); got != 0 {
 		t.Fatalf("scrolling above the top = %d, want 0", got)
 	}
 	if got := doc.ClampOffset(len(doc.Body)); got != doc.MaxOffset() {
 		t.Fatalf("scrolling past the end = %d, want %d", got, doc.MaxOffset())
 	}
-	if doc.MaxOffset()+inlinePeekBodyRows != len(doc.Body) {
+	if doc.MaxOffset()+window.BodyRows() != len(doc.Body) {
 		t.Fatalf("the last window ends at %d, want the body's %d rows",
-			doc.MaxOffset()+inlinePeekBodyRows, len(doc.Body))
+			doc.MaxOffset()+window.BodyRows(), len(doc.Body))
 	}
 }
 
@@ -185,19 +198,20 @@ func TestInlinePeekWindowMovesByContentRows(t *testing.T) {
 // is always drawn, an unpaged document included: a row that came and went would
 // move the frame under the cursor for no reason the reader chose.
 func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Width: 80})
+	window := testPeekWindow()
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: pagedPeekTask(), Width: 80, Window: window})
 	total := len(doc.Body)
 
 	for offset := 0; offset <= doc.MaxOffset(); offset++ {
 		lines := doc.Lines(offset)
 		position := ansi.Strip(lines[len(lines)-1])
-		want := strings.TrimSpace(ansi.Strip(doc.positionLine(offset, total-offset-inlinePeekBodyRows)))
+		want := strings.TrimSpace(ansi.Strip(doc.positionLine(offset, total-offset-window.BodyRows())))
 		if strings.TrimSpace(position) != want {
 			t.Fatalf("offset %d position row = %q, want %q", offset, position, want)
 		}
 	}
 
-	first := ansi.Strip(doc.Lines(0)[inlinePeekWindowRows-1])
+	first := ansi.Strip(doc.Lines(0)[window.WindowRows()-1])
 	if !strings.HasPrefix(strings.TrimSpace(first), "0 above · ") {
 		t.Fatalf("top position row = %q, want nothing above it", first)
 	}
@@ -208,13 +222,13 @@ func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
 
 	// An unpaged document keeps the same window: the body is padded rather than
 	// the dock shortened, and the position row reads zero in both directions.
-	short := inlinePeekDocumentFor(inlinePeekOptions{Task: &models.Task{Description: "Short"}, Width: 80})
+	short := inlinePeekDocumentFor(inlinePeekOptions{Task: &models.Task{Description: "Short"}, Width: 80, Window: window})
 	if short.Paged() {
 		t.Fatal("a one-line document claimed to be paged")
 	}
 	shortLines := short.Lines(0)
-	if len(shortLines) != inlinePeekWindowRows {
-		t.Fatalf("an unpaged document drew %d rows, want %d", len(shortLines), inlinePeekWindowRows)
+	if len(shortLines) != window.WindowRows() {
+		t.Fatalf("an unpaged document drew %d rows, want %d", len(shortLines), window.WindowRows())
 	}
 	if got := strings.TrimSpace(ansi.Strip(shortLines[len(shortLines)-1])); got != "0 above · 0 below" {
 		t.Fatalf("an unpaged position row = %q, want zero in both directions", got)
@@ -360,8 +374,8 @@ func TestPeekScrollingIsRefusedWhereThereIsNothingToScroll(t *testing.T) {
 		t.Fatalf("placeholder context = %+v, want visible and immovable", peek)
 	}
 	dock := outliner.PeekDockLines()
-	if len(dock) != PeekDockRows {
-		t.Fatalf("placeholder dock drew %d rows, want %d", len(dock), PeekDockRows)
+	if want := outliner.PeekDockRows(); len(dock) != want {
+		t.Fatalf("placeholder dock drew %d rows, want %d", len(dock), want)
 	}
 	if got := ansi.Strip(strings.Join(dock, "\n")); !strings.Contains(got, peekDockPlaceholderText) {
 		t.Fatalf("placeholder dock = %q, want the stand-in text", got)
@@ -389,6 +403,7 @@ func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
 	outliner.PeekMode = true
 	outliner.View()
 
+	half := outliner.peekDockGeometry().HalfPageRows()
 	scroll := func() {
 		if !outliner.HalfPagePeek(1) {
 			t.Fatal("the fixture would not scroll")
@@ -399,7 +414,7 @@ func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
 	// reading position.
 	scroll()
 	outliner.View()
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != half {
 		t.Fatalf("a redraw reset the offset to %d", got)
 	}
 
@@ -410,7 +425,7 @@ func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
 		t.Fatalf("another task inherited offset %d", got)
 	}
 	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != half {
 		t.Fatalf("returning to the task lost its offset: %d", got)
 	}
 
@@ -449,7 +464,7 @@ func TestPeekScrollingKeepsOneMeasurementAndOneRender(t *testing.T) {
 				for step := 0; ; step++ {
 					width := size.width
 					drawn := outliner.PeekDockLines()
-					if got := outliner.peekDockHeight(); got != len(drawn) {
+					if got := outliner.PeekDockRows(); got != len(drawn) {
 						t.Fatalf("%s %s %dx%d step %d measured %d rows and drew %d",
 							themeName, task.ID, size.width, size.height, step, got, len(drawn))
 					}

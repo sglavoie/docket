@@ -595,5 +595,7 @@ func (m *OutlinerModel) PeekDocumentBodyForRow(row OutlinerRow) []string {
 	if m == nil || !rowSupportsPeek(row) {
 		return nil
 	}
-	return m.inlinePeekDocumentForRow(row, peekDockIndent, m.peekDockWidth()).Body
+	// The body is the whole document, so the geometry stamped onto it changes
+	// nothing here; the frame's own is passed so this seam names no second window.
+	return m.inlinePeekDocumentForRow(row, peekDockIndent, m.peekDockWidth(), m.peekDockGeometry()).Body
 }

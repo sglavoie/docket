@@ -236,8 +236,9 @@ func assertUXPeekGeometryIsStable(t *testing.T, driver *UITestDriver, view *outl
 		if !view.PeekDockVisible() {
 			t.Fatalf("b did not open the Peek dock over the %s", what)
 		}
-		if lines := view.PeekDockLines(); len(lines) != outliner.PeekDockRows {
-			t.Fatalf("the dock over the %s drew %d rows, want %d", what, len(lines), outliner.PeekDockRows)
+		dockRows := view.PeekDockRows()
+		if lines := view.PeekDockLines(); len(lines) != dockRows {
+			t.Fatalf("the dock over the %s drew %d rows, want %d", what, len(lines), dockRows)
 		}
 		obs := driver.Observe(ObserveOptions{})
 		if len(obs.LayoutIssues) > 0 {
@@ -253,10 +254,10 @@ func assertUXPeekGeometryIsStable(t *testing.T, driver *UITestDriver, view *outl
 		if frame.position < 0 {
 			t.Fatalf("the dock over the %s draws no position row\n%s", what, obs.PlainScreen)
 		}
-		frame.divider = frame.position - outliner.PeekDockRows + 1
+		frame.divider = frame.position - dockRows + 1
 		if frame.divider < 0 || !strings.Contains(screen[frame.divider], "─") {
 			t.Fatalf("the dock over the %s has no divider %d rows above its position row\n%s",
-				what, outliner.PeekDockRows-1, obs.PlainScreen)
+				what, dockRows-1, obs.PlainScreen)
 		}
 		frames = append(frames, frame)
 		if err := driver.SendKey("b"); err != nil {
@@ -358,6 +359,125 @@ func assertUXPeekCarriesTheWholeTitle(t *testing.T, driver *UITestDriver, view *
 		// the review a longer title.
 		t.Fatalf("the %d-column row holds the whole title, so it no longer measures Peek's recovery\n%s",
 			width, obs.PlainScreen)
+	}
+}
+
+// TestUXRefinementFloorHoldsContextPeekAndCapture is the one combination the
+// refinement leaves the least room for, read at the one size that has the least
+// of it: the app's own floor, carrying a context row, a Peek dock, a capture
+// panel, and the guidance capture requires, all at once. Every other check in
+// this file measures one occupant against the frame; this one measures four
+// against each other, because the rows they compete for are the same rows and
+// the dock is the occupant that yields.
+//
+// It is a Go test rather than a scenario for the reason the matrix above is: the
+// claim is about where three blocks sit relative to one another, which a
+// contains assertion over the whole screen cannot say.
+func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
+	size := uxPresentationMatrixSizes[0]
+	driver, workspace, err := NewFixtureDriver(FixtureUXAcceptance, size[0], size[1])
+	if err != nil {
+		t.Fatalf("fixture: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+	view := driver.App().crossOutliner
+	if view == nil {
+		t.Fatal("the fixture app has no Outliner")
+	}
+
+	// The context row first, since it is the occupant charged against the list
+	// before either of the other two exists: a narrowing search and an explicit
+	// sort are two live axes, so the identity row gains the second row naming them.
+	uxClarityPress(t, driver,
+		UITestAction{Type: UITestActionKey, Key: "/"},
+		UITestAction{Type: UITestActionText, Text: uxClaritySearchQuery},
+		UITestAction{Type: UITestActionKey, Key: "enter"},
+		UITestAction{Type: UITestActionCommand, Command: "Sort by Priority"},
+	)
+	uxClarityPress(t, driver, uxClarityKeys("b")...)
+	if !view.PeekDockVisible() {
+		t.Fatal("b did not open the Peek dock over the searched projection")
+	}
+	// The height the frame gives the dock with nothing else raised over it, which
+	// is what closing capture has to return to.
+	resting := view.PeekDockRows()
+	uxClarityPress(t, driver, uxClarityKeys("a")...)
+
+	obs := driver.Observe(ObserveOptions{})
+	assertUXScreenFitsItsTerminal(t, obs, size)
+	plain := obs.PlainScreen
+	lines := strings.Split(plain, "\n")
+
+	// Four occupants, each named by something only it draws.
+	if _, ok := uxLineContaining(plain, "Search:"); !ok {
+		t.Fatalf("the context row is gone from the crowded floor\n%s", plain)
+	}
+	if !strings.Contains(plain, "Capture → Unfiled") {
+		t.Fatalf("the capture panel is not drawn\n%s", plain)
+	}
+	if footer := uxClarityFooter(driver); !strings.Contains(footer, "Enter create") {
+		t.Fatalf("the footer does not carry the guidance capture requires:\n%s", footer)
+	}
+	dockRows := view.PeekDockRows()
+	if drawn := len(view.PeekDockLines()); drawn != dockRows {
+		t.Fatalf("the dock reports %d rows and drew %d", dockRows, drawn)
+	}
+	// Three rows is what a displayed dock owes: one content line, the divider, and
+	// the position line. Under this much pressure it may be exactly that and no
+	// more, and it may not be less while it is still on screen.
+	if dockRows < 3 {
+		t.Fatalf("the dock is %d rows under capture at the floor, want at least three", dockRows)
+	}
+	if dockRows > resting {
+		t.Fatalf("capture grew the dock from %d rows to %d", resting, dockRows)
+	}
+
+	// Where they sit, which is the part a whole-screen assertion cannot state. The
+	// position row is the dock's last, so the divider is dockRows-1 above it and
+	// everything between the context row and that divider belongs to the list.
+	position := -1
+	for index, line := range lines {
+		if uxPeekPositionLine.MatchString(line) {
+			position = index
+		}
+	}
+	if position < 0 {
+		t.Fatalf("the dock drew no position row, so it is clipped rather than shortened\n%s", plain)
+	}
+	divider := position - dockRows + 1
+	if divider < 0 || !strings.Contains(lines[divider], "─") {
+		t.Fatalf("the dock has no divider %d rows above its position row\n%s", dockRows-1, plain)
+	}
+	// And the list keeps a row of its own between the two, which is the floor the
+	// dock's availability is capped against. A cross-project row names its project,
+	// so the compact label is what proves the row is a task row.
+	var listRows int
+	for _, line := range lines[2:divider] {
+		if uxTrimRowFurniture(line) != "" {
+			listRows++
+		}
+	}
+	if listRows < 1 {
+		t.Fatalf("the dock and the panel left the list no rows at all\n%s", plain)
+	}
+	if !strings.Contains(strings.Join(lines[2:divider], "\n"), "[ux-") {
+		t.Fatalf("no task row survives between the context row and the dock\n%s", plain)
+	}
+
+	// Closing capture gives the presentation, the cursor, and the dock back. The
+	// draft is empty, so Esc closes it outright rather than raising a discard
+	// question, and the dock returns to the height the frame alone gives it.
+	uxClarityPress(t, driver, uxClarityKeys("esc")...)
+	if !view.PeekDockVisible() {
+		t.Fatal("closing capture closed the Peek dock with it")
+	}
+	if got := view.PeekDockRows(); got != resting {
+		t.Fatalf("the dock came back at %d rows, want the %d the frame gives it", got, resting)
+	}
+	after := driver.Observe(ObserveOptions{})
+	assertUXScreenFitsItsTerminal(t, after, size)
+	if _, ok := uxLineContaining(after.PlainScreen, "Search:"); !ok {
+		t.Fatalf("closing capture dropped the context row\n%s", after.PlainScreen)
 	}
 }
 

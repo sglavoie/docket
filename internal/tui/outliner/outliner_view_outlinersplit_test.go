@@ -115,9 +115,9 @@ func TestViewportReservesTheWholePeekDockWhateverTheRowHolds(t *testing.T) {
 	outliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
 
 	outliner.PeekMode = true
-	reserved := outliner.peekDockHeight()
-	if reserved != PeekDockRows {
-		t.Fatalf("reserved %d dock rows, want the %d-row dock", reserved, PeekDockRows)
+	reserved := outliner.PeekDockRows()
+	if reserved < peekDockMinRows {
+		t.Fatalf("reserved %d dock rows, want at least the %d-row minimum", reserved, peekDockMinRows)
 	}
 	if drawn := len(outliner.PeekDockLines()); drawn != reserved {
 		t.Fatalf("render drew %d dock rows against %d reserved", drawn, reserved)
@@ -138,7 +138,7 @@ func TestViewportReservesTheWholePeekDockWhateverTheRowHolds(t *testing.T) {
 	// The title is in the document rather than above it, so it is the long task's
 	// document that grew, not its reservation.
 	whole := ansi.Strip(strings.Join(
-		inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: peekDockIndent, Width: width}).Body, " "))
+		inlinePeekDocumentFor(inlinePeekOptions{Task: long, Indent: peekDockIndent, Width: width, Window: testPeekWindow()}).Body, " "))
 	if want := strings.Join(strings.Fields(long.Title), " "); !strings.Contains(strings.Join(strings.Fields(whole), " "), want) {
 		t.Fatalf("the long title is not in its Peek document:\n%s", whole)
 	}

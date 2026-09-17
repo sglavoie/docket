@@ -55,9 +55,12 @@ func peekableRowIndexes(t *testing.T, m *OutlinerModel) (withDocument []int, wit
 }
 
 // TestPeekDockIsTheSameHeightUnderEveryCursor is the session's central claim.
-// The dock is a fixed block, so the rows it draws and the rows it costs the list
-// are one constant under a one-line task, under a document forty rows long, and
-// under a row that owns no document at all.
+// The dock's height answers to the frame, so within one frame the rows it draws
+// and the rows it costs the list are one number under a one-line task, under a
+// document forty rows long, and under a row that owns no document at all. The
+// number itself differs between the three terminals below, which is the other
+// half of the claim: a resize moves everything once, crossing a row moves
+// nothing.
 func TestPeekDockIsTheSameHeightUnderEveryCursor(t *testing.T) {
 	for _, size := range [][2]int{{60, 20}, {80, 24}, {120, 40}} {
 		outliner := dockFixtureOutliner(t, size[0], size[1])
@@ -69,13 +72,22 @@ func TestPeekDockIsTheSameHeightUnderEveryCursor(t *testing.T) {
 		}
 
 		want := -1
+		wantRows := outliner.PeekDockRows()
+		if wantRows < peekDockMinRows {
+			t.Fatalf("%dx%d reports a %d-row dock, want at least %d",
+				size[0], size[1], wantRows, peekDockMinRows)
+		}
 		for _, cursor := range cursors {
 			outliner.Cursor = cursor
 			outliner.View()
 			lines := outliner.PeekDockLines()
-			if len(lines) != PeekDockRows {
+			if len(lines) != wantRows {
 				t.Fatalf("%dx%d cursor %d drew %d dock rows, want %d",
-					size[0], size[1], cursor, len(lines), PeekDockRows)
+					size[0], size[1], cursor, len(lines), wantRows)
+			}
+			if got := outliner.PeekDockRows(); got != wantRows {
+				t.Fatalf("%dx%d cursor %d reports a %d-row dock, want %d",
+					size[0], size[1], cursor, got, wantRows)
 			}
 			for number, line := range lines {
 				if got := lipgloss.Width(line); got > size[0] {
@@ -121,9 +133,10 @@ func TestPeekDockCostsTheListOneFixedReservation(t *testing.T) {
 	outliner.PeekMode = true
 	outliner.View()
 	open := outliner.LastViewport.VisibleRows
-	if want := closed - PeekDockRows - peekDockFooterWrapRows; open != want {
+	dock := outliner.PeekDockRows()
+	if want := closed - dock - peekDockFooterWrapRows; open != want {
 		t.Fatalf("an open dock left the list %d rows, want %d (%d - %d - %d wrap row)",
-			open, want, closed, PeekDockRows, peekDockFooterWrapRows)
+			open, want, closed, dock, peekDockFooterWrapRows)
 	}
 }
 
@@ -202,8 +215,8 @@ func TestPeekDockNamesARowThatOwnsNoDocument(t *testing.T) {
 	outliner.View()
 
 	lines := outliner.PeekDockLines()
-	if len(lines) != PeekDockRows {
-		t.Fatalf("a row with no document drew %d dock rows, want %d", len(lines), PeekDockRows)
+	if want := outliner.PeekDockRows(); len(lines) != want {
+		t.Fatalf("a row with no document drew %d dock rows, want %d", len(lines), want)
 	}
 	body := ansi.Strip(strings.Join(lines, "\n"))
 	if !strings.Contains(body, peekDockPlaceholderText) {
@@ -211,6 +224,138 @@ func TestPeekDockNamesARowThatOwnsNoDocument(t *testing.T) {
 	}
 	if peek := outliner.PeekCommandContext(); !peek.Visible || peek.CanPageDown || peek.CanPageUp {
 		t.Fatalf("placeholder peek context = %+v, want visible with nothing to page", peek)
+	}
+}
+
+// TestPeekDockHeightIsAShareOfTheFrame locks the responsive height at the four
+// reviewed terminals, the brief's eleven rows at 100x35 included. The height is
+// a third of what this view was handed, bounded at both ends, so a taller
+// terminal reads more of a document without a shorter one losing its list.
+func TestPeekDockHeightIsAShareOfTheFrame(t *testing.T) {
+	for _, test := range []struct {
+		width, height int
+		want          int
+	}{
+		// The floor binds at the two short terminals: a third of 18 and of 22 rows
+		// is under seven, so both take the minimum readable dock.
+		{width: 60, height: 20, want: peekDockPreferredMinRows},
+		{width: 80, height: 24, want: peekDockPreferredMinRows},
+		// A third of the 33 rows this view is handed at 100x35, which is the
+		// brief's eleven: nine content lines, the divider, and the position row.
+		{width: 100, height: 35, want: 11},
+		// The ceiling binds at the tallest, so the list keeps the rest of it.
+		{width: 120, height: 40, want: peekDockPreferredMaxRows},
+	} {
+		t.Run(fmt.Sprintf("%dx%d", test.width, test.height), func(t *testing.T) {
+			// The sizes are terminals and the shell hands a view two rows fewer.
+			m := dockFixtureOutliner(t, test.width, test.height-2)
+			m.PeekMode = true
+			peekable, _ := peekableRowIndexes(t, m)
+			m.Cursor = peekable[0]
+			m.View()
+
+			if got := m.PeekDockRows(); got != test.want {
+				t.Fatalf("dock = %d rows, want %d", got, test.want)
+			}
+			lines := m.PeekDockLines()
+			if len(lines) != test.want {
+				t.Fatalf("dock drew %d rows, want %d", len(lines), test.want)
+			}
+			geometry := m.peekDockGeometry()
+			if got := geometry.BodyRows(); got != test.want-peekDockDividerRows-inlinePeekPositionRows {
+				t.Fatalf("dock body = %d rows, want %d", got, test.want-2)
+			}
+			// The window and the movement distances come off that one body, so a
+			// taller dock pages further without any key declaring a distance.
+			if got, want := geometry.HalfPageRows(), max(geometry.BodyRows()/2, 1); got != want {
+				t.Fatalf("half page = %d rows, want %d", got, want)
+			}
+			if got, want := geometry.FullPageRows(), max(geometry.BodyRows()-1, 1); got != want {
+				t.Fatalf("full page = %d rows, want %d", got, want)
+			}
+		})
+	}
+}
+
+// TestPeekDockYieldsToTheFrameUnderPressure is the constrained half. The dock
+// takes the room left after the chrome this view has already committed to and
+// after the one task row the list may never lose, so a frame with nowhere to put
+// a full dock gets a shorter one rather than a list with no rows — and a frame
+// with nowhere to put even the three-row minimum gets no dock at all rather than
+// a window with no content row or one that cannot say what it is hiding.
+func TestPeekDockYieldsToTheFrameUnderPressure(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		height int
+		// shortened says the dock is drawn under its preferred height; absent means
+		// it is not drawn at all.
+		shortened bool
+	}{
+		{name: "resting", height: 33, shortened: false},
+		{name: "squeezed", height: 8, shortened: true},
+		{name: "no room", height: 4},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			m := dockFixtureOutliner(t, 80, test.height)
+			m.PeekMode = true
+			peekable, _ := peekableRowIndexes(t, m)
+			m.Cursor = peekable[0]
+			m.View()
+
+			rows := m.PeekDockRows()
+			switch {
+			case !test.shortened && test.height > 20:
+				if rows != m.peekDockPreferredRows() {
+					t.Fatalf("a resting frame drew a %d-row dock, want its preferred %d",
+						rows, m.peekDockPreferredRows())
+				}
+			case test.shortened:
+				if rows < peekDockMinRows || rows >= m.peekDockPreferredRows() {
+					t.Fatalf("a squeezed frame drew a %d-row dock, want between %d and %d",
+						rows, peekDockMinRows, m.peekDockPreferredRows())
+				}
+			default:
+				if rows != 0 || m.PeekDockVisible() {
+					t.Fatalf("a frame with no room drew a %d-row dock, want none", rows)
+				}
+			}
+			if len(m.PeekDockLines()) != rows {
+				t.Fatalf("the dock reports %d rows and drew %d", rows, len(m.PeekDockLines()))
+			}
+			// Whatever the dock took, the list keeps a row: the list is the view and
+			// the dock is a detail beside it.
+			if got := m.LastViewport.VisibleRows; got < peekDockListFloorRows {
+				t.Fatalf("the list kept %d rows, want at least %d", got, peekDockListFloorRows)
+			}
+		})
+	}
+}
+
+// TestPeekDockHeightIgnoresTheDocumentAndTheCursorOffset is the purity claim
+// read from the other side: the geometry is a function of the frame, so the dock
+// over the fixture's one-line task, over its forty-row one, and over the same
+// document scrolled halfway all measure identically.
+func TestPeekDockHeightIgnoresTheDocumentAndTheCursorOffset(t *testing.T) {
+	m := dockFixtureOutliner(t, 100, 33)
+	m.PeekMode = true
+	peekable, _ := peekableRowIndexes(t, m)
+	m.Cursor = peekable[0]
+	m.View()
+	want := m.PeekDockRows()
+
+	for _, cursor := range peekable {
+		m.Cursor = cursor
+		m.View()
+		if got := m.PeekDockRows(); got != want {
+			t.Fatalf("cursor %d measured a %d-row dock, want %d", cursor, got, want)
+		}
+		for range 3 {
+			m.HalfPagePeek(1)
+			m.View()
+			if got := m.PeekDockRows(); got != want {
+				t.Fatalf("cursor %d measured a %d-row dock after paging, want %d", cursor, got, want)
+			}
+		}
 	}
 }
 
@@ -240,28 +385,29 @@ func dockScreenRows(t *testing.T, m *OutlinerModel, label string) (frame []strin
 	if position < 0 {
 		t.Fatalf("%s: the frame draws no Peek position row:\n%s", label, strings.Join(frame, "\n"))
 	}
-	divider = position - PeekDockRows + 1
+	rows := m.PeekDockRows()
+	divider = position - rows + 1
 	if divider < 0 {
 		t.Fatalf("%s: the position row is on screen row %d, too high to hold a %d-row dock:\n%s",
-			label, position, PeekDockRows, strings.Join(frame, "\n"))
+			label, position, rows, strings.Join(frame, "\n"))
 	}
 	if rule := strings.TrimSpace(frame[divider]); rule == "" || strings.Trim(rule, "─") != "" {
 		t.Fatalf("%s: screen row %d is %q, want the dock's divider %d rows above its position row:\n%s",
-			label, divider, frame[divider], PeekDockRows-1, strings.Join(frame, "\n"))
+			label, divider, frame[divider], rows-1, strings.Join(frame, "\n"))
 	}
 	return frame, divider, position
 }
 
 // assertDockIsDrawnWhole holds every row the dock says it has to the row of the
-// frame it claims to be on. It is the difference between a dock that is seven
-// rows long and one that was cut down to whatever a projection left it: a
+// frame it claims to be on. It is the difference between a dock as tall as the
+// frame sized it and one that was cut down to whatever a projection left it: a
 // shortened dock still draws a divider and still draws whatever rows fit, so a
 // coordinate pair alone would not notice the missing ones.
 func assertDockIsDrawnWhole(t *testing.T, m *OutlinerModel, frame []string, divider int, label string) {
 	t.Helper()
 	dock := m.PeekDockLines()
-	if len(dock) != PeekDockRows {
-		t.Fatalf("%s: the dock reports %d rows, want %d", label, len(dock), PeekDockRows)
+	if want := m.PeekDockRows(); len(dock) != want {
+		t.Fatalf("%s: the dock reports %d rows, want %d", label, len(dock), want)
 	}
 	for offset, line := range dock {
 		row := divider + offset

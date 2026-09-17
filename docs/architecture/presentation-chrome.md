@@ -325,11 +325,16 @@ while the cursor, the list's own offset, and the selection stay put. They are
 consumed whether or not the document moves, since the readout owns input
 outright, but the footer advertises them only over a document that can move.
 
-Peek's dock is the frame's other fixed reservation, and it is fixed in the
-stronger sense: `peekDockHeight` returns `PeekDockRows` or zero and measures
-neither the cursor nor the document, so `ComputeOutlinerViewport` subtracts the
-same rows — that constant, and nothing beside it — under a one-line task and
-under a forty-line one. It subtracts a guard row as well, against a footer
+Peek's dock is the frame's other reservation, and while its height now follows
+the frame it is still fixed in the sense that matters: `peekDockGeometry`
+measures neither the cursor nor the document, so `ComputeOutlinerViewport`
+subtracts the same rows under a one-line task and under a forty-line one, and one
+resolved geometry is what the render, the clamp, the two page distances, and the
+hints all read. `peekDockPreferredRows` is a third of the Outliner's own height
+clamped to seven and twelve rows, `peekDockAvailableRows` is what
+`ContentHeight` leaves after the footer excess, the strip, and
+`peekDockListFloorRows`, the smaller wins, and a total under `peekDockMinRows`
+puts the dock down rather than clipping it. It subtracts a guard row as well, against a footer
 wrapping at minimum width, and the measured frame budget below is what turned
 that guard from a guess into a floor rather than removing it: the dock advertises
 its own paging keys only over a document that can move, so the footer wraps under
@@ -353,8 +358,8 @@ it has no rows to window and no scroll offset to write, which is why
 `outlinerListRows` is pure and charges the status strip and the suggestion pane
 the populated path charges. Below the supported floor the clamp leaves it a
 single row and the shell's own clipping decides what fits; at every supported
-size the divider, the five content rows, and the position row are all on screen
-with the header and the explanation above them.
+size the divider, the content rows the geometry gave it, and the position row are
+all on screen with the header and the explanation above them.
 
 The menu bar and its open menu are the same kind of thing one level apart. The
 bar is machine-local chrome: `M` writes `MenuBarVisible`, which `MenuBarPinned`

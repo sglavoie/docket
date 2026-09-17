@@ -1,7 +1,7 @@
 {
   "name": "outliner-peek-scrolling",
   "fixture": "rich",
-  "size": "80x35",
+  "size": "80x25",
   "actions": [
     { "type": "key", "label": "land on the task whose detail will outgrow one window", "key": "home" },
     { "type": "key", "key": "j" },
@@ -17,7 +17,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
 
-    { "type": "key", "label": "open the dock on the overlong detail", "key": "b" },
+    { "type": "key", "label": "open the dock on the overlong detail; this frame is short enough to hold it at its seven-row floor, so the window is five content rows and half of it is two", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "0 above · 4 below" },
     { "type": "assert", "assert": "no_layout_issues" },
 

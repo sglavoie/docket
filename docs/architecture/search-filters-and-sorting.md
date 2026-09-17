@@ -325,25 +325,51 @@ handler's gate: an open dock admits `b` on any row, because the row that opened
 the dock is not necessarily the row the user closes it from, and a key that
 refused there would leave the pane unclosable without moving the cursor.
 
-The dock is a fixed block below the list, not a pane attached to a row.
-`PeekDockRows` (7) is one divider plus `inlinePeekWindowRows`, and
-`ComputeOutlinerViewport` subtracts exactly that plus a guard row whenever
-`PeekDockVisible()`, reading no cursor and no document: what the cursor rests on
-decides what the dock says, never how tall it is, so moving between a one-line
-task and a forty-line one leaves every list row where it was. That constant is
-what the old row-attached pane could not offer, since its height was the cursor
-document's height and every cursor move re-laid-out the list under it.
+The dock is a block below the list sized by the frame, not a pane attached to a
+row. `peekDockGeometry` is that one measurement and it carries `bodyRows` alone:
+`WindowRows` adds the position line, `TotalRows` adds the divider,
+`HalfPageRows` and `FullPageRows` are the two step distances, and
+`PeekDockRows()` is `TotalRows`, so the render, the offset clamp, the paging
+keys, and the availability hints are four readings of one number rather than
+four calculations that have to agree. `ComputeOutlinerViewport` subtracts exactly
+that total whenever `PeekDockVisible()`, reading no cursor and no document: what
+the cursor rests on decides what the dock says, never how tall it is, so moving
+between a one-line task and a forty-line one leaves every list row where it was.
+That is what the old row-attached pane could not offer, since its height was the
+cursor document's height and every cursor move re-laid-out the list under it.
 
-The five-line budget is therefore a bound on what is visible, not on what Peek
-holds. `inlinePeekDocument` is that split: `Body` is every detail row the task
-has, wrapped to the dock's own width and complete, and `inlinePeekBodyRows` (5)
-decides only how many of them are on screen at a time. `Lines(offset)` is the one
-way to either and always returns `inlinePeekWindowRows`, padding a short document
+The height is `min(peekDockPreferredRows, peekDockAvailableRows)`.
+`peekDockPreferredRows` is `clamp(floor(H/3), peekDockPreferredMinRows,
+peekDockPreferredMaxRows)` over the Outliner's own allotted height — a third of
+the frame, never fewer than seven rows and never more than twelve, so a tall
+terminal reads a long document in longer runs and a short one still gets a
+readable page. `peekDockAvailableRows` is what `ContentHeight` has left after the
+measured footer excess, the status strip, and `peekDockListFloorRows`, which is
+the cap capture runs into: a panel raised over the dock takes rows from it rather
+than from the one list row the frame owes the reader. A total under
+`peekDockMinRows` — one content line, the divider, the position line — draws no
+dock at all, which routes the subminimum frame into the existing
+unavailable-host handling instead of clipping live controls. Neither half reads
+the cursor, the document, or a draft, which is why typing into capture, an
+autocomplete, and a refused sigil all leave the host exactly where the open put
+it.
+
+The window is therefore a bound on what is visible, not on what Peek holds.
+`inlinePeekDocument` is that split: `Body` is every detail row the task has,
+wrapped to the dock's own width and complete, and the geometry it was stamped
+with decides only how many of them are on screen at a time. `Lines(offset)` is
+the one way to either and always returns `WindowRows`, padding a short document
 with blank rows rather than shrinking, so the height the viewport reserves and
 the height the renderer draws are the same number by construction rather than by
 two agreeing calculations. A row that owns no document keeps the dock at that
 height too: `peekDockPlaceholderDocument` is one body line saying so, built
 through the same type, so the refusal costs the list nothing and moves nothing.
+
+One consumer reads the preferred half rather than the settled one.
+`queryReadoutBodyRows` is measured inside the status strip the dock's available
+half is charged against, so asking for the settled geometry there would be a
+recursion; the preferred height is never smaller than the settled one, so
+charging it is conservative in the only direction that cannot overflow the frame.
 
 Body order is the whole title, the ancestor chain, the status line, the dates
 line, resume, description, the checklist count, attachment names, the comment
@@ -390,18 +416,21 @@ planning state. `peekPlanningMembership` resolves it in the impure seam beside
 the reference lists and hands it in through `inlinePeekOptions.Planning`.
 
 The window is a content-row offset rather than a page ordinal, which is what lets
-two step sizes share one model: `Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`
-(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (4), and `scrollPeek`
-clamps whatever they add. Four of the five content rows is a full page carrying
-one row across the boundary, so a wrapped sentence is never split between two
-keystrokes with nothing in common; the half step keeps three. Neither lands on a
-boundary the document imposed, so mixing them reaches every line. `ClampOffset`
+two step sizes share one model: `Ctrl+D`/`Ctrl+U` travel `HalfPageRows` and
+`Ctrl+F`/`Ctrl+B` travel `FullPageRows`, and `scrollPeek` clamps whatever they
+add. Both are derived from the same `bodyRows` the window is: the half step is
+`max(bodyRows/2, 1)` and the full step `max(bodyRows-1, 1)`, one row short of the
+window, so a page turn carries a row across the boundary and a wrapped sentence
+is never split between two keystrokes with nothing in common. The floor of one
+row is what keeps the keys meaningful in the three-row dock, where the body is a
+single line and a page is that line. Neither lands on a boundary the document
+imposed, so mixing them reaches every line. `ClampOffset`
 pins the last window to the end of the body, so it is full rather than short, and
-`positionLine` is a sixth row beneath the five rather than one of them: it is
+`positionLine` is a further row beneath the body rather than one of them: it is
 drawn for every document, naming how many body rows sit above and below the
-window, and reads `0 above · 0 below` when there are none. A row spent on a
-constant is what buys the constant height — a counter that appeared only when a
-document paged would move the four content rows under the reader's eye the moment
+window, and reads `0 above · 0 below` when there are none. A row spent
+unconditionally is what buys the stable height — a counter that appeared only when
+a document paged would move the content rows under the reader's eye the moment
 the document changed.
 
 The offset itself is session-only and lives in `peekOffsetState`, keyed by an
@@ -506,21 +535,23 @@ have the `;` panel standing behind their count, and a project header carries no
 count at all because the row has no column for one.
 
 The empty projection is the one place the dock is not reserved by
-`ComputeOutlinerViewport`, because that path never calls it, and the one place
-the dock may be drawn short. It has no list window to hold the dock down and none
-beneath it for a shortened dock to shift, so `renderOutlinerEmptyState` writes
-the header and the explanation first and gives the dock whatever rows
-`ContentHeight` has left. An empty project is exactly the row a reader parks on,
-so the state is worth drawing; the sentence saying why it is empty is what
-survives a terminal too short for both.
+`ComputeOutlinerViewport`, because that path never calls it, and it is no
+exception to the geometry. It has no rows to window, so
+`renderOutlinerEmptyState` reads `outlinerListRows` for the same reservation the
+populated path subtracts, spends it on the header and the explanation, and then
+draws the dock whole at the height the geometry gives it — it may neither shorten
+the dock nor lift it off the bottom. That loop bound is hoisted out of the
+padding loop rather than recomputed per row, since the reservation now measures
+the status strip. An empty project is exactly the row a reader parks on, so the
+state is worth drawing; the sentence saying why it is empty is what survives a
+terminal too short for both.
 
-Everywhere else the reservation and the render are the same constant.
-`peekDockHeight()` is `PeekDockRows` or zero and reads nothing else, and
-`PeekDockLines()` returns exactly that many rows for every document, placeholder
-included, so the measurement cannot reconstruct a row's title width because it
-never looks at a row at all. A measurement that under-reserves overflows terminal
-height and the scenario harness reports `height_overflow`; there is now no
-arithmetic between the two that could.
+Both paths therefore read one geometry. `peekDockGeometry()` is resolved once per
+render and `PeekDockLines()` returns exactly `TotalRows()` for every document,
+placeholder included, so the measurement cannot reconstruct a row's title width
+because it never looks at a row at all. A measurement that under-reserves
+overflows terminal height and the scenario harness reports `height_overflow`;
+there is no arithmetic between the two that could.
 
 ### Sorting axis
 

@@ -18,8 +18,10 @@
     { "type": "key", "key": "r" },
     { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
     { "type": "key", "label": "Peek keeps the count, on the history line the rest of the task's spent instants share", "key": "b" },
-    { "type": "assert", "label": "avoidance is something the task already spent, so the schedule at the top of the document does not name it", "assert": "not_contains", "value": "deferred ×3" },
-    { "type": "key", "label": "page to the history at the end of the document", "key": "ctrl+f" },
+    { "type": "assert", "label": "avoidance is something the task already spent, so it rides the history line that closes the document and never the schedule", "assert": "contains", "value": "created now · updated now · woke 1d · deferred ×3" },
+    { "type": "assert", "label": "this window is a share of the frame, so the whole document is already on it", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "key", "label": "the dock swallows a page at its boundary and moves nothing", "key": "ctrl+f" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
     { "type": "assert", "assert": "contains", "value": "deferred ×3" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

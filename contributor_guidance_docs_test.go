@@ -1040,7 +1040,32 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// window that survives the value it was keyed on changing. The mechanism
 	// lives in docs/architecture/row-indicators.md. No rule elsewhere was trimmed
 	// to pay for it.
-	const budget = 65500
+	// Fifty-fifth raise, 65500 to 66500, for making Peek's dock a share of the
+	// frame. 1000 bytes buy four rules. The first is that one value measures the
+	// dock: the height it replaced was a constant four call sites each read
+	// independently, and the failure a derived body row count invites is exactly
+	// the one that constant made impossible — a render, a clamp, a page distance,
+	// and an availability hint each computing the window from the frame and
+	// arriving at different numbers, which reads as a dock that scrolls past its
+	// own end. The second is the two halves of the clamp and the order between
+	// them: a preferred share nobody capped overflows the frame the moment capture
+	// takes rows, and a cap nobody floored clips live controls instead of putting
+	// the dock down, so the rule has to say both that the cap wins and that a
+	// total under the minimum draws nothing. The third is that the geometry reads
+	// the frame alone — the shape of this bug is a height that quietly depends on
+	// the cursor's own document, which makes moving between two rows move the
+	// list, and the cheapest way to write it is to ask the document how tall it
+	// wants to be. The fourth is the anti-circularity note on
+	// `queryReadoutBodyRows`: the readout is measured inside the same strip the
+	// dock is capped against, so reading the settled geometry there is a recursion
+	// the compiler cannot refuse, and the reason it charges the preferred half is
+	// not derivable from either function alone. The mechanism lives in
+	// docs/architecture/search-filters-and-sorting.md and
+	// docs/architecture/presentation-chrome.md. The retired constants
+	// `inlinePeekWindowRows`, `inlinePeekBodyRows`, `inlinePeekHalfPageRows`, and
+	// `inlinePeekFullPageRows` were struck from the rules they appeared in rather
+	// than left beside their replacements.
+	const budget = 66500
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

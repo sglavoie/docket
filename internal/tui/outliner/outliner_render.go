@@ -1021,11 +1021,13 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	// the whole list window, so an empty projection docks Peek where a full one
 	// docks it instead of hanging it off the explanation. It is drawn whole — a
 	// dock this path shortened would be a different height and a different
-	// position per projection, which is the moving target docking retired — and at
-	// every supported size the window still holds the header and the sentence
-	// above it with room to spare.
+	// position per projection, which is the moving target docking retired. This
+	// path has no rows to window, so it reads the one reservation without
+	// computing a window against it; the bound is taken once rather than per
+	// padded row, since measuring it now measures the status strip too.
 	if dock := m.PeekDockLines(); len(dock) > 0 {
-		for drawn := lipgloss.Height(body.String()); drawn < m.outlinerListRows(extraFooter); drawn++ {
+		listRows := m.outlinerListRows(extraFooter)
+		for drawn := lipgloss.Height(body.String()); drawn < listRows; drawn++ {
 			b.WriteString("\n")
 		}
 		for _, line := range dock {
@@ -1108,8 +1110,8 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 // against it: the populated path fills it with rows and pads the remainder, and
 // the empty path fills it with its header and its explanation and pads the same
 // way. That is what puts the dock on one screen row whichever path drew the
-// frame. It is pure — the dock's cost is a constant and the rest is the frame —
-// so nothing here reads the cursor or the document.
+// frame. It is pure — the dock's cost is the frame's answer and the rest is the
+// frame — so nothing here reads the cursor or the document.
 func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 	// Clamp to at least one row: at pathologically small heights (e.g. the
 	// dimmed project-cycle/pinned preview backgrounds sized to a couple of
@@ -1121,9 +1123,9 @@ func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 	// its controls, or controls wrapped at minimum width, is taller than the two
 	// rows Height() was sized against, and the difference is the list's to pay.
 	// Nothing below re-measures it.
+	geometry := m.peekDockGeometry()
 	reserved := m.ShellFrame.ExcessRows()
-	dock := m.peekDockHeight()
-	if dock > 0 {
+	if geometry.Displayed() {
 		// While the dock is open that charge has a floor, and the floor is what
 		// keeps the dock on one screen row. The dock's own guidance is the one
 		// footer content this view's cursor decides — `Ctrl+D more` is advertised
@@ -1131,17 +1133,16 @@ func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 		// minimum width the footer wraps for one row and not for the next, and a
 		// list following that difference would slide the dock under the cursor.
 		// One row is paid whether or not this row's document pages; a footer that
-		// genuinely costs more than that is still charged in full.
-		reserved = max(reserved, peekDockFooterWrapRows)
+		// genuinely costs more than that is still charged in full. The dock's own
+		// availability arithmetic charges the same reservation, so the two cannot
+		// disagree about what the footer costs.
+		reserved = m.peekDockFooterReservation()
 	}
 	rows := max(m.ContentHeight()-extraFooterLines-reserved, 1)
-	if dock > 0 {
-		// The dock's height is a constant, so the list loses the same rows whatever
-		// the cursor is resting on: opening Peek moves the list once, and nothing
-		// the cursor does afterwards moves it again.
-		rows = max(rows-dock, 1)
-	}
-	return rows
+	// The dock's height answers to the frame alone, so the list loses the same
+	// rows whatever the cursor is resting on: opening Peek moves the list once,
+	// and nothing the cursor does afterwards moves it again.
+	return max(rows-geometry.TotalRows(), 1)
 }
 
 // SetShellFrameMetrics records the footer budget the shell measured for this

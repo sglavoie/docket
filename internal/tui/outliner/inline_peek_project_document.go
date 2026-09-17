@@ -27,6 +27,10 @@ type inlinePeekProjectOptions struct {
 	Project *models.Project
 	Indent  string
 	Width   int
+	// Window is the frame's dock geometry, carried for the same reason the task
+	// half carries it: a project header's document is drawn in the identical
+	// window a task's is, so the two cannot disagree about height.
+	Window peekDockGeometry
 }
 
 // inlinePeekProjectDocumentFor assembles the detail behind a project header. The
@@ -53,6 +57,7 @@ func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocum
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
 		width:       available,
+		window:      opts.Window,
 	}
 }
 

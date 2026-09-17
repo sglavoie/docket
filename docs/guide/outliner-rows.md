@@ -248,10 +248,17 @@ root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
 `b` toggles a session-only Peek in a pane docked below the list, whether the
-cursor is on a task or on a project header. The pane is always the same height —
-seven rows, counted off the list once when you open it — so a short task and a
-long one give the outline exactly the same room and moving between them never
-shifts the rows under your cursor. On a row with no detail to show, a section
+cursor is on a task or on a project header. Its height is a share of the terminal
+— about a third of the outline's own room, never fewer than seven rows and never
+more than twelve — counted off the list once when you open it, so a taller
+terminal reads more of a long detail at a time. What the pane never reads is the
+row you are on: a short task and a long one give the outline exactly the same
+room, and moving between them never shifts the rows under your cursor. When
+something else needs those rows — a capture panel raised over the pane on a short
+terminal — Peek gives them up and comes back to its full height when that panel
+closes, keeping your place in the outline; if the terminal is too short even for
+the divider, one line of detail, and the position row, the pane stays closed
+rather than being drawn cut off. On a row with no detail to show, a section
 heading or a checklist item, the pane stays where it is and reads `No detail to
 show for this row.`; `b` closes it again from any row. On a task, Peek
 follows navigation and reads, in this order: the task's whole title, the ancestor
@@ -271,11 +278,12 @@ schedule is the part you can act on, so it sits with the status line at the top,
 and the history is the part you consult afterwards, so it closes the document
 below everything else. Every one of those is shown whole. Long
 text wraps rather than being cut off, and nothing is dropped to make room for
-something else: Peek shows five rows at a time and `Ctrl+D` and `Ctrl+U` scroll
-through the rest, two rows a press, while `Ctrl+F` and `Ctrl+B` move a whole page
-at a time. Every move keeps at least one row of what you were reading, the two
-step sizes mix freely, and the last one stops at the end of the detail rather
-than running past it. A sixth row at the bottom always reads
+something else: Peek shows as many rows as its height allows and `Ctrl+D` and
+`Ctrl+U` scroll through the rest half a pane a press, while `Ctrl+F` and `Ctrl+B`
+move a whole page, one row short of the pane. Every move keeps at least one row
+of what you were reading, the two step sizes mix freely, and the last one stops
+at the end of the detail rather than running past it. A further row at the bottom
+always reads
 `12 above · 7 below`, so you know how much is out of sight and a detail that fits
 says so with `0 above · 0 below` rather than changing the pane's height.
 The footer offers a key only when that direction can actually move, but all four

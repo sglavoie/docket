@@ -254,7 +254,7 @@ func assertLongCommentPeekGuidance(t *testing.T, width, height int) {
 	if !ok {
 		t.Fatal("the focused header drew no Peek document")
 	}
-	if doc.MaxOffset() <= inlinePeekHalfPageRows {
+	if doc.MaxOffset() <= outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("the fixture pages to offset %d, so a half page has no middle to land on",
 			doc.MaxOffset())
 	}

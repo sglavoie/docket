@@ -59,7 +59,7 @@ Run the same command after a session with a different directory and diff the two
 | `picker-over-outline` | A value picker owning the one instruction set over a quiet host outline. | Session 3 — done |
 | `nested-discard-prompt` | A discard confirmation over a capture draft over the outline. | Session 3 — done |
 | `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 — done (the axes take a second row and `Q` holds what it drops) |
-| `capture-over-peek` | Capture raised over an open Peek dock of fixed height. | Session 7 |
+| `capture-over-peek` | Capture raised over an open Peek dock of fixed height. | Session 7 — done (the dock is a share of the frame, and capture shrinks it to what the panel leaves) |
 
 ## Current layout measurements
 
@@ -86,11 +86,12 @@ Three facts these record, which shape the sessions that follow:
   the list, and what that row cannot draw it drops whole and forwards to `Q`,
   whose bounded scrollable document is where the full value is read. A resting
   view narrows nothing, so `launch` still measures one header row.
-- The Peek dock is **seven rows at every height**, 60×20 and 120×40 alike, so
-  every row a short terminal lacks comes out of the list instead. At 60×20 with
-  capture open the list is left with 9 rows of window. Session 7 replaces this
-  with `clamp(floor(H/3), 7, 12)` — eleven rows at 100×35 — and a three-row
-  displayed minimum under pressure.
+- The Peek dock was **seven rows at every height**, 60×20 and 120×40 alike, so
+  every row a short terminal lacked came out of the list instead. At 60×20 with
+  capture open the list was left with 9 rows of window. Session 7 replaced this
+  with `clamp(floor(H/3), 7, 12)` — eleven rows at 100×35 — capped by what the
+  frame has left after the headers, the strip, the footer, and one task row, and
+  floored at the three rows a displayed dock owes.
 - With capture open the footer was **2 rows when a status displaced the controls
   and 3 when it did not**, because status and guidance were one occupant. Session
   4 budgeted them separately: it is now 3 rows resting and 4 with a status
@@ -113,8 +114,8 @@ contract in the same change.
 | ~~Transient messages replace capture controls in the footer.~~ Replaced by session 4: the message takes a row beside them and clearing it restores the footer byte for byte. | `TestCaptureFooterKeepsControlsBesideATemporaryStatus`, formerly `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 — done |
 | ~~Every context axis competes for one header row and the overflow is unreadable.~~ Replaced by session 5: the axes take an optional second row, it drops whole segments and names what it dropped, and every dropped value is readable in the bounded `Q` document. | `TestUXClarityCombinedContextIsReadableAtEverySize`, formerly `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 — done |
 | ~~The Outliner's content height counts exactly one header row.~~ Replaced by session 5: it counts the identity row plus `contextRowRows()`, which is presence-only and charged exactly once. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows.go`, `TestOutlinerContextRowIsAbsentFromADefaultView` | Session 5 — done |
-| Peek's dock costs the same rows at every terminal height. | `TestUXClarityCaptureOverPeekKeepsAFixedDock` | Session 7 |
-| Peek's body, window, and page sizes are constants. | `inlinePeekBodyRows` in `internal/tui/outliner/inline_peek_document.go` | Session 7 |
+| ~~Peek's dock costs the same rows at every terminal height.~~ Replaced by session 7: the dock is `clamp(floor(H/3), 7, 12)` capped by what the frame leaves, it grows with height, capture shrinks it and closing capture gives it back, and typing under capture moves it not at all. | `TestUXClarityPeekDockIsAShareOfTheFrame`, formerly `TestUXClarityCaptureOverPeekKeepsAFixedDock` | Session 7 — done |
+| ~~Peek's body, window, and page sizes are constants.~~ Replaced by session 7: `peekDockGeometry` is the one measurement, and the body, the window, the total, and both page distances are derived from its `bodyRows`. | `peekDockGeometry` in `internal/tui/outliner/inline_peek_paging.go` | Session 7 — done |
 
 ## Per-session regression homes
 
@@ -390,6 +391,35 @@ asserts the lines moved while the keys did not.
   when the dock becomes height-dependent; replacing it with the clamp is this
   session's work, and the empty-projection path has to produce the same dock as
   the populated one.
+
+Landed as: `peekDockGeometry` is the one measurement, and it carries `bodyRows`
+alone — `WindowRows`, `TotalRows`, `HalfPageRows`, and `FullPageRows` are all
+derived from it, so the render, the offset clamp, the paging distances, and the
+availability hints cannot disagree about a height. `PeekDockRows` became a method
+for that reason: the constant it replaced was the thing four callers each read
+independently. The height is `min(peekDockPreferredRows, peekDockAvailableRows)`
+— the preferred half is `clamp(floor(H/3), 7, 12)` over the Outliner's own
+allotted height, and the available half is what `ContentHeight` has left after the
+measured footer excess, the status strip, and one task row — and a total under
+`peekDockMinRows` (one content line, the divider, the position line) draws no
+dock at all rather than a clipped one, which is the existing unavailable-host
+path. Both halves read the frame and neither reads the cursor, the document, or
+the draft, so a short document, a project header, a placeholder row, and the
+empty projection all get identical geometry, and typing into capture moves
+nothing: `syncHostedPanelHost` already resized the host once per `Update`, so
+capture shrinking Peek and closing capture restoring it fall out of the frame
+arithmetic rather than out of a second rule. `HalfPageRows` is
+`max(bodyRows/2, 1)` and `FullPageRows` is `max(bodyRows - 1, 1)`, which
+reproduce the retired constants 2 and 4 exactly at the old five-line body and
+keep a one-row overlap at every other height; `Ctrl+D`/`Ctrl+U` and
+`Ctrl+F`/`Ctrl+B` still belong to the dock and `PgDn`/`PgUp` still to the list.
+The offset key deliberately did not gain the dock height — it stays owner,
+fingerprint, width, and terminal height — so a status message that shortens the
+dock clamps the window against the new geometry instead of re-anchoring it.
+`queryReadoutBodyRows` reads `peekDockPreferredRows` rather than the settled
+geometry, because the settled one would ask the strip for a height the strip is
+still deciding; preferred is never smaller than settled, so the charge is
+conservative in the one safe direction.
 
 ### Session 8 — Integrated acceptance and final review
 

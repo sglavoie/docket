@@ -16,31 +16,12 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-const (
-	// inlinePeekBodyRows is Peek's body budget. It is a window onto the detail
-	// document rather than a cap on it: the document is assembled whole and this
-	// many of its rows are on screen at a time, so a detail that does not fit is
-	// a page away instead of gone. The window is always exactly this tall, short
-	// documents padded, because the dock's height may not follow its content.
-	inlinePeekBodyRows = 5
-	// inlinePeekPositionRows is the position row beneath the body. It is always
-	// drawn, for the same reason the body is always padded: a row whose counts
-	// appear and disappear would move the list under the cursor.
-	inlinePeekPositionRows = 1
-	// inlinePeekWindowRows is the whole window one document draws, which is what
-	// the dock reserves around its divider.
-	inlinePeekWindowRows = inlinePeekBodyRows + inlinePeekPositionRows
-	// inlinePeekHalfPageRows and inlinePeekFullPageRows are the two distances a
-	// scroll travels. Both are counted in content rows rather than in pages, so
-	// the window stops wherever the arithmetic lands instead of on a boundary the
-	// document imposed. A full page leaves one content row on screen across the
-	// move, which is what makes the jump readable: the row that ended the last
-	// window leads the next one, so a wrapped sentence is never split across a
-	// keystroke with nothing in common between the two halves. A half page is the
-	// shorter step the same keys mean over every list in the product.
-	inlinePeekHalfPageRows = 2
-	inlinePeekFullPageRows = inlinePeekBodyRows - 1
-)
+// inlinePeekPositionRows is the position row beneath the body. It is always
+// drawn, for the same reason the body is always padded: a row whose counts
+// appear and disappear would move the list under the cursor. It is the one fixed
+// row in Peek's geometry — everything else about the window's size is decided by
+// peekDockGeometry and reaches a document stamped onto it.
+const inlinePeekPositionRows = 1
 
 // inlinePeekDocument is the complete detail document behind Peek, separated
 // from the page of it that is visible. Rendering and viewport measurement both
@@ -50,9 +31,9 @@ const (
 type inlinePeekDocument struct {
 	// Body is every detail row the subject has, wrapped to the pane and in
 	// content order, the title and the ancestor chain included. It is unbounded
-	// and nothing in it sits outside the window: inlinePeekBodyRows decides only
-	// how much of it is on screen, so a detail Peek holds is always a scroll
-	// away rather than sometimes pinned and sometimes elided.
+	// and nothing in it sits outside the window: the window decides only how much
+	// of it is on screen, so a detail Peek holds is always a scroll away rather
+	// than sometimes pinned and sometimes elided.
 	Body []string
 	// Fingerprint identifies the content the body was built from, independent of
 	// the width it was wrapped to. It is what lets a stored offset survive a
@@ -64,6 +45,12 @@ type inlinePeekDocument struct {
 	// width is the content width beside the indent, which is what every row in
 	// the document was already clamped to.
 	width int
+	// window is the frame's dock geometry, stamped onto the document when it was
+	// built. Content and window travel together from there, so Paged, MaxOffset,
+	// ClampOffset and Lines cannot be answered against two different frames — and
+	// a document built with no window draws nothing rather than falling back to a
+	// height nobody measured.
+	window peekDockGeometry
 }
 
 // Empty reports whether the document has nothing to draw at all. A row whose
@@ -73,11 +60,11 @@ func (doc inlinePeekDocument) Empty() bool {
 	return len(doc.Body) == 0
 }
 
-// Paged reports whether the body outgrows its budget, which is what the
+// Paged reports whether the body outgrows the window, which is what the
 // scrolling keys and their hints read. A document that fits has the single
 // offset zero and nothing to travel to.
 func (doc inlinePeekDocument) Paged() bool {
-	return len(doc.Body) > inlinePeekBodyRows
+	return len(doc.Body) > doc.window.BodyRows()
 }
 
 // MaxOffset is the last content row the window may start on. The window is
@@ -85,7 +72,7 @@ func (doc inlinePeekDocument) Paged() bool {
 // is pinned to the body's end and an unpaged document has the single offset
 // zero.
 func (doc inlinePeekDocument) MaxOffset() int {
-	return max(len(doc.Body)-inlinePeekBodyRows, 0)
+	return max(len(doc.Body)-doc.window.BodyRows(), 0)
 }
 
 // ClampOffset bounds a content-row offset to the document. Every reader goes
@@ -99,18 +86,19 @@ func (doc inlinePeekDocument) ClampOffset(offset int) int {
 // there, blank-padded when the document is shorter than the window, and the
 // position row that says exactly how much sits off screen in each direction. It
 // is the only way to either the drawn window or its height, so a render and a
-// measurement cannot disagree about what is on screen. The slice is always
-// inlinePeekWindowRows long, which is what keeps the dock the same height over
-// a one-line document and a fifty-line one.
+// measurement cannot disagree about what is on screen. The slice is always the
+// window's own height, which is what keeps the dock the same height over a
+// one-line document and a fifty-line one.
 func (doc inlinePeekDocument) Lines(offset int) []string {
-	if doc.Empty() {
+	body := doc.window.BodyRows()
+	if doc.Empty() || body < 1 {
 		return nil
 	}
 	start := doc.ClampOffset(offset)
-	end := min(start+inlinePeekBodyRows, len(doc.Body))
-	lines := make([]string, 0, inlinePeekWindowRows)
+	end := min(start+body, len(doc.Body))
+	lines := make([]string, 0, doc.window.WindowRows())
 	lines = append(lines, doc.Body[start:end]...)
-	for len(lines) < inlinePeekBodyRows {
+	for len(lines) < body {
 		lines = append(lines, "")
 	}
 	return append(lines, doc.positionLine(start, len(doc.Body)-end))
@@ -126,9 +114,14 @@ func (doc inlinePeekDocument) positionLine(above, below int) string {
 }
 
 type inlinePeekOptions struct {
-	Task       *models.Task
-	Indent     string
-	Width      int
+	Task   *models.Task
+	Indent string
+	Width  int
+	// Window is the frame's dock geometry, which the document keeps so that its
+	// own paging arithmetic and the render agree about the height on screen. It
+	// is the frame's answer and never the document's: a long body and a short one
+	// are drawn in the same window.
+	Window     peekDockGeometry
 	Breadcrumb string
 	// Planning is the task's planning membership, `today`, `next`, or empty. It
 	// arrives resolved for the same reason the two reference lists do: membership
@@ -181,6 +174,7 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
 		width:       available,
+		window:      opts.Window,
 	}
 }
 

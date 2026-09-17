@@ -94,7 +94,7 @@ var uxClarityFrames = []uxClarityFrame{
 	},
 	{
 		name:    "capture-over-peek",
-		records: "capture raised over an open Peek dock of fixed height",
+		records: "capture raised over a Peek dock sized as a share of the frame",
 		owner:   7,
 		stage:   stageUXClarityCaptureOverPeek,
 	},

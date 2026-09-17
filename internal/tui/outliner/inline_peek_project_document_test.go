@@ -44,7 +44,7 @@ func peekCommentedProject(id string) *models.Project {
 }
 
 func peekProjectDocument(project *models.Project, width int) inlinePeekDocument {
-	return inlinePeekProjectDocumentFor(inlinePeekProjectOptions{Project: project, Indent: "  ", Width: width})
+	return inlinePeekProjectDocumentFor(inlinePeekProjectOptions{Project: project, Indent: "  ", Width: width, Window: testPeekWindow()})
 }
 
 func peekDocumentText(doc inlinePeekDocument) string {
@@ -303,7 +303,7 @@ func TestProjectPeekOpensOnBothHeaderForms(t *testing.T) {
 			}
 
 			// The same four keys, over the same window implementation.
-			if !outliner.HalfPagePeek(1) || peekOffset(t, outliner) != inlinePeekHalfPageRows {
+			if !outliner.HalfPagePeek(1) || peekOffset(t, outliner) != outliner.peekDockGeometry().HalfPageRows() {
 				t.Fatalf("a half page moved to %d", peekOffset(t, outliner))
 			}
 			for outliner.PagePeek(1) { //nolint:revive // Reaching the end is the point of the loop.
@@ -343,9 +343,9 @@ func TestProjectPeekBelongsToTheProjectAndNotToTheHeader(t *testing.T) {
 		t.Fatal("the fixture would not scroll")
 	}
 	outliner.Cursor = second
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("a second header for the same project read offset %d, want the shared %d",
-			got, inlinePeekHalfPageRows)
+			got, outliner.peekDockGeometry().HalfPageRows())
 	}
 
 	// Another project reads its own top, and so does a task row, whichever
@@ -361,7 +361,7 @@ func TestProjectPeekBelongsToTheProjectAndNotToTheHeader(t *testing.T) {
 		t.Fatalf("a task inherited its project's offset %d", got)
 	}
 	outliner.Cursor = second
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("returning to the header lost its offset: %d", got)
 	}
 
@@ -387,7 +387,7 @@ func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 	}
 
 	outliner.View()
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("a redraw reset the offset to %d", got)
 	}
 
@@ -396,7 +396,7 @@ func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 	if !moveCursorToProjectHeader(outliner, alpha.ID, 0) {
 		t.Fatal("the reload dropped alpha's header")
 	}
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("a reload reset the offset to %d", got)
 	}
 
@@ -411,7 +411,7 @@ func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 		t.Fatalf("scoped header = %+v, want the focused form", outliner.Rows[outliner.Cursor])
 	}
 	outliner.View()
-	if got := peekOffset(t, outliner); got != inlinePeekHalfPageRows {
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
 		t.Fatalf("changing header form reset the offset to %d", got)
 	}
 
@@ -450,13 +450,14 @@ func TestProjectPeekIsReservedByTheViewport(t *testing.T) {
 			outliner.PeekMode = true
 			peeked := outliner.ComputeOutlinerViewport(80, 0).VisibleRows
 			drawn := len(outliner.PeekDockLines())
-			if drawn != PeekDockRows {
-				t.Fatalf("the header's dock drew %d rows, want %d", drawn, PeekDockRows)
+			dockRows := outliner.PeekDockRows()
+			if drawn != dockRows {
+				t.Fatalf("the header's dock drew %d rows, want %d", drawn, dockRows)
 			}
 			if len(outliner.PeekDocumentBodyForRow(header)) == 0 {
 				t.Fatal("the header owns no document for the dock to draw")
 			}
-			if want := PeekDockRows + peekDockFooterWrapRows; plain-peeked != want {
+			if want := dockRows + peekDockFooterWrapRows; plain-peeked != want {
 				t.Fatalf("reserved %d rows for the dock, want %d", plain-peeked, want)
 			}
 
@@ -525,7 +526,7 @@ func TestProjectPeekKeepsOneMeasurementAndOneRender(t *testing.T) {
 				for step := 0; ; step++ {
 					width := size.width
 					drawn := outliner.PeekDockLines()
-					if got := outliner.peekDockHeight(); got != len(drawn) {
+					if got := outliner.PeekDockRows(); got != len(drawn) {
 						t.Fatalf("%s step %d measured %d rows and drew %d", label, step, got, len(drawn))
 					}
 					for number, line := range drawn {
@@ -563,7 +564,7 @@ func TestProjectPeekKeepsOneMeasurementAndOneRender(t *testing.T) {
 func TestTaskPeekKeepsItsCommentCount(t *testing.T) {
 	task := pagedPeekTask()
 	task.Comments = []*models.Comment{{Text: "First decision"}, {Text: "Second decision"}}
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: 80})
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: 80, Window: testPeekWindow()})
 
 	body := strings.Join(strings.Fields(ansi.Strip(strings.Join(doc.Body, "\n"))), " ")
 	if !strings.Contains(body, "Comments: 2") {

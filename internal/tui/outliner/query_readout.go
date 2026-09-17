@@ -333,12 +333,17 @@ func (m *OutlinerModel) queryReadoutWindow(width int) (document []string, window
 // take — it is an expansion of the view, not a replacement for it.
 //
 // It cannot ask statusStripHeight for the strip's cost, because the height that
-// call would answer with is the one this function is still deciding.
+// call would answer with is the one this function is still deciding. For the
+// same reason it charges the dock's frame-preferred height rather than the
+// height the dock settles on: the settled height is constrained by this strip,
+// so asking for it here would ask this function for its own answer. Preferred is
+// never smaller than settled, so the charge is conservative in the one direction
+// that cannot overflow the frame.
 func (m *OutlinerModel) queryReadoutBodyRows(width int) int {
+	dock := m.peekDockPreferredRows()
 	reserved := m.ShellFrame.ExcessRows()
-	dock := m.peekDockHeight()
 	if dock > 0 {
-		reserved = max(reserved, peekDockFooterWrapRows)
+		reserved = m.peekDockFooterReservation()
 	}
 	budget := m.ContentHeight() - reserved - dock - m.statusStripSignalRows(width) - queryReadoutChromeRows
 	return max(budget, queryReadoutMinBodyRows)

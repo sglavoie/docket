@@ -537,8 +537,22 @@ whole-line authority on every other list surface.
 
 Row and Peek budget:
 
-- Peek is a dock below the list, never a block under its row. `PeekDockRows` is
-  the divider plus `inlinePeekWindowRows`, and `outlinerListRows` is the one
+- Peek is a dock below the list, never a block under its row. `peekDockGeometry`
+  is its one measurement, carrying `bodyRows` alone: the window, the total, and
+  both page distances derive from it, so render, clamp, paging, and hints cannot
+  disagree about a height, and `PeekDockRows` is a method over it rather than a
+  constant. That total is
+  `min(peekDockPreferredRows, peekDockAvailableRows)` — preferred is
+  `clamp(floor(H/3), peekDockPreferredMinRows, peekDockPreferredMaxRows)` over the
+  Outliner's own height, available is what `ContentHeight` leaves after the
+  measured footer, the status strip, and `peekDockListFloorRows` — and a total
+  under `peekDockMinRows` draws no dock at all rather than a clipped one. Both
+  halves read the frame and never the cursor, the document, or a draft, so a
+  short document, a project header, a placeholder, and the empty projection share
+  one geometry, and capture shrinking the dock is that frame changing rather than
+  a second rule; `queryReadoutBodyRows` charges the preferred half, since the
+  settled one would ask the strip for the height it is deciding.
+  `outlinerListRows` is the one
   reservation that subtracts it and, whenever `PeekDockVisible()`, floors the
   shell's measured footer excess at `peekDockFooterWrapRows`, since the dock's
   own paging hints wrap that footer over a document the cursor can page and not
@@ -557,7 +571,7 @@ Row and Peek budget:
 - `inlinePeekDocument` separates the whole detail from the window of it on
   screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;
-  `inlinePeekBodyRows` bounds visibility alone, a short document pads, and
+  the geometry's `BodyRows` bounds visibility alone, a short document pads, and
   `positionLine` is a further row drawn for every document, `0 above · 0 below`
   included. Nothing sits outside that window and the document has no header:
   body order is title, parent, status, schedule, resume, description, checklist
@@ -587,8 +601,9 @@ Row and Peek budget:
   last-review instant are part of that fingerprint. The schedule line shows a
   future check-in even while the row stays quiet.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
-  the window. `Ctrl+D`/`Ctrl+U` travel two content rows and `Ctrl+F`/`Ctrl+B`
-  four, both clamped to the document end. `PeekContext.Visible` is the open dock
+  the window. `Ctrl+D`/`Ctrl+U` travel `HalfPageRows`, half the body, and
+  `Ctrl+F`/`Ctrl+B` travel `FullPageRows`, one row short of it so a turn carries a
+  row over; both floor at one row and clamp to the document end. `PeekContext.Visible` is the open dock
   and is consumption, `CanPage*` availability: an open dock swallows all four
   keys at either boundary, over a body too short to move, and over a placeholder,
   while only the hints read what can move. `PgDn`/`PgUp` stay the cursor's alone.

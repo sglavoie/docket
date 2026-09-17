@@ -19,23 +19,28 @@ import (
 // whichever page a render happens to be showing. A test asking whether Peek
 // *holds* something reads this; a test asking what is on screen reads a page.
 func peekDocumentBody(m *OutlinerModel, row OutlinerRow, width int) []string {
-	return m.inlinePeekDocumentForRow(row, "  ", width).Body
+	return m.inlinePeekDocumentForRow(row, "  ", width, testPeekWindow()).Body
 }
 
 // peekFirstPage is the first window of a document built straight from options,
 // which is what the dock draws and what the viewport reserves room for. Paging
-// past it is inline_peek_paging_test.go's subject, not this file's.
+// past it is inline_peek_paging_test.go's subject, not this file's. The window is
+// the frame's answer, and these options carry no frame, so the shared test window
+// is stamped on unless the caller named one of its own.
 func peekFirstPage(opts inlinePeekOptions) []string {
+	if !opts.Window.Displayed() {
+		opts.Window = testPeekWindow()
+	}
 	return inlinePeekDocumentFor(opts).Lines(0)
 }
 
 // peekWindowText is the content a window carries, without the blank rows a short
-// document is padded out to the dock's fixed height with and without the
+// document is padded out to the window's height with and without the
 // position row every window ends on. A test comparing Peek against exact text
 // means this; a test about the dock's geometry means the row count instead.
 func peekWindowText(lines []string) string {
 	content := make([]string, 0, len(lines))
-	for _, line := range lines[:min(len(lines), inlinePeekBodyRows)] {
+	for _, line := range lines[:min(len(lines), testPeekWindowRows)] {
 		if strings.TrimSpace(ansi.Strip(line)) == "" {
 			continue
 		}
@@ -64,8 +69,8 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 	}
 	// The window is still the dock's fixed height: a task with one line to say
 	// pads rather than shrinking the block the list gave up rows for.
-	if len(lines) != inlinePeekWindowRows {
-		t.Fatalf("empty Peek window = %d rows, want %d", len(lines), inlinePeekWindowRows)
+	if len(lines) != testPeekWindowRows+inlinePeekPositionRows {
+		t.Fatalf("empty Peek window = %d rows, want %d", len(lines), testPeekWindowRows+inlinePeekPositionRows)
 	}
 }
 
@@ -90,18 +95,18 @@ func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 	}
 
 	const width = 64
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "    ", Width: width})
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "    ", Width: width, Window: testPeekWindow()})
 	if !doc.Paged() {
 		t.Fatalf("a description this long fit in one page:\n%s", ansi.Strip(strings.Join(doc.Body, "\n")))
 	}
-	if len(doc.Body) <= inlinePeekBodyRows {
-		t.Fatalf("document body = %d rows, want more than the %d-row budget", len(doc.Body), inlinePeekBodyRows)
+	if len(doc.Body) <= testPeekWindowRows {
+		t.Fatalf("document body = %d rows, want more than the %d-row budget", len(doc.Body), testPeekWindowRows)
 	}
 
 	rendered := doc.Lines(0)
 	plain := ansi.Strip(strings.Join(rendered, "\n"))
-	if len(rendered) != inlinePeekWindowRows {
-		t.Fatalf("first page = %d rows, want %d:\n%s", len(rendered), inlinePeekWindowRows, plain)
+	if len(rendered) != testPeekWindowRows+inlinePeekPositionRows {
+		t.Fatalf("first page = %d rows, want %d:\n%s", len(rendered), testPeekWindowRows+inlinePeekPositionRows, plain)
 	}
 	if got := ansi.Strip(rendered[0]); got != "    Selected" {
 		t.Fatalf("page does not lead with the whole title: %q\n%s", got, plain)
@@ -395,6 +400,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 
 	doc := inlinePeekDocumentFor(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform ›", Planning: "today", Width: 80,
+		Window:           testPeekWindow(),
 		Dependencies:     []DependencyDetail{{Label: "Platform #7 Blocking work", State: "doing"}},
 		Dependents:       []DependencyDetail{{Label: "Platform #9 Waiting work", State: "waiting"}},
 		DependencyCensus: dependencyCensus{total: 1, blocked: 1},
@@ -429,8 +435,8 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 			t.Fatalf("Peek still renders %q:\n%s", banned, body)
 		}
 	}
-	if len(doc.Lines(0)) != inlinePeekWindowRows {
-		t.Fatalf("page = %d rows, want %d", len(doc.Lines(0)), inlinePeekWindowRows)
+	if len(doc.Lines(0)) != testPeekWindowRows+inlinePeekPositionRows {
+		t.Fatalf("page = %d rows, want %d", len(doc.Lines(0)), testPeekWindowRows+inlinePeekPositionRows)
 	}
 	// Every section is reachable by paging, which is the claim order has to rest
 	// on: history moved to the end of a document longer than the window, so it is
@@ -533,7 +539,7 @@ func TestInlinePeekNamesTheWholeTitle(t *testing.T) {
 	const tail = "very large project archives over slow connections"
 	task := &models.Task{ID: "task", Title: head + tail}
 
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: 80})
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: 80, Window: testPeekWindow()})
 	whole := ansi.Strip(strings.Join(doc.Body, "\n"))
 	// The wrap drops the space it breaks on, so the title is read back word by
 	// word; the claim is that no word went missing, not where the breaks fell.
@@ -576,9 +582,9 @@ func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 		Comments:    []*models.Comment{{Text: "Decision"}},
 	}
 
-	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 40})
-	if len(doc.Lines(0)) != inlinePeekWindowRows {
-		t.Fatalf("first page = %d rows, want the %d-row window", len(doc.Lines(0)), inlinePeekWindowRows)
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 40, Window: testPeekWindow()})
+	if len(doc.Lines(0)) != testPeekWindowRows+inlinePeekPositionRows {
+		t.Fatalf("first page = %d rows, want the %d-row window", len(doc.Lines(0)), testPeekWindowRows+inlinePeekPositionRows)
 	}
 	if !strings.HasPrefix(ansi.Strip(doc.Lines(0)[0]), "continuation") {
 		t.Fatalf("page does not lead with the title:\n%s", ansi.Strip(strings.Join(doc.Lines(0), "\n")))
@@ -706,7 +712,7 @@ func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
 	}
 
 	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
-	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80}).Body, "\n"))
+	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80, Window: testPeekWindow()}).Body, "\n"))
 	if body != "state backlog\nContext: [platform-core]\nTags: #bug" {
 		t.Fatalf("context and tags body = %q", body)
 	}

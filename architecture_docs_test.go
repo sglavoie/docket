@@ -210,10 +210,11 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`Esc` restores one frame at a time",
 		"`Shift+Enter` widens by exactly one level",
 		"`b` toggles a session-only, project-qualified Peek in a dock below the list",
-		"`PeekDockRows` (7) is one divider plus `inlinePeekWindowRows`, and\n" +
-			"`ComputeOutlinerViewport` subtracts exactly that plus a guard row whenever\n" +
-			"`PeekDockVisible()`, reading no cursor and no document",
-		"`Ctrl+D`/`Ctrl+U` travel `inlinePeekHalfPageRows`\n(2) and `Ctrl+F`/`Ctrl+B` travel `inlinePeekFullPageRows` (4)",
+		"`peekDockGeometry` is that one measurement and it carries `bodyRows` alone",
+		"`ComputeOutlinerViewport` subtracts exactly\nthat total whenever `PeekDockVisible()`, reading no cursor and no document",
+		"The height is `min(peekDockPreferredRows, peekDockAvailableRows)`",
+		"A total under\n`peekDockMinRows` — one content line, the divider, the position line — draws no\ndock at all",
+		"`Ctrl+D`/`Ctrl+U` travel `HalfPageRows` and\n`Ctrl+F`/`Ctrl+B` travel `FullPageRows`",
 		"Entering visual selection disables Peek",
 		"### Sorting axis",
 		"The `o` chord is the third axis beside `f` and `F`",

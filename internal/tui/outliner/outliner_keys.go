@@ -423,7 +423,13 @@ func (m *OutlinerModel) TaskLineEditRequest(source taskref.TaskIdentity, result 
 // Focus stack → cross-project Focus stack → section zoom → project scope.
 func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 	return []listsurface.EscStep{
-		{Active: func() bool { return m.PeekDockVisible() }, Action: escActionClosePeek, Clear: func() {
+		// This step reads the intent rather than the drawn dock, because it is the
+		// intent it puts down: a frame with no room for a three-row dock still holds
+		// PeekMode, and a cascade gated on what is painted would leave that flag with
+		// no key to clear it, so the dock would spring back the moment the terminal
+		// grew. What the frame decides is whether the dock is drawn, never whether
+		// Esc can close it.
+		{Active: func() bool { return m != nil && m.PeekMode }, Action: escActionClosePeek, Clear: func() {
 			m.PeekMode = false
 		}},
 		{Active: func() bool { return m.IsRangeSelectionActive() }, Action: escActionFreezeRange, Clear: func() {

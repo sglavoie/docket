@@ -69,7 +69,7 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 
 	for _, width := range []int{40, 60, 80, 120} {
 		task := &models.Task{ID: "task", Title: "Selected", ResumeNote: note}
-		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: width})
+		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Indent: "  ", Width: width, Window: testPeekWindow()})
 		plain := ansi.Strip(strings.Join(doc.Body, "\n"))
 		if strings.Contains(plain, "…") {
 			t.Fatalf("width %d elided the note instead of wrapping it:\n%s", width, plain)
@@ -77,9 +77,9 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 		if got := strings.Join(strings.Fields(plain), " "); got != "Selected state backlog Resume: "+note {
 			t.Fatalf("width %d did not carry the whole note:\n%s", width, got)
 		}
-		if page := doc.Lines(0); len(page) != inlinePeekWindowRows {
+		if page := doc.Lines(0); len(page) != testPeekWindowRows+inlinePeekPositionRows {
 			t.Fatalf("width %d drew %d rows, want the %d-row window:\n%s",
-				width, len(page), inlinePeekWindowRows, ansi.Strip(strings.Join(page, "\n")))
+				width, len(page), testPeekWindowRows+inlinePeekPositionRows, ansi.Strip(strings.Join(page, "\n")))
 		}
 		for number, line := range doc.Body {
 			if got := lipgloss.Width(line); got > width {
@@ -103,12 +103,12 @@ func TestInlinePeekResumeNoteSpendsThePageRatherThanRaisingIt(t *testing.T) {
 	without := inlinePeekDocumentFor(inlinePeekOptions{Task: &models.Task{
 		ID: task.ID, Title: task.Title, Description: task.Description,
 		CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt, Tags: task.Tags,
-	}, Width: width})
-	with := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: width})
+	}, Width: width, Window: testPeekWindow()})
+	with := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: width, Window: testPeekWindow()})
 
-	if len(without.Lines(0)) != inlinePeekWindowRows || len(with.Lines(0)) != inlinePeekWindowRows {
+	if len(without.Lines(0)) != testPeekWindowRows+inlinePeekPositionRows || len(with.Lines(0)) != testPeekWindowRows+inlinePeekPositionRows {
 		t.Fatalf("Peek height = %d without a note and %d with one, want %d both ways",
-			len(without.Lines(0)), len(with.Lines(0)), inlinePeekWindowRows)
+			len(without.Lines(0)), len(with.Lines(0)), testPeekWindowRows+inlinePeekPositionRows)
 	}
 	if len(with.Body) <= len(without.Body) {
 		t.Fatalf("the note added no document rows: %d with, %d without", len(with.Body), len(without.Body))
@@ -143,9 +143,10 @@ func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
 
 	doc := inlinePeekDocumentFor(inlinePeekOptions{
 		Task: task, Breadcrumb: "Launch platform › User authentication ›", Width: 80,
+		Window: testPeekWindow(),
 	})
-	if got := len(doc.Lines(0)); got != inlinePeekWindowRows {
-		t.Fatalf("Peek height = %d, want %d", got, inlinePeekWindowRows)
+	if got := len(doc.Lines(0)); got != testPeekWindowRows+inlinePeekPositionRows {
+		t.Fatalf("Peek height = %d, want %d", got, testPeekWindowRows+inlinePeekPositionRows)
 	}
 	plain := ansi.Strip(strings.Join(doc.Body, "\n"))
 	if !strings.HasPrefix(plain, "Selected task whose title") {

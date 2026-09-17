@@ -993,3 +993,14 @@ func (r *scenarioRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commi
 func (r *scenarioRepo) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {
 	return r.svc.CommitArtifactTransaction(request)
 }
+
+// testPeekWindowRows is the window a document-level test measures against, and
+// testPeekWindow the geometry carrying it. The window is the frame's answer
+// rather than the document's, so a test that builds a document without a frame
+// has to say which window it wants; this is that declaration, and it is one
+// declaration so every one of those tests reads the same height.
+const testPeekWindowRows = 5
+
+func testPeekWindow() peekDockGeometry {
+	return peekDockGeometry{bodyRows: testPeekWindowRows}
+}
