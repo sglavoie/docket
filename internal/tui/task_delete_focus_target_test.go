@@ -70,7 +70,7 @@ func TestStampCommittedFocusTargetOnlyDecoratesACommittedBatch(t *testing.T) {
 	refused := coordinator.StampCommittedFocusTarget(func() tea.Msg {
 		return coordinator.TransactionErrorMsg{}
 	}, target)
-	if _, ok := refused().(coordinator.TransactionErrorMsg); !ok {
+	if _, passedThrough := refused().(coordinator.TransactionErrorMsg); !passedThrough {
 		t.Fatalf("refused gesture = %T, want the untouched TransactionErrorMsg", refused())
 	}
 

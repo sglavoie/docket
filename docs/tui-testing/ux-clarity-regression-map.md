@@ -61,7 +61,7 @@ Run the same command after a session with a different directory and diff the two
 | `combined-context` | Selection, search, filters, and sort competing for the one header row. | Session 5 — done (the axes take a second row and `Q` holds what it drops) |
 | `capture-over-peek` | Capture raised over an open Peek dock of fixed height. | Session 7 — done (the dock is a share of the frame, and capture shrinks it to what the panel leaves) |
 
-## Current layout measurements
+## Layout measurements before the plan
 
 Taken from `frames.tsv` at `dc06394e`. Dark and light measure identically at
 every size, so only one column is given. `content` is the Outliner's list window,
@@ -97,6 +97,46 @@ Three facts these record, which shape the sessions that follow:
   4 budgeted them separately: it is now 3 rows resting and 4 with a status
   standing, and `chrome.ShellFrameMetrics` is what the surface underneath
   reserves the difference from.
+
+## Layout measurements after the plan
+
+Re-exported by session 8 from the same six frames, the same four sizes, and the
+same two palettes. Dark and light still measure identically, so one column still
+carries both.
+
+| Frame | 60×20 | 80×24 | 100×35 | 120×40 |
+| --- | --- | --- | --- | --- |
+| `launch` | header 1 · content 17 · footer 2 | header 1 · content 21 · footer 2 | header 1 · content 32 · footer 2 | header 1 · content 37 · footer 2 |
+| `feedback-over-guidance` | content 9 · footer 4 | content 13 · footer 4 | content 19 · footer 4 | content 23 · footer 4 |
+| `picker-over-outline` | content 17 · footer 2 | content 21 · footer 2 | content 32 · footer 2 | content 37 · footer 2 |
+| `nested-discard-prompt` | content 9 · footer 2 | content 13 · footer 2 | content 19 · footer 2 | content 23 · footer 2 |
+| `combined-context` | header 2 · content 16 · footer 6 | header 2 · content 20 · footer 6 | header 2 · content 31 · footer 5 | header 2 · content 36 · footer 5 |
+| `capture-over-peek` | content 9 · dock 7 · footer 3 | content 13 · dock 7 · footer 3 | content 19 · dock 7 · footer 3 | content 23 · dock 8 · footer 3 |
+
+Every cell that moved belongs to a session that claimed it, which is the whole
+point of the re-export:
+
+- `feedback-over-guidance` gained **two footer rows at every size**, 2 → 4. That
+  is session 4: the status no longer stands in the controls' row, so the footer
+  carries a feedback block and a controls block over one divider. The content
+  rows did not move, because the panel above it is what shrank.
+- `combined-context` gained **one header row and one footer row and gave up one
+  content row**, at every size. The header row is session 5's context row, and it
+  is charged once — the content row it cost is that charge. The footer row is
+  session 4's again, under the same selection summary.
+- `capture-over-peek` moved its dock **only at 120×40**, 7 → 8. That is session
+  7: the preferred height is `clamp(floor(H/3), 7, 12)`, so 40 rows prefer 12,
+  and what the frame has left under an open capture panel is 8. At the three
+  shorter sizes the available half is still the binding one and the dock measures
+  exactly what it did before, which is why the clamp is visible in one cell
+  rather than four.
+- `launch`, `picker-over-outline`, and `nested-discard-prompt` did not move at
+  all. That is the claim sessions 3 and 5 both made and is worth reading as a
+  result rather than as an absence: a resting view narrows nothing, so it still
+  spends one header row, and a picker that took sole ownership of guidance took
+  no rows with it.
+
+No other cell moved, and no cell moved that no session named.
 
 ## Expectations later sessions deliberately replace
 
@@ -421,9 +461,18 @@ geometry, because the settled one would ask the strip for a height the strip is
 still deciding; preferred is never smaller than settled, so the charge is
 conservative in the one safe direction.
 
+The Contracts bullet above names `inlinePeekWindowRows` because that is what the
+contract said when the session opened. It and `inlinePeekBodyRows` are retired:
+both were constants, and the whole point of the change is that a height is no
+longer a constant. Anything that read either one reads `peekDockGeometry` now —
+`BodyRows` where the old `inlinePeekBodyRows` was meant and `WindowRows` where
+`inlinePeekWindowRows` was — and the paging distances that were spelled `2` and
+`4` are `HalfPageRows` and `FullPageRows`.
+
 ### Session 8 — Integrated acceptance and final review
 
-- Go: `internal/tui/ux_clarity_review_matrix_test.go`,
+- Go: `internal/tui/ux_clarity_integrated_acceptance_test.go`,
+  `internal/tui/ux_clarity_review_matrix_test.go`,
   `internal/tui/ux_clarity_baseline_test.go`,
   `internal/tui/ux_presentation_matrix_acceptance_test.go`,
   `ux_clarity_regression_map_test.go`,
@@ -441,3 +490,55 @@ conservative in the one safe direction.
 - Re-export the review frames into a second directory and diff `frames.tsv`
   against the baseline run recorded above. Every moved measurement should belong
   to a session that claimed it; one that does not is a finding.
+
+Landed as: `internal/tui/ux_clarity_integrated_acceptance_test.go`, which
+deliberately re-asserts none of the seven sessions' own outcomes —
+`internal/tui/ux_clarity_baseline_test.go` owns those and names the session
+behind each. What
+it holds is the arithmetic that spans them, in three tests.
+
+`TestUXClarityIntegratedFrameSpendsEveryRowOnce` is the one that could only be
+written here. Sessions 4, 5, and 7 each added a reservation against the same
+terminal, and the failure they can produce together is one of them reserving rows
+another already did. The test sums what the separate authorities each say they
+drew — the Outliner's header rows, the list window `ComputeOutlinerViewport`
+handed the render, the dock `peekDockGeometry` sized, the strip
+`StatusStripHeight` reserved, and the footer `chrome.ShellFrameMetrics` measured
+— and requires the total to be the terminal, with the resting frame, each of the
+three occupants alone, and all three at once, at all four sizes. A row charged
+twice makes the total short and a row charged to nobody makes it long, and
+neither is visible to a test that reads one occupant. The single permitted
+shortfall is `peekDockFooterWrapRows`, and only while the dock is open.
+
+Two things that pass had to be got right for the sum to mean anything.
+`renderStatusBar` composes the strip divider, the strip, *and* the footer, so
+reading the footer off its height double-counts the strip; the budget reads
+`shellFrameMetrics().FooterRows()` and then checks it against what that bar
+painted minus the strip, so a metric that stopped matching its own paint is a
+failure rather than a sum that agrees with itself and with nothing on screen. And
+an open readout can legitimately leave `dock 0` at the shorter sizes: the strip
+grew, the dock's available half fell under `peekDockMinRows`, and session 7's
+rule is that such a dock is not drawn at all rather than drawn clipped.
+
+`TestUXClarityIntegratedResizeReturnsTheFrameItLeft` takes a frame holding Peek,
+a scrolled Peek window, the menu bar, and the expanded readout down to the floor
+and back, and again out to the widest reviewed size and back, and requires the
+screen byte for byte and the same dock height. A resize is the one act that moves
+all four of this plan's frame-dependent behaviors at once, and one that is not a
+pure function of the frame — that remembers a height it saw on the way down, or
+seats a window it cannot re-derive — shows up here and nowhere else.
+
+`TestUXClarityIntegratedWideTextFitsEveryReviewedTerminal` drives a title of
+double-width CJK, a combining mark, and an emoji through capture, the committed
+row, and Peek, at four sizes in both palettes. It is typed rather than added to
+the `ux-acceptance` fixture, because a new fixture row would rewrite every
+committed scenario that reads that population. Its assertion runs both ways: the
+frame never exceeds its terminal in cells, and the whole title is recoverable
+from the dock's wrapped body, which is what proves a fitter measured cells rather
+than runes and that Peek elided nothing.
+
+`docs/tui-testing/scenarios/ux-acceptance-daily-loop.json` gained the beats the
+session names and the scenario lacked: `Q` opened over a stacked facet, one axis
+peeled by its own digit, the start that offers an optional check-in and the `Esc`
+that skips it without losing the start, the completion, the undo that names
+`Ctrl+O origin`, and the `Ctrl+O` that spends it.

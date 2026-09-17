@@ -132,7 +132,7 @@ func TestFooterFlashDoesNotArmOnStatusClear(t *testing.T) {
 	// Expiry is the message's clock, not the animation's: the warning's remaining
 	// frames belong to the warning, and a text clear neither arms nor retires.
 	if !app.feedback.flash.active() {
-		t.Fatal("clearing the text cancelled the animation it had already earned")
+		t.Fatal("clearing the text canceled the animation it had already earned")
 	}
 }
 

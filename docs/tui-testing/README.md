@@ -336,7 +336,7 @@ The committed suite exercises the product contracts directly:
 | Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
 | Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `internal/tui/outliner_focus_test.go`, `internal/tui/filter_facets_projection_test.go` |
-| One day's whole loop over one workspace: scan, fold, navigate, Peek, capture plain and with metadata, a refused capture, a declined and then accepted discard, every expanded-form tab, inline edit, a lens saved from results and suspended by a search inside it, triage, undo, an abandoned chord, both menus, an empty result, and an arrived minute | `ux-acceptance-daily-loop.json` plus `internal/tui/ux_presentation_matrix_acceptance_test.go` for the same fixture read at four sizes in dark, light, and monochrome |
+| One day's whole loop over one workspace: scan, fold, navigate, Peek, capture plain and with metadata, a refused capture, a declined and then accepted discard, every expanded-form tab, inline edit, a lens saved from results and suspended by a search inside it, triage, undo, an abandoned chord, both menus, an empty result, an arrived minute, the `Q` readout opened over a stacked facet and peeled by digit, a start that offers a check-in and the `Esc` that skips it, a completion, and the undo whose `Ctrl+O origin` one key spends | `ux-acceptance-daily-loop.json` plus `internal/tui/ux_presentation_matrix_acceptance_test.go` for the same fixture read at four sizes in dark, light, and monochrome, and `internal/tui/ux_clarity_integrated_acceptance_test.go` for the frame arithmetic under every combination of Peek, the menu bar, and the readout |
 
 The full shell gate also runs snapshot, failure-injection, collision,
 idempotence, prepared-activation recovery, restore-and-reactivate, and
@@ -374,8 +374,18 @@ fixture. It names the regression home for each of that plan's sessions, records
 the layout measurements and the combined states the plan replaces, and documents
 `TT_UX_CLARITY_REVIEW_DIR`, the directory
 `internal/tui/ux_clarity_review_matrix_test.go` exports its reviewable ANSI,
-plain-text, and monochrome before-frames to. The two maps stay separate files
-because both number their sessions from one.
+plain-text, and monochrome before-frames to. It also records the after-frames,
+re-exported once the plan landed, with every moved measurement attributed to the
+session that claimed it. The two maps stay separate files because both number
+their sessions from one.
+
+`internal/tui/ux_clarity_integrated_acceptance_test.go` is that plan's
+integrated pass, and it asserts only what spans its sessions: that the header,
+the menu bar row, the list window, the Peek dock, the status strip, and the
+footer add up to exactly the terminal under every combination of those
+occupants, that a resize through the floor and through the widest reviewed size
+returns the frame byte for byte, and that a title of double-width and combining
+characters fits every reviewed terminal while staying wholly readable in Peek.
 
 ## Observation contract
 

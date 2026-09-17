@@ -267,23 +267,11 @@ func uxClarityWriteManifest(t *testing.T, root string, records []uxClarityFrameR
 // functions, so the screens exported for review are exactly the screens the
 // contracts are written against rather than a second approximation of them.
 
-// uxClarityPress replays one production action and fails on the first refusal.
-func uxClarityPress(t *testing.T, driver *UITestDriver, actions ...UITestAction) {
-	t.Helper()
-	for index, action := range actions {
-		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
-			t.Fatalf("action %d (%s %q%q): %v", index, action.Type, action.Key, action.Command, err)
-		}
-	}
-}
-
-func uxClarityKeys(keys ...string) []UITestAction {
-	actions := make([]UITestAction, 0, len(keys))
-	for _, key := range keys {
-		actions = append(actions, UITestAction{Type: UITestActionKey, Key: key})
-	}
-	return actions
-}
+// uxClarityPress and uxClarityKeys, which every staging function below is
+// written in terms of, live in ux_clarity_actions_test.go: enough files outside
+// this one read them that they are infrastructure rather than this file's
+// scaffolding, and TestSharedTestHelpersLiveInFilesThatDeclareNoTest requires
+// infrastructure to sit where a file move cannot orphan it.
 
 // stageUXClarityFeedbackOverGuidance raises a routine success and then opens the
 // capture panel, which is the one surface whose controls are contextual
