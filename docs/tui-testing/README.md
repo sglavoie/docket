@@ -379,6 +379,21 @@ re-exported once the plan landed, with every moved measurement attributed to the
 session that claimed it. The two maps stay separate files because both number
 their sessions from one.
 
+[`ux-daily-use-regression-map.md`](ux-daily-use-regression-map.md) is the third
+such map, for the thirteen-session daily-use refinement, and it is a third file
+for the same reason: eighteen, eight, and thirteen sessions overlap completely,
+so no two of those numberings can share a document. It names the regression home
+for each of its sessions, records the before-frame layout and clipped-line
+measurements, assigns every recorded expectation and every prose contract the
+plan replaces to its owning session, and documents
+`TT_UX_DAILY_USE_REVIEW_DIR`, the directory
+`internal/tui/ux_daily_use_review_matrix_test.go` exports its eight ANSI,
+plain-text, and monochrome before-frames to at 60×20, 80×24, 100×35, and
+120×40. `internal/tui/ux_daily_use_baseline_test.go` is where the expectations
+it replaces are recorded, and `ux_daily_use_regression_map_test.go` is the gate
+that holds the map to all of it — including that both earlier maps still carry
+their own last session number.
+
 `internal/tui/ux_clarity_integrated_acceptance_test.go` is that plan's
 integrated pass, and it asserts only what spans its sessions: that the header,
 the menu bar row, the list window, the Peek dock, the status strip, and the
