@@ -30,8 +30,23 @@ whole segments from the right, spending the reclaimed room on
 truncated, and that case still names the readout. Existing meanings survive
 because the entries are built from the same predicates the title used:
 `ActiveLensLabel` carries `(suspended)` and `(modified)`, the search entry
-distinguishes ranked from narrowing, the selection entry names hidden members,
-and `effectiveSort` returns no sort under a fixed-order mode.
+distinguishes ranked from narrowing, and `effectiveSort` returns no sort under a
+fixed-order mode.
+
+The selection entry is the one of those that is not merely a restatement. It is
+the sole persistent summary of a live selection — the status channel writes
+nothing about one, so whatever the entry sheds is shed everywhere — and that is
+why the hidden count is not what the compact spelling gives up: a count silently
+covering rows off screen is the one number a bulk gesture must not be surprised
+by, so both spellings carry it whenever it is nonzero and the compact one drops
+the word `selected` the number already implies. Its `Value` spells the whole
+breakdown on the same terms and on those terms only: `Q` is the one place the
+visible half is written down, and with nothing hidden that half is the total
+restated, which is not worth the wrapped readout rows it costs at a narrow
+width. Being derived from the live rows at render time is what makes
+a stale count unreachable rather than merely refreshed: a fold, a filter, or a
+mode change moves members across the visible/hidden line without touching the
+selection, and no seam has to notice.
 
 `contextRowRows()` is presence-only — width chooses between full and compact
 segments, never whether the row exists — which is what lets `ContentHeight`,
@@ -327,7 +342,14 @@ that chrome constant, so the readout can never take the list's last row.
 write, which is how a peel that shortened the document or a resize that shortened
 the window re-seats itself without either having to be noticed;
 `PeelQueryReadoutRow` still calls `scrollQueryReadout(0)` so the stored offset the
-next key adds to is already in range. That render-time clamp does not write back,
+next key adds to is already in range, through `reseatQueryReadoutAfterPeel` and
+always after the status that peel publishes. That ordering is the whole of what
+the helper is for: the readout's window is what the strip leaves, the strip is a
+row taller while it holds a message, and a re-seat taken against a momentarily
+empty channel would clamp the offset against a window larger than the one the
+frame goes on to draw. Since the render-time clamp can only reduce an offset
+further, a position lost that way is lost for good, and the reader's window jumps
+to the top of a document that still overflows. That render-time clamp does not write back,
 on purpose, so a resize that *grew* the window leaves the stored offset past the
 new maximum while the screen already shows the clamped line;
 `scrollQueryReadout` therefore clamps before it adds its delta rather than after,

@@ -419,8 +419,11 @@ shell's own. `SetTransientStatus` marks it, `scheduleViewStatusExpiry` reads the
 same before/after probe the flash reads and batches a `ViewStatusClearMsg`
 inside that one deferred closure, and the handler clears only when the message's
 view and `StatusStamp` still match, so an older tick can never dismiss a newer
-message. `setStatus` stays sticky for a live state descriptor such as the
-multi-select summary, which would otherwise leave an active selection unlabeled.
+message. `SetStatus` stays sticky for a view that has a live state descriptor to
+put somewhere, but the Outliner is not one of them: the multi-select summary is
+a `ViewContextEntry` derived from the live rows at render time, so it needs no
+sticky message and the channel stays free for the feedback a bulk gesture is
+about to write into it.
 The two read one probe and answer different questions: a view notice is quiet
 and still expires on its own timer, so how long a message lasts never follows
 from whether it animated.

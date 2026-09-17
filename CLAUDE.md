@@ -406,8 +406,13 @@ rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.
 
 Notice and status render only in the shell-pinned strip, whose height
-`StatusStripHeight` reserves from `ComputeOutlinerViewport`. A view status is
-transient except the multi-select summary. An outstanding-conflict count leads
+`StatusStripHeight` reserves from `ComputeOutlinerViewport`. Every view status
+is transient, and the Outliner writes none about a selection: the context row's
+`selection` entry is the one persistent summary, derived from the live rows, so
+no seam refreshes a count. It states the total and, whenever nonzero, the hidden
+half in both spellings, since a compact row shedding that number is what a bulk
+gesture would be surprised by; the visible half is `Q`'s and appears only beside
+a nonzero hidden one. An outstanding-conflict count leads
 that strip, refreshed at launch and on the 60s tick, read straight from
 `ConflictStore` with no `internal/app` port; the pulse ladder stays closed to it
 and resolving stays in the CLI. `gc` browses those bundles read-only, as an
@@ -463,7 +468,9 @@ mirrors `outlinerListRows`' arithmetic rather than asking `StatusStripHeight` fo
 the height it is deciding; the last outline row is inside that chrome, so the
 readout never takes it. `clampQueryReadoutOffset` is pure and runs at render as
 well as at every write, which is what re-seats a window a peel or a resize
-stranded. The six scrolling keys write `QueryReadout.Offset` alone and are
+stranded; that clamp only ever reduces, so `reseatQueryReadoutAfterPeel` runs
+after the status its peel publishes and never before, since a strip without that
+message is a row taller than the one the frame draws. The six scrolling keys write `QueryReadout.Offset` alone and are
 consumed whether or not the document moves; `queryReadoutRowLimit` is the digit
 set, so digits stay on the first nine of `QueryReadoutRows()` at any offset and a
 tenth axis is scrolled to rather than dropped or bound.

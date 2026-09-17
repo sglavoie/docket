@@ -1,8 +1,6 @@
 package outliner
 
 import (
-	"fmt"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -62,8 +60,6 @@ func (m *OutlinerModel) CursorNamesFocusedProjectHeader() bool {
 	return m.Rows[m.Cursor].IsFocusedProjectHeader
 }
 
-func (m *OutlinerModel) setStatus(msg string) { m.SetStatus(msg) }
-
 func (m *OutlinerModel) TaskIdentityForRow(row OutlinerRow) taskref.TaskIdentity {
 	if row.Task == nil {
 		return taskref.TaskIdentity{}
@@ -91,7 +87,6 @@ func (m *OutlinerModel) ToggleCursorSelection() {
 	m.MultiSelectMode = true
 	m.ToggleTaskIdentity(m.TaskIdentityForRow(m.Rows[m.Cursor]))
 	m.syncChecklistSelectionRows()
-	m.UpdateVisualSelectionStatus()
 }
 
 // startCursorRangeSelection starts a fresh inclusive Vim-style range at the
@@ -100,7 +95,6 @@ func (m *OutlinerModel) ToggleCursorSelection() {
 func (m *OutlinerModel) StartCursorRangeSelection() {
 	if m.IsRangeSelectionActive() {
 		m.FreezeRangeSelection()
-		m.UpdateVisualSelectionStatus()
 		return
 	}
 	if m.Cursor < 0 || m.Cursor >= len(m.Rows) || !m.Rows[m.Cursor].IsTaskRow() {
@@ -109,7 +103,6 @@ func (m *OutlinerModel) StartCursorRangeSelection() {
 	m.PeekMode = false
 	m.StartRangeSelection(m.TaskIdentityForRow(m.Rows[m.Cursor]))
 	m.syncChecklistSelectionRows()
-	m.UpdateVisualSelectionStatus()
 }
 
 func (m *OutlinerModel) TogglePeek() {
@@ -141,40 +134,21 @@ func (m *OutlinerModel) cursorRowSupportsPeek() bool {
 }
 
 // toggleMultiSelectMode enters or exits multi-select mode.
+//
+// Neither half writes the status line. The selection states itself once, on the
+// context row under the title, and that segment is derived at render time from
+// the live rows — so leaving the mode takes the summary with it, and the status
+// channel is left holding whatever operation feedback it was already carrying.
 func (m *OutlinerModel) ToggleMultiSelectMode() {
 	m.MultiSelectMode = !m.MultiSelectMode
 	if !m.MultiSelectMode {
 		m.ClearSelection()
 		m.syncChecklistSelectionRows()
-		m.ClearStatus()
 		return
 	}
 
 	m.PeekMode = false
 	m.syncChecklistSelectionRows()
-	m.UpdateVisualSelectionStatus()
-}
-
-func (m *OutlinerModel) UpdateVisualSelectionStatus() {
-	if !m.MultiSelectMode {
-		return
-	}
-	counts := m.SelectionCounts()
-	if counts.Total > 0 {
-		action := "V freeze · Esc freeze"
-		if !m.IsRangeSelectionActive() {
-			action = "v toggle · V range · Esc clear"
-		}
-		m.setStatus(fmt.Sprintf(
-			"Visual selection: %d total · %d visible · %d hidden · %s · Space actions",
-			counts.Total,
-			counts.Visible,
-			counts.Hidden,
-			action,
-		))
-		return
-	}
-	m.setStatus("Visual selection: v toggle · V range · Ctrl+A all visible · Esc clear")
 }
 
 func (m *OutlinerModel) VisibleTaskIdentities() []taskref.TaskIdentity {
@@ -223,7 +197,6 @@ func (m *OutlinerModel) UpdateRangeSelection() {
 		// A projection change can hide the anchor. Preserve the durable selection
 		// and stop reshaping it against a different visible task set.
 		m.FreezeRangeSelection()
-		m.UpdateVisualSelectionStatus()
 		return
 	}
 	start, end := anchorIndex, m.Cursor
@@ -237,7 +210,6 @@ func (m *OutlinerModel) UpdateRangeSelection() {
 		}
 	}
 	m.SetSelection(identities)
-	m.UpdateVisualSelectionStatus()
 }
 
 // pruneInvisibleSelections intentionally retains valid project-qualified
@@ -272,10 +244,4 @@ func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
 	if m.IsRangeSelectionActive() && !admitted[m.RangeAnchor.ProjectID] {
 		m.FreezeRangeSelection()
 	}
-}
-
-// clearMultiSelect exits multi-select mode and clears all selections.
-func (m *OutlinerModel) ClearMultiSelect() {
-	m.ExitMultiSelect()
-	m.ClearStatus()
 }

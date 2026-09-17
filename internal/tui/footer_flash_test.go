@@ -286,10 +286,12 @@ func TestViewStatusExpiryStaysIndependentOfTheFlash(t *testing.T) {
 		t.Fatal("a quiet transient notice lost its expiry, so quietness changed how long it lasts")
 	}
 
-	// The multi-select summary is the sticky exception, and it is the one case
-	// where an absent expiry is the answer rather than a dropped one.
+	// A sticky message is the one case where an absent expiry is the answer
+	// rather than a dropped one. No Outliner path writes one any more — the
+	// multi-select summary moved to the context row — so the sticky half is
+	// driven straight through the setter that marks it.
 	sticky := app.captureFooterFlashProbe()
-	app.crossOutliner.SetStatus("3 selected")
+	app.crossOutliner.SetStatus("Comment change already in progress")
 	if cmd := app.scheduleViewStatusExpiry(sticky); cmd != nil {
 		t.Fatal("a sticky summary scheduled its own dismissal")
 	}

@@ -617,16 +617,28 @@ func (m *OutlinerModel) PeelQueryReadoutRow(index int) tea.Cmd {
 	}
 	peeled := "Peeled " + row.Label + ": " + row.value
 	reload := m.peelQueryReadoutAxis(row)
-	// The document just got shorter, so the window is re-seated here rather than
-	// left for the next render to clamp: the stored offset is what the next scroll
-	// key adds to, and an offset past the end would make that first press look
-	// like it did nothing.
-	m.scrollQueryReadout(0)
 	if reload {
+		m.reseatQueryReadoutAfterPeel()
 		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: peeled} }
 	}
 	m.SetTransientStatus(peeled)
+	m.reseatQueryReadoutAfterPeel()
 	return status.DefaultStatusTimeout()
+}
+
+// reseatQueryReadoutAfterPeel re-seats the window a shorter document left behind,
+// here rather than at the next render: the stored offset is what the next scroll
+// key adds to, and an offset past the end would make that first press look like
+// it did nothing.
+//
+// It runs after the status the peel publishes, never before it. The readout's
+// window is what the strip leaves, and the strip is a row taller while it holds
+// a message — so re-seating against a momentarily empty channel would clamp the
+// offset against a window one row larger than the one this frame goes on to
+// draw, and the render's own clamp can only reduce an offset further. A peel
+// that is about to say something measures the strip it is about to have.
+func (m *OutlinerModel) reseatQueryReadoutAfterPeel() {
+	m.scrollQueryReadout(0)
 }
 
 // peelAllQueryReadoutRows peels from the top until the stack is empty. It walks
@@ -653,12 +665,13 @@ func (m *OutlinerModel) peelAllQueryReadoutRows() tea.Cmd {
 		m.SetTransientStatus("Nothing to peel")
 		return status.DefaultStatusTimeout()
 	}
-	m.scrollQueryReadout(0)
 	summary := fmt.Sprintf("Peeled %d narrowing(s)", peeled)
 	if reload {
+		m.reseatQueryReadoutAfterPeel()
 		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: summary} }
 	}
 	m.SetTransientStatus(summary)
+	m.reseatQueryReadoutAfterPeel()
 	return status.DefaultStatusTimeout()
 }
 

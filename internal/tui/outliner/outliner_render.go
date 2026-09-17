@@ -941,23 +941,35 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 	return entries
 }
 
-// selectionContextEntry states the whole selection, hidden members included.
-// The row says how many are hidden because a count that silently covered rows
-// off screen is the one thing a bulk gesture must not be surprised by; the
-// readout spells all three numbers, which is what the row's compact form sheds.
+// selectionContextEntry states the whole selection, hidden members included. It
+// is the only persistent statement of a live selection: the status channel says
+// nothing about one, so whatever this entry sheds is shed everywhere.
+//
+// That is why the hidden count is not what the compact form gives up. A count
+// that silently covered rows off screen is the one thing a bulk gesture must not
+// be surprised by, so both spellings carry it whenever it is nonzero and the
+// compact one instead drops the word the number already implies.
+//
+// `Q` keeps the whole breakdown on the same terms, and on those terms only: with
+// nothing hidden the visible half is the total restated, and a readout row
+// costing two wrapped lines to say a number twice is a row the document cannot
+// spend. The breakdown appears exactly where there is a difference to read.
 func (m *OutlinerModel) selectionContextEntry() ViewContextEntry {
 	counts := m.SelectionCounts()
 	value := fmt.Sprintf("%d selected", counts.Total)
 	full := fmt.Sprintf("MULTI-SELECT: %d selected", counts.Total)
+	compact := fmt.Sprintf("MULTI-SELECT: %d", counts.Total)
 	if counts.Hidden > 0 {
 		value = fmt.Sprintf("%d total · %d visible · %d hidden", counts.Total, counts.Visible, counts.Hidden)
-		full += fmt.Sprintf(" (%d hidden)", counts.Hidden)
+		hidden := fmt.Sprintf(" (%d hidden)", counts.Hidden)
+		full += hidden
+		compact += hidden
 	}
 	return ViewContextEntry{
 		Label:      "selection",
 		Value:      value,
 		Row:        theme.SelectionCountStyle.Render(full),
-		RowCompact: theme.SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d", counts.Total)),
+		RowCompact: theme.SelectionCountStyle.Render(compact),
 		ReadOnly:   true,
 	}
 }

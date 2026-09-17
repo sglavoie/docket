@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -234,24 +235,26 @@ func uxDailyUseRowContent(t *testing.T, line, title string) string {
 // each of them being an only child of its project.
 const uxDailyUseRowGutter = "└── "
 
-// TestUXDailyUseSelectionCountsAreStatedTwice records that a visual selection is
-// counted in two places at once today: the status strip's own summary line and
-// the footer's selection line. The frame it reads is the one where the counts
-// are load-bearing rather than decorative — every selected task folded out of
-// view, so nothing on screen carries a checkbox.
+// TestUXDailyUseSelectionCountsAreStatedOnce is this contract after session 4
+// rewrote it. A visual selection used to be counted in two places at once — the
+// context row under the title and the selection line the status channel held
+// sticky — and the context row is now the whole of it.
 //
-// Both statements are asserted, and so is the fact that they are two rows rather
-// than one wrapped one, because the change session 9 makes is a removal: a
-// contract that only checked the strip would keep passing after the footer line
-// went, and one that only checked the footer would keep passing after the strip
-// line did.
+// The frame it reads is the one where the counts are load-bearing rather than
+// decorative: every selected task folded out of view, so nothing on screen
+// carries a checkbox and the summary is the only thing that knows the gesture
+// has five targets.
 //
-// Session 4 owns this. It makes the top context row the sole persistent
-// summary, removes the selection write from the transient status channel, and
-// keeps the full total/visible/hidden breakdown in `Q`. It rewrites this
-// contract to say the summary appears exactly once, which row carries it, and
-// that a nonzero hidden count survives into the compact form.
-func TestUXDailyUseSelectionCountsAreStatedTwice(t *testing.T) {
+// Four claims, and each of them fails on its own. The summary appears exactly
+// once on screen, so a second statement anywhere is a finding. The channel that
+// used to carry the second one says nothing about a selection, which is what
+// keeps it free for the feedback a bulk gesture is about to write there. The
+// hidden count survives into both spellings the row can draw, the compact one
+// included, because that is the number a bulk gesture must not be surprised by
+// and shedding it is exactly what a narrow terminal would otherwise do. And `Q`
+// still carries all three numbers, since the visible half is written down
+// nowhere else.
+func TestUXDailyUseSelectionCountsAreStatedOnce(t *testing.T) {
 	for _, size := range uxDailyUseMatrixSizes {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
 			driver, view := uxDailyUseStagedDriver(t, "hidden-selection", size[0], size[1])
@@ -261,22 +264,62 @@ func TestUXDailyUseSelectionCountsAreStatedTwice(t *testing.T) {
 			}
 
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
-			strip := uxDailyUseScreenLine(t, screen, "MULTI-SELECT:")
-			if !strings.Contains(strip, fmt.Sprintf("%d selected", counts.Total)) ||
-				!strings.Contains(strip, fmt.Sprintf("(%d hidden)", counts.Hidden)) {
-				t.Fatalf("the strip summary does not carry %+v:\n%s", counts, strip)
+			if stated := strings.Count(screen, "MULTI-SELECT"); stated != 1 {
+				t.Fatalf("the selection is stated %d times, want exactly one:\n%s", stated, screen)
+			}
+			summary := uxDailyUseScreenLine(t, screen, "MULTI-SELECT")
+			if !strings.Contains(summary, fmt.Sprintf("(%d hidden)", counts.Hidden)) {
+				t.Fatalf("the summary drops the hidden half of %+v:\n%s", counts, summary)
 			}
 
-			footer := uxClarityFooter(driver)
-			wanted := fmt.Sprintf("%d total · %d visible · %d hidden", counts.Total, counts.Visible, counts.Hidden)
-			if !strings.Contains(footer, wanted) {
-				t.Fatalf("the footer does not restate the counts as %q:\n%s", wanted, footer)
+			// The context row is above the list, so the row carrying the summary is
+			// the one directly under the title rather than anything the shell pins at
+			// the bottom.
+			rows := strings.Split(screen, "\n")
+			if len(rows) < 2 || !strings.Contains(rows[1], "MULTI-SELECT") {
+				t.Fatalf("the summary is not the context row under the title:\n%s", screen)
 			}
-			if strings.Contains(footer, "MULTI-SELECT:") {
-				t.Fatalf("the strip summary has moved into the footer, so the two statements are one:\n%s", footer)
+			if footer := uxClarityFooter(driver); strings.Contains(footer, "Visual selection") {
+				t.Fatalf("the status channel still states the selection:\n%s", footer)
+			}
+			if view.StatusMessage != "" {
+				t.Fatalf("entering a selection wrote the status line: %q", view.StatusMessage)
+			}
+
+			// Both spellings are asked for directly, because whether this terminal is
+			// narrow enough to compact the row is the renderer's decision and the
+			// claim is about the compact form itself.
+			entry, ok := uxDailyUseSelectionEntry(view, size[0])
+			if !ok {
+				t.Fatal("the live axes carry no selection entry")
+			}
+			hidden := fmt.Sprintf("(%d hidden)", counts.Hidden)
+			if !strings.Contains(ansi.Strip(entry.Row), hidden) ||
+				!strings.Contains(ansi.Strip(entry.RowCompact), hidden) {
+				t.Fatalf("a spelling sheds the hidden count: full %q compact %q",
+					ansi.Strip(entry.Row), ansi.Strip(entry.RowCompact))
+			}
+
+			uxClarityPress(t, driver, uxClarityKeys("Q")...)
+			readout := driver.Observe(ObserveOptions{}).PlainScreen
+			breakdown := fmt.Sprintf("%d total · %d visible · %d hidden", counts.Total, counts.Visible, counts.Hidden)
+			if !strings.Contains(readout, breakdown) {
+				t.Fatalf("the readout does not carry %q:\n%s", breakdown, readout)
 			}
 		})
 	}
+}
+
+// uxDailyUseSelectionEntry is the selection axis as the context row and the
+// readout both read it, taken from the model's own description rather than
+// recovered from a rendered row.
+func uxDailyUseSelectionEntry(view *outliner.OutlinerModel, width int) (outliner.ViewContextEntry, bool) {
+	for _, entry := range view.BuildViewContextEntries(width) {
+		if entry.Label == "selection" {
+			return entry, true
+		}
+	}
+	return outliner.ViewContextEntry{}, false
 }
 
 // TestUXDailyUseWorkflowChordListsOneFlatRun records how the workflow chord

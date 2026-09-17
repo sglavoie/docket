@@ -339,7 +339,16 @@ that are not adjacent; movement never changes what `v` picked. `V` starts a
 fresh inclusive range at the cursor; movement recalculates it over task rows
 only, and `V` or `Esc` freezes it. `v` during a live range freezes it and drops
 the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
-selection survives at zero members until `Esc` leaves the mode. Entering
+selection survives at zero members until `Esc` leaves the mode.
+
+How many tasks you are holding is stated in exactly one place: the second header
+row, as `MULTI-SELECT: 5 selected`, with `(2 hidden)` after it whenever the view
+is not showing all of them. Nothing repeats it lower down, which is what keeps
+the status strip free for what your next bulk gesture has to say. A narrow
+terminal shortens that segment before it drops it, and the hidden count is the
+one thing it never gives up — a gesture about to reach rows you cannot see
+should say so. Press `Q` and, whenever something is hidden, all three numbers
+are written out there: total, visible, and hidden. Entering
 multi-select closes Peek. Structural, edit, Peek, and
 relation operations do not fall back silently to the cursor while a selection
 exists, and neither do the clipboard keys: they copy the selection, and an empty

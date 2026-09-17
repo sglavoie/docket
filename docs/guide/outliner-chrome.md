@@ -172,8 +172,9 @@ short list and never leaves blank padding under itself: it takes its rows from
 the task list, and in a narrow terminal it wraps rather than pushing the footer
 off screen. It clears itself after a couple of seconds, and immediately on a
 mode change, so a message naming a mode can never misreport the one you switched
-to. A live visual selection is the exception: its summary stays for as long as
-the selection does.
+to. A live visual selection is no exception, because the strip never carries one
+in the first place: the selection states itself on the second header row, once,
+and the strip is left free for the feedback your next bulk gesture writes there.
 
 The strip carries one line that is not feedback at all: while the workspace
 holds unresolved merge conflicts, an indicator counting them leads the strip and

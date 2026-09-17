@@ -13,10 +13,12 @@
     { "type": "key", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 5 selected" },
     { "type": "key", "label": "freeze it", "key": "esc" },
-    { "type": "assert", "assert": "contains", "value": "Visual selection: 5 total · 5 visible · 0 hidden" },
+    { "type": "assert", "label": "freezing the range changes nothing about what the summary says", "assert": "contains", "value": "MULTI-SELECT: 5 selected" },
+    { "type": "assert", "label": "and nothing hidden is a count the row does not spend a word on", "assert": "not_contains", "value": "hidden)" },
 
     { "type": "key", "label": "fold the task axis under the selection", "key": "t" },
-    { "type": "assert", "label": "the summary counts the rows that are there now, not the ones it was built from", "assert": "contains", "value": "Visual selection: 5 total · 3 visible · 2 hidden" },
+    { "type": "assert", "label": "the summary counts the rows that are there now, not the ones it was built from", "assert": "contains", "value": "MULTI-SELECT: 5 selected (2 hidden)" },
+    { "type": "assert", "label": "stated once, on the context row alone", "assert": "count_contains", "value": "MULTI-SELECT:", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "a copy takes the whole selection, hidden members included", "key": "y" },

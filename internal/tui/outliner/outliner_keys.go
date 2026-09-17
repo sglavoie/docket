@@ -67,7 +67,6 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.IsSearchMode() && key == "esc" {
 		if m.IsRangeSelectionActive() {
 			m.FreezeRangeSelection()
-			m.UpdateVisualSelectionStatus()
 			return m, nil
 		}
 		m.ClearSearch()
@@ -434,7 +433,6 @@ func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 		}},
 		{Active: func() bool { return m.IsRangeSelectionActive() }, Action: escActionFreezeRange, Clear: func() {
 			m.FreezeRangeSelection()
-			m.UpdateVisualSelectionStatus()
 		}},
 		{Active: func() bool { return m.MultiSelectMode }, Action: escActionClearSelection, Clear: func() {
 			m.ToggleMultiSelectMode()

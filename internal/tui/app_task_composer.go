@@ -253,7 +253,7 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			delete(outlinerView.Selected, identity)
 		}
 		if outlinerView.SelectedCount() == 0 {
-			outlinerView.ClearMultiSelect()
+			outlinerView.ExitMultiSelect()
 		}
 	}
 	clearOutliner(m.crossOutliner)
@@ -272,7 +272,7 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 	}
 
 	if m.crossOutliner != nil && multiSelectStateHasTaskID(&m.crossOutliner.MultiSelectState, selectedIDs) {
-		m.crossOutliner.ClearMultiSelect()
+		m.crossOutliner.ExitMultiSelect()
 	}
 
 	m.clearViewBulkTaskSelectionForRefs(presentation.ViewCrossProjectOutliner, selectedIDs)
@@ -286,7 +286,7 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt presentation.Presentatio
 	switch v := view.(type) {
 	case *outliner.OutlinerModel:
 		if multiSelectStateHasTaskID(&v.MultiSelectState, selectedIDs) {
-			v.ClearMultiSelect()
+			v.ExitMultiSelect()
 		}
 	}
 }

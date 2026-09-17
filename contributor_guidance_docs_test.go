@@ -1111,7 +1111,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// after the first badge. The mechanism lives in
 	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
 	// pay for it.
-	const budget = 68500
+	// Fifty-eighth raise, 68500 to 68700, for the one selection summary. It is a
+	// net raise of 200 bytes against a rule it replaces: the retired sentence said
+	// a view status is transient except the multi-select summary, and deleting it
+	// pays for part of what follows. 200 bytes buy two rules. The first is where a
+	// live selection is stated and where it is not — the context row's entry, one
+	// place, derived from the live rows rather than refreshed by a seam — and the
+	// negative half has to be a rule because the old exception is exactly what a
+	// reader would otherwise restore the moment a count looked stale. The second
+	// is what that one statement may shed: a compact row drops the word
+	// `selected`, never the hidden count, because the number a bulk gesture is
+	// about to act on is the one a narrow terminal must not quietly stop saying,
+	// and the visible half stays in `Q` where a nonzero hidden one gives it
+	// something to be read against. The clamp clause in the same paragraph is a
+	// third, much smaller, spend: `reseatQueryReadoutAfterPeel` running after the
+	// status its peel publishes is not derivable from "the clamp is pure and runs
+	// at every write", since the clamp only ever reduces and the strip is a row
+	// taller while it holds a message, so the ordering is what keeps a reader's
+	// window. The mechanism lives in docs/architecture/presentation-chrome.md.
+	const budget = 68700
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

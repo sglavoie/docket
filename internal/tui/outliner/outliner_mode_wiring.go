@@ -631,7 +631,6 @@ func (m *OutlinerModel) SelectOutlinerMode(id chrome.OutlinerModeID) (tea.Model,
 	// menu resolved against the old one is describing a view that is about to stop
 	// being on screen.
 	m.closeMenuBar()
-	m.UpdateVisualSelectionStatus()
 	anchor := m.captureModeCursor()
 	defer m.restoreModeCursor(anchor)
 

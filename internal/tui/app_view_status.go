@@ -736,8 +736,10 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 // this Update introduced. It reads the same before/after comparison as the
 // flash, since a new message is what both observe, but it decides for itself: a
 // view notice is quiet and still expires on time, so how long a message lasts
-// never follows from whether it animated. A sticky message (the multi-select
-// summary) schedules nothing and stays until its view clears it.
+// never follows from whether it animated. A sticky message schedules nothing and
+// stays until its view clears it; the Outliner writes none, because a live state
+// descriptor belongs on the context row rather than in the channel a piece of
+// feedback is about to want back.
 func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
 	after := m.captureFooterFlashProbe()
 	if after.view != before.view || after.viewStatusSeq == before.viewStatusSeq {

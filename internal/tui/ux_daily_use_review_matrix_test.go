@@ -96,7 +96,7 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "hidden-selection",
 		fixture: FixtureUXAcceptance,
-		records: "a visual selection whose members are all folded out of view, counted in the strip and again in the footer",
+		records: "a visual selection whose members are all folded out of view, so the summary is the only thing that knows the gesture has targets",
 		owners:  []int{4},
 		stage:   stageUXDailyUseHiddenSelection,
 	},

@@ -115,7 +115,7 @@ has found a regression.
 | --- | --- | --- |
 | ~~A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length.~~ Rewritten by session 2: the label follows the title in one measured column, so every title and every label starts in one column. | `TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn` | 2 |
 | ~~The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused.~~ Rewritten by session 3: a task row also wears one band under everything it drew, and the assertion is now that every foreground the unfocused row carried still reads on the focused one. | `TestUXDailyUseCursorRowWearsOneBandUnderItsContent` | 3 |
-| A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer. | `TestUXDailyUseSelectionCountsAreStatedTwice` | 4 |
+| ~~A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer.~~ Rewritten by session 4: the context row is the sole persistent summary, the status channel says nothing about a selection, the hidden count survives into the compact spelling, and `Q` keeps all three numbers. | `TestUXDailyUseSelectionCountsAreStatedOnce` | 4 |
 | The `w` chord lists all ten destinations as one flat run, with no Plan/Status division. | `TestUXDailyUseWorkflowChordListsOneFlatRun` | 5 |
 | Opening and closing the capture panel moves `ViewScrollOffset` even though the cursor never moved, so the round trip loses the scroll window. | `TestUXDailyUseHostedPanelResizeLosesTheScrollWindow` | 6 |
 | The capture panel's divider sits at a fixed row regardless of how many lines the draft holds. | `TestUXDailyUseCapturePanelHeightIgnoresItsDraft` | 7 |
@@ -137,8 +137,8 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | ~~"`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded"~~ Rewritten by session 2, which also added the `ComputeOutlinerRowLayout` geometry rule and raised the budget for it. | `CLAUDE.md` lines 627–649 | 2 |
 | ~~"`outlinerCursorRow` marks the cursor row in its first column and trailing fill alone, not its content"~~ Rewritten by session 3 to the band and its background precedence, and the budget raised for it. | `CLAUDE.md` line 532 | 3 |
 | ~~The cursor-row paint description — `cursorPaint`, the gutter truncation, the `trail()` pad~~ Rewritten by session 3, which added `rowBg`/`overTaskRow`, the band's derivation, `textfit.PaintBackground`, and why the bar is an attribute. | `docs/architecture/presentation-chrome.md` lines 479–512 | 3 |
-| "A view status is transient except the multi-select summary." | `CLAUDE.md` line 410 | 4 |
-| The multi-select summary as a second statement of an active selection | `docs/architecture/row-indicators.md` line 381; `docs/architecture/presentation-chrome.md` line 462 | 4 |
+| ~~"A view status is transient except the multi-select summary."~~ Rewritten by session 4: every view status is transient, the Outliner writes none about a selection, and the context row's `selection` entry is the one persistent summary. | `CLAUDE.md` line 409 | 4 |
+| ~~The multi-select summary as a second statement of an active selection~~ Rewritten by session 4: the sticky-`SetStatus` exception is gone, and the entry's own contract — hidden count in both spellings, whole breakdown in `Q` — is written down beside the other context entries instead. | `docs/architecture/row-indicators.md` line 422; `docs/architecture/presentation-chrome.md` line 36 | 4 |
 | The workflow chord row listing ten destinations flat, and "entering Doing or Waiting without a schedule offers an optional check-in" | `docs/guide/outliner-keys.md` line 12 | 5, 10 |
 | "`HostRows` is a pure function of the frame — never of the cursor, the draft, or the document" | `CLAUDE.md` line 363 | 6, 7 |
 | The `SEMANTIC` picker row precedence and `OrderedTaskTags` as the single chip order | `CLAUDE.md` lines 800, 816 | 8 |
@@ -146,7 +146,7 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | "Every launch starts Active Projects, All, with no restored navigation or selection" | `CLAUDE.md` lines 127–131 | 11 |
 | "the class `?` help and the footer ranks belong to" | `CLAUDE.md` line 193 | 12 |
 
-`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68500-byte rules-only
+`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68700-byte rules-only
 budget. A session that spends more of that budget than it reclaims raises the
 constant in its own diff and says why in the comment ledger above it, the way
 every previous raise did; nobody raises it on another session's behalf.
@@ -169,10 +169,10 @@ every previous raise did; nobody raises it on another session's behalf.
 
 ### Session 4 — One selection summary and accurate frame budgets
 
-- Go: `internal/tui/outliner_multiselect_layout_test.go`, `internal/tui/chrome/frame_budget_test.go`, `internal/tui/outliner_range_selection_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/outliner_multiselect_layout_test.go`, `internal/tui/chrome/frame_budget_test.go`, `internal/tui/outliner_range_selection_test.go`, `internal/tui/query_readout_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `hidden-selection`
-- Contracts: `CLAUDE.md` line 410; `docs/architecture/row-indicators.md` line 381; `docs/architecture/presentation-chrome.md` line 462
-- Landed: —
+- Contracts: `CLAUDE.md` line 409; `docs/architecture/row-indicators.md` line 422; `docs/architecture/presentation-chrome.md` line 36; `docs/guide/outliner-chrome.md` line 175; `docs/guide/outliner-rows.md` line 340
+- Landed: `OutlinerModel.UpdateVisualSelectionStatus` and its five call sites removed, along with the `setStatus` wrapper and the `ClearMultiSelect` alias, so no Outliner path writes a sticky status any more; `selectionContextEntry` rewritten to state `N selected` with `(M hidden)` retained in `RowCompact` whenever the hidden count is nonzero, and its `Value` made the unconditional total/visible/hidden breakdown `Q` reads; the exit paths no longer call `ClearStatus`, so leaving a selection leaves unrelated operation feedback standing. The frame budget needed no edit: `contextRowRows()` already charged the context row under `MultiSelectMode` and `StatusStripHeight` derives from `StatusStripBody`, so the row the strip stopped spending flowed to `ComputeOutlinerViewport` by construction — which `TestUXClarityIntegratedFrameSpendsEveryRowOnce` proves over the `combined-context` frame. Removing the sticky write did expose one measurement that had been reading the right window by accident: `PeelQueryReadoutRow` re-seated its offset between the axis write and the status it publishes, and only the selection summary sitting in the channel had been keeping that strip the right height. `reseatQueryReadoutAfterPeel` now runs after the status, since the render's clamp can only reduce an offset further and a position lost to a too-large window is lost for good; `TestQueryReadoutPeelReseatsAgainstTheStripItWillDraw` holds the ordering. `Q`'s selection value stayed conditional on a nonzero hidden count for the same budget reason: with nothing hidden the visible half is the total restated, and spelling it cost the readout two wrapped rows at 60 columns.
 
 ### Session 5 — Plan and Status presentation
 

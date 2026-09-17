@@ -121,15 +121,11 @@ func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
 func (m *OutlinerModel) RebuildRows() {
 	// The multi-select summary counts visible against hidden members, so it is a
 	// projection of the rows and not of the selection alone: a fold, a filter, or
-	// a mode change moves members across that line without touching the selection,
-	// and the summary is the one view status that is not transient, so a stale one
-	// stays on screen contradicting what a bulk action then reports. This is the
-	// one seam every mutation-driven projection change passes through, and
-	// updateVisualSelectionStatus is the only writer of this status, so refreshing
-	// here can overwrite nothing else. The render path calls
-	// crossProjectRebuildRows directly and is deliberately not covered: a View
-	// must not write status.
-	defer m.UpdateVisualSelectionStatus()
+	// a mode change moves members across that line without touching the selection.
+	// Nothing is refreshed here, because the summary is a context-row segment
+	// derived from the live rows at render time rather than a status message some
+	// seam has to keep current — which is what makes a stale count unreachable
+	// instead of merely refreshed at every seam that remembered to.
 	defer m.restoreTimeDrivenCursor()
 	m.SyncJumpProjection()
 	if m.Project == nil {

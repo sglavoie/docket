@@ -19,19 +19,20 @@
     { "type": "key", "key": "up" },
     { "type": "key", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 3 selected" },
-    { "type": "assert", "label": "the multi-select summary is the one non-transient view status", "assert": "contains", "value": "Visual selection: 3 total · 3 visible · 0 hidden" },
+    { "type": "assert", "label": "the context row is the sole persistent summary, so the counts are stated once", "assert": "count_contains", "value": "MULTI-SELECT:", "count": 1 },
+    { "type": "assert", "label": "and the status channel says nothing about a selection", "assert": "not_contains", "value": "Visual selection" },
     { "type": "assert", "assert": "count_contains", "value": "[x]", "count": 3 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+A takes every visible task in the projection", "key": "ctrl+a" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 15 selected" },
-    { "type": "assert", "assert": "contains", "value": "Visual selection: 15 total · 15 visible · 0 hidden" },
+    { "type": "assert", "assert": "count_contains", "value": "MULTI-SELECT:", "count": 1 },
     { "type": "assert", "label": "selection checkboxes cost a column every row pays", "assert": "count_contains", "value": "[x]", "count": 15 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Esc unwinds the selection before anything else", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
-    { "type": "assert", "assert": "not_contains", "value": "Visual selection:" },
+    { "type": "assert", "assert": "not_contains", "value": "Visual selection" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

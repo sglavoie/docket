@@ -330,7 +330,6 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreSelectAll:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.SelectAllVisible()
-			out.UpdateVisualSelectionStatus()
 		}
 	case operation.OperationCoreNamedLenses:
 		// The picker is a shell overlay rather than a route, so opening it mounts

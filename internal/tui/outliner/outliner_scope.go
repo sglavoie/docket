@@ -345,7 +345,7 @@ func (m *OutlinerModel) ResetToGlobalAll() {
 	m.Sort.Reset()
 	m.TreeSort.Reset()
 	if m.MultiSelectMode {
-		m.ClearMultiSelect()
+		m.ExitMultiSelect()
 		m.MultiSelectMode = false
 	}
 	m.clearSearchProjectionWithoutRestore()

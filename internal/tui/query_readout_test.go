@@ -618,3 +618,51 @@ func TestQueryReadoutPeelReloadsThePopulationThroughTheShell(t *testing.T) {
 		t.Fatalf("the shell = handled %v cmd %T, want the population reloaded", handled, reload)
 	}
 }
+
+// TestQueryReadoutPeelReseatsAgainstTheStripItWillDraw is the peel's re-seat
+// measured against the frame the peel produces rather than the one it passes
+// through. The readout's window is what the status strip leaves, and the strip is
+// a row taller while it holds a message — so a re-seat taken between the axis
+// write and the status the peel publishes clamps the offset against a window the
+// frame never draws.
+//
+// That is a one-way loss: the render's own clamp can only reduce an offset
+// further, so the reader's window ends at the top of a document that still
+// overflows and every landmark they had scrolled to is gone. The assertion is
+// therefore the whole of it — the peel leaves the window at the end of the
+// shortened document, which is where it already was.
+func TestQueryReadoutPeelReseatsAgainstTheStripItWillDraw(t *testing.T) {
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+
+	out := overflowingReadoutApp(t).crossOutliner
+	out.HandleQueryReadoutKey("end")
+	if above, below := readoutWindowPosition(t, out); above == 0 || below != 0 {
+		t.Fatalf("End left %d above · %d below, so this document cannot be scrolled "+
+			"away from the top and the peel below proves nothing", above, below)
+	}
+
+	// Peeling the mode row is the case that used to lose the window: it routes
+	// through SelectOutlinerMode, which clears the status on its way past.
+	before, _ := readoutWindowPosition(t, out)
+	out.HandleQueryReadoutKey("1")
+	above, below := readoutWindowPosition(t, out)
+	if below != 0 {
+		t.Fatalf("the peel left %d above · %d below, so the window was re-seated "+
+			"against a strip this frame does not draw:\n%s",
+			above, below, readoutBodyText(out, readoutResizeWidth))
+	}
+	// The window is not asserted to move by exactly one row, because the status
+	// this peel publishes takes a strip row of its own: the document loses a line
+	// and the window loses a line with it. What is asserted is that the reader
+	// kept a scrolled window at all rather than being sent back to row one.
+	if above == 0 {
+		t.Fatalf("the peel sent the window to the top of a document with %d rows "+
+			"below it, from %d above:\n%s", below, before,
+			readoutBodyText(out, readoutResizeWidth))
+	}
+	if !strings.HasPrefix(out.StatusMessage, "Peeled ") {
+		t.Fatalf("the peel published no status (%q), so the strip height it "+
+			"re-seated against was never in question", out.StatusMessage)
+	}
+}
