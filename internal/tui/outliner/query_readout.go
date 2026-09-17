@@ -438,9 +438,19 @@ func clampQueryReadoutOffset(offset, total, window int) int {
 // its own scroll offset, and the selection are all untouched by every key the
 // readout claims, which is what lets it borrow j/k and the paging keys while it
 // is open without the list moving underneath it.
+//
+// A relative move is measured from the line the reader can see, not from the
+// stored offset, and those two part company whenever the window or the document
+// grew since the last write: the render clamps without writing back, on purpose,
+// so a taller terminal leaves an offset past the new maximum standing. Adding
+// the delta to that stale number would spend the first k normalizing it and the
+// screen would not move, and would shorten a PgUp by however far the offset
+// overran. Clamping first is what makes every relative key travel its full
+// distance from what is drawn.
 func (m *OutlinerModel) scrollQueryReadout(delta int) {
 	document, window, _ := m.queryReadoutWindow(max(m.Width(), 1))
-	m.QueryReadout.Offset = clampQueryReadoutOffset(m.QueryReadout.Offset+delta, len(document), window)
+	visible := clampQueryReadoutOffset(m.QueryReadout.Offset, len(document), window)
+	m.QueryReadout.Offset = clampQueryReadoutOffset(visible+delta, len(document), window)
 }
 
 // scrollQueryReadoutTo seats the window at an absolute line, clamped. The two

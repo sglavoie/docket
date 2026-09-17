@@ -327,7 +327,16 @@ that chrome constant, so the readout can never take the list's last row.
 write, which is how a peel that shortened the document or a resize that shortened
 the window re-seats itself without either having to be noticed;
 `PeelQueryReadoutRow` still calls `scrollQueryReadout(0)` so the stored offset the
-next key adds to is already in range. `scrollQueryReadout` and
+next key adds to is already in range. That render-time clamp does not write back,
+on purpose, so a resize that *grew* the window leaves the stored offset past the
+new maximum while the screen already shows the clamped line;
+`scrollQueryReadout` therefore clamps before it adds its delta rather than after,
+which is what makes `j`, `k`, `PgUp`, and `PgDn` travel their full distance from
+the line the reader can see. Adding to the stale number instead would spend the
+first upward key normalizing it, leaving the readout where it was, and would
+shorten a page turn by however far the offset overran.
+`scrollQueryReadoutTo` is absolute and needs no such reading, since `Home` and
+`End` name a bound rather than a distance. `scrollQueryReadout` and
 `scrollQueryReadoutTo` write `QueryReadout.Offset` and nothing else, which is
 what lets the six scrolling keys borrow `j`/`k`, `PgUp`/`PgDn`, and `Home`/`End`
 while the cursor, the list's own offset, and the selection stay put. They are
