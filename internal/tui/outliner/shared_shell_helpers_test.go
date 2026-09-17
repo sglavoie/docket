@@ -803,10 +803,6 @@ func legacyStateForStatusSection(status models.WorkflowState, section string) mo
 // backgroundParams returns the SGR parameters lipgloss emits for a background
 // color. A gutter piece merges its own foreground into one sequence, so a test
 // asks for the parameters rather than a standalone escape.
-
-// backgroundParams returns the SGR parameters lipgloss emits for a background
-// color. A gutter piece merges its own foreground into one sequence, so a test
-// asks for the parameters rather than a standalone escape.
 func backgroundParams(t *testing.T, c color.Color) string {
 	t.Helper()
 	rendered := lipgloss.NewStyle().Background(c).Render(" ")
@@ -815,6 +811,20 @@ func backgroundParams(t *testing.T, c color.Color) string {
 		t.Fatalf("background render carried no SGR sequence: %q", rendered)
 	}
 	return strings.TrimPrefix(open, "\x1b[")
+}
+
+// withoutTheCursorBand strips the band's own arming sequences off a marked row,
+// leaving the bytes the row drew. PaintBackground re-arms the band after every
+// reset the content carries, so a segment assembled from several styles — a due
+// chip is a padded run of them — stops being one contiguous string on the line
+// even though each of its pieces still carries its own style whole. Removing the
+// arms is how a test asks about the segment instead of about the band.
+func withoutTheCursorBand(t *testing.T, line string) string {
+	t.Helper()
+	for _, bg := range []color.Color{theme.ColorCursorRowBg, theme.ColorFlashDimBg} {
+		line = strings.ReplaceAll(line, "\x1b["+backgroundParams(t, bg)+"m", "")
+	}
+	return line
 }
 
 func cursorHighlightOutliner(t *testing.T, tasks ...*models.Task) (*OutlinerModel, *models.Project) {

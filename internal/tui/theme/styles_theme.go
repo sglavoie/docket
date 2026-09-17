@@ -35,6 +35,15 @@ const (
 	// at a tint of the cursor color.
 	cursorTrailDarkFactor  = 0.8
 	cursorTrailLightFactor = 0.5
+
+	// The band under the whole marked task row is the quietest of the three,
+	// because it is the one that has to sit under text without changing what the
+	// text says: every foreground the row earned — the state badge, the priority
+	// badge, the deadline, the owed review, the reference census, a search
+	// highlight — is read on top of it. It stops well short of the trail, which
+	// covers no drawn column and can afford to be the darkest thing on the row.
+	cursorRowDarkFactor  = 0.4
+	cursorRowLightFactor = 0.55
 )
 
 // ThemeConfig identifies one of the two maintained themes.
@@ -97,9 +106,11 @@ func ApplyTheme(tc ThemeConfig) {
 	// and each step's size flips with it.
 	pop, dim := lightenHex, darkenHex
 	barFactor, flashFactor, dimFactor := cursorBarDarkFactor, cursorFlashDarkFactor, cursorTrailDarkFactor
+	rowFactor := cursorRowDarkFactor
 	if tc.Name == "light" {
 		pop, dim = darkenHex, lightenHex
 		barFactor, flashFactor, dimFactor = cursorBarLightFactor, cursorFlashLightFactor, cursorTrailLightFactor
+		rowFactor = cursorRowLightFactor
 	}
 	effectiveBar := pop(effectiveBg, barFactor)
 	effectiveFlash := pop(effectiveBg, flashFactor)
@@ -111,6 +122,7 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorCursorBarFg = lipgloss.Color(effectiveBgColor)
 	ColorFlashBg = lipgloss.Color(effectiveFlash)
 	ColorSelectedDimBg = lipgloss.Color(dim(effectiveBg, dimFactor))
+	ColorCursorRowBg = lipgloss.Color(dim(effectiveBg, rowFactor))
 	ColorFlashDimBg = lipgloss.Color(dim(effectiveFlash, dimFactor))
 	if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
@@ -128,16 +140,15 @@ func ApplyTheme(tc ThemeConfig) {
 	SelectionRowStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg)
 
-	CursorBarStyle = lipgloss.NewStyle().
-		Background(ColorCursorBarBg).
-		Foreground(ColorCursorBarFg)
+	CursorBarStyle = cursorBarStyle(ColorCursorBarBg, ColorCursorBarFg)
+
+	CursorRowStyle = lipgloss.NewStyle().
+		Background(ColorCursorRowBg)
 
 	CursorTrailStyle = lipgloss.NewStyle().
 		Background(ColorSelectedDimBg)
 
-	CursorFlashBarStyle = lipgloss.NewStyle().
-		Background(ColorFlashBg).
-		Foreground(ColorCursorBarFg)
+	CursorFlashBarStyle = cursorBarStyle(ColorFlashBg, ColorCursorBarFg)
 
 	CursorFlashRowStyle = lipgloss.NewStyle().
 		Background(ColorFlashBg)

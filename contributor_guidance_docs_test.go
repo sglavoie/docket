@@ -1090,7 +1090,28 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// naming only the constant would read as a cap. The mechanism lives in
 	// docs/architecture/row-indicators.md. No rule elsewhere was trimmed to pay
 	// for it.
-	const budget = 68000
+	// Fifty-seventh raise, 68000 to 68500, for the band under the current task
+	// row. 500 bytes buy three rules. The first is which rows wear it: the band
+	// says "this is the work you are on", so it is a task row's alone and a
+	// section or project header keeps the bar by itself, which is not derivable
+	// from a rule that only said the cursor is marked. The second is background
+	// precedence, and it has to be written down because two backgrounds already
+	// existed and neither reading is obviously wrong — the overdue tint over the
+	// band loses the cursor on exactly the rows a reader is hunting through, and
+	// the tint under it is invisible, so the rule states that the band owns the
+	// marked row and that the deadline keeps saying so through the badge, the
+	// hero emphasis, and its own text color. The third is why the mark is an
+	// attribute rather than a color: everything else the row wears is a hue, and
+	// a profile that drops every hue would otherwise leave the cursor's column an
+	// ordinary blank, which is the one failure a band makes more likely rather
+	// than less. `textfit.PaintBackground` is named in the same rule because "the
+	// foregrounds survive" is a claim about how the band is laid down, not a
+	// preference: a style applied over assembled text ends at that text's first
+	// reset, so any implementation that does not re-arm silently drops the band
+	// after the first badge. The mechanism lives in
+	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
+	// pay for it.
+	const budget = 68500
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

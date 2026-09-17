@@ -88,6 +88,9 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	}
 }
 
+// TestCursorRowKeepsItsSearchMatchHighlight holds the highlight through the
+// band: the marked row draws the same highlighted run an unmarked one does, with
+// the band under it and nothing of it rewritten.
 func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship the release", Priority: 3}
 	outlinerView, project := cursorHighlightOutliner(t, task)
@@ -101,9 +104,26 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 		t.Fatal("fixture query matched nothing")
 	}
 	want := textfit.HighlightText(task.Title, positions, theme.NormalStyle)
-	if !strings.Contains(line, want) {
+	if !strings.Contains(withoutTheCursorBand(t, line), want) {
 		t.Fatalf("cursor row dropped its search-match highlight:\n%q", line)
 	}
+	if !strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {
+		t.Fatalf("cursor row carried the highlight but no band:\n%q", line)
+	}
+}
+
+// withoutTheCursorBand strips the band's own arming sequences off a marked row,
+// leaving the bytes the row drew. PaintBackground re-arms the band after every
+// reset the content carries, so a run rendered one rune at a time — a search
+// match, a struck-through canceled title — is no longer one contiguous string on
+// the line even though every rune of it still carries its own style whole.
+// Removing the arms is how a test asks about the run instead of about the band.
+func withoutTheCursorBand(t *testing.T, line string) string {
+	t.Helper()
+	for _, bg := range []color.Color{theme.ColorCursorRowBg, theme.ColorFlashDimBg} {
+		line = strings.ReplaceAll(line, "\x1b["+backgroundParams(t, bg)+"m", "")
+	}
+	return line
 }
 
 // TestCursorRowIsExactlyRowWidth holds the contract attachScrollbarAtWidth
@@ -155,12 +175,14 @@ func TestCursorRowIsExactlyRowWidth(t *testing.T) {
 
 // TestCursorRowContentReachingTheEdgeGainsNoFill keeps the trailing fill honest:
 // it only ever covers columns the row left blank, so a row whose content runs to
-// the edge is not widened and wears no dim tint at all.
+// the edge is not widened past it and spends no column on padding. The fill and
+// the band are one color on a task row now, so the claim is read off the drawn
+// text rather than off a background: the last column carries content.
 func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 	task := &models.Task{
 		ID:      "t1",
 		ShortID: 1,
-		Title:   strings.Repeat("long title ", 12),
+		Title:   strings.Repeat("long-title-", 12),
 	}
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
@@ -170,8 +192,8 @@ func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 	if got := lipgloss.Width(line); got != 60 {
 		t.Fatalf("full-width cursor row rendered %d columns", got)
 	}
-	if strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
-		t.Fatalf("a cursor row whose content fills the width still painted a trailing fill:\n%q", line)
+	if plain := ansi.Strip(line); strings.HasSuffix(plain, " ") {
+		t.Fatalf("a cursor row whose content fills the width still padded its last column:\n%q", plain)
 	}
 }
 
@@ -198,40 +220,58 @@ func cursorRowsByType(outlinerView *outliner.OutlinerModel, project *models.Proj
 }
 
 // TestCursorRowMarksItsBarAndTrail is the invariant itself: every Outliner row
-// type says where the cursor is with a bright leading bar and a dim trailing
-// fill, and never by repainting what sits between them. Both themes are checked
-// because `T` derives the pair from the theme's own paper in opposite directions.
+// type says where the cursor is with a leading bar, a task row carries the band
+// across the width behind it, and every other row type keeps the dim trailing
+// fill it always had. Both themes are checked because `T` derives all three from
+// the theme's own paper in opposite directions.
+//
+// The band is a task row's alone. A section header, a project header and a
+// checklist row are not the current *task*, so tinting them would make the band
+// mean "the cursor is here" — which is the bar's job — rather than "this is the
+// work you are on".
 func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
 			task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 			outlinerView, project := cursorHighlightOutlinerTheme(t, themeName, task)
-			barBg := backgroundParams(t, theme.ColorCursorBarBg)
+			band := backgroundParams(t, theme.ColorCursorRowBg)
 			trailBg := backgroundParams(t, theme.ColorSelectedDimBg)
-			if barBg == trailBg {
-				t.Fatalf("the %s theme derived one color for both cursor regions: %q", themeName, barBg)
+			if band == trailBg {
+				t.Fatalf("the %s theme derived one color for the band and the trail: %q", themeName, band)
 			}
 
 			for name, line := range cursorRowsByType(outlinerView, project, task) {
-				if !strings.Contains(line, barBg) {
-					t.Fatalf("%s cursor row did not paint its bar:\n%q", name, line)
+				if got := cursorMarks(line); got != 1 {
+					t.Fatalf("%s cursor row carries %d bars, want 1:\n%q", name, got, line)
 				}
-				if !strings.Contains(line, trailBg) {
-					t.Fatalf("%s cursor row did not paint its trailing fill:\n%q", name, line)
+				wantBand := name == "task"
+				if got := strings.Contains(line, band); got != wantBand {
+					t.Fatalf("%s cursor row band = %v, want %v:\n%q", name, got, wantBand, line)
+				}
+				if got := strings.Contains(line, trailBg); got == wantBand {
+					t.Fatalf("%s cursor row trailing fill = %v, want %v:\n%q", name, got, !wantBand, line)
 				}
 			}
 		})
 	}
 }
 
+// cursorMarks counts the inverse-video sequences on a line, which is how many
+// cursor bars it drew. The attribute is what makes the bar the one mark that
+// survives a profile carrying no color, so counting it is also the one count that
+// does not depend on which theme derived which hue.
+func cursorMarks(line string) int {
+	return strings.Count(line, "\x1b[7")
+}
+
 // TestCursorBarIsOneColumn holds the mark's whole shape. Only the row's leftmost
-// column is bright, and it is the same column on every row type — a blank margin
-// everywhere but the section header, whose fold arrow it reverses. Painting a
-// second column is what made the mark compete with the row it points at.
+// column is inverted, and it is the same column on every row type — a blank
+// margin everywhere but the section header, whose fold arrow it reverses.
+// Painting a second column is what made the mark compete with the row it points
+// at.
 func TestCursorBarIsOneColumn(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, task)
-	barBg := backgroundParams(t, theme.ColorCursorBarBg)
 	column0 := map[string]string{
 		"task":           theme.RenderCursorPrefix(),
 		"checklist":      theme.RenderCursorPrefix(),
@@ -247,16 +287,77 @@ func TestCursorBarIsOneColumn(t *testing.T) {
 		if !strings.HasPrefix(line, bar) {
 			t.Fatalf("%s cursor row does not open with its bar:\n%q", name, line)
 		}
-		if got := strings.Count(line, barBg); got != 1 {
-			t.Fatalf("%s cursor row painted the bar color in %d places, want 1:\n%q", name, got, line)
+		if got := cursorMarks(line); got != 1 {
+			t.Fatalf("%s cursor row inverted %d columns, want 1:\n%q", name, got, line)
 		}
 	}
 }
 
-// TestCursorRowLeavesTheRestOfItsGutterOrdinary is the other half of the shape:
-// the connectors, fold arrow and multi-select box past column 0 keep the colors
-// they wear on every other row, so only the bar moves with the cursor.
-func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
+// TestCursorBarSurvivesARowWithoutColor is the monochrome half of the mark, one
+// level up from the theme's own contract: the band, the badges and the deadline
+// color all go when a terminal paints nothing, so the row is held to still saying
+// where the cursor is — and to saying it only there.
+func TestCursorBarSurvivesARowWithoutColor(t *testing.T) {
+	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
+
+	marked := uxClarityMonochrome(t, outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil))
+	ordinary := uxClarityMonochrome(t, outlinerView.RenderOutlinerTaskRow(row, false, 80, 0, nil))
+
+	if got := strings.Count(marked, "\x1b[7m"); got != 1 {
+		t.Fatalf("the marked row kept %d inverted columns without color, want 1:\n%q", got, marked)
+	}
+	if strings.Contains(ordinary, "\x1b[7m") {
+		t.Fatalf("an ordinary row is inverted too, so the mark says nothing:\n%q", ordinary)
+	}
+	if plainRowText(marked) != plainRowText(ordinary) {
+		t.Fatalf("the mark changed what the row says:\nmarked   %q\nordinary %q",
+			plainRowText(marked), plainRowText(ordinary))
+	}
+}
+
+// TestCursorRowStaysTellableFromAVisualSelection keeps the two axes apart. A row
+// can be the one you are on, a member of an explicit selection, both, or
+// neither, and the band and the checkbox are what say which: a selected row the
+// cursor left wears its `[x]` and no band, and the row the cursor is on wears the
+// band whether or not it was selected.
+func TestCursorRowStaysTellableFromAVisualSelection(t *testing.T) {
+	selected := &models.Task{ID: "t1", ShortID: 1, Title: "Selected", WorkflowState: models.StateBacklog}
+	elsewhere := &models.Task{ID: "t2", ShortID: 2, Title: "Elsewhere", WorkflowState: models.StateBacklog}
+	outlinerView, project := cursorHighlightOutliner(t, selected, elsewhere)
+	selectedRow := outliner.OutlinerRow{Task: selected, ProjectID: project.ID}
+	cursorRow := outliner.OutlinerRow{Task: elsewhere, ProjectID: project.ID}
+	outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(selectedRow)})
+
+	band := backgroundParams(t, theme.ColorCursorRowBg)
+	left := outlinerView.RenderOutlinerTaskRow(selectedRow, false, 80, 0, nil)
+	if strings.Contains(left, band) {
+		t.Fatalf("a selected row the cursor left wears the band:\n%q", left)
+	}
+	if !strings.Contains(ansi.Strip(left), "[x]") {
+		t.Fatalf("a selected row the cursor left lost its checkbox:\n%q", ansi.Strip(left))
+	}
+
+	under := outlinerView.RenderOutlinerTaskRow(cursorRow, true, 80, 0, nil)
+	if !strings.Contains(under, band) {
+		t.Fatalf("the cursor row wears no band while a selection stands:\n%q", under)
+	}
+	if strings.Contains(ansi.Strip(under), "[x]") {
+		t.Fatalf("an unselected cursor row claims membership in the selection:\n%q", ansi.Strip(under))
+	}
+
+	both := outlinerView.RenderOutlinerTaskRow(selectedRow, true, 80, 0, nil)
+	if !strings.Contains(both, band) || !strings.Contains(ansi.Strip(both), "[x]") {
+		t.Fatalf("a selected row under the cursor states only one of the two:\n%q", both)
+	}
+}
+
+// TestCursorRowKeepsItsGutterForegroundsOnTheBand is the other half of the
+// shape: the connectors, fold arrow and multi-select box past column 0 keep the
+// foregrounds they wear on every other row, and the band is the only thing the
+// cursor adds to them. Only the bar replaces what it covers.
+func TestCursorRowKeepsItsGutterForegroundsOnTheBand(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	prefix := "│   ├── "
@@ -265,10 +366,12 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 
 	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
+	banded := func(style lipgloss.Style) lipgloss.Style {
+		return style.Background(theme.ColorCursorRowBg)
+	}
 	for name, want := range map[string]string{
-		"multi-select box":  theme.SelectionCheckStyle.Render("[x]"),
-		"tree connectors":   theme.MutedStyle.Render(prefix),
-		"unpainted spacing": theme.SelectionCheckStyle.Render("[x]") + " " + theme.MutedStyle.Render(prefix),
+		"multi-select box": banded(theme.SelectionCheckStyle).Render("[x]"),
+		"tree connectors":  banded(theme.MutedStyle).Render(prefix),
 	} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("cursor row repainted its %s:\n%q", name, line)
@@ -279,10 +382,12 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 	}
 }
 
-// TestCursorRowKeepsItsRowTint records the improvement the seam buys: the cursor
-// owns the bar and the fill, not the content, so an overdue row is still visibly
-// overdue while you stand on it.
-func TestCursorRowKeepsItsRowTint(t *testing.T) {
+// TestCursorRowBandOwnsTheBackgroundItStandsOn is background precedence, stated
+// once: the band is the marked row's background and the overdue row tint is not
+// applied over or under it. Nothing about the deadline is lost to that, which is
+// the other half of the claim — the tint was never the only thing saying the task
+// is late, and the badge that says so keeps its own colors on top of the band.
+func TestCursorRowBandOwnsTheBackgroundItStandsOn(t *testing.T) {
 	overdue := time.Now().AddDate(0, 0, -3)
 	task := &models.Task{
 		ID: "overdue", ShortID: 2, Title: "Past due", DueDate: &overdue,
@@ -291,13 +396,78 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 
 	outlinerView, project := cursorHighlightOutliner(t, task)
 	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
-	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
+	marked := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
+	ordinary := outlinerView.RenderOutlinerTaskRow(row, false, 80, 0, nil)
 
-	if !strings.Contains(line, backgroundParams(t, theme.OverdueRowStyle.GetBackground())) {
-		t.Fatalf("overdue cursor row dropped its row tint:\n%q", line)
+	tint := backgroundParams(t, theme.OverdueRowStyle.GetBackground())
+	if !strings.Contains(ordinary, tint) {
+		t.Fatalf("the overdue row wears no tint to begin with:\n%q", ordinary)
 	}
-	if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
-		t.Fatalf("overdue cursor row dropped its bar:\n%q", line)
+	if strings.Contains(marked, tint) {
+		t.Fatalf("the marked overdue row wears both the band and the row tint:\n%q", marked)
+	}
+	if !strings.Contains(marked, backgroundParams(t, theme.ColorCursorRowBg)) {
+		t.Fatalf("the marked overdue row wears no band:\n%q", marked)
+	}
+	assertCursorRowKeepsItsForegrounds(t, marked, ordinary)
+}
+
+// TestCursorRowKeepsEverySemanticColorOnItsBand is the whole legibility claim in
+// one row. State, priority, a missed deadline, an owed review, a reference
+// census, tags and a search match all reach a row as foregrounds and badges of
+// their own, and the band is drawn under every one of them, so a row carrying all
+// of them at once paints exactly the colors it painted unmarked. Both themes are
+// checked because each derives its own band, and a band that swallowed a signal
+// would swallow a different one in each.
+func TestCursorRowKeepsEverySemanticColorOnItsBand(t *testing.T) {
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			overdue := time.Now().AddDate(0, 0, -3)
+			task := &models.Task{
+				ID: "loud", ShortID: 3, Title: "Ship the release",
+				Priority: 1, DueDate: &overdue, Review: true,
+				Tags:          []string{"infra"},
+				WorkflowState: models.StateWaiting,
+				Dependencies:  []models.TaskReference{{ProjectID: "project", TaskID: "t1"}},
+			}
+			blocker := &models.Task{ID: "t1", ShortID: 1, Title: "Land the branch", WorkflowState: models.StateBacklog}
+			outlinerView, project := cursorHighlightOutlinerTheme(t, themeName, blocker, task)
+			outlinerView.SetSearchQuery("release")
+			row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
+
+			marked := outlinerView.RenderOutlinerTaskRow(row, true, 120, 0, nil)
+			ordinary := outlinerView.RenderOutlinerTaskRow(row, false, 120, 0, nil)
+
+			if !strings.Contains(marked, backgroundParams(t, theme.ColorCursorRowBg)) {
+				t.Fatalf("the marked row wears no band:\n%q", marked)
+			}
+			assertCursorRowKeepsItsForegrounds(t, marked, ordinary)
+			if plainRowText(marked) != plainRowText(ordinary) {
+				t.Fatalf("the band changed what the row says:\nmarked   %q\nordinary %q",
+					plainRowText(marked), plainRowText(ordinary))
+			}
+		})
+	}
+}
+
+// plainRowText is what a row says, with the trailing columns left out: a marked
+// row pads its width and an unmarked one stops at its content, and that
+// difference is the fill rather than anything the row spells.
+func plainRowText(line string) string {
+	return strings.TrimRight(ansi.Strip(line), " ")
+}
+
+// assertCursorRowKeepsItsForegrounds holds a marked row to every foreground the
+// same row painted unmarked. The set is taken off the unmarked render rather than
+// named, because the row's signals are whatever it earned and a named list would
+// stop covering one the moment the row's ladder dropped it.
+func assertCursorRowKeepsItsForegrounds(t *testing.T, marked, ordinary string) {
+	t.Helper()
+	for _, foreground := range uxDailyUseForegrounds(t, ordinary) {
+		if !strings.Contains(marked, foreground) {
+			t.Fatalf("the band swallowed the %s the row paints unmarked:\nmarked   %q\nordinary %q",
+				foreground, marked, ordinary)
+		}
 	}
 }
 
@@ -355,8 +525,10 @@ func TestWaitingRowKeepsTheOverdueTintItEarns(t *testing.T) {
 }
 
 // TestCursorFlashWidensTheMark records what a pulse spends: the whole gutter
-// floods rather than the bar changing hue, so a flash reads as more of the same
-// mark instead of a different one.
+// floods and the band brightens with it, so a flash reads as more of the same
+// mark instead of a different one. The bar keeps its own shape through it — it is
+// the flash's colors under the same inverted column — which is what keeps the
+// mark in one place while a pulse is running and on a terminal with no color.
 func TestCursorFlashWidensTheMark(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, task)
@@ -366,20 +538,22 @@ func TestCursorFlashWidensTheMark(t *testing.T) {
 
 	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
-	flashBg := backgroundParams(t, theme.ColorFlashBg)
-	if got := strings.Count(line, flashBg); got < 2 {
-		t.Fatalf("flashing cursor row painted %d gutter pieces, want the bar and the columns past it:\n%q", got, line)
+	if !strings.HasPrefix(line, theme.CursorFlashBarStyle.Render(theme.RenderCursorPrefix())) {
+		t.Fatalf("flashing cursor row does not open with its bar:\n%q", line)
+	}
+	if got := cursorMarks(line); got != 1 {
+		t.Fatalf("flashing cursor row inverted %d columns, want 1:\n%q", got, line)
 	}
 	if !strings.Contains(line, theme.MutedStyle.Background(theme.ColorFlashBg).Render(prefix)) {
 		t.Fatalf("flashing cursor row left its tree connectors unpainted:\n%q", line)
 	}
 	if !strings.Contains(line, backgroundParams(t, theme.ColorFlashDimBg)) {
-		t.Fatalf("flashing cursor row kept the resting trailing fill:\n%q", line)
+		t.Fatalf("flashing cursor row kept the resting band:\n%q", line)
 	}
-	if theme.ColorCursorBarBg != theme.ColorFlashBg && strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
-		t.Fatalf("flashing cursor row painted the resting bar color too:\n%q", line)
+	if strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {
+		t.Fatalf("flashing cursor row painted both bands at once:\n%q", line)
 	}
 	if strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
-		t.Fatalf("flashing cursor row painted both trailing fills at once:\n%q", line)
+		t.Fatalf("flashing cursor row painted the resting trailing fill:\n%q", line)
 	}
 }

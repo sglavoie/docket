@@ -68,16 +68,40 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	return chrome.AttachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
 }
 
-// cursorPaint decides how one row wears the cursor. One call answers both
-// whether a row is the cursor and whether it is mid-flash, so no renderer reads
-// m.CursorFlash on its own.
+// cursorPaint decides how one row wears the cursor. One call answers whether a
+// row is the cursor, whether it is mid-flash, and what background the whole row
+// carries, so no renderer reads m.CursorFlash on its own and no renderer decides
+// a row background beside this.
 type cursorPaint struct {
 	marked bool
 	flash  bool
+	// rowBg is the band the marked row wears under everything it drew, from the
+	// column after the bar to the end of the line. Nil is a row that wears none,
+	// which is every row the cursor is not on and every row kind that did not ask
+	// for one — the band is a task-row affordance, so a header, a checklist item
+	// and a note row keep the mark they already had.
+	rowBg color.Color
 }
 
 func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {
 	return cursorPaint{marked: selected, flash: selected && m.CursorFlash}
+}
+
+// overTaskRow is the opt-in: a marked task row carries a background for its whole
+// width, because a task row is the one row kind that runs the full width of the
+// terminal with the cursor somewhere in the middle of it. A flash takes the
+// flash's own dim rather than the resting band, so the pulse widens and brightens
+// one mark instead of introducing a second.
+func (p cursorPaint) overTaskRow() cursorPaint {
+	switch {
+	case !p.marked:
+		return p
+	case p.flash:
+		p.rowBg = theme.ColorFlashDimBg
+	default:
+		p.rowBg = theme.ColorCursorRowBg
+	}
+	return p
 }
 
 // bar renders the row's leftmost column, the whole of the resting mark. It is
@@ -97,21 +121,27 @@ func (p cursorPaint) bar(style lipgloss.Style, text string) string {
 	}
 }
 
-// gutterBg names the background the gutter columns after the bar carry. At rest
-// there is none — the connectors, the fold arrow and the multi-select box stay
-// ordinary, because widening the mark is what made it compete with the row. A
-// flash spends exactly that: it floods the whole gutter, which reads as more of
-// the same mark rather than a different one.
+// gutterBg names the background the gutter columns after the bar carry. On a row
+// wearing a band it is that band, because the band is the row and a gutter left
+// out of it would be a hole between the mark and the work. On a row wearing none
+// there is nothing at rest — the connectors, the fold arrow and the multi-select
+// box stay ordinary. A flash spends exactly that: it floods the whole gutter,
+// which reads as more of the same mark rather than a different one.
 func (p cursorPaint) gutterBg() color.Color {
-	if !p.flash {
-		return nil
+	if p.flash {
+		return theme.ColorFlashBg
 	}
-	return theme.ColorFlashBg
+	return p.rowBg
 }
 
-// trail styles the columns past the row's content, dim enough to read as the
-// cursor's reach rather than compete with the bar for the eye.
+// trail styles the columns past the row's content. A banded row continues its
+// band, so the row is one unbroken block the eye can follow to the edge; a row
+// with no band keeps the dim fill, which reads as the cursor's reach rather than
+// competing with the bar for the eye.
 func (p cursorPaint) trail() lipgloss.Style {
+	if p.rowBg != nil {
+		return lipgloss.NewStyle().Background(p.rowBg)
+	}
 	if p.flash {
 		return theme.CursorFlashTrailStyle
 	}
@@ -136,18 +166,25 @@ func gutterSpace(bg color.Color) string {
 }
 
 // outlinerCursorRow marks the cursor without repainting it. The gutter arrives
-// already painted — its first column bright, the rest of it ordinary — and the
-// columns past the content take a dim fill, so every color the row earned
-// survives under the cursor and no drawn column is covered. The result is always
-// exactly rowWidth wide, which is what attachScrollbarAtWidth expects.
-// Truncation only ever removes from the end, so clamping the content to the
-// columns the gutter leaves cuts where a clamp of the whole line would.
+// already painted — its first column bright, the rest of it carrying the row's
+// band or nothing — and the columns past the content continue whichever of the
+// two the row wears, so every color the row earned survives under the cursor and
+// no drawn column is covered. The result is always exactly rowWidth wide, which
+// is what attachScrollbarAtWidth expects. Truncation only ever removes from the
+// end, so clamping the content to the columns the gutter leaves cuts where a
+// clamp of the whole line would.
+//
+// The band goes under the content after that clamp and never before it: painting
+// first would leave the sequences this seam added inside the run the clamp then
+// cuts, and the band is the one thing on the row that has to reach its last
+// column.
 func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) string {
 	gutterWidth := lipgloss.Width(gutter)
 	if rowWidth <= gutterWidth {
 		return textfit.TruncateToVisualWidth(gutter, rowWidth)
 	}
-	content = textfit.TruncateToVisualWidth(content, rowWidth-gutterWidth)
+	content = textfit.PaintBackground(
+		textfit.TruncateToVisualWidth(content, rowWidth-gutterWidth), paint.rowBg)
 	fill := rowWidth - gutterWidth - lipgloss.Width(content)
 	if fill <= 0 {
 		return gutter + content

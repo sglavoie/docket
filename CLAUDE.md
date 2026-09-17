@@ -529,11 +529,18 @@ the gesture, so its toast names the outcome instead through `RecoveryContext` â€
 one deadline, or changed and cleared counts including hidden members â€” and a
 re-render of that same toast keeps it.
 
-`outlinerCursorRow` marks the cursor row in its first column and trailing fill
-alone, not its content and not the gutter between; only a flash widens it. Each
-renderer supplies that split via `cursorPaint` and paints per piece, never over
-assembled text; the row is exactly `rowWidth`. `SelectedLine` stays the
-whole-line authority on every other list surface.
+`outlinerCursorRow` marks the cursor row with one inverse-video column, and a
+task row alone also wears `cursorPaint.rowBg` under everything it drew; a flash
+widens both. That band is the whole of background precedence: the overdue tint
+and the zebra stripe are not applied over or under it, so `taskRowTint` answers
+an unmarked row only, while every foreground the row earned still reads on top,
+since `textfit.PaintBackground` re-arms after each reset instead of rewriting a
+byte. The bar is an attribute, so it is the one mark that survives a profile
+carrying no color, and no other row type takes the band: a header is where the
+cursor is, not which work you are on. Each renderer supplies that split via
+`cursorPaint` and paints per piece, never over assembled text; the row is exactly
+`rowWidth`. `SelectedLine` stays the whole-line authority on every other list
+surface.
 
 Row and Peek budget:
 

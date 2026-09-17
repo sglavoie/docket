@@ -114,7 +114,7 @@ has found a regression.
 | Recorded expectation | Test | Owner |
 | --- | --- | --- |
 | ~~A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length.~~ Rewritten by session 2: the label follows the title in one measured column, so every title and every label starts in one column. | `TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn` | 2 |
-| The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused. | `TestUXDailyUseCursorRowLeavesItsContentUnstyled` | 3 |
+| ~~The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused.~~ Rewritten by session 3: a task row also wears one band under everything it drew, and the assertion is now that every foreground the unfocused row carried still reads on the focused one. | `TestUXDailyUseCursorRowWearsOneBandUnderItsContent` | 3 |
 | A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer. | `TestUXDailyUseSelectionCountsAreStatedTwice` | 4 |
 | The `w` chord lists all ten destinations as one flat run, with no Plan/Status division. | `TestUXDailyUseWorkflowChordListsOneFlatRun` | 5 |
 | Opening and closing the capture panel moves `ViewScrollOffset` even though the cursor never moved, so the round trip loses the scroll window. | `TestUXDailyUseHostedPanelResizeLosesTheScrollWindow` | 6 |
@@ -135,8 +135,8 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | ~~"each of its task rows carries a compact `[label]` ahead of the title"~~ Rewritten by session 2 to "in a column after the title". | `docs/architecture/tui-architecture.md` line 197 | 2 |
 | ~~The required string "one compact `[label]` segment per task row, from `taskProjectLabel`…"~~ Rewritten by session 2 to the column form, with `ComputeOutlinerRowLayout` and the clamp's direction added beside it. | `architecture_docs_test.go` lines 97–105 | 2 |
 | ~~"`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded"~~ Rewritten by session 2, which also added the `ComputeOutlinerRowLayout` geometry rule and raised the budget for it. | `CLAUDE.md` lines 627–649 | 2 |
-| "`outlinerCursorRow` marks the cursor row in its first column and trailing fill alone, not its content" | `CLAUDE.md` line 532 | 3 |
-| The cursor-row paint description — `cursorPaint`, the gutter truncation, the `trail()` pad | `docs/architecture/presentation-chrome.md` lines 479–512 | 3 |
+| ~~"`outlinerCursorRow` marks the cursor row in its first column and trailing fill alone, not its content"~~ Rewritten by session 3 to the band and its background precedence, and the budget raised for it. | `CLAUDE.md` line 532 | 3 |
+| ~~The cursor-row paint description — `cursorPaint`, the gutter truncation, the `trail()` pad~~ Rewritten by session 3, which added `rowBg`/`overTaskRow`, the band's derivation, `textfit.PaintBackground`, and why the bar is an attribute. | `docs/architecture/presentation-chrome.md` lines 479–512 | 3 |
 | "A view status is transient except the multi-select summary." | `CLAUDE.md` line 410 | 4 |
 | The multi-select summary as a second statement of an active selection | `docs/architecture/row-indicators.md` line 381; `docs/architecture/presentation-chrome.md` line 462 | 4 |
 | The workflow chord row listing ten destinations flat, and "entering Doing or Waiting without a schedule offers an optional check-in" | `docs/guide/outliner-keys.md` line 12 | 5, 10 |
@@ -146,7 +146,7 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | "Every launch starts Active Projects, All, with no restored navigation or selection" | `CLAUDE.md` lines 127–131 | 11 |
 | "the class `?` help and the footer ranks belong to" | `CLAUDE.md` line 193 | 12 |
 
-`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68000-byte rules-only
+`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68500-byte rules-only
 budget. A session that spends more of that budget than it reclaims raises the
 constant in its own diff and says why in the comment ledger above it, the way
 every previous raise did; nobody raises it on another session's behalf.
@@ -162,10 +162,10 @@ every previous raise did; nobody raises it on another session's behalf.
 
 ### Session 3 — Current-row tint and semantic colors
 
-- Go: `internal/tui/outliner_cursor_highlight_test.go`, `internal/tui/primary_row_title_style_test.go`, `internal/tui/chrome/cursor_test.go`, `internal/tui/theme/styles_palette_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/outliner_cursor_highlight_test.go`, `internal/tui/attention_styling_acceptance_test.go`, `internal/tui/primary_row_title_style_test.go`, `internal/tui/chrome/cursor_test.go`, `internal/tui/theme/styles_palette_test.go`, `internal/tui/textfit/background_test.go`, `internal/tui/outliner/outliner_render_rows_test.go`, `internal/tui/outliner/outliner_search_cue_outlinersplit_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `project-label-widths`, `dense-scrolled`
 - Contracts: `CLAUDE.md` line 532; `docs/architecture/presentation-chrome.md` lines 479–512
-- Landed: —
+- Landed: `theme.ColorCursorRowBg` derived in `ApplyTheme` a short step from the terminal's own paper, `theme.CursorBarStyle` switched to inverse video so the mark survives a profile carrying no color, `cursorPaint.rowBg` with `overTaskRow()` as the one opt-in and `gutterBg()`/`trail()` reading it, `textfit.PaintBackground` arming a background that re-arms after every reset so no foreground is rewritten, and `applyTaskRowLineStyle` returning ahead of `taskRowTint` and `ZebraLine`, which is the whole of background precedence.
 
 ### Session 4 — One selection summary and accurate frame budgets
 

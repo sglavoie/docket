@@ -394,7 +394,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 ) string {
 	task := row.Task
 	titleStyle := m.renderTaskTitleStyle(task)
-	paint := m.cursorPaintFor(selected)
+	paint := m.cursorPaintFor(selected).overTaskRow()
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
@@ -674,10 +674,13 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 // through its state badge and its `waiting <age>` segment, and a Waiting task
 // with a missed deadline is tinted for the deadline like any other task.
 //
-// It is returned rather than applied so the cursor row can wear it on the
-// content region alone, leaving the gutter and the trailing fill to say where
-// the cursor is. An overdue row therefore stays visibly overdue while you stand
-// on it.
+// It is returned rather than applied because the row the cursor is on wears the
+// cursor's band instead: one row may carry one background, and on the row you
+// are standing on the answer is where you are. Nothing about the deadline is
+// lost to that — the row keeps its bolded due badge, its `!` hero emphasis and
+// its overdue text color, which are the operational indicators urgency was
+// always read from and the only ones that survive --no-color anyway. Move off
+// the row and the tint is back.
 func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
 	if task.IsOverdue() {
 		return theme.OverdueRowStyle, true
@@ -686,13 +689,14 @@ func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
 }
 
 func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint cursorPaint, rowWidth, rowIndex int) string {
-	tint, tinted := taskRowTint(task)
 	if paint.marked {
-		if tinted {
-			content = tint.Render(content)
-		}
+		// Background precedence, stated once: the cursor's band owns the marked row
+		// and neither the overdue tint nor the zebra stripe is applied over or under
+		// it. outlinerCursorRow lays it under the content it was handed, so every
+		// foreground that content carries reads on top of it unchanged.
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
+	tint, tinted := taskRowTint(task)
 
 	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
 	// (long tree prefix + multi-select checkbox) can assemble wider than rowWidth.

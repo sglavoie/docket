@@ -100,8 +100,8 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 }
 
 // TestSearchCueKeepsCursorPaintAndNeutralTitle holds the split paint against the
-// new segment: the cue is content, so the bar and the trailing fill still mark
-// the cursor, and the title beside them stays ordinary text in both themes.
+// new segment: the cue is content, so the bar and the band still mark the cursor,
+// and the title beside them stays ordinary text in both themes.
 func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
@@ -131,11 +131,11 @@ func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 				if got := lipgloss.Width(line); got != 80 {
 					t.Fatalf("cursor row rendered %d columns, want exactly 80", got)
 				}
-				if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
+				if !strings.HasPrefix(line, theme.CursorBarStyle.Render(theme.RenderCursorPrefix())) {
 					t.Fatalf("cue row dropped its cursor bar:\n%q", line)
 				}
-				if !strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
-					t.Fatalf("cue row dropped its trailing fill:\n%q", line)
+				if !strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {
+					t.Fatalf("cue row dropped the band under its content:\n%q", line)
 				}
 			}
 		})

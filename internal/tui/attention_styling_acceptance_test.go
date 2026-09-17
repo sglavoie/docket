@@ -247,7 +247,7 @@ func TestAttentionSignalsRenderAcrossThemesAndFocus(t *testing.T) {
 					}
 					assertMonochromeKeepsContent(t, line, plain)
 					assertTitleWearsStyle(t, line, testCase.titleStyle(), task.Title)
-					assertRowTint(t, line, testCase.tinted)
+					assertRowTint(t, line, testCase.tinted, focus.cursor)
 				})
 			}
 		}
@@ -287,8 +287,14 @@ func assertMonochromeKeepsContent(t *testing.T, line, plain string) {
 // neutral text, and the only thing that may move it is lifecycle. Each attention
 // style is named as a negative so a future renderer that reaches for one fails
 // here rather than in review.
+//
+// The cursor's band is taken off the line first, because it arms itself after
+// every reset the title carries and a title drawn one rune at a time — the
+// canceled one is — would otherwise read as repainted when every rune of it still
+// wears exactly this style.
 func assertTitleWearsStyle(t *testing.T, line string, want lipgloss.Style, title string) {
 	t.Helper()
+	line = withoutTheCursorBand(t, line)
 	if !strings.Contains(line, want.Render(title)) {
 		t.Fatalf("title did not render as %q:\n%q", want.Render(title), line)
 	}
@@ -314,9 +320,24 @@ func assertTitleWearsStyle(t *testing.T, line string, want lipgloss.Style, title
 // assertRowTint holds the loudest mark to the top of the ladder. Overdue is the
 // only signal that repaints a whole row, so every other combination — Waiting
 // included — must leave the row background alone.
-func assertRowTint(t *testing.T, line string, want bool) {
+//
+// The cursor's band is above even that: a background says one thing at a time, so
+// the row the cursor is on wears the band and the tint is not applied over or
+// under it. The deadline is still on that row in its badge, its `!` emphasis and
+// its overdue text color, all of which the band leaves alone, and the assertions
+// above this one are what hold them there.
+func assertRowTint(t *testing.T, line string, want, cursor bool) {
 	t.Helper()
 	tint := backgroundParams(t, theme.OverdueRowStyle.GetBackground())
+	if cursor {
+		if strings.Contains(line, tint) {
+			t.Fatalf("the cursor row wears both the band and the overdue tint:\n%q", line)
+		}
+		if !strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {
+			t.Fatalf("the cursor row wears no band:\n%q", line)
+		}
+		return
+	}
 	if got := strings.Contains(line, tint); got != want {
 		if want {
 			t.Fatalf("row dropped the overdue tint it earned:\n%q", line)

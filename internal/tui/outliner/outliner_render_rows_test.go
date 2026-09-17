@@ -127,7 +127,9 @@ func TestProjectHeaderPressureCountsCarryTheirEmphasis(t *testing.T) {
 
 // Under the cursor every color a row earned survives, so the chip a deadline
 // wears has to survive with it: flattening it there would hide the emphasis on
-// exactly the row the user is standing on.
+// exactly the row the user is standing on. The band is laid under that chip
+// rather than over it, which is why the assertion asks about the row's own bytes
+// with the band's arms removed and then asks for the band separately.
 func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
@@ -155,8 +157,11 @@ func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 				selected bool
 			}{{"resting", false}, {"cursor", true}} {
 				line := outliner.RenderOutlinerTaskRow(row, variant.selected, 120, 0, nil)
-				if !strings.Contains(line, chip) {
+				if !strings.Contains(withoutTheCursorBand(t, line), chip) {
 					t.Errorf("%s row lost its due chip: %q", variant.name, line)
+				}
+				if variant.selected && !strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {
+					t.Errorf("cursor row wore no band under that chip: %q", line)
 				}
 				if got := lipgloss.Width(ansi.Strip(line)); got > 120 {
 					t.Errorf("%s row assembled %d columns", variant.name, got)

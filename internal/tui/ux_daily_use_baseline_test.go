@@ -2,11 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // These are the states the daily-use refinement is about, written down while
@@ -131,25 +134,28 @@ func uxDailyUseScreenLine(t *testing.T, screen, fragment string) string {
 	return ""
 }
 
-// TestUXDailyUseCursorRowLeavesItsContentUnstyled records what marks the cursor
-// row today: the first column and the trailing fill, and nothing across the
-// content between them. One task's row is captured twice — once as the cursor
-// row and once with the cursor a row below it — and the styled bytes covering
-// its gutter, checkbox, project label, and title are identical in both.
+// TestUXDailyUseCursorRowWearsOneBandUnderItsContent is this contract after
+// session 3 rewrote it. The cursor row now carries a background across its whole
+// width, and the claim is about what that costs: the band goes *under* the row,
+// so every foreground the row earned is still on the line, and the one mark that
+// is not a color survives a terminal that paints none.
 //
-// A difference is what the contract is written against, rather than the absence
-// of some particular escape. The frame carries a base background on every cell,
-// so "the cursor row sets no background" is false of every row on screen and
-// would be a contract about the compositor; comparing one row against itself is
-// a contract about the cursor.
+// One task's row is captured twice — once as the cursor row and once with the
+// cursor a row below it — and the difference between the two captures is what
+// every assertion reads. The frame carries a base background on every cell, so
+// "the cursor row sets a background" is true of every row on screen and would be
+// a contract about the compositor; comparing one row against itself is a
+// contract about the cursor.
 //
-// Session 3 owns this. It gives the current task a subtle background through the
-// shared theme and cursor-rendering seams, and rewrites this contract to state
-// that the tint owns the row's background, that the foregrounds for state,
-// priority, deadline, review, dependencies, and search matches survive on top of
-// it, that a distinct marker remains in monochrome and during a cursor flash,
-// and that focus stays tellable from membership in a visual selection.
-func TestUXDailyUseCursorRowLeavesItsContentUnstyled(t *testing.T) {
+// The foregrounds are checked as a set taken off the unfocused capture rather
+// than named one at a time, because the row's own signals are what it happens to
+// draw at this size and this fixture, and a named list would quietly stop
+// covering one the moment the row dropped it. The per-signal claim — state,
+// priority, deadline, review, dependencies, and a search match, each legible on
+// the band in both themes — is stated at the row level in
+// outliner_cursor_highlight_test.go, where all six can be put on one task; so
+// are the flash and the visual selection, which are gestures rather than frames.
+func TestUXDailyUseCursorRowWearsOneBandUnderItsContent(t *testing.T) {
 	driver, view := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	seatCursorOnTaskTitled(t, view, uxDailyUseAlphaTitle)
 	focused := uxDailyUseScreenLine(t, driver.Observe(ObserveOptions{IncludeANSI: true}).ANSIScreen, uxDailyUseAlphaTitle)
@@ -160,16 +166,55 @@ func TestUXDailyUseCursorRowLeavesItsContentUnstyled(t *testing.T) {
 	if ansi.Strip(focused) == focused {
 		t.Fatalf("the row carries no styling at all, so the capture is not the styled frame:\n%q", focused)
 	}
-	if focused == unfocused {
-		t.Fatalf("the cursor changes nothing about the row it is on, so there is no marker to record:\n%q", focused)
-	}
 
 	focusedContent := uxDailyUseRowContent(t, focused, uxDailyUseAlphaTitle)
 	unfocusedContent := uxDailyUseRowContent(t, unfocused, uxDailyUseAlphaTitle)
-	if focusedContent != unfocusedContent {
-		t.Fatalf("the cursor restyles the row's content, which is the tint session 3 introduces:\nfocused   %q\nunfocused %q",
-			focusedContent, unfocusedContent)
+	band := backgroundParams(t, theme.ColorCursorRowBg)
+	if !strings.Contains(focusedContent, band) {
+		t.Fatalf("the cursor row's content wears no band:\n%q", focusedContent)
 	}
+	if strings.Contains(unfocusedContent, band) {
+		t.Fatalf("a row the cursor left still wears the band:\n%q", unfocusedContent)
+	}
+
+	for _, foreground := range uxDailyUseForegrounds(t, unfocusedContent) {
+		if !strings.Contains(focusedContent, foreground) {
+			t.Fatalf("the band swallowed the %s the row draws when unfocused:\nfocused   %q\nunfocused %q",
+				foreground, focusedContent, unfocusedContent)
+		}
+	}
+
+	mono := uxClarityMonochrome(t, focused)
+	if !strings.Contains(mono, "\x1b[7m") {
+		t.Fatalf("the cursor row keeps no mark on a terminal without color:\n%q", mono)
+	}
+	if other := uxClarityMonochrome(t, unfocused); strings.Contains(other, "\x1b[7m") {
+		t.Fatalf("a row the cursor left is inverted too, so the mark says nothing:\n%q", other)
+	}
+}
+
+// uxDailyUseForegroundPattern matches one truecolor foreground parameter run
+// wherever it sits in an SGR sequence, since a piece that also arms a background
+// spells both in one sequence.
+var uxDailyUseForegroundPattern = regexp.MustCompile(`38;2;\d+;\d+;\d+`)
+
+// uxDailyUseForegrounds is the set of foreground colors a run of styled text
+// paints, in first-seen order so a failure names them the way the row draws them.
+func uxDailyUseForegrounds(t *testing.T, styled string) []string {
+	t.Helper()
+	var found []string
+	seen := map[string]bool{}
+	for _, match := range uxDailyUseForegroundPattern.FindAllString(styled, -1) {
+		if seen[match] {
+			continue
+		}
+		seen[match] = true
+		found = append(found, match)
+	}
+	if len(found) == 0 {
+		t.Fatalf("the row paints no foreground at all, so nothing is being held to the band:\n%q", styled)
+	}
+	return found
 }
 
 // uxDailyUseRowContent is the styled bytes of a task row between its gutter and

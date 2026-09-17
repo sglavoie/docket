@@ -489,37 +489,60 @@ asks it three questions. `bar` renders the row's first column, and on the cursor
 row it discards that column's own style for `CursorBarStyle` — inverse video, the
 loudest treatment one column can carry alone. Every column it can cover is
 structural: a blank margin, or a section header's fold arrow, which stays legible
-reversed. `gutterBg` is what the columns after the bar carry, and it is nil at
-rest — the resting mark is one column, so the connectors and the box beside it
-stay ordinary. A flash spends exactly that width: `gutterBg` becomes
-`ColorFlashBg` and floods the gutter, which reads as more of the same mark rather
-than a different one. `gutterPiece`/`gutterSpace` merge that background into each
-glyph's own style, because a background applied over already-styled text ends at
-that text's first reset. `trail` is the third question, answered in
-`outlinerCursorRow`.
+reversed. Inverse video is an attribute rather than a color, which is the point:
+`colorprofile.ASCII` drops every hue the row asked for and forwards SGR 7, so the
+bar is the one part of the mark a terminal without color still draws. `gutterBg`
+is what the columns after the bar carry: `rowBg` where the row has one, and
+`ColorFlashBg` during a flash, which floods the gutter and reads as more of the
+same mark rather than a different one. `gutterPiece`/`gutterSpace` merge that
+background into each glyph's own style, because a background applied over
+already-styled text ends at that text's first reset. `trail` is the third
+question, answered in `outlinerCursorRow`.
 
-The bar and the trail are derived in `ApplyTheme` from the theme's cursor color
-in opposite directions — the bar away from the terminal's own paper so one column
-is unmissable, the trail toward and past it so the reach never competes with the
-mark — and which of `lightenHex`/`darkenHex` is which flips with the theme. So
-does the size of each step, because the two directions are not symmetric.
-Darkening preserves chroma, so the light theme's bar is a distinct dark block at
-a moderate factor; lightening washes chroma out, so the dark theme's bar goes to
-`0.85` — most of the way to white — or it lands on a mid gray that the row's own
-badges and chips already out-shout.
+`rowBg` is the opt-in, and `overTaskRow()` is the only place it is taken.
+A task row is which work you are on; a section header, a project header and a
+checklist row are places the cursor can stand, so they keep the bar and the dim
+trailing fill and take no band. A flash swaps the resting `ColorCursorRowBg` for
+`ColorFlashDimBg`, so the band brightens with the gutter instead of standing
+still under a pulse.
 
-`outlinerCursorRow` truncates the content to the columns the gutter leaves, then
-pads the remainder with `cursorPaint.trail()`, so a marked row is exactly
-`rowWidth` columns at every width — the contract `AttachScrollbarAtWidth` depends
-on — and degrades to a truncated gutter when `rowWidth` is no wider than the
-gutter itself. The seam is a concatenation only: it joins the same pieces at the
-same widths the row already had, so `titleWidth` remains the single title-budget
-authority. `taskRowTint` returns the overdue row background instead of
-applying it, which is what lets the cursor row wear that tint on its content
-region while the bar and trailing fill say where the cursor is. Overdue is the
-only tint it answers with: a repainted row is the loudest mark the list has, so
-it belongs to the top of the attention ladder alone. `SelectedLine`
-stays the whole-line authority on every other list surface.
+The bar, the band and the trail are derived in `ApplyTheme` from the theme's
+cursor color in three directions — the bar away from the terminal's own paper so
+one column is unmissable, the trail toward and past it so the reach never
+competes with the mark, and the band a short step from the paper — and which of
+`lightenHex`/`darkenHex` is which flips with the theme. So does the size of each
+step, because the directions are not symmetric. Darkening preserves chroma, so
+the light theme's bar is a distinct dark block at a moderate factor; lightening
+washes chroma out, so the dark theme's bar goes to `0.85` — most of the way to
+white — or it lands on a mid gray that the row's own badges and chips already
+out-shout. The band's own factors are the quietest of the three, because it is
+the one that has to sit under text without changing what the text says.
+
+`outlinerCursorRow` truncates the content to the columns the gutter leaves, lays
+`rowBg` under the truncated result with `textfit.PaintBackground`, then pads the
+remainder with `cursorPaint.trail()`, so a marked row is exactly `rowWidth`
+columns at every width — the contract `AttachScrollbarAtWidth` depends on — and
+degrades to a truncated gutter when `rowWidth` is no wider than the gutter
+itself. The band is laid after the cut so the arming sequences it inserts are
+never what the width measurement counts. `PaintBackground` arms the background
+once and re-arms it after every reset the content carries, rewriting no byte of
+the row: SGR is cumulative, so each segment's own foreground, bold, strikethrough
+and badge background still paint on top, and the band fills only the cells no
+segment claimed. A run rendered one rune at a time — a search match, a
+struck-through canceled title — therefore stops being one contiguous string on
+the line while every rune of it keeps its own style whole.
+
+The band is also background precedence, stated in `applyTaskRowLineStyle`: the
+marked branch returns before `taskRowTint` and `ZebraLine` are consulted, so the
+overdue tint and the zebra stripe are neither applied over nor under it. Nothing
+about the deadline is lost to that — the row keeps its bolded due badge, its `!`
+hero emphasis and its overdue text color, all of which are foregrounds the band
+sits beneath. `taskRowTint` still returns the overdue row background instead of
+applying it, and overdue is the only tint it answers with: a repainted row is the
+loudest mark the list has, so it belongs to the top of the attention ladder
+alone. `SelectedLine` stays the whole-line authority on every other list surface,
+which is what keeps a picker, a Notes row and a Hub row saying "selected" rather
+than "current".
 
 Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`
 flows through application results and TUI messages, and `u undo` appears only
