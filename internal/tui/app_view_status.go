@@ -239,7 +239,7 @@ func (m *AppModel) footerControlContent() string {
 		// instructions, so this occupant is the second set. It is measured out
 		// of the frame either way, so it is blanked at its own height rather
 		// than dropped: closing the overlay hands the host back the same rows.
-		content = suppressGuidanceRows(content)
+		content = suppressGuidanceRows(content, m.viewNav.width)
 	}
 	return content
 }
@@ -348,8 +348,24 @@ func (m *AppModel) activePresentationPublishesToShell() bool {
 // suppressGuidanceRows empties an occupant without resizing it. The frame was
 // laid out against this height, so returning fewer rows would move the content
 // above it and closing the overlay would move it back.
-func suppressGuidanceRows(content string) string {
-	return strings.Repeat("\n", max(lipgloss.Height(content), 1)-1)
+//
+// The rows it returns are blank but present, and that distinction is the whole
+// of it: the empty string is how this footer spells a block that is not there at
+// all, so a one-row occupant blanked to "" would be composed and measured as
+// nothing and the footer would shrink under a message it is still carrying.
+// Each held row is filled to the footer's own width for the same reason
+// renderFooterMessageRow fills its own: a row the footer is spending is a row it
+// covers, so the wash and the background find no hole where the occupant stood.
+//
+// An absent occupant stays absent: there is no row to hold, so blanking one
+// would charge the frame for guidance nobody wrote.
+func suppressGuidanceRows(content string, width int) string {
+	rows := footerBlockRows(content)
+	if rows == 0 {
+		return ""
+	}
+	blank := strings.Repeat(" ", max(width, 1))
+	return strings.TrimSuffix(strings.Repeat(blank+"\n", rows), "\n")
 }
 
 // surfaceFooterContent builds what the shell footer says on behalf of the

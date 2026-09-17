@@ -205,6 +205,13 @@ func (d *UITestDriver) runCommand(name string) error {
 	switch m := msg.(type) {
 	case nil:
 		d.pendingCmd = nil
+		// A setup command that did its work in place returned nothing to route,
+		// so AppModel.Update — and the once-per-update footer budget it delivers
+		// on the way out — never ran. A production path reaches showView from
+		// inside that update and is handed the budget a moment later, so it is
+		// settled here rather than leaving a view the harness installed sized
+		// against a footer it is not drawing under.
+		d.app.syncShellFrameMetrics()
 	case operation.OperationCommandResultMsg:
 		// The handler deferred its real work into a tea.Cmd; drain that instead
 		// of routing the wrapper as a message.

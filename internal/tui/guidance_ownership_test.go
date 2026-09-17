@@ -39,10 +39,34 @@ func guidanceOwnershipApp(t *testing.T) *AppModel {
 	return app
 }
 
+// suppressionFeedbackMessage is a message standing in the footer while an
+// interaction is armed over it. It is the other half of the frame the shell
+// composes, and the half a suppressed occupant that shrank to nothing only shows
+// up in: with nothing above them, the blanked rows and the absent ones are both
+// the footer's last row, so the loss is invisible until feedback is there to
+// take the row instead.
+const suppressionFeedbackMessage = "Copied title to clipboard"
+
 // assertSuppressedWithHostRows is the whole of the ownership claim for one
 // mounted interaction: it takes the resting footer, arms the interaction, checks
-// the three properties, and puts it back down.
+// the three properties, and puts it back down. It reads that claim twice, once
+// against a quiet footer and once against one already carrying a message, since
+// only the second composes the suppressed rows with a block above them.
 func assertSuppressedWithHostRows(t *testing.T, app *AppModel, name string, arm, disarm func()) {
+	t.Helper()
+
+	assertSuppressionKeepsTheFrame(t, app, name, arm, disarm)
+
+	app.feedback.message = suppressionFeedbackMessage
+	defer func() { app.feedback.message = "" }()
+	assertSuppressionKeepsTheFrame(t, app, name+" over feedback", arm, disarm)
+}
+
+// assertSuppressionKeepsTheFrame is that claim for one footer state: the host's
+// text is gone, the height is unchanged in both the paint and the measurement
+// the frame was reserved against, and putting the interaction down restores the
+// footer byte for byte.
+func assertSuppressionKeepsTheFrame(t *testing.T, app *AppModel, name string, arm, disarm func()) {
 	t.Helper()
 
 	resting := ansi.Strip(app.renderStatusBar())
@@ -56,7 +80,11 @@ func assertSuppressedWithHostRows(t *testing.T, app *AppModel, name string, arm,
 		t.Fatalf("%s: the footer still names %q while the interaction owns every key:\n%s", name, outlinerHostRank, covered)
 	}
 	if got, want := lipgloss.Height(covered), lipgloss.Height(resting); got != want {
-		t.Fatalf("%s: the footer is %d rows covered and %d rows at rest; the space is not retained", name, got, want)
+		t.Fatalf("%s: the footer is %d rows covered and %d rows at rest; the space is not retained:\ncovered:\n%s\nresting:\n%s",
+			name, got, want, covered, resting)
+	}
+	if got, want := lipgloss.Height(app.renderFooterChrome()), app.shellFrameMetrics().FooterRows(); got != want {
+		t.Fatalf("%s: the covered footer drew %d rows and measured %d, so the frame reserved the wrong budget", name, got, want)
 	}
 
 	disarm()
@@ -340,14 +368,33 @@ func TestViewLocalModalsKeepSoleOwnershipThroughTheirSurface(t *testing.T) {
 // away from any particular overlay. The frame is laid out against the footer's
 // height, so a suppressed occupant that returned fewer rows would move
 // everything above it and closing the overlay would move it back.
+//
+// It reads the height the way the footer does as well as the way lipgloss does,
+// because those two disagree about the empty string: lipgloss counts it as a
+// row, while footerBlockRows and footerChromeContent read it as a block that is
+// not there. A one-row occupant blanked to "" measures correctly in isolation
+// and vanishes from the composition, which is the regression this second
+// reading names.
 func TestSuppressedGuidanceSpendsExactlyTheRowsItHeld(t *testing.T) {
+	const width = 40
 	for _, content := range []string{"", "one row", "two\nrows", "three\nrows\nhere"} {
-		blanked := suppressGuidanceRows(content)
+		blanked := suppressGuidanceRows(content, width)
 		if got, want := lipgloss.Height(blanked), lipgloss.Height(content); got != want {
 			t.Fatalf("suppressing %q returned %d rows instead of %d", content, got, want)
 		}
+		if got, want := footerBlockRows(blanked), footerBlockRows(content); got != want {
+			t.Fatalf("suppressing %q costs the composed footer %d rows instead of %d", content, got, want)
+		}
 		if strings.TrimSpace(blanked) != "" {
 			t.Fatalf("suppressing %q left text behind: %q", content, blanked)
+		}
+		if content == "" {
+			continue
+		}
+		for index, row := range strings.Split(blanked, "\n") {
+			if got := lipgloss.Width(row); got != width {
+				t.Fatalf("suppressing %q left row %d %d cells wide instead of the footer's %d", content, index, got, width)
+			}
 		}
 	}
 }

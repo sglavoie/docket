@@ -38,6 +38,7 @@ type OutlineErrorsViewModel struct {
 	width       int
 	height      int
 	offset      int
+	shellFrame  chrome.ShellFrameMetrics
 }
 
 // NewOutlineErrorsViewModel builds the refusal surface for one rejected buffer.
@@ -52,6 +53,16 @@ func NewOutlineErrorsViewModel(projectName, bufferPath string, problems []gramma
 func (m *OutlineErrorsViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.clampOffset()
+}
+
+// SetShellFrameMetrics answers route.ShellFrameAware. This surface fills the
+// rows it was given exactly, so a footer carrying a message beside the blank
+// rows it holds for the host would cost it its last row — which is the row
+// naming the way out. It is deliberately not a resize: only the scroll budget
+// beneath the title moves.
+func (m *OutlineErrorsViewModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	m.shellFrame = metrics
 	m.clampOffset()
 }
 
@@ -160,7 +171,7 @@ func (m *OutlineErrorsViewModel) lines() []string {
 }
 
 func (m *OutlineErrorsViewModel) capacity() int {
-	return max(m.height-outlineErrorsChrome, 1)
+	return max(m.height-m.shellFrame.ExcessRows()-outlineErrorsChrome, 1)
 }
 
 func (m *OutlineErrorsViewModel) clampOffset() {

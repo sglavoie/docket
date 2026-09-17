@@ -98,12 +98,17 @@ draws its own footer over the whole content area and answers `true`. An
 unclassified presentation publishes, so a footer that may be the only
 instructions on screen is never emptied on a guess.
 
-Suppression is `suppressGuidanceRows`: the occupant is replaced by blank lines of
-its own height. The frame is laid out against that height, so returning fewer
-rows would move everything above the footer when an overlay opened and move it
-back when it closed. It also takes the occupant whole rather than keeping part —
-while a modal owns every key, the breadcrumb's `← <prev>` preview names a
-destination that press would not reach. A view-local modal, such as the
+Suppression is `suppressGuidanceRows`: the occupant is replaced by blank rows of
+its own height, each filled to the footer's own width. The frame is laid out
+against that height, so returning fewer rows would move everything above the
+footer when an overlay opened and move it back when it closed. Those rows are
+blank but present, which is the distinction the composition turns on: the empty
+string is how this footer spells a block that is not there at all, so a one-row
+occupant blanked to `""` would be joined and measured as nothing and the footer
+would shrink under a message it is still carrying. An occupant that was already
+absent stays absent, since there is no row to hold. It also takes the occupant
+whole rather than keeping part — while a modal owns every key, the breadcrumb's
+`← <prev>` preview names a destination that press would not reach. A view-local modal, such as the
 Outliner's menu bar, relation picker, or query readout, needs none of this: it is
 answered inside its surface's own `ContextualGuidance` ordering, and the shell
 keeps publishing whatever that surface says.
@@ -173,10 +178,14 @@ zero value back to the previous recipient when the active presentation changes.
 That single-recipient rule is the whole double-reservation defense: with the
 capture panel open over the outline, both views are drawn and both could
 plausibly subtract the same rows, and the panel is the one that does.
-`OutlinerModel.ShellFrame` feeds `outlinerListRows` and
-`TaskComposerModel.shellFrame` feeds `compactPanelRows`; each subtracts
+`OutlinerModel.ShellFrame` feeds `outlinerListRows`,
+`TaskComposerModel.shellFrame` feeds `compactPanelRows`, and
+`OutlineErrorsViewModel.shellFrame` feeds its scroll `capacity`; each subtracts
 `ExcessRows` once, and the panel's subtraction leaves `HostedPanelLayout.HostRows`
 untouched, so the host's scroll window is not moved by a message in the footer.
+The refusal surface fills the rows it was given exactly, so it is the case a
+footer carrying both a message and the blank rows it holds for the host would
+otherwise cost its last row — the row naming `Esc close`.
 
 A full-height view skips `renderFooterChrome` and draws its own footer, so the
 shell composes into that frame instead of replacing it.
