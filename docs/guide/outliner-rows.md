@@ -264,9 +264,13 @@ show for this row.`; `b` closes it again from any row. On a task, Peek
 follows navigation and reads, in this order: the task's whole title, the ancestor
 chain of a promoted row as `Parent: Launch platform › User authentication`, a
 status line reading
-`state doing 4h · priority 1 · plan today · pinned · review`
+`plan today · status doing 4h · priority 1 · pinned · review`
 with empty fields omitted (only Doing and Waiting carry an age, and it counts
-from the last state change rather than the last edit), a schedule line reading
+from the last state change rather than the last edit). The plan comes first and
+is the collection you committed the task to, Today or Next; the status is the
+lifecycle state it holds. They are two answers, not one, which is why a task
+planned for Today reads `plan today · status backlog` and a task in no
+collection has no plan half at all. Then a schedule line reading
 `due 2026-08-14 · defer Sep 2 · check-in 2026-08-20 · repeat 7d`
 with empty fields omitted too (a one-off schedule reads `repeat off`), the resume
 note, the description, a `Checklist: 1/4 done` count,

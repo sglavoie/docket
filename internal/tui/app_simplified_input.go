@@ -187,15 +187,27 @@ func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 	return pendingChordGuidanceSpec(strings.Join(m.operations.Chord, ""), hints), true
 }
 
+// pendingChordGuidanceSpec projects the which-key entries the registry named.
+// A hint's division is carried by every member of it, so this is where a change
+// of division becomes a heading: the first entry of each run opens it and the
+// rest of the run stays bare. The heading rides that entry rather than standing
+// as a hint of its own, so the packer keeps or drops the two together and a
+// division the row cannot show is never announced.
 func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome.GuidanceSpec {
 	spec := chrome.GuidanceSpec{Rows: 2}
 	if prefix = strings.TrimSpace(prefix); prefix != "" {
 		spec.Hints = append(spec.Hints, chrome.GuidanceHint{Key: prefix + "…"})
 	}
+	group := ""
 	for index, hint := range hints {
+		heading := ""
+		if hint.Group != group {
+			heading, group = hint.Group, hint.Group
+		}
 		spec.Hints = append(spec.Hints, chrome.GuidanceHint{
 			Key:      hint.Key,
 			Label:    hint.Label,
+			Group:    heading,
 			Priority: index + 1,
 			Dimmed:   hint.Dimmed,
 		})

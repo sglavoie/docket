@@ -146,6 +146,16 @@ key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
 five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
+Plan and Status are one vocabulary `internal/tui/chrome` owns: a plan is the
+collection a task was committed to, a status is the lifecycle state it holds,
+and no surface mints a third word. The `w` chord heads its two runs with them,
+Plan first; capture's route row and preview name the pair only for a planning
+destination, since the eight lifecycle ones spell their own status; Peek leads
+its summary with it. That division is `HintGroup`/`GuidanceHint.Group` metadata
+over the one binding, changing no sequence and no dispatch, and a heading rides
+its run's first entry rather than standing alone, so the packer cannot strand
+one over members it shed.
+
 The active interaction owns guidance. `route.ActiveGuidanceOwner` resolves it in
 dispatch order — shell confirmation, shell-mounted modal, pending chord, then
 the presentation — and `SuppressesShellGuidance` is its closed table. The last
@@ -596,9 +606,10 @@ Row and Peek budget:
   the two never share a line and history closes the document. The deferral
   instant keys both, since either half alone may be the one drawn. The whole title and the uncompacted ancestor
   chain lead it, so a clipped row is recovered by scrolling and the row's `…`
-  never has a counterpart that reassembles it. Status spells state — with a
-  Doing/Waiting age off `StateChangedAt` — priority, planning membership, pinned,
-  and review, and keys on stored values so a tick never resets the window.
+  never has a counterpart that reassembles it. Status spells plan first — the
+  collection, never a tenth state — then state with a Doing/Waiting age off
+  `StateChangedAt`, priority, pinned, and review, and keys on stored values so a
+  tick never resets the window.
   Checklist and comments stay counts; their items are rows and their panel.
   A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.

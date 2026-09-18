@@ -30,6 +30,11 @@ const (
 // opening a picker and is the only reason one operation may own several
 // bindings.
 //
+// HintGroup names the presentation division a which-key row draws this binding
+// under. It is metadata over the one declaration, never a second key list: it
+// changes no sequence, no operation identity, and no dispatch path, and an empty
+// group means the binding stands ungrouped.
+//
 // SharedKey admits the binding onto a key path another operation already owns.
 // Every binding on that path must declare it, and resolution picks the first
 // applicable one in declaration order, so the operations sharing a key must be
@@ -43,6 +48,7 @@ type OperationKeyBinding struct {
 	FooterRank     int
 	FooterLabel    string
 	HintLabel      string
+	HintGroup      string
 	PresetValue    any
 	HasPresetValue bool
 	SharedKey      bool

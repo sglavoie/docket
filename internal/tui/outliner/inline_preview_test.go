@@ -64,7 +64,7 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 		Indent: "  ",
 		Width:  40,
 	})
-	if got := peekWindowText(lines); got != "  state backlog" {
+	if got := peekWindowText(lines); got != "  status backlog" {
 		t.Fatalf("empty Peek = %q", got)
 	}
 	// The window is still the dock's fixed height: a task with one line to say
@@ -409,7 +409,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	order := []string{
 		"Rework the sync path",
 		"Parent: Launch platform",
-		"state doing 4h · priority 2 · plan today · pinned · review",
+		"plan today · status doing 4h · priority 2 · pinned · review",
 		"due " + chrome.DueGrammarValue(task) + " · check-in " + checkIn.Format(time.DateOnly) + " · repeat off",
 		"Resume: Left mid-refactor",
 		"Description: Wrapped description content",
@@ -451,7 +451,11 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 // claim: the row spells state and priority as glyphs and says nothing at all
 // about planning membership, and Peek spells all four in words a reader can
 // search for. Each field is omitted when the task does not carry it, and the
-// state is the one that never is.
+// status is the one that never is.
+//
+// Plan leads status, which is the vocabulary's own order and the order the
+// workflow chord and the capture route read in; the two are adjacent so a task
+// planned for Today reports both halves of what one sigil decided.
 func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
@@ -460,36 +464,45 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 		planning string
 		want     string
 	}{
-		{"bare task", &models.Task{}, "", "state backlog"},
+		{"bare task", &models.Task{}, "", "status backlog"},
 		{
 			"doing carries its age",
 			&models.Task{WorkflowState: models.StateDoing, StateChangedAt: now.Add(-50 * time.Hour)},
 			"",
-			"state doing 2d",
+			"status doing 2d",
 		},
 		{
 			"waiting carries its age",
 			&models.Task{WorkflowState: models.StateWaiting, StateChangedAt: now.Add(-90 * time.Minute)},
 			"",
-			"state waiting 1h",
+			"status waiting 1h",
 		},
 		{
 			"a quiet state has no age to give",
 			&models.Task{WorkflowState: models.StateSomeday, StateChangedAt: now.Add(-90 * time.Hour)},
 			"",
-			"state someday",
+			"status someday",
 		},
 		{
 			"an unset priority names none",
 			&models.Task{WorkflowState: models.StateInbox},
 			"",
-			"state inbox",
+			"status inbox",
+		},
+		{
+			// The pair the session is about: planning for Today leaves the task in
+			// Backlog, and the line reports the membership and the state side by
+			// side rather than one of them.
+			"a task planned for today reports both halves",
+			&models.Task{WorkflowState: models.StateBacklog},
+			"today",
+			"plan today · status backlog",
 		},
 		{
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
 			"next",
-			"state paused · priority 1 · plan next · pinned · review",
+			"plan next · status paused · priority 1 · pinned · review",
 		},
 	}
 	for _, tc := range cases {
@@ -625,7 +638,7 @@ func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	}
 	// The chain follows the title and precedes everything else: both are identity,
 	// and a reader looking for where a promoted row belongs reads them together.
-	if withParent != "Child\nParent: Launch platform › User authentication\nstate backlog" {
+	if withParent != "Child\nParent: Launch platform › User authentication\nstatus backlog" {
 		t.Fatalf("identity block = %q", withParent)
 	}
 }
@@ -713,7 +726,7 @@ func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
 
 	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "state backlog\nContext: [platform-core]\nTags: #bug" {
+	if body != "status backlog\nContext: [platform-core]\nTags: #bug" {
 		t.Fatalf("context and tags body = %q", body)
 	}
 

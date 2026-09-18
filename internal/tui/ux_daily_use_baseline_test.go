@@ -322,21 +322,19 @@ func uxDailyUseSelectionEntry(view *outliner.OutlinerModel, width int) (outliner
 	return outliner.ViewContextEntry{}, false
 }
 
-// TestUXDailyUseWorkflowChordListsOneFlatRun records how the workflow chord
-// presents its destinations today: one undivided run in which Today and Next,
-// which are planning collections, sit between lifecycle states and read exactly
-// like them.
+// TestUXDailyUseWorkflowChordDividesPlanFromStatus is this contract after
+// session 5 rewrote it. The chord's ten destinations are two kinds of act, and
+// the which-key row says so: `n next` and `t today` commit a task to a planning
+// collection and stand under Plan, and the eight that set a lifecycle state
+// stand under Status. Plan leads, because two entries at the front of the run
+// are two the narrow row never sheds.
 //
 // The two widest sizes are read because they are where every destination fits;
 // at the floor the run is shortened from the right, so a missing entry there is
-// the footer's fitter rather than the grammar. The claim is the absence of a
-// division, so the entries are checked for order-neutral presence and the run
-// for the absence of a heading.
-//
-// Session 5 owns this. It distinguishes Plan from Status in workflow guidance,
-// capture, and Peek, and rewrites this contract to state where the division
-// falls and which destinations sit on each side of it.
-func TestUXDailyUseWorkflowChordListsOneFlatRun(t *testing.T) {
+// the footer's fitter rather than the grammar. The division is asserted as
+// position rather than as presence — a heading that fell after the entries it
+// opens would pass a containment check and tell a reader the opposite thing.
+func TestUXDailyUseWorkflowChordDividesPlanFromStatus(t *testing.T) {
 	for _, size := range [][2]int{{100, 35}, {120, 40}} {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
 			driver, _ := uxDailyUseStagedDriver(t, "workflow-chord", size[0], size[1])
@@ -347,22 +345,35 @@ func TestUXDailyUseWorkflowChordListsOneFlatRun(t *testing.T) {
 					t.Fatalf("the workflow chord does not offer %q:\n%s", entry, footer)
 				}
 			}
-			for _, heading := range []string{"Plan", "Status", "plan", "status"} {
-				if strings.Contains(footer, heading+":") {
-					t.Fatalf("the chord already groups its destinations under %q, which session 5 introduces:\n%s",
-						heading, footer)
+
+			planAt := strings.Index(footer, "Plan: n next")
+			statusAt := strings.Index(footer, "Status: i inbox")
+			if planAt < 0 || statusAt < 0 {
+				t.Fatalf("the chord does not head its two divisions (plan=%d status=%d):\n%s",
+					planAt, statusAt, footer)
+			}
+			if planAt > statusAt {
+				t.Fatalf("Status leads Plan in the workflow row:\n%s", footer)
+			}
+			// Every planning entry sits inside Plan's run, so nothing between the
+			// two headings is a lifecycle state and nothing after Status is a plan.
+			if todayAt := strings.Index(footer, "t today"); todayAt < planAt || todayAt > statusAt {
+				t.Fatalf("`t today` sits outside the Plan division at %d:\n%s", todayAt, footer)
+			}
+			for _, state := range []string{"i inbox", "b backlog", "g doing"} {
+				if at := strings.Index(footer, state); at < statusAt {
+					t.Fatalf("%q sits above the Status heading at %d:\n%s", state, at, footer)
 				}
 			}
 		})
 	}
 }
 
-// uxDailyUseWorkflowEntries is every destination the workflow chord offers. Two
-// of them — `t today` and `n next` — are planning collections rather than
-// lifecycle states, and their presence in this one list is the whole of what the
-// contract above records.
+// uxDailyUseWorkflowEntries is every destination the workflow chord offers, in
+// the order the row draws them: the two planning collections first, then the
+// eight lifecycle states.
 var uxDailyUseWorkflowEntries = []string{
-	"i inbox", "b backlog", "n next", "t today", "g doing",
+	"n next", "t today", "i inbox", "b backlog", "g doing",
 	"w waiting", "p paused", "m someday", "d done", "c canceled",
 }
 

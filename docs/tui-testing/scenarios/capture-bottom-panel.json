@@ -11,7 +11,8 @@
     { "type": "key", "label": "raise capture over the outline", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "assert", "label": "the panel names the capture on its own divider rather than a title row", "assert": "contains", "value": "── Capture → Unfiled" },
-    { "type": "assert", "label": "and states the effective route on one row", "assert": "contains", "value": "Project: Unfiled · Destination: □ $inbox" },
+    { "type": "assert", "label": "and states the effective route on one row", "assert": "contains", "value": "Project: Unfiled · Status: Inbox" },
+    { "type": "assert", "label": "naming no plan, because this capture joins no planning collection", "assert": "not_contains", "value": "Plan:" },
     { "type": "assert", "label": "the outline it was raised from is still a live projection", "assert": "contains", "value": "@ Backlog  (4)" },
     { "type": "assert", "label": "including the Peek dock the cursor had open", "assert": "contains", "value": "0 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -20,6 +21,11 @@
     { "type": "assert", "label": "the preview of what Enter would create is inside the panel", "assert": "contains", "value": "Task     Panel capture" },
     { "type": "assert", "assert": "contains", "value": "Priority !2" },
     { "type": "assert", "assert": "contains", "value": "Tags     #panel" },
+
+    { "type": "text", "label": "one planning sigil answers two questions", "text": "$today " },
+    { "type": "assert", "label": "so the route row states the collection and the state apart", "assert": "contains", "value": "Plan: Today · Status: Backlog" },
+    { "type": "assert", "label": "and the preview says the same under the token that left the status unsaid", "assert": "contains", "value": "$today" },
+    { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the expanded form is the composer's other presentation", "key": "ctrl+f" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },

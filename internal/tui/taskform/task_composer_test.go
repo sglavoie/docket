@@ -27,13 +27,43 @@ func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
 	composer.Input.SetValue("Write regression test %tt $doing")
 	composer.UpdatePreview()
 
-	project, destination := composer.effectiveRouteHeader()
-	if project != "tt" || destination != models.StateDoing.Icon()+" $doing" {
-		t.Fatalf("effective header = %q / %q, want tt / doing", project, destination)
+	project, plan, status := composer.effectiveRouteHeader()
+	if project != "tt" || plan != "" || status != "Doing" {
+		t.Fatalf("effective header = %q / %q / %q, want tt / no plan / Doing", project, plan, status)
 	}
 	plain := ansi.Strip(composer.View().Content)
-	if strings.Contains(plain, "Preset:") || !strings.Contains(plain, "Destination:") {
+	if strings.Contains(plain, "Preset:") || !strings.Contains(plain, "Status: Doing") {
 		t.Fatalf("composer retained launch preset metadata:\n%s", plain)
+	}
+	// A lifecycle destination has no membership to name, so the row spends no
+	// room saying it has none.
+	if strings.Contains(plain, "Plan:") {
+		t.Fatalf("the route row names a plan for a task that is in none:\n%s", plain)
+	}
+}
+
+// TestTaskComposerRouteRowSeparatesPlanFromStatus is the session's own contract:
+// one planning sigil decides two axes, and the row states both. `$today` is the
+// case that cannot be read off the token, since the status it lands in is a word
+// the token never spells.
+func TestTaskComposerRouteRowSeparatesPlanFromStatus(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:        ComposerProject,
+		Project:     project,
+		AllProjects: []*models.Project{project},
+		Shared:      TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+	}, nil)
+	composer.SetSize(80, 30)
+	composer.Input.SetValue("Plan this one $today")
+	composer.UpdatePreview()
+
+	if _, plan, status := composer.effectiveRouteHeader(); plan != "Today" || status != "Backlog" {
+		t.Fatalf("effective header plan/status = %q / %q, want Today / Backlog", plan, status)
+	}
+	plain := ansi.Strip(composer.View().Content)
+	if !strings.Contains(plain, "Plan: Today · Status: Backlog") {
+		t.Fatalf("the route row does not report the plan beside the status:\n%s", plain)
 	}
 }
 
@@ -72,9 +102,11 @@ func TestTaskComposerDueTodayRoutesCaptureToToday(t *testing.T) {
 	if requests[0].Destination != app.CaptureDestinationToday {
 		t.Fatalf("destination = %q, want Today", requests[0].Destination)
 	}
-	_, destination := composer.effectiveRouteHeader()
-	if destination != renderComposerDestination(app.CaptureDestinationToday) {
-		t.Fatalf("displayed destination = %q, want Today", destination)
+	// The due date routes the capture, so the row reports the plan that routing
+	// produces and the Backlog status it carries, not the `@today` that caused it.
+	_, plan, status := composer.effectiveRouteHeader()
+	if plan != "Today" || status != "Backlog" {
+		t.Fatalf("displayed plan/status = %q / %q, want Today / Backlog", plan, status)
 	}
 }
 
@@ -89,23 +121,31 @@ func TestTaskComposerHeaderAggregatesMultilineRoutes(t *testing.T) {
 		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 
+	// Each axis answers for itself across the batch, so two lines can agree about
+	// their status and disagree about their plan: `$today` and `$next` both land
+	// in Backlog and belong to different collections.
 	tests := []struct {
-		name            string
-		input           string
-		wantProject     string
-		wantDestination string
+		name        string
+		input       string
+		wantProject string
+		wantPlan    string
+		wantStatus  string
 	}{
-		{"uniform", "One %tt $doing\nTwo %tt $doing", "tt", models.StateDoing.Icon() + " $doing"},
-		{"mixed project", "One %tt $doing\nTwo $doing", "Mixed", models.StateDoing.Icon() + " $doing"},
-		{"mixed destination", "One %tt $doing\nTwo %tt $waiting", "tt", "Mixed"},
-		{"both mixed", "One %tt $doing\nTwo $waiting", "Mixed", "Mixed"},
+		{"uniform", "One %tt $doing\nTwo %tt $doing", "tt", "", "Doing"},
+		{"mixed project", "One %tt $doing\nTwo $doing", "Mixed", "", "Doing"},
+		{"mixed status", "One %tt $doing\nTwo %tt $waiting", "tt", "", "Mixed"},
+		{"both mixed", "One %tt $doing\nTwo $waiting", "Mixed", "", "Mixed"},
+		{"uniform plan", "One %tt $today\nTwo %tt $today", "tt", "Today", "Backlog"},
+		{"mixed plan alone", "One %tt $today\nTwo %tt $next", "tt", "Mixed", "Backlog"},
+		{"plan absent on one line", "One %tt $today\nTwo %tt $backlog", "tt", "Mixed", "Backlog"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			composer.Input.SetValue(tt.input)
-			project, destination := composer.effectiveRouteHeader()
-			if project != tt.wantProject || destination != tt.wantDestination {
-				t.Fatalf("effective header = %q / %q, want %q / %q", project, destination, tt.wantProject, tt.wantDestination)
+			project, plan, status := composer.effectiveRouteHeader()
+			if project != tt.wantProject || plan != tt.wantPlan || status != tt.wantStatus {
+				t.Fatalf("effective header = %q / %q / %q, want %q / %q / %q",
+					project, plan, status, tt.wantProject, tt.wantPlan, tt.wantStatus)
 			}
 		})
 	}
@@ -220,7 +260,7 @@ func TestTaskComposerCompactPanelShape(t *testing.T) {
 	if !strings.HasPrefix(lines[0], "── Project task ") {
 		t.Fatalf("panel does not lead with its labeled divider:\n%s", rendered)
 	}
-	if !strings.HasPrefix(lines[1], "Project: Project · Destination: ") {
+	if !strings.HasPrefix(lines[1], "Project: Project · Status: ") {
 		t.Fatalf("panel does not state its effective route on one row:\n%s", rendered)
 	}
 	if !strings.Contains(lines[2], "Draft task") {

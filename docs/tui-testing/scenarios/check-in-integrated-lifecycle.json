@@ -191,13 +191,13 @@
     },
     {
       "type": "key",
-      "label": "the ranked list draws no lane, so the state is read in Peek",
+      "label": "the ranked list draws no lane, so the status is read in Peek",
       "key": "b"
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "state doing"
+      "value": "status doing"
     },
     {
       "type": "key",

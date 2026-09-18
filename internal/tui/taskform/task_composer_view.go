@@ -66,7 +66,21 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	return route
 }
 
-func (m *TaskComposerModel) effectiveRouteHeader() (project, destination string) {
+// composerMixedValue is what one axis reports when the lines being captured do
+// not agree about it. Each axis answers for itself, so a batch heading for Today
+// and for Done is mixed about its status and mixed about its plan, while one
+// heading for Today and for Next agrees about status and not about plan.
+const composerMixedValue = "Mixed"
+
+// effectiveRouteHeader states the route as the two independent things it is: the
+// planning collection the capture commits to, and the lifecycle state it lands
+// in. One destination decides both — `$today` is a plan with a Backlog status —
+// so a single value naming only the sigil left the second half unsaid.
+//
+// An empty plan is the absence of a membership rather than an unknown one, and
+// the row drops that half entirely; a status is never absent, since every task
+// created is in some state.
+func (m *TaskComposerModel) effectiveRouteHeader() (project, plan, status string) {
 	var routes []composerEffectiveRoute
 	for _, line := range strings.Split(m.Input.Value(), "\n") {
 		if strings.TrimSpace(line) != "" {
@@ -78,23 +92,39 @@ func (m *TaskComposerModel) effectiveRouteHeader() (project, destination string)
 	}
 
 	project = routes[0].projectName
-	destination = renderComposerDestination(routes[0].destination)
+	plan = composerPlanValue(routes[0].destination)
+	status = composerStatusValue(routes[0].destination)
 	for _, route := range routes[1:] {
 		if route.projectID != routes[0].projectID {
-			project = "Mixed"
+			project = composerMixedValue
 		}
-		if route.destination != routes[0].destination {
-			destination = "Mixed"
+		if composerPlanValue(route.destination) != plan && plan != composerMixedValue {
+			plan = composerMixedValue
+		}
+		if composerStatusValue(route.destination) != status && status != composerMixedValue {
+			status = composerMixedValue
 		}
 	}
-	return project, destination
+	return project, plan, status
 }
 
-func renderComposerDestination(destination app.CaptureDestination) string {
+// composerPlanValue names the planning collection the effective route commits
+// to and nothing at all for the eight destinations that name a state alone.
+func composerPlanValue(destination app.CaptureDestination) string {
+	if !destination.IsPlanning() {
+		return ""
+	}
+	return chrome.PlanStatusValue(string(destination))
+}
+
+// composerStatusValue names the lifecycle state the effective route lands in.
+// Today and Next resolve through WorkflowState, so the half a planning sigil
+// leaves implicit is stated rather than inferred from the sigil's own spelling.
+func composerStatusValue(destination app.CaptureDestination) string {
 	if destination == "" {
 		destination = app.CaptureDestinationInbox
 	}
-	return destination.WorkflowState().Icon() + " $" + string(destination)
+	return chrome.PlanStatusValue(destination.WorkflowState().String())
 }
 
 // View renders whichever presentation the composer currently owns: the expanded

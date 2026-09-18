@@ -141,9 +141,15 @@ Capture opens as a panel across the bottom of the screen rather than a view that
 replaces what you were looking at. The outline stays above it, live and scrolled
 where you left it, so the row you were on — and its Peek dock, if one was open —
 is still readable while you type. The panel leads with a divider naming the
-capture (`── Capture → Client Alpha`), states the effective project and
-destination on one row, holds the input, and gives whatever room is left to the
-preview of what `Enter` would create. Autocomplete and `?` syntax help borrow
+capture (`── Capture → Client Alpha`), states the effective route on one row,
+holds the input, and gives whatever room is left to the preview of what `Enter`
+would create. That row reads `Project: Client Alpha · Status: Inbox`, and when
+the draft joins a planning collection it says so in its own half —
+`Project: Client Alpha · Plan: Today · Status: Backlog`, because `$today` is a
+plan and the status it implies is one the word does not spell. A draft with no
+`$destination` and no `%project` reads whatever it would default to, a draft
+whose lines disagree about an axis reads `Mixed` for that axis alone, and the
+preview repeats the pair under the same two words. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long
 as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,

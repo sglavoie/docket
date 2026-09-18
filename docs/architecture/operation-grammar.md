@@ -782,6 +782,18 @@ itself exists once. The checklist row's own menu is outside every manifest and
 deliberately lists Edit Item, which also answers `e`, because the menu is the
 only route to Delete Item.
 
+A chord's which-key row may divide its terminals without becoming a second key
+list. `OperationKeyBinding.HintGroup` is that division declared once, beside the
+sequence it belongs to: it names no key, changes no operation identity, and
+takes no dispatch path, so the workflow chord's ten terminals still resolve
+exactly as they did. `chordTerminalHint` returns the label and that group
+together, `DecoratedChordHintsForPrefix` stamps it on every member of a run
+rather than on the first, and `pendingChordGuidanceSpec` is where a run becomes a
+heading — it emits one only where the group changed, so a projection that drew
+the entries in another order would head them correctly anyway. The chord's own
+declaration order is what puts Plan's two entries ahead of Status's eight, which
+is also what keeps them off the end a narrow footer sheds.
+
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
 through, and the miss sets a warning status such as `wq is not a workflow

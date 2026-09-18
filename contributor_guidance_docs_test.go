@@ -1129,7 +1129,27 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// at every write", since the clamp only ever reduces and the strip is a row
 	// taller while it holds a message, so the ordering is what keeps a reader's
 	// window. The mechanism lives in docs/architecture/presentation-chrome.md.
-	const budget = 68700
+	// Fifty-ninth raise, 68700 to 69300, for the Plan/Status division. The
+	// retired half of the Peek sentence — `planning membership` listed fifth
+	// among the status line's fields — pays for part of it, because that
+	// placement was the bug: `today` trailing `priority 1` reads as a tenth
+	// state, which is exactly what a reader restores if the rule only says the
+	// field is present. 600 bytes buy three rules. The first is the vocabulary
+	// itself, and it has to be a rule because it is a negative one: four
+	// surfaces spell these two words and nothing in any one of them stops a
+	// fifth from minting `Lane` or `Collection`, after which the division is
+	// noise rather than a distinction. The second is that grouping is metadata
+	// over the existing binding — the whole point of the session was that no
+	// operation identity, sequence, or dispatch path moved, and a contributor
+	// reading only the rendered row would reasonably conclude the chord gained a
+	// second key list. The third is that a heading rides its run's first entry,
+	// which is not derivable from the packing rules already stated: those say
+	// required entries are reserved first and optional ones added by priority
+	// until one does not fit, and under exactly that policy a heading modelled
+	// as its own entry outlives every member beneath it. The mechanism lives in
+	// docs/architecture/presentation-chrome.md and
+	// docs/architecture/operation-grammar.md.
+	const budget = 69300
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

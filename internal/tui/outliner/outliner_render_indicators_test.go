@@ -127,10 +127,10 @@ func TestTaskRowCarriesNoDeferralAtAnyCount(t *testing.T) {
 	}
 }
 
-// TestPeekStateValueCarriesTheWaitingAndDoingAges is the two age indicators the
+// TestPeekStatusValueCarriesTheWaitingAndDoingAges is the two age indicators the
 // row shed. They read StateChangedAt, so commenting on a blocked task still must
 // not reset how long it has been blocked, and no other state wears an age.
-func TestPeekStateValueCarriesTheWaitingAndDoingAges(t *testing.T) {
+func TestPeekStatusValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
 		state models.WorkflowState
@@ -147,8 +147,8 @@ func TestPeekStateValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 			StateChangedAt: now.AddDate(0, 0, -tc.days),
 			UpdatedAt:      now,
 		}
-		if got := inlinePeekStateValue(task, now); got != tc.want {
-			t.Fatalf("state value = %q, want %q; a touch must not reset it", got, tc.want)
+		if got := inlinePeekStatusValue(task, now); got != tc.want {
+			t.Fatalf("status value = %q, want %q; a touch must not reset it", got, tc.want)
 		}
 		if rendered := ansi.Strip(segmentsRenderedFor(task, now)); strings.Contains(rendered, tc.want) {
 			t.Fatalf("the row still wore the age: %q", rendered)
@@ -162,8 +162,8 @@ func TestPeekStateValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 			WorkflowState:  state,
 			StateChangedAt: now.AddDate(0, 0, -12),
 		}
-		if got := inlinePeekStateValue(other, now); got != state.String() {
-			t.Fatalf("state %q wore an age: %q", state, got)
+		if got := inlinePeekStatusValue(other, now); got != state.String() {
+			t.Fatalf("status %q wore an age: %q", state, got)
 		}
 	}
 }

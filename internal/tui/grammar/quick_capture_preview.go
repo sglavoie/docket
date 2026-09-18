@@ -88,6 +88,17 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		destinationLabel += " (default)"
 	}
 	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
+	// A planning sigil answers two questions with one token: `$today` is a
+	// membership in a collection and a Backlog status, and the second half is
+	// nowhere in the word. The pair is stated exactly where the token leaves it
+	// unsaid — the eight lifecycle destinations spell their own status, so
+	// repeating it under a label there would be the same word twice.
+	if destination.IsPlanning() {
+		routeChunks = append(routeChunks,
+			chrome.PlanFieldLabel+": "+chrome.PlanStatusValue(string(destination)),
+			chrome.StatusFieldLabel+": "+chrome.PlanStatusValue(destination.WorkflowState().String()),
+		)
+	}
 	if q.Preview.targetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+q.Preview.targetProjectName)
 	}

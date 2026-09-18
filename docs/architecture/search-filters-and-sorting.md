@@ -392,12 +392,19 @@ whole text. `inlinePeekParentLines` follows, root-first and uncompacted, wrapped
 rather than elided, so a chain six levels deep is read to its end by scrolling.
 
 The two summary lines beneath them are what the row abbreviates or drops
-entirely. `inlinePeekStatusLine` spells the lifecycle state in words rather than
-as a glyph — with the age appended for the two states whose age is a question
-about the work, Doing and Waiting, read off `StateChangedAt` — then the priority
-as a number under the same `ValidatePriority` gate the badge takes, the planning
-collection, and the two boolean axes as bare words, since a label beside `pinned`
-would say it twice. `inlinePeekScheduleLine` follows it with what the task still
+entirely. `inlinePeekStatusLine` leads with the planning collection under
+`chrome.PlanFieldKey` and follows it with the lifecycle state under
+`chrome.StatusFieldKey`, spelled in words rather than as a glyph — with the age
+appended for the two states whose age is a question about the work, Doing and
+Waiting, read off `StateChangedAt` — then the priority as a number under the same
+`ValidatePriority` gate the badge takes, and the two boolean axes as bare words,
+since a label beside `pinned` would say it twice. Plan leads rather than trails
+because the two are one question asked twice and the pair is only readable as a
+pair: `plan today · status backlog` says where the work was committed and what
+state it still holds, where `today` alone reads as a tenth state. The words are
+`chrome`'s, not this line's, so the workflow chord's headings, the capture route
+row, and this line cannot drift into three synonyms; the keys here are the
+lowercase `label value` idiom the schedule and history lines beneath already use. `inlinePeekScheduleLine` follows it with what the task still
 owes: the deadline, a deferral still pending, and the next check-in with its
 repeat. The task's spent instants are not there — `inlinePeekHistoryLine` carries
 created, updated, last review, a recent wake, and a repeated deferral, and it is

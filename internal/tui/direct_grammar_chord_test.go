@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
@@ -69,6 +70,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		value     any
 		hasValue  bool
 		display   string
+		group     string
 	}
 	got := make(map[string]terminal)
 	gotOrder := make([]string, 0, 10)
@@ -83,25 +85,31 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 			value:     binding.PresetValue,
 			hasValue:  binding.HasPresetValue,
 			display:   binding.DisplayKey,
+			group:     binding.HintGroup,
 		}
 	}
 	const stateSpelling = "wi/g/w/p/m/d/c"
+	// Session 5 grouped these ten without touching any of them: the group is
+	// metadata beside the sequence, so what changed is the declaration order that
+	// puts the two planning collections first and the heading each one draws
+	// under. Every operation, preset value, and display spelling is what it was.
+	plan, status := chrome.PlanHintGroup, chrome.StatusHintGroup
 	want := map[string]terminal{
-		"i": {operation: operation.OperationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
-		"b": {operation: operation.OperationCoreBacklog, display: "wb"},
-		"n": {operation: operation.OperationCoreNext, display: "wn"},
-		"t": {operation: operation.OperationCoreToday, display: "wt"},
-		"g": {operation: operation.OperationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
-		"w": {operation: operation.OperationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
-		"p": {operation: operation.OperationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
-		"m": {operation: operation.OperationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling},
-		"d": {operation: operation.OperationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling},
-		"c": {operation: operation.OperationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling},
+		"n": {operation: operation.OperationCoreNext, display: "wn", group: plan},
+		"t": {operation: operation.OperationCoreToday, display: "wt", group: plan},
+		"i": {operation: operation.OperationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling, group: status},
+		"b": {operation: operation.OperationCoreBacklog, display: "wb", group: status},
+		"g": {operation: operation.OperationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling, group: status},
+		"w": {operation: operation.OperationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling, group: status},
+		"p": {operation: operation.OperationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling, group: status},
+		"m": {operation: operation.OperationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling, group: status},
+		"d": {operation: operation.OperationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling, group: status},
+		"c": {operation: operation.OperationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling, group: status},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	if wantOrder := []string{"i", "b", "n", "t", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+	if wantOrder := []string{"n", "t", "i", "b", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
 		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {

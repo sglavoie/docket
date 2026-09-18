@@ -99,7 +99,7 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	if !strings.Contains(content, "── Capture → Test Project ") {
 		t.Fatalf("composed output should keep the panel's labeled divider:\n%s", content)
 	}
-	if !strings.Contains(content, "Project: Test Project · Destination: ") {
+	if !strings.Contains(content, "Project: Test Project · Status: Inbox") {
 		t.Fatalf("composed output should keep the panel's route row:\n%s", content)
 	}
 

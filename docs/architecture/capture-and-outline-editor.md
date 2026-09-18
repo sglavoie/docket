@@ -93,6 +93,20 @@ plain rule when there is no room for a label. Its styles are built locally rathe
 than taken from `theme.SubtitleStyle`, which carries a bottom margin that on a
 single row is a newline through the middle of the divider.
 
+`renderComposerRouteRow` is the row under that divider, and
+`effectiveRouteHeader` is what it reads: three independent axes — project, plan,
+status — each aggregated across the draft's lines on its own, so a multiline
+capture that agrees about the project and disagrees about the destination says
+`Mixed` in one field rather than in all three. The plan half is written only when
+`Destination.IsPlanning()`, because the eight lifecycle destinations already
+spell their own status and a `Plan:` label over nothing would claim a membership
+the capture does not create. The row names words alone, no icon and no `$` token,
+since an axis that can read `Mixed` is one no sigil can spell; the preview keeps
+the sigil echo, and `quick_capture_preview.go` appends the same two labelled
+chunks to its Route group under the same `IsPlanning` gate. Both spellings come
+from `chrome.PlanFieldLabel`/`StatusFieldLabel` through `chrome.PlanStatusValue`,
+which is the one place a canonical lowercase token is capitalized.
+
 `ComposeBoundedPreviewBlock` is the preview's form of the same bound. Where
 `ComposePreviewBlock` protects a lower pane, the panel has none, so the choice is
 between the grouped preview while it fits whole and the compact wrapped run that

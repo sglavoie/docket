@@ -18,18 +18,7 @@ import (
 // layer above chrome; chrome's own packing invariants live beside the packer in
 // internal/tui/chrome/footer_helpers_test.go.
 func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
-	hints := []operation.ChordHint{
-		{Key: "i", Label: "inbox"},
-		{Key: "b", Label: "backlog"},
-		{Key: "n", Label: "next"},
-		{Key: "t", Label: "today"},
-		{Key: "g", Label: "doing"},
-		{Key: "w", Label: "waiting"},
-		{Key: "p", Label: "paused"},
-		{Key: "m", Label: "someday"},
-		{Key: "d", Label: "done"},
-		{Key: "c", Label: "canceled"},
-	}
+	hints := workflowChordHintsForTest()
 
 	spec := pendingChordGuidanceSpec("w", hints)
 	lines := chrome.GuidanceLines(spec, chrome.MinTerminalWidth)
@@ -66,6 +55,51 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
 			t.Fatalf("rendered pending chord line width = %d, want <= %d: %q", got, chrome.MinTerminalWidth, ansi.Strip(line))
 		}
+	}
+}
+
+// TestPendingChordGuidanceNeverStrandsADivisionHeading holds the other half of
+// the same packing: a heading is not an entry of its own, so it rides the first
+// binding under it and is packed, fitted, and dropped with that binding. The
+// narrow footer sheds this chord's last entries, and the claim is that a
+// heading is never what survives them — a lone `Status:` with nothing beneath it
+// would read as a division the row could not show.
+func TestPendingChordGuidanceNeverStrandsADivisionHeading(t *testing.T) {
+	hints := workflowChordHintsForTest()
+
+	// Every width the footer may be asked for, not just the floor: the packer
+	// drops a different entry at each, so only a sweep reaches the width where a
+	// heading is the last thing standing.
+	for width := chrome.MinTerminalWidth; width <= 160; width++ {
+		joined := ansi.Strip(strings.Join(chrome.GuidanceLines(pendingChordGuidanceSpec("w", hints), width), "\n"))
+		for _, group := range []struct{ heading, first string }{
+			{chrome.PlanHintGroup, "n next"},
+			{chrome.StatusHintGroup, "i inbox"},
+		} {
+			if strings.Contains(joined, group.heading) && !strings.Contains(joined, group.heading+" "+group.first) {
+				t.Fatalf("width %d strands the %q heading away from %q:\n%s",
+					width, group.heading, group.first, joined)
+			}
+		}
+	}
+}
+
+// workflowChordHintsForTest is the workflow chord as its strategy declares it:
+// the two planning collections under Plan, then the eight lifecycle states
+// under Status, each entry carrying its own group so the shell decides where a
+// heading is drawn.
+func workflowChordHintsForTest() []operation.ChordHint {
+	return []operation.ChordHint{
+		{Key: "n", Label: "next", Group: chrome.PlanHintGroup},
+		{Key: "t", Label: "today", Group: chrome.PlanHintGroup},
+		{Key: "i", Label: "inbox", Group: chrome.StatusHintGroup},
+		{Key: "b", Label: "backlog", Group: chrome.StatusHintGroup},
+		{Key: "g", Label: "doing", Group: chrome.StatusHintGroup},
+		{Key: "w", Label: "waiting", Group: chrome.StatusHintGroup},
+		{Key: "p", Label: "paused", Group: chrome.StatusHintGroup},
+		{Key: "m", Label: "someday", Group: chrome.StatusHintGroup},
+		{Key: "d", Label: "done", Group: chrome.StatusHintGroup},
+		{Key: "c", Label: "canceled", Group: chrome.StatusHintGroup},
 	}
 }
 

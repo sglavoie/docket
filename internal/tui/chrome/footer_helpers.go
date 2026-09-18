@@ -16,9 +16,15 @@ import (
 // GuidanceHint is one complete key/action entry in contextual guidance.
 // Lower Priority values are retained before higher values. Required hints are
 // reserved before any optional hint is considered, regardless of priority.
+//
+// Group opens a named division ahead of this entry. It rides the entry rather
+// than standing as a hint of its own so a heading and the first entry under it
+// are packed, fitted, and dropped as one thing: a heading the packer kept while
+// its only entry did not fit would name a division the row does not show.
 type GuidanceHint struct {
 	Key      string
 	Label    string
+	Group    string
 	Priority int
 	Required bool
 	Dimmed   bool // The action currently has no effect; it remains discoverable.
@@ -183,6 +189,7 @@ func GuidanceHintText(hint GuidanceHint) string {
 type guidanceSegment struct {
 	Key      string
 	Label    string
+	Group    string
 	Verbatim string
 	Dimmed   bool
 }
@@ -191,7 +198,11 @@ func (segment guidanceSegment) text() string {
 	if segment.Verbatim != "" {
 		return segment.Verbatim
 	}
-	return GuidanceHintText(GuidanceHint{Key: segment.Key, Label: segment.Label})
+	entry := GuidanceHintText(GuidanceHint{Key: segment.Key, Label: segment.Label})
+	if group := strings.TrimSpace(segment.Group); group != "" {
+		return strings.TrimSpace(group + " " + entry)
+	}
+	return entry
 }
 
 // FitToWidth clips one segment for the narrow fallback path, keeping the
@@ -204,9 +215,14 @@ func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
 		return segment
 	}
 	key := strings.TrimSpace(segment.Key)
-	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
-		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
-		return guidanceSegment{Key: key, Label: label, Dimmed: segment.Dimmed}
+	group := strings.TrimSpace(segment.Group)
+	head := lipgloss.Width(key)
+	if group != "" {
+		head += lipgloss.Width(group) + 1
+	}
+	if segment.Verbatim == "" && key != "" && head+1 < width {
+		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-head-1)
+		return guidanceSegment{Key: key, Label: label, Group: group, Dimmed: segment.Dimmed}
 	}
 	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width), Dimmed: segment.Dimmed}
 }
@@ -255,7 +271,12 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	candidates := make([]candidate, 0, len(spec.Hints))
 	selected := make(map[int]bool, len(spec.Hints))
 	for index, hint := range spec.Hints {
-		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label), Dimmed: hint.Dimmed}
+		segment := guidanceSegment{
+			Key:    strings.TrimSpace(hint.Key),
+			Label:  strings.TrimSpace(hint.Label),
+			Group:  strings.TrimSpace(hint.Group),
+			Dimmed: hint.Dimmed,
+		}
 		if segment.text() == "" {
 			continue
 		}
@@ -375,13 +396,19 @@ func renderGuidanceSegment(segment guidanceSegment) string {
 	}
 	key := strings.TrimSpace(segment.Key)
 	label := strings.TrimSpace(segment.Label)
+	// The heading names a division rather than a keystroke, so it takes the
+	// action weight and leaves the key the only thing that scans as pressable.
+	var heading string
+	if group := strings.TrimSpace(segment.Group); group != "" {
+		heading = theme.HelpStyle.Render(group + " ")
+	}
 	switch {
 	case key == "":
-		return theme.HelpStyle.Render(label)
+		return heading + theme.HelpStyle.Render(label)
 	case label == "":
-		return theme.HelpKeyStyle.Render(key)
+		return heading + theme.HelpKeyStyle.Render(key)
 	}
-	return theme.HelpKeyStyle.Render(key) + theme.HelpStyle.Render(" "+label)
+	return heading + theme.HelpKeyStyle.Render(key) + theme.HelpStyle.Render(" "+label)
 }
 
 // RenderGuidanceLines styles the packed guidance one segment at a time. Styling

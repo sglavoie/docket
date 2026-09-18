@@ -28,8 +28,12 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 			"`S` turn a checklist item into a child task or a child task back into a checklist item in its current parent, " +
 			"`D` repeat the cursor task as a new draft, `e` edits whatever the cursor names",
 		"`w` opens the workflow chord over the ten destinations the `$destination` capture sigil names",
-		"`wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing",
-		"`ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled",
+		// Session 5 divided that chord into Plan and Status, so the catalog is
+		// asserted as the two runs it is drawn as rather than as one flat list.
+		"Plan: `wn` toggle Next, `wt` toggle Today",
+		"Status: `wi` Inbox, `wb` Backlog, `wg` Doing, `ww` Waiting, `wp` Paused, " +
+			"`wm` Someday, `wd` Done, `wc` Canceled",
+		"planning a task for Today leaves it in Backlog and Peek says `plan today · status backlog`",
 		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; " +
 			"`-` and `+` step the deadline one day earlier and one day later; " +

@@ -319,22 +319,29 @@ func (f inlinePeekFields) line() string {
 }
 
 // inlinePeekStatusLine spells what the row's badges abbreviate and what it drops
-// entirely: the lifecycle state in words rather than as a glyph, the assigned
-// priority as a number, the planning collection the task belongs to, and the two
-// independent boolean axes. The state is never omitted — every task is in one —
+// entirely: the planning collection the task belongs to, the lifecycle state in
+// words rather than as a glyph, the assigned priority as a number, and the two
+// independent boolean axes. The status is never omitted — every task is in one —
 // so a task Peek always has at least this line to show.
+//
+// Plan leads and status follows it, which is the order the workflow chord and the
+// capture route both read in, and the two sit adjacent so the pair is read as one
+// answer: a task planned for Today is in Backlog, and the line says so rather
+// than leaving a reader to know it. They are two axes and not two values of one,
+// so an absent plan drops its field and changes nothing about the status beside
+// it.
 func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) string {
 	if task == nil {
 		return ""
 	}
 	var fields inlinePeekFields
-	fields.add("state", inlinePeekStateValue(task, now))
+	fields.add(chrome.PlanFieldKey, planning)
+	fields.add(chrome.StatusFieldKey, inlinePeekStatusValue(task, now))
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
 		fields.add("priority", strconv.Itoa(task.Priority))
 	}
-	fields.add("plan", planning)
 	if task.Pinned {
 		fields.flag("pinned")
 	}
@@ -348,11 +355,11 @@ func inlinePeekStatusLines(task *models.Task, planning string, now time.Time, in
 	return inlinePeekStyledLines("", inlinePeekStatusLine(task, planning, now), indent, width)
 }
 
-// inlinePeekStateValue names the state and, for the two states whose age is a
-// question about the work rather than about the record, how long it has held it.
-// StateChangedAt is what it reads, so commenting on a blocked task does not reset
-// how long it has been blocked.
-func inlinePeekStateValue(task *models.Task, now time.Time) string {
+// inlinePeekStatusValue names the lifecycle state and, for the two states whose
+// age is a question about the work rather than about the record, how long it has
+// held it. StateChangedAt is what it reads, so commenting on a blocked task does
+// not reset how long it has been blocked.
+func inlinePeekStatusValue(task *models.Task, now time.Time) string {
 	state := task.State().String()
 	if !task.IsInState(models.StateDoing) && !task.IsInState(models.StateWaiting) {
 		return state
@@ -369,10 +376,10 @@ func inlinePeekStateValue(task *models.Task, now time.Time) string {
 // tick and would otherwise return Peek's window to the top on the minute.
 func inlinePeekStatusKey(task *models.Task, planning string) string {
 	return strings.Join([]string{
-		"state:" + task.State().String(),
-		"state-changed:" + task.StateChangedAt.Format(time.RFC3339Nano),
-		"priority:" + strconv.Itoa(task.Priority),
 		"plan:" + planning,
+		"status:" + task.State().String(),
+		"status-changed:" + task.StateChangedAt.Format(time.RFC3339Nano),
+		"priority:" + strconv.Itoa(task.Priority),
 		"pinned:" + strconv.FormatBool(task.Pinned),
 		"review:" + strconv.FormatBool(task.Review),
 	}, "|")

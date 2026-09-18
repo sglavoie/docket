@@ -9,7 +9,7 @@
     { "type": "key", "label": "open Peek on the clipped title", "key": "b" },
     { "type": "assert", "label": "Peek leads with the whole title, wrapped rather than elided", "assert": "contains", "value": "Investigate intermittent timeout when syncing very" },
     { "type": "assert", "assert": "contains", "value": "project archives over slow connections" },
-    { "type": "assert", "label": "the summary line names the state and priority the row abbreviates", "assert": "contains", "value": "state backlog · priority 1" },
+    { "type": "assert", "label": "the summary line names the status and priority the row abbreviates", "assert": "contains", "value": "status backlog · priority 1" },
     { "type": "assert", "label": "the context the row truncated gets a line of its own", "assert": "contains", "value": "Context: [distributed-systems]" },
     { "type": "assert", "label": "a title this long costs document rows, so the tail waits below the window", "assert": "contains", "value": "0 above · 1 below" },
 

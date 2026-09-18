@@ -98,18 +98,28 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	return chrome.FitBlockHeight(strings.TrimRight(b.String(), "\n"), rows)
 }
 
-// renderComposerRouteRow states the effective destination on one row. Both
-// halves are named, because a project without a lifecycle and a lifecycle
-// without a project each describe a different landing place.
+// renderComposerRouteRow states the effective route on one row. Every axis is
+// named, because a project without a landing place and a landing place without a
+// project each describe a different destination, and because the plan and the
+// status a capture lands in are two answers one sigil gives at once: `$today`
+// plans for Today and lands in Backlog, so a row saying only `$today` left the
+// second half for the user to know rather than to read.
+//
+// The plan half appears only when there is a membership to name. The project
+// spends whatever the named axes leave, since it is the one value that can be
+// arbitrarily long and the one a truncation still leaves recognizable.
 func (m *TaskComposerModel) renderComposerRouteRow(width int) string {
-	project, destination := m.effectiveRouteHeader()
+	project, plan, status := m.effectiveRouteHeader()
 	// FieldLabelStyle rather than SubtitleStyle: the latter carries a bottom
 	// margin, which on a one-row summary breaks the row in two.
-	destinationPart := theme.FieldLabelStyle.Render("Destination: ") + destination
-	projectLabel := theme.FieldLabelStyle.Render("Project: ")
 	const separator = " · "
-	budget := width - lipgloss.Width(projectLabel) - lipgloss.Width(destinationPart) - len(separator)
-	row := projectLabel + textfit.TruncateToVisualWidth(project, max(budget, 1)) + separator + destinationPart
+	route := theme.FieldLabelStyle.Render(chrome.StatusFieldLabel+": ") + status
+	if plan != "" {
+		route = theme.FieldLabelStyle.Render(chrome.PlanFieldLabel+": ") + plan + separator + route
+	}
+	projectLabel := theme.FieldLabelStyle.Render("Project: ")
+	budget := width - lipgloss.Width(projectLabel) - lipgloss.Width(route) - lipgloss.Width(separator)
+	row := projectLabel + textfit.TruncateToVisualWidth(project, max(budget, 1)) + separator + route
 	return textfit.TruncateToVisualWidth(row, width)
 }
 

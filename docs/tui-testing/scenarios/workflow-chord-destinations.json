@@ -18,6 +18,8 @@
     { "type": "assert", "assert": "contains", "value": "d done" },
     { "type": "assert", "assert": "contains", "value": "c canceled" },
     { "type": "assert", "label": "the retired review action answers no second key", "assert": "not_contains", "value": "r review" },
+    { "type": "assert", "label": "the two planning collections stand under Plan, which leads the row", "assert": "contains", "value": "Plan: n next · t today" },
+    { "type": "assert", "label": "and the eight lifecycle states under Status", "assert": "contains", "value": "Status: i inbox" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "wi sends it to Inbox", "key": "i" },
@@ -79,6 +81,10 @@
 
     { "type": "key", "label": "Today leads every lane", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "the planned task reports both halves in Peek", "key": "b" },
+    { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "plan today · status backlog" },
+    { "type": "key", "label": "close the dock again", "key": "b" },
+
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wc abandons it, which the live projection stops showing", "key": "c" },
     { "type": "wait" },

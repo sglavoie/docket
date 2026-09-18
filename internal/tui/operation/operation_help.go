@@ -203,9 +203,13 @@ func DisplayKeysForOperation(strategy InputStrategy, operationID OperationID) st
 }
 
 // ChordHint is one which-key entry: the single next key and what it does.
+// Group is the presentation division the binding declared, carried on every
+// member rather than on the first of a run, so a projection decides where a
+// heading falls and the registry only says what belongs together.
 type ChordHint struct {
 	Key    string
 	Label  string
+	Group  string
 	Dimmed bool
 }
 
@@ -247,13 +251,13 @@ func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 		if !registry.chordSubtreeIsApplicable(strategy, child, ctx) {
 			continue
 		}
-		var label string
+		var label, group string
 		if child.terminal() {
-			label = registry.chordTerminalHintLabel(strategy, child, ctx)
+			label, group = registry.chordTerminalHint(strategy, child, ctx)
 		} else {
 			label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
 		}
-		hint := ChordHint{Key: key, Label: label}
+		hint := ChordHint{Key: key, Label: label, Group: group}
 		if decorate != nil {
 			path := append(append([]string(nil), prefix...), key)
 			hint = decorate(path, hint)
@@ -263,14 +267,14 @@ func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 	return hints
 }
 
-// chordTerminalHintLabel names a terminal child by the binding the current
-// cursor would actually dispatch, so a shared key hints the operation it means
-// here rather than the first one declared.
-func (registry *OperationRegistry) chordTerminalHintLabel(
+// chordTerminalHint names a terminal child by the binding the current cursor
+// would actually dispatch, so a shared key hints the operation it means here
+// rather than the first one declared. Its division comes off that same binding.
+func (registry *OperationRegistry) chordTerminalHint(
 	strategy InputStrategy,
 	node *inputChordNode,
 	ctx CommandContext,
-) string {
+) (string, string) {
 	for _, index := range node.bindings {
 		binding := strategy.Bindings[index]
 		descriptor, exists := registry.Descriptor(binding.OperationID)
@@ -279,14 +283,14 @@ func (registry *OperationRegistry) chordTerminalHintLabel(
 		}
 		switch {
 		case binding.HintLabel != "":
-			return binding.HintLabel
+			return binding.HintLabel, binding.HintGroup
 		case binding.FooterLabel != "":
-			return binding.FooterLabel
+			return binding.FooterLabel, binding.HintGroup
 		default:
-			return strings.ToLower(descriptor.Label)
+			return strings.ToLower(descriptor.Label), binding.HintGroup
 		}
 	}
-	return ""
+	return "", ""
 }
 
 func (registry *OperationRegistry) chordNodeForPrefix(id InputStrategyID, prefix []string) *inputChordNode {

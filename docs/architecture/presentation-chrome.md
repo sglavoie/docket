@@ -73,6 +73,19 @@ preserves provider order, and drops supplemental state before controls.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
+`GuidanceHint.Group` is a heading a provider draws over the entry it names, and
+it is a field on that entry rather than an entry of its own because the packer
+selects optional hints by priority and stops at the first that does not fit. A
+standalone heading would therefore be reservable while every member under it was
+shed, leaving a division the row cannot show. Riding the first member makes
+heading and member pack, fit, and drop as one thing:
+`guidanceSegment.text()` prepends it, `fitToWidth` charges its width to the same
+head it charges the key to and preserves it through the cut, and
+`renderGuidanceSegment` paints it in `theme.HelpStyle` ahead of the key. Only the
+first member of a run carries one — the shell compares each hint's group against
+the previous one — so the row reads `Plan: n next · t today · Status: i inbox`
+rather than repeating the word ten times.
+
 #### One active instruction set
 
 A composed frame stacks presentations, and only one of them answers the next key
