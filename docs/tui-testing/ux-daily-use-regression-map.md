@@ -157,14 +157,26 @@ Clipped lines:
 | `check-in-offer` | 12 | 14 | 16 | 16 |
 
 That count rises, and it is worth being exact about what it counts: a screen
-line holding the truncation ellipsis, wherever it falls. Every added ellipsis in
-these frames is inside the trailing project field — `[ux-platform-d…]`,
-`[release-pro…]` — and none is inside a title. Before session 2 the label was
-drawn whole ahead of the title, so it was the title that was cut; the label now
-sits in one measured column with a width budget of its own, which is what makes
-it the field that gives. A frame where nearly every row carries that field
-therefore reports nearly every row as clipped while carrying strictly more
-readable title than the same frame did before.
+line holding the truncation ellipsis, wherever it falls. `screenClippedLines`
+is unchanged from session 1 and attributes nothing — it counts the line, not the
+field that gave — so the number says a row was cut somewhere and stops there.
+
+The frames say which field, and they do not all say the same thing. At 100×35
+and 120×40 the added ellipses in `dense-scrolled` sit in the trailing project
+field — `[ux-platform-d…]`, `[release-pro…]` — and the titles are whole. At
+60×20 all seventeen task rows carry both: the title is cut and so is the label
+beside it.
+
+The width the label spends is not new either. At the baseline, project labels
+were already capped at 14 columns including brackets. Session 2 moved that field
+from ahead of the title to a measured column after it and let it grow past 14
+once the terminal is wide enough, but it did not introduce the cap and did not
+turn an untruncated label into a truncated one. What the tables above record is
+therefore an observation and not a comparison. Aggregate clipped-line counts do
+not establish whether task titles gained readable space. Establishing that would
+take a per-title before/after measurement against a rebuilt baseline, which this
+pass did not run; the numbers stay as measured rather than being replaced by
+invented ones.
 
 The counterpart the truncation owes is written down and tested elsewhere: a
 folded group summary spells the whole slug, `ux-acceptance-daily-loop.json`
