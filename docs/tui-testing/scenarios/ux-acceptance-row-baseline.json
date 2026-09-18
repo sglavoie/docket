@@ -34,7 +34,7 @@
 
     { "type": "assert", "label": "a title that fits is rendered whole", "assert": "not_clipped", "value": "Confirm the release sign-off owed today" },
     { "type": "assert", "assert": "not_clipped", "value": "Await the vendor security questionnaire" },
-    { "type": "assert", "label": "the reclaimed width reaches the titles that used to lose their tail to a tag list", "assert": "not_clipped", "value": "Reconcile the client onboarding checklist against the revised milestones" },
+    { "type": "assert", "label": "long titles give way to the shared project column and keep a readable prefix", "assert": "contains", "value": "Reconcile the client onboarding checklist against the revi…" },
     { "type": "assert", "assert": "not_clipped", "value": "Reread the quarterly access list flagged for review" },
     { "type": "assert", "label": "the fixture's longest title still loses its tail to the deadline and the label beside it", "assert": "contains", "value": "Restore the overdue billing reconciliation export before…" },
 
@@ -59,6 +59,7 @@
     { "type": "key", "label": "leave the search", "key": "esc" },
 
     { "type": "resize", "label": "a wider terminal keeps the same composition", "width": 120, "height": 40 },
+    { "type": "assert", "label": "the wider title region recovers the onboarding title", "assert": "not_clipped", "value": "Reconcile the client onboarding checklist against the revised milestones" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "assert": "contains", "value": "▾  @ Review  (1)" },
     { "type": "assert", "label": "120 columns is enough for the title the deadline used to crowd out", "assert": "not_clipped", "value": "Restore the overdue billing reconciliation export before the audit closes" },

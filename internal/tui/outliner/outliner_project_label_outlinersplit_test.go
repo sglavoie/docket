@@ -3,6 +3,7 @@ package outliner
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -108,6 +109,44 @@ func TestProjectColumnHoldsStillWhileTheListScrolls(t *testing.T) {
 	if column := labelColumn(t, line, "[alpha]"); column != whole.ProjectColumn+1 {
 		t.Fatalf("the short row seats its label in column %d rather than the measured column %d: %q",
 			column, whole.ProjectColumn+1, line)
+	}
+}
+
+func TestProjectColumnAlignsRowsWithDifferentIndicators(t *testing.T) {
+	long := primaryRowsTask("long", models.StateBacklog)
+	long.Title = strings.Repeat("long title ", 20)
+	review := primaryRowsTask("review", models.StateBacklog)
+	today := time.Now()
+	review.NextCheckIn = &today
+	due := primaryRowsTask("due", models.StateBacklog)
+	due.DueDate = &today
+	alpha := primaryRowsProject("katana", long, review)
+	beta := primaryRowsProject("analytics", due)
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+
+	for _, width := range []int{60, 80, 120} {
+		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+		for _, task := range []*models.Task{long, review, due} {
+			row, found := rowForTaskID(outliner, task.ID)
+			if !found {
+				t.Fatalf("task %q has no row", task.ID)
+			}
+			for _, selected := range []bool{false, true} {
+				line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, 0, layout))
+				label := ansi.Strip(outliner.taskProjectLabel(row, width))
+				if column := labelColumn(t, line, label); column != layout.ProjectColumn+1 {
+					t.Fatalf("width %d, task %q: label in column %d, want %d: %q",
+						width, task.ID, column, layout.ProjectColumn+1, line)
+				}
+				if task == review && !strings.Contains(line, "review today") {
+					t.Fatalf("width %d lost the review badge: %q", width, line)
+				}
+				if lipgloss.Width(line) > width {
+					t.Fatalf("row width = %d, exceeds %d: %q", lipgloss.Width(line), width, line)
+				}
+			}
+		}
 	}
 }
 

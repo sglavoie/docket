@@ -285,9 +285,9 @@ func uxDailyUseIntegratedReadsHierarchyByDepth(
 	generations := []string{uxAcceptanceParentTitle, uxAcceptanceChildTitle, uxAcceptanceGrandchildTitle}
 	indents := make([]int, 0, len(generations))
 	for depth, generation := range generations {
-		// Titles are matched by their leading run, since the narrow widths clip
-		// the tail and the indent is what is under test.
-		lead := uxDailyUseIntegratedLead(generation)
+		// The unique first word survives truncation beside the aligned project
+		// column at the minimum width; the indent is what is under test.
+		lead := strings.Fields(generation)[0]
 		line, ok := uxLineContaining(obs.PlainScreen, lead)
 		if !ok {
 			t.Fatalf("Backlog draws no row for %q\n%s", lead, obs.PlainScreen)

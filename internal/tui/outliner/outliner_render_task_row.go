@@ -353,15 +353,9 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	// row: the ladder answers what the row can afford at its own width, and the
 	// column answers where the answer is drawn.
 	//
-	// Whether this row can reach the column is its own question, asked against
-	// the columns its indent, its cues and its surviving indicators leave. A row
-	// that can reach it does, so every row carrying the ordinary load seats its
-	// label in one column; a row that cannot gets as near to it as its own width
-	// allows. Reaching it is never bought by cutting the title further, because
-	// the alternative — pulling the column left until the deepest indent and the
-	// longest deadline in the projection both fit — is one row buying every other
-	// row's title shorter, and at the app's own minimum width that is most of the
-	// row.
+	// The projection reserves trailing space for every row's indicators. Keep
+	// the local width clamp for standalone callers, and let deeply indented rows
+	// leave the column when aligning would make their title unreadable.
 	if colLayout != nil && colLayout.ProjectColumn > 0 {
 		columns := min(
 			colLayout.ProjectColumn-segments.preTitleWidth(),

@@ -545,23 +545,23 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 		return layout
 	}
 
-	// The column is where the longest title in the projection already ended, and
-	// nothing pulls it further right, so it is the right edge of the title region
-	// rather than a position rows are stretched to. Affordability is answered per
-	// row when the row is built: one deep indent or one long deadline would
-	// otherwise buy its whole lane's titles shorter, which is the trade this
-	// column exists to avoid making.
+	// Start at the longest title's end, then reserve enough trailing space for
+	// every row's surviving indicators. Otherwise a review or deadline badge
+	// pushes only its own project label left and breaks the shared column.
 	maxCueEnd := 0
+	columnLimit := rowWidth
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		segments := m.buildTaskRowSegments(row, rowWidth, layout, cursorPaint{})
+		columnLimit = min(columnLimit, rowWidth-
+			lipgloss.Width(segments.projectField)-lipgloss.Width(segments.indicators))
 		if end := segments.naturalCueEnd(rowWidth, row.Task.Title); end > maxCueEnd {
 			maxCueEnd = end
 		}
 	}
-	layout.ProjectColumn = maxCueEnd
+	layout.ProjectColumn = max(min(maxCueEnd, columnLimit), 0)
 	return layout
 }
 

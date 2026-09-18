@@ -140,9 +140,9 @@ func assertUXHierarchyReadsByDepth(t *testing.T, driver *UITestDriver, view *out
 	if len(obs.LayoutIssues) > 0 {
 		t.Fatalf("Backlog: %+v\n%s", obs.LayoutIssues, obs.PlainScreen)
 	}
-	// Each generation is matched by a prefix rather than by its whole title,
-	// since the narrow widths clip the tail; the indent is what is under test.
-	generations := []string{"Coordinate the platform", "Stage the migration", "Capture the rehearsal"}
+	// Each generation has a unique first word that survives title truncation
+	// beside the aligned project column; the indent is what is under test.
+	generations := []string{"Coordinate", "Stage", "Capture"}
 	indents := make([]int, 0, len(generations))
 	for depth, generation := range generations {
 		line, ok := uxLineContaining(obs.PlainScreen, generation)
