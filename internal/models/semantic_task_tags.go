@@ -4,11 +4,9 @@ import "strings"
 
 // SemanticTaskTagRole names one work-item kind. The zero value means the task
 // carries no semantic tag, and the declared order is the locked precedence: a
-// lower non-zero role wins. Precedence ranks the vocabulary and nothing else —
-// it orders the `SEMANTIC` picker section and the explainer under it. No
-// renderer resolves a task's several semantic tags down to one, because there is
-// no longer a single-valued channel to resolve them into: a semantic tag reaches
-// a task row as its own chip, beside the others.
+// lower non-zero role wins. Precedence orders the `SEMANTIC` picker section and
+// its explainer, and selects the accent for a task's workflow-state icon when
+// the task carries several semantic tags. Individual tags retain their own chips.
 type SemanticTaskTagRole uint8
 
 const (

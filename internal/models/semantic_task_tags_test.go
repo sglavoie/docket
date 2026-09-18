@@ -47,9 +47,8 @@ func TestSemanticTaskTagsStayInPrecedenceOrder(t *testing.T) {
 }
 
 // TestSemanticTaskTagsResolveOneAtATime holds the registry to per-tag lookup.
-// Precedence orders the vocabulary where it is listed; it no longer resolves a
-// task's several semantic tags down to one, because no renderer has a
-// single-valued channel to resolve them into.
+// Individual tag lookup is independent of the precedence used to resolve a
+// task's workflow-state icon accent.
 func TestSemanticTaskTagsResolveOneAtATime(t *testing.T) {
 	for _, tags := range [][]string{
 		{"idea", "bug"},

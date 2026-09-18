@@ -56,9 +56,8 @@ type TaskTitleStyleOptions struct {
 
 // SemanticTaskTitleStyle resolves the color the six-member semantic vocabulary
 // reserves for one of its roles. It is the vocabulary's own accent, not a task
-// title's: no task title wears one, and the `SEMANTIC` rows of the `#` and `f#`
-// pickers are its one consumer, where the six names are shown as members of a
-// closed set rather than as tags on a task.
+// title's: no task title wears one. The `SEMANTIC` picker rows and task status
+// icons use this accent to identify the kind of work.
 //
 // The name and the palette keys behind it — ColorSemanticBugTitle and its
 // selected and deferred variants — are historical. They stay as they are because
@@ -203,23 +202,47 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 // share the todo badge, waiting uses its own badge, paused the standby
 // badge, and someday the maybe badge.
 func GetStateBadge(state models.WorkflowState) string {
+	return stateBadgeStyle(state).Render(state.Icon())
+}
+
+// GetTaskStateBadge keeps the workflow-state symbol and badge styling, but uses
+// the highest-precedence semantic tag's accent when the task has one.
+func GetTaskStateBadge(task *models.Task) string {
+	return taskStateBadgeStyle(task).Render(task.State().Icon())
+}
+
+func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
+	style := stateBadgeStyle(task.State())
+	role := models.SemanticTaskTagNone
+	for _, tag := range task.Tags {
+		if entry, ok := models.SemanticTaskTagByName(tag); ok && (role == models.SemanticTaskTagNone || entry.Role < role) {
+			role = entry.Role
+		}
+	}
+	if role != models.SemanticTaskTagNone {
+		style = style.Foreground(SemanticTaskTitleStyle(role, 0, false, false).GetForeground())
+	}
+	return style
+}
+
+func stateBadgeStyle(state models.WorkflowState) lipgloss.Style {
 	switch state {
 	case models.StateInbox, models.StateBacklog:
-		return TodoBadgeStyle.Render(state.Icon())
+		return TodoBadgeStyle
 	case models.StateDoing:
-		return InProgressBadgeStyle.Render(state.Icon())
+		return InProgressBadgeStyle
 	case models.StateWaiting:
-		return WaitingBadgeStyle.Render(state.Icon())
+		return WaitingBadgeStyle
 	case models.StatePaused:
-		return StandbyBadgeStyle.Render(state.Icon())
+		return StandbyBadgeStyle
 	case models.StateSomeday:
-		return MaybeBadgeStyle.Render(state.Icon())
+		return MaybeBadgeStyle
 	case models.StateDone:
-		return DoneBadgeStyle.Render(state.Icon())
+		return DoneBadgeStyle
 	case models.StateCanceled:
-		return CanceledBadgeStyle.Render(state.Icon())
+		return CanceledBadgeStyle
 	default:
-		return NormalStyle.Render(state.Icon())
+		return NormalStyle
 	}
 }
 

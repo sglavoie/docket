@@ -11,8 +11,8 @@ import (
 
 // TestSemanticTaskTitleStyleResolvesOneRoleAtATime holds what the accent is now
 // for: one member of the closed six-name vocabulary, resolved by role. It takes
-// a role rather than a task's tag list because no task title wears one — the
-// `SEMANTIC` picker rows are its one consumer, and a row names exactly one tag.
+// a role rather than a task's tag list because no task title wears one. Picker
+// rows name one tag; task status icons resolve one role before using the accent.
 func TestSemanticTaskTitleStyleResolvesOneRoleAtATime(t *testing.T) {
 	ApplyTheme(ThemeConfig{Name: "dark"})
 	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })

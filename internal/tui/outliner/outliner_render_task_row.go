@@ -303,9 +303,9 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	// Von Restorff: one row asks for attention with one badge. The ladder in
 	// chrome.PickHeroAttribute decides whether priority is that badge, and the
 	// priority badge quietens when something more time-sensitive is on the row.
-	// The state badge is not in this: it says what the row is rather than how
-	// loudly it is asking, so it keeps its own colors on every row, which is what
-	// leaves an ordinary Waiting row readable without making it urgent.
+	// The state badge is not in this: its symbol says the workflow state and its
+	// semantic accent identifies the kind of work, so neither is demoted with
+	// lower-priority attention signals.
 	hero := chrome.PickHeroAttribute(task, now)
 	if hero != chrome.HeroNone && !chrome.PriorityIsHero(hero) && prioritySegment != "" {
 		if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
@@ -434,7 +434,7 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row OutlinerRow, bg color.Color)
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task) string {
-	return theme.GetStateBadge(task.State())
+	return theme.GetTaskStateBadge(task)
 }
 
 // renderTaskTitleStyle resolves an Outliner title's color, which for every
