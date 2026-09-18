@@ -23,7 +23,7 @@ func commitOfferState(t *testing.T, model *AppModel, context operation.CommandCo
 		t.Fatal(result.Err)
 	}
 	cmd := result.Message.(operation.OperationCommandResultMsg).Cmd
-	return runCheckInOfferCommand(checkInOfferCommandMsg{cmd: cmd, epoch: model.checkInOffers.epoch})()
+	return runOriginTaggedCommand(originTaggedCommandMsg{cmd: cmd, epoch: model.interactionEpoch()})()
 }
 
 func TestCheckInOfferCommittedSubsetAndSeparateUndo(t *testing.T) {
@@ -81,9 +81,9 @@ func TestCheckInOfferCancellationStaleDeliveryAndNoop(t *testing.T) {
 			msg := commitOfferState(t, model, bulkTaskActionTestContext(env.projects[0], task), models.StateWaiting)
 			switch mode {
 			case "navigation":
-				model.beginCheckInOfferUpdate(syntheticSpecialKey(tea.KeyDown))
+				model.beginCommandOriginUpdate(syntheticSpecialKey(tea.KeyDown))
 			case "noninteractive":
-				msg = msg.(checkInOfferOriginMsg).message
+				msg = msg.(commandOriginMsg).message
 			case "failure":
 				msg = coordinator.TransactionErrorMsg{Err: errors.New("refused")}
 			}
@@ -170,7 +170,7 @@ func TestCheckInOfferCreationEffectsAndOpenAfter(t *testing.T) {
 			case "form":
 				cmd = features.TaskForm.CreateForm(app.AddTaskRequest{ProjectID: req.ProjectID, Title: req.Title, Destination: req.Destination}, -1, false)
 			}
-			msg := runCheckInOfferCommand(checkInOfferCommandMsg{cmd: cmd, epoch: model.checkInOffers.epoch})()
+			msg := runOriginTaggedCommand(originTaggedCommandMsg{cmd: cmd, epoch: model.interactionEpoch()})()
 			model.Update(msg)
 			if path == "open-after" {
 				if model.operations.CheckInEditor != nil || len(model.checkInOffers.pending) != 1 {
@@ -206,7 +206,7 @@ func TestCheckInOfferLineAndOutlineEdits(t *testing.T) {
 			if path == "line" {
 				state := app.CaptureDestination(models.StateDoing)
 				cmd := model.secondaryFeatures.TaskItem.EditTaskLine(app.TaskLineEditRequest{Source: taskref.For(task, env.projects[0]).Locator(), Title: task.Title, Destination: &state}, nil)
-				model.Update(runCheckInOfferCommand(checkInOfferCommandMsg{cmd: cmd, epoch: model.checkInOffers.epoch})())
+				model.Update(runOriginTaggedCommand(originTaggedCommandMsg{cmd: cmd, epoch: model.interactionEpoch()})())
 			} else {
 				model.features = coordinator.NewFeatureCoordinators(model.domain.service)
 				project, revision, err := model.features.Outline.Project(env.projects[0].ID)
@@ -268,7 +268,7 @@ func TestCheckInOfferWaitsForNestedOverlayAndCancelsOnInput(t *testing.T) {
 				t.Fatal("offer replaced the existing overlay")
 			}
 			if cancel {
-				model.beginCheckInOfferUpdate(syntheticSpecialKey(tea.KeyDown))
+				model.beginCommandOriginUpdate(syntheticSpecialKey(tea.KeyDown))
 			}
 			model.operations.CheckInEditor = nil
 			model.Update(nil)
@@ -285,7 +285,7 @@ func TestCheckInOfferOpenAfterFailureCancelsPendingSetup(t *testing.T) {
 	registerCheckInTestOperations(t, model)
 	features := coordinator.NewFeatureCoordinators(model.domain.service)
 	cmd := features.Capture.CaptureCreate(app.CaptureRequest{ProjectID: env.projects[0].ID, Title: "new", Destination: app.CaptureDestination(models.StateDoing)}, true)
-	model.Update(runCheckInOfferCommand(checkInOfferCommandMsg{cmd: cmd, epoch: model.checkInOffers.epoch})())
+	model.Update(runOriginTaggedCommand(originTaggedCommandMsg{cmd: cmd, epoch: model.interactionEpoch()})())
 	if len(model.checkInOffers.pending) != 1 {
 		t.Fatal("missing pending setup")
 	}
@@ -325,9 +325,9 @@ func TestCheckInOfferCommandOriginSurvivesDelayedExecution(t *testing.T) {
 				t.Fatal(result.Err)
 			}
 			command := result.Message.(operation.OperationCommandResultMsg).Cmd
-			pending := withCheckInOfferOrigin(command, model.checkInOffers.epoch)()
+			pending := withCommandOrigin(command, model.interactionEpoch())()
 			if navigate {
-				model.beginCheckInOfferUpdate(syntheticSpecialKey(tea.KeyDown))
+				model.beginCommandOriginUpdate(syntheticSpecialKey(tea.KeyDown))
 			}
 			_, execute := model.Update(pending)
 			if env.reload(t, 0).GetTaskByID(task.ID).State() != models.StateBacklog {

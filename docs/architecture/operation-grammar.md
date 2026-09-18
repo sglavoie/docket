@@ -483,10 +483,20 @@ edits and outline buffers carry the same evidence; unchanged states and failed
 commits produce no offer. The shell freezes the committed subset, then rechecks
 only those identities before opening the shared `ValueProviderCheckIn` editor.
 
-Command envelopes retain the original command and its initiating input generation,
-so unrelated input cancels a late offer. Keeping the command visible also lets
-the scenario harness skip animation work without losing the origin. Transaction IDs prevent duplicate delivery from reopening
-it. Open-after content editing finishes first, and nested overlays retain
+Interaction ownership is its own count, and the offer is one consumer of it.
+`interactionOwnership` records which user interaction owns the asynchronous work
+still in flight; a command envelope carries a value copy of that count, so no
+command goroutine reads shell state, and an unrelated input retires the
+interaction the work belonged to. What that retirement costs the queue is one
+call, `forgetInteractionScopedWork`, which is why a refused explicit save keeps
+its protection with nothing queued at all: `CheckInRejectedMsg` may hand its draft
+and its frozen targets back only to the interaction that submitted them, and one
+arriving after the user moved on is dropped rather than reopening an editor over
+whatever they moved to. A duplicate Enter or Ctrl+S while a commit runs is that
+same interaction still submitting and retires nothing. Keeping the original
+command visible inside the envelope also lets the scenario harness skip animation
+work without losing the origin. Transaction IDs prevent duplicate delivery from
+reopening the offer. Open-after content editing finishes first, and nested overlays retain
 ownership. Escape dismisses setup while the state or creation remains committed.
 Saving is a separate undo entry. `CheckInOffer` saves validate active state and
 absence of a schedule from one fresh snapshot and attach strict project revision

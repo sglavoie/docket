@@ -25,6 +25,13 @@ import (
 type AppModel struct {
 	checkInOffers checkInOfferController
 	checkInSetup  *checkInSetupPass
+
+	// interaction is which user interaction owns the asynchronous work still in
+	// flight, so a refused save hands its draft and frozen targets back to the
+	// editor that submitted them and to nothing the user moved on to. It is
+	// separate from checkInOffers on purpose: the offer queue is one consumer of
+	// that ownership rather than its home. See app_update.go.
+	interaction interactionOwnership
 	// domain is the domain commit and configuration cluster: the startup-loaded
 	// snapshot of the catalog, planning and machine domains, the manager and
 	// application service every commit against them travels through, the workspace

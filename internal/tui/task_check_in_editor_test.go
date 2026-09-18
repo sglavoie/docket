@@ -147,3 +147,72 @@ func TestRejectedCheckInSaveReopensExactDraft(t *testing.T) {
 		t.Fatalf("restored draft = %q/%q notice %q", editor.DateInput(), editor.RepeatInput(), editor.Notice())
 	}
 }
+
+// TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction drives a refused
+// explicit save through the shell, where interaction ownership alone decides
+// whether the draft may come back. No offer is ever queued here: the protection
+// belongs to the editor, so it holds for explicit editing on its own.
+func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
+	for _, movedOn := range []bool{false, true} {
+		t.Run(map[bool]string{false: "owned", true: "moved-on"}[movedOn], func(t *testing.T) {
+			task := newBulkPickerTestTask(t, 1, "first")
+			env := newAppBulkPickerEnv(t, []*models.Task{task})
+			model := env.appModel()
+			registerCheckInTestOperations(t, model)
+			request := operation.OperationExecutionRequest{
+				ID: operation.OperationTaskSetCheckIn, Context: taskOperationTestContext(task, env.projects[0]),
+			}
+			if request.Context.CheckInOffer {
+				t.Fatal("explicit editing must not borrow the offer's context")
+			}
+			wantErr := errors.New("task changed while the editor was open")
+			day := time.Date(2026, 9, 21, 0, 0, 0, 0, time.Local)
+			want := operation.OperationCheckInValue{
+				Schedule:  models.CheckInSchedule{Next: &day, RepeatDays: 45},
+				DateInput: "2026-09-21", RepeatInput: "45",
+			}
+			submit := withCommandOrigin(operationhost.RetainCheckInDraftOnFailure(request, want, func() tea.Msg {
+				return coordinator.TransactionErrorMsg{Err: wantErr}
+			}), model.interactionEpoch())
+			tagged, ok := submit().(originTaggedCommandMsg)
+			if !ok {
+				t.Fatalf("submitting command lost its interaction: %T", submit())
+			}
+			refusal := runOriginTaggedCommand(tagged)()
+			if _, ok := refusal.(commandOriginMsg); !ok {
+				t.Fatalf("delayed refusal arrived untagged: %T", refusal)
+			}
+			if movedOn {
+				model.Update(syntheticSpecialKey(tea.KeyDown))
+			}
+			if len(model.checkInOffers.pending) != 0 {
+				t.Fatal("an explicit edit queued an automatic offer")
+			}
+
+			model.Update(refusal)
+			editor := model.operations.CheckInEditor
+			if movedOn {
+				if editor != nil {
+					t.Fatal("a stale refusal reopened the editor after the user moved on")
+				}
+				return
+			}
+			if editor == nil {
+				t.Fatal("an owned refusal did not reopen the editor")
+			}
+			if editor.DateInput() != want.DateInput || editor.RepeatInput() != want.RepeatInput || editor.Notice() != wantErr.Error() {
+				t.Fatalf("restored draft = %q/%q notice %q", editor.DateInput(), editor.RepeatInput(), editor.Notice())
+			}
+			// The frozen targets travel with the draft, so resubmitting the restored
+			// editor still names the task the refused save was aimed at.
+			_, dismissed, selected := editor.HandleKey(syntheticCtrlKey('s'))
+			resubmitted, ok := selected.(operation.OperationValueSelectedMsg)
+			if !dismissed || !ok {
+				t.Fatalf("restored draft did not resubmit: dismissed=%v msg=%T", dismissed, selected)
+			}
+			if resubmitted.Request.ID != request.ID || resubmitted.Request.Context.Entity != request.Context.Entity {
+				t.Fatalf("resubmission lost the frozen targets: %+v", resubmitted.Request.Context.Entity)
+			}
+		})
+	}
+}

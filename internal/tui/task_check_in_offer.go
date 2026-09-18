@@ -6,86 +6,33 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 type checkInOfferController struct {
-	epoch       uint64
 	seen        map[string]bool
 	pending     []app.TaskResult
 	openContent bool
 }
 
-// Commands carry a value copy of the input generation. No command goroutine
-// reads shell state. A later key cancels an undelivered offer, while the durable
-// result still reaches its ordinary refresh/feedback handler.
-type checkInOfferOriginMsg struct {
-	message tea.Msg
-	epoch   uint64
-}
-
-func withCheckInOfferOrigin(cmd tea.Cmd, epoch uint64) tea.Cmd {
-	if cmd == nil {
-		return nil
+// checkInOfferObservedMessage is the durable commit evidence an offer follows.
+// Interaction ownership tags exactly these results so the queue can tell an
+// authorized continuation of the current interaction from a delayed one, and
+// nothing about that tagging is the queue's: see interactionOwnership in
+// app_update.go, which the explicit editor's own stale-refusal protection reads
+// with no queue involved.
+func checkInOfferObservedMessage(msg tea.Msg) bool {
+	switch msg.(type) {
+	case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg,
+		coordinator.TaskCreatedMsg, coordinator.TasksCapturedMsg, coordinator.TaskLineEditedMsg,
+		operation.OperationCommandResultMsg, operation.OperationValueSelectedMsg,
+		operation.OperationValueRequestMsg:
+		return true
+	default:
+		return false
 	}
-	return func() tea.Msg { return checkInOfferCommandMsg{cmd: cmd, epoch: epoch} }
-}
-
-// Keep the original command available to command runners (including the TUI
-// harness, which skips animation commands). Executing it still tags only the
-// relevant result messages, leaving framework messages to Bubble Tea.
-type checkInOfferCommandMsg struct {
-	cmd   tea.Cmd
-	epoch uint64
-}
-
-func runCheckInOfferCommand(command checkInOfferCommandMsg) tea.Cmd {
-	return func() tea.Msg {
-		msg := command.cmd()
-		epoch := command.epoch
-		switch typed := msg.(type) {
-		case tea.BatchMsg:
-			cmds := make([]tea.Cmd, len(typed))
-			for i, child := range typed {
-				cmds[i] = withCheckInOfferOrigin(child, epoch)
-			}
-			return tea.BatchMsg(cmds)
-		case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg,
-			coordinator.TaskCreatedMsg, coordinator.TasksCapturedMsg, coordinator.TaskLineEditedMsg,
-			operation.OperationCommandResultMsg, operation.OperationValueSelectedMsg,
-			operation.OperationValueRequestMsg, operationhost.CheckInRejectedMsg:
-			return checkInOfferOriginMsg{message: msg, epoch: epoch}
-		default:
-			return msg
-		}
-	}
-}
-
-func (m *AppModel) beginCheckInOfferUpdate(msg tea.Msg) (tea.Msg, uint64, bool) {
-	switch typed := msg.(type) {
-	case tea.KeyPressMsg:
-		// Submission guards swallow duplicate Enter/Ctrl+S while a commit runs.
-		// Those keys are not unrelated navigation and must not cancel its offer.
-		duplicate := (typed.String() == "enter" || typed.String() == "ctrl+s") &&
-			((m.taskComposer != nil && m.taskComposer.SubmissionInFlight) ||
-				(m.crossOutliner != nil && m.crossOutliner.QuickEdit.Pending))
-		if !duplicate && !isModifierOnlyKeyPress(typed) {
-			m.cancelPendingCheckInOffer()
-		}
-	case tea.PasteMsg, tea.MouseClickMsg:
-		m.cancelPendingCheckInOffer()
-	}
-	if wrapped, ok := msg.(checkInOfferOriginMsg); ok {
-		// A refused save may restore its draft only on the interaction that owns it.
-		if _, rejected := wrapped.message.(operationhost.CheckInRejectedMsg); rejected && wrapped.epoch != m.checkInOffers.epoch {
-			return nil, wrapped.epoch, false
-		}
-		return wrapped.message, wrapped.epoch, true
-	}
-	return msg, m.checkInOffers.epoch, false
 }
 
 func (m *AppModel) observeCheckInOfferMessage(msg tea.Msg) {
@@ -192,19 +139,11 @@ func (m *AppModel) checkInOfferCovered() bool {
 	return false
 }
 
-func (m *AppModel) cancelPendingCheckInOffer() {
-	m.checkInOffers.epoch++
+// forgetInteractionScopedWork drops the offer the retired interaction queued.
+// The queue is work one interaction owns, so it does not outlive it; this is the
+// whole of what retiring an interaction costs the offer, and Session 10 retires
+// the queue without touching the ownership count that outlives it.
+func (m *AppModel) forgetInteractionScopedWork() {
 	m.checkInOffers.pending = nil
 	m.checkInOffers.openContent = false
-}
-
-// Only a user input or its tagged continuation can initiate an offer. Timer,
-// animation and reload continuations retain their ordinary command lifecycle.
-func checkInOfferInput(msg tea.Msg) bool {
-	switch msg.(type) {
-	case tea.KeyPressMsg, tea.PasteMsg, tea.MouseClickMsg:
-		return true
-	default:
-		return false
-	}
 }

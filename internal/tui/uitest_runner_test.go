@@ -334,11 +334,11 @@ func (d *UITestDriver) handleMsg(msg tea.Msg) []tea.Cmd {
 		return nil
 	case tea.BatchMsg:
 		return []tea.Cmd(m)
-	case checkInOfferCommandMsg:
+	case originTaggedCommandMsg:
 		if m.cmd == nil || isAnimationCmd(m.cmd) {
 			return nil
 		}
-		return []tea.Cmd{runCheckInOfferCommand(m)}
+		return []tea.Cmd{runOriginTaggedCommand(m)}
 	case uitestScheduledTick:
 		d.schedule(m)
 		return nil
@@ -435,9 +435,9 @@ func runImmediateTestCommand(cmd tea.Cmd) tea.Msg {
 	msg := cmd()
 	for {
 		switch typed := msg.(type) {
-		case checkInOfferCommandMsg:
-			msg = runCheckInOfferCommand(typed)()
-		case checkInOfferOriginMsg:
+		case originTaggedCommandMsg:
+			msg = runOriginTaggedCommand(typed)()
+		case commandOriginMsg:
 			msg = typed.message
 		default:
 			return msg

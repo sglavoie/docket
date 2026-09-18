@@ -53,7 +53,7 @@ func (m *AppModel) startCheckInSetup() tea.Cmd {
 		checkpoint := m.crossOutliner.CaptureOutlinerPresentationCheckpoint()
 		pass.checkpoint = &checkpoint
 	}
-	m.cancelPendingCheckInOffer()
+	m.retireInteraction()
 	m.checkInSetup = pass
 	return m.advanceCheckInSetup()
 }
