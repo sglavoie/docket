@@ -647,5 +647,5 @@ them without any test objecting:
   schedule — stays as it is. Its homes are
   `docs/tui-testing/scenarios/check-in-integrated-lifecycle.json`,
   `docs/tui-testing/scenarios/check-in-flags-and-stale.json`,
-  `docs/tui-testing/scenarios/active-work-check-in-offers.json`, and
+  `docs/tui-testing/scenarios/active-work-check-in-feedback.json`, and
   `internal/tui/outliner/check_in_calendar_acceptance_test.go`.

@@ -124,7 +124,7 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "check-in-offer",
 		fixture: FixtureUXAcceptance,
-		records: "the check-in editor a state change raises by itself, standing over the row it was raised from",
+		records: "the footer note a state change leaves behind, naming the committed task and the route that would schedule it, with nothing mounted over the list",
 		owners:  []int{9, 10},
 		stage:   stageUXDailyUseCheckInOffer,
 	},
@@ -381,8 +381,8 @@ func stageUXDailyUseBulkTagPicker(t *testing.T, driver *UITestDriver, view *outl
 }
 
 // stageUXDailyUseCheckInOffer moves one task to Doing through the workflow
-// chord. The check-in editor that appears is not asked for: the state change
-// raises it, which is the behavior this plan replaces with feedback.
+// chord. Nothing is asked for beyond the transition, which is the point: the
+// frame it stages is the committed list with one sentence in the footer.
 func stageUXDailyUseCheckInOffer(t *testing.T, driver *UITestDriver, view *outliner.OutlinerModel) {
 	t.Helper()
 	seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)

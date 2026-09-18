@@ -200,8 +200,6 @@ type PeekContext struct {
 // migrated commands may additionally declare RequiredCapabilities and
 // ContextAvailable.
 type CommandContext struct {
-	// CheckInOffer keeps optional setup saves from replacing a concurrent schedule.
-	CheckInOffer bool
 	View         presentation.PresentationID
 	Capabilities CapabilitySet
 	Selection    SelectionContext

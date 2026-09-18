@@ -9,12 +9,17 @@ project at once.
 One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
-Creating work in Doing or Waiting without a check-in offers optional setup after
-the creation commits. Bulk capture offers one editor for the eligible committed
-tasks. `Esc` keeps the new tasks and skips setup; `Ctrl+S` saves a separate undoable
-check-in. A creation that already supplies a schedule receives no offer. When
-create-and-open is used, the content editor finishes before setup is offered.
-The same offer follows committed line or outline edits that enter either state.
+Creating work in Doing or Waiting without a check-in interrupts nothing. The
+footer says so once the creation commits — `No check-in: <task> · menu: Set up
+check-ins`, or `No check-in: N tasks` when one capture committed several — and
+the route it names is the keyless **Set up check-ins** menu entry, not a key,
+because the new task may not be under the cursor. A creation that already
+supplies a schedule is never counted. When create-and-open is used, the content
+editor keeps its own screen and the note follows the edit it commits. The same
+note follows committed line or outline edits that enter either state, and it
+rides whatever message that path was already showing rather than replacing it.
+Scheduling stays your own act, through `@`, the `Space` menu's **Set Check-In**,
+or that workspace entry, and each save is a separate undoable transaction.
 
 ```text
 !1-3  #tag  ##context  @date  @@defer  $destination  *pin  =review  %project  >parent  <child  ~task  &link  ;comment;

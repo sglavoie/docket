@@ -66,16 +66,28 @@ func TestCommittedStateEffectsCreationAndLineMove(t *testing.T) {
 	}
 }
 
-func TestCheckInOfferSaveRefusesStaleEligibilityAndGuardsReadSet(t *testing.T) {
-	for _, stale := range []string{"scheduled", "left-active", "missing", "commit-race", "eligible"} {
+// TestExplicitCheckInSaveTakesNoEligibilityGuard pins the whole of what a
+// check-in save judges now that scheduling is only ever explicit: the locator
+// must resolve and the target must not be terminal. A task that was scheduled
+// while the editor was open, or that left active work in the meantime, is
+// exactly the task a user reaching for the editor means to correct, so neither
+// refuses; nor does a concurrent write to the project, since a strict read-set
+// guard existed only to keep an automatic save from replacing a schedule the
+// user had just made by hand. A concurrent write to the project is still
+// refused, but by the project's own ExpectedRevision contract rather than by a
+// guard of this operation's, which is the difference the assertion pins.
+func TestExplicitCheckInSaveTakesNoEligibilityGuard(t *testing.T) {
+	for _, stale := range []string{"scheduled", "left-active", "missing", "terminal", "commit-race", "eligible"} {
 		t.Run(stale, func(t *testing.T) {
 			task := newTask("one", 1, "one")
 			task.ApplyWorkflowState(models.StateDoing)
-			if stale == "scheduled" {
+			switch stale {
+			case "scheduled":
 				task.NextCheckIn = checkInSchedule(8, 0).Next
-			}
-			if stale == "left-active" {
+			case "left-active":
 				task.ApplyWorkflowState(models.StateBacklog)
+			case "terminal":
+				task.ApplyWorkflowState(models.StateDone)
 			}
 			repo := newFakeRepo(newProject("p", "Project", task))
 			svc := newCheckInService(repo)
@@ -86,13 +98,18 @@ func TestCheckInOfferSaveRefusesStaleEligibilityAndGuardsReadSet(t *testing.T) {
 			if stale == "commit-race" {
 				repo.preCommit = func() { repo.revisions["p"] = "concurrent-revision" }
 			}
-			result, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{Operation: app.TaskOperationSetCheckIn, Targets: []app.TaskLocator{target}, CheckIn: checkInSchedule(2, 7), CheckInOffer: true})
-			if stale != "eligible" {
-				if err == nil || result.TransactionID != "" || len(repo.commits) != 0 {
-					t.Fatalf("stale offer wrote: %+v %v", result, err)
+			result, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+				Operation: app.TaskOperationSetCheckIn,
+				Targets:   []app.TaskLocator{target},
+				CheckIn:   checkInSchedule(2, 7),
+			})
+			switch stale {
+			case "missing", "terminal", "commit-race":
+				if err == nil || result.TransactionID != "" {
+					t.Fatalf("%s target wrote: %+v %v", stale, result, err)
 				}
-				if stale == "commit-race" && !errors.Is(err, storage.ErrStaleRevision) {
-					t.Fatalf("race error=%v", err)
+				if raced := errors.Is(err, storage.ErrStaleRevision); raced != (stale == "commit-race") {
+					t.Fatalf("%s refused for the wrong reason: %v", stale, err)
 				}
 				return
 			}
@@ -100,8 +117,8 @@ func TestCheckInOfferSaveRefusesStaleEligibilityAndGuardsReadSet(t *testing.T) {
 				t.Fatal(err)
 			}
 			commit, _ := repo.lastCommit()
-			if len(commit.ProjectPreconditions) != 1 {
-				t.Fatalf("no strict guard: %+v", commit.ProjectPreconditions)
+			if len(commit.ProjectPreconditions) != 0 {
+				t.Fatalf("explicit save attached a strict guard: %+v", commit.ProjectPreconditions)
 			}
 		})
 	}

@@ -476,33 +476,60 @@ fallback text, so the re-render delayed origin feedback performs keeps saying th
 outcome instead of putting the gesture back. Every other caller passes no
 override and reads exactly as before.
 
-Optional check-in setup follows committed `TaskStateEffect` evidence. Creation
-and real transitions into Doing or Waiting qualify only when the committed
-result has no schedule. Registry actions, capture, the expanded form, line
-edits and outline buffers carry the same evidence; unchanged states and failed
-commits produce no offer. The shell freezes the committed subset, then rechecks
-only those identities before opening the shared `ValueProviderCheckIn` editor.
+Missing check-in feedback follows committed `TaskStateEffect` evidence and opens
+nothing. Creation and real transitions into Doing or Waiting qualify only when
+the committed result has no schedule. Registry actions, capture compact and
+expanded, multiline capture, the expanded form, inline and external content
+edits, and outline buffers carry the same evidence; unchanged states and failed
+commits produce none. `observeCheckInFeedbackMessage` reads that evidence off the
+result envelopes and `noteCheckInFeedback` off the two paths that publish their
+own toast before returning — `commitTaskContentEdit` and the outline buffer — and
+both fold into one note published from the single deferred closure in
+`AppModel.Update`, which is why a path that speaks for itself is never displaced.
+Transaction IDs are the suppression: every committed transaction is marked seen
+whether or not it offered anything, so a duplicate delivery, a reload, and a
+navigation redraw all say nothing a second time.
 
-Interaction ownership is its own count, and the offer is one consumer of it.
-`interactionOwnership` records which user interaction owns the asynchronous work
-still in flight; a command envelope carries a value copy of that count, so no
-command goroutine reads shell state, and an unrelated input retires the
-interaction the work belonged to. What that retirement costs the queue is one
-call, `forgetInteractionScopedWork`, which is why a refused explicit save keeps
-its protection with nothing queued at all: `CheckInRejectedMsg` may hand its draft
-and its frozen targets back only to the interaction that submitted them, and one
-arriving after the user moved on is dropped rather than reopening an editor over
-whatever they moved to. A duplicate Enter or Ctrl+S while a commit runs is that
-same interaction still submitting and retires nothing. Keeping the original
-command visible inside the envelope also lets the scenario harness skip animation
-work without losing the origin. Transaction IDs prevent duplicate delivery from
-reopening the offer. Open-after content editing finishes first, and nested overlays retain
-ownership. Escape dismisses setup while the state or creation remains committed.
-Saving is a separate undo entry. `CheckInOffer` saves validate active state and
-absence of a schedule from one fresh snapshot and attach strict project revision
-preconditions, preventing replacement of another process's new schedule even if
-it arrives between that snapshot and commit. Explicit Set Check-In continues to
-support replacement.
+The note names what was committed and routes to the keyless, target-free
+`Set up check-ins` menu entry. It never names `@` or `Space`, because those
+operate on the cursor and the committed task may be a lane away by the time the
+line is read. A single task is named by a title truncated to
+`checkInFeedbackTitleWidth`; two or more are counted. `committedCheckInTitles`
+reloads each committed project and re-reads the stored task, so a target
+scheduled or moved out of active work between commit and render drops out of the
+count silently and an unreadable project contributes nothing. That recheck is
+also what keeps the sentence and `checkInSetupEligible` agreeing about the same
+population.
+
+`feedbackController.appendNote` is how the note rides whatever line is already
+speaking: it splices ahead of the `· u undo` and `· Ctrl+O origin` suffixes, so
+the recovery grammar's endings stay last and the toast advances no `seq`,
+leaving the handler's own severity and flash decision untouched. With nothing to
+ride, the note publishes itself through `setInfoStatus`, which is quiet. Taking
+no keyboard is also why the note asks nothing of interaction ownership: feedback
+is observed on every commit, owned or not.
+
+Interaction ownership therefore stands alone. `interactionOwnership` records
+which user interaction owns the asynchronous work still in flight; a command
+envelope carries a value copy of that count, so no command goroutine reads shell
+state, and an unrelated input retires the interaction the work belonged to.
+`originTaggedMessage` is now the closed set of envelopes that still need it — the
+three operation messages and `CheckInRejectedMsg` — which is the whole of what
+ownership buys: a refused explicit save may hand its draft and its frozen targets
+back only to the interaction that submitted them, and one arriving after the user
+moved on is dropped rather than reopening an editor over whatever they moved to.
+A duplicate Enter or Ctrl+S while a commit runs is that same interaction still
+submitting and retires nothing. Keeping the original command visible inside the
+envelope also lets the scenario harness skip animation work without losing the
+origin.
+
+Scheduling is only ever explicit now, so `ExecuteTaskOperation`'s check-in save
+judges two things and no more: the locator resolves and the target is not
+terminal. It takes no strict read-set guard, because that guard existed only to
+keep an automatic save from replacing a schedule the user had just made by hand.
+A concurrent write to the project is still refused, but by the project's own
+`ExpectedRevision` contract. Saving remains a separate undo entry from the
+transition that earned the note.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its second
 keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.

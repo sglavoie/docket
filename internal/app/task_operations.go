@@ -72,9 +72,7 @@ type TaskOperationRequest struct {
 	// is no schedule, which is the clear, so the two halves of the operation are
 	// one value rather than a flag a caller could contradict.
 	CheckIn models.CheckInSchedule
-	// CheckInOffer refuses replacement and protects the eligibility read at commit.
-	CheckInOffer bool
-	Tags         []string
+	Tags    []string
 	// TagPatch switches SetTags from replacement semantics to the tri-state
 	// bulk editor's add/remove patch. Membership for tags in neither set is
 	// retained independently on every target.
@@ -220,7 +218,7 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		return s.stepDueDates(req.Targets, req.DueStep)
 
 	case TaskOperationSetCheckIn:
-		result, err := s.bulkSetCheckIn(req.Targets, req.CheckIn, req.CheckInOffer)
+		result, err := s.BulkSetCheckIn(req.Targets, req.CheckIn)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetDefer:

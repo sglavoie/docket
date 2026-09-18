@@ -181,7 +181,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`ValueProviderDate` is the one date picker a task operation reaches",
 		"which is why `instantEntry()` cannot be a `ValueProviderID` method",
 		"`deferRefusalReason` on its defer rows only",
-		"Optional check-in setup follows committed `TaskStateEffect` evidence",
+		"Missing check-in feedback follows committed `TaskStateEffect` evidence and opens",
 		// The vocabulary rename is a third nested grammar on the value picker and
 		// the one place a picker's key commits a workspace transaction, so the
 		// split that keeps it safe — steps on the picker, effects on the shell —

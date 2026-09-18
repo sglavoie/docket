@@ -1206,7 +1206,29 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// whole job is the values you already chose. The mechanism lives in
 	// docs/architecture/selection-and-project-tags.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 71500
+	// Sixty-third raise, 71500 to 72400, for non-interrupting check-in feedback.
+	// 900 bytes buy four rules, and the first is the negative one the whole
+	// session exists for: no commit opens the scheduling draft. That cannot be
+	// read off the code, because what a contributor finds there is committed
+	// evidence with a consequence attached, and reattaching the editor to it is a
+	// two-line change that every existing test still passes — the offer was
+	// removed as a design decision, not as a defect. The second is what the note
+	// may name: the keyless menu entry and never `@` or `Space`, since those read
+	// the cursor and a committed task has usually moved lanes by the time the
+	// line is read, so a helpful-looking key hint is a lie about the target. The
+	// third is where suppression lives: once per transaction ID, so that a reload
+	// or a redraw is not a second offer — the obvious implementation, keyed on
+	// task identity or on the projection, re-announces on every rebuild and looks
+	// correct on any single-commit test. The fourth is that riding an existing
+	// line advances no `seq`, which is what keeps the handler's own severity and
+	// flash decision intact; a note that published itself would retire the very
+	// warning it appended to. The clause paid for it is the one saying an
+	// explicit save attaches a strict read-set precondition, which is now false:
+	// that guard existed only to keep an automatic save from replacing a schedule
+	// made by hand, and a concurrent write is still refused by the project's own
+	// `ExpectedRevision` contract. The mechanism lives in
+	// docs/architecture/operation-grammar.md.
+	const budget = 72400
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

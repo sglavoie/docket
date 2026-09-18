@@ -722,29 +722,39 @@ func uxDailyUseInsidePickerBox(line string) (string, bool) {
 	return line[open+len(border) : close], true
 }
 
-// TestUXDailyUseStateChangeRaisesTheCheckInEditor records that moving a task to
-// Doing opens a check-in editor by itself today. Nothing asked for it: the only
-// keys pressed are the workflow chord and its destination, and the editor that
-// appears is a modal that has to be dismissed before the list takes another key.
+// TestUXDailyUseStateChangeNotesTheMissingCheckIn records what moving a task to
+// Doing does now: it commits, the footer says the task carries no check-in and
+// names the route that would give it one, and nothing is mounted. The only keys
+// pressed are the workflow chord and its destination, so the list still has the
+// keyboard when the frame settles.
 //
-// The contract names the editor's own text rather than the presentation stack,
-// because what session 10 replaces is the interruption a user sees, and an
-// implementation that kept a value step open without drawing it would be a
-// different bug.
+// The contract names the visible sentence and the absence of the editor's own
+// text rather than the presentation stack, because what a user experiences is
+// the interruption or its absence: an implementation that kept a value step open
+// without drawing it would be a different bug, and one that drew the note from a
+// cursor read rather than from committed evidence would name the wrong task.
 //
-// Session 10 owns this. It replaces the automatic editor with feedback inviting
-// explicit scheduling, and rewrites this contract to state that the state change
-// commits without a modal, what the feedback says, and that the explicit route
-// still reaches the same editor. Session 9 shares the frame: the asynchronous
-// editor-failure safeguards this offer carries are what it re-homes.
-func TestUXDailyUseStateChangeRaisesTheCheckInEditor(t *testing.T) {
+// The explicit route is asserted beside it, since replacing an offer must not
+// cost the editor itself: the same command still raises it over the same row.
+func TestUXDailyUseStateChangeNotesTheMissingCheckIn(t *testing.T) {
 	driver, _ := uxDailyUseStagedDriver(t, "check-in-offer", uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 
-	for _, fragment := range []string{"Set Check-In", "Optional check-in", "Esc skips"} {
+	for _, fragment := range []string{"No check-in:", "Set up check-ins"} {
 		if !strings.Contains(screen, fragment) {
-			t.Fatalf("a state change no longer raises the check-in editor; %q is not on screen:\n%s", fragment, screen)
+			t.Fatalf("a state change no longer notes the missing check-in; %q is not on screen:\n%s", fragment, screen)
 		}
+	}
+	for _, fragment := range []string{"Next check-in:", "Esc skips", "Optional check-in"} {
+		if strings.Contains(screen, fragment) {
+			t.Fatalf("a state change still raises the check-in editor; %q is on screen:\n%s", fragment, screen)
+		}
+	}
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Set Check-In"}, ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if explicit := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(explicit, "Next check-in:") {
+		t.Fatalf("the explicit route no longer reaches the editor:\n%s", explicit)
 	}
 }
 

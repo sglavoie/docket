@@ -50,9 +50,6 @@ func (m *AppModel) executeTaskOperation(
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
-		if request.CheckInOffer && request.CheckIn.IsEmpty() {
-			return operation.OperationHandlerResult{}
-		}
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		cmd := m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary)
 		if invocation.Descriptor.ID == operation.OperationTaskSetCheckIn {
@@ -387,7 +384,6 @@ func applicationTaskOperationRequest(
 		}
 		request.Operation = app.TaskOperationSetCheckIn
 		request.CheckIn = value.Schedule.Clone()
-		request.CheckInOffer = invocation.Context.CheckInOffer
 		verb := "Scheduled check-in for"
 		if value.Clear {
 			verb = "Cleared check-in on"

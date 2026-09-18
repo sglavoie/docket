@@ -912,18 +912,15 @@
     },
     {
       "type": "assert",
-      "label": "starting unscheduled work offers a check-in rather than assuming one",
+      "label": "starting unscheduled work names the gap on the line already speaking",
       "assert": "contains",
-      "value": "Optional check-in for 1 task(s)"
+      "value": "No check-in:"
     },
     {
       "type": "assert",
-      "assert": "no_layout_issues"
-    },
-    {
-      "type": "key",
-      "label": "skip the setup and keep the start",
-      "key": "esc"
+      "label": "and routes it to the keyless menu entry rather than interrupting",
+      "assert": "contains",
+      "value": "menu: Set up check-ins"
     },
     {
       "type": "assert",

@@ -122,19 +122,6 @@ func (env *resumeNoteEnv) focusTask(t *testing.T, taskID string) {
 	t.Fatalf("the cursor never reached task %s", taskID)
 }
 
-// skipCheckInOffer answers the optional check-in that starting work offers, the
-// way its own footer says to. That offer is modal, and a mutation no longer
-// leaves the cursor on the task it moved, so a pass that left it open would
-// navigate nowhere.
-func (env *resumeNoteEnv) skipCheckInOffer(t *testing.T) {
-	t.Helper()
-	if env.driver.App().operations.CheckInEditor == nil {
-		return
-	}
-	env.press(t, "esc")
-	env.driver.Wait(resumeNoteSettleTimeout)
-}
-
 // inToday reads the planning membership the note must not disturb.
 func (env *resumeNoteEnv) inToday(taskID string) bool {
 	for _, item := range env.driver.App().domain.runtime.Planning().GetToday() {
@@ -483,7 +470,6 @@ func TestResumeNoteKeyReachesEveryStateAndPreservesTheWorkflow(t *testing.T) {
 		if got := env.task(t, env.doingID).ResumeNote; got != "picked up here" {
 			t.Fatalf("%v changed the note to %q", transition, got)
 		}
-		env.skipCheckInOffer(t)
 	}
 	// Navigating is the same: the note follows the task rather than the view.
 	env.press(t, "g", "a")

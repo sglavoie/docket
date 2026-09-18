@@ -181,6 +181,33 @@ func (c *feedbackController) appendDetail(detail string) {
 	}
 }
 
+// appendNote adds an independent observation to the line already speaking,
+// keeping the recovery controls in their canonical trailing order. It differs
+// from appendDetail in what it may claim rather than in what it writes: a detail
+// describes the transaction the toast names, so it is offered only beside an
+// armed callback, while a note stands on committed evidence of its own and rides
+// whichever line this Update published. It reports whether it found one, so a
+// caller with nothing to ride can publish the note itself instead of dropping
+// it silently.
+func (c *feedbackController) appendNote(note string) bool {
+	note = strings.TrimSpace(note)
+	if note == "" || strings.TrimSpace(c.message) == "" {
+		return false
+	}
+	origin := strings.HasSuffix(c.message, " · Ctrl+O origin")
+	c.message = strings.TrimSuffix(c.message, " · Ctrl+O origin")
+	undo := strings.HasSuffix(c.message, " · u undo")
+	c.message = strings.TrimSuffix(c.message, " · u undo")
+	c.message += " · " + note
+	if undo {
+		c.message += " · u undo"
+	}
+	if origin {
+		c.message += " · Ctrl+O origin"
+	}
+	return true
+}
+
 // armFlash starts a divider flash at the given severity and returns the
 // generation that identifies it. The decision to arm is the caller's — it lives
 // in the one deferred closure in AppModel.Update — so this never inspects the

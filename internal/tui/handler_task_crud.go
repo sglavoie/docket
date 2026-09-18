@@ -320,14 +320,15 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 		relocation = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{source})
 	}
 
-	m.checkInOffers.openContent = false
 	edited, err := m.domain.service.EditTaskLine(req)
 	removeTaskContentBuffer(msg.Path)
 	if err != nil {
 		m.retireInteraction()
 		return m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{Source: source, Err: err})
 	}
-	m.queueCheckInOffer([]app.TaskResult{{ProjectID: edited.Task.ProjectID, TaskID: edited.Task.TaskID, TransactionID: edited.TransactionID, StateEffect: edited.StateEffect}})
+	// Recorded before the toast is published and spoken after it, which is the
+	// whole of what the external editor owes: its own error path returns above.
+	m.noteCheckInFeedback([]app.TaskResult{{ProjectID: edited.Task.ProjectID, TaskID: edited.Task.TaskID, TransactionID: edited.TransactionID, StateEffect: edited.StateEffect}})
 	return m.handleTaskLineEdited(coordinator.TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
 }
 

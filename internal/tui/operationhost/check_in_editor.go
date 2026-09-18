@@ -34,9 +34,6 @@ func (c *Controller) NewCheckInEditor(
 		return nil, fmt.Errorf("select at least one task")
 	}
 	bulk := request.Context.Selection.Visual || len(refs) > 1
-	if request.Context.CheckInOffer {
-		return taskform.NewCheckInEditorModel(request, fmt.Sprintf("Optional check-in for %d task(s) · Esc skips setup", len(refs)), models.CheckInSchedule{}, bulk), nil
-	}
 	if bulk {
 		return taskform.NewCheckInEditorModel(
 			request,

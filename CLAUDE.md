@@ -108,6 +108,19 @@ stored schedule, bulk use starts blank and labels the replacement, and only an
 explicit Clear means removal. Date and repeat validation and failed commits
 retain that draft; the frozen qualified targets are re-resolved at commit.
 
+No commit opens that draft. Entering Doing or Waiting without a schedule is
+committed evidence, `TaskStateEffect.OffersCheckIn()`, and its one consequence
+is a footer note naming the committed subset and the keyless `Set up check-ins`
+entry — never `@` or `Space`, which read a cursor the committed task may have
+left. It publishes once per transaction ID from the one deferred closure, so a
+reload, a redraw, and a duplicate delivery all say nothing, and it rides the line
+already speaking through `appendNote`, spliced ahead of `u undo` and advancing no
+`seq`, so it takes no keyboard and asks nothing of interaction ownership. Titles
+are re-read from the committed projects at publish, so a target scheduled or
+retired in the meantime drops out silently. Scheduling is therefore always
+explicit, and a check-in save judges locator and non-terminal state alone: no
+eligibility guard, and no strict read-set precondition of its own.
+
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
 and only when the state actually changes. A task reaching

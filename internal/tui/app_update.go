@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/projectops"
@@ -43,10 +44,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			// would risk a second panic with no recover left above it.
 			return
 		}
-		if interactive && m.ownsInteraction(origin) {
-			m.observeCheckInOfferMessage(msg)
-		}
-		outCmd = tea.Batch(outCmd, m.drainCheckInOffer())
+		m.observeCheckInFeedbackMessage(msg)
+		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
 		if interactive || isInteractionInput(msg) {
 			outCmd = withCommandOrigin(outCmd, origin)
 		}
@@ -175,15 +174,24 @@ func runOriginTaggedCommand(command originTaggedCommandMsg) tea.Cmd {
 }
 
 // originTaggedMessage is the closed set of delayed results whose owning
-// interaction matters. A refused check-in save is one on its own terms, since it
-// carries a draft and frozen targets it may hand back only to the interaction
-// that submitted them; the committed evidence beside it is tagged for the
-// automatic offer, which names its own set.
+// interaction matters. A refused check-in save is the one that matters on its
+// own terms, since it carries a draft and frozen targets it may hand back only
+// to the interaction that submitted them. The three operation envelopes beside
+// it are the hops a submission takes from the keypress to that refusal — request
+// to editor, selected value to handler, handler result to commit — so tagging
+// them is what carries the epoch across the round trip instead of minting a
+// fresh one at each hop. Committed transaction evidence is deliberately absent:
+// nothing downstream of a commit claims the keyboard.
 func originTaggedMessage(msg tea.Msg) bool {
-	if _, rejected := msg.(operationhost.CheckInRejectedMsg); rejected {
+	switch msg.(type) {
+	case operationhost.CheckInRejectedMsg,
+		operation.OperationCommandResultMsg,
+		operation.OperationValueSelectedMsg,
+		operation.OperationValueRequestMsg:
 		return true
+	default:
+		return false
 	}
-	return checkInOfferObservedMessage(msg)
 }
 
 // beginCommandOriginUpdate resolves the interaction this update belongs to. An
@@ -232,10 +240,11 @@ func (m *AppModel) interactionEpoch() uint64 { return m.interaction.epoch }
 func (m *AppModel) ownsInteraction(epoch uint64) bool { return epoch == m.interaction.epoch }
 
 // retireInteraction ends the interaction that owned the work in flight, so its
-// delayed results can no longer claim the keyboard.
+// delayed results can no longer claim the keyboard. Retiring costs nothing else:
+// the keyboard is the whole of what an interaction owns, and committed evidence
+// belongs to the workspace rather than to whoever was still holding it.
 func (m *AppModel) retireInteraction() {
 	m.interaction.epoch++
-	m.forgetInteractionScopedWork()
 }
 
 // isInteractionInput reports whether the message is a user input rather than a

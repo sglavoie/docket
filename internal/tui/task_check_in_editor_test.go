@@ -150,8 +150,8 @@ func TestRejectedCheckInSaveReopensExactDraft(t *testing.T) {
 
 // TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction drives a refused
 // explicit save through the shell, where interaction ownership alone decides
-// whether the draft may come back. No offer is ever queued here: the protection
-// belongs to the editor, so it holds for explicit editing on its own.
+// whether the draft may come back. Explicit editing is now the only way into
+// this editor, so the protection this pins is the whole of what ownership buys.
 func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
 	for _, movedOn := range []bool{false, true} {
 		t.Run(map[bool]string{false: "owned", true: "moved-on"}[movedOn], func(t *testing.T) {
@@ -161,9 +161,6 @@ func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
 			registerCheckInTestOperations(t, model)
 			request := operation.OperationExecutionRequest{
 				ID: operation.OperationTaskSetCheckIn, Context: taskOperationTestContext(task, env.projects[0]),
-			}
-			if request.Context.CheckInOffer {
-				t.Fatal("explicit editing must not borrow the offer's context")
 			}
 			wantErr := errors.New("task changed while the editor was open")
 			day := time.Date(2026, 9, 21, 0, 0, 0, 0, time.Local)
@@ -185,10 +182,6 @@ func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
 			if movedOn {
 				model.Update(syntheticSpecialKey(tea.KeyDown))
 			}
-			if len(model.checkInOffers.pending) != 0 {
-				t.Fatal("an explicit edit queued an automatic offer")
-			}
-
 			model.Update(refusal)
 			editor := model.operations.CheckInEditor
 			if movedOn {

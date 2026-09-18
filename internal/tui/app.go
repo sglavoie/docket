@@ -23,14 +23,15 @@ import (
 
 // AppModel is the main TUI model.
 type AppModel struct {
-	checkInOffers checkInOfferController
-	checkInSetup  *checkInSetupPass
+	checkInFeedback checkInFeedbackController
+	checkInSetup    *checkInSetupPass
 
 	// interaction is which user interaction owns the asynchronous work still in
 	// flight, so a refused save hands its draft and frozen targets back to the
 	// editor that submitted them and to nothing the user moved on to. It is
-	// separate from checkInOffers on purpose: the offer queue is one consumer of
-	// that ownership rather than its home. See app_update.go.
+	// separate from checkInFeedback on purpose: that note rides whatever line is
+	// speaking and takes no keyboard, so it asks nothing of ownership. See
+	// app_update.go.
 	interaction interactionOwnership
 	// domain is the domain commit and configuration cluster: the startup-loaded
 	// snapshot of the catalog, planning and machine domains, the manager and
