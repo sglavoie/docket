@@ -121,15 +121,17 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	for _, hint := range hints {
 		pairs = append(pairs, chrome.GuidanceHintText(hint))
 	}
-	// `M menu` sits sixth because revealing the map of this grammar outranks every
-	// act the map lists; the four hints the rendered row is held to below are
-	// ahead of it, so the bar's rank buys its place without costing a required one.
-	wantWorkflow := []string{
-		"w workflow", "! priority", "@ date", "# tags/context", "Space actions",
-		"M menu", "v select", "a capture", "Enter focus", "b peek", "/ search", "? help",
+	// The first six rungs are the acts a task row is read for, and the second tier
+	// behind them is the axes that row is changed on, then the sheets and
+	// selections that reach the rest. `M menu` and `v select` sit after those
+	// because revealing the map of this grammar is worth less on a narrow row than
+	// `? help`, which already names discovery and is ranked ahead of both.
+	wantRanked := []string{
+		"a capture", "w workflow", "e edit", "/ search", "b peek", "? help",
+		"@ date", "! priority", "# tags/context", "Space actions", "M menu", "v select",
 	}
-	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
-		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)
+	if len(pairs) < len(wantRanked) || !slices.Equal(pairs[:len(wantRanked)], wantRanked) {
+		t.Fatalf("ranked footer prefix = %v, want daily-act task guidance %v", pairs, wantRanked)
 	}
 	spec, ok := outlinerView.ContextualGuidance()
 	if !ok {
@@ -146,6 +148,14 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	}
 	if lipgloss.Width(lines[0]) > chrome.MinTerminalWidth {
 		t.Fatalf("normal guidance exceeds one row: %q", lines[0])
+	}
+
+	// The tier boundary is where the narrow row ends: the head fits at the floor
+	// and the first entry of the second tier is what the packer refuses, which is
+	// the claim TestOutlinerFooterKeepsCaptureThroughHelpAtTheFloor holds the
+	// rendered row to.
+	if strings.Contains(lines[0], "@ date") {
+		t.Fatalf("floor row reaches past the six leading acts: %q", lines[0])
 	}
 
 	// A visual selection makes cursor-only edit operations inapplicable. At a
@@ -166,5 +176,55 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 		if strings.Contains(joined, unavailable) {
 			t.Errorf("selected guidance exposes unavailable operation %q: %q", unavailable, joined)
 		}
+	}
+}
+
+// TestOutlinerFooterKeepsCaptureThroughHelpAtTheFloor is the contract the
+// ladder's leading six are sized against. `a capture`, `w workflow`, `e edit`,
+// `/ search`, `b peek`, and `? help` plus their separators come to exactly
+// chrome.MinTerminalWidth, so the smallest supported terminal shows every one of
+// them and the packer's first refusal falls on rank 7. Adding a rank ahead of
+// them, or lengthening one of their labels, costs the narrow footer whichever of
+// the six sits last — which is why this reads the rendered row rather than the
+// ranked list.
+func TestOutlinerFooterKeepsCaptureThroughHelpAtTheFloor(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	outlinerView := app.crossOutliner
+	for index, row := range outlinerView.Rows {
+		if row.IsTaskRow() {
+			outlinerView.Cursor = index
+			break
+		}
+	}
+	outlinerView.SetSize(chrome.MinTerminalWidth, chrome.MinTerminalHeight-2)
+
+	spec, ok := outlinerView.ContextualGuidance()
+	if !ok {
+		t.Fatal("Outliner did not provide its operation footer")
+	}
+	lines := chrome.GuidanceLines(spec, chrome.MinTerminalWidth)
+	if len(lines) != 1 {
+		t.Fatalf("Outliner browse guidance rows = %d, want one: %q", len(lines), lines)
+	}
+	row := ansi.Strip(lines[0])
+
+	leading := []string{"a capture", "w workflow", "e edit", "/ search", "b peek", "? help"}
+	previous := -1
+	for _, entry := range leading {
+		index := strings.Index(row, entry)
+		if index < 0 {
+			t.Fatalf("floor row sheds leading act %q: %q", entry, row)
+		}
+		if index <= previous {
+			t.Fatalf("floor row reorders %q against the ladder: %q", entry, row)
+		}
+		previous = index
+	}
+	if strings.Contains(row, "@ date") {
+		t.Fatalf("floor row reaches rank 7, so the head is no longer what it is sized to: %q", row)
+	}
+	if got := lipgloss.Width(lines[0]); got != chrome.MinTerminalWidth {
+		t.Fatalf("floor row width = %d, want exactly %d so the head spends the whole row: %q",
+			got, chrome.MinTerminalWidth, row)
 	}
 }

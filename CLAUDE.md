@@ -221,6 +221,18 @@ itself, as `SearchExitAction` does. A draft-bearing surface reads
 sub-state narrowing Esc registers two gated rows rather than branching a label.
 Required entries survive whole at `chrome.MinTerminalWidth`.
 
+`FooterRank` is one ladder over the whole grammar, declared once in the
+simplified strategy. Its first six rungs are the acts a task row is read for —
+`a capture`, `w workflow`, `e edit`, `/ search`, `b peek`, `? help` — and that
+head is sized rather than merely ordered: the six entries and their separators
+come to exactly `chrome.MinTerminalWidth`, so the floor keeps all six and the
+packer's first refusal falls on rank 7. A rank added ahead of them, or one of
+their labels lengthened, costs the narrow row whichever of the six sits last.
+Behind them are the axes a row is changed on, then the sheets and selections,
+then the deliberate, occasional work. Rank zero is exclusion from the footer
+alone, since the menu bar and the generated `?` help project from the registry
+regardless of rank, so an unranked key is quiet rather than undiscoverable.
+
 An entity operation is direct-only or menu-only, never both, in that surface's
 entity action sheet, enforced by `ValidateOperationOnePath` over its manifest.
 That scope is the whole rule: the sheet is where a second route to an existing

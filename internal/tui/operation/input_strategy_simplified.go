@@ -20,19 +20,41 @@ var GotoModeOperations = map[OperationID]chrome.OutlinerModeID{
 
 // SimplifiedInputStrategy returns a fresh copy of the accepted daily-loop
 // grammar. Direct keys and chord sequences are declared here and nowhere else.
+//
+// FooterRank is one ladder over the whole grammar, and its first six rungs are
+// the acts a task row is read for: `a capture`, `w workflow`, `e edit`,
+// `/ search`, `b peek`, `? help`. That head is sized rather than merely ordered
+// — the six entries and their separators are exactly chrome.MinTerminalWidth
+// wide, so the smallest supported terminal keeps all six and the packer's first
+// refusal falls on rank 7. Adding a rank ahead of them, or lengthening one of
+// their labels, costs the narrow footer whichever of the six sits last; the
+// contract that says so is TestOutlinerFooterKeepsCaptureThroughHelpAtTheFloor.
+//
+// The ranks below that head are the second tier — the axes a row is changed on
+// (date, priority, tags), then the sheets and selections that reach the rest —
+// and the tail is the deliberate, occasional work. Zero excludes a binding from
+// the footer entirely, and the menu bar and the generated `?` help project from
+// the registry regardless of rank, so a key kept out of the ladder is quiet
+// rather than undiscoverable.
 func SimplifiedInputStrategy() InputStrategy {
 	return InputStrategy{
 		ID: InputStrategySimplified,
 		Bindings: []OperationKeyBinding{
-			{OperationID: OperationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 8, FooterLabel: "capture"},
+			// Capture leads the ladder outright: the act that puts a thought into
+			// the workspace is the one a user must never have to look for, and it
+			// is the one act on this row that is about work not yet on screen.
+			{OperationID: OperationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 1, FooterLabel: "capture"},
 			// The keys a checklist row shares with a task row are declared
 			// checklist-first: shared-key resolution takes the first applicable
 			// descriptor, and only one of each pair applies to any given cursor.
 			// e is three-way, because a project header edits the project it names:
 			// exactly one of the three applies at any cursor.
-			{OperationID: OperationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "item", SharedKey: true},
-			{OperationID: OperationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "project", SharedKey: true},
-			{OperationID: OperationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 12, FooterLabel: "edit", SharedKey: true},
+			// All three share the ladder's third rung, because the ladder ranks the
+			// key and the cursor decides which of the three it reached: whichever
+			// one applies is the same act at the same place in the row's reading.
+			{OperationID: OperationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "item", SharedKey: true},
+			{OperationID: OperationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "project", SharedKey: true},
+			{OperationID: OperationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "edit", SharedKey: true},
 			{OperationID: OperationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: OperationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
 			{OperationID: OperationCoreOutlineEditor, Keys: []string{"O"}, DisplayKey: "O", FooterRank: 23, FooterLabel: "outline"},
@@ -41,7 +63,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// binding rather than a shared pair: the descriptor answers from the
 			// owner task and from any of its items alike.
 			{OperationID: OperationChecklistAddItem, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 21, FooterLabel: "checklist item"},
-			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick"},
+			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 14, FooterLabel: "tick"},
 			// S converts the selected checklist item or child task in either direction.
 			// The two descriptors share a key but have disjoint row applicability, so
 			// help and menus name the action appropriate to the selected row.
@@ -50,9 +72,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			// Space is a three-way shared key: checklist row, project header, task
 			// row. Exactly one of the three applies at any cursor, so declaration
 			// order only decides which is asked first, never which one wins.
-			{OperationID: OperationChecklistActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
-			{OperationID: OperationProjectActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
-			{OperationID: OperationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
+			{OperationID: OperationChecklistActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 10, FooterLabel: "actions", SharedKey: true},
+			{OperationID: OperationProjectActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 10, FooterLabel: "actions", SharedKey: true},
+			{OperationID: OperationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 10, FooterLabel: "actions", SharedKey: true},
 			{OperationID: OperationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: OperationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
 			{OperationID: OperationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
@@ -95,13 +117,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationTaskIndent, Keys: []string{"]"}, DisplayKey: "]"},
 			{OperationID: OperationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: OperationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
-			{OperationID: OperationTaskReferences, Keys: []string{"~"}, DisplayKey: "~", FooterRank: 16, FooterLabel: "dependencies"},
+			{OperationID: OperationTaskReferences, Keys: []string{"~"}, DisplayKey: "~", FooterRank: 17, FooterLabel: "dependencies"},
 			{OperationID: OperationTaskMoveToProject, Keys: []string{"%"}, DisplayKey: "%"},
 			// The two capture sigils that carry task content keep the same
 			// correspondence the other keyed sigils do: the character that writes an
 			// attachment or a comment on a capture line opens that panel on a row.
-			{OperationID: OperationTaskAttachments, Keys: []string{"&"}, DisplayKey: "&", FooterRank: 14, FooterLabel: "attachments"},
-			{OperationID: OperationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 15, FooterLabel: "comments", SharedKey: true},
+			{OperationID: OperationTaskAttachments, Keys: []string{"&"}, DisplayKey: "&", FooterRank: 15, FooterLabel: "attachments"},
+			{OperationID: OperationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 16, FooterLabel: "comments", SharedKey: true},
 			// `;` reads comments on whatever the cursor names, on the same terms as the
 			// `C` pair below it: a project header opens the project's own comments
 			// through its own descriptor rather than through one that branches on
@@ -113,12 +135,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			// descriptors with four honest labels rather than one that branches on
 			// runtime context. Open Note is the one that leaves the Outliner: a
 			// search result the query answered with a note is read where notes live.
-			{OperationID: OperationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "focus", SharedKey: true},
-			{OperationID: OperationCoreZoomSection, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "zoom", SharedKey: true},
-			{OperationID: OperationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open", SharedKey: true},
-			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open note", SharedKey: true},
+			{OperationID: OperationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "focus", SharedKey: true},
+			{OperationID: OperationCoreZoomSection, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "zoom", SharedKey: true},
+			{OperationID: OperationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open", SharedKey: true},
+			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open note", SharedKey: true},
 			{OperationID: OperationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
-			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 10, FooterLabel: "peek"},
+			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 5, FooterLabel: "peek"},
 			// Ctrl+F/B page the detail document a whole window at a time, exactly as
 			// they do beside the Hub's preview, and they own their keys outright
 			// rather than sharing them: the list has no full page of its own to
@@ -127,8 +149,8 @@ func SimplifiedInputStrategy() InputStrategy {
 			// a column on a key that is inert on every other row.
 			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
-			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 10, FooterLabel: "search"},
-			{OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 7, FooterLabel: "select"},
+			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
+			{OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 12, FooterLabel: "select"},
 			{OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
 			{OperationID: OperationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
 			{OperationID: OperationCoreSelectProject, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 18, FooterLabel: "projects"},
@@ -143,10 +165,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreQueryReadout, Keys: []string{"Q"}, DisplayKey: "Q", FooterRank: 27, FooterLabel: "narrowing"},
 			{OperationID: OperationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
 			{OperationID: OperationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
-			// The bar is the one browsable map of this grammar, so its reveal
-			// outranks every act it lists: a user who cannot find anything needs the
-			// hint that shows them everything before they need any single key.
-			{OperationID: OperationCoreToggleMenuBar, Keys: []string{"M"}, DisplayKey: "M", FooterRank: 6, FooterLabel: "menu"},
+			// The bar is the one browsable map of this grammar, so its reveal stands
+			// at the head of the second tier rather than among the daily acts: a
+			// user who cannot find anything reaches it before any single key below
+			// it, but `? help` is already on the narrow row naming the same thing
+			// more directly, so spending one of the six leading rungs on the bar
+			// would advertise two routes to discovery and no route to work.
+			{OperationID: OperationCoreToggleMenuBar, Keys: []string{"M"}, DisplayKey: "M", FooterRank: 11, FooterLabel: "menu"},
 			// Opening carries no FooterRank of its own. The band's own reveal is
 			// already ranked above, and once the band is on screen it is the label
 			// row that advertises what opening does; a second footer hint would spend
@@ -156,26 +181,33 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
-			{OperationID: OperationCoreHelp, Keys: []string{"?"}, DisplayKey: "?", FooterRank: 11, FooterLabel: "help"},
+			// Help closes the leading six. It is last of them because it is the rung
+			// a user reaches when the other five did not answer, and it is among
+			// them because a footer that sheds `? help` first leaves the narrowest
+			// terminal with no statement that the rest of the grammar exists.
+			{OperationID: OperationCoreHelp, Keys: []string{"?"}, DisplayKey: "?", FooterRank: 6, FooterLabel: "help"},
 			{OperationID: OperationCoreQuit, Keys: []string{"ctrl+c"}, DisplayKey: "Ctrl+C"},
 			{OperationID: OperationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: OperationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
-			{OperationID: OperationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 3, FooterLabel: "date"},
+			// The date axis opens the second tier of acts, the ones that change the
+			// row rather than reach it, and it is the first thing a terminal wider
+			// than the floor buys back.
+			{OperationID: OperationTaskSetDueDate, Keys: []string{"@"}, DisplayKey: "@", FooterRank: 7, FooterLabel: "date"},
 			// - and + step the deadline @ sets, one calendar day at a time, along the
 			// line earlier ↔ yesterday ↔ unset ↔ today ↔ tomorrow ↔ later. They are
 			// spelled as the characters they produce and nothing else: a terminal
 			// reporting shift+= for + still delivers "+" as the key's text, so a
 			// second shifted spelling would be dead vocabulary that also shadows the
-			// = review key. Neither carries a FooterRank — @ already spends one on
-			// the date axis, and the generated ? help and menu bar name both keys
+			// = review key. Neither carries a FooterRank — @ already spends rank 7
+			// on the date axis, and the generated ? help and menu bar name both keys
 			// regardless of the footer ladder.
 			{OperationID: OperationTaskStepDueEarlier, Keys: []string{"-"}, DisplayKey: "-"},
 			{OperationID: OperationTaskStepDueLater, Keys: []string{"+"}, DisplayKey: "+"},
 			// # tags whatever the cursor names. The two operations carry different
 			// targets and different vocabularies, so they stay two descriptors with
 			// two honest labels rather than one that branches on runtime context.
-			{OperationID: OperationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "tags/context", SharedKey: true},
-			{OperationID: OperationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "project tags", SharedKey: true},
+			{OperationID: OperationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 9, FooterLabel: "tags/context", SharedKey: true},
+			{OperationID: OperationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 9, FooterLabel: "project tags", SharedKey: true},
 			// * pins whatever the cursor names, for the same reason # tags it: two
 			// targets and two vocabularies stay two descriptors with two honest
 			// labels rather than one that branches on runtime context.
@@ -320,8 +352,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},
 		},
 		ChordGroups: []OperationChordGroup{
-			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 2, FooterLabel: "priority"},
-			{Sequence: []string{"w"}, HintLabel: "workflow", FooterRank: 1, FooterLabel: "workflow"},
+			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 8, FooterLabel: "priority"},
+			// Workflow is the one chord among the leading six: moving work between
+			// plans and states is what the daily loop is, and the chord's own
+			// which-key row is what teaches the ten terminals once it is pressed.
+			{Sequence: []string{"w"}, HintLabel: "workflow", FooterRank: 2, FooterLabel: "workflow"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "!"}, HintLabel: "priority threshold"},
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},

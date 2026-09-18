@@ -108,7 +108,10 @@ func uxClarityFooterRowIndex(t *testing.T, footer, fragment string) int {
 // uxClarityOutlinerHostRanks are the host's own footer ranks, the text that
 // proves the Outliner is still the layer being answered for. They are named here
 // once because more than one contract below asks whether they are on screen.
-var uxClarityOutlinerHostRanks = []string{"w workflow", "Space actions", "a capture"}
+// They are the ladder's leading three rather than a spread across it, because
+// the daily size sheds the tail: a rank the resting footer never reaches would
+// make every absence below vacuous.
+var uxClarityOutlinerHostRanks = []string{"a capture", "w workflow", "e edit"}
 
 // TestUXClarityPickerOwnsGuidanceAndKeepsHostRows states session 3's outcome for
 // the imbalance the baseline recorded: an overlay that owns every key is now the

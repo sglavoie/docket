@@ -11,12 +11,12 @@
     { "type": "assert", "label": "the locked precedence is stated even with no semantic row", "assert": "contains", "value": "bug › question" },
     { "type": "assert", "label": "the filter picker wraps the complete explanation inline", "assert": "contains", "value": "a fixed vocabulary," },
     { "type": "assert", "label": "the explainer names the order and promises nothing about titles", "assert": "contains", "value": "strongest first." },
-    { "type": "assert", "label": "the filter picker owns guidance, so the Outliner ranks under it are quiet", "assert": "not_contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "label": "the filter picker owns guidance, so the Outliner ranks under it are quiet", "assert": "not_contains", "value": "a capture · w workflow · e edit · / search · b peek · ? help" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the host gets its instruction set back whole", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context · Space actions" },
+    { "type": "assert", "label": "the host gets its instruction set back whole", "assert": "contains", "value": "a capture · w workflow · e edit · / search · b peek · ? help · @ date · ! priority · # tags/context" },
     { "type": "assert", "assert": "not_contains", "value": "Filter by Tags" },
 
     { "type": "key", "label": "open the tag editor with its direct key", "key": "#" },

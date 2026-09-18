@@ -801,32 +801,36 @@ func TestUXDailyUseLaunchSeatsTheCursorOnTheFirstTask(t *testing.T) {
 }
 
 // TestUXDailyUseLaunchGuidanceNamesTheDailyActs records what the footer offers
-// on that landing now that the launch seats the cursor on work: the acts a task
-// row answers — the workflow chord, priority, dates, tags, capture, and the
-// action sheet — and none of the structural keys only a grouping answers.
+// on that landing now that the launch seats the cursor on work. It is asserted
+// as one contiguous run rather than a set of memberships, because the claim is
+// about order as much as presence: the six acts a task row is read for lead the
+// resting footer, in ladder order, and the axes it is changed on follow them.
 //
-// The two halves are asserted together on purpose, and the absent half is where
-// the session shows: `Enter zoom` and `s sections` are gone because the cursor
-// is no longer on a header, and `/ search` and `? help` are gone because the
-// daily acts now outrank them at this width. A contract that only listed what is
-// present would show neither.
+// The shed half is the other side of the same claim. `Enter zoom` and `s
+// sections` are gone because the cursor is no longer on a header, and `Space
+// actions` — rank 10, the first entry of the third tier — is what the fitter
+// refuses at this width, so the row states where the daily size ends rather than
+// only what it reached. A contract that only listed what is present would show
+// neither.
 //
 // Session 12 owns this, and session 11 reached it first by moving the landing.
-// Session 12 prioritizes useful daily actions in contextual guidance and
-// rewrites this contract to state which acts lead the resting footer and what
-// the fitter drops first.
 func TestUXDailyUseLaunchGuidanceNamesTheDailyActs(t *testing.T) {
 	driver, _ := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	footer := uxClarityFooter(driver)
 
-	for _, rank := range append([]string{"! priority", "@ date", "# tags/context"}, uxClarityOutlinerHostRanks...) {
-		if !strings.Contains(footer, rank) {
-			t.Fatalf("the resting footer does not name the daily act %q:\n%s", rank, footer)
-		}
+	leading := "a capture · w workflow · e edit · / search · b peek · ? help"
+	if !strings.Contains(footer, leading) {
+		t.Fatalf("the resting footer does not lead with the acts a task row is read for (%q):\n%s",
+			leading, footer)
 	}
-	for _, shed := range []string{"Enter zoom", "s sections", "/ search", "? help"} {
+	axes := leading + " · @ date · ! priority · # tags/context"
+	if !strings.Contains(footer, axes) {
+		t.Fatalf("the resting footer does not follow those acts with the axes a row is changed on (%q):\n%s",
+			axes, footer)
+	}
+	for _, shed := range []string{"Enter zoom", "s sections", "Space actions"} {
 		if strings.Contains(footer, shed) {
-			t.Fatalf("the resting footer still names %q, so the launch is not on a task row:\n%s",
+			t.Fatalf("the resting footer still names %q, so this is not the row the daily size draws:\n%s",
 				shed, footer)
 		}
 	}

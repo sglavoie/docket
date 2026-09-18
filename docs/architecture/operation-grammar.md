@@ -151,6 +151,24 @@ descriptions that can drift apart, and
 it: every key their footer advertises is one their strategy binds, except the
 three modal keys a comment composer owns while its textarea has focus.
 
+What those ranks say is decided once, in the simplified strategy, and it is one
+ladder over the whole grammar rather than a per-surface opinion. Its first six
+rungs are the acts a task row is read for — `a capture`, `w workflow`, `e edit`,
+`/ search`, `b peek`, `? help` — and that head is sized rather than merely
+ordered: the six entries and the separators between them come to exactly
+`chrome.MinTerminalWidth`, so the smallest supported terminal keeps all six and
+the packer's first refusal falls on rank 7. Behind them is the second tier, the
+axes a row is changed on — `@ date`, `! priority`, `# tags/context` — which is
+where the hundred-column daily size ends, and then the sheets and selections
+(`Space actions`, `M menu`, `v select`, `Enter`) that reach the rest. The tail is
+the deliberate, occasional work. Adding a rank ahead of the head, or lengthening
+one of its labels, costs the narrow footer whichever of the six sits last;
+`TestOutlinerFooterKeepsCaptureThroughHelpAtTheFloor` is the contract that says
+so, and it reads the rendered row rather than the ranked list for that reason.
+Rank zero excludes a binding from the footer entirely, and both the menu bar and
+the generated `?` help project from the registry regardless of rank, so a key
+kept out of the ladder is quiet rather than undiscoverable.
+
 One source per surface is not yet one set per frame, because a frame stacks
 surfaces. That second half is `route.ActiveGuidanceOwner`, in
 [`presentation-chrome.md`](presentation-chrome.md): the shell resolves which
@@ -388,7 +406,7 @@ registered operations, `tui.task.step-due-earlier` and
 `tui.task.step-due-later`, because one descriptor carrying a direction would have
 to branch its own label, and the footer and `?` help read that label as it
 stands. Neither declares a `Provider` — a step has no value to ask for — and
-neither takes a `FooterRank`: `@` already spends rank 3 on the date axis, and the
+neither takes a `FooterRank`: `@` already spends rank 7 on the date axis, and the
 menu bar and the generated help project from the registry regardless of rank.
 The keys are spelled as the characters a terminal produces. A keyboard without
 the enhanced protocols reports `+` as `+`; one with them reports the unshifted

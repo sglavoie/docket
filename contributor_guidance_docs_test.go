@@ -1246,7 +1246,26 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// seating a cursor on a row a fold hides reads as an invitation to open that
 	// fold, and `ComputeOutlinerViewport` is still the one window authority. No
 	// rule elsewhere was trimmed to pay for it.
-	const budget = 73300
+	// Sixty-fifth raise, 73300 to 74200, for the footer's rank ladder. 900 bytes
+	// buy three rules that `FooterRank: 4` in a descriptor cannot state. The
+	// first is that the ladder is one ordering over the whole grammar rather
+	// than a per-surface opinion, so a surface that wants a key forward has to
+	// move it for every surface or leave it alone; without that, the obvious fix
+	// for "my view should lead with X" is a second ranked description, which is
+	// exactly the drift `A footer has one source` forbids. The second is the
+	// sizing, and it is the one nothing in the code says out loud: the six
+	// leading entries and their separators come to exactly
+	// `chrome.MinTerminalWidth`, so a contributor who lengthens `e edit` to `e
+	// edit line`, or slips a seventh act in ahead of `? help`, silently drops
+	// help off the smallest supported terminal and no wide-terminal test
+	// notices. The third is the negative one: rank zero excludes a binding from
+	// the footer and from nothing else, because the menu bar and the generated
+	// `?` help project from the registry regardless — a reader who takes zero as
+	// "hidden" either ranks keys that do not need it or believes an unranked
+	// operation is unreachable. The mechanism lives in
+	// docs/architecture/operation-grammar.md. No rule elsewhere was trimmed to
+	// pay for it.
+	const budget = 74200
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

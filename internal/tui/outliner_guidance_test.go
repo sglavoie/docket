@@ -175,3 +175,81 @@ func guidanceEntryText(spec chrome.GuidanceSpec) string {
 	}
 	return strings.Join(parts, " · ")
 }
+
+// TestOutlinerGuidanceAdvertisesOnlyApplicableControlsOnEveryRowType is the
+// other half of the ranked ladder. Rank decides the order the acts a row can
+// take are offered in; live applicability decides which acts those are, and the
+// two are only correct together — a row that led with `a capture` and then
+// offered `w workflow` on a checklist item would be ordered perfectly and still
+// wrong.
+//
+// The two rows here are the ones the ladder does not describe, because both shed
+// most of it: a checklist item is not a task and a project header is not work.
+// The section header, the empty states, Peek, and a visual selection are each
+// covered by their own contract above.
+func TestOutlinerGuidanceAdvertisesOnlyApplicableControlsOnEveryRowType(t *testing.T) {
+	t.Run("checklist item", func(t *testing.T) {
+		driver, ws, err := NewFixtureDriver(FixtureChecklist, 100, 35)
+		if err != nil {
+			t.Fatalf("NewFixtureDriver(checklist) error: %v", err)
+		}
+		t.Cleanup(func() { _ = ws.Cleanup() })
+		out := driver.App().crossOutliner
+		focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
+		if !out.ExpandAtCursor() {
+			t.Fatal("the checklist did not expand, so no item row exists to answer for")
+		}
+		seatCursorOnRow(t, out, "checklist item", func(row outliner.OutlinerRow) bool { return row.IsChecklistItem })
+
+		got := guidanceEntryText(mustContextualGuidance(t, out))
+		// The item's own edit leads, which is the whole of what rank buys a row
+		// that sheds the first two rungs: `a capture` is refused here because `c`
+		// is the owner task's append, and `w workflow` has no state to move.
+		if !strings.HasPrefix(got, "e item · ") {
+			t.Fatalf("checklist guidance does not lead with the item's own edit: %q", got)
+		}
+		for _, taskOnly := range []string{"a capture", "w workflow", "@ date", "! priority", "b peek"} {
+			if strings.Contains(got, taskOnly) {
+				t.Errorf("checklist guidance exposes task-only hint %q: %q", taskOnly, got)
+			}
+		}
+	})
+
+	t.Run("project header", func(t *testing.T) {
+		driver, ws, err := NewFixtureDriver(FixtureMultiProject, 100, 35)
+		if err != nil {
+			t.Fatalf("NewFixtureDriver(multi-project) error: %v", err)
+		}
+		t.Cleanup(func() { _ = ws.Cleanup() })
+		out := driver.App().crossOutliner
+		// A group draws its header only while it is folded, so `p` is what makes
+		// this row exist at all.
+		if err := driver.SendKey("p"); err != nil {
+			t.Fatalf("fold project groups: %v", err)
+		}
+		seatCursorOnRow(t, out, "project header", func(row outliner.OutlinerRow) bool { return row.IsProjectHeader })
+
+		got := guidanceEntryText(mustContextualGuidance(t, out))
+		// The shared keys answer for the project here, and the footer says which
+		// half it means rather than reusing the task label.
+		for _, projectAct := range []string{"e project", "# project tags", "* project pin", "Space actions", "b peek"} {
+			if !strings.Contains(got, projectAct) {
+				t.Errorf("project header guidance omits %q: %q", projectAct, got)
+			}
+		}
+		for _, taskOnly := range []string{"w workflow", "@ date", "! priority", "e edit", "# tags/context"} {
+			if strings.Contains(got, taskOnly) {
+				t.Errorf("project header guidance exposes task-only hint %q: %q", taskOnly, got)
+			}
+		}
+	})
+}
+
+func mustContextualGuidance(t *testing.T, out *outliner.OutlinerModel) chrome.GuidanceSpec {
+	t.Helper()
+	spec, ok := out.ContextualGuidance()
+	if !ok {
+		t.Fatal("the Outliner published no guidance for this row")
+	}
+	return spec
+}
