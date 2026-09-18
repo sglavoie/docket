@@ -439,26 +439,24 @@ func uxDailyUseCaptureDividerRow(t *testing.T, driver *UITestDriver) int {
 // row of it that is present at every width and with any draft.
 const uxDailyUseCaptureDivider = "── Capture →"
 
-// TestUXDailyUseHostedPanelResizeLosesTheScrollWindow records what opening and
-// closing a bounded panel costs the outline underneath it today. The host is
-// resized to the rows the panel leaves and resized back when it closes, and
-// `OutlinerModel.SetSize` drops the scroll offset both times, so the window the
-// user was reading is not the window they get back — even though the cursor, the
-// rows, the folds, and the data are all unchanged.
+// TestUXDailyUseHostedPanelResizeKeepsTheScrollWindow is what session 6 reached.
+// The rows a bounded panel borrows are a loan rather than a resize, so opening
+// capture over the outline covers the bottom of the window the user was reading
+// and closing it hands that same window back — the cursor, the rows, the folds
+// and the data are all unchanged, and so is the position.
 //
 // It reads the release fixture, the only reviewed catalog with enough rows for a
 // window to be anywhere but the top, and it asserts the round trip rather than
 // the opening alone. Opening alone proves nothing: the render recomputes a
 // window that keeps the cursor visible, and at a shorter height a different
 // offset is the correct answer. Coming back to the original height and landing
-// on a different offset is the loss.
+// on the original offset is the preservation.
 //
-// Session 6 owns this. It separates a temporary host-budget change from a
-// resize, preserves the selected task's qualified identity and the viewport
-// anchor across successive height changes, and clamps only as far as keeping the
-// cursor visible requires. It rewrites this contract to state that restoring the
-// size restores the prior view wherever the unchanged data permits.
-func TestUXDailyUseHostedPanelResizeLosesTheScrollWindow(t *testing.T) {
+// The loan itself is `route.HostedBudgetView`, and `internal/tui/outliner`'s own
+// tests hold its ladder — the top task row held by qualified identity, the
+// cursor's screen row behind it, the raw offset behind that — while a terminal
+// resize still drops the window the way `SetSize` always has.
+func TestUXDailyUseHostedPanelResizeKeepsTheScrollWindow(t *testing.T) {
 	driver, view := uxDailyUseStagedDriver(t, "dense-scrolled", uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	// Off the last row, so the window is not pinned to the end of the document:
 	// a cursor the clamp has only one legal answer for cannot record a loss.
@@ -469,7 +467,7 @@ func TestUXDailyUseHostedPanelResizeLosesTheScrollWindow(t *testing.T) {
 
 	cursor, before := view.Cursor, view.ViewScrollOffset
 	if before == 0 {
-		t.Fatalf("the window is still at the top after %d rows, so there is no position to lose", len(view.Rows))
+		t.Fatalf("the window is still at the top after %d rows, so there is no position to keep", len(view.Rows))
 	}
 
 	uxClarityPress(t, driver, uxClarityKeys("a")...)
@@ -478,11 +476,12 @@ func TestUXDailyUseHostedPanelResizeLosesTheScrollWindow(t *testing.T) {
 	driver.Observe(ObserveOptions{})
 
 	if view.Cursor != cursor {
-		t.Fatalf("the panel moved the cursor from row %d to row %d, so the offset is not what changed",
+		t.Fatalf("the panel moved the cursor from row %d to row %d, so the offset is not what this asserts",
 			cursor, view.Cursor)
 	}
-	if after := view.ViewScrollOffset; after == before {
-		t.Fatalf("the window came back to offset %d, which is the preservation session 6 introduces", after)
+	if after := view.ViewScrollOffset; after != before {
+		t.Fatalf("the window came back to offset %d, want the %d it was reading before the panel opened",
+			after, before)
 	}
 }
 

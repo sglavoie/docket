@@ -117,7 +117,7 @@ has found a regression.
 | ~~The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused.~~ Rewritten by session 3: a task row also wears one band under everything it drew, and the assertion is now that every foreground the unfocused row carried still reads on the focused one. | `TestUXDailyUseCursorRowWearsOneBandUnderItsContent` | 3 |
 | ~~A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer.~~ Rewritten by session 4: the context row is the sole persistent summary, the status channel says nothing about a selection, the hidden count survives into the compact spelling, and `Q` keeps all three numbers. | `TestUXDailyUseSelectionCountsAreStatedOnce` | 4 |
 | ~~The `w` chord lists all ten destinations as one flat run, with no Plan/Status division.~~ Rewritten by session 5: the row heads `n next` and `t today` with `Plan:` and the eight lifecycle states with `Status:`, Plan leading, and the assertion is now where that division falls rather than that it is absent. | `TestUXDailyUseWorkflowChordDividesPlanFromStatus` | 5 |
-| Opening and closing the capture panel moves `ViewScrollOffset` even though the cursor never moved, so the round trip loses the scroll window. | `TestUXDailyUseHostedPanelResizeLosesTheScrollWindow` | 6 |
+| ~~Opening and closing the capture panel moves `ViewScrollOffset` even though the cursor never moved, so the round trip loses the scroll window.~~ Rewritten by session 6: the rows a panel takes are a loan rather than a resize, so the close hands back the window the open borrowed from, and the assertion is now that the offset is unchanged. | `TestUXDailyUseHostedPanelResizeKeepsTheScrollWindow` | 6 |
 | The capture panel's divider sits at a fixed row regardless of how many lines the draft holds. | `TestUXDailyUseCapturePanelHeightIgnoresItsDraft` | 7 |
 | The single-task tag picker lists already-applied values **last**. | `TestUXDailyUseTagPickerListsAppliedValuesLast` | 8 |
 | The bulk tag picker lists partially-applied (`[-]`) values **last**. | `TestUXDailyUseBulkTagPickerListsMixedValuesLast` | 8 |
@@ -140,13 +140,14 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | ~~"A view status is transient except the multi-select summary."~~ Rewritten by session 4: every view status is transient, the Outliner writes none about a selection, and the context row's `selection` entry is the one persistent summary. | `CLAUDE.md` line 409 | 4 |
 | ~~The multi-select summary as a second statement of an active selection~~ Rewritten by session 4: the sticky-`SetStatus` exception is gone, and the entry's own contract — hidden count in both spellings, whole breakdown in `Q` — is written down beside the other context entries instead. | `docs/architecture/row-indicators.md` line 422; `docs/architecture/presentation-chrome.md` line 36 | 4 |
 | The workflow chord row listing ten destinations flat, and "entering Doing or Waiting without a schedule offers an optional check-in" | `docs/guide/outliner-keys.md` line 12 | 5, 10 |
-| "`HostRows` is a pure function of the frame — never of the cursor, the draft, or the document" | `CLAUDE.md` line 363 | 6, 7 |
+| "`HostRows` is a pure function of the frame — never of the cursor, the draft, or the document" | `CLAUDE.md` line 373 | 6, 7 |
+| ~~"because `OutlinerModel.SetSize` drops `ViewScrollOffset`"~~ — the rationale that followed the row above, retired by session 6: the rows a panel takes are a loan rather than a resize, `route.HostedBudgetView` is the seam, and `SetSize` dropping the window is now what ends a loan rather than what justifies losing one. The purity claim itself survives untouched and stays session 7's. | `CLAUDE.md` lines 373–383 | 6 |
 | The `SEMANTIC` picker row precedence and `OrderedTaskTags` as the single chip order | `CLAUDE.md` lines 800, 816 | 8 |
 | "`ValueProviderCheckIn` opens one two-field draft…" and the `taskform.CheckInEditorModel` value step | `CLAUDE.md` lines 106–111; `docs/architecture/operation-grammar.md` lines 35–45, 484 | 9, 10 |
 | "Every launch starts Active Projects, All, with no restored navigation or selection" | `CLAUDE.md` lines 127–131 | 11 |
 | "the class `?` help and the footer ranks belong to" | `CLAUDE.md` line 193 | 12 |
 
-`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 68700-byte rules-only
+`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 69900-byte rules-only
 budget. A session that spends more of that budget than it reclaims raises the
 constant in its own diff and says why in the comment ledger above it, the way
 every previous raise did; nobody raises it on another session's behalf.
@@ -183,10 +184,10 @@ every previous raise did; nobody raises it on another session's behalf.
 
 ### Session 6 — Viewport-preserving hosted-panel resizing
 
-- Go: `internal/tui/chrome/hosted_panel_test.go`, `internal/tui/app_handlers_view_capture_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/outliner/outliner_host_budget_test.go`, `internal/tui/app_handlers_view_capture_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `dense-scrolled`, `capture-panel`
-- Contracts: `CLAUDE.md` line 363
-- Landed: —
+- Contracts: `CLAUDE.md` lines 373–383; `docs/architecture/capture-and-outline-editor.md`; `docs/architecture/presentation-chrome.md`
+- Landed: `route.HostedBudgetView` — `SetHostedBudget` and `ReleaseHostedBudget` — as the seam the shell hands a bounded panel's leftover rows through, beside `ShellFrameAware` and for the same reason it exists: a list surface drops its scroll window every time it is resized, so a budget that travels through `SetSize` is indistinguishable from a terminal that changed size. `applyHostedBudget`/`releaseHostedBudget` in `app_view.go` are the one dispatch, so `syncHostedPanelHost` and `releaseHostedPanelHost` each kept their single call site and every host implementing neither is resized exactly as before. The outline answers both through `hostBudgetAnchor`, captured once at the first budget and re-seated on every later one, which is what makes a panel growing with its draft, a syntax guide opening, and an expanded form collapsing back one loan with one repayment instead of a drift whichever height came last decided. The anchor is a position rather than a number — the top task row's qualified identity, the cursor's behind it, the held offset behind that — because capture commits work into the projection underneath it, and a window restored by row number would slide the document under a user who had just captured above their position. `seatWindowAtAnchor` writes `ViewScrollOffset` and nothing else: keeping the cursor visible and cutting the window to the document stay `ComputeOutlinerViewport`'s, which runs on the very frame the seat is for, so the shortened window still clamps no further than the cursor requires and nothing here is a state rollback — folds, scope, query, selection, and the rows themselves are never read or written. `SetSize` drops the anchor with the window, so a terminal resized while a panel is open ends the loan rather than resurrecting one it already dropped. The cluster lives in `outliner.go` beside `SetSize` rather than in a file of its own, because the package was at its forty-file ceiling and the two acts are the same concern read twice.
 
 ### Session 7 — Content-sized compact capture
 

@@ -1149,7 +1149,26 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// as its own entry outlives every member beneath it. The mechanism lives in
 	// docs/architecture/presentation-chrome.md and
 	// docs/architecture/operation-grammar.md.
-	const budget = 69300
+	// Sixtieth raise, 69300 to 69900, for the hosted-panel budget. The retired
+	// clause — `HostRows` being pure *because* `OutlinerModel.SetSize` drops
+	// `ViewScrollOffset` — pays for a little of it, and it had to go: it was the
+	// justification for the loss, so a reader who kept it would reasonably
+	// conclude that a panel costing its host a scroll window is by design. 600
+	// bytes buy three rules. The first is that the rows a panel takes are a loan
+	// rather than a resize, and which call is which, because the shell has one
+	// act to perform and the two spellings are indistinguishable from a host's
+	// signature alone — a surface told `SetSize` for a budget cannot tell a
+	// terminal apart from a panel, which is the whole defect. The second is the
+	// anchor's ladder, top task row then cursor then the raw offset: a
+	// contributor who knows only that the window is preserved will preserve the
+	// number, and the number is wrong precisely in the case the panel exists for,
+	// since capture commits work into the projection underneath it. The third is
+	// the negative one — the seam writes `ViewScrollOffset` and nothing else — so
+	// that keeping the cursor visible stays `ComputeOutlinerViewport`'s, which is
+	// the rule this paragraph would otherwise quietly carve an exception out of.
+	// The mechanism lives in docs/architecture/capture-and-outline-editor.md and
+	// docs/architecture/presentation-chrome.md.
+	const budget = 69900
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

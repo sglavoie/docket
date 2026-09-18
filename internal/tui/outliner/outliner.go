@@ -50,6 +50,12 @@ type OutlinerModel struct {
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move ViewScrollOffset.
 	LastViewport outlinerViewport
+	// hostBudget is the loan outstanding while a bounded panel is drawn over this
+	// list: where the window stood when the panel took its rows, held as a
+	// position in the document rather than a number of them.
+	// The hostBudgetAnchor cluster below owns it, and SetSize is the one other
+	// writer, because a terminal resize ends the loan rather than repaying it.
+	hostBudget hostBudgetAnchor
 	// shellFrame is what the shell last said its own footer costs. It is a
 	// budget rather than a size, which is why it is held here instead of folded
 	// into Height: SetSize drops the scroll window, and a footer that grows a row
@@ -207,9 +213,143 @@ func (m *OutlinerModel) resetViewScrollOffset() {
 
 // SetSize updates the view dimensions and resets the persisted scroll window
 // because the visible row budget may have changed.
+//
+// It is the resize a terminal causes, and it drops the loan a bounded panel may
+// have outstanding along with the window that loan was measured against: a user
+// who resized the terminal is reading a different amount of the document, and
+// repaying them a window that resize already dropped would put back something
+// they did not keep. The loan itself is the cluster below.
 func (m *OutlinerModel) SetSize(width, height int) {
 	m.BaseSearchableView.SetSize(width, height)
+	m.hostBudget = hostBudgetAnchor{}
 	m.resetViewScrollOffset()
+}
+
+// hostBudgetAnchor is the view a bounded panel borrowed rows from, held for as
+// long as the loan lasts. A resize and a loan are two different acts: a terminal
+// that changed size is showing a different amount of a document the user then
+// re-reads, while a panel opened over this list is showing the same document
+// with a strip of it covered, and the strip goes away again.
+//
+// What it remembers is a position in the document rather than a number of rows,
+// because the panel above it can commit work: the anchor row and the cursor are
+// both held as qualified task identities, and the number is only what is left
+// when neither still resolves.
+type hostBudgetAnchor struct {
+	// active is whether a loan is outstanding. It is what makes every later
+	// budget one change to the same loan rather than a second one taken out
+	// against the window the first one already shortened.
+	active bool
+
+	// scrollOffset is the window's own top row when the loan was taken, and the
+	// last rung of the ladder below.
+	scrollOffset int
+
+	// anchor is the first task row at or below that top row, and rowsAboveAnchor
+	// how far inside the window it sat, so a window led by a section or project
+	// header is anchored by the first row in it that has an identity at all.
+	anchor          taskref.TaskIdentity
+	rowsAboveAnchor int
+
+	// cursor is the selected task and rowsAboveCursor its distance from the same
+	// top row. It is the second rung: with the anchor row gone, the row the user
+	// was standing on is the one whose screen position is worth keeping.
+	cursor          taskref.TaskIdentity
+	rowsAboveCursor int
+}
+
+// SetHostedBudget answers route.HostedBudgetView. It is the shell handing this
+// list the rows a bounded panel left it, and it is deliberately not SetSize: the
+// scroll window survives it, so opening capture over the outline covers the
+// bottom of the view instead of re-seating what the user was reading.
+//
+// The anchor is taken once, at the first budget, and every later one re-seats
+// the window against that same one. That is what makes successive height changes
+// — a panel growing with its draft, a syntax guide opening, an expanded form
+// collapsing back — one loan with one repayment rather than a drift whichever
+// budget came last happens to decide.
+func (m *OutlinerModel) SetHostedBudget(width, height int) {
+	if m == nil {
+		return
+	}
+	if !m.hostBudget.active {
+		m.hostBudget = m.captureHostBudgetAnchor()
+	}
+	m.BaseSearchableView.SetSize(width, height)
+	m.seatWindowAtAnchor(m.hostBudget)
+}
+
+// ReleaseHostedBudget answers the other half: the panel closed and this view is
+// owed its whole content area back. The anchor is spent here and put down, so
+// the window the loan started from is the window the release returns to wherever
+// the rows still permit it, and the render's own clamp decides how far that is.
+//
+// A release with no loan behind it is an ordinary resize, which this view has
+// always answered by dropping its window.
+func (m *OutlinerModel) ReleaseHostedBudget(width, height int) {
+	if m == nil {
+		return
+	}
+	held := m.hostBudget
+	m.hostBudget = hostBudgetAnchor{}
+	m.BaseSearchableView.SetSize(width, height)
+	if !held.active {
+		m.resetViewScrollOffset()
+		return
+	}
+	m.seatWindowAtAnchor(held)
+}
+
+// captureHostBudgetAnchor reads the current window as a position in the
+// document. It writes nothing at all: the cursor, the folds, the scope, the
+// search and the rows are the view's own, and a loan is not the seam that
+// restores any of them.
+func (m *OutlinerModel) captureHostBudgetAnchor() hostBudgetAnchor {
+	held := hostBudgetAnchor{active: true, scrollOffset: m.ViewScrollOffset}
+	for index := max(m.ViewScrollOffset, 0); index < len(m.Rows); index++ {
+		row := m.Rows[index]
+		if !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		identity := m.TaskIdentityForRow(row)
+		if !identity.Valid() {
+			continue
+		}
+		held.anchor = identity
+		held.rowsAboveAnchor = index - m.ViewScrollOffset
+		break
+	}
+	if cursor := m.CurrentTaskIdentity(); cursor.Valid() {
+		held.cursor = cursor
+		held.rowsAboveCursor = m.Cursor - m.ViewScrollOffset
+	}
+	return held
+}
+
+// seatWindowAtAnchor writes the window back where the loan found it. It writes
+// ViewScrollOffset alone, and writes a valid one: keeping the cursor visible and
+// cutting the window to the document belong to ComputeOutlinerViewport, which is
+// the one window authority and runs on the very frame this seat is for.
+func (m *OutlinerModel) seatWindowAtAnchor(held hostBudgetAnchor) {
+	if !held.active {
+		return
+	}
+	m.ViewScrollOffset = max(m.anchoredScrollOffset(held), 0)
+}
+
+// anchoredScrollOffset is the ladder: the anchor row where it is still drawn,
+// then the cursor's own row, then the number the loan started from. The first
+// two rungs are qualified identities resolved against the rows as they are now,
+// so a task captured into the projection while the panel was open moves the
+// window with it rather than sliding the document under it.
+func (m *OutlinerModel) anchoredScrollOffset(held hostBudgetAnchor) int {
+	if index, ok := m.RowIndexForTask(held.anchor); ok {
+		return index - held.rowsAboveAnchor
+	}
+	if index, ok := m.RowIndexForTask(held.cursor); ok {
+		return index - held.rowsAboveCursor
+	}
+	return held.scrollOffset
 }
 
 func (m *OutlinerModel) getCursorTask() *models.Task {

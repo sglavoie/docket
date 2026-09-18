@@ -67,18 +67,45 @@ owns the whole area. That is what lets the composer declare both of its
 presentations without a second type — `ComposerExpanded` returns the zero layout
 and the full form takes the screen.
 
-The shell does not draw the panel on top of its host; it resizes the host and
-re-renders it into the rows the panel left, then stacks the two with
+The shell does not draw the panel on top of its host; it hands the host the rows
+the panel left and re-renders it into them, then stacks the two with
 `chrome.ComposeHostedPanel`. Overlaying would hide the host's bottom rows, and
-the row a list surface most needs to keep is the one its cursor is on. That
-resize is also why `composerPanelRows` reads the frame and nothing else — not the
-draft, not the preview, not the error list. `OutlinerModel.SetSize` drops
-`ViewScrollOffset`, so a host budget that moved with the panel's own content
-would re-anchor the outline under every keystroke. For the same reason
-`syncHostedPanelHost` runs once per `Update`, in the shell's one deferred
-closure, rather than once per frame, and expanding the syntax guide sets
+the row a list surface most needs to keep is the one its cursor is on.
+
+Handing those rows over is not a resize, and `route.HostedBudgetView` is where
+that distinction lives. It sits beside `route.ShellFrameAware` for the same
+reason that one exists: a list surface drops its scroll window every time it is
+resized, so a temporary budget travelling through `SetSize` is indistinguishable
+from a terminal that changed size, and the window the user was reading is gone
+either way. The shell calls `SetHostedBudget` for every budget a panel leaves a
+host — the first and every later one, since a panel that changes height changes
+the loan rather than taking a second — and `ReleaseHostedBudget` exactly once,
+with the whole content area, when the panel closes. `applyHostedBudget` and
+`releaseHostedBudget` in `app_view.go` are the one dispatch: a host implementing
+neither is resized for both, which is what it always was.
+
+`OutlinerModel` implements it. `hostBudgetAnchor` is captured at the first budget
+and re-seated on every later one, so a panel growing with its draft, a syntax
+guide opening, and an expanded form collapsing back are one loan with one
+repayment instead of a drift whichever height came last decided. What it holds is
+a position rather than a number — the top task row's qualified identity, the
+cursor's behind it, and the held offset behind that — because capture commits
+work into the projection underneath it, and a window put back by row number would
+slide the document under a user who had just captured above their position.
+`seatWindowAtAnchor` writes `ViewScrollOffset` and nothing else: keeping the
+cursor visible and cutting the window to the document belong to
+`ComputeOutlinerViewport`, which runs on the frame the seat is for, so a
+shortened window still clamps no further than the cursor requires. `SetSize`
+drops the anchor along with the window, so a terminal resized while a panel is
+open ends the loan rather than resurrecting one it already dropped.
+
+`composerPanelRows` still reads the frame and nothing else — not the draft, not
+the preview, not the error list — because a host budget that moved with the
+panel's own content would move the loan under the reader on every keystroke. For
+the same reason `syncHostedPanelHost` runs once per `Update`, in the shell's one
+deferred closure, rather than once per frame, and expanding the syntax guide sets
 `HostDrawn` false — the panel takes the frame while the guide is up, and the host
-keeps the size it already had so closing the guide costs it no scroll window.
+keeps the size it already had, so the guide is not a height change at all.
 `hostedPanelHostRecord` names the one view owed its budget back, since a sweep
 over the registry would reset every other surface's window to say so;
 `syncHostedPanelHost` still reads the host's own `Width()`/`Height()` rather than

@@ -215,6 +215,17 @@ The refusal surface fills the rows it was given exactly, so it is the case a
 footer carrying both a message and the blank rows it holds for the host would
 otherwise cost its last row — the row naming `Esc close`.
 
+`route.HostedBudgetView` is the second seam built on that same reason, and the
+two are worth reading together: `ShellFrameAware` carries a budget beside the
+size so a growing footer never re-anchors a list, and `HostedBudgetView` carries
+the panel's own budget the same way — `SetHostedBudget` for every height a panel
+leaves its host, `ReleaseHostedBudget` once at the close, plain `SetSize` for a
+host implementing neither. Both exist because `SetSize` is the resize a terminal
+causes and a list surface answers it by dropping its window, so anything
+temporary that travels through it is spending a window it did not mean to.
+`docs/architecture/capture-and-outline-editor.md` has the anchor the outline
+keeps across that loan.
+
 A full-height view skips `renderFooterChrome` and draws its own footer, so the
 shell composes into that frame instead of replacing it.
 `composeSurfaceFooterFeedback` finds the surface's own divider with

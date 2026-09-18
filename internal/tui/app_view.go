@@ -592,7 +592,7 @@ func (m *AppModel) syncHostedPanelHost() {
 		// it still holds the budget this shell last handed it.
 		return
 	}
-	frame.view.SetSize(width, frame.layout.HostRows)
+	applyHostedBudget(frame.view, width, frame.layout.HostRows)
 }
 
 func (m *AppModel) releaseHostedPanelHost() {
@@ -602,8 +602,31 @@ func (m *AppModel) releaseHostedPanelHost() {
 	released := m.hostedPanelHost.view
 	m.hostedPanelHost = hostedPanelHostRecord{}
 	if view := m.presentationViewFor(released); view != nil {
-		view.SetSize(m.viewNav.viewSize())
+		width, height := m.viewNav.viewSize()
+		releaseHostedBudget(view, width, height)
 	}
+}
+
+// applyHostedBudget and releaseHostedBudget are the two halves of the loan a
+// bounded panel takes out of its host's content area. They exist because the
+// shell has one act to perform and the host has two ways of answering it: a
+// surface that keeps a scroll window says so through route.HostedBudgetView and
+// is told which of the two this is, and every other surface is resized the way
+// it always was.
+func applyHostedBudget(view route.View, width, height int) {
+	if budgeted, ok := view.(route.HostedBudgetView); ok {
+		budgeted.SetHostedBudget(width, height)
+		return
+	}
+	view.SetSize(width, height)
+}
+
+func releaseHostedBudget(view route.View, width, height int) {
+	if budgeted, ok := view.(route.HostedBudgetView); ok {
+		budgeted.ReleaseHostedBudget(width, height)
+		return
+	}
+	view.SetSize(width, height)
 }
 
 // shellFrameRecipient names the presentation the shell last handed a footer

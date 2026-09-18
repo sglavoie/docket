@@ -371,8 +371,15 @@ height left to whatever is underneath and `HostDrawn` whether that presentation
 is painted this frame, so the zero value is a view owning the area outright and
 one view declares both presentations without a second route. `HostRows` is a
 pure function of the frame — never of the cursor, the draft, or the document —
-because `OutlinerModel.SetSize` drops `ViewScrollOffset`, and the syntax guide
-therefore flips `HostDrawn` instead of moving it. `syncHostedPanelHost` resizes
+and the rows it takes are a loan, not a resize. `route.HostedBudgetView` is that
+seam: `SetHostedBudget` for every budget a panel leaves a host,
+`ReleaseHostedBudget` once at the close, and a plain `SetSize` for a host
+implementing neither. The outline keeps the window it was reading across both,
+anchored by its top task row's qualified identity, then the cursor's, then the
+offset it held, and writes `ViewScrollOffset` alone, so the one window authority
+still decides what keeping the cursor visible costs. `SetSize` still drops that
+window, so a terminal resize ends a loan rather than repaying one, and the
+syntax guide flips `HostDrawn` instead of moving it. `syncHostedPanelHost` resizes
 that host once per `Update` and never per frame, and `ComposeHostedPanel` pins
 the panel to the bottom, spending the rows it declined on blank lines when no
 host resolves, since a bottom panel that floated to the first row reads as a

@@ -68,6 +68,22 @@ type HostedPanelView interface {
 	HostedPanelLayout(width, height int) chrome.HostedPanelLayout
 }
 
+// HostedBudgetView is implemented by a host that keeps its scroll window across
+// the rows a bounded panel borrows from it. SetSize is the resize a terminal
+// causes, and a list surface answers it by dropping that window; the two calls
+// here are a loan and its repayment, which is a different act and must not cost
+// the host the position it was reading.
+//
+// The shell calls SetHostedBudget for every budget a panel leaves this host —
+// the first one and every later one, since a panel that changes height changes
+// the loan rather than taking a second — and ReleaseHostedBudget exactly once,
+// with the whole content area, when the panel closes. A host implementing
+// neither is handed SetSize for both, which is what it already did.
+type HostedBudgetView interface {
+	SetHostedBudget(width, height int)
+	ReleaseHostedBudget(width, height int)
+}
+
 // ShellFrameAware is implemented by a view that has to fit under a shell footer
 // taller than the two rows it was sized against — because feedback is standing
 // beside the controls, or because those controls wrapped. The shell measures its
