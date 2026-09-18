@@ -369,9 +369,15 @@ Capture is a bounded panel over a live presentation, not a fullscreen view.
 `chrome.HostedPanelLayout` the whole of what it says: `HostRows` is the content
 height left to whatever is underneath and `HostDrawn` whether that presentation
 is painted this frame, so the zero value is a view owning the area outright and
-one view declares both presentations without a second route. `HostRows` is a
-pure function of the frame — never of the cursor, the draft, or the document —
-and the rows it takes are a loan, not a resize. `route.HostedBudgetView` is that
+one view declares both presentations without a second route. `HostRows` is the
+frame less what the panel's content asks for, bounded by the panel's ceiling and
+the host's floor, and the rows it takes are a loan, not a resize. Every demand
+term reads settled state — the stored draft wrapped at the input's width, the
+recorded refusals, the autocomplete rows, the stored preview through
+`PreviewBlockRows` — so measuring re-parses nothing and no height decides one;
+the footer excess rides the share, not the drawn panel, and a presentation
+replacing a pane inherits its demand and never measures as nothing, since a
+shrunken share costs the host its window. `route.HostedBudgetView` is that
 seam: `SetHostedBudget` for every budget a panel leaves a host,
 `ReleaseHostedBudget` once at the close, and a plain `SetSize` for a host
 implementing neither. The outline keeps the window it was reading across both,
@@ -384,9 +390,11 @@ that host once per `Update` and never per frame, and `ComposeHostedPanel` pins
 the panel to the bottom, spending the rows it declined on blank lines when no
 host resolves, since a bottom panel that floated to the first row reads as a
 full view. The panel draws `chrome.RenderLabeledDivider` and no title, so the
-workspace pulse stays the host's and appears exactly once; the discard question
-stays the shell's confirm dialog, and a second copy underneath would cost the
-preview a row. A bounded preview elides nothing: `ComposeBoundedPreviewBlock`
+workspace pulse stays the host's and appears exactly once. That divider names
+the act and the footer repeats nothing: the destination is the route summary's,
+the row `Ctrl+P` rewrites, so only a value that row cannot carry — a child
+capture's parent — reaches the label. The discard question stays the shell's
+confirm dialog, and a second copy underneath would cost the preview a row. A bounded preview elides nothing: `ComposeBoundedPreviewBlock`
 falls to the compact wrapped run rather than clipping the grouped one, because a
 truncated group list reads as a complete one. `Ctrl+F` is the composer's other
 presentation and declares no layout, so the expanded form owns the whole content

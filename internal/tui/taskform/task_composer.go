@@ -49,10 +49,12 @@ type TaskComposerSharedAttributes struct {
 // expanded create/edit, children, and links.
 type TaskComposerPreset struct {
 	Kind TaskComposerPresetKind
-	// HeaderLabel overrides the kind's generic subtitle. Capture uses it to name
-	// the destination project it resolved, because base capture and header-row
-	// capture reach the same overlay with the same kind and would otherwise be
-	// indistinguishable until the task landed somewhere unexpected.
+	// HeaderLabel overrides the kind's generic subtitle. Capture names the act
+	// and not its destination: the route row under the divider resolves the
+	// project on every keystroke, so a label naming one would be the same answer
+	// twice and the stale one of the two after Ctrl+P. A capture under a parent
+	// still names it here, because that is the one thing the route row does not
+	// carry.
 	HeaderLabel        string
 	Project            *models.Project
 	AllProjects        []*models.Project
@@ -164,7 +166,6 @@ func (m *TaskComposerModel) initCompactInput() {
 	}
 	m.QuickCaptureInput = grammar.NewQuickCaptureInput(project, m.Preset.AllProjects, placeholder, !m.Preset.AllowProjectSwitch)
 	m.Input.CharLimit = 4000
-	m.Input.SetHeight(3)
 	if m.Preset.InitialText != "" {
 		m.Input.SetValue(m.Preset.InitialText)
 		m.Input.CursorEnd()
@@ -173,6 +174,11 @@ func (m *TaskComposerModel) initCompactInput() {
 	if project == nil {
 		m.Errors = []grammar.LineError{{Line: 1, Message: "composer preset requires a project"}}
 	}
+	// Last, because the height the input opens at is what this preset's own
+	// draft and refusals ask for: a seeded line and a preset with no project
+	// both open at the size they will be rendered at rather than at a literal
+	// the first frame would have to correct.
+	m.syncInputHeight()
 }
 
 func (m *TaskComposerModel) SetCaptureCoordinator(c coordinator.CaptureCoordinator) { m.capture = c }
@@ -192,8 +198,10 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 	if m.Mode == ComposerCompact {
 		m.Width = max(width-2, 1)
 		m.Input.SetWidth(max(min(width-4, 90), 20))
-		m.Input.SetHeight(3)
 		m.SetSyntaxViewportWidth(max(width-2, 1))
+		// After the width, since the width is what the draft wraps at and the
+		// wrapping is what decides how many rows it needs.
+		m.syncInputHeight()
 	}
 }
 

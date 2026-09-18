@@ -96,7 +96,7 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 
 	content := ansi.Strip(app.View().Content)
 
-	if !strings.Contains(content, "── Capture → Test Project ") {
+	if !strings.Contains(content, "── Capture ─") {
 		t.Fatalf("composed output should keep the panel's labeled divider:\n%s", content)
 	}
 	if !strings.Contains(content, "Project: Test Project · Status: Inbox") {
@@ -134,7 +134,7 @@ func TestAppViewHostedCapturePanelKeepsItsHostVisible(t *testing.T) {
 	lines := strings.Split(ansi.Strip(model.View().Content), "\n")
 	divider := -1
 	for i, line := range lines {
-		if strings.HasPrefix(line, "── Capture → ") {
+		if strings.HasPrefix(line, "── Capture ─") {
 			divider = i
 			break
 		}
@@ -159,7 +159,7 @@ func TestAppViewHostedCapturePanelKeepsItsHostVisible(t *testing.T) {
 	}
 }
 
-func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
+func TestAppViewTaskComposerBudgetsForATallerFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.handleWindowSize(tea.WindowSizeMsg{Width: 60, Height: 24})
 
@@ -168,12 +168,20 @@ func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 	composer := app.taskComposer
-	composer.Input.SetValue("Task $")
+	// Three draft rows under ten destinations is more content than the panel's
+	// ceiling allows, which is the state the budget is about: the pane is windowed
+	// rather than the frame overrun.
+	composer.Input.SetValue("First task\nSecond task\nThird task $")
 	composer.UpdatePreview()
 	composer.RefreshAutocomplete()
+	// The feedback row is the excess: the capture controls alone fit the two rows
+	// the shell already subtracts, so a footer taller than its baseline needs a
+	// message beside them. It is the same row a saved capture publishes, which is
+	// exactly when the next one is being typed under an open suggestion list.
+	app.feedback.message = "task saved"
 
 	if got := lipgloss.Height(app.renderStatusBar()); got <= 2 {
-		t.Fatalf("test requires a wrapped contextual footer, got %d rows", got)
+		t.Fatalf("test requires a footer taller than its two-row baseline, got %d rows", got)
 	}
 	content := ansi.Strip(app.View().Content)
 	if strings.Contains(content, "resize terminal to view all") {

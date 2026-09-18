@@ -412,7 +412,7 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 	if _, ok := uxLineContaining(plain, "Search:"); !ok {
 		t.Fatalf("the context row is gone from the crowded floor\n%s", plain)
 	}
-	if !strings.Contains(plain, "Capture → Unfiled") {
+	if !strings.Contains(plain, "── Capture ─") {
 		t.Fatalf("the capture panel is not drawn\n%s", plain)
 	}
 	if footer := uxClarityFooter(driver); !strings.Contains(footer, "Enter create") {

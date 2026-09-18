@@ -140,10 +140,13 @@ defaults to Inbox. A new child defaults to Backlog under its selected parent.
 Capture opens as a panel across the bottom of the screen rather than a view that
 replaces what you were looking at. The outline stays above it, live and scrolled
 where you left it, so the row you were on — and its Peek dock, if one was open —
-is still readable while you type. The panel leads with a divider naming the
-capture (`── Capture → Client Alpha`), states the effective route on one row,
-holds the input, and gives whatever room is left to the preview of what `Enter`
-would create. That row reads `Project: Client Alpha · Status: Inbox`, and when
+is still readable while you type. The panel leads with a divider naming the act
+(`── Capture ─`), states the effective route on one row, and holds the input.
+A blank capture is exactly those three rows; the panel then grows a row at a
+time as the draft, the preview of what `Enter` would create, a suggestion list,
+or a refusal needs one, and shrinks again as they go away, up to a ceiling of
+fourteen rows and never below the four the outline keeps. The route row reads
+`Project: Client Alpha · Status: Inbox`, and when
 the draft joins a planning collection it says so in its own half —
 `Project: Client Alpha · Plan: Today · Status: Backlog`, because `$today` is a
 plan and the status it implies is one the word does not spell. A draft with no
@@ -155,8 +158,11 @@ as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,
 the folds, and the Peek dock exactly as capture found them.
 
-On a short terminal the panel keeps its shape and shortens the preview instead of
-its chrome. Rather than show the first few labelled groups and silently drop the
+Once the panel is at its ceiling — or on a short terminal, where the ceiling is
+whatever the outline can spare — it keeps its shape and shortens the preview
+instead of its chrome, and a refusal keeps its rows ahead of the draft's, so the
+message that says what went wrong is never the thing that scrolls away. Rather
+than show the first few labelled groups and silently drop the
 rest, it falls back to one wrapped run — `Panel capture · □ $inbox · !2 · #panel`
 — so nothing the parser recognized goes unnamed. At the 60×20 floor the outline
 keeps enough rows to show the row the cursor is on; capture never hides it.
@@ -193,16 +199,19 @@ hands the form back exactly as it was.
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
 project. A project header row is the one exception, because it names a project
 explicitly rather than incidentally, so `a` there captures into that project.
-The composer header names whichever destination it resolved — `Capture →
-Unfiled` or `Capture → Client Alpha` — so the two never look alike, and
-`%project` still overrides both. `A` on a project header row keeps refusing: a
-project has no task to parent a child under.
+The route row names whichever destination it resolved — `Project: Unfiled` or
+`Project: Client Alpha` — so the two never look alike, and `%project` still
+overrides both. The divider above it says `Capture` in either case: the
+destination is stated once, on the row `Ctrl+P` rewrites. `A` on a project
+header row keeps refusing: a project has no task to parent a child under.
 
 Inside a task Focus, `a` captures a direct child of the focused task and the
-header names it, as `Capture → child of Launch platform`, so the new task shows
-up in the focused projection immediately. Focus wins over a project header row
+divider names the parent, as `── Capture → child of Launch platform`, since no
+half of the route row can carry one; the new task shows up in the focused
+projection immediately. Focus wins over a project header row
 under the cursor. A focus root already at the nesting cap degrades to plain
-capture into its project, `Capture → Rich Project`, rather than refusing. `A` is
+capture into its project, where the divider reads `Capture` and the route row
+names the project, rather than refusing. `A` is
 unchanged and still means a child of the cursor task, one level deeper.
 
 Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`

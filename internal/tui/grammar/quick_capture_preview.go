@@ -294,6 +294,20 @@ func (q *QuickCaptureInput) ComposeBoundedPreviewBlock(rows int) string {
 	return q.clampToRows(q.renderCompactPreviewBlock(), rows)
 }
 
+// PreviewBlockRows is how many rows the grouped preview would take if it were
+// given every row it asked for. It reads the parse the last keystroke already
+// left behind — the stored result, or the refusal standing in for it — so a host
+// deciding its own height from its content never re-parses the line to learn
+// what the preview wants. Nothing to preview is zero rows rather than the one
+// lipgloss.Height reports for an empty string.
+func (q *QuickCaptureInput) PreviewBlockRows() int {
+	block := q.renderFullPreviewBlock()
+	if block == "" {
+		return 0
+	}
+	return lipgloss.Height(block)
+}
+
 // clampToRows wraps a styled string to q.width and keeps at most rows lines,
 // silently dropping any overflow. Used for the best-effort compact preview,
 // where losing a trailing detail is acceptable but a fixed row budget is not.

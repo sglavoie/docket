@@ -377,26 +377,26 @@ var uxDailyUseWorkflowEntries = []string{
 	"w waiting", "p paused", "m someday", "d done", "c canceled",
 }
 
-// TestUXDailyUseCapturePanelHeightIgnoresItsDraft records that the capture
-// panel's height is a pure function of the frame today: a panel holding a
-// three-line draft occupies exactly the rows an empty one did, so a one-line
-// capture spends the same screen a multi-line one does.
+// TestUXDailyUseCapturePanelIsSizedByItsContent is this contract after session
+// 7 rewrote it. The capture panel is no longer a fixed share of the frame: a
+// blank capture occupies only the rows it needs — its divider, the destination
+// summary, and the one line being typed — and the divider rises by one row for
+// each line added to the draft. It stops at the fourteen-row ceiling, and the
+// four rows the host is owed are still there underneath when it does.
 //
 // The measurement is the screen row the panel's own divider lands on, taken
-// before and after the draft is typed on one driver. Reading it off the frame
-// rather than off the panel's arithmetic is deliberate: the rule this records is
-// about what the user sees the panel cost, and a later session is free to reach
-// the new behavior through different arithmetic.
+// repeatedly on one driver. Reading it off the frame rather than off the panel's
+// arithmetic is deliberate: the rule is about what the user sees the panel cost,
+// and the growth is asserted as a difference between two of those rows, so a
+// footer that wraps at a narrow width shifts both measurements equally and the
+// claim stays about the draft.
 //
-// Session 7 owns this. It lets compact capture grow with its content, and
-// rewrites this contract to state that a blank capture occupies only its
-// necessary rows, that the divider rises as lines are added, and where it stops
-// — the existing fourteen-row ceiling and four-row host reservation both stand.
-// Session 6 is its precondition and reaches no part of this contract: the
-// reason the rule currently reads the frame and nothing else is that
-// `OutlinerModel.SetSize` drops the scroll window, and session 6 is what makes
-// growing the panel safe.
-func TestUXDailyUseCapturePanelHeightIgnoresItsDraft(t *testing.T) {
+// The predecessor contract recorded the opposite — a panel holding a three-line
+// draft occupied exactly the rows an empty one did — and named this session as
+// its owner. Session 6 was its precondition: growth is only safe because a
+// hosted budget is a loan the outline answers by keeping the window it was
+// reading, rather than a resize that drops it.
+func TestUXDailyUseCapturePanelIsSizedByItsContent(t *testing.T) {
 	for _, size := range uxDailyUseMatrixSizes {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
 			driver, _ := uxDailyUseDriver(t, FixtureNarrow, size[0], size[1])
@@ -412,13 +412,52 @@ func TestUXDailyUseCapturePanelHeightIgnoresItsDraft(t *testing.T) {
 			}
 
 			full := uxDailyUseCaptureDividerRow(t, driver)
-			if full != empty {
-				t.Fatalf("the capture panel moved its divider from row %d to row %d, which is the growth session 6 introduces",
-					empty, full)
+			if grew := empty - full; grew != len(uxDailyUseDraftLines) {
+				t.Fatalf("a %d-line draft raised the divider from row %d to row %d, want one row per line",
+					len(uxDailyUseDraftLines), empty, full)
+			}
+
+			// Past the ceiling the panel stops taking rows, and the draft is still
+			// whole: the input scrolls inside the height it was given, so the line
+			// the cursor is on is the one on screen.
+			uxClarityPress(t, driver, uxDailyUseOverflowDraftActions(1, 20)...)
+			capped := uxDailyUseCaptureDividerRow(t, driver)
+			if capped >= full {
+				t.Fatalf("a twenty-line draft did not grow the panel past row %d (divider at %d)", full, capped)
+			}
+			uxClarityPress(t, driver, uxDailyUseOverflowDraftActions(21, 10)...)
+			settled := uxDailyUseCaptureDividerRow(t, driver)
+			if settled != capped {
+				t.Fatalf("the panel kept growing past its ceiling: divider moved from row %d to row %d", capped, settled)
+			}
+			if settled < uxDailyUseCaptureHostFloorRows {
+				t.Fatalf("the capped panel's divider sits at row %d, above the %d rows the host is owed",
+					settled, uxDailyUseCaptureHostFloorRows)
+			}
+			if screen := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(screen, "overflow 30") {
+				t.Fatalf("the line being typed is not on screen, so growth lost the cursor:\n%s", screen)
 			}
 		})
 	}
 }
+
+// uxDailyUseOverflowDraftActions types count further draft lines, numbered from
+// first so the last one typed is identifiable on screen.
+func uxDailyUseOverflowDraftActions(first, count int) []UITestAction {
+	actions := make([]UITestAction, 0, count*2)
+	for i := first; i < first+count; i++ {
+		actions = append(actions,
+			UITestAction{Type: UITestActionKey, Key: "shift+enter"},
+			UITestAction{Type: UITestActionText, Text: fmt.Sprintf("overflow %d", i)},
+		)
+	}
+	return actions
+}
+
+// uxDailyUseCaptureHostFloorRows is the four rows the panel leaves the
+// presentation underneath, read here as screen rows above the divider. The
+// panel's own arithmetic states the same floor; this is what it looks like.
+const uxDailyUseCaptureHostFloorRows = 4
 
 // uxDailyUseCaptureDividerRow is which screen row the capture panel's labeled
 // divider lands on, which is the top of the panel and so the measure of its
@@ -436,8 +475,9 @@ func uxDailyUseCaptureDividerRow(t *testing.T, driver *UITestDriver) int {
 }
 
 // uxDailyUseCaptureDivider is the panel's own labeled divider, which is the one
-// row of it that is present at every width and with any draft.
-const uxDailyUseCaptureDivider = "── Capture →"
+// row of it that is present at every width and with any draft. It names the act
+// and not the destination: the route row under it is what resolves the project.
+const uxDailyUseCaptureDivider = "── Capture ─"
 
 // TestUXDailyUseHostedPanelResizeKeepsTheScrollWindow is what session 6 reached.
 // The rows a bounded panel borrows are a loan rather than a resize, so opening

@@ -207,10 +207,15 @@ That single-recipient rule is the whole double-reservation defense: with the
 capture panel open over the outline, both views are drawn and both could
 plausibly subtract the same rows, and the panel is the one that does.
 `OutlinerModel.ShellFrame` feeds `outlinerListRows`,
-`TaskComposerModel.shellFrame` feeds `compactPanelRows`, and
-`OutlineErrorsViewModel.shellFrame` feeds its scroll `capacity`; each subtracts
-`ExcessRows` once, and the panel's subtraction leaves `HostedPanelLayout.HostRows`
-untouched, so the host's scroll window is not moved by a message in the footer.
+`TaskComposerModel.shellFrame` feeds `composerPanelShareRows` and
+`compactPanelRows`, and `OutlineErrorsViewModel.shellFrame` feeds its scroll
+`capacity`; each charges `ExcessRows` once. The panel charges it to the share it
+asks the host for and not to the rows it draws, which is the only place a
+content-sized panel can put it: taking the row out of its own height would drop
+the input, preview, or refusal row the content asked for, so the footer's extra
+row comes out of the host's budget through `SetHostedBudget` — a loan the
+outline's anchor keeps its window across — and the panel draws exactly what it
+measured.
 The refusal surface fills the rows it was given exactly, so it is the case a
 footer carrying both a message and the blank rows it holds for the host would
 otherwise cost its last row — the row naming `Esc close`.

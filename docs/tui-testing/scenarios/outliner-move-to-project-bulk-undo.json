@@ -6,7 +6,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "capture the first Unfiled task", "key": "a" },
-    { "type": "assert", "label": "the launch cursor lends capture no project", "assert": "contains", "value": "Capture → Unfiled" },
+    { "type": "assert", "label": "the launch cursor lends capture no project", "assert": "contains", "value": "Project: Unfiled" },
     { "type": "text", "text": "Sort the desk drawer" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

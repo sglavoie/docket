@@ -10,11 +10,13 @@
 
     { "type": "key", "label": "raise capture over the outline", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
-    { "type": "assert", "label": "the panel names the capture on its own divider rather than a title row", "assert": "contains", "value": "── Capture → Unfiled" },
+    { "type": "assert", "label": "the panel names the act on its own divider rather than a title row", "assert": "contains", "value": "── Capture ─" },
+    { "type": "assert", "label": "and the destination nowhere but the route row it can restate", "assert": "not_contains", "value": "Capture →" },
     { "type": "assert", "label": "and states the effective route on one row", "assert": "contains", "value": "Project: Unfiled · Status: Inbox" },
     { "type": "assert", "label": "naming no plan, because this capture joins no planning collection", "assert": "not_contains", "value": "Plan:" },
     { "type": "assert", "label": "the outline it was raised from is still a live projection", "assert": "contains", "value": "@ Backlog  (4)" },
     { "type": "assert", "label": "including the Peek dock the cursor had open", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "a blank capture is its divider, its route row, and its input line — no preview yet", "assert": "not_contains", "value": "Task     " },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "text", "text": "Panel capture !2 #panel" },
@@ -45,7 +47,7 @@
     { "type": "resize", "label": "the panel still leaves outline rows at the app's own floor", "width": 60, "height": 20 },
     { "type": "key", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
-    { "type": "assert", "assert": "contains", "value": "── Capture → Unfiled" },
+    { "type": "assert", "assert": "contains", "value": "── Capture ─" },
     { "type": "assert", "label": "the host is windowed rather than covered, so its cursor row is never the row the panel hid", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

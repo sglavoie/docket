@@ -99,13 +99,43 @@ shortened window still clamps no further than the cursor requires. `SetSize`
 drops the anchor along with the window, so a terminal resized while a panel is
 open ends the loan rather than resurrecting one it already dropped.
 
-`composerPanelRows` still reads the frame and nothing else — not the draft, not
-the preview, not the error list — because a host budget that moved with the
-panel's own content would move the loan under the reader on every keystroke. For
-the same reason `syncHostedPanelHost` runs once per `Update`, in the shell's one
-deferred closure, rather than once per frame, and expanding the syntax guide sets
-`HostDrawn` false — the panel takes the frame while the guide is up, and the host
-keeps the size it already had, so the guide is not a height change at all.
+The panel's height is what its content asks for. `composerPanelContentRows` is
+that demand: `composerPanelFixedRows` for the divider and the route row, the
+input's own wrapped line count, the error block when there is one, and the pane
+under it — the suggestion list's items while autocomplete is open, one row for a
+multiline draft's summary, and otherwise the grouped preview's height through
+`grammar.QuickCaptureInput.PreviewBlockRows`. `composerPanelShareRows` turns that
+into the share the host is told about, between `composerPanelMinRows` — the two
+fixed rows and one input line, which a blank capture is — and
+`composerPanelMaxRows`, the fourteen-row ceiling the bounded paths were written
+for. `composerHostMinRows` is the other end of it: four rows the host keeps, and
+a frame too short to seat both spends what it has on those first.
+
+Two properties are what make that measurement safe to run on every frame. Every
+term reads settled state — the value the input already holds, wrapped at the
+width it already has, the errors the last submission recorded, `len(m.AC.Items)`,
+and the parse the last keystroke stored — so nothing is re-parsed to learn a
+height and no term reads the panel's own height, which is what a loop between
+the two would need. And the rows the shell's footer costs beyond its two-row
+baseline ride the *share* rather than the drawn panel: `ExcessRows` is added to
+the demand and to the floor, and `compactPanelRows` subtracts it again for the
+render, so the panel draws exactly its content while the host is charged for the
+footer that content stands above.
+
+Inside the ceiling the bounded paths are unchanged, and `composerInputRows` is
+where the priority falls: the body is the share less the two fixed rows, the
+input keeps its first row unconditionally, and every row beyond it yields to the
+error block, so a refusal is never what scrolls off a panel that has run out of
+room. The pane below it is windowed by the preview and autocomplete paths that
+already existed, which is why the ceiling is the number they were sized against.
+
+The syntax guide is the one presentation that measures as the pane it replaced.
+Expanding it sets `HostDrawn` false — the panel takes the frame while the guide
+is up — but it moves no term of the demand in either direction, because a share
+that shrank while the guide was open would hand the host a smaller budget and
+cost it the window `hostBudgetAnchor` exists to keep. For the same reason
+`syncHostedPanelHost` runs once per `Update`, in the shell's one deferred
+closure, rather than once per frame.
 `hostedPanelHostRecord` names the one view owed its budget back, since a sweep
 over the registry would reset every other surface's window to say so;
 `syncHostedPanelHost` still reads the host's own `Width()`/`Height()` rather than
@@ -115,8 +145,12 @@ is corrected on the next update instead of silently clipping its cursor row away
 The panel has no title row, so it also has no workspace pulse: the host under it
 is still painting its own, and `TestPresentationChromeHostedPanelLeavesThePulseToItsHost`
 holds the composition to exactly one. `chrome.RenderLabeledDivider` is the
-heading form it uses instead — `── Capture → Client Alpha ─────`, one row, the
-plain rule when there is no room for a label. Its styles are built locally rather
+heading form it uses instead — `── Capture ─────`, one row, the plain rule when
+there is no room for a label. The label names the act and stops there: the
+destination is the route row's, which `Ctrl+P` rewrites, so a second copy on the
+divider would be both a repetition and the half that goes stale. A child capture
+is the exception, `── Capture → child of Launch platform ──`, because no axis of
+that row carries a parent. Its styles are built locally rather
 than taken from `theme.SubtitleStyle`, which carries a bottom margin that on a
 single row is a newline through the middle of the divider.
 

@@ -364,7 +364,9 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 
 // TestSimplifiedCaptureFollowsAProjectHeaderCursor covers the one cursor row
 // that names a project explicitly. Every other row keeps base capture in the
-// system Inbox, and both destinations are named in the composer header.
+// system Inbox. Neither destination is spelled into the composer's label: the
+// panel's route row resolves the project on every keystroke, so the label names
+// the act alone and cannot go stale behind a Ctrl+P.
 func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	app := newUITestApp()
 	inbox := scopeTestProject("inbox", "Unfiled", "one")
@@ -383,7 +385,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	if !ok || header.Preset.Project != project {
 		t.Fatalf("header capture = %#v, want project %v", header, project)
 	}
-	if header.Preset.HeaderLabel != "Capture → Project" {
+	if header.Preset.HeaderLabel != "Capture" {
 		t.Fatalf("header capture label = %q", header.Preset.HeaderLabel)
 	}
 
@@ -392,7 +394,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	if !ok || task.Preset.Project != inbox {
 		t.Fatalf("task-row capture = %#v, want system Inbox %v", task, inbox)
 	}
-	if task.Preset.HeaderLabel != "Capture → Unfiled" {
+	if task.Preset.HeaderLabel != "Capture" {
 		t.Fatalf("task-row capture label = %q", task.Preset.HeaderLabel)
 	}
 }
@@ -448,7 +450,7 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	if capped.Preset.Shared.ParentID != nil {
 		t.Fatalf("capped focus capture kept parent %v", capped.Preset.Shared.ParentID)
 	}
-	if capped.Preset.HeaderLabel != "Capture → Project" {
+	if capped.Preset.HeaderLabel != "Capture" {
 		t.Fatalf("capped focus capture label = %q", capped.Preset.HeaderLabel)
 	}
 }

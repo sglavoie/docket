@@ -1168,7 +1168,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// the rule this paragraph would otherwise quietly carve an exception out of.
 	// The mechanism lives in docs/architecture/capture-and-outline-editor.md and
 	// docs/architecture/presentation-chrome.md.
-	const budget = 69900
+	// Sixty-first raise, 69900 to 70500, for the content-sized capture panel.
+	// The retired clause — `HostRows` being a pure function of the frame, never
+	// of the draft — pays for most of it, and it had to go: it is now false, and
+	// a contributor holding it would read the measurement as the defect rather
+	// than as the rule. 600 bytes buy three rules. The first is what the height
+	// now is, floor and ceiling included, because "sized by its content" alone
+	// does not say that a blank panel still keeps its input row or that a long
+	// draft stops growing, and either omission is a panel that eats its host.
+	// The second is that every demand term reads settled state: a measurement
+	// that re-parsed the line, or read the panel's own height, is a feedback
+	// loop no test of one frame catches, and the pane-replacement case is the
+	// one that already bit — measuring an open syntax guide as nothing shrinks
+	// the share and costs the host the window session 60 bought. The third is
+	// that the divider names the act alone, since the destination it used to
+	// spell is the route summary's and a second copy goes stale the moment
+	// `Ctrl+P` rewrites that row. The mechanism lives in
+	// docs/architecture/capture-and-outline-editor.md.
+	const budget = 70500
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

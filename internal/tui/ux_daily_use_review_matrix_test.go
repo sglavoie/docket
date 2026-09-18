@@ -110,7 +110,7 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "capture-panel",
 		fixture: FixtureNarrow,
-		records: "a three-line capture draft in a panel whose height is a pure function of the frame",
+		records: "a three-line capture draft in a panel sized by the content it holds",
 		owners:  []int{6, 7},
 		stage:   stageUXDailyUseCapturePanel,
 	},
@@ -344,9 +344,9 @@ func stageUXDailyUseWorkflowChord(t *testing.T, driver *UITestDriver, view *outl
 }
 
 // stageUXDailyUseCapturePanel opens capture and types a three-line draft. The
-// draft is what makes the frame evidence rather than decoration: the panel is
-// the same height with it as without it, and a frame of an empty panel could not
-// show that.
+// draft is what makes the frame evidence rather than decoration: the panel
+// stands three rows taller with it than without it, and a frame of an empty
+// panel could not show what those rows cost the outline above.
 func stageUXDailyUseCapturePanel(t *testing.T, driver *UITestDriver, _ *outliner.OutlinerModel) {
 	t.Helper()
 	uxClarityPress(t, driver, uxClarityKeys("a")...)
@@ -354,8 +354,9 @@ func stageUXDailyUseCapturePanel(t *testing.T, driver *UITestDriver, _ *outliner
 }
 
 // uxDailyUseDraftActions types the three-line capture draft. The lines are short
-// and unpunctuated so that no size in the matrix wraps one of them, which would
-// move rows for a reason that has nothing to do with the panel's height rule.
+// and unpunctuated so that no size in the matrix wraps one of them: a wrapped
+// line is two rows of demand, so one frame would stand a row taller than the
+// rest for a reason the panel's rule states but the draft does not.
 func uxDailyUseDraftActions() []UITestAction {
 	actions := make([]UITestAction, 0, 5)
 	for i, line := range uxDailyUseDraftLines {

@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -223,23 +224,148 @@ func TestTaskComposerAutocompleteUsesAvailableHeight(t *testing.T) {
 	composer.UpdatePreview()
 	composer.RefreshAutocomplete()
 
+	// An open dropdown is content the panel grows for, so a frame with rows to
+	// spare lists every destination and spends no row on an overflow hint.
 	tall := ansi.Strip(composer.View().Content)
 	tallRows := countDropdownRows(tall)
-	if tallRows == 0 || !strings.Contains(tall, "more") {
-		t.Fatalf("tall panel did not show a bounded destination list:\n%s", tall)
+	if tallRows != len(composer.AC.Items) || strings.Contains(tall, "more") {
+		t.Fatalf("panel bounded a destination list the frame had room for (%d of %d):\n%s",
+			tallRows, len(composer.AC.Items), tall)
+	}
+	if got, want := lipgloss.Height(tall), composer.compactPanelRows(); got != want {
+		t.Fatalf("panel height = %d, want the %d rows it claimed", got, want)
 	}
 
-	composer.SetSize(80, 18)
+	// The panel's bound is still the bound: once the frame cannot leave both the
+	// host its rows and the list its own, the dropdown is windowed rather than
+	// the panel taking what the outline needs.
+	composer.SetSize(80, 12)
 	short := ansi.Strip(composer.View().Content)
 	shortRows := countDropdownRows(short)
 	if shortRows == 0 || shortRows >= tallRows {
-		t.Fatalf("dropdown did not grow with the frame: short=%d tall=%d\n%s", shortRows, tallRows, tall)
+		t.Fatalf("dropdown did not grow with the frame: short=%d tall=%d\n%s", shortRows, tallRows, short)
 	}
 	if !strings.Contains(short, "more") {
 		t.Fatalf("short panel did not show an overflow hint:\n%s", short)
 	}
 	if got, want := lipgloss.Height(short), composer.compactPanelRows(); got != want {
 		t.Fatalf("panel height = %d, want the %d rows it claimed", got, want)
+	}
+}
+
+// TestTaskComposerPanelIsSizedByItsContent is the session-7 shape: the panel
+// opens at the three rows a capture cannot be without and grows only for what
+// it actually has to draw. The host's budget is the counterpart of every one of
+// those measurements, so each is asserted against what the layout left behind
+// rather than against a constant.
+func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(80, 30)
+
+	blank := ansi.Strip(composer.View().Content)
+	if got := lipgloss.Height(blank); got != composerPanelMinRows {
+		t.Fatalf("a blank capture took %d rows, want the %d it needs:\n%s", got, composerPanelMinRows, blank)
+	}
+	if got, want := composer.HostedPanelLayout(80, 30).HostRows, 30-composerPanelMinRows; got != want {
+		t.Fatalf("blank capture left the host %d rows, want %d", got, want)
+	}
+
+	// A draft with a preview under it earns the rows that preview needs, and the
+	// host pays for exactly those.
+	composer.Input.SetValue("Draft task !1 #tag")
+	composer.UpdatePreview()
+	drafted := ansi.Strip(composer.View().Content)
+	draftedRows := lipgloss.Height(drafted)
+	if draftedRows <= composerPanelMinRows {
+		t.Fatalf("a draft with a preview did not grow the panel (%d rows):\n%s", draftedRows, drafted)
+	}
+	if got, want := composer.HostedPanelLayout(80, 30).HostRows, 30-draftedRows; got != want {
+		t.Fatalf("host kept %d rows beside a %d-row panel, want %d", got, draftedRows, want)
+	}
+
+	// Multiline growth is the input's own: three lines are three rows, and the
+	// text is all still there.
+	composer.Input.SetValue("one\ntwo\nthree")
+	composer.UpdatePreview()
+	multiline := ansi.Strip(composer.View().Content)
+	for _, line := range []string{"one", "two", "three"} {
+		if !strings.Contains(multiline, line) {
+			t.Fatalf("growth lost draft line %q:\n%s", line, multiline)
+		}
+	}
+	if got := lipgloss.Height(multiline); got != composerPanelMinRows+3 {
+		t.Fatalf("three draft lines and their summary took %d rows, want %d:\n%s",
+			got, composerPanelMinRows+3, multiline)
+	}
+
+	// The ceiling holds whatever the draft says, and the host keeps its floor.
+	tallDraft := make([]string, 40)
+	for i := range tallDraft {
+		tallDraft[i] = fmt.Sprintf("line %d", i)
+	}
+	composer.Input.SetValue(strings.Join(tallDraft, "\n"))
+	composer.UpdatePreview()
+	if got := lipgloss.Height(ansi.Strip(composer.View().Content)); got != composerPanelMaxRows {
+		t.Fatalf("a forty-line draft took %d rows, want the %d-row ceiling", got, composerPanelMaxRows)
+	}
+	if got := composer.HostedPanelLayout(80, 30).HostRows; got != 30-composerPanelMaxRows {
+		t.Fatalf("host kept %d rows under a capped panel, want %d", got, 30-composerPanelMaxRows)
+	}
+}
+
+// TestTaskComposerPanelKeepsRefusalsOverDraftRows states the one priority
+// inside the panel's body: a refusal names work the typist has to do, while the
+// line it refuses is still scrollable inside the input.
+func TestTaskComposerPanelKeepsRefusalsOverDraftRows(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(80, 12)
+
+	lines := make([]string, 20)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d", i)
+	}
+	composer.Input.SetValue(strings.Join(lines, "\n"))
+	composer.UpdatePreview()
+	composer.Errors = []grammar.LineError{
+		{Line: 3, Message: "unknown destination"},
+		{Line: 7, Message: "priority out of range"},
+	}
+
+	rendered := ansi.Strip(composer.View().Content)
+	for _, want := range []string{"Line 3: unknown destination", "Line 7: priority out of range"} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("panel dropped the refusal %q for draft rows:\n%s", want, rendered)
+		}
+	}
+	if got, want := lipgloss.Height(rendered), composer.compactPanelRows(); got != want {
+		t.Fatalf("panel height = %d, want the %d rows it claimed", got, want)
+	}
+}
+
+// TestTaskComposerSyntaxGuideLeavesTheHostBudget keeps session 6's fact true of
+// content sizing: the guide is read over the host rather than beside it, so it
+// is absent from the measurement and closing it costs the host no scroll window.
+func TestTaskComposerSyntaxGuideLeavesTheHostBudget(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(80, 30)
+	composer.Input.SetValue("Draft task")
+	composer.UpdatePreview()
+
+	before := composer.HostedPanelLayout(80, 30)
+	composer.HelpExpanded = true
+	during := composer.HostedPanelLayout(80, 30)
+	if during.HostDrawn || during.HostRows != before.HostRows {
+		t.Fatalf("expanded guide moved the host budget: %+v want undrawn %+v", during, before)
+	}
+	if got, want := during.PanelRows(30), 30; got != want {
+		t.Fatalf("undrawn host left the panel %d rows, want %d", got, want)
+	}
+	composer.HelpExpanded = false
+	if after := composer.HostedPanelLayout(80, 30); after != before {
+		t.Fatalf("closing the guide returned %+v, want the %+v the open borrowed from", after, before)
 	}
 }
 

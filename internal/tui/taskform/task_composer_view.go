@@ -200,9 +200,9 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(102, "Ctrl+P project")...)
 		}
 	}
-	if spec.Supplemental == "" {
-		spec.Supplemental = m.Preset.label()
-	}
+	// No supplemental naming the panel: the divider above already opens with
+	// that label and the route row under it states the destination, so a footer
+	// repeating either spends the row capture's own keys are read from.
 	return spec, true
 }
 

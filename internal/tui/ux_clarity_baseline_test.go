@@ -216,7 +216,7 @@ func TestUXClarityDiscardPromptStandsOnTheOpenComposer(t *testing.T) {
 	}
 	// The composer is still painted underneath rather than replaced, and its
 	// divider is the cheapest proof that the panel still owns its rows.
-	if !strings.Contains(plain, "Capture → Unfiled") {
+	if !strings.Contains(plain, "── Capture ─") {
 		t.Fatalf("the composer host stopped drawing under the prompt:\n%s", plain)
 	}
 	footer := uxClarityFooter(driver)
@@ -349,7 +349,9 @@ func uxClarityReadoutText(t *testing.T, driver *UITestDriver) string {
 // resting dock back with Peek still open on the same row.
 //
 // Session 7 owns this; it is the rewritten form of
-// TestUXClarityCaptureOverPeekKeepsAFixedDock.
+// TestUXClarityCaptureOverPeekKeepsAFixedDock. The daily-use plan's own session
+// 7 later replaced the typing half: a content-sized capture panel grows with its
+// draft, so the assertion is the direction of that cost rather than its absence.
 func TestUXClarityPeekDockIsAShareOfTheFrame(t *testing.T) {
 	docks := make(map[[2]int]int, len(uxClarityMatrixSizes))
 	for _, size := range uxClarityMatrixSizes {
@@ -362,7 +364,7 @@ func TestUXClarityPeekDockIsAShareOfTheFrame(t *testing.T) {
 			if !view.PeekDockVisible() {
 				t.Fatal("the dock closed when capture opened")
 			}
-			if !strings.Contains(obs.PlainScreen, "Capture → Unfiled") {
+			if !strings.Contains(obs.PlainScreen, "── Capture ─") {
 				t.Fatalf("the capture panel is not drawn over the dock:\n%s", obs.PlainScreen)
 			}
 			// The position line is drawn for every document, so it is the one row
@@ -381,13 +383,25 @@ func TestUXClarityPeekDockIsAShareOfTheFrame(t *testing.T) {
 				t.Fatalf("the dock under capture is %d rows, want at least three", underCapture)
 			}
 
-			// Typing is not a resize. The panel's height reads the frame rather
-			// than the draft, so a title, an autocompleting sigil, and a refused
-			// one all leave the dock exactly where the open put it.
+			// Typing is a growth rather than a resize, and the daily-use plan's
+			// own session 7 is why: the panel measures the draft, the preview, and
+			// the suggestion list it holds, so a title, an autocompleting sigil,
+			// and a refused one may each cost the dock a row. What holds through
+			// all of them is that the dock only ever yields rows to the panel, is
+			// still drawn whole, and never falls under the three a displayed dock
+			// owes.
 			for _, key := range []string{"R", "e", "v", "i", "e", "w", " ", "#"} {
 				uxClarityPress(t, driver, uxClarityKeys(key)...)
-				if got := view.PeekDockRows(); got != underCapture {
-					t.Fatalf("typing %q moved the dock to %d rows, want %d", key, got, underCapture)
+				got := view.PeekDockRows()
+				if drawn := len(view.PeekDockLines()); got != drawn {
+					t.Fatalf("after %q the dock reports %d rows and drew %d", key, got, drawn)
+				}
+				if got < 3 {
+					t.Fatalf("typing %q left the dock %d rows, want at least three", key, got)
+				}
+				if got > underCapture {
+					t.Fatalf("typing %q grew the dock to %d rows from the %d the open left it",
+						key, got, underCapture)
 				}
 			}
 			after := driver.Observe(ObserveOptions{})

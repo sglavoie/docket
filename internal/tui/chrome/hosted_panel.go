@@ -10,12 +10,14 @@ import (
 // HostedPanelLayout divides one content area between a bounded panel pinned to
 // its bottom edge and the presentation that panel was opened over.
 //
-// HostRows is what the host keeps, and it is a pure function of the frame. A
-// list surface drops its scroll window every time it is resized, so a host
-// budget that moved with the panel's own content would re-anchor that window
-// under every keystroke. A panel that needs more room than its share takes the
-// whole area for that frame — HostDrawn false — instead of shrinking the host
-// again.
+// HostRows is what the host keeps, and it is the frame less the rows the
+// panel's own settled content asks for, bounded by that panel's ceiling and the
+// host's floor. It moves when that content does, which is why the rows are a
+// loan the host is told about rather than a resize: a list surface drops its
+// scroll window every time it is resized, so a host repaying a loan restores
+// the window it was reading instead of re-anchoring it under every keystroke. A
+// panel that needs more room than its share takes the whole area for that frame
+// — HostDrawn false — instead of shrinking the host again.
 //
 // The zero value is no panel at all: the view owns the content area outright,
 // which is how one view declares both of its presentations without a second

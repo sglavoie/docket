@@ -14,7 +14,7 @@
 
     { "type": "key", "label": "capture from a section header row", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
-    { "type": "assert", "label": "no cursor lends capture its project", "assert": "contains", "value": "Capture → Unfiled" },
+    { "type": "assert", "label": "no cursor lends capture its project", "assert": "contains", "value": "Project: Unfiled" },
 
     { "type": "text", "label": "route the line, then adopt two tasks named three ways", "text": "Consolidate follow-ups %rich-project <2 <6 <Fix" },
     { "type": "assert", "label": "children resolve in the routed project", "assert": "contains", "value": "→ Rich Project" },

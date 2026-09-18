@@ -67,7 +67,7 @@ func (m *AppModel) captureComposerPreset(
 	}
 	return taskform.TaskComposerPreset{
 		Kind:               kind,
-		HeaderLabel:        "Capture → " + project.Name,
+		HeaderLabel:        "Capture",
 		Project:            project,
 		AllProjects:        projects,
 		InitialText:        strings.Join(parts, " "),
