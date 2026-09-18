@@ -16,8 +16,9 @@ import (
 
 // hostBudgetFixture is one project of plain backlog tasks, enough of them that
 // the window has somewhere to be other than the top.
-func hostBudgetFixture(t *testing.T, count int) *OutlinerModel {
+func hostBudgetFixture(t *testing.T) *OutlinerModel {
 	t.Helper()
+	const count = hostBudgetTaskCount
 	tasks := make([]*models.Task, 0, count)
 	for index := range count {
 		tasks = append(tasks, renderFixtureTask(
@@ -46,16 +47,21 @@ const (
 	// hostBudgetPanelRows is a plausible bounded panel: a good third of the
 	// content area, which is what makes a shortened window a different window.
 	hostBudgetPanelRows = 12
+	// hostBudgetTaskCount and hostBudgetSeatedCursor are one starting position
+	// every case below shares: a document far longer than the screen, read from
+	// well inside it, so the window always has somewhere to be other than the top.
+	hostBudgetTaskCount    = 120
+	hostBudgetSeatedCursor = 90
 )
 
 // seatHostBudgetWindow puts the cursor on one task and lets the render settle
 // the window around it, which is the state every case below starts from.
-func seatHostBudgetWindow(t *testing.T, model *OutlinerModel, cursor int) {
+func seatHostBudgetWindow(t *testing.T, model *OutlinerModel) {
 	t.Helper()
-	model.Cursor = cursor
+	model.Cursor = hostBudgetSeatedCursor
 	model.ComputeOutlinerViewport(model.Width(), 0)
 	if model.ViewScrollOffset == 0 {
-		t.Fatalf("the window is still at the top with the cursor on row %d, so there is no position to lose", cursor)
+		t.Fatalf("the window is still at the top with the cursor on row %d, so there is no position to lose", model.Cursor)
 	}
 }
 
@@ -64,8 +70,8 @@ func seatHostBudgetWindow(t *testing.T, model *OutlinerModel, cursor int) {
 // release hands back is the window the loan started from — not merely one the
 // cursor happens to be visible in.
 func TestHostedBudgetRoundTripRestoresTheWindow(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	cursor, before := model.Cursor, model.ViewScrollOffset
 	identity := model.CurrentTaskIdentity()
 
@@ -93,8 +99,8 @@ func TestHostedBudgetRoundTripRestoresTheWindow(t *testing.T) {
 // cursor near the bottom of the old window is outside the shortened one, and the
 // one window authority is what moves it back into view.
 func TestHostedBudgetKeepsTheCursorVisibleWhileShortened(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	before := model.ViewScrollOffset
 
 	model.SetHostedBudget(hostBudgetWidth, hostBudgetHeight-hostBudgetPanelRows)
@@ -118,8 +124,8 @@ func TestHostedBudgetKeepsTheCursorVisibleWhileShortened(t *testing.T) {
 // is measured against the window the first one borrowed from rather than against
 // whatever the previous budget's clamp settled on.
 func TestHostedBudgetSuccessiveHeightsAnchorToOneLoan(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	before := model.ViewScrollOffset
 
 	for _, panel := range []int{6, 14, 20, 8, 14} {
@@ -141,8 +147,8 @@ func TestHostedBudgetSuccessiveHeightsAnchorToOneLoan(t *testing.T) {
 // is the one they were reading — the same task on the same screen row — rather
 // than the same numbered slice of a document that grew.
 func TestHostedBudgetFollowsItsAnchorRowThroughAChangedProjection(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	before := model.ViewScrollOffset
 	anchorIdentity := model.TaskIdentityForRow(model.Rows[before])
 	if !anchorIdentity.Valid() {
@@ -176,8 +182,8 @@ func TestHostedBudgetFollowsItsAnchorRowThroughAChangedProjection(t *testing.T) 
 // keeping, so the row the user was standing on comes back to the screen row it
 // was on.
 func TestHostedBudgetAnchorSurvivesARowItCannotFind(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	before := model.ViewScrollOffset
 	cursorRow := model.Cursor - before
 	cursorIdentity := model.CurrentTaskIdentity()
@@ -212,8 +218,8 @@ func TestHostedBudgetAnchorSurvivesARowItCannotFind(t *testing.T) {
 // selection and the rows on the other side of it are the ones the user left
 // standing: nothing here is a state rollback.
 func TestHostedBudgetLeavesEveryOtherAxisAlone(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 
 	model.SetSearchQuery("Task 09")
 	model.Folds.setSection("backlog", true)
@@ -246,8 +252,8 @@ func TestHostedBudgetLeavesEveryOtherAxisAlone(t *testing.T) {
 // release that follows repays the loan the new size took out, not the one the
 // old size did.
 func TestTerminalResizeEndsTheLoanRatherThanRepayingIt(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 	before := model.ViewScrollOffset
 
 	model.SetHostedBudget(hostBudgetWidth, hostBudgetHeight-hostBudgetPanelRows)
@@ -285,8 +291,8 @@ func TestTerminalResizeEndsTheLoanRatherThanRepayingIt(t *testing.T) {
 // to take its whole area back without ever having lent any is being resized, and
 // answers the way SetSize does.
 func TestReleaseWithNoLoanIsAnOrdinaryResize(t *testing.T) {
-	model := hostBudgetFixture(t, 120)
-	seatHostBudgetWindow(t, model, 90)
+	model := hostBudgetFixture(t)
+	seatHostBudgetWindow(t, model)
 
 	model.ReleaseHostedBudget(hostBudgetWidth, hostBudgetHeight)
 	if model.ViewScrollOffset != 0 {

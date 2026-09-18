@@ -63,7 +63,11 @@ no dependence on the order the frames are staged in.
 | `workflow-chord` | ux-acceptance | The `w` chord's ten destinations as one flat run. | 5 |
 | `capture-panel` | narrow | The compact capture panel over a live host, holding a three-line draft. | 6, 7 |
 | `bulk-tag-picker` | ux-acceptance | The task-tag picker over a multi-task selection, with mixed values. | 8 |
-| `check-in-offer` | ux-acceptance | The check-in editor raised automatically by a state change. | 9, 10 |
+| `check-in-offer` | ux-acceptance | A state change committed without a schedule. Before the plan that raised the check-in editor automatically; session 10 replaced the editor with a footer note, so the frame now records the list the commit left standing. | 9, 10 |
+
+The `check-in-offer` frame keeps its name although the offer it was named for is
+gone. A frame name is the key its before-row and its after-row are joined on, so
+renaming it would have cost this map the one comparison it exists to make.
 
 ## Layout measurements before the plan
 
@@ -102,8 +106,79 @@ asserted rather than tabulated, in `TestUXDailyUseReviewMatrix`.
 
 ## Layout measurements after the plan
 
-Session 13 fills this section from the same export, run against the finished
-product, so the two tables above are the only before-evidence it needs.
+The same export, re-run against the finished product:
+
+```sh
+TT_UX_DAILY_USE_REVIEW_DIR=/tmp/ux-daily-use-after \
+  go test ./internal/tui/ -run TestUXDailyUseReviewMatrix -count=1
+```
+
+Light still matches dark exactly in every count, so one column per size serves
+both here too, and the Peek dock is still closed in all thirty-two frames.
+
+| Frame | 60×20 | 80×24 | 100×35 | 120×40 |
+| --- | --- | --- | --- | --- |
+| `startup-focus` | 1 + 17 + 2 | 1 + 21 + 2 | 1 + 32 + 2 | 1 + 37 + 2 |
+| `project-label-widths` | 1 + 17 + 2 | 1 + 21 + 2 | 1 + 32 + 2 | 1 + 37 + 2 |
+| `dense-scrolled` | 1 + 17 + 2 | 1 + 21 + 2 | 1 + 32 + 2 | 1 + 37 + 2 |
+| `hidden-selection` | 2 + 16 + 2 | 2 + 20 + 2 | 2 + 31 + 2 | 2 + 36 + 2 |
+| `workflow-chord` | 1 + 17 + 3 | 1 + 21 + 3 | 1 + 32 + 3 | 1 + 37 + 3 |
+| `capture-panel` | 1 + 10 + 3 | 1 + 14 + 3 | 1 + 25 + 3 | 1 + 30 + 3 |
+| `bulk-tag-picker` | 2 + 16 + 2 | 2 + 20 + 2 | 2 + 31 + 2 | 2 + 36 + 2 |
+| `check-in-offer` | 1 + 17 + 3 | 1 + 21 + 3 | 1 + 32 + 3 | 1 + 37 + 3 |
+
+Three rows moved, and each is one session's stated outcome:
+
+- `hidden-selection` and `bulk-tag-picker` give back three footer rows at the
+  two narrow sizes and two at the wide ones. That is session 4: the selection
+  was being stated twice, and the copy that went is the footer's.
+- `capture-panel` hands the host one row at each narrow size, six at 100×35, and
+  seven at 120×40 — session 7's content sizing, where a three-line draft asks
+  for what it holds instead of a fixed block. The panel's own height is the
+  complement of the content column, so a host that gained seven rows is a panel
+  that spent seven fewer. The gain grows with the terminal because the fixed
+  block was the same size everywhere while the draft is not.
+
+Every other frame measures exactly as it did, which is the intended reading:
+sessions 2, 3, 5, 11, and 12 changed what a row says and where a mark sits, not
+how many rows anything is allowed.
+
+Clipped lines:
+
+| Frame | 60×20 | 80×24 | 100×35 | 120×40 |
+| --- | --- | --- | --- | --- |
+| `startup-focus` | 0 | 0 | 0 | 0 |
+| `project-label-widths` | 0 | 0 | 0 | 0 |
+| `dense-scrolled` | 17 | 21 | 32 | 36 |
+| `hidden-selection` | 0 | 0 | 0 | 0 |
+| `workflow-chord` | 11 | 14 | 16 | 16 |
+| `capture-panel` | 2 | 2 | 2 | 2 |
+| `bulk-tag-picker` | 0 | 9 | 11 | 7 |
+| `check-in-offer` | 12 | 14 | 16 | 16 |
+
+That count rises, and it is worth being exact about what it counts: a screen
+line holding the truncation ellipsis, wherever it falls. Every added ellipsis in
+these frames is inside the trailing project field — `[ux-platform-d…]`,
+`[release-pro…]` — and none is inside a title. Before session 2 the label was
+drawn whole ahead of the title, so it was the title that was cut; the label now
+sits in one measured column with a width budget of its own, which is what makes
+it the field that gives. A frame where nearly every row carries that field
+therefore reports nearly every row as clipped while carrying strictly more
+readable title than the same frame did before.
+
+The counterpart the truncation owes is written down and tested elsewhere: a
+folded group summary spells the whole slug, `ux-acceptance-daily-loop.json`
+asserts it, and `projectLabelGrowthFloorWidth` exists so that the field grows
+toward `projectLabelCeilingWidth` once the terminal is wide enough to afford it.
+`ux-acceptance-row-baseline.json` holds the 120-column case to `not_clipped`.
+Session 1's clipped-line table is therefore not comparable row for row with this
+one, and the frames it should be compared against are `startup-focus`,
+`project-label-widths`, and `hidden-selection`, which draw no truncated field
+and report zero at every size in both tables.
+
+No frame reports a layout issue at any of the four sizes, in any variant, and no
+monochrome frame loses content its styled counterpart carried — asserted, as
+before, in `TestUXDailyUseReviewMatrix` rather than tabulated here.
 
 ## Expectations later sessions deliberately replace
 
@@ -147,10 +222,11 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 | "Every launch starts Active Projects, All, with no restored navigation or selection" | `CLAUDE.md` lines 127–131 | 11 |
 | "the class `?` help and the footer ranks belong to" | `CLAUDE.md` line 193 | 12 |
 
-`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a 70500-byte rules-only
-budget. A session that spends more of that budget than it reclaims raises the
-constant in its own diff and says why in the comment ledger above it, the way
-every previous raise did; nobody raises it on another session's behalf.
+`contributor_guidance_docs_test.go` holds `CLAUDE.md` to a rules-only byte
+budget, 70500 when this plan opened and 74200 by the end of session 12. A
+session that spends more of that budget than it reclaims raises the constant in
+its own diff and says why in the comment ledger above it, the way every previous
+raise did; nobody raises it on another session's behalf.
 
 ## Per-session regression homes
 
@@ -201,7 +277,22 @@ every previous raise did; nobody raises it on another session's behalf.
 - Go: `internal/tui/task_tags_picker_semantic_test.go`, `internal/tui/bulk_picker_test_helpers_test.go`, `internal/tui/project_tags_picker_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `bulk-tag-picker`
 - Contracts: `CLAUDE.md` lines 800, 816
-- Landed: —
+- Landed: `FreezeAppliedValuesFirst` on the value picker, called once by the
+  factory after `ConfigureValueMembership`, so it reads the all/some membership
+  that call established rather than a guess made before the cardinality was
+  known. Every all or some value is promoted into one `APPLIED` section that
+  leads the list, in the same semantic, context, descriptive order the sections
+  below keep, with the cursor seated on the first of them; the clear-context row
+  is excluded, since a task with no context marks it `all` without carrying a
+  value. The promotion is `listsurface.ListItem.GroupID` — presentation alone —
+  so `CategoryID` stays what the row is, bucketing reads `GroupOrCategory()`,
+  and `s`, `c`, and `t` still reach a promoted row through its own category
+  while a section the promotion emptied answers with that row rather than
+  refusing. The order is frozen while the overlay is open: checking an unapplied
+  value marks it where it stands, a minted tag or context enters its own
+  section, and a query rearranges neither, so only reopening reorders. The
+  filter vocabularies, the project-tag picker, and the dependency picker share
+  the same infrastructure, declare no such section, and promote nothing.
 
 ### Session 9 — Independent check-in editor ownership safeguards
 
@@ -223,7 +314,20 @@ every previous raise did; nobody raises it on another session's behalf.
 - Go: `internal/tui/app_launch_lens_test.go`, `internal/tui/outliner/outliner_primary_rows_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `startup-focus`
 - Contracts: `CLAUDE.md` lines 127–131
-- Landed: —
+- Landed: The cursor starts on the first task row the settled projection draws,
+  falling back to the first row only where the projection draws no task at all.
+  It is a one-shot intent rather than a position: `armLaunchFocus` is called
+  from the launch message alone and never from `ResetToGlobalAll`, so a reload,
+  a mode change, an Esc restoration, and a global reset all leave it alone.
+  `LaunchFocusSettled` is when it may be spent — `SnapshotReady` and not
+  `Loading`, which is what separates an empty workspace from a read still on its
+  way and what waits for a saved lens reading its own projects — and
+  `FocusFirstLaunchRow` spends it by writing `m.Cursor` and nothing else, so
+  folds, axes, and the one viewport authority are untouched. A superseded load
+  publishes neither flag and therefore spends nothing, and `dropLaunchFocus`
+  runs on the first non-modifier keystroke, so a startup landing late never
+  overrides navigation already begun. The scenarios and harness cases that
+  opened with a step onto a task lost that step.
 
 ### Session 12 — Contextual guidance priorities
 
@@ -235,7 +339,30 @@ every previous raise did; nobody raises it on another session's behalf.
 
 ### Session 13 — Integrated acceptance and final review
 
-- Go: `internal/tui/ux_daily_use_review_matrix_test.go`, `internal/tui/ux_presentation_matrix_acceptance_test.go`, `ux_daily_use_regression_map_test.go`
+- Go: `internal/tui/ux_daily_use_integrated_acceptance_test.go`, `internal/tui/ux_daily_use_review_matrix_test.go`, `internal/tui/ux_presentation_matrix_acceptance_test.go`, `ux_daily_use_regression_map_test.go`
 - Frames: all eight, re-exported into "Layout measurements after the plan"
 - Contracts: `just ci`, which is this plan's only session-level gate wider than the aggregate race command
-- Landed: —
+- Landed: `internal/tui/ux_daily_use_integrated_acceptance_test.go` is the one
+  regression home for the relationships between this plan's changes, which is
+  the part no single session could assert. Sessions 2–12 each proved one
+  occupant of the frame correct on its own and
+  `internal/tui/ux_daily_use_baseline_test.go` records each of those outcomes
+  against the expectation it replaced; nothing here restates one of them. Five
+  tests: the whole day through public keys —
+  capture, triage, plan, start, edit, schedule, complete, undo — reading the
+  launch landing, the footer head, the borrowed panel, the footer note that
+  replaced the automatic editor, and the route that note names, at each seam
+  rather than at the end; the workspace gestures (cross-project search,
+  three-generation hierarchy, a selection folded out of view, tags edited over
+  that hidden selection, relocation, explicit scheduling) each at all four
+  reviewed sizes in both palettes, one launch per gesture so no assertion
+  inherits what the previous one folded; four combined states — capture over
+  Peek, a refusal beside the keys that answer it, a selection inside a narrowed
+  projection, and a long project name against a deadline — each required to hold
+  both occupants at every size; a resize round trip through all four sizes with
+  a live draft, returning the starting frame byte for byte and still committing;
+  and the 240-task release catalog walked by ends, pages, and single steps, with
+  the drawn project field required to stay in one column throughout and the walk
+  held to a wall clock. The measurements those frames produce are the
+  "Layout measurements after the plan" tables above, including why the
+  clipped-line count rises without anything being lost.

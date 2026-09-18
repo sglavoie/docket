@@ -282,8 +282,8 @@ func TestLaunchWithASavedLensStillSeatsTheCursorOnWork(t *testing.T) {
 	}
 	machine.NamedLenses = starters
 	machine.ActiveLensID = starters[0].ID
-	if err := app.domain.runtime.CommitMachine(machine); err != nil {
-		t.Fatalf("persist the active-lens pointer: %v", err)
+	if commitErr := app.domain.runtime.CommitMachine(machine); commitErr != nil {
+		t.Fatalf("persist the active-lens pointer: %v", commitErr)
 	}
 
 	relaunched, err := driver.relaunch()

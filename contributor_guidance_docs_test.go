@@ -1145,7 +1145,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// second key list. The third is that a heading rides its run's first entry,
 	// which is not derivable from the packing rules already stated: those say
 	// required entries are reserved first and optional ones added by priority
-	// until one does not fit, and under exactly that policy a heading modelled
+	// until one does not fit, and under exactly that policy a heading modeled
 	// as its own entry outlives every member beneath it. The mechanism lives in
 	// docs/architecture/presentation-chrome.md and
 	// docs/architecture/operation-grammar.md.

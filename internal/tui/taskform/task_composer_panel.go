@@ -195,7 +195,7 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	b.WriteString("\n")
 	b.WriteString(m.Input.View())
 
-	if tail := m.renderComposerPanelTail(rows-lipgloss.Height(b.String()), width, errors); tail != "" {
+	if tail := m.renderComposerPanelTail(rows-lipgloss.Height(b.String()), errors); tail != "" {
 		b.WriteString("\n")
 		b.WriteString(tail)
 	}
@@ -233,7 +233,7 @@ func (m *TaskComposerModel) renderComposerRouteRow(width int) string {
 // discard question is not among them: it is the shell's own confirm dialog,
 // drawn over this panel, and a second copy underneath would cost the preview a
 // row to repeat what the overlay already asks.
-func (m *TaskComposerModel) renderComposerPanelTail(rows, width int, errors string) string {
+func (m *TaskComposerModel) renderComposerPanelTail(rows int, errors string) string {
 	if rows <= 0 {
 		return ""
 	}

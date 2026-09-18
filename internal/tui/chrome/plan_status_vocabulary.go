@@ -19,7 +19,7 @@ const (
 
 // PlanFieldKey and StatusFieldKey are the same two words in the lowercase
 // `label value` idiom Peek's three summary lines are written in. A surface picks
-// the spelling its neighbours already use and never a third word.
+// the spelling its neighbors already use and never a third word.
 const (
 	PlanFieldKey   = "plan"
 	StatusFieldKey = "status"
@@ -34,7 +34,7 @@ const (
 )
 
 // PlanStatusValue spells a canonical lowercase token as this vocabulary shows
-// it. The grammar stores `today` and `backlog`; a labelled field reads them
+// it. The grammar stores `today` and `backlog`; a labeled field reads them
 // capitalized, and capitalizing once here is what keeps the surfaces that do it
 // from disagreeing about how.
 func PlanStatusValue(token string) string {

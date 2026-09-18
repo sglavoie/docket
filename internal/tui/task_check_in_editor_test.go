@@ -176,7 +176,7 @@ func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
 				t.Fatalf("submitting command lost its interaction: %T", submit())
 			}
 			refusal := runOriginTaggedCommand(tagged)()
-			if _, ok := refusal.(commandOriginMsg); !ok {
+			if _, carriesOrigin := refusal.(commandOriginMsg); !carriesOrigin {
 				t.Fatalf("delayed refusal arrived untagged: %T", refusal)
 			}
 			if movedOn {

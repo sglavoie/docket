@@ -542,3 +542,8 @@ session names and the scenario lacked: `Q` opened over a stacked facet, one axis
 peeled by its own digit, the start that offers an optional check-in and the `Esc`
 that skips it without losing the start, the completion, the undo that names
 `Ctrl+O origin`, and the `Ctrl+O` that spends it.
+
+The check-in half of that sentence is a record of what this session added, not a
+description of the product: the daily-use plan's session 10 retired the offer
+and the `Esc` that skipped it, and rewrote those beats in the same scenario to
+assert the footer note and the `Set up check-ins` entry that replaced them.

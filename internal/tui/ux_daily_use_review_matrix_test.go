@@ -75,14 +75,14 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "startup-focus",
 		fixture: FixtureMultiProject,
-		records: "an untouched launch: the cursor rests on row 0, a section header, and the footer names navigation only",
+		records: "an untouched launch: the cursor rests on the first task row the projection draws, and the footer leads with the six acts that row is read for",
 		owners:  []int{11, 12},
 		stage:   func(*testing.T, *UITestDriver, *outliner.OutlinerModel) {},
 	},
 	{
 		name:    "project-label-widths",
 		fixture: FixtureMultiProject,
-		records: "four project names of unequal length, each drawn as a bracketed slug ahead of its task title",
+		records: "four project names of unequal length, each drawn as a bracketed slug in one measured column after its task title",
 		owners:  []int{2, 3},
 		stage:   stageUXDailyUseProjectLabelWidths,
 	},
@@ -103,7 +103,7 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "workflow-chord",
 		fixture: FixtureUXAcceptance,
-		records: "the workflow chord's hints as one flat run, with planning and lifecycle destinations undistinguished",
+		records: "the workflow chord's hints in two headed runs, Plan's two destinations leading the eight Status ones",
 		owners:  []int{5},
 		stage:   stageUXDailyUseWorkflowChord,
 	},

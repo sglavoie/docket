@@ -43,10 +43,12 @@ reproducible from the clock alone, so the three hour rows never highlight. On a
 terminal task the defer rows are disabled and say so rather than disappearing,
 and the due rows stay reachable beside them; `Tab` still crosses onto those
 disabled rows, which is how their reason gets read, and they keep refusing `a`
-and `Enter`. Entering Doing or Waiting without a schedule opens the shared optional check-in
-editor. Type a date and optional repeat, then save with `Ctrl+S`; `Esc` skips
-setup and keeps the completed state change. Saving the check-in has its own undo
-entry. Reapplying the current state does not offer setup.
+and `Enter`. Entering Doing or Waiting without a schedule commits the state
+change and opens nothing; the footer names what it left unscheduled and the
+keyless `Set up check-ins` entry that schedules it. That entry, and the
+`Set Check-In` entry on one task's `Space` menu, open the same editor: type a
+date and optional repeat, save with `Ctrl+S`, and `Esc` leaves. Saving a
+check-in has its own undo entry, separate from the state change.
 
 Every preset row prints the key that applies it immediately, in a muted column
 before its label, and pressing that key commits the row exactly as `Enter` on it
