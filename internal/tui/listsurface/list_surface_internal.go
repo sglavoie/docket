@@ -97,6 +97,7 @@ func normalizeListItems(
 	for _, item := range items {
 		item.ID = ListItemID(strings.TrimSpace(string(item.ID)))
 		item.CategoryID = ListCategoryID(strings.TrimSpace(string(item.CategoryID)))
+		item.GroupID = ListCategoryID(strings.TrimSpace(string(item.GroupID)))
 		item.DisabledReason = strings.TrimSpace(item.DisabledReason)
 		if item.ID == "" {
 			return nil, ErrListItemIDRequired
@@ -107,6 +108,13 @@ func normalizeListItems(
 		if item.CategoryID != "" {
 			if _, ok := categories[item.CategoryID]; !ok {
 				return nil, fmt.Errorf("%w: item %s category %s", ErrListCategoryUnknown, item.ID, item.CategoryID)
+			}
+		}
+		// A group is drawn as a section, so it is declared like one: a promotion
+		// naming no category would head a block with a blank label.
+		if item.GroupID != "" {
+			if _, ok := categories[item.GroupID]; !ok {
+				return nil, fmt.Errorf("%w: item %s group %s", ErrListCategoryUnknown, item.ID, item.GroupID)
 			}
 		}
 		seen[item.ID] = struct{}{}
@@ -158,7 +166,8 @@ func (model *ListSurfaceModel) rebuildMatches() {
 		if score == 0 {
 			continue
 		}
-		buckets[item.CategoryID] = append(buckets[item.CategoryID], listSurfaceMatch{
+		group := item.GroupOrCategory()
+		buckets[group] = append(buckets[group], listSurfaceMatch{
 			item:        item,
 			score:       score,
 			sourceIndex: sourceIndex,
@@ -245,21 +254,21 @@ func (model *ListSurfaceModel) buildRows() []ListSurfaceRow {
 	var previousCategory ListCategoryID
 	havePrevious := false
 	for matchIndex, match := range model.matches {
-		if match.item.CategoryID != "" &&
-			(!havePrevious || match.item.CategoryID != previousCategory) {
+		group := match.item.GroupOrCategory()
+		if group != "" && (!havePrevious || group != previousCategory) {
 			rows = append(rows, ListSurfaceRow{
 				Kind:     ListRowCategory,
-				Category: categoryIndex[match.item.CategoryID],
+				Category: categoryIndex[group],
 			})
 		}
 		rows = append(rows, ListSurfaceRow{
 			Kind:     ListRowItem,
-			Category: categoryIndex[match.item.CategoryID],
+			Category: categoryIndex[group],
 			Match:    exportListMatch(match),
 			Cursor:   matchIndex == model.cursor,
 			Selected: model.IsSelected(match.item.ID),
 		})
-		previousCategory = match.item.CategoryID
+		previousCategory = group
 		havePrevious = true
 	}
 	return rows

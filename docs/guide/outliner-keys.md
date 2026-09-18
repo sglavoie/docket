@@ -184,6 +184,18 @@ rather than `Space`: the row you press it on becomes the only checked context,
 and the leading `No context` row clears the field the way `##0` does. Tags and
 context apply together, in one transaction that undoes in one step.
 
+The overlay opens on what the task already carries. Every applied tag and its
+context are promoted to an `APPLIED` section at the top, in the same semantic,
+context, descriptive order the sections below keep, and the cursor starts on the
+first of them — so the values you are most likely to remove are the ones you
+land on. `No context` is not one of them: a task with no context agrees with
+that row without carrying a value, so it stays in `CONTEXTS`. That order is
+fixed for as long as the overlay is open. Checking an unapplied value marks it
+where it stands rather than moving it up, searching and clearing the search
+leave it where it was, and a tag you create with `a` lands in the section its
+own name belongs to. Reopening the overlay is what recomputes the order, out of
+whatever you just applied.
+
 Over a visual selection those checkboxes are tri-state, because the tasks need
 not agree. A tag row is checked when every selected task carries it, `[-]` when
 only some do, and empty when none do; applying adds every row you checked,
@@ -195,7 +207,10 @@ untouched set. The `CONTEXTS` rows read `[-]` the same way, marking a context
 only some of the selection already holds, and they write nothing unless you pick
 one; picking `No context` clears the field across the whole selection the way
 `##0` does. A context named `0` is refused, because that name is what clears the
-field.
+field. `APPLIED` leads there too and holds both kinds together: a value every
+selected task carries and one only some of them carry are equally worth
+reaching, and each keeps its own mark, so the section says what the selection
+has without saying the two are the same.
 
 `[` and `]` move the cursor task one step along the tree it is already in: `[`
 outdents it to its parent's level, `]` nests it under the peer above. They are

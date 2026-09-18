@@ -379,3 +379,73 @@ func TestListSurfaceViewportIsBoundedAcrossLargeListsCategoriesAndResize(t *test
 		t.Fatalf("category row became selectable: %+v", row)
 	}
 }
+
+// TestListSurfaceGroupsRowsSeparatelyFromTheirCategory holds the one thing a
+// group is: where a row is drawn. The row's category is what kind of value it
+// is, and a caller that promotes a row into another section is not changing
+// that, so bucketing, the header above the block, and the category the row is
+// exported with all read the group while the item keeps answering for itself.
+func TestListSurfaceGroupsRowsSeparatelyFromTheirCategory(t *testing.T) {
+	model := mustListSurface(t,
+		[]ListItem{
+			{ID: "one", CategoryID: "letters", PrimaryText: "alpha"},
+			{ID: "two", CategoryID: "numbers", PrimaryText: "two", GroupID: "picked"},
+			{ID: "three", CategoryID: "letters", PrimaryText: "gamma", GroupID: "picked"},
+			{ID: "four", CategoryID: "numbers", PrimaryText: "four"},
+		},
+		[]ListCategory{
+			{ID: "picked", Label: "Picked"},
+			{ID: "letters", Label: "Letters"},
+			{ID: "numbers", Label: "Numbers"},
+		},
+		ListSurfaceConfig{},
+	)
+
+	var got []string
+	for _, row := range model.Rows() {
+		if row.Kind == ListRowCategory {
+			got = append(got, "# "+row.Category.Label)
+			continue
+		}
+		got = append(got, string(row.Match.Item.ID)+" in "+row.Category.Label+
+			" is a "+string(row.Match.Item.CategoryID))
+	}
+	want := []string{
+		"# Picked",
+		"two in Picked is a numbers",
+		"three in Picked is a letters",
+		"# Letters",
+		"one in Letters is a letters",
+		"# Numbers",
+		"four in Numbers is a numbers",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("rows = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("rows = %v, want %v", got, want)
+		}
+	}
+}
+
+// TestListSurfaceRejectsAnUndeclaredGroup keeps a group as answerable as a
+// category: it is drawn as a section, so a promotion naming none of the declared
+// ones would head a block with a blank label.
+func TestListSurfaceRejectsAnUndeclaredGroup(t *testing.T) {
+	model := mustListSurface(t,
+		[]ListItem{{ID: "one", CategoryID: "letters", PrimaryText: "alpha"}},
+		[]ListCategory{{ID: "letters", Label: "Letters"}},
+		ListSurfaceConfig{},
+	)
+
+	err := model.SetItems([]ListItem{
+		{ID: "one", CategoryID: "letters", PrimaryText: "alpha", GroupID: "picked"},
+	})
+	if !errors.Is(err, ErrListCategoryUnknown) {
+		t.Fatalf("SetItems() error = %v, want %v", err, ErrListCategoryUnknown)
+	}
+	if item, ok := model.CurrentItem(); !ok || item.GroupID != "" {
+		t.Fatalf("a refused reload was applied: %+v", item)
+	}
+}

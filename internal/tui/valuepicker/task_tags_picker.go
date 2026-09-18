@@ -15,6 +15,12 @@ import (
 )
 
 const (
+	// TaskTagAppliedCategory is presentation alone: it heads the rows the targets
+	// already carry and is never a row's own kind, so nothing is ever created
+	// into it and the jump keys below never name it. It is declared by both tag
+	// sources and populated only where a membership snapshot exists, which is
+	// what keeps it inert for the filter vocabulary.
+	TaskTagAppliedCategory  listsurface.ListCategoryID = "task-tag:applied"
 	TaskTagSemanticCategory listsurface.ListCategoryID = "task-tag:semantic"
 	TaskContextCategory     listsurface.ListCategoryID = "task-tag:context"
 
@@ -133,6 +139,7 @@ func TaskTagListSource(tags []query.TagInfo, seedUnused bool) listsurface.ListSo
 	return listsurface.ListSource{
 		Items: items,
 		Categories: []listsurface.ListCategory{
+			{ID: TaskTagAppliedCategory, Label: "Applied"},
 			{ID: TaskTagSemanticCategory, Label: "Semantic"},
 			{ID: TaskContextCategory, Label: "Contexts"},
 			{ID: TagDescriptiveCategory, Label: "Tags"},
@@ -222,6 +229,27 @@ func taskTagPickerLess(items []listsurface.ListItem) func(i, j int) bool {
 		default:
 			return left.PrimaryText < right.PrimaryText
 		}
+	}
+}
+
+// appliedTaskValueRow reports whether one row is a value the targets already
+// carry. Mixed membership counts, because a value some of the selection carries
+// is exactly the one a bulk edit came to finish, and it keeps its own mark once
+// promoted. The clear-context row is not a value at all: every task without a
+// context agrees on it, so promoting it would head the list with a row nothing
+// is tagged with.
+func appliedTaskValueRow(
+	initial map[listsurface.ListItemID]OperationValueMembership,
+	item listsurface.ListItem,
+) bool {
+	if item.ID == TaskContextClearRowID {
+		return false
+	}
+	switch initial[item.ID] {
+	case OperationValueAll, OperationValueSome:
+		return true
+	default:
+		return false
 	}
 }
 

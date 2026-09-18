@@ -117,7 +117,7 @@ var uxDailyUseFrames = []uxDailyUseFrame{
 	{
 		name:    "bulk-tag-picker",
 		fixture: FixtureUXAcceptance,
-		records: "the tags-and-context picker over a multi-task selection, mixed values listed after the unapplied vocabulary",
+		records: "the tags-and-context picker over a multi-task selection, mixed values promoted to an APPLIED section ahead of the unapplied vocabulary",
 		owners:  []int{8},
 		stage:   stageUXDailyUseBulkTagPicker,
 	},

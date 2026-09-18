@@ -97,8 +97,15 @@ func (preview ListPreview) Empty() bool {
 // ListItem is the complete renderer-neutral representation of one row.
 // Data is an adapter-owned payload; the behavior model never inspects it.
 type ListItem struct {
-	ID             ListItemID
-	CategoryID     ListCategoryID
+	ID         ListItemID
+	CategoryID ListCategoryID
+	// GroupID is the section the row is drawn under when that differs from the
+	// kind of value it is. It is presentation metadata only, which is the whole
+	// point: CategoryID stays the row's identity, so a category jump, an
+	// insertion order, and a vocabulary keep reading what the row is while the
+	// surface draws it somewhere else. Empty means the row draws under its own
+	// category, so the two agree by default.
+	GroupID        ListCategoryID
 	PrimaryText    string
 	SecondaryText  string
 	Aliases        []string
@@ -126,6 +133,16 @@ type ListItem struct {
 // Enabled reports whether the item may be selected or activated.
 func (item ListItem) Enabled() bool {
 	return strings.TrimSpace(item.DisabledReason) == ""
+}
+
+// GroupOrCategory reports the section the row is drawn under. It is the one
+// answer bucketing, headers, and row categories read, so a promoted row can
+// never be grouped in one place and headed in another.
+func (item ListItem) GroupOrCategory() ListCategoryID {
+	if item.GroupID != "" {
+		return item.GroupID
+	}
+	return item.CategoryID
 }
 
 // ListCategory describes one stable group. Slice order supplied to the model

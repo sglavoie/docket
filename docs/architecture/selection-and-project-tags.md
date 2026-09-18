@@ -319,6 +319,31 @@ every target already agreed on rides that payload into
 writes the tags and the context, so a simultaneous edit is one transaction and
 one undo entry.
 
+That membership is also the order the overlay opens in.
+`FreezeAppliedValuesFirst` runs once, in the factory, immediately after
+`ConfigureValueMembership`, because the snapshot it reads is what that call
+establishes: every row the targets already carry — checked or `[-]` — is stamped
+with a presentation `GroupID` of `TaskTagAppliedCategory` and moved to the head
+of the item slice, sorted by the same `taskTagPickerLess` the sections below it
+use, and the cursor is reseated on the first of them. `listsurface` buckets and
+heads rows by `ListItem.GroupOrCategory()` while every other reader keeps asking
+`CategoryID`, which is the whole separation: a promoted row is drawn under
+`APPLIED` and is still a semantic, context, or descriptive value, so `s`, `c`,
+and `t` reach it, a minted one enters its own section, and the chip colors are
+unchanged. `jumpToTagCategory` prefers a row still drawn under its own section
+and falls back to a promoted one, so a section the promotion emptied answers
+instead of refusing.
+
+Nothing recomputes that grouping afterwards, which is what freezes the order:
+`ToggleCurrentMultiValue` and every other membership write goes through
+`syncValueMembershipRows`, which rewrites `Indeterminate` and calls `SetItems`
+with the rows in the order it found them, so a toggle changes a mark and moves
+nothing. Reopening the overlay is what recomputes it. The clear-context row is
+excluded by ID: every target without a context agrees on it, so it would
+otherwise read as applied while naming no value. The promotion is gated on
+`ValueProviderTags` alone — the filter vocabularies, the project-tag pickers, and
+the dependency picker share this surface and keep their source's own order.
+
 Setting the reserved tag is the one project tag edit that confirms first. The
 prompt names the task count leaving the base workspace, the committed status
 names both recovery routes, the population's `ReloadHeaderProjectID` lands the

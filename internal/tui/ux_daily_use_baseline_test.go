@@ -530,85 +530,184 @@ func TestUXDailyUseHostedPanelResizeKeepsTheScrollWindow(t *testing.T) {
 // differently and few enough that one `G` still reaches the end from anywhere.
 const uxDailyUseScrollLift = 10
 
-// TestUXDailyUseTagPickerListsAppliedValuesLast records the order the
-// tags-and-context picker opens in today: the fixed semantic vocabulary first,
-// none of it applied, and the values the task actually carries below it — a
-// context and two tags the user has to scroll past six irrelevant rows to reach.
+// TestUXDailyUseTagPickerLeadsWithAppliedValues is session 8's rewrite of the
+// baseline that recorded the opposite: the tags-and-context picker used to open
+// on the fixed semantic vocabulary, none of it applied, with the values the task
+// actually carries six rows below it.
 //
-// Session 8 owns this. It puts initially applied tags and context first and
-// keeps the ordering stable while the picker is open, and rewrites this contract
-// to state that the applied values lead, that an unapplied value checked while
-// the picker is open does not jump to the front, and that the stability survives
-// a query.
-func TestUXDailyUseTagPickerListsAppliedValuesLast(t *testing.T) {
+// It now states the three things that order is worth: the applied values lead,
+// a value checked while the picker is open does not jump up to join them, and
+// neither does a query rearrange what leads. The second is the freeze — the
+// order is computed once, out of the membership the picker opened with, so the
+// row a reader is looking at stays where they found it.
+func TestUXDailyUseTagPickerLeadsWithAppliedValues(t *testing.T) {
 	driver, view := uxDailyUseDriver(t, FixtureUXAcceptance, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)
 	uxClarityPress(t, driver, uxClarityKeys("#")...)
 
-	applied, unapplied := uxDailyUsePickerRows(t, driver, "[x] ", "[ ] ")
+	opened := uxDailyUsePickerRows(t, driver)
+	applied := uxDailyUsePickerRowsMarked(opened, "[x]")
+	unapplied := uxDailyUsePickerRowsMarked(opened, "[ ]")
 	if len(applied) == 0 || len(unapplied) == 0 {
 		t.Fatalf("the picker shows %d applied and %d unapplied rows; the state under test was not reached",
 			len(applied), len(unapplied))
 	}
-	if applied[0] < unapplied[len(unapplied)-1] {
-		t.Fatalf("an applied value already leads the picker, which is the order session 8 introduces: applied %v, unapplied %v",
-			applied, unapplied)
+	if last, first := applied[len(applied)-1], unapplied[0]; last.index > first.index {
+		t.Fatalf("applied %q is drawn below unapplied %q:\n%s",
+			last.value, first.value, uxDailyUsePickerOrder(opened))
+	}
+
+	// The jump lands on the SEMANTIC section, which is unapplied by definition
+	// here, so what is toggled is a row the freeze has to leave where it is.
+	uxClarityPress(t, driver, uxClarityKeys("s")...)
+	uxClarityPress(t, driver, uxClarityKeys("space")...)
+	toggled := uxDailyUsePickerRows(t, driver)
+	if uxDailyUsePickerOrder(toggled) != uxDailyUsePickerOrder(opened) {
+		t.Fatalf("a toggle reordered the open picker:\nbefore\n%s\nafter\n%s",
+			uxDailyUsePickerOrder(opened), uxDailyUsePickerOrder(toggled))
+	}
+	checked := uxDailyUsePickerRowsMarked(toggled, "[x]")
+	if len(checked) != len(applied)+1 {
+		t.Fatalf("the toggle checked %d rows, want the %d applied rows plus one:\n%s",
+			len(checked), len(applied), uxDailyUsePickerOrder(toggled))
+	}
+
+	// What leads is what the picker opened applied, not what is checked now: the
+	// row toggled above is checked and still sits in the vocabulary it was drawn
+	// in, which is the freeze, so the query is asked about the promoted values.
+	promoted := make(map[string]bool, len(applied))
+	for _, row := range applied {
+		promoted[row.value] = true
+	}
+	uxClarityPress(t, driver, uxClarityKeys("/")...)
+	uxClarityPress(t, driver, uxClarityKeys("i")...)
+	queried := uxDailyUsePickerRows(t, driver)
+	matchedPromoted, matchedRest := 0, 0
+	for _, row := range queried {
+		if !promoted[row.value] {
+			matchedRest++
+			continue
+		}
+		matchedPromoted++
+		// Ranking reorders the rows a query matched, and a promoted row is not
+		// ranked back down into the vocabulary underneath it.
+		if matchedRest > 0 {
+			t.Fatalf("under a query promoted %q is drawn below an unpromoted row:\n%s",
+				row.value, uxDailyUsePickerOrder(queried))
+		}
+	}
+	if matchedPromoted == 0 || matchedRest == 0 {
+		t.Fatalf("the query left %d promoted and %d other rows; it narrowed too far to say anything:\n%s",
+			matchedPromoted, matchedRest, uxDailyUsePickerOrder(queried))
+	}
+
+	uxClarityPress(t, driver, uxClarityKeys("esc")...)
+	if cleared := uxDailyUsePickerRows(t, driver); uxDailyUsePickerOrder(cleared) != uxDailyUsePickerOrder(toggled) {
+		t.Fatalf("clearing the query rebuilt the order:\nbefore\n%s\nafter\n%s",
+			uxDailyUsePickerOrder(toggled), uxDailyUsePickerOrder(cleared))
 	}
 }
 
-// TestUXDailyUseBulkTagPickerListsMixedValuesLast records the same order for the
-// bulk case, where the values a selection partly carries are drawn as a third
-// state rather than as checked. Today they sit below the same six unapplied
-// semantic rows a single task's picker leads with.
+// TestUXDailyUseBulkTagPickerLeadsWithMixedValues is session 8's rewrite of the
+// bulk half. It stays a separate contract from the single-task one because the
+// two reach the picker through different membership computations: universally
+// applied and partially applied values both have to lead, and the difference
+// between them has to survive the promotion.
 //
-// It is a separate contract from the single-task one because the bulk case is a
-// separate requirement: universally applied and partially applied values both
-// have to lead, together, without collapsing the difference between them. A
-// single contract over both would let the session satisfy it by ordering one
-// case and leaving the other, which is exactly the shape of the bug, since the
-// two cases reach the picker through different membership computations.
+// The clear-context row is the counterexample the bulk case needs. Every target
+// without a context agrees on it, so it reads as mixed exactly like a value the
+// selection partly carries — and it is not a value at all, so it stays in
+// CONTEXTS rather than leading a list of what the tasks are tagged with.
 //
-// Session 8 owns this, as it owns the single-task order above. It also owns not
-// changing it anywhere else: the filter vocabularies, the project-tag picker,
-// and the dependency picker share this infrastructure and are out of scope.
-func TestUXDailyUseBulkTagPickerListsMixedValuesLast(t *testing.T) {
+// Session 8 also owns not changing this anywhere else: the filter vocabularies,
+// the project-tag picker, and the dependency picker share this infrastructure
+// and keep their own order.
+func TestUXDailyUseBulkTagPickerLeadsWithMixedValues(t *testing.T) {
 	driver, _ := uxDailyUseStagedDriver(t, "bulk-tag-picker", uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 
-	mixed, unapplied := uxDailyUsePickerRows(t, driver, "[-] ", "[ ] ")
+	rows := uxDailyUsePickerRows(t, driver)
+	unapplied := uxDailyUsePickerRowsMarked(rows, "[ ]")
+	mixed := uxDailyUsePickerRowsMarked(rows, "[-]")
 	if len(mixed) == 0 || len(unapplied) == 0 {
 		t.Fatalf("the picker shows %d mixed and %d unapplied rows; the state under test was not reached",
 			len(mixed), len(unapplied))
 	}
-	if mixed[0] < unapplied[len(unapplied)-1] {
-		t.Fatalf("a partially applied value already leads the picker, which is the order session 7 introduces: mixed %v, unapplied %v",
-			mixed, unapplied)
+
+	clear := mixed[len(mixed)-1]
+	if !strings.HasPrefix(clear.value, "No context") {
+		t.Fatalf("the last mixed row is %q, want the clear-context row every untagged target agrees on:\n%s",
+			clear.value, uxDailyUsePickerOrder(rows))
+	}
+	if clear.index != rows[len(rows)-1].index {
+		t.Fatalf("the clear-context row was promoted out of CONTEXTS:\n%s", uxDailyUsePickerOrder(rows))
+	}
+	for _, row := range mixed[:len(mixed)-1] {
+		if row.index > unapplied[0].index {
+			t.Fatalf("partially applied %q is drawn below unapplied %q:\n%s",
+				row.value, unapplied[0].value, uxDailyUsePickerOrder(rows))
+		}
 	}
 }
 
-// uxDailyUsePickerRows is the screen rows carrying each of two checkbox states,
-// in the order they are drawn. Both lists come from one observation so the two
-// are always comparable.
+// uxDailyUsePickerRow is one checkbox row of the overlay: where it is drawn,
+// which of the three states it carries, and the text beside it.
+type uxDailyUsePickerRow struct {
+	index int
+	mark  string
+	value string
+}
+
+// uxDailyUsePickerRows is the picker's checkbox rows in the order they are
+// drawn, from one observation, so any two of them are always comparable.
 //
 // Only what is inside the picker's own box is read. The outline underneath is
 // still rendered and, under a visual selection, every one of its task rows draws
 // a checkbox of its own in the gutter beside the box — so a scan of whole screen
 // lines answers about the selection as often as about the picker.
-func uxDailyUsePickerRows(t *testing.T, driver *UITestDriver, first, second string) ([]int, []int) {
+func uxDailyUsePickerRows(t *testing.T, driver *UITestDriver) []uxDailyUsePickerRow {
 	t.Helper()
-	var firstRows, secondRows []int
+	rows := make([]uxDailyUsePickerRow, 0, 16)
 	for index, line := range strings.Split(driver.Observe(ObserveOptions{}).PlainScreen, "\n") {
 		inside, ok := uxDailyUseInsidePickerBox(line)
 		if !ok {
 			continue
 		}
-		switch {
-		case strings.Contains(inside, first):
-			firstRows = append(firstRows, index)
-		case strings.Contains(inside, second):
-			secondRows = append(secondRows, index)
+		for _, mark := range []string{"[x]", "[-]", "[ ]"} {
+			at := strings.Index(inside, mark+" ")
+			if at < 0 {
+				continue
+			}
+			rows = append(rows, uxDailyUsePickerRow{
+				index: index,
+				mark:  mark,
+				value: strings.TrimSpace(inside[at+len(mark):]),
+			})
+			break
 		}
 	}
-	return firstRows, secondRows
+	return rows
+}
+
+// uxDailyUsePickerRowsMarked narrows those rows to one checkbox state.
+func uxDailyUsePickerRowsMarked(rows []uxDailyUsePickerRow, mark string) []uxDailyUsePickerRow {
+	marked := make([]uxDailyUsePickerRow, 0, len(rows))
+	for _, row := range rows {
+		if row.mark == mark {
+			marked = append(marked, row)
+		}
+	}
+	return marked
+}
+
+// uxDailyUsePickerOrder is the sequence of values alone, which is what a freeze
+// is a claim about: the checkbox beside a row is free to change without the row
+// moving, so the marks are deliberately not part of it.
+func uxDailyUsePickerOrder(rows []uxDailyUsePickerRow) string {
+	values := make([]string, 0, len(rows))
+	for _, row := range rows {
+		values = append(values, row.value)
+	}
+	return strings.Join(values, "\n")
 }
 
 // uxDailyUseInsidePickerBox is the part of a screen line the overlay's own

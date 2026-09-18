@@ -18,16 +18,32 @@ import (
 // jumpToTagCategory moves the cursor to the first row of one tag section. It
 // reads the matches rather than the items so a jump under an active search
 // lands on a row that is actually on screen.
+//
+// The two passes are one rule: the key names a kind of value, so it prefers the
+// section that kind heads and falls back to a row promoted elsewhere, which is
+// what keeps it from refusing while rows of that kind are on screen. A picker
+// promoting nothing takes the first pass every time.
 func (model *OperationValuePickerModel) jumpToTagCategory(key string) tea.Msg {
 	category, label, ok := taskTagJumpCategory(key)
 	if !ok {
 		return nil
 	}
+	promoted := listsurface.ListItemID("")
 	for _, match := range model.surface.Matches() {
-		if match.Item.CategoryID == category {
+		if match.Item.CategoryID != category {
+			continue
+		}
+		if match.Item.GroupOrCategory() == category {
 			model.surface.SetCursorToID(match.Item.ID)
 			return nil
 		}
+		if promoted == "" {
+			promoted = match.Item.ID
+		}
+	}
+	if promoted != "" {
+		model.surface.SetCursorToID(promoted)
+		return nil
 	}
 	return status.StatusMsg(fmt.Sprintf("No %s rows", strings.ToUpper(label)))
 }
@@ -262,6 +278,52 @@ func (model *OperationValuePickerModel) ConfigureValueMembership(
 		return err
 	}
 	return model.syncValueMembershipRows()
+}
+
+// FreezeAppliedValuesFirst promotes the values the targets already carry to the
+// head of the list, once, so the rows an edit is likeliest to toggle are the
+// rows the picker opens on. It runs after ConfigureValueMembership, since the
+// snapshot it reads is what that call establishes, and it is the whole of the
+// ordering: nothing recomputes the promotion afterwards, so a toggle moves no
+// row and the order a reader learned while the picker is open stays true.
+// Reopening is what recomputes it, out of a fresh snapshot.
+//
+// Only the task tag and context editor orders this way. The filter vocabulary,
+// the project tag namespace, and the dependency picker share this
+// infrastructure and configure no promotion of their own, so their order is
+// their source's, unchanged.
+func (model *OperationValuePickerModel) FreezeAppliedValuesFirst() error {
+	if model == nil || model.surface == nil || model.provider != operation.ValueProviderTags {
+		return nil
+	}
+	items := model.surface.Items()
+	applied := make([]listsurface.ListItem, 0, len(items))
+	rest := make([]listsurface.ListItem, 0, len(items))
+	for _, item := range items {
+		if !appliedTaskValueRow(model.membershipInitial, item) {
+			rest = append(rest, item)
+			continue
+		}
+		// The row is drawn under APPLIED and stays the kind of value it is, so
+		// the section jumps, the insertion order, and the context radio keep
+		// reading an identity the promotion never touched.
+		item.GroupID = TaskTagAppliedCategory
+		applied = append(applied, item)
+	}
+	if len(applied) == 0 {
+		return nil
+	}
+	// The promoted run keeps the semantic, context, descriptive organization it
+	// was drawn in rather than minting a fourth order for itself.
+	sort.SliceStable(applied, taskTagPickerLess(applied))
+	if err := model.surface.SetItems(append(applied, rest...)); err != nil {
+		return err
+	}
+	// SetItems follows the anchor, which still names the row that led the source
+	// order, so the cursor is reseated on what now leads the list: a promotion
+	// the picker opened below would not be reachable at all.
+	model.surface.MoveCursorToStart()
+	return nil
 }
 
 func (model *OperationValuePickerModel) syncValueMembershipRows() error {

@@ -226,9 +226,12 @@ only the ones in use.
 
 Task contexts are their own filter axis on `fc`, so `f#` narrows tags alone and
 carries no `CONTEXTS` section at all. In both tag pickers `s`, `c`, and `t`
-jump the cursor to the first `SEMANTIC`, `CONTEXTS`, and `TAGS` row,
-and a hint line inside the overlay names the sections that picker actually has —
-which is what drops `c` from the `f#` hint. `CONTEXTS` therefore means one thing
+jump the cursor to the first `SEMANTIC`, `CONTEXTS`, and `TAGS` row. They name a
+kind of value rather than a place on screen, so in `#` they still reach a row
+the `APPLIED` section borrowed, and a section emptied by that promotion answers
+with the promoted row instead of refusing. `f#` promotes nothing, so its jumps
+are unchanged. A hint line inside the overlay names the sections that picker
+actually has — which is what drops `c` from the `f#` hint. `CONTEXTS` therefore means one thing
 only: in `#` those are the `##name` radio rows that write the field, listed above
 the tag rows the section also collects.
 

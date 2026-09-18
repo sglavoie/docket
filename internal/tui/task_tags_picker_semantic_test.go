@@ -142,6 +142,10 @@ func TestSemanticTagPickerRowsWearTheColorTheyApply(t *testing.T) {
 				{Name: "triage", TaskCount: 1},
 			}, true),
 			rows: map[listsurface.ListCategoryID]int{
+				// APPLIED is presentation alone: a row is promoted into it by a
+				// membership snapshot the source has never seen, so the source
+				// itself creates none there, at either tag provider.
+				valuepicker.TaskTagAppliedCategory:  0,
 				valuepicker.TaskTagSemanticCategory: len(models.SemanticTaskTags),
 				valuepicker.TaskContextCategory:     1,
 				valuepicker.TagDescriptiveCategory:  2,
@@ -166,16 +170,26 @@ func TestSemanticTagPickerRowsWearTheColorTheyApply(t *testing.T) {
 			}
 			// Every declared section has to hold the rows the fixture seeds it
 			// with, or the walk above would pass by silently skipping the section
-			// a future registry entry lands in.
+			// a future registry entry lands in. A section the table does not name
+			// fails outright, which is how a new one earns an expectation rather
+			// than inheriting silence.
+			populated := 0
 			for _, category := range tc.source.Categories {
-				if got, want := seen[category.ID], tc.rows[category.ID]; got != want {
+				want, declared := tc.rows[category.ID]
+				if !declared {
+					t.Fatalf("section %q is not in the table, so nothing says what it holds", category.ID)
+				}
+				if got := seen[category.ID]; got != want {
 					t.Fatalf("section %q has %d rows, want %d", category.ID, got, want)
 				}
+				if want > 0 {
+					populated++
+				}
 			}
-			if len(seen) != len(tc.source.Categories) {
+			if len(seen) != populated {
 				t.Fatalf(
-					"rows landed in %d sections, want the %d the source declares",
-					len(seen), len(tc.source.Categories),
+					"rows landed in %d sections, want the %d the table expects the source to populate",
+					len(seen), populated,
 				)
 			}
 		})

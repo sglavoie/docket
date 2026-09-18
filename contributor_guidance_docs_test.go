@@ -1185,7 +1185,28 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// spell is the route summary's and a second copy goes stale the moment
 	// `Ctrl+P` rewrites that row. The mechanism lives in
 	// docs/architecture/capture-and-outline-editor.md.
-	const budget = 70500
+	// Sixty-second raise, 70500 to 71500, for the applied-first tag picker. 1000
+	// bytes buy three rules. The first is when the order may be computed: the
+	// obvious place is the source that builds the rows, and a source cannot know
+	// what a bulk selection actually holds, so a picker ordered there promotes
+	// whatever the first task carries and reads as correct on every single-task
+	// test. Naming the call site as after `ConfigureValueMembership` is the whole
+	// of it. The second is that promotion is presentation and not identity:
+	// moving a row by rewriting its `CategoryID` is one field and needs no new
+	// seam, and it silently makes `s`, `c`, and `t` walk past the very values the
+	// user already applied — a category jump that skips applied rows is a bug
+	// nobody reports, because the section it lands in still has rows in it. The
+	// third is the freeze, and it is a negative rule: recomputing the order on
+	// every membership change is what a reader assumes a "sorted by applied"
+	// picker does, and it moves the row under the cursor on the keypress that
+	// toggled it, so ticking three tags in a row requires re-finding two of them.
+	// The clear-context exclusion rides along because `TaskContextMembership`
+	// marks that row all for every task with no context, so the honest reading of
+	// "promote every all value" puts `No context` at the top of a picker whose
+	// whole job is the values you already chose. The mechanism lives in
+	// docs/architecture/selection-and-project-tags.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 71500
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -533,6 +533,19 @@ is a miss and a disabled one keeps its own reason. Its hint rides
 `PrimaryMarker`, never searchable text. The overlay reserves the guidance it
 rendered, never a fixed row count.
 
+`FreezeAppliedValuesFirst` is the applied-first order and `ValueProviderTags`
+alone takes it: the factory calls it after `ConfigureValueMembership`, so it
+reads the membership that call established rather than a guess made before the
+cardinality was known, and it promotes every all or some value — never the
+clear-context row, which a context-less task marks all — into one `APPLIED`
+section. It freezes there: nothing recomputes it, so a toggle, a mint, or a sync
+moves no row and only reopening reorders. That promotion is `ListItem.GroupID`,
+presentation alone, so `CategoryID` stays what the row is and grouping is read
+through `GroupOrCategory()` at bucket time; `s`, `c`, and `t` reach a promoted
+row by its own category, and a section the promotion emptied answers with that
+row rather than refusing. The filter, project-tag, and reference pickers share
+the infrastructure, declare no such section, and promote nothing.
+
 `-` and `+` step that same due field and open nothing, so they declare no
 provider and no `FooterRank`, and they are two descriptors because a label may
 not branch on a direction. They are spelled as the characters they produce: the

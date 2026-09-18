@@ -252,6 +252,12 @@ func (m *AppModel) newOperationValuePicker(
 		if err := picker.ConfigureValueMembership(byID); err != nil {
 			return nil, err
 		}
+		// The order is frozen out of the membership the call above established,
+		// context rows included, so opening reads the real all/some state at every
+		// cardinality rather than a guess made before it was known.
+		if err := picker.FreezeAppliedValuesFirst(); err != nil {
+			return nil, err
+		}
 		return picker, nil
 	default:
 		return nil, fmt.Errorf("unknown operation value provider %q", provider)
