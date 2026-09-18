@@ -5,7 +5,6 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "a promoted child wears the bare ancestor marker", "assert": "contains", "value": "Build login form  ‹" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "Peek names the chain the row reduced to a marker", "key": "b" },
     { "type": "assert", "label": "User authentication starts under Launch platform", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },

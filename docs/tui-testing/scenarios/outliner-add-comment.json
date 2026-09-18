@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move onto the first task row, which its group leads with", "key": "j" },
 
     { "type": "key", "label": "C opens the quick comment popup", "key": "C" },
     { "type": "assert", "assert": "contains", "value": "Add Comment" },

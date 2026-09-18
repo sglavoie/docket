@@ -6,7 +6,6 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "a parent showing its child carries no count", "assert": "not_contains", "value": "User authentication  ›" },
 
-    { "type": "key", "label": "land on the story's one Backlog child", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },

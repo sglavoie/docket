@@ -470,6 +470,34 @@ state alongside the folds, the focus and the population rather than being
 distributed into any of them: a method that names six sub-states is honest, and
 six sub-states that quietly knew about each other would not be.
 
+The cursor a launch leaves is decided one layer up, in `lifecycleController`,
+and deliberately not in either of those orchestrators. `ResetToGlobalAll` is
+called by the launch, by `Ctrl+Esc`, and by every reload that rebuilds the root,
+so a starting position written there would be reapplied by all three; the
+`launchOutlinerMsg` arm is the only site that knows a session is beginning, and
+`armLaunchFocus` is what it records. The intent is a session field rather than an
+Outliner one for that reason — the Outliner cannot tell which act reset it.
+
+It is spent in `settleLaunchFocus`, from both arms that publish an accepted
+population: `CrossProjectsLoadedMsg` after the adoption and after the lens drain
+described in [`named-lenses.md`](named-lenses.md), and `LensProjectsLoadedMsg`
+whether or not the application published, since a refusal leaves the base
+workspace standing as the projection the rule answers for.
+`OutlinerModel.LaunchFocusSettled` is the predicate, and both of its population
+halves are load-bearing: `SnapshotReady` is what separates a genuinely empty
+workspace from a read that has not landed — without it the rule fires against
+zero rows and is spent — and `!Loading` is what a lens still reading its own
+projects leaves false, so the base population is not answered for on behalf of
+the view about to replace it. A superseded generation sets neither, so it reaches
+the call and does nothing. `FocusFirstLaunchRow` then writes `m.Cursor` alone,
+taking the first task row the settled projection draws and otherwise falling back
+to the clamp: it opens no fold, touches no axis, and moves no window, because
+`ComputeOutlinerViewport` is still the one window authority and follows the
+cursor on the next render. The drop in the `tea.KeyPressMsg` arm, under the
+existing `isModifierOnlyKeyPress` guard, is the other half of the one-shot: a
+user who has pressed a key owns the cursor, and a startup landing after them
+finds nothing to apply.
+
 The whole of the named-lens facility is the model's `lens` field on the same
 terms, and `outlinerLensState` holds four things rather than one because each is
 the live lens seen from a different side: the frame, the application whose

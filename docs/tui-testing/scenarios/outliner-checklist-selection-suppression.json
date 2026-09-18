@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move onto the checklist-only task", "key": "j" },
     { "type": "key", "label": "expand its checklist", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
     { "type": "key", "label": "v enters visual selection from the owner task row", "key": "v" },

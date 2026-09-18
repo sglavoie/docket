@@ -52,6 +52,11 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if isModifierOnlyKeyPress(msg) {
 			return true, nil
 		}
+		// A keystroke is the user taking the cursor. The launch rule is a starting
+		// position rather than a correction, so a population still on its way may
+		// no longer move what the first press has begun steering. A bare modifier
+		// is not a keystroke, which is why this sits under that drop.
+		m.lifecycle.dropLaunchFocus()
 		return m.handleGlobalKeyPress(msg)
 	case tea.PasteMsg:
 		return m.handleActivePasteOverlay(msg)
@@ -109,6 +114,11 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if adopted {
 			noteCmd = m.refreshNoteSearchIndexOwners()
 		}
+		// After the adoption and after the lens drain, because both decide what
+		// the first visible task is. A lens that started a read of its own leaves
+		// the population loading, so nothing is observed here and the intent is
+		// spent when that read settles instead.
+		m.settleLaunchFocus()
 		if lensCmd == nil && returnCmd == nil && noteCmd == nil {
 			return true, cmd
 		}
@@ -123,6 +133,11 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if published {
 			m.adoptCrossProjectSnapshot(m.crossOutliner.Population.Projects)
 		}
+		// The other half of the launch rule: a saved lens that had to read its own
+		// projects settles here, and it settles whether it published or was
+		// refused — a refusal leaves the base workspace standing, which is the
+		// projection the launch rule then answers for.
+		m.settleLaunchFocus()
 		return true, cmd
 	case notesops.NoteSearchIndexLoadedMsg:
 		m.handleNoteSearchIndexLoaded(msg)
@@ -136,6 +151,26 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	default:
 		return false, nil
 	}
+}
+
+// settleLaunchFocus spends the one-shot launch intent once the population it
+// must read is the accepted one, seating the cursor on the first visible task —
+// or on the first heading when the projection genuinely draws no task.
+//
+// It is idempotent by construction: the intent is dropped in the same act it is
+// honored, so a second accepted load, a later reload, and a duplicate delivery
+// all do nothing. An unsettled population is left owed rather than answered, so
+// a startup that completes after the user has already pressed a key finds the
+// intent gone instead of overriding them.
+func (m *AppModel) settleLaunchFocus() {
+	if m == nil || !m.lifecycle.launchFocusArmed() || m.crossOutliner == nil {
+		return
+	}
+	if !m.crossOutliner.LaunchFocusSettled() {
+		return
+	}
+	m.lifecycle.dropLaunchFocus()
+	m.crossOutliner.FocusFirstLaunchRow()
 }
 
 func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {

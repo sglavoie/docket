@@ -105,9 +105,9 @@ func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(str
 		}
 	}
 
-	// One j leaves the lane header for the first task row: an expanded project
-	// group spends no row on a heading between the two.
-	press("j")
+	// No navigation is needed to reach work: the launch seats the cursor on the
+	// first task row the projection draws, past the lane header an expanded
+	// project group spends no second row on.
 	press(";")
 	if driver.App().entities.ActiveCommentsPanel(driver.App()) == nil {
 		t.Fatalf("the comment sigil key did not open the Comments panel; view = %s", driver.App().currentView())

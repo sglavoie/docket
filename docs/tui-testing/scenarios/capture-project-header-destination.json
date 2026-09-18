@@ -4,7 +4,6 @@
   "size": "100x30",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "step onto the first task, which an expanded group leads with", "key": "j" },
     { "type": "key", "label": "capture from a task row", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "assert", "label": "a task cursor never lends capture its project", "assert": "contains", "value": "Project: Unfiled" },

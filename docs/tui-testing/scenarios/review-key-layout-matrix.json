@@ -5,7 +5,6 @@
   "actions": [
     { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "@ Review" },
 
-    { "type": "key", "label": "step past the Backlog section header onto the first task", "key": "j" },
     { "type": "key", "label": "the root key writes the flag the =review sigil writes", "key": "=" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Toggle Review" },

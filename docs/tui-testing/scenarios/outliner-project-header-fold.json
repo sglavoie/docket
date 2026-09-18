@@ -5,7 +5,6 @@
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
-    { "type": "key", "label": "step onto the Inbox lane's one task", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

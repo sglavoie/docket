@@ -5,6 +5,9 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "assert", "label": "launch opens on a task, so the smallest supported terminal keeps that row's top ranks", "assert": "contains", "value": "w workflow · ! priority · @ date · # tags/context" },
+
+    { "type": "key", "label": "the width ladder below is the section header's, so climb to the row launch no longer opens on", "key": "home" },
     { "type": "assert", "label": "the smallest supported terminal keeps the navigation ranks", "assert": "contains", "value": "Enter zoom · h/Left collapse · s sections · Tab next mode" },
     { "type": "assert", "label": "and drops the lowest-ranked ones whole", "assert": "not_contains", "value": "P projects" },
     { "type": "assert", "assert": "not_contains", "value": "? help" },

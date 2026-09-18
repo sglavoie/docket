@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move onto the first visible task", "key": "j" },
     { "type": "key", "label": "toggle the first task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
     { "type": "key", "key": "j" },

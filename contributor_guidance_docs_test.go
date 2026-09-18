@@ -1228,7 +1228,25 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// made by hand, and a concurrent write is still refused by the project's own
 	// `ExpectedRevision` contract. The mechanism lives in
 	// docs/architecture/operation-grammar.md.
-	const budget = 72400
+	// Sixty-fourth raise, 72400 to 73300, for the first-task launch position.
+	// 900 bytes buy four rules a reader cannot derive from the code. The first is
+	// where the intent is armed: the launch message and not `ResetToGlobalAll`,
+	// which that message calls and which every reload, mode change, and Esc
+	// restoration also calls — arming it there is the obvious one-line change,
+	// it passes every startup test, and it silently drags the cursor back to the
+	// top of the list on every refresh. The second is that both population flags
+	// are read: `SnapshotReady` alone cannot tell an empty workspace from a read
+	// that has not landed, and `Loading` alone is what a saved lens still reading
+	// its own projects leaves set, so dropping either half either answers for a
+	// projection that does not exist yet or pre-empts the lens that is about to
+	// replace it. The third is the keystroke drop, which is the whole of "never
+	// override newer navigation": there is no other seam where the shell learns
+	// the user has taken the cursor before a slow startup lands. The fourth is
+	// the negative one — `FocusFirstLaunchRow` writes `m.Cursor` alone — because
+	// seating a cursor on a row a fold hides reads as an invitation to open that
+	// fold, and `ComputeOutlinerViewport` is still the one window authority. No
+	// rule elsewhere was trimmed to pay for it.
+	const budget = 73300
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

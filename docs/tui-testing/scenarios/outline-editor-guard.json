@@ -6,7 +6,6 @@
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "label": "nothing has refused yet", "assert": "not_contains", "value": "Outline edit needs All, Inbox, or Backlog" },
 
-    { "type": "key", "label": "move onto the first visible task", "key": "j" },
     { "type": "key", "label": "enter visual selection", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
 

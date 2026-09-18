@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "key", "label": "stand on a task row", "key": "j" },
     { "type": "key", "label": "open Peek, so the dock is part of the host the menu will stand on", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },

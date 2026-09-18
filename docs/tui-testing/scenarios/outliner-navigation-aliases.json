@@ -4,7 +4,6 @@
   "size": "99x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "step down with the vim alias", "key": "j" },
     { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
     { "type": "key", "label": "close the sheet", "key": "esc" },

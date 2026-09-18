@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "select one task in the first project", "key": "j" },
     { "type": "key", "key": "v" },
     { "type": "key", "label": "and one in the second", "key": "j" },
     { "type": "key", "key": "v" },

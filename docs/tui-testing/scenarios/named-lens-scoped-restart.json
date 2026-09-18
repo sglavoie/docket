@@ -3,8 +3,7 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
-    { "type": "key", "key": "n" },
+    { "type": "key", "label": "launch opens inside the Client Alpha group, so one stop reaches the Client Beta group", "key": "n" },
     { "type": "key", "label": "scope to that project", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

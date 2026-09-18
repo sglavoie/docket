@@ -456,7 +456,8 @@ to the gallery.
 
 Definitions live in the workspace and survive a restart, and so does the
 lens you had open. A launch still builds the same clean Active Projects, All
-view it always did — no navigation, folds, cursor, or selection come back — and
+view it always did — no navigation, folds, or selection come back, and the
+cursor starts on the lens's own first task rather than where you left it — and
 then reapplies that lens's saved axes on top of it: its mode, its narrowing
 query with every facet that query names, its sort, and its project scope. Its `Esc` is the
 one you would expect: it lands on the Active Projects, All view a lens-free

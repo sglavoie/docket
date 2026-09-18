@@ -62,6 +62,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 
 	driver.dispatch(launchOutlinerMsg{})
 	assertCleanLaunchRoot(t, app)
+	assertSettledLaunchSeatsWork(t, driver)
 	if got := app.domain.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after launch reset = %q, want light", got)
 	}
@@ -78,6 +79,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	relaunchDriver := NewUITestDriver(relaunched, 100, 35)
 	relaunchDriver.dispatch(launchOutlinerMsg{})
 	assertCleanLaunchRoot(t, relaunched)
+	assertSettledLaunchSeatsWork(t, relaunchDriver)
 	if got := relaunched.domain.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after process relaunch = %q, want light", got)
 	}
@@ -113,6 +115,31 @@ func assertPersistedLensDefinitions(t *testing.T, app *AppModel) {
 	}
 }
 
+// assertSettledLaunchSeatsWork is the launch expectation the clean-root reset
+// above deliberately does not make: once the population the launch started has
+// landed, the one-shot starting position is spent and the cursor is on the first
+// task the projection draws rather than on the heading over it.
+func assertSettledLaunchSeatsWork(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	driver.drain()
+	app := driver.App()
+	if app.lifecycle.launchFocusArmed() {
+		t.Fatal("a settled launch left the starting position owed")
+	}
+	view := app.crossOutliner
+	for index, row := range view.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			if view.Cursor != index {
+				t.Fatalf("settled launch cursor = %d, want the first task row %d", view.Cursor, index)
+			}
+			return
+		}
+	}
+	if view.Cursor != 0 {
+		t.Fatalf("settled launch over a task-less projection = %d, want the first row", view.Cursor)
+	}
+}
+
 func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	t.Helper()
 	if app.currentView() != presentation.ViewCrossProjectOutliner || app.viewNav.navigation.Primary.Depth() != 1 || app.viewNav.navigation.Overlays.Active() {
@@ -134,6 +161,10 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outlinerView.HasActiveSearch() || outlinerView.SearchQuery() != "" || outlinerView.ActiveFilterCount() != 0 {
 		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outlinerView.HasActiveSearch(), outlinerView.SearchQuery(), outlinerView.ActiveFilterCount())
 	}
+	// The cursor is asserted at zero because this runs before the launch's own
+	// population read has landed: the reset drops the stale position outright,
+	// and the starting position the session owes the user is a separate act the
+	// settled load performs. assertSettledLaunchSeatsWork is that other half.
 	if outlinerView.Cursor != 0 || outlinerView.IsMultiSelectActive() || outlinerView.SelectedCount() != 0 {
 		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outlinerView.Cursor, outlinerView.IsMultiSelectActive(), outlinerView.SelectedCount())
 	}

@@ -21,6 +21,7 @@
     { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "the ranked list keeps the index the outline cursor held, so take its top row", "key": "home" },
     { "type": "key", "label": "one row below the top lands on the first note, so the tier sits under every task match", "key": "j" },
     { "type": "key", "label": "Enter on a note row leaves the Outliner", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Notes" },

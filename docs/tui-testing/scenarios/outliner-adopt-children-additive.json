@@ -7,6 +7,7 @@
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "count_contains", "value": "Add password validation", "count": 1 },
+    { "type": "key", "label": "Backlog draws no section header and the mode change kept the index launch left in All, so take the top explicitly", "key": "home" },
     { "type": "key", "label": "step onto User authentication, which already has three children", "key": "j" },
 
     { "type": "key", "label": "open Adopt Children", "key": "<" },

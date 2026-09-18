@@ -4,7 +4,6 @@
   "size": "72x20",
   "actions": [
     { "type": "command", "label": "open global All focus", "command": "outliner root" },
-    { "type": "key", "label": "move cursor onto a task, which its group leads with", "key": "down" },
     { "type": "command", "label": "open project Inbox mode", "command": "project inbox mode" },
     { "type": "key", "key": "e" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

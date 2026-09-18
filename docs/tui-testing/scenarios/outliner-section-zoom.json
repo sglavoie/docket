@@ -6,7 +6,8 @@
     { "type": "assert", "label": "All over Active Projects lists every state group", "assert": "contains", "value": "Untriaged inbox item 1" },
     { "type": "assert", "assert": "contains", "value": "Overdue: submit quarterly report" },
     { "type": "assert", "assert": "contains", "value": "Waiting on vendor response" },
-    { "type": "assert", "label": "the section header the cursor opens on offers the zoom", "assert": "contains", "value": "Enter zoom" },
+    { "type": "key", "label": "launch opens on the first task, so climb to the section header this zoom is about", "key": "home" },
+    { "type": "assert", "label": "that header offers the zoom", "assert": "contains", "value": "Enter zoom" },
 
     { "type": "key", "label": "zoom into the Inbox state group", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Section: Inbox" },

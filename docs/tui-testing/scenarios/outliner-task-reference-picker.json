@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "label": "store one cross-project reference the typed way", "key": "e" },
     { "type": "text", "text": " ~client-beta:1" },
     { "type": "key", "key": "tab" },

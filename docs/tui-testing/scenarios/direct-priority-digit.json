@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "99x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "hold the priority prefix", "key": "!" },
     { "type": "assert", "assert": "contains", "value": "0 unset" },

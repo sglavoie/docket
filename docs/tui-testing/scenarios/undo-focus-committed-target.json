@@ -3,7 +3,6 @@
   "fixture": "workflow",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "leave the group header for the first task", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
     { "type": "key", "label": "complete that one task", "key": "w" },
     { "type": "key", "key": "d" },

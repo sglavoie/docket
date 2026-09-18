@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "160x55",
   "actions": [
-    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "key": "e" },
     { "type": "text", "label": "reference a task in a project this view can still read", "text": " ~client-beta:1" },
     { "type": "key", "key": "tab" },

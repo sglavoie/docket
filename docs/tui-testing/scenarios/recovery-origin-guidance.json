@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "onto the first intake, the one the edit will move", "key": "j" },
 
     { "type": "key", "label": "edit the task inline", "key": "e" },
     { "type": "text", "label": "reparent it under the intake below it, which is a move inside its own lane", "text": " >2" },

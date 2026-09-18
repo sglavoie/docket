@@ -5,8 +5,7 @@
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "label": "nothing is parked yet, so the base scope needs no anchor", "assert": "not_contains", "value": "parked" },
-    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
-    { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
+    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
 
     { "type": "key", "label": "open the project tag picker", "key": "#" },
     { "type": "key", "label": "select the reserved parked tag", "key": "space" },

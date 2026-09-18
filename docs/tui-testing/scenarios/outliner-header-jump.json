@@ -3,10 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the cursor opens on the Backlog section header", "assert": "contains", "value": "s sections" },
-
-    { "type": "key", "label": "n steps onto the first row of the first project group", "key": "n" },
-    { "type": "assert", "label": "an expanded group spends no row on a heading, so the stop is a task", "assert": "not_contains", "value": "s sections" },
+    { "type": "key", "label": "launch opens on the first task the list draws, which is already the first group's start", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "an expanded group spends no row on a heading, so that stop is a task and not the section header", "assert": "not_contains", "value": "s sections" },
 
     { "type": "key", "label": "n walks the remaining three group starts", "key": "n" },
     { "type": "key", "key": "n" },

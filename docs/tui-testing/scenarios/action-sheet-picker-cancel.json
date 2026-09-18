@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
     { "type": "key", "label": "open the contextual action sheet", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
     { "type": "key", "label": "search the sheet", "key": "/" },

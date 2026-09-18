@@ -3,7 +3,6 @@
   "fixture": "release",
   "size": "60x20",
   "actions": [
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "open the picker at the supported minimum", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due or Defer: 国際化 🚀 café résumé release" },
     { "type": "assert", "assert": "contains", "value": "DEFER" },

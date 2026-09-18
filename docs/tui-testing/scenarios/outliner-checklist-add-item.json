@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move onto the checklist-only task, which its group leads with", "key": "j" },
     { "type": "key", "label": "move onto the task that also has a child", "key": "j" },
     { "type": "key", "label": "move onto that child", "key": "j" },
     { "type": "key", "label": "move onto the task with no checklist", "key": "j" },

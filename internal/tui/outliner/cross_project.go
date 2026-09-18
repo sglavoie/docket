@@ -817,6 +817,39 @@ func (m *OutlinerModel) hasCrossProjectSnapshot() bool {
 	return m.Population.SnapshotReady || len(m.Population.Projects) > 0
 }
 
+// LaunchFocusSettled reports whether the population the launch rule must read is
+// the accepted one. Both halves are needed and neither implies the other:
+// SnapshotReady is what separates a genuinely empty workspace from a read that
+// has not landed, and Loading is what a saved lens still reading its own
+// projects leaves set, so a launch lens's population is waited for rather than
+// pre-empted. A superseded read publishes neither, so it never reaches here.
+func (m *OutlinerModel) LaunchFocusSettled() bool {
+	return m != nil && m.Project == nil && m.Population.SnapshotReady && !m.Population.Loading
+}
+
+// FocusFirstLaunchRow seats the cursor where a fresh launch begins: the first
+// task row the settled projection draws, else the row the ordinary clamp leaves
+// — the first heading — when it draws no task at all. It reports whether it
+// found a task.
+//
+// It writes m.Cursor alone. ComputeOutlinerViewport stays the one window
+// authority and follows the cursor on the next render, so nothing here opens a
+// fold, changes an axis, or moves the window itself.
+func (m *OutlinerModel) FocusFirstLaunchRow() bool {
+	if m == nil || len(m.Rows) == 0 {
+		return false
+	}
+	for index, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			m.Cursor = index
+			return true
+		}
+	}
+	m.Cursor = 0
+	m.ClampCursor()
+	return false
+}
+
 // renderCrossLoadingState renders a non-empty cold-load frame immediately,
 // adding the animated Dot spinner only after its short anti-flicker delay.
 func (m *OutlinerModel) renderCrossLoadingState() string {

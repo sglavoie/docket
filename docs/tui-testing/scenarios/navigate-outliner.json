@@ -6,7 +6,6 @@
     { "type": "resize", "width": 120, "height": 40 },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "move cursor onto a task", "key": "down" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

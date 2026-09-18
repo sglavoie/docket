@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
     { "type": "key", "label": "edit the selected row", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "reference a task in another project", "text": " ~client-beta:1" },

@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x30",
   "actions": [
-    { "type": "key", "label": "select Build login form", "key": "j" },
     { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "contains", "value": "No attachments yet." },

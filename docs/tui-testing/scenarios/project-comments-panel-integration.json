@@ -112,7 +112,6 @@
     { "type": "key", "key": "esc" },
     { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "Mix rollout plan [mix-active-…]" },
 
-    { "type": "key", "label": "walk to the group start of a project that holds work, which is its task", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
     { "type": "key", "label": "where the same key opens the task's own comments", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },

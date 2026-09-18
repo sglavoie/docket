@@ -32,6 +32,7 @@
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
+    { "type": "key", "label": "launch opens on the first task, so take the top explicitly", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "and so does an inline edit", "key": "e" },
     { "type": "text", "text": " \\raw" },

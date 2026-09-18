@@ -7,6 +7,15 @@ them. The keys themselves are in [`outliner-keys.md`](outliner-keys.md).
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode;
 [`outliner-keys.md`](outliner-keys.md) spells its continuations.
 
+Opening `tt` puts the cursor on the first task the list draws rather than on the
+section heading above it, so the first `j` moves to the second task and the
+first `Enter`, `@`, or `Space` answers for real work. It waits for the workspace
+to finish loading, and for a saved lens to finish opening, so the task it picks
+is a task in the view you actually end up in — a workspace with nothing open in
+it simply starts at the top. It happens once, at startup: a later refresh, a
+mode change, or an `Esc` back to this view leaves your cursor where you put it,
+and so does pressing any key while the workspace is still loading.
+
 All mode shows open, undeferred work in this order:
 
 ```text

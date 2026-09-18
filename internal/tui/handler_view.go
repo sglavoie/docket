@@ -164,6 +164,10 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case launchOutlinerMsg:
 		presentationCmd := m.prepareCrossProjectOutliner()
+		// The launch rule is armed here and not inside ResetToGlobalAll below,
+		// which this message shares with the global reset: starting a session is
+		// what owes the cursor a task, and a reset the user asked for is not.
+		m.lifecycle.armLaunchFocus()
 		m.clearTransientNavigationState()
 		m.taskComposer = nil
 		m.currentProject = nil

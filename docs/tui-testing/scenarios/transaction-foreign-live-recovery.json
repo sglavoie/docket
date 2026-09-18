@@ -14,8 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "and mutating still works: recovery blocked nothing", "key": "j" },
-    { "type": "key", "key": "*" },
+    { "type": "key", "label": "and mutating still works: recovery blocked nothing, and the relaunch already seated the cursor on a task", "key": "*" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Pin" },
     { "type": "assert", "assert": "no_layout_issues" },

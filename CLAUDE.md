@@ -146,6 +146,18 @@ restored lens lands on the same Active Projects, All view a lens-free launch
 would have shown. An active-lens pointer that no longer resolves fails closed to
 no lens, silently.
 
+The cursor is the one position a launch writes, as a one-shot intent the launch
+message alone arms — `ResetToGlobalAll` does not, so no reload, mode change, Esc
+restoration, or reset reapplies it. `LaunchFocusSettled` is when it is spent:
+`SnapshotReady` and not `Loading`, which is what separates an empty workspace
+from a read still on its way and what waits for a saved lens reading its own
+projects, so it is answered after the accepted population and after the lens
+drain. `FocusFirstLaunchRow` then seats the cursor on the first task row the
+projection draws, else on the first row when it draws none, and writes
+`m.Cursor` alone. A superseded load publishes neither flag, so it spends
+nothing, and the first non-modifier keystroke drops the intent, so a startup
+landing late never overrides navigation already begun.
+
 A lens may own project scope. An empty scope means the lens does not own that
 axis and leaves the current view's scope alone; it never means "force global". A
 lens whose scoped project is missing, archived, or parked is refused whole,

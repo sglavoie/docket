@@ -4,7 +4,6 @@
   "size": "100x30",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "step onto the first task", "key": "j" },
     { "type": "key", "label": "open Peek on it", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
 

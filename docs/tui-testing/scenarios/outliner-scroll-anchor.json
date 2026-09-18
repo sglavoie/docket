@@ -5,6 +5,7 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "wait", "label": "the 241-task catalog finishes loading" },
+    { "type": "key", "label": "launch opens on the first task, so take the top row this scroll ladder is measured from", "key": "home" },
     { "type": "key", "label": "scroll the cursor to the bottom of a long list", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },

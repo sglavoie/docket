@@ -6,7 +6,6 @@
     { "type": "assert", "label": "the minimum terminal is the whole point: every hint below is read at 60x20", "assert": "no_layout_issues" },
     { "type": "assert", "label": "a clean browse view stands over nothing, so it promises no Esc", "assert": "not_contains", "value": "Esc " },
 
-    { "type": "key", "label": "step onto the first task row", "key": "j" },
     { "type": "key", "label": "open the Peek dock", "key": "b" },
     { "type": "assert", "label": "two keys, one act, one entry", "assert": "contains", "value": "b/Esc close Peek" },
     { "type": "assert", "assert": "no_layout_issues" },

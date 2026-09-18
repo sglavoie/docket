@@ -47,6 +47,41 @@ type lifecycleController struct {
 	// quitting records that the session is on the way out, so the final View
 	// paints an empty frame instead of a torn one over the restored terminal.
 	quitting bool
+
+	// launchFocus is the one-shot intent to seat the cursor where a fresh launch
+	// begins. It belongs to the session rather than to the Outliner because only
+	// the shell knows which act armed it: the launch message arms it, and the
+	// clean-root reset that message shares with every later reload does not, so
+	// the rule cannot leak into a refresh, a mode change, an Esc restoration, or
+	// the reset itself.
+	//
+	// It is spent by the first settled population — after any saved lens has
+	// published, since an application still reading its own projects leaves the
+	// population loading — and dropped by the first keystroke, because a user who
+	// has already pressed a key owns the cursor and a load still on its way may
+	// not move it.
+	launchFocus bool
+}
+
+// armLaunchFocus declares that this session still owes the cursor its starting
+// position.
+func (c *lifecycleController) armLaunchFocus() {
+	if c != nil {
+		c.launchFocus = true
+	}
+}
+
+// dropLaunchFocus abandons the intent without honoring it. It is what newer
+// navigation costs a launch that has not landed yet.
+func (c *lifecycleController) dropLaunchFocus() {
+	if c != nil {
+		c.launchFocus = false
+	}
+}
+
+// launchFocusArmed reports whether the starting position is still owed.
+func (c *lifecycleController) launchFocusArmed() bool {
+	return c != nil && c.launchFocus
 }
 
 // startupCmd returns the command that delivers the armed startup message, or nil

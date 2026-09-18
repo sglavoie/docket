@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the one date picker with its direct key", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },

@@ -6,7 +6,6 @@
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "label": "nothing is pending yet", "assert": "not_contains", "value": "Confirm" },
 
-    { "type": "key", "label": "move onto the first visible task", "key": "j" },
 
     { "type": "command", "label": "return a buffer with its last line removed", "command": "outline delete confirm" },
     { "type": "assert", "label": "the removal prompts before anything is applied", "assert": "contains", "value": "Confirm" },

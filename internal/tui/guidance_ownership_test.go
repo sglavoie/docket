@@ -314,7 +314,8 @@ func TestAFullscreenSurfaceKeepsTheFooterItReplacedTheHostFor(t *testing.T) {
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	live := driver.App()
 
-	uxClarityPress(t, driver, uxClarityKeys("j", ";")...)
+	// The launch already seated the cursor on a task, so `;` is the whole gesture.
+	uxClarityPress(t, driver, uxClarityKeys(";")...)
 	if got := live.currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("`;` reached %s rather than the Comments panel", got)
 	}

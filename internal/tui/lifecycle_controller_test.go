@@ -81,15 +81,45 @@ func TestLifecycleControllerSchedulesThePeriodicSaveThroughTheTickSeam(t *testin
 }
 
 // TestLifecycleClusterHasOneHome pins the lifecycle cluster to its single named
-// AppModel field. What the session still owes the first frame and whether it is
-// on the way out are the whole of a session's retained lifecycle state; a second
-// home is how a quit would come to be observed by one reader and not another.
+// AppModel field. What the session still owes the first frame, what it still
+// owes the cursor, and whether it is on the way out are the whole of a session's
+// retained lifecycle state; a second home is how a quit would come to be
+// observed by one reader and not another, or a launch focus honored twice.
 func TestLifecycleClusterHasOneHome(t *testing.T) {
 	t.Parallel()
 
 	clustered := map[string]bool{
 		"startupMessage": true,
 		"quitting":       true,
+		"launchFocus":    true,
 	}
 	assertAppModelClusterHasOneHome(t, "lifecycle", clustered)
+}
+
+// TestLifecycleControllerLaunchFocusIsOneShot pins the intent's whole lifetime:
+// it is owed only once armed, it is not owed by default, and both the honoring
+// drop and the newer-navigation drop spend the same flag, so a startup that
+// completes after a keystroke finds nothing to apply.
+func TestLifecycleControllerLaunchFocusIsOneShot(t *testing.T) {
+	t.Parallel()
+
+	var absent *lifecycleController
+	if absent.launchFocusArmed() {
+		t.Error("a nil cluster owes the cursor nothing")
+	}
+	absent.armLaunchFocus()
+	absent.dropLaunchFocus()
+
+	controller := &lifecycleController{}
+	if controller.launchFocusArmed() {
+		t.Error("an unarmed cluster owes the cursor nothing")
+	}
+	controller.armLaunchFocus()
+	if !controller.launchFocusArmed() {
+		t.Fatal("arming left the launch focus unowed")
+	}
+	controller.dropLaunchFocus()
+	if controller.launchFocusArmed() {
+		t.Fatal("the launch focus survived being dropped")
+	}
 }

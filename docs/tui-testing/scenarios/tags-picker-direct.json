@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the tag picker with its direct key", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Set Tags & Context: Build login form" },

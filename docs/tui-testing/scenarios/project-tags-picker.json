@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
-    { "type": "key", "label": "step onto the Client Alpha project header", "key": "j" },
+    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
     { "type": "assert", "label": "the same key names the project on a header row", "assert": "contains", "value": "# project tags" },
 
     { "type": "key", "label": "open the project tag picker with its direct key", "key": "#" },

@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "label": "Tab is the Outliner's next-mode key before the picker borrows it", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the one date picker", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },

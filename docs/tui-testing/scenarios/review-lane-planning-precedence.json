@@ -6,7 +6,6 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "@ Review" },
 
-    { "type": "key", "label": "step past the Backlog section header onto the first task", "key": "j" },
     { "type": "key", "label": "edit the row in place, the sigil route to the review flag", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "flag the task for review", "text": " =review " },

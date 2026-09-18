@@ -9,6 +9,7 @@
     { "type": "key", "label": "accept the temporary search projection, which slash opened as the flat ranked list", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Search:" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "key", "label": "the ranked list keeps the index the outline cursor held, so take its first row", "key": "home" },
     { "type": "key", "label": "leave search on the result and focus it", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "Search:" },

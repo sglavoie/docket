@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "assert", "assert": "contains", "value": "i inbox" },

@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the one date picker, cursor in the due section", "key": "@" },
     { "type": "key", "label": "the relative presets cannot express every date, so type one", "key": "a" },

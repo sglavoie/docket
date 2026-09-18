@@ -758,64 +758,76 @@ func TestUXDailyUseStateChangeNotesTheMissingCheckIn(t *testing.T) {
 	}
 }
 
-// TestUXDailyUseLaunchSeatsTheCursorOnASectionHeader records where a fresh
-// launch lands today: row zero, which is a section header in every reviewed
-// catalog, so the first key a user presses acts on a grouping rather than on
-// work.
+// TestUXDailyUseLaunchSeatsTheCursorOnTheFirstTask states where a fresh launch
+// lands: on the first task row the settled projection draws, whatever chrome
+// stands above it, so the first key a user presses acts on work rather than on a
+// grouping.
 //
 // All three reviewed multi-row fixtures are read, because the claim is about the
-// launch rule rather than about one catalog's first section, and a rule that
-// happened to land on a task in one of them would be a different rule.
+// launch rule rather than about one catalog's first section. Each is asserted
+// twice: the cursor is on a task, and it is on the *first* one, which is what
+// separates the rule from a landing that merely happened to clear the header.
 //
-// Session 11 owns this. It selects the first visible task on a fresh launch, and
-// rewrites this contract to state that the cursor lands on a task row, that it
-// still lands there when the first section is folded or empty, and that
-// asynchronous project loading and a restored lens do not move it afterwards.
-func TestUXDailyUseLaunchSeatsTheCursorOnASectionHeader(t *testing.T) {
+// A folded or empty first section is not a separate case and is deliberately not
+// staged here: launch restores no folds, and a section holding nothing is never
+// emitted, so neither can stand over the first task at launch. What can stand
+// over it is a section header, a project group summary, or a focused-project
+// header, and the rule reads past all three by asking each row what it is. The
+// asynchronous halves of the rule — a superseded read, a lens still loading its
+// own projects, a keystroke arriving first — are in app_launch_focus_test.go,
+// where they can be driven one message at a time.
+func TestUXDailyUseLaunchSeatsTheCursorOnTheFirstTask(t *testing.T) {
 	for _, fixture := range []string{FixtureMultiProject, FixtureUXAcceptance, FixtureNarrow} {
 		t.Run(fixture, func(t *testing.T) {
 			_, view := uxDailyUseDriver(t, fixture, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
-			if view.Cursor != 0 {
-				t.Fatalf("a fresh launch seated the cursor on row %d, not row 0", view.Cursor)
-			}
 			if len(view.Rows) == 0 {
 				t.Fatal("the fixture drew no rows, so there is no landing to record")
 			}
-			if view.Rows[0].IsTaskRow() {
-				t.Fatal("row 0 is already a task row, which is the landing session 11 introduces")
+			wanted := -1
+			for index, row := range view.Rows {
+				if row.IsTaskRow() && row.Task != nil {
+					wanted = index
+					break
+				}
+			}
+			if wanted < 0 {
+				t.Fatal("the fixture drew no task row, so it records nothing about this rule")
+			}
+			if view.Cursor != wanted {
+				t.Fatalf("a fresh launch seated the cursor on row %d, not the first task row %d", view.Cursor, wanted)
 			}
 		})
 	}
 }
 
-// TestUXDailyUseLaunchGuidanceNamesNavigationOnly records what the footer offers
-// on that landing: the structural keys a section header answers — zoom,
-// collapse, the section fold, the mode cycle, project scope, search, and help —
-// and none of the daily acts. Capture, the workflow chord, and edit are all
-// absent, because none of them applies to the row the launch seated the cursor
-// on.
+// TestUXDailyUseLaunchGuidanceNamesTheDailyActs records what the footer offers
+// on that landing now that the launch seats the cursor on work: the acts a task
+// row answers — the workflow chord, priority, dates, tags, capture, and the
+// action sheet — and none of the structural keys only a grouping answers.
 //
-// The two halves are asserted together on purpose. The absent keys are absent
-// because of where the cursor is, so a session that moves the landing changes
-// this footer without touching guidance at all, and a contract that only listed
-// what is present would not show that.
+// The two halves are asserted together on purpose, and the absent half is where
+// the session shows: `Enter zoom` and `s sections` are gone because the cursor
+// is no longer on a header, and `/ search` and `? help` are gone because the
+// daily acts now outrank them at this width. A contract that only listed what is
+// present would show neither.
 //
-// Session 12 owns this, and session 11 reaches it first. Session 12 prioritizes
-// useful daily actions in contextual guidance and rewrites this contract to
-// state which acts lead the resting footer and what the fitter drops first.
-func TestUXDailyUseLaunchGuidanceNamesNavigationOnly(t *testing.T) {
+// Session 12 owns this, and session 11 reached it first by moving the landing.
+// Session 12 prioritizes useful daily actions in contextual guidance and
+// rewrites this contract to state which acts lead the resting footer and what
+// the fitter drops first.
+func TestUXDailyUseLaunchGuidanceNamesTheDailyActs(t *testing.T) {
 	driver, _ := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	footer := uxClarityFooter(driver)
 
-	for _, rank := range []string{"Enter zoom", "s sections", "Tab next mode", "/ search", "? help"} {
+	for _, rank := range append([]string{"! priority", "@ date", "# tags/context"}, uxClarityOutlinerHostRanks...) {
 		if !strings.Contains(footer, rank) {
-			t.Fatalf("the resting footer does not name %q:\n%s", rank, footer)
+			t.Fatalf("the resting footer does not name the daily act %q:\n%s", rank, footer)
 		}
 	}
-	for _, act := range uxClarityOutlinerHostRanks {
-		if strings.Contains(footer, act) {
-			t.Fatalf("the resting footer already names the daily act %q, so the launch is not on a section header:\n%s",
-				act, footer)
+	for _, shed := range []string{"Enter zoom", "s sections", "/ search", "? help"} {
+		if strings.Contains(footer, shed) {
+			t.Fatalf("the resting footer still names %q, so the launch is not on a task row:\n%s",
+				shed, footer)
 		}
 	}
 }

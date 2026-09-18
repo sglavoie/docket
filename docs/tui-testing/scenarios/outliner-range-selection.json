@@ -3,7 +3,6 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "move onto the first visible task", "key": "j" },
     { "type": "key", "label": "anchor a fresh range", "key": "V" },
     { "type": "key", "label": "move through the next section header", "key": "j" },
     { "type": "key", "label": "extend to the task beyond it", "key": "j" },

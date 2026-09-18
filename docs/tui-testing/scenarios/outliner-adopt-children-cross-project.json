@@ -3,7 +3,6 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "j" },
     { "type": "assert", "label": "every project's task is on screen", "assert": "contains", "value": "Beta rollout checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew passport" },
 
