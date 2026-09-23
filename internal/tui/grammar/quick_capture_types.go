@@ -90,8 +90,9 @@ type QuickCaptureResult struct {
 	dependencies      []CapturedDependencyRef
 	Attachments       []string
 	Comments          []string
-	TargetProjectID   *string // Target project ID for cross-project capture
-	targetProjectName string  // Target project name (for preview display)
+	TargetProjectID   *string         // Target project ID for cross-project capture
+	targetProjectName string          // Target project name (for preview display)
+	targetProject     *models.Project // Target project (for the preview's project color)
 }
 
 // ChildIDs projects the resolved children into the stable IDs a CaptureRequest

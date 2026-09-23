@@ -5,8 +5,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -14,8 +16,7 @@ import (
 )
 
 type composerEffectiveRoute struct {
-	projectID   string
-	projectName string
+	project     *models.Project
 	destination app.CaptureDestination
 }
 
@@ -56,14 +57,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	}
 	destination = grammar.ComposerDeferredDestination(parsed, destination)
 
-	route := composerEffectiveRoute{destination: destination}
-	if project != nil {
-		route.projectID = project.ID
-		route.projectName = project.Name
-	} else {
-		route.projectName = "Unavailable"
-	}
-	return route
+	return composerEffectiveRoute{project: project, destination: destination}
 }
 
 // composerMixedValue is what one axis reports when the lines being captured do
@@ -71,6 +65,21 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 // and for Done is mixed about its status and mixed about its plan, while one
 // heading for Today and for Next agrees about status and not about plan.
 const composerMixedValue = "Mixed"
+
+// composerUnavailableValue names a route whose project no longer resolves.
+const composerUnavailableValue = "Unavailable"
+
+// composerRouteHeader is the route as typed values, so the row can color each
+// axis through the authority that owns it rather than recognizing a word. A
+// mixed axis carries no value; an absent plan is the zero destination.
+type composerRouteHeader struct {
+	project      *models.Project
+	projectMixed bool
+	plan         app.CaptureDestination
+	planMixed    bool
+	status       models.WorkflowState
+	statusMixed  bool
+}
 
 // effectiveRouteHeader states the route as the two independent things it is: the
 // planning collection the capture commits to, and the lifecycle state it lands
@@ -80,7 +89,7 @@ const composerMixedValue = "Mixed"
 // An empty plan is the absence of a membership rather than an unknown one, and
 // the row drops that half entirely; a status is never absent, since every task
 // created is in some state.
-func (m *TaskComposerModel) effectiveRouteHeader() (project, plan, status string) {
+func (m *TaskComposerModel) effectiveRouteHeader() composerRouteHeader {
 	var routes []composerEffectiveRoute
 	for _, line := range strings.Split(m.Input.Value(), "\n") {
 		if strings.TrimSpace(line) != "" {
@@ -91,40 +100,98 @@ func (m *TaskComposerModel) effectiveRouteHeader() (project, plan, status string
 		routes = append(routes, m.effectiveRouteForLine(""))
 	}
 
-	project = routes[0].projectName
-	plan = composerPlanValue(routes[0].destination)
-	status = composerStatusValue(routes[0].destination)
+	header := composerRouteHeader{
+		project: routes[0].project,
+		plan:    composerPlanDestination(routes[0].destination),
+		status:  composerStatusState(routes[0].destination),
+	}
 	for _, route := range routes[1:] {
-		if route.projectID != routes[0].projectID {
-			project = composerMixedValue
+		if composerProjectID(route.project) != composerProjectID(header.project) {
+			header.projectMixed = true
 		}
-		if composerPlanValue(route.destination) != plan && plan != composerMixedValue {
-			plan = composerMixedValue
+		if composerPlanDestination(route.destination) != header.plan {
+			header.planMixed = true
 		}
-		if composerStatusValue(route.destination) != status && status != composerMixedValue {
-			status = composerMixedValue
+		if composerStatusState(route.destination) != header.status {
+			header.statusMixed = true
 		}
+	}
+	return header
+}
+
+func composerProjectID(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	return project.ID
+}
+
+// strings spells the header uncolored: the project name, the plan, and the
+// status, with an absent plan as the empty string.
+func (h composerRouteHeader) strings() (project, plan, status string) {
+	switch {
+	case h.projectMixed:
+		project = composerMixedValue
+	case h.project == nil:
+		project = composerUnavailableValue
+	default:
+		project = h.project.Name
+	}
+	switch {
+	case h.planMixed:
+		plan = composerMixedValue
+	case h.plan != "":
+		plan = chrome.PlanStatusValue(string(h.plan))
+	}
+	status = composerMixedValue
+	if !h.statusMixed {
+		status = chrome.PlanStatusValue(h.status.String())
 	}
 	return project, plan, status
 }
 
-// composerPlanValue names the planning collection the effective route commits
-// to and nothing at all for the eight destinations that name a state alone.
-func composerPlanValue(destination app.CaptureDestination) string {
+// projectStyle is the project's own color, muted when no one project answers.
+func (h composerRouteHeader) projectStyle() lipgloss.Style {
+	if h.projectMixed || h.project == nil {
+		return theme.MutedStyle
+	}
+	return theme.ProjectColorStyle(h.project)
+}
+
+// planStyle is the plan collection's inline badge, muted when the lines disagree.
+func (h composerRouteHeader) planStyle() lipgloss.Style {
+	if h.planMixed {
+		return theme.MutedStyle
+	}
+	return grammar.CapturePlanAccentStyle(h.plan)
+}
+
+// statusStyle is the lifecycle state's inline badge, muted when the lines disagree.
+func (h composerRouteHeader) statusStyle() lipgloss.Style {
+	if h.statusMixed {
+		return theme.MutedStyle
+	}
+	return grammar.CaptureStatusAccentStyle(h.status)
+}
+
+// composerPlanDestination is the planning collection the effective route
+// commits to and nothing at all for the eight destinations that name a state
+// alone.
+func composerPlanDestination(destination app.CaptureDestination) app.CaptureDestination {
 	if !destination.IsPlanning() {
 		return ""
 	}
-	return chrome.PlanStatusValue(string(destination))
+	return destination
 }
 
-// composerStatusValue names the lifecycle state the effective route lands in.
+// composerStatusState is the lifecycle state the effective route lands in.
 // Today and Next resolve through WorkflowState, so the half a planning sigil
 // leaves implicit is stated rather than inferred from the sigil's own spelling.
-func composerStatusValue(destination app.CaptureDestination) string {
+func composerStatusState(destination app.CaptureDestination) models.WorkflowState {
 	if destination == "" {
 		destination = app.CaptureDestinationInbox
 	}
-	return chrome.PlanStatusValue(destination.WorkflowState().String())
+	return destination.WorkflowState()
 }
 
 // View renders whichever presentation the composer currently owns: the expanded

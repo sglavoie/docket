@@ -273,6 +273,14 @@ func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style 
 	}
 }
 
+// StateGroupInlineBadgeStyle is a state group's section badge — fill, ink, and
+// bold — without the badge's padding. It lets a value spelled inside a sentence,
+// such as capture's route row and preview, read as the badge its section wears
+// while the text keeps the width it has uncolored.
+func StateGroupInlineBadgeStyle(group models.WorkflowStateGroup) lipgloss.Style {
+	return GetWorkflowStateGroupStyle(group).Padding(0)
+}
+
 // RenderCursorPrefix returns the minimal left margin before a task row. Cursor
 // selection is expressed by the row highlight, so no wider marker gutter is
 // needed.

@@ -2,9 +2,13 @@ package grammar
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TestCaptureDependencyPreviewNamesEveryReference is the preview half of the
@@ -35,5 +39,58 @@ func TestCaptureDependencyPreviewNamesEveryReference(t *testing.T) {
 	want := []string{"~Home #2 Ship the API", "~Routed #1 Routed alpha"}
 	if !slices.Equal(depends.chunks, want) {
 		t.Fatalf("Depends chunks = %v, want %v", depends.chunks, want)
+	}
+}
+
+func previewRouteAndTags(t *testing.T, value string) (route, tags string) {
+	t.Helper()
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home"}
+	q := draftedCaptureInput(t, value, home, []*models.Project{home}, false)
+	q.UpdatePreview()
+	groups, ok := q.previewGroups()
+	if !ok {
+		t.Fatalf("no preview for %q (%s)", value, q.PreviewErr)
+	}
+	for _, group := range groups {
+		switch group.label {
+		case "Route":
+			route = strings.Join(group.chunks, " · ")
+		case "Tags":
+			tags = strings.Join(group.chunks, " · ")
+		}
+	}
+	return route, tags
+}
+
+// TestCapturePreviewGlyphIsTheRowsStateBadge holds the preview's glyph to the
+// badge the created row will wear: the destination's state, semantic accent
+// included, rather than a bare Inbox icon.
+func TestCapturePreviewGlyphIsTheRowsStateBadge(t *testing.T) {
+	route, _ := previewRouteAndTags(t, "fix it #bug $doing")
+	want := theme.GetTaskStateBadge(&models.Task{WorkflowState: models.StateDoing, Tags: []string{"bug"}})
+	if !strings.HasPrefix(route, want+" ") {
+		t.Fatalf("route %q does not lead with the semantic Doing badge %q", route, want)
+	}
+	if want == theme.GetStateBadge(models.StateDoing) {
+		t.Fatal("the #bug accent left the badge unchanged; the test proves nothing")
+	}
+
+	route, _ = previewRouteAndTags(t, "plain work $doing")
+	if want := theme.GetStateBadge(models.StateDoing); !strings.HasPrefix(route, want+" ") {
+		t.Fatalf("route %q does not lead with the plain Doing badge %q", route, want)
+	}
+	if !strings.Contains(route, CaptureStatusAccentStyle(models.StateDoing).Render("$doing")) {
+		t.Fatalf("route %q does not accent the destination label", route)
+	}
+}
+
+func TestCapturePreviewTagsWearTheirChips(t *testing.T) {
+	_, tags := previewRouteAndTags(t, "Tagged #alpha #beta")
+	want := theme.TagChipStyle("alpha").Render("#alpha") + " " + theme.TagChipStyle("beta").Render("#beta")
+	if tags != want {
+		t.Fatalf("tags = %q, want %q", tags, want)
+	}
+	if ansi.Strip(tags) != "#alpha #beta" {
+		t.Fatalf("stripped tags = %q", ansi.Strip(tags))
 	}
 }

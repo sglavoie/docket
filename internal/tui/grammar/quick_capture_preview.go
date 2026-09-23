@@ -50,15 +50,6 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		return nil, false
 	}
 
-	previewTask := &models.Task{
-		Title:         q.Preview.Title,
-		WorkflowState: models.StateInbox,
-		Priority:      q.Preview.Priority,
-		Tags:          q.Preview.Tags,
-	}
-	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.Preview.Title)
-	taskChunks := []string{taskTitle}
-	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
@@ -80,6 +71,15 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if routed := ComposerDeferredDestination(q.Preview, destination); routed != destination {
 		destination, deferred = routed, true
 	}
+	previewTask := &models.Task{
+		Title:         q.Preview.Title,
+		WorkflowState: destination.WorkflowState(),
+		Priority:      q.Preview.Priority,
+		Tags:          q.Preview.Tags,
+	}
+	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.Preview.Title)
+	groups = append(groups, previewGroup{label: "Task", chunks: []string{taskTitle}})
+
 	destinationLabel := destinationDefinition.Trigger + string(destination)
 	switch {
 	case deferred:
@@ -87,7 +87,10 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	case !q.Preview.DestinationSet:
 		destinationLabel += " (default)"
 	}
-	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
+	// The glyph is the row's own state badge, semantic accent included, so a
+	// `#bug` capture previews the mark its row will wear; the label and the
+	// plan/status values wear the same inline badges as the composer's route row.
+	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
 	// A planning sigil answers two questions with one token: `$today` is a
 	// membership in a collection and a Backlog status, and the second half is
 	// nowhere in the word. The pair is stated exactly where the token leaves it
@@ -95,12 +98,12 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	// repeating it under a label there would be the same word twice.
 	if destination.IsPlanning() {
 		routeChunks = append(routeChunks,
-			chrome.PlanFieldLabel+": "+chrome.PlanStatusValue(string(destination)),
-			chrome.StatusFieldLabel+": "+chrome.PlanStatusValue(destination.WorkflowState().String()),
+			chrome.PlanFieldLabel+": "+CapturePlanAccentStyle(destination).Render(chrome.PlanStatusValue(string(destination))),
+			chrome.StatusFieldLabel+": "+CaptureStatusAccentStyle(destination.WorkflowState()).Render(chrome.PlanStatusValue(destination.WorkflowState().String())),
 		)
 	}
 	if q.Preview.targetProjectName != "" {
-		routeChunks = append(routeChunks, "→ "+q.Preview.targetProjectName)
+		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.targetProject).Render(q.Preview.targetProjectName))
 	}
 	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
 
@@ -173,7 +176,7 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if len(q.Preview.Tags) > 0 {
 		tagStrs := make([]string, len(q.Preview.Tags))
 		for i, t := range q.Preview.Tags {
-			tagStrs[i] = tagDefinition.Trigger + t
+			tagStrs[i] = theme.TagChipStyle(t).Render(tagDefinition.Trigger + t)
 		}
 		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
 	}

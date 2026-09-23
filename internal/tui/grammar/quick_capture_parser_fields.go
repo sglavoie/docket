@@ -291,6 +291,7 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		}
 		p.result.TargetProjectID = &targetProject.ID
 		p.result.targetProjectName = targetProject.Name
+		p.result.targetProject = targetProject
 		p.project = targetProject
 	}
 }

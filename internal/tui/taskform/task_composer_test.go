@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
@@ -28,7 +29,7 @@ func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
 	composer.Input.SetValue("Write regression test %tt $doing")
 	composer.UpdatePreview()
 
-	project, plan, status := composer.effectiveRouteHeader()
+	project, plan, status := composer.effectiveRouteHeader().strings()
 	if project != "tt" || plan != "" || status != "Doing" {
 		t.Fatalf("effective header = %q / %q / %q, want tt / no plan / Doing", project, plan, status)
 	}
@@ -59,7 +60,7 @@ func TestTaskComposerRouteRowSeparatesPlanFromStatus(t *testing.T) {
 	composer.Input.SetValue("Plan this one $today")
 	composer.UpdatePreview()
 
-	if _, plan, status := composer.effectiveRouteHeader(); plan != "Today" || status != "Backlog" {
+	if _, plan, status := composer.effectiveRouteHeader().strings(); plan != "Today" || status != "Backlog" {
 		t.Fatalf("effective header plan/status = %q / %q, want Today / Backlog", plan, status)
 	}
 	plain := ansi.Strip(composer.View().Content)
@@ -105,7 +106,7 @@ func TestTaskComposerDueTodayRoutesCaptureToToday(t *testing.T) {
 	}
 	// The due date routes the capture, so the row reports the plan that routing
 	// produces and the Backlog status it carries, not the `@today` that caused it.
-	_, plan, status := composer.effectiveRouteHeader()
+	_, plan, status := composer.effectiveRouteHeader().strings()
 	if plan != "Today" || status != "Backlog" {
 		t.Fatalf("displayed plan/status = %q / %q, want Today / Backlog", plan, status)
 	}
@@ -143,7 +144,7 @@ func TestTaskComposerHeaderAggregatesMultilineRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			composer.Input.SetValue(tt.input)
-			project, plan, status := composer.effectiveRouteHeader()
+			project, plan, status := composer.effectiveRouteHeader().strings()
 			if project != tt.wantProject || plan != tt.wantPlan || status != tt.wantStatus {
 				t.Fatalf("effective header = %q / %q / %q, want %q / %q / %q",
 					project, plan, status, tt.wantProject, tt.wantPlan, tt.wantStatus)
@@ -497,5 +498,49 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	}
 	if got := len(env.reload(t).Tasks); got != 0 {
 		t.Fatalf("atomic validation created %d tasks", got)
+	}
+}
+
+// TestTaskComposerRouteRowColorsEachAxis holds the row to the authorities it
+// borrows from: the project wears its own slot color, the plan and the status
+// their mode-badge accents, and the stripped text is what it always was.
+func TestTaskComposerRouteRowColorsEachAxis(t *testing.T) {
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home", ColorSlot: 1}
+	proj := &models.Project{ID: "proj", Name: "Proj", Slug: "proj", ColorSlot: 3}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:               ComposerGlobal,
+		Project:            home,
+		AllProjects:        []*models.Project{home, proj},
+		AllowProjectSwitch: true,
+		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+	}, nil)
+	composer.SetSize(80, 30)
+	composer.Input.SetValue("Colored %proj $next #x")
+	composer.UpdatePreview()
+
+	row := composer.renderComposerRouteRow(80)
+	for name, want := range map[string]string{
+		"project": theme.ProjectColorStyle(proj).Render("Proj"),
+		"plan":    grammar.CapturePlanAccentStyle(app.CaptureDestinationNext).Render("Next"),
+		"status":  grammar.CaptureStatusAccentStyle(models.StateBacklog).Render("Backlog"),
+	} {
+		if want == ansi.Strip(want) {
+			t.Fatalf("the %s style emits no color; the test proves nothing", name)
+		}
+		if !strings.Contains(row, want) {
+			t.Errorf("route row does not render the %s as %q:\n%q", name, want, row)
+		}
+	}
+	if got := ansi.Strip(row); got != "Project: Proj · Plan: Next · Status: Backlog" {
+		t.Fatalf("stripped route row = %q", got)
+	}
+
+	composer.Input.SetValue("One %proj $doing\nTwo $waiting")
+	row = composer.renderComposerRouteRow(80)
+	if !strings.Contains(row, theme.MutedStyle.Render("Mixed")) {
+		t.Fatalf("a mixed axis is not muted:\n%q", row)
+	}
+	if got := ansi.Strip(row); got != "Project: Mixed · Status: Mixed" {
+		t.Fatalf("stripped mixed route row = %q", got)
 	}
 }

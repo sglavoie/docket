@@ -157,7 +157,11 @@ the draft joins a planning collection it says so in its own half —
 plan and the status it implies is one the word does not spell. A draft with no
 `$destination` and no `%project` reads whatever it would default to, a draft
 whose lines disagree about an axis reads `Mixed` for that axis alone, and the
-preview repeats the pair under the same two words. Autocomplete and `?` syntax help borrow
+preview repeats the pair under the same two words. Both wear the colors the
+Outliner already uses: the project its own color, the plan and the status their
+section badges, the preview's state glyph the badge the new row will carry
+(a semantic tag such as `#bug` included), and each tag its chip color; `Mixed`
+and `Unavailable` read muted. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long
 as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,

@@ -213,17 +213,21 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 // spends whatever the named axes leave, since it is the one value that can be
 // arbitrarily long and the one a truncation still leaves recognizable.
 func (m *TaskComposerModel) renderComposerRouteRow(width int) string {
-	project, plan, status := m.effectiveRouteHeader()
+	header := m.effectiveRouteHeader()
+	project, plan, status := header.strings()
 	// FieldLabelStyle rather than SubtitleStyle: the latter carries a bottom
-	// margin, which on a one-row summary breaks the row in two.
+	// margin, which on a one-row summary breaks the row in two. Each value wears
+	// the color of the authority that owns it — the project's slot, the plan's and
+	// the status's section badge — and Mixed or Unavailable reads muted.
 	const separator = " · "
-	route := theme.FieldLabelStyle.Render(chrome.StatusFieldLabel+": ") + status
+	route := theme.FieldLabelStyle.Render(chrome.StatusFieldLabel+": ") + header.statusStyle().Render(status)
 	if plan != "" {
-		route = theme.FieldLabelStyle.Render(chrome.PlanFieldLabel+": ") + plan + separator + route
+		route = theme.FieldLabelStyle.Render(chrome.PlanFieldLabel+": ") + header.planStyle().Render(plan) + separator + route
 	}
 	projectLabel := theme.FieldLabelStyle.Render("Project: ")
 	budget := width - lipgloss.Width(projectLabel) - lipgloss.Width(route) - lipgloss.Width(separator)
-	row := projectLabel + textfit.TruncateToVisualWidth(project, max(budget, 1)) + separator + route
+	projectName := header.projectStyle().Render(textfit.TruncateToVisualWidth(project, max(budget, 1)))
+	row := projectLabel + projectName + separator + route
 	return textfit.TruncateToVisualWidth(row, width)
 }
 
