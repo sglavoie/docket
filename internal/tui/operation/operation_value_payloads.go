@@ -96,6 +96,7 @@ func (id ValueProviderID) AcceptsPresetValue(value any) bool {
 	case ValueProviderFilterStates,
 		ValueProviderFilterTags,
 		ValueProviderFilterContexts,
+		ValueProviderFilterProjects,
 		ValueProviderFilterProjectTags:
 		_, ok := value.([]string)
 		return ok

@@ -310,6 +310,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			// bound would silently apply the wrong facet.
 			{OperationID: OperationFilterPinned, Sequence: []string{"f", "*"}, DisplayKey: "f*", HintLabel: "pinned"},
 			{OperationID: OperationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
+			// The project facet answers to its sigil, %project, never to P, which
+			// is the single-project scope rather than a facet. It is declared after
+			// fx so a narrow which-key row sheds it before clear all.
+			{OperationID: OperationFilterProjects, Sequence: []string{"f", "%"}, DisplayKey: "f%", HintLabel: "projects"},
 			{OperationID: OperationFilterProjectTags, Sequence: []string{"F", "#"}, DisplayKey: "F#", HintLabel: "project tags"},
 			{OperationID: OperationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "include parked"},
 			{OperationID: OperationFilterOnlyParked, Sequence: []string{"F", "P"}, DisplayKey: "FP", HintLabel: "only parked"},

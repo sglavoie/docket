@@ -120,7 +120,7 @@ func tokenValue(spec definitionSpec, raw string) string {
 // duplicateSingletonDiagnostics reports a repeated singleton as a conflict on
 // the surfaces that write a value, where two names really cannot both be
 // stored. Search selects rows instead of writing anything, so a repeated
-// context there is a union rather than a conflict and is left alone.
+// context or project there is a union rather than a conflict and is left alone.
 func duplicateSingletonDiagnostics(tokens []Token, surface Surface) []Diagnostic {
 	first := make(map[Field]Token)
 	diagnosed := make(map[Field]bool)
@@ -130,7 +130,7 @@ func duplicateSingletonDiagnostics(tokens []Token, surface Surface) []Diagnostic
 		if !ok || spec.Cardinality != CardinalitySingleton {
 			continue
 		}
-		if surface == SurfaceSearch && token.Field == FieldContext {
+		if surface == SurfaceSearch && (token.Field == FieldContext || token.Field == FieldProject) {
 			continue
 		}
 		previous, exists := first[token.Field]

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // QueryDateLayout is the one calendar-date spelling a clause value may carry.
@@ -36,6 +37,8 @@ func validateQueryValue(field QueryField, operator QueryOperator, value string) 
 		return validateQueryPriorityValue(value)
 	case QueryFieldTag, QueryFieldContext, QueryFieldProjectTag:
 		return validateQueryTagValue(field, value)
+	case QueryFieldProject:
+		return validateQueryProjectValue(value)
 	case QueryFieldDue:
 		return validateQueryDueValue(value)
 	case QueryFieldDefer:
@@ -81,6 +84,20 @@ func validateQueryTagValue(field QueryField, value string) (string, error) {
 		return "", err
 	}
 	return value, nil
+}
+
+// validateQueryProjectValue accepts a project slug, lowercased. It checks shape
+// alone and never that the project exists: a clause naming a renamed or deleted
+// slug stays a valid clause that admits nothing.
+func validateQueryProjectValue(value string) (string, error) {
+	slug := strings.ToLower(value)
+	if strings.TrimSpace(slug) == "" {
+		return "", fmt.Errorf("query field %q needs a project slug", QueryFieldProject)
+	}
+	if strings.IndexFunc(slug, unicode.IsSpace) >= 0 || strings.ContainsRune(slug, '"') {
+		return "", fmt.Errorf("project slug %q cannot hold whitespace or quotes", value)
+	}
+	return slug, nil
 }
 
 func validateQueryStateValue(value string) (string, error) {

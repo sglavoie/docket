@@ -872,7 +872,8 @@ section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
 that does not spell its sigil: `$` is typed and pressed nowhere, and `f$` is
 retired with it. Every other facet carrying a sigil answers to that sigil, so
 pinned is `f*`, references are `f~`, review is `f=`; states follow the chord to
-`fw`, and the letters `fp` and `fr` stay retired. A picker row is the canonical
+`fw`, and the letters `fp` and `fr` stay retired. `f%` is a slug row facet,
+not `P`'s scope. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
 `?deferred` — and `AcceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.

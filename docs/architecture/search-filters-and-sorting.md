@@ -160,7 +160,17 @@ state while `NoContextFilterKey` is only the token the picker's value channel
 carries. `BuildTagFacetList` stays as the one context census both pickers read:
 it stamps `TagInfo.ContextCount` on the values the context axis contributed,
 which feeds the `fc` counts and, through `CollectContextNamesForProjects`, the
-`##name` radio rows the `#` editor lists under `CONTEXTS`. Completion
+`##name` radio rows the `#` editor lists under `CONTEXTS`. The `f%` project
+facet is the third OR axis: `CommonFilterState.Projects` holds the slugs its
+`models.QueryFieldProject` clauses name, `Admits` matches them exactly against
+the row's resolved project slug, and a row resolving to
+`EmptyFilterQueryProject` carries no slug and fails the clause. It is a row
+facet over the loaded rows, so it rebuilds and never reloads, and it is distinct
+from the `P` scope, which is one project and a frame rather than a clause. A
+slug the picker no longer offers is dropped by `RetainKnownIDs` on the next
+apply; until then the clause admits nothing. Search's `%prefix` keeps its
+prefix-on-slug-or-name reading and unions when repeated, so a chip typed back
+into `/` admits the same projects. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
 predicate belongs to the one cleanup facet in the clear count. The `fh`

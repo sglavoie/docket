@@ -120,6 +120,17 @@ func (m *OutlinerModel) RowFilterClauseEdit(invocation operation.OperationInvoca
 			status = "Filtering context: " + strings.Join(query.FilterClauseParts(clauses), " ")
 		}
 		return FilterClauseEdit{Clauses: clauses, Status: status}, nil
+	case operation.OperationFilterProjects:
+		slugs, ok := invocation.Value.([]string)
+		if !ok {
+			return FilterClauseEdit{}, fmt.Errorf("invalid project filter value")
+		}
+		clauses := query.ProjectFilterClauses(slugs)
+		status := "Project filter cleared"
+		if len(clauses) > 0 {
+			status = fmt.Sprintf("Filtering %d project(s)", len(clauses))
+		}
+		return FilterClauseEdit{Clauses: clauses, Status: status}, nil
 	case operation.OperationFilterReview:
 		if m.Filter.Review {
 			return FilterClauseEdit{Status: "Review filter cleared"}, nil
@@ -199,6 +210,8 @@ func FilterOperationFields(id operation.OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldTag}
 	case operation.OperationFilterContexts:
 		return []models.QueryField{models.QueryFieldContext}
+	case operation.OperationFilterProjects:
+		return []models.QueryField{models.QueryFieldProject}
 	case operation.OperationFilterDue:
 		// The due picker's deferred row and its four bucket rows are one facet:
 		// choosing either clears the other, which is only true if both fields

@@ -538,3 +538,41 @@ func TestQueryTaskIsStaleReadsTheTouchClockAlone(t *testing.T) {
 func ptr[T any](value T) *T {
 	return &value
 }
+
+func TestQueryProjectClauseMatchesTheOwningSlugExactlyAndUnions(t *testing.T) {
+	now := queryTestNow()
+	task := queryTestTask()
+	alpha := queryTestProject()
+	beta := &Project{ID: "project-beta", Slug: "beta", Name: "Beta"}
+	alphabet := &Project{ID: "project-alphabet", Slug: "alphabet", Name: "Alphabet"}
+	unresolved := &Project{}
+
+	one := Query{Clauses: []QueryClause{positiveClause(t, QueryFieldProject, QueryOperatorIs, "Alpha")}}
+	if !one.Admits(task, alpha, now) {
+		t.Fatal("a task in the named project was refused")
+	}
+	if one.Admits(task, alphabet, now) {
+		t.Fatal("a project whose slug merely starts with the value was admitted")
+	}
+	if one.Admits(task, unresolved, now) {
+		t.Fatal("a row with no resolved project was admitted")
+	}
+
+	both := Query{Clauses: []QueryClause{
+		positiveClause(t, QueryFieldProject, QueryOperatorIs, "alpha"),
+		positiveClause(t, QueryFieldProject, QueryOperatorIs, "beta"),
+	}}
+	for _, project := range []*Project{alpha, beta} {
+		if !both.Admits(task, project, now) {
+			t.Fatalf("project %q was refused by a union naming it", project.Slug)
+		}
+	}
+	if both.Admits(task, alphabet, now) {
+		t.Fatal("a project the union does not name was admitted")
+	}
+
+	without := Query{Clauses: []QueryClause{negativeClause(t, QueryFieldProject, QueryOperatorIs, "alpha")}}
+	if without.Admits(task, alpha, now) || !without.Admits(task, beta, now) {
+		t.Fatal("a negated project clause did not subtract exactly that project")
+	}
+}

@@ -92,6 +92,8 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		return queryTagMatches(task, clause)
 	case QueryFieldContext:
 		return queryContextMatches(task, clause)
+	case QueryFieldProject:
+		return project.Slug != "" && strings.EqualFold(project.Slug, clause.Value)
 	case QueryFieldDue:
 		return queryDueMatches(task, clause, now)
 	case QueryFieldDefer:

@@ -941,6 +941,10 @@ func (m *OutlinerModel) DecoratePendingChordHint(path []string, hint operation.C
 			if count > 0 {
 				hint.Label = fmt.Sprintf("contexts:%d", count)
 			}
+		case "%":
+			if len(filter.Projects) > 0 {
+				hint.Label = fmt.Sprintf("projects:%d", len(filter.Projects))
+			}
 		case "@":
 			// The label is the token the picker's row writes, so the hint, the chip,
 			// and a typed query name this facet with the same characters.

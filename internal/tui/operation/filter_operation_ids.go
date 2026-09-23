@@ -10,6 +10,7 @@ const (
 	OperationFilterStates        OperationID = "tui.filter.states"
 	OperationFilterTags          OperationID = "tui.filter.tags"
 	OperationFilterContexts      OperationID = "tui.filter.contexts"
+	OperationFilterProjects      OperationID = "tui.filter.projects"
 	OperationFilterReview        OperationID = "tui.filter.review"
 	OperationFilterDue           OperationID = "tui.filter.due"
 	OperationFilterCompletionAge OperationID = "tui.filter.completion-age"

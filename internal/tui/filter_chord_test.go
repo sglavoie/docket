@@ -27,6 +27,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"w states",
 		"# tags",
 		"c contexts",
+		"% projects",
 		"= review",
 		"h hierarchy",
 		"s stale",
@@ -65,6 +66,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	taskFilter.SetCompletionAgeFilter(query.CompletionAge90Days)
 	taskFilter.Contexts = map[string]bool{"errand": true}
 	taskFilter.NoContext = true
+	taskFilter.Projects = []string{"alpha", "beta"}
 
 	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'f', Text: "f"}); !handled {
 		t.Fatal("f did not open its pending chord")
@@ -72,15 +74,15 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"! priority:high+", "w states:2", "a completed:90d+", "@ ?deferred",
-		"# tags:2", "c contexts:2", "= review:on", "h hierarchy:parent", "s stale:on",
-		"x clear:8",
+		"# tags:2", "c contexts:2", "% projects:2", "= review:on", "h hierarchy:parent", "s stale:on",
+		"x clear:9",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
-		t.Errorf("task filter count = %d, want 8 independently clearable facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 9 {
+		t.Errorf("task filter count = %d, want 9 independently clearable facets", got)
 	}
 
 	// The f@ row now names two mutually exclusive facets, so the due-date branch
@@ -119,8 +121,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 11 {
-		t.Errorf("combined filter count = %d, want 11 independent task/project facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 12 {
+		t.Errorf("combined filter count = %d, want 12 independent task/project facets", got)
 	}
 }
 

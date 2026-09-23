@@ -1,0 +1,44 @@
+{
+  "name": "filter-projects-facet",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the project facet on its sigil", "key": "f" },
+    { "type": "key", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Projects" },
+    { "type": "assert", "label": "each row names the project, its slug, and its load", "assert": "contains", "value": "[ ] Client Alpha  [client-alpha] · 1 task" },
+    { "type": "key", "label": "keep two projects", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering 2 project(s)" },
+    { "type": "assert", "label": "the chip spells the sigil the search would", "assert": "contains", "value": "%client-alpha %client-beta" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "label": "an unnamed project's rows are hidden", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "not_contains", "value": "Finish the distributed systems book" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the readout lists the facet as one peelable axis", "key": "Q" },
+    { "type": "assert", "assert": "contains", "value": "1 filter %client-alpha %client-beta" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "reopen the facet seeded from what is active", "key": "f" },
+    { "type": "key", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "[x] Client Alpha" },
+    { "type": "assert", "assert": "contains", "value": "[x] Client Beta" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "label": "the facet holds at the minimum width", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "fx clears the project facet with every other one", "key": "f" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "%client-alpha" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

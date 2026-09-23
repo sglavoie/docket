@@ -63,7 +63,7 @@ func TestChordPrefixesNeverFallThroughToRootOperations(t *testing.T) {
 // TestModifierKeyPressDoesNotAbandonAPendingChord keeps a chord alive across the
 // Shift its own second key requires. A terminal that reports every key as an
 // escape code sends the modifier as its own press, and consuming that press as
-// the chord's second key put every shifted facet — f!, f@, f~, f#, F#, o@, g@ —
+// the chord's second key put every shifted facet — f!, f@, f~, f#, f%, F#, o@, g@ —
 // permanently out of reach. It enters at handleGlobalMessage because the shell
 // drops the press above handleGlobalKeyPress, where the other chord tests start.
 func TestModifierKeyPressDoesNotAbandonAPendingChord(t *testing.T) {

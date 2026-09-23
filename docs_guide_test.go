@@ -158,7 +158,7 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"the title row shows what you narrowed by in the sigil spelling you would have typed",
 		"`f!2` means\n`!2+`, medium-or-higher, and typing `!2` alone matches medium exactly",
 		"Repeated `##context` names union",
-		"`%slug` inside a query, and the scope a lens saves all answer the",
+		"`%slug` inside a query and the `f%` facet narrow the\nrows inside that frame instead",
 		"which projects exist to be looked at at all, archived and parked included",
 		"`fw` | Pick workflow states with OR semantics, including terminal states; " +
 			"it follows the `w` workflow chord rather than the `$destination` sigil it narrows, " +

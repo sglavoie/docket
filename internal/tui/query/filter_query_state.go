@@ -26,6 +26,10 @@ func CommonFilterStateFromQuery(query models.Query) CommonFilterState {
 				continue
 			}
 			filter.Contexts[clause.Value] = true
+		case models.QueryFieldProject:
+			if clause.Polarity == models.QueryPolarityPositive {
+				filter.Projects = append(filter.Projects, clause.Value)
+			}
 		case models.QueryFieldDue:
 			filter.DueDate = dueFilterFromClause(clause)
 		case models.QueryFieldStale:

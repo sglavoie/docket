@@ -79,7 +79,7 @@ type SearchPredicates struct {
 	refusePinned       bool
 	requireReview      bool
 	refuseReview       bool
-	projectPrefix      string
+	projectPrefixes    []string
 	excludedProjects   []string
 	derived            []textgrammar.DerivedPredicate
 	excludedDerived    []textgrammar.DerivedPredicate
@@ -201,7 +201,7 @@ func (p *SearchPredicates) applyToken(token textgrammar.Token, projects []*model
 	case textgrammar.FieldRemoveReview:
 		p.refuseReview = true
 	case textgrammar.FieldProject:
-		p.projectPrefix = strings.ToLower(strings.TrimSpace(token.Value))
+		p.projectPrefixes = append(p.projectPrefixes, strings.ToLower(strings.TrimSpace(token.Value)))
 	case textgrammar.FieldRemoveProject:
 		p.excludedProjects = append(p.excludedProjects, strings.ToLower(strings.TrimSpace(token.Value)))
 	case textgrammar.FieldDependency:

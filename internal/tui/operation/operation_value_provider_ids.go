@@ -106,6 +106,12 @@ const (
 	// AND, and it offers a no-context row tags have no equivalent of.
 	ValueProviderFilterContexts ValueProviderID = "filter-contexts"
 
+	// ValueProviderFilterProjects feeds the project facet: which loaded
+	// projects' rows show, by slug. It is a row facet and reloads nothing, unlike
+	// ValueProviderFilterProjectTags, and it names several projects where the P
+	// scope names one.
+	ValueProviderFilterProjects ValueProviderID = "filter-projects"
+
 	// ValueProviderFilterProjectTags feeds the population facet: a different
 	// vocabulary from ValueProviderFilterTags, and a different question. It picks
 	// which projects load rather than which of a loaded project's rows show.

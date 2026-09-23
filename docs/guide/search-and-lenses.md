@@ -52,6 +52,7 @@ name; nothing else does, in either presentation.
 | `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`; `e` renames or merges the tag under the cursor |
 | `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none; `e` renames or merges the context under the cursor |
+| `f%` | Pick projects with OR semantics, since a task belongs to exactly one; each row writes the `%slug` a typed query spells, matched against the slug exactly, and several may be named at once where `P` scopes to one |
 | `f=` | Toggle the review facet, the same `=review` a typed query spells |
 | `f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
@@ -75,8 +76,9 @@ reading is never implied.
 Repeated `##context` names union. A task carries at most one context, so
 intersecting two names could only ever match nothing; `##home ##errand` is the
 work in either place, and repeating the name is not reported as a conflict the
-way it is while you are writing a task. Tags are multi-valued and keep
-intersecting, so `#a #b` still means both.
+way it is while you are writing a task. Repeated `%project` names union on the
+same rule, so `%alpha %beta` is the work in either project. Tags are
+multi-valued and keep intersecting, so `#a #b` still means both.
 
 Results rank title matches first, then each other field in turn, and a result
 whose title does not carry the match says where it came from with a muted
@@ -200,10 +202,12 @@ key that selects a state also clears it when pressed again. The two axes compose
 with AND, so `FP` with `FA` names the projects that are both archived and
 parked.
 
-Choosing a project and choosing a population are two different questions. `gp`
-on a row, `%slug` inside a query, and the scope a lens saves all answer the
-first one — which projects this view is over — and they write the same axis, so
-they can never point at different sets. Scope is a frame you are standing in
+Choosing a project and choosing a population are two different questions. `P`,
+`gp` on a row, and the scope a lens saves all answer the first one — which
+project this view is over — and they write the same axis, so they can never
+point at different sets. `%slug` inside a query and the `f%` facet narrow the
+rows inside that frame instead: they are clauses, and several projects may be
+named at once. Scope is a frame you are standing in
 rather than a clause of a query: a search runs inside the frame it was typed in,
 a lens moves the frame, and the frames stack, so changing scope under a held
 query re-answers that query in the new frame instead of editing it. `F` answers

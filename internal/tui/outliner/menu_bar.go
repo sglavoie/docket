@@ -144,6 +144,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationFilterStates},
 				{OperationID: operation.OperationFilterTags},
 				{OperationID: operation.OperationFilterContexts},
+				{OperationID: operation.OperationFilterProjects},
 				{OperationID: operation.OperationFilterReview},
 				{OperationID: operation.OperationFilterDue},
 				{OperationID: operation.OperationFilterCompletionAge},

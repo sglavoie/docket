@@ -142,6 +142,18 @@ func TestParseSearchProjectAndTagAxesStaySeparate(t *testing.T) {
 	}
 }
 
+// A repeated project scope in search is a union, the way a repeated context
+// is, so the chips the f% facet spells type back into search unrefused.
+func TestParseSearchRepeatedProjectIsAUnionNotAConflict(t *testing.T) {
+	parsed := ParseSearch("%alpha %beta ship")
+	if got := len(parsed.TokensFor(FieldProject)); got != 2 {
+		t.Fatalf("project tokens = %d, want 2", got)
+	}
+	if guidance := SearchGuidance(parsed); guidance != "" {
+		t.Fatalf("SearchGuidance = %q, want a runnable union", guidance)
+	}
+}
+
 // TestParseSearchTokenizesEveryNegation walks the negation set in one pass: each
 // spelling must peel whole, land on its own field, and leave the free text
 // alone. The two-and three-rune triggers are the point — -@@ must not be read as

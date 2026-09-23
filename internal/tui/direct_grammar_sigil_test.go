@@ -340,6 +340,7 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 		{sequence: []string{"f", "w"}, want: operation.ChordTerminal},
 		{sequence: []string{"f", "@"}, want: operation.ChordTerminal},
 		{sequence: []string{"f", "*"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "%"}, want: operation.ChordTerminal},
 		{sequence: []string{"f", "="}, want: operation.ChordTerminal},
 		{sequence: []string{"f", "s"}, want: operation.ChordTerminal},
 		{sequence: []string{"F", "#"}, want: operation.ChordTerminal},
@@ -380,6 +381,7 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 		{sequence: []string{"f", "c"}, want: operation.OperationFilterContexts},
 		{sequence: []string{"f", "a"}, want: operation.OperationFilterCompletionAge},
 		{sequence: []string{"f", "w"}, want: operation.OperationFilterStates},
+		{sequence: []string{"f", "%"}, want: operation.OperationFilterProjects},
 	} {
 		binding, _, resolution := registry.InputBindingForSequence(
 			operation.InputStrategySimplified,

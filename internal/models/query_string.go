@@ -47,6 +47,8 @@ func (c QueryClause) token() string {
 		return "#" + querySuffixedValue(c, "", "*")
 	case QueryFieldContext:
 		return "##" + querySuffixedValue(c, queryClearValue, "*")
+	case QueryFieldProject:
+		return "%" + c.Value
 	case QueryFieldDue:
 		if c.Operator == QueryOperatorNone {
 			return "@" + queryClearValue
@@ -245,6 +247,8 @@ func splitQueryToken(token string) (QueryField, QueryOperator, string, error) {
 	case strings.HasPrefix(token, "#"):
 		operator, value := splitSuffixedQueryValue(strings.TrimPrefix(token, "#"), "*", QueryOperatorPrefix)
 		return QueryFieldTag, operator, value, nil
+	case strings.HasPrefix(token, "%"):
+		return QueryFieldProject, QueryOperatorIs, strings.TrimPrefix(token, "%"), nil
 	case strings.HasPrefix(token, "@@"):
 		return QueryFieldDefer, QueryOperatorIs, strings.TrimPrefix(token, "@@"), nil
 	case strings.HasPrefix(token, "@"):

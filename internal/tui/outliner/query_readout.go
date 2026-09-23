@@ -233,6 +233,11 @@ func commonFilterReadoutRows(f *query.CommonFilterState) []queryReadoutRow {
 			[]models.QueryField{models.QueryFieldContext},
 			query.ContextFilterClauses(names), ""))
 	}
+	if len(f.Projects) > 0 {
+		rows = append(rows, clauseReadoutRow("filter",
+			[]models.QueryField{models.QueryFieldProject},
+			query.ProjectFilterClauses(f.Projects), ""))
+	}
 	if f.DueDate != query.DueDateAll {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldDue}, query.DueFilterClauses(f.DueDate), ""))

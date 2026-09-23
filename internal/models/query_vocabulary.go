@@ -71,6 +71,9 @@ const (
 	// QueryFieldContext is the single-valued task context axis, so its positive
 	// clauses union.
 	QueryFieldContext QueryField = "context"
+	// QueryFieldProject is the task's owning project, named by slug. A task
+	// belongs to exactly one project, so its positive clauses union.
+	QueryFieldProject QueryField = "project"
 	// QueryFieldDue is the due-date axis: a relative bucket, an exact day, or a
 	// forward window.
 	QueryFieldDue QueryField = "due"
@@ -187,6 +190,7 @@ var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldPriority, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorAtLeast, QueryOperatorNone}, false},
 	{QueryFieldTag, QueryJoinAND, []QueryOperator{QueryOperatorIs, QueryOperatorPrefix}, false},
 	{QueryFieldContext, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorPrefix, QueryOperatorNone}, false},
+	{QueryFieldProject, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},
 	{QueryFieldDue, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorNone}, false},
 	{QueryFieldDefer, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},
 	{QueryFieldState, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},

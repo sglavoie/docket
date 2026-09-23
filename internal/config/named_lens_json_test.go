@@ -92,10 +92,10 @@ func TestNamedLensUnmarshalLiftsSchema16Carriers(t *testing.T) {
 			want: validLensQuery,
 		},
 		{
-			name: "prose the canonical vocabulary cannot spell follows the clauses",
+			name: "prose the canonical vocabulary cannot spell follows the clauses, and %slug is a clause",
 			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all",` +
 				`"query":"needle %alpha","tasks":{"pinned":true}}`,
-			want: "*pin needle %alpha",
+			want: "%alpha *pin needle",
 		},
 		{
 			name:    "the retired status sort field becomes the default",

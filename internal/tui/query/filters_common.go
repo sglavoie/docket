@@ -29,6 +29,11 @@ type CommonFilterState struct {
 	// with Contexts by OR, so the facet can name both a vocabulary and its gap.
 	NoContext bool
 
+	// Projects filters by owning project slug, sorted. The slugs compose with
+	// OR, since a task belongs to exactly one project. Unlike the P scope it
+	// names several projects at once and reloads nothing.
+	Projects []string
+
 	DueDate       DueDateFilter       // filter by due date
 	CompletionAge CompletionAgeFilter // local-calendar age threshold for completed tasks
 	Hierarchy     HierarchyFilter     // filter by hierarchy position
@@ -104,6 +109,7 @@ func HasActiveCommonFilters(f *CommonFilterState) bool {
 		len(f.Tags) > 0 ||
 		len(f.Contexts) > 0 ||
 		f.NoContext ||
+		len(f.Projects) > 0 ||
 		f.DueDate != DueDateAll ||
 		f.Hierarchy != HierarchyAll ||
 		f.Dependency != DependencyFilterAll ||
@@ -137,6 +143,9 @@ func CommonFilterFacetCount(f *CommonFilterState) int {
 	// therefore count once, the same way the project picker's descriptive tags
 	// and its Untagged row do.
 	if len(f.Contexts) > 0 || f.NoContext {
+		count++
+	}
+	if len(f.Projects) > 0 {
 		count++
 	}
 	if f.DueDate != DueDateAll {

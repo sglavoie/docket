@@ -176,7 +176,7 @@ Ctrl+F/Ctrl+B                    page the open Peek
 c x                              add and tick checklist items
 M Ctrl+M                         pin the menu bar, open it for one act
 P Q \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
-f!0-3 f@ fa fw f# fc f= fh f~ fs f* fx  filters
+f!0-3 f@ fa fw f# fc f% f= fh f~ fs f* fx  filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox or             sort axis
 ```
@@ -317,6 +317,7 @@ The committed suite exercises the product contracts directly:
 | Semantic task tag split, seeded in `#` and usage-derived in `f#`, which narrows tags alone | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
 | Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
+| Projects as their own `f%` row facet: OR across exact slugs, the `%slug` chip and `Q` axis, the seeded reopen, the minimum width, and `fx` | `filter-projects-facet.json` |
 | Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
 | Migration → setup → due attention → early review → recurrence → completion/reopen, with restart-backed persistence | `check-in-integrated-lifecycle.json` |
 | Stored flags versus scheduled attention, preserved `=review` and `?stale`, and `fs` cleanup | `check-in-flags-and-stale.json` |

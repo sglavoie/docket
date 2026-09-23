@@ -1,7 +1,9 @@
 package filterops
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -415,6 +417,61 @@ func (c *Controller) NewFilterContextsPicker(shell Shell,
 		operation.ValueProviderFilterContexts,
 		"Filter by Context",
 		"keep matching tasks",
+		source,
+		true,
+		source.RetainKnownIDs(selected),
+	)
+}
+
+// NewFilterProjectsPicker is the f% multi-select picker over the loaded scope's
+// projects, seeded from the active project facet. Each row hands back the slug
+// the %project clause spells, and the rows compose with OR because a task
+// belongs to exactly one project. A seeded slug no row carries any more — a
+// renamed or retired project — is dropped by RetainKnownIDs, so the next apply
+// writes it away.
+func (c *Controller) NewFilterProjectsPicker(shell Shell,
+	request operation.OperationExecutionRequest,
+) (*valuepicker.OperationValuePickerModel, error) {
+	projects := slices.Clone(c.FilterScopeProjects(shell))
+	slices.SortStableFunc(projects, func(a, b *models.Project) int {
+		return cmp.Or(
+			cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),
+			cmp.Compare(a.Slug, b.Slug),
+		)
+	})
+	items := make([]listsurface.ListItem, 0, len(projects))
+	seen := make(map[string]bool, len(projects))
+	for _, project := range projects {
+		if project == nil || project.Slug == "" || seen[project.Slug] {
+			continue
+		}
+		seen[project.Slug] = true
+		count := 0
+		for _, task := range project.Tasks {
+			if task != nil {
+				count++
+			}
+		}
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("filter-project:" + project.Slug),
+			PrimaryText:   project.Name,
+			SecondaryText: "[" + project.Slug + "] · " + taskCountLabel(count),
+			Aliases:       []string{project.Slug, "%" + project.Slug},
+			Data:          project.Slug,
+		})
+	}
+	selected := []listsurface.ListItemID(nil)
+	if shell.Outliner() != nil {
+		for _, slug := range shell.Outliner().Filter.Projects {
+			selected = append(selected, listsurface.ListItemID("filter-project:"+slug))
+		}
+	}
+	source := listsurface.ListSource{Items: items}
+	return valuepicker.NewOperationValuePickerModel(
+		request,
+		operation.ValueProviderFilterProjects,
+		"Filter by Projects",
+		"keep tasks in these projects",
 		source,
 		true,
 		source.RetainKnownIDs(selected),

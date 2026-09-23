@@ -37,6 +37,7 @@ var filterQueryRowFields = []models.QueryField{
 	models.QueryFieldPriority,
 	models.QueryFieldTag,
 	models.QueryFieldContext,
+	models.QueryFieldProject,
 	models.QueryFieldDue,
 	models.QueryFieldState,
 	models.QueryFieldPinned,
@@ -94,9 +95,10 @@ func FilterQueryTaskFields() []models.QueryField {
 }
 
 // EmptyFilterQueryProject stands in for a row whose project could not be
-// resolved. models.Query.Admits refuses a nil project, and the row half of the
-// filter query reads no project field, so a placeholder answers the same
-// question a resolved project would without inventing a population fact.
+// resolved. models.Query.Admits refuses a nil project, and the only row-half
+// field that reads the project is the project facet, which its empty slug
+// refuses, so a placeholder answers every other question a resolved project
+// would without inventing a population fact.
 var EmptyFilterQueryProject = &models.Project{}
 
 // ClausesForField returns the clauses of one field, in canonical order.
@@ -228,6 +230,7 @@ func CommonFilterClauses(f *CommonFilterState) []models.QueryClause {
 		clauses = AppendFilterClause(clauses, models.QueryFieldContext,
 			models.QueryOperatorNone, "")
 	}
+	clauses = append(clauses, ProjectFilterClauses(f.Projects)...)
 	clauses = append(clauses, DueFilterClauses(f.DueDate)...)
 	clauses = append(clauses, HierarchyFilterClauses(f.Hierarchy)...)
 	clauses = append(clauses, DependencyFilterClauses(f.Dependency)...)
@@ -296,6 +299,17 @@ func ContextFilterClauses(names []string) []models.QueryClause {
 		}
 		clauses = AppendFilterClause(clauses, models.QueryFieldContext,
 			models.QueryOperatorIs, name)
+	}
+	return clauses
+}
+
+// ProjectFilterClauses spells one project picker result: one union clause per
+// slug.
+func ProjectFilterClauses(slugs []string) []models.QueryClause {
+	clauses := make([]models.QueryClause, 0, len(slugs))
+	for _, slug := range slugs {
+		clauses = AppendFilterClause(clauses, models.QueryFieldProject,
+			models.QueryOperatorIs, slug)
 	}
 	return clauses
 }

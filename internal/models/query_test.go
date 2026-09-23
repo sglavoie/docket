@@ -80,6 +80,8 @@ func TestNewQueryClauseRejectsAValueTheFieldCannotEvaluate(t *testing.T) {
 		{"population outside the vocabulary", QueryFieldParked, QueryOperatorIs, "exclude"},
 		{"flag carrying a value", QueryFieldStale, QueryOperatorPresent, "90"},
 		{"empty free text", QueryFieldText, QueryOperatorContains, "   "},
+		{"blank project slug", QueryFieldProject, QueryOperatorIs, " "},
+		{"project slug with a space", QueryFieldProject, QueryOperatorIs, "a b"},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -114,8 +116,10 @@ func TestQueryCanonicalOrdersClausesByFieldThenPolarityThenValue(t *testing.T) {
 		negativeClause(t, QueryFieldTag, QueryOperatorIs, "auth"),
 		positiveClause(t, QueryFieldTag, QueryOperatorIs, "auth"),
 		positiveClause(t, QueryFieldPriority, QueryOperatorAtLeast, "2"),
+		positiveClause(t, QueryFieldProject, QueryOperatorIs, "beta"),
+		positiveClause(t, QueryFieldProject, QueryOperatorIs, "alpha"),
 	}}
-	if got, want := query.Canonical().String(), "!2+ #auth #zebra -#auth ?stale"; got != want {
+	if got, want := query.Canonical().String(), "!2+ #auth #zebra -#auth %alpha %beta ?stale"; got != want {
 		t.Fatalf("canonical string = %q, want %q", got, want)
 	}
 }

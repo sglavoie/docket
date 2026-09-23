@@ -13,12 +13,13 @@ import (
 
 // admitsProject applies the one axis whose subject is the project rather than
 // the row. A negated scope drops the whole project, which is what makes
-// "%client -%client-archive" a narrowing rather than a per-row filter.
+// "%client -%client-archive" a narrowing rather than a per-row filter. Several
+// positive scopes union, since a project either carries one prefix or another.
 func (p *SearchPredicates) AdmitsProject(project *models.Project) bool {
 	if p == nil {
 		return true
 	}
-	if p.projectPrefix == "" && len(p.excludedProjects) == 0 {
+	if len(p.projectPrefixes) == 0 && len(p.excludedProjects) == 0 {
 		return true
 	}
 	if project == nil {
@@ -29,7 +30,12 @@ func (p *SearchPredicates) AdmitsProject(project *models.Project) bool {
 			return false
 		}
 	}
-	return p.projectPrefix == "" || projectCarriesPrefix(project, p.projectPrefix)
+	if len(p.projectPrefixes) == 0 {
+		return true
+	}
+	return slices.ContainsFunc(p.projectPrefixes, func(prefix string) bool {
+		return projectCarriesPrefix(project, prefix)
+	})
 }
 
 func projectCarriesPrefix(project *models.Project, prefix string) bool {

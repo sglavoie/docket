@@ -44,6 +44,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.filters.NewFilterTagsPicker(m, request)
 	case operation.ValueProviderFilterContexts:
 		return m.filters.NewFilterContextsPicker(m, request)
+	case operation.ValueProviderFilterProjects:
+		return m.filters.NewFilterProjectsPicker(m, request)
 	case operation.ValueProviderFilterDue:
 		return m.filters.NewFilterDuePicker(m, request)
 	case operation.ValueProviderFilterCompletionAge:

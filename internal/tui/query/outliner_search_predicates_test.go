@@ -207,6 +207,25 @@ func TestSearchNegationsSubtractWhatTheirTwinsSelect(t *testing.T) {
 	}
 }
 
+// Two positive project scopes union: each project named by either prefix is
+// admitted and one named by neither is not.
+func TestSearchRepeatedProjectScopeIsAUnion(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Slug: "alpha", Name: "Alpha"}
+	beta := &models.Project{ID: "beta", Slug: "beta", Name: "Beta"}
+	gamma := &models.Project{ID: "gamma", Slug: "gamma", Name: "Gamma"}
+	projects := []*models.Project{alpha, beta, gamma}
+	_, gate := CompileSearchQuery("%alpha %beta", projects, nil, models.Query{})
+	if gate.Invalid() {
+		t.Fatalf("%%alpha %%beta produced guidance %q", gate.GuidanceText())
+	}
+	if !gate.AdmitsProject(alpha) || !gate.AdmitsProject(beta) {
+		t.Fatal("a project named by the union was refused")
+	}
+	if gate.AdmitsProject(gamma) {
+		t.Fatal("a project named by neither scope was admitted")
+	}
+}
+
 // TestSearchDerivedPredicatesAnswerComputedQuestions covers the ? set end to end
 // through the same gate a query runs on. The two reference predicates are
 // structural on purpose: one reads the task's own outgoing list and the other

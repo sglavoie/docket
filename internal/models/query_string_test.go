@@ -19,6 +19,7 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 		{"##home", QueryFieldContext, QueryOperatorIs, "home"},
 		{"##ho*", QueryFieldContext, QueryOperatorPrefix, "ho"},
 		{"##0", QueryFieldContext, QueryOperatorNone, ""},
+		{"%project-beta", QueryFieldProject, QueryOperatorIs, "project-beta"},
 		{"@overdue", QueryFieldDue, QueryOperatorIs, QueryDueOverdue},
 		{"@2026-09-01", QueryFieldDue, QueryOperatorIs, "2026-09-01"},
 		{"@+3d", QueryFieldDue, QueryOperatorIs, "+3d"},
@@ -73,6 +74,7 @@ func TestQueryStringRoundTripsThroughParseQuery(t *testing.T) {
 		"~project-beta:task-7 !0 ##0 @0 +#0",
 		"@+6h @@2026-09-01 ?completed:90d ?parent -?child ?leaf ?blocked -?blocking",
 		"+parked +archived:only +#infra",
+		"%alpha %beta -%gamma",
 	}
 	for _, input := range inputs {
 		t.Run(input, func(t *testing.T) {
