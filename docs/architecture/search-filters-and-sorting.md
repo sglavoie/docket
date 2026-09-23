@@ -584,6 +584,13 @@ Group order never changes. `appendStateGroupForests` walks projects in catalog
 order and sorts inside each project, so a sort reorders tasks within their group
 and never the sequence of the groups themselves.
 
+The default is not stored order. With `SortByDefault`, `sortPrimaryTaskTree`
+stably sorts every sibling run by `models.EffectivePriority` and compares
+nothing else, so manual order is the tiebreaker inside one priority band. That
+band is also `visibleSiblings`' window wherever `sortsByPriorityBand` holds, so
+`J`/`K` never rewrites stored order across bands where no row would move. An
+explicit field replaces the priority key rather than refining it.
+
 A fixed-order mode owns its order, so `o` there records the field on the durable
 `treeSort` and reports that the mode keeps its own order rather than silently
 doing nothing. The recorded field installs on the next transition into All,

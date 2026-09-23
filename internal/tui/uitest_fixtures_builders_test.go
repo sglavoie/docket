@@ -238,6 +238,9 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 		unicodeTask := newFixtureTask(p, "国際化 🚀 café résumé release check")
 		unicodeTask.Description = "Unicode display-width and visible-search acceptance row."
 		unicodeTask.Tags = []string{"i18n", "release"}
+		// Priority 1 keeps this row first under the default priority order, where
+		// the narrow-width and Peek scenarios read it from the launch cursor.
+		unicodeTask.Priority = 1
 		unicodeTask.ApplyWorkflowState(models.StateDoing)
 
 		for i := 0; i < 240; i++ {

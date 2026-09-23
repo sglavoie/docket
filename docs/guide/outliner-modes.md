@@ -59,7 +59,11 @@ list — the explanation of why the view is empty is printed underneath it.
 Project groups put pinned projects first and then sort alphabetically, and that
 order stays the same across sections and modes. Tasks inside a group keep
 hierarchy, the parent marker, and the mode's own sort; `J`/`K` never move a
-task across a project group.
+task across a project group. With no sort chosen, All, Inbox, and Backlog order
+each run of siblings by priority, `!1` first and unset last, and your manual
+order breaks ties: `J`/`K` trade places only with a sibling of the same
+priority, so a reorder always moves a row you can see. Pinned, Today, Next, and
+Review keep the order you gave them.
 
 A project header also names the pressure its group holds, as `overdue 2` and
 `today 3` after the count, so folding the group does not hide what is urgent

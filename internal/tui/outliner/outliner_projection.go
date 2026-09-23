@@ -495,15 +495,25 @@ func excludeTaskTreePromotingChildren(
 	return result
 }
 
+// sortPrimaryTaskTree orders every sibling run of a tree-order projection. The
+// default order is priority, 1 first and unset last, with manual order breaking
+// ties: the sort is stable and compares nothing else, so J/K still decides the
+// order inside one priority band. An explicit sort field replaces it.
 func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task {
-	if m.Sort.Field == query.SortByDefault || len(tasks) == 0 {
+	if len(tasks) == 0 {
 		return tasks
 	}
 	sorted := slices.Clone(tasks)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := query.CompareTasks(sorted[i], sorted[j], m.Sort.Field)
-		return query.ApplySortDirection(cmp, m.Sort.Ascending)
-	})
+	if m.Sort.Field == query.SortByDefault {
+		sort.SliceStable(sorted, func(i, j int) bool {
+			return comparePriorityBand(sorted[i], sorted[j]) < 0
+		})
+	} else {
+		sort.SliceStable(sorted, func(i, j int) bool {
+			cmp := query.CompareTasks(sorted[i], sorted[j], m.Sort.Field)
+			return query.ApplySortDirection(cmp, m.Sort.Ascending)
+		})
+	}
 	for i, task := range sorted {
 		if len(task.Children) == 0 {
 			continue
@@ -513,6 +523,21 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 		sorted[i] = &clone
 	}
 	return sorted
+}
+
+// comparePriorityBand is the default tree order's only key. Unset priority sorts
+// after every set one.
+func comparePriorityBand(a, b *models.Task) int {
+	return cmp.Compare(models.EffectivePriority(a.Priority), models.EffectivePriority(b.Priority))
+}
+
+// sortsByPriorityBand reports whether a row sits in a sibling run the default
+// priority order arranged, which is where J/K may only trade places inside one
+// priority band: a swap across bands rewrites stored order and moves no row.
+func (m *OutlinerModel) sortsByPriorityBand(row OutlinerRow) bool {
+	return m.Sort.Field == query.SortByDefault &&
+		m.ActiveOutlinerModeEntry().SupportsManualSort() &&
+		!rowKeepsManualOrder(row)
 }
 
 // flattenPrimaryProjectTrees renders one project group per tree. Pinned

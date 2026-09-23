@@ -262,7 +262,7 @@ func TestDueModeNestsRelativesOnlyWithinSameDateBucket(t *testing.T) {
 	}
 }
 
-func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
+func TestBacklogOrdersSiblingsByPriorityThenManualOrder(t *testing.T) {
 	parent := primaryRowsTask("parent", models.StateBacklog)
 	child := primaryRowsTask("child", models.StateBacklog)
 	child.ParentID = &parent.ID
@@ -270,16 +270,19 @@ func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
 	firstSibling.Priority = models.PriorityMin
 	secondSibling := primaryRowsTask("second-sibling", models.StateBacklog)
 	secondSibling.Priority = models.PriorityMax
-	project := primaryRowsProject("alpha", parent, child, firstSibling, secondSibling)
+	thirdSibling := primaryRowsTask("third-sibling", models.StateBacklog)
+	thirdSibling.Priority = models.PriorityMin
+	project := primaryRowsProject("alpha", parent, child, firstSibling, secondSibling, thirdSibling)
 
 	outlinerView, _ := primaryRowsOutliner(project)
 	outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{
+		firstSibling.ID,
+		thirdSibling.ID,
+		secondSibling.ID,
 		parent.ID,
 		child.ID,
-		firstSibling.ID,
-		secondSibling.ID,
 	}) {
-		t.Fatalf("Backlog rows = %v, want manual hierarchy order", got)
+		t.Fatalf("Backlog rows = %v, want priority order with manual order breaking ties", got)
 	}
 }

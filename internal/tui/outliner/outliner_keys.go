@@ -231,7 +231,8 @@ func parentIDOf(t *models.Task) string {
 // confines reorders to a single section bucket (and to a single project in
 // cross-project mode) without dereferencing potentially stale cloned-parent
 // Children slices, and without depending on a header row being drawn between
-// two groups.
+// two groups. Under the default priority order the window is also one priority
+// band, since that is the only run manual order still arranges.
 func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	if cursorIdx < 0 || cursorIdx >= len(m.Rows) {
 		return nil
@@ -242,6 +243,7 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	}
 	cursorParentID := parentIDOf(cursorRow.Task)
 	cursorProjectID := cursorRow.ProjectID
+	priorityBanded := m.sortsByPriorityBand(cursorRow)
 
 	// isBoundary reports whether a row terminates the reorder window. Anything
 	// that is not a task row ends it — headers, separators, checklist items — and
@@ -264,6 +266,9 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 			return false
 		}
 		if row.ProjectID != cursorProjectID {
+			return false
+		}
+		if priorityBanded && comparePriorityBand(row.Task, cursorRow.Task) != 0 {
 			return false
 		}
 		return true

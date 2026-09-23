@@ -465,7 +465,8 @@ list needs at the floor.
 
 Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
-reorders tasks within their group only.
+reorders tasks within their group only. Default tree order is priority, stored
+order breaking ties, and `J`/`K` stay in one band via `sortsByPriorityBand`.
 
 Notice and status render only in the shell-pinned strip, whose height
 `StatusStripHeight` reserves from `ComputeOutlinerViewport`. Every view status
