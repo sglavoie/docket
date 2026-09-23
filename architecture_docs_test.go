@@ -225,8 +225,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"### Sorting axis",
 		"The `o` chord is the third axis beside `f` and `F`",
 		"Repeating a field key reverses that field",
-		"Manual order is never touched",
-		"Group order never changes",
+		"Sections never move; the axis reaches everything inside one.",
+		"Project blocks rank by their best task.",
 		"### Named lenses",
 		"persisted as `config.NamedLens` in the portable `lenses.json` domain, while the theme, the\n" +
 			"menu bar's visibility, and the active-lens pointer stay machine-local",

@@ -191,8 +191,9 @@ decorates successes only, so a refusal cannot advance; and
 themselves, and re-aims an in-flight reload at the row they chose.
 
 Project grouping is universal, not per-mode: whenever the Outliner is not showing
-one project's own view, every mode groups its rows by project and puts pinned
-projects first and then sorts alphabetically. What differs is how a group states
+one project's own view, every mode groups its rows by project and ranks each
+group by its best task under the active order, pinned projects first and then
+alphabetically breaking a tie. What differs is how a group states
 its identity. While it is expanded it costs no row at all: each of its task rows
 carries a compact `[label]` in a column after the title and the run of rows is
 the group.

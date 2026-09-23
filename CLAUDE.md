@@ -463,10 +463,10 @@ inside it — hidden, not shrunk — since the tab bar and the footer name no li
 route while it holds every key, and the rows they cost are the rows a picker's
 list needs at the floor.
 
-Manual order is never touched by the sort axis, and that holds by construction
-rather than by a guard — do not add one. Group order never changes: a sort
-reorders tasks within their group only. Default tree order is priority, stored
-order breaking ties, and `J`/`K` stay in one band via `sortsByPriorityBand`.
+Sections keep their fixed order; inside one, tasks and project blocks follow
+`compareSectionTasks`, priority by default, and a block ranks by its best task.
+Stored, planning, and pin order only break ties; Due and Recent break theirs by
+priority. `J`/`K` stay in one band on every row.
 
 Notice and status render only in the shell-pinned strip, whose height
 `StatusStripHeight` reserves from `ComputeOutlinerViewport`. Every view status

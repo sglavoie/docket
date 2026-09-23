@@ -236,9 +236,9 @@ tag rejection behavior rather than priority's, and the asymmetry is deliberate.
 Priority captures `!9` in order to diagnose a typo, because `!` followed by a
 digit is not something a title says by accident; `*` occurs in ordinary prose and
 in code identifiers, so pin would diagnose far more real titles than typos.
-Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
-pinned section's manual order and every outline apply would otherwise reshuffle
-it.
+Re-pinning an already-pinned task preserves `PinnedAt`, since that field breaks
+the pinned section's ties and every outline apply would otherwise reshuffle
+them.
 
 `&link` is the attachment sigil, and it reuses `*pin`'s rejection behavior for
 the same reason: `&` is ordinary prose. `validAttachmentTokenValue` is a purely

@@ -330,7 +330,11 @@ func (m *OutlinerModel) appendFilteredModeSections(
 		for _, row := range rows {
 			projectedRows = append(projectedRows, m.outlinerRowFromModeRow(row))
 		}
-		groups := m.groupSectionRowsByProject(projectedRows, sectionForestOptions{rankRootsBySubtree: true})
+		var lead func(a, b int) int
+		if section.Lead != nil {
+			lead = func(a, b int) int { return section.Lead(rows[a], rows[b]) }
+		}
+		groups := m.groupSectionRowsByProject(projectedRows, sectionForestOptions{rankRootsBySubtree: true}, lead)
 		total := 0
 		for _, group := range groups {
 			total += group.forest.count

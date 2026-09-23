@@ -826,17 +826,6 @@ func uxDailyUseIntegratedSettle(t *testing.T, driver *UITestDriver) {
 	uxClarityPress(t, driver, UITestAction{Type: UITestActionWait})
 }
 
-// uxDailyUseIntegratedLead is the leading run of a title that survives the
-// narrowest reviewed row, which is what a `contains` over a clipped row may ask
-// for.
-func uxDailyUseIntegratedLead(title string) string {
-	const runes = 20
-	if len([]rune(title)) <= runes {
-		return title
-	}
-	return string([]rune(title)[:runes])
-}
-
 // uxDailyUseIntegratedRowsContaining counts the screen rows holding needle,
 // which is how "stated once" is asked of a rendered frame.
 func uxDailyUseIntegratedRowsContaining(plain, needle string) int {

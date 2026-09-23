@@ -76,7 +76,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"filter-chord-hierarchy.json",
 		"filter-chord-clear.json",
 		"sort-chord-axis.json",
-		"sort-manual-order-preserved.json",
+		"sort-orders-pinned.json",
 		"sort-fixed-order-modes.json",
 		"sort-project-group-order.json",
 		"named-lens-ordinal-apply.json",

@@ -1316,8 +1316,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"Emit project group headers through the shared `appendProjectGroupHeader` kernel, never a per-mode copy",
 		"`ComputeOutlinerViewport` is the single window authority",
 		"Never recompute the window in a key handler",
-		"Manual order is never touched by the sort axis, and that holds by construction rather than by a guard " +
-			"— do not add one. Group order never changes",
+		"Stored, planning, and pin order only break ties; Due and Recent break theirs by priority.",
 		"Arming stays in the one deferred closure in `AppModel.Update`",
 		"The interactive TUI ignores an inherited `NO_COLOR`",
 		"A value provider is exactly one of `TextEntry()`",

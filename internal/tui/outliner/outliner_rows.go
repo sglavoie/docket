@@ -5,7 +5,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -244,6 +243,10 @@ type OutlinerModeSection struct {
 	Name        string
 	CollapseKey string
 	Rows        []OutlinerModeRow
+	// Lead is the section's order without its stored-order tiebreak, which is
+	// what a project block ranks by; a tie falls to the project order. Nil
+	// ranks blocks by position alone.
+	Lead func(a, b OutlinerModeRow) int
 }
 
 const canonicalModeCollapseKeyPrefix = "_mode:"
@@ -276,11 +279,6 @@ type orderedModeTask struct {
 	row          OutlinerModeRow
 	projectOrder int
 	taskOrder    int
-}
-
-type recentModeTask struct {
-	orderedModeTask
-	key time.Time
 }
 
 // orderedModeTasks collects the in-scope candidate tasks in the caller's
@@ -370,12 +368,21 @@ func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 		buckets[bucket] = append(buckets[bucket], candidate)
 	}
 
+	// A deadline leads, priority breaks a same-day tie, and stored order breaks
+	// the rest.
+	lead := func(l, r OutlinerModeRow) int {
+		if days := util.DaysBetween(*l.Task.DueDate, *r.Task.DueDate); days != 0 {
+			return -cmp.Compare(days, 0)
+		}
+		return comparePriorityBand(l.Task, r.Task)
+	}
 	var result []OutlinerModeSection
 	for i := range sections {
+		sections[i].Lead = lead
 		sort.SliceStable(buckets[i], func(left, right int) bool {
 			l, r := buckets[i][left], buckets[i][right]
-			if days := util.DaysBetween(*l.row.Task.DueDate, *r.row.Task.DueDate); days != 0 {
-				return days > 0
+			if c := lead(l.row, r.row); c != 0 {
+				return c < 0
 			}
 			return compareOrderedModeTasks(l, r) < 0
 		})
@@ -403,7 +410,7 @@ func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	}
 	now := in.now()
 
-	buckets := make([][]recentModeTask, len(sections))
+	buckets := make([][]orderedModeTask, len(sections))
 	for _, candidate := range orderedModeTasks(in) {
 		task := candidate.row.Task
 		if !isComputedOpenWork(task, in) {
@@ -423,17 +430,26 @@ func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
 		case age <= 7:
 			bucket = 2
 		}
-		buckets[bucket] = append(buckets[bucket], recentModeTask{orderedModeTask: candidate, key: key})
+		buckets[bucket] = append(buckets[bucket], candidate)
 	}
 
+	// The newest touch leads, priority breaks an exact tie, and stored order
+	// breaks the rest.
+	lead := func(l, r OutlinerModeRow) int {
+		if c := in.recencyKey(r.Task, r.Project).Compare(in.recencyKey(l.Task, l.Project)); c != 0 {
+			return c
+		}
+		return comparePriorityBand(l.Task, r.Task)
+	}
 	var result []OutlinerModeSection
 	for i := range sections {
+		sections[i].Lead = lead
 		sort.SliceStable(buckets[i], func(left, right int) bool {
 			l, r := buckets[i][left], buckets[i][right]
-			if !l.key.Equal(r.key) {
-				return l.key.After(r.key)
+			if c := lead(l.row, r.row); c != 0 {
+				return c < 0
 			}
-			return compareOrderedModeTasks(l.orderedModeTask, r.orderedModeTask) < 0
+			return compareOrderedModeTasks(l, r) < 0
 		})
 		for _, candidate := range buckets[i] {
 			candidate.row.Breadcrumb = taskAncestorBreadcrumb(candidate.row.Task)

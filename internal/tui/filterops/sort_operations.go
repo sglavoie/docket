@@ -2,7 +2,6 @@ package filterops
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
@@ -126,11 +125,7 @@ func (c *Controller) ExecuteSortOperation(shell Shell, invocation operation.Oper
 	out.TreeSort = out.Sort
 	out.Population.Invalidate()
 	outliner.RebuildOutlinerPreservingCursor(out)
-	status := "Sorting by " + sortStateLabel(out.Sort)
-	if exempt := out.ManualOrderSectionNames(); len(exempt) > 0 {
-		status += " · " + strings.Join(exempt, ", ") + " keep manual order"
-	}
-	return operation.OperationHandlerResult{Status: status}
+	return operation.OperationHandlerResult{Status: "Sorting by " + sortStateLabel(out.Sort)}
 }
 
 func sortStateLabel(state query.SortState) string {

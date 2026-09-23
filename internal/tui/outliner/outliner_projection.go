@@ -123,24 +123,30 @@ type projectRowGroup struct {
 }
 
 // groupSectionRowsByProject splits an ordered section projection into
-// per-project forests. Groups are sorted with pinned projects first, then by
-// their display label alphabetically, so every section keeps one consistent
-// project-header order. No parent/child edge can cross a group boundary because
-// a parent identity is always project-local, so splitting before building the
-// forests is equivalent to building one forest over the whole section.
+// per-project forests. The rows arrive sorted by the section's own order, so a
+// group's earliest member is its best one, and a group ranks by that member
+// under lead — the active sort, a deadline, a touch — with
+// compareProjectGroupIDs, pinned projects first and then alphabetical, breaking
+// a tie. lead compares two source indexes; nil ranks by position alone. No
+// parent/child edge can cross a group boundary because a parent identity is
+// always project-local, so splitting before building the forests is equivalent
+// to building one forest over the whole section.
 func (m *OutlinerModel) groupSectionRowsByProject(
 	rows []OutlinerRow,
 	opts sectionForestOptions,
+	lead func(a, b int) int,
 ) []projectRowGroup {
 	groups := make([]projectRowGroup, 0, len(rows))
+	earliest := make([]int, 0, len(rows))
 	indexes := make(map[string]int, len(rows))
 	grouped := make([][]OutlinerRow, 0, len(rows))
-	for _, row := range rows {
+	for sourceIndex, row := range rows {
 		index, ok := indexes[row.ProjectID]
 		if !ok {
 			index = len(groups)
 			indexes[row.ProjectID] = index
 			groups = append(groups, projectRowGroup{projectID: row.ProjectID})
+			earliest = append(earliest, sourceIndex)
 			grouped = append(grouped, nil)
 		}
 		grouped[index] = append(grouped[index], row)
@@ -148,10 +154,25 @@ func (m *OutlinerModel) groupSectionRowsByProject(
 	for index := range groups {
 		groups[index].forest = m.buildSectionRowForestWith(grouped[index], opts)
 	}
-	sort.SliceStable(groups, func(i, j int) bool {
-		return m.compareProjectGroupIDs(groups[i].projectID, groups[j].projectID) < 0
+	order := make([]int, len(groups))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		left, right := order[i], order[j]
+		if lead == nil {
+			return earliest[left] < earliest[right]
+		}
+		if c := lead(earliest[left], earliest[right]); c != 0 {
+			return c < 0
+		}
+		return m.compareProjectGroupIDs(groups[left].projectID, groups[right].projectID) < 0
 	})
-	return groups
+	ranked := make([]projectRowGroup, 0, len(groups))
+	for _, index := range order {
+		ranked = append(ranked, groups[index])
+	}
+	return ranked
 }
 
 func (m *OutlinerModel) compareProjectGroupIDs(leftID, rightID string) int {
@@ -447,18 +468,14 @@ func (m *OutlinerModel) appendStateGroupForests(
 	if m.sectionCollapsed(collapseKey) {
 		return
 	}
-	ordered := slices.Clone(forests)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		leftID, rightID := "", ""
-		if ordered[i].project != nil {
-			leftID = ordered[i].project.ID
-		}
-		if ordered[j].project != nil {
-			rightID = ordered[j].project.ID
-		}
-		return m.compareProjectGroupIDs(leftID, rightID) < 0
-	})
-	for _, item := range ordered {
+	blocks := make([]projectBlock[stateGroupProjectForest], 0, len(forests))
+	for _, item := range forests {
+		blocks = append(blocks, projectBlock[stateGroupProjectForest]{
+			item: item, project: item.project, best: m.bestSectionTask(item.forest.tasks()),
+		})
+	}
+	for _, block := range rankProjectBlocks(m, blocks) {
+		item := block.item
 		projectID := ""
 		if m.Project == nil {
 			projectID = item.project.ID
@@ -495,25 +512,17 @@ func excludeTaskTreePromotingChildren(
 	return result
 }
 
-// sortPrimaryTaskTree orders every sibling run of a tree-order projection. The
-// default order is priority, 1 first and unset last, with manual order breaking
-// ties: the sort is stable and compares nothing else, so J/K still decides the
-// order inside one priority band. An explicit sort field replaces it.
+// sortPrimaryTaskTree orders every sibling run of a tree-order projection by
+// compareSectionTasks. The sort is stable, so stored order still decides a tie
+// and J/K still arranges the run inside one priority band.
 func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task {
 	if len(tasks) == 0 {
 		return tasks
 	}
 	sorted := slices.Clone(tasks)
-	if m.Sort.Field == query.SortByDefault {
-		sort.SliceStable(sorted, func(i, j int) bool {
-			return comparePriorityBand(sorted[i], sorted[j]) < 0
-		})
-	} else {
-		sort.SliceStable(sorted, func(i, j int) bool {
-			cmp := query.CompareTasks(sorted[i], sorted[j], m.Sort.Field)
-			return query.ApplySortDirection(cmp, m.Sort.Ascending)
-		})
-	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return m.compareSectionTasks(sorted[i], sorted[j]) < 0
+	})
 	for i, task := range sorted {
 		if len(task.Children) == 0 {
 			continue
@@ -525,38 +534,116 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 	return sorted
 }
 
-// comparePriorityBand is the default tree order's only key. Unset priority sorts
+// compareSectionTasks is the one order every Outliner section applies to its
+// tasks: priority under the default sort, the explicit field and direction
+// otherwise. A tie is 0, so a stable sort keeps the source order — stored,
+// planning, or pin order — as the tiebreaker.
+func (m *OutlinerModel) compareSectionTasks(a, b *models.Task) int {
+	if m.Sort.Field == query.SortByDefault {
+		return comparePriorityBand(a, b)
+	}
+	c := query.CompareTasks(a, b, m.Sort.Field)
+	if c == 0 {
+		return 0
+	}
+	if query.ApplySortDirection(c, m.Sort.Ascending) {
+		return -1
+	}
+	return 1
+}
+
+// sortSectionRows stably orders a section's rows by compareSectionTasks ahead
+// of grouping, so both the tasks and the project blocks follow the active order.
+func (m *OutlinerModel) sortSectionRows(rows []OutlinerRow) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		return m.compareSectionTasks(rows[i].Task, rows[j].Task) < 0
+	})
+}
+
+// sectionTaskLead is groupSectionRowsByProject's lead for a section sorted by
+// sortSectionRows alone.
+func (m *OutlinerModel) sectionTaskLead(rows []OutlinerRow) func(a, b int) int {
+	return func(a, b int) int {
+		return m.compareSectionTasks(rows[a].Task, rows[b].Task)
+	}
+}
+
+// comparePriorityBand is the default order's only key. Unset priority sorts
 // after every set one.
 func comparePriorityBand(a, b *models.Task) int {
 	return cmp.Compare(models.EffectivePriority(a.Priority), models.EffectivePriority(b.Priority))
 }
 
-// sortsByPriorityBand reports whether a row sits in a sibling run the default
-// priority order arranged, which is where J/K may only trade places inside one
-// priority band: a swap across bands rewrites stored order and moves no row.
-func (m *OutlinerModel) sortsByPriorityBand(row OutlinerRow) bool {
+// sortsByPriorityBand reports whether the tree's sibling runs are arranged by
+// the default priority order, which is where J/K may only trade places inside
+// one priority band: a swap across bands rewrites stored order and moves no row.
+func (m *OutlinerModel) sortsByPriorityBand() bool {
 	return m.Sort.Field == query.SortByDefault &&
-		m.ActiveOutlinerModeEntry().SupportsManualSort() &&
-		!rowKeepsManualOrder(row)
+		m.ActiveOutlinerModeEntry().SupportsManualSort()
 }
 
-// flattenPrimaryProjectTrees renders one project group per tree. Pinned
-// projects lead, followed by an alphabetical order, and each group keeps its
-// own tree-prefix run, so the last root of a group closes with the terminal
-// connector rather than continuing into the next project.
-func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode chrome.OutlinerModeID) {
-	ordered := slices.Clone(trees)
-	sort.SliceStable(ordered, func(i, j int) bool {
-		leftID, rightID := "", ""
-		if ordered[i].project != nil {
-			leftID = ordered[i].project.ID
+// bestSectionTask returns the task that leads tasks under compareSectionTasks,
+// the one a project block ranks by.
+func (m *OutlinerModel) bestSectionTask(tasks []*models.Task) *models.Task {
+	var best *models.Task
+	for _, task := range tasks {
+		if task != nil && (best == nil || m.compareSectionTasks(task, best) < 0) {
+			best = task
 		}
-		if ordered[j].project != nil {
-			rightID = ordered[j].project.ID
+	}
+	return best
+}
+
+// projectBlock is one project's block of a tree-built section, carrying the
+// best task it ranks by.
+type projectBlock[T any] struct {
+	item    T
+	project *models.Project
+	best    *models.Task
+}
+
+// rankProjectBlocks orders project blocks by their best task, with
+// compareProjectGroupIDs breaking ties. A block holding no task ranks last.
+func rankProjectBlocks[T any](m *OutlinerModel, blocks []projectBlock[T]) []projectBlock[T] {
+	ranked := slices.Clone(blocks)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		left, right := ranked[i], ranked[j]
+		switch {
+		case left.best != nil && right.best == nil:
+			return true
+		case left.best == nil && right.best != nil:
+			return false
+		case left.best != nil && right.best != nil:
+			if c := m.compareSectionTasks(left.best, right.best); c != 0 {
+				return c < 0
+			}
+		}
+		leftID, rightID := "", ""
+		if left.project != nil {
+			leftID = left.project.ID
+		}
+		if right.project != nil {
+			rightID = right.project.ID
 		}
 		return m.compareProjectGroupIDs(leftID, rightID) < 0
 	})
-	for _, tree := range ordered {
+	return ranked
+}
+
+// flattenPrimaryProjectTrees renders one project group per tree. A group ranks
+// by its best task, pinned projects and then an alphabetical order breaking
+// ties, and each group keeps its own tree-prefix run, so the last root of a
+// group closes with the terminal connector rather than continuing into the next
+// project.
+func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode chrome.OutlinerModeID) {
+	blocks := make([]projectBlock[primaryProjectTree], 0, len(trees))
+	for _, tree := range trees {
+		blocks = append(blocks, projectBlock[primaryProjectTree]{
+			item: tree, project: tree.project, best: m.bestSectionTask(flattenTaskPointers(tree.roots)),
+		})
+	}
+	for _, block := range rankProjectBlocks(m, blocks) {
+		tree := block.item
 		if tree.project == nil {
 			continue
 		}
@@ -694,17 +781,10 @@ func buildPinnedModeProjection(input OutlinerModeInput) pinnedModeProjection {
 	}
 	sort.SliceStable(candidates, func(i, j int) bool {
 		left, right := candidates[i], candidates[j]
-		switch {
-		case left.row.Task.PinnedAt != nil && right.row.Task.PinnedAt == nil:
-			return true
-		case left.row.Task.PinnedAt == nil && right.row.Task.PinnedAt != nil:
-			return false
-		case left.row.Task.PinnedAt != nil && right.row.Task.PinnedAt != nil &&
-			!left.row.Task.PinnedAt.Equal(*right.row.Task.PinnedAt):
-			return left.row.Task.PinnedAt.After(*right.row.Task.PinnedAt)
-		default:
-			return compareOrderedModeTasks(left, right) < 0
+		if c := comparePinnedAt(left.row.Task, right.row.Task); c != 0 {
+			return c < 0
 		}
+		return compareOrderedModeTasks(left, right) < 0
 	})
 	projection.rows = make([]OutlinerModeRow, 0, len(candidates))
 	for _, candidate := range candidates {
@@ -715,6 +795,20 @@ func buildPinnedModeProjection(input OutlinerModeInput) pinnedModeProjection {
 		projection.rows = append(projection.rows, row)
 	}
 	return projection
+}
+
+// comparePinnedAt is pin order: newest pin first, a task without a pin instant
+// last.
+func comparePinnedAt(a, b *models.Task) int {
+	switch {
+	case a.PinnedAt != nil && b.PinnedAt == nil:
+		return -1
+	case a.PinnedAt == nil && b.PinnedAt != nil:
+		return 1
+	case a.PinnedAt == nil && b.PinnedAt == nil:
+		return 0
+	}
+	return b.PinnedAt.Compare(*a.PinnedAt)
 }
 
 func (m *OutlinerModel) buildPrimaryModeRowsWithInput(

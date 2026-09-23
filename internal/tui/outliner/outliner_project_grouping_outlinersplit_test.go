@@ -48,17 +48,22 @@ func TestFlatModesGroupCrossProjectRowsByProject(t *testing.T) {
 	}
 }
 
-func TestFlatModesPlacePinnedProjectGroupsFirst(t *testing.T) {
+// TestFlatModesBreakProjectGroupTiesPinnedFirst holds the tiebreak under the
+// block ranking: two groups whose best rows tie put the pinned project first.
+func TestFlatModesBreakProjectGroupTiesPinnedFirst(t *testing.T) {
 	for _, mode := range flatGroupingModes {
 		t.Run(string(mode), func(t *testing.T) {
 			fixture := newGroupingFixture(t, mode)
 			fixture.beta.Pinned = true
+			alphaLead, betaLead := fixture.alpha.Tasks[0], fixture.beta.Tasks[0]
+			betaLead.DueDate = alphaLead.DueDate
+			betaLead.UpdatedAt = alphaLead.UpdatedAt
 			outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
 			outliner.SelectOutlinerMode(mode)
 
 			groups := projectGroupOrder(outliner)
 			if !slices.Equal(groups, []string{fixture.beta.ID, fixture.alpha.ID}) {
-				t.Fatalf("%s project groups = %v, want pinned projects first", mode, groups)
+				t.Fatalf("%s project groups = %v, want the pinned project first on a tie", mode, groups)
 			}
 		})
 	}
@@ -98,7 +103,9 @@ func TestFlatModeProjectGroupsGiveWayToOneFocusedHeader(t *testing.T) {
 	}
 }
 
-func TestDueProjectGroupsAreAlphabetical(t *testing.T) {
+// TestDueProjectGroupsRankByTheirEarliestDeadline holds that a Due bucket's
+// blocks follow the bucket's own order rather than the project names.
+func TestDueProjectGroupsRankByTheirEarliestDeadline(t *testing.T) {
 	alphaTask := groupingDueTask("alpha-task", -1)
 	betaTask := groupingDueTask("beta-task", -3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -107,15 +114,18 @@ func TestDueProjectGroupsAreAlphabetical(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeDue)
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
-		t.Fatalf("Due rows = %v, want rows grouped by alphabetical project headers", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaTask.ID, alphaTask.ID}) {
+		t.Fatalf("Due rows = %v, want the older deadline's group first", got)
 	}
-	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Due project groups = %v, want alphabetical order", groups)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{beta.ID, alpha.ID}) {
+		t.Fatalf("Due project groups = %v, want the older deadline's group first", groups)
 	}
 }
 
-func TestRecentProjectGroupsStayAlphabeticalAcrossTriageAndReentry(t *testing.T) {
+// TestRecentProjectGroupsHoldTheirOrderAcrossTriage holds that Recent's blocks
+// rank by their newest touch, and that the frozen recency keys keep a triage
+// touch from lifting a block until the mode is entered again.
+func TestRecentProjectGroupsHoldTheirOrderAcrossTriage(t *testing.T) {
 	alphaTask := recentTask("alpha-task", models.StateBacklog, 4)
 	betaTask := recentTask("beta-task", models.StateBacklog, 3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -123,19 +133,19 @@ func TestRecentProjectGroupsStayAlphabeticalAcrossTriageAndReentry(t *testing.T)
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeRecent)
-	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project groups = %v, want alphabetical order", groups)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{beta.ID, alpha.ID}) {
+		t.Fatalf("Recent project groups = %v, want the newest touch first", groups)
 	}
 
 	alphaTask.UpdatedAt = time.Now()
 	outliner.RebuildRows()
-	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project groups after triage = %v, want the same alphabetical order", groups)
+	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{beta.ID, alpha.ID}) {
+		t.Fatalf("Recent project groups after triage = %v, want the frozen order", groups)
 	}
 
 	outliner.SelectOutlinerMode(chrome.ModeRecent)
 	if groups := projectGroupOrder(outliner); !slices.Equal(groups, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project groups after re-entry = %v, want alphabetical order", groups)
+		t.Fatalf("Recent project groups after re-entry = %v, want the fresh touch first", groups)
 	}
 }
 

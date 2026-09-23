@@ -31,25 +31,6 @@ func sortPressKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 	}
 }
 
-func sortProjectGroupOrder(t *testing.T, driver *UITestDriver) []string {
-	t.Helper()
-	outlinerView := driver.App().crossOutliner
-	if outlinerView == nil {
-		t.Fatal("the fixture app has no Outliner")
-	}
-	// Group order is read off the groups the rows carry, since an expanded group
-	// draws no heading to read it off.
-	groups := outlinerView.VisibleProjectGroups()
-	order := make([]string, 0, len(groups))
-	for _, group := range groups {
-		order = append(order, group.ProjectID)
-	}
-	if len(order) == 0 {
-		t.Fatal("the projection exposed no project groups")
-	}
-	return order
-}
-
 func sortSectionTaskTitles(t *testing.T, driver *UITestDriver, section func(outliner.OutlinerRow) bool) []string {
 	t.Helper()
 	outlinerView := driver.App().crossOutliner
@@ -118,23 +99,10 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 	}
 }
 
-// TestSortAxisNeverReordersProjectGroups locks the ruling that the axis orders
-// tasks inside a project group and never the sequence of the groups themselves.
-func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
-	driver := sortDriver(t, FixtureMultiProject)
-	before := sortProjectGroupOrder(t, driver)
-
-	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "!"}, {"o", "@"}, {"o", "u"}} {
-		sortPressKeys(t, driver, keys...)
-		if after := sortProjectGroupOrder(t, driver); !equalStringSlices(before, after) {
-			t.Fatalf("%s reordered the project groups: %v, want %v", strings.Join(keys, ""), after, before)
-		}
-	}
-}
-
-// TestSortAxisNeverReachesManualOrder locks the ruling that Pinned keeps the
-// order the user built by hand, whatever the axis says.
-func TestSortAxisNeverReachesManualOrder(t *testing.T) {
+// TestSortAxisOrdersPinnedWithPinOrderBreakingTies locks the ruling that
+// Pinned follows the axis like every other section, and that clearing it gives
+// the order the user built by hand back.
+func TestSortAxisOrdersPinnedWithPinOrderBreakingTies(t *testing.T) {
 	driver := sortDriver(t, FixtureRich, "end", "*")
 	driver.Wait(defaultWaitTimeout)
 	// Three rows below the top: the Pinned lane header, the row it holds, the
@@ -148,16 +116,22 @@ func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 			return row.IsPinnedSection
 		})
 	}
-	before := pinned()
-	want := []string{"Build login form", "Explore social login"}
-	if !equalStringSlices(before, want) {
-		t.Fatalf("pinned manual order = %v, want %v", before, want)
+	manual := []string{"Build login form", "Explore social login"}
+	if got := pinned(); !equalStringSlices(got, manual) {
+		t.Fatalf("pinned default order = %v, want the newest pin first %v", got, manual)
 	}
 
-	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "!"}, {"o", "c"}} {
-		sortPressKeys(t, driver, keys...)
-		if after := pinned(); !equalStringSlices(before, after) {
-			t.Fatalf("%s reached the manual Pinned order: %v, want %v", strings.Join(keys, ""), after, before)
+	for _, step := range []struct {
+		keys []string
+		want []string
+	}{
+		{[]string{"o", "t"}, []string{"Build login form", "Explore social login"}},
+		{[]string{"o", "t"}, []string{"Explore social login", "Build login form"}},
+		{[]string{"o", "x"}, manual},
+	} {
+		sortPressKeys(t, driver, step.keys...)
+		if got := pinned(); !equalStringSlices(got, step.want) {
+			t.Fatalf("%s: pinned order = %v, want %v", strings.Join(step.keys, ""), got, step.want)
 		}
 	}
 }

@@ -243,7 +243,7 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 	}
 	cursorParentID := parentIDOf(cursorRow.Task)
 	cursorProjectID := cursorRow.ProjectID
-	priorityBanded := m.sortsByPriorityBand(cursorRow)
+	priorityBanded := m.sortsByPriorityBand()
 
 	// isBoundary reports whether a row terminates the reorder window. Anything
 	// that is not a task row ends it — headers, separators, checklist items — and

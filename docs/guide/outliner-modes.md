@@ -26,11 +26,12 @@ Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole;
 a pinned task there wears a bold `*` left of its title.
 Pinned tasks appear once in project groups, each promoted child wearing the bare
-`‹` parent marker whose chain Peek names. Tasks inside a group start
-newest-first and `J`/`K` reorder them manually; a pinned subtree ranks by its
-own root's pin. `Ctrl+J`/`Ctrl+K` take the same route
-in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
-manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
+`‹` parent marker whose chain Peek names. Pinned tasks follow the active
+order like every section, newest pin first breaking a tie, and `J`/`K` reorder
+tasks of the same priority; a pinned subtree ranks by its own root's pin.
+`Ctrl+J`/`Ctrl+K` take the same route in one press and one undo entry. All,
+Inbox, and Backlog preserve hierarchy, with manual sibling order breaking ties.
+Today and Next order by priority, workspace-wide planning order breaking ties. Review is the sparse set of open tasks
 you have flagged with `=review` or the `=` key, plus scheduled check-ins whose
 day has arrived. That list is draw order, not claim order: Pinned, Today, and
 Next claim every candidate first, and Doing keeps a scheduled-only reminder in
@@ -56,14 +57,16 @@ itself, so `e`, `#`, `*`, `C`, `;`, and `Space` all act on the focused project
 from that row. It stays there in every mode and in ranked search, and it
 stays there when the mode, a query, a lens, or a subtree focus leaves nothing to
 list — the explanation of why the view is empty is printed underneath it.
-Project groups put pinned projects first and then sort alphabetically, and that
-order stays the same across sections and modes. Tasks inside a group keep
-hierarchy, the parent marker, and the mode's own sort; `J`/`K` never move a
-task across a project group. With no sort chosen, All, Inbox, and Backlog order
-each run of siblings by priority, `!1` first and unset last, and your manual
-order breaks ties: `J`/`K` trade places only with a sibling of the same
-priority, so a reorder always moves a row you can see. Pinned, Today, Next, and
-Review keep the order you gave them.
+Sections keep their fixed order, but inside every section the tasks and the
+project groups follow the active order: with no sort chosen that is priority,
+`!1` first and unset last, and a chosen sort replaces it. A project group ranks
+by its best task, so the project holding the lane's `!1` leads it; a tie puts
+pinned projects first and then goes alphabetically. Due and Recent keep their
+date and recency order and use priority only to break a tie. Tasks inside a
+group keep hierarchy and the parent marker; `J`/`K` never move a task across a
+project group. The order you gave — manual sibling order, Today and Next
+planning order, pin order — breaks ties, so `J`/`K` trade places only with a
+row of the same priority, and a reorder always moves a row you can see.
 
 A project header also names the pressure its group holds, as `overdue 2` and
 `today 3` after the count, so folding the group does not hide what is urgent

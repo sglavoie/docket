@@ -568,28 +568,31 @@ decides the order those rows are read in. Repeating a field key reverses that
 field, because `SortState.Toggle` flips direction on an unchanged field, so there
 is no separate reverse binding.
 
-Two rulings bound what the axis may reach.
+Sections never move; the axis reaches everything inside one.
+`compareSectionTasks` is the one comparator: `comparePriorityBand` over
+`models.EffectivePriority` under `SortByDefault`, else `query.CompareTasks`
+under the field's direction, and a tie is 0. Every caller sorts stably, so the
+order a section was given — stored sibling order in the lifecycle forest,
+planning order in Today and Next, `PinnedAt` in Pinned, draw order in Review —
+survives only as the tiebreaker. `sortPrimaryTaskTree` applies it per sibling
+run, and `sortSectionRows` to the flat Pinned, Today, Next, and Review rows before
+they group.
 
-Manual order is never touched. `buildPinnedModeProjection` and the planning
-sections never read `m.sort`, and `buildAllPrimaryRows` lifts Pinned, Today, Next
-and Review out of the lifecycle forest before `sortPrimaryTaskTree` runs, so all
-four keep the sequence they were given under any active sort. That holds by
-construction rather than by a guard; the scenario and unit test are what keep it
-true. An exemption the user cannot see reads as a broken key, so while a sort is
-active those section headers carry a ` · manual` marker and the toggle's status
-names the exempt sections the rebuilt projection actually holds. Both read one
-predicate, `rowKeepsManualOrder`; neither changes what the sort reaches.
+Project blocks rank by their best task. `appendStateGroupForests` and
+`flattenPrimaryProjectTrees` precompute each block's best member and rank through
+`rankProjectBlocks`; `groupSectionRowsByProject` takes a lead comparator over its
+already-sorted rows' earliest members. Either way `compareProjectGroupIDs` —
+pinned project, then label — breaks a tie, and a block with no task ranks last.
+Due and Recent keep their day and frozen recency keys as the lead and add
+`comparePriorityBand` beneath them, which `OutlinerModeSection.Lead` carries into
+the block order.
 
-Group order never changes. `appendStateGroupForests` walks projects in catalog
-order and sorts inside each project, so a sort reorders tasks within their group
-and never the sequence of the groups themselves.
-
-The default is not stored order. With `SortByDefault`, `sortPrimaryTaskTree`
-stably sorts every sibling run by `models.EffectivePriority` and compares
-nothing else, so manual order is the tiebreaker inside one priority band. That
-band is also `visibleSiblings`' window wherever `sortsByPriorityBand` holds, so
-`J`/`K` never rewrites stored order across bands where no row would move. An
-explicit field replaces the priority key rather than refining it.
+`J`/`K` never rewrites stored order where no row would move. `visibleSiblings`
+windows the priority band wherever `sortsByPriorityBand` holds, and
+`visiblePlanningMembers` and `visiblePinnedSiblings` end their runs at the first
+row whose `compareSectionTasks` differs from the cursor's, under the default and
+an explicit sort alike. An explicit field replaces the priority key rather than
+refining it.
 
 A fixed-order mode owns its order, so `o` there records the field on the durable
 `treeSort` and reports that the mode keeps its own order rather than silently

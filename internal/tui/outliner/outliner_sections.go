@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -182,8 +183,9 @@ type pinnedSectionBuild struct {
 // ShowsPinned call it. Projected relatives form a
 // section-local tree; roots whose parent is outside Pinned keep their ancestor
 // breadcrumb. Project groups get a synthetic header in the unscoped Outliner.
-// A root ranks by its own pin position rather than its subtree's earliest one,
-// so J/K swapping two adjacent rows moves exactly those rows.
+// Rows follow compareSectionTasks with pin order breaking ties, and a root
+// ranks by its own position rather than its subtree's earliest one, so J/K
+// swapping two adjacent rows moves exactly those rows.
 func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectionBuild {
 	if input.TaskFilter == nil {
 		input.TaskFilter = m.workModeTaskFilterAt(input.Now)
@@ -196,8 +198,14 @@ func (m *OutlinerModel) buildPinnedSection(input OutlinerModeInput) pinnedSectio
 		row.IsPinnedSection = true
 		rows = append(rows, row)
 	}
+	m.sortSectionRows(rows)
 	return pinnedSectionBuild{
-		groups:    m.groupSectionRowsByProject(rows, sectionForestOptions{}),
+		groups: m.groupSectionRowsByProject(rows, sectionForestOptions{}, func(a, b int) int {
+			if c := m.compareSectionTasks(rows[a].Task, rows[b].Task); c != 0 {
+				return c
+			}
+			return comparePinnedAt(rows[a].Task, rows[b].Task)
+		}),
 		count:     len(projection.rows),
 		projected: projection.projected,
 	}
@@ -283,7 +291,9 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 // direction that shares the cursor's section-local parent, nearest first. Rows
 // belonging to a sibling's expanded subtree are stepped over; anything that is
 // not a task row and any task row outside the cursor's group bounds the search,
-// so a move can never leave the cursor's Pinned project group.
+// so a move can never leave the cursor's Pinned project group. A sibling the
+// active order separates from the cursor bounds it too: pin order only breaks
+// ties, so a swap across that boundary would move no row.
 func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
 	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return nil
@@ -301,6 +311,9 @@ func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
 			break
 		}
 		if m.pinnedSectionParentAt(i) == cursorParent {
+			if m.compareSectionTasks(row.Task, cursorRow.Task) != 0 {
+				break
+			}
 			siblings = append(siblings, i)
 		}
 	}
@@ -457,12 +470,11 @@ func planningProjectCollapseKey(projectID string, group models.WorkflowStateGrou
 	return planningProjectCollapsePrefix + string(group) + ":" + projectID
 }
 
-// appendPlanningRows derives subtree rank from the workspace-wide durable order
-// while restoring project context in the unscoped cross-project Outliner. A
-// subtree occupies its earliest member's rank. Pinned projects are grouped
-// first, then project groups are ordered alphabetically, and all of a
-// project's roots are rendered under one header while retaining their relative
-// durable order.
+// appendPlanningRows orders planning rows by compareSectionTasks, the
+// workspace-wide durable order breaking ties, while restoring project context in
+// the unscoped cross-project Outliner. A subtree occupies its earliest member's
+// rank, a project block ranks by its earliest member, and all of a project's
+// roots are rendered under one header.
 func (m *OutlinerModel) appendPlanningRows(
 	rows []OutlinerRow,
 	group models.WorkflowStateGroup,
@@ -471,8 +483,10 @@ func (m *OutlinerModel) appendPlanningRows(
 	if len(rows) == 0 {
 		return
 	}
+	rows = slices.Clone(rows)
+	m.sortSectionRows(rows)
 	m.appendProjectGroupedForests(
-		m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}),
+		m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}, m.sectionTaskLead(rows)),
 		OutlinerRow{
 			IsTodaySection: group == models.StateGroupToday,
 			IsNextSection:  group == models.StateGroupNext,
@@ -593,7 +607,8 @@ func (m *OutlinerModel) buildReviewSection(
 		result.count++
 		rows = append(rows, row)
 	}
-	result.groups = m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true})
+	m.sortSectionRows(rows)
+	result.groups = m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}, m.sectionTaskLead(rows))
 	return result
 }
 

@@ -269,39 +269,12 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		}
 		content += "  " + theme.ProjectColorStyle(project).Render("["+projectName+"]")
 	}
-	content = appendManualOrderMarker(content, row, m.Sort.Field, rowWidth-lipgloss.Width(gutter))
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
 	return chrome.ZebraLine(gutter+content, rowWidth, rowIndex)
-}
-
-// rowKeepsManualOrder reports whether the section a row belongs to is one the
-// sort never touches. Pinned, Today and Next carry an order the user built by
-// hand, and Review is ordered by the projection that promoted it.
-func rowKeepsManualOrder(row OutlinerRow) bool {
-	return row.IsPinnedSection ||
-		row.IsTodaySection ||
-		row.IsNextSection ||
-		row.PromotedTag == reviewLaneKey
-}
-
-// appendManualOrderMarker names an exempt section while a sort is active, so a
-// lane that did not move says why instead of reading as a broken key. It is
-// dropped rather than allowed to overflow, exactly as the pressure chips are.
-// budget is the columns the content region has, which is the row width less the
-// gutter the cursor highlight owns.
-func appendManualOrderMarker(content string, row OutlinerRow, field query.SortField, budget int) string {
-	if field == query.SortByDefault || !rowKeepsManualOrder(row) {
-		return content
-	}
-	suffix := theme.MutedStyle.Render("  · manual")
-	if lipgloss.Width(content)+lipgloss.Width(suffix) > budget {
-		return content
-	}
-	return content + suffix
 }
 
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row

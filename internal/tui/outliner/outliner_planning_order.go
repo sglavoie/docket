@@ -108,7 +108,9 @@ func (m *OutlinerModel) PlanningReorderMove(delta int) (tea.Model, tea.Cmd) {
 // follows that order: a move reaching past it would lift the cursor's whole
 // project above its neighbor rather than reorder tasks within it. A checklist
 // row carries its owner's group, so an expanded checklist is stepped over rather
-// than read as the end of the run.
+// than read as the end of the run. A member the active order separates from the
+// cursor — another priority band under the default sort — ends the run as well,
+// since planning order only breaks ties and a swap past it would move no row.
 func (m *OutlinerModel) visiblePlanningMembers(
 	order []config.ProjectTaskLocator, delta int,
 ) []config.ProjectTaskLocator {
@@ -123,7 +125,8 @@ func (m *OutlinerModel) visiblePlanningMembers(
 	if delta < 0 {
 		step = -1
 	}
-	cursorGroup := m.Rows[m.Cursor].Group
+	cursorRow := m.Rows[m.Cursor]
+	cursorGroup := cursorRow.Group
 	var visible []config.ProjectTaskLocator
 	for i := m.Cursor + step; i >= 0 && i < len(m.Rows); i += step {
 		row := m.Rows[i]
@@ -136,6 +139,9 @@ func (m *OutlinerModel) visiblePlanningMembers(
 		identity := m.TaskIdentityForRow(row)
 		loc := config.ProjectTaskLocator{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
 		if members[loc] {
+			if cursorRow.Task != nil && m.compareSectionTasks(row.Task, cursorRow.Task) != 0 {
+				break
+			}
 			visible = append(visible, loc)
 		}
 	}
