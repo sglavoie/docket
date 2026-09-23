@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -280,4 +281,27 @@ func findTaskByID(tasks []*models.Task, id string) *models.Task {
 		}
 	}
 	return nil
+}
+
+// TestSaveProject_RefusesEmptyPath pins the filesystem refusal: a project rooted
+// at no directory would otherwise write tasks.md and its lock beneath the
+// working directory.
+func TestSaveProject_RefusesEmptyPath(t *testing.T) {
+	t.Chdir(t.TempDir())
+	project := testutil.NewTestProject("Unrooted")
+	project.Tasks = []*models.Task{}
+
+	for name, save := range map[string]func(*models.Project) error{
+		"SaveProject":       SaveProject,
+		"SaveProjectLocked": SaveProjectLocked,
+	} {
+		if err := save(project); !errors.Is(err, ErrNoProjectPath) {
+			t.Errorf("%s(Path \"\") = %v, want ErrNoProjectPath", name, err)
+		}
+	}
+	for _, name := range []string{"tasks.md", LockFileName} {
+		if _, err := os.Lstat(name); !os.IsNotExist(err) {
+			t.Errorf("refused save left %s in the working directory", name)
+		}
+	}
 }

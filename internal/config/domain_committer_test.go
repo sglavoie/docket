@@ -128,3 +128,45 @@ func TestDomainCoordinator_CheckedNonCatalogCommitDoesNotMintWorkspaceID(t *test
 		t.Fatalf("checked planning commit without catalog wrote an artifact, stat err = %v", err)
 	}
 }
+
+// TestDomainCoordinator_RefusesEmptyDataDir pins the synced-write refusal: a
+// coordinator rooted at no data directory would otherwise resolve .tt/ beneath
+// the working directory. A relative catalog is seeded there first, so the
+// refusal is the data-dir guard and not a missing workspace identity.
+func TestDomainCoordinator_RefusesEmptyDataDir(t *testing.T) {
+	cwd := t.TempDir()
+	if err := saveDomainBundle(NewDomainFileStore(cwd), NewDomains()); err != nil {
+		t.Fatalf("seed workspace: %v", err)
+	}
+	t.Chdir(cwd)
+	before, err := os.ReadDir(InternalDir(cwd))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	coord := NewDomainCoordinator("")
+	_, catalogErr := coord.CheckedCatalogArtifact(NewWorkspaceCatalog())
+	_, planningErr := coord.CheckedPlanningArtifact(NewPlanningState())
+	_, domainsErr := coord.CheckedDomainArtifacts(NewWorkspaceCatalog(), NewPlanningState())
+	for name, err := range map[string]error{
+		"CommitCatalog":          coord.CommitCatalog(NewWorkspaceCatalog()),
+		"CommitPlanning":         coord.CommitPlanning(NewPlanningState()),
+		"CommitMachine":          coord.CommitMachine(NewMachineState()),
+		"CommitLensDefinitions":  coord.CommitLensDefinitions(&WorkspaceLensDefinitions{}),
+		"CheckedCatalogArtifact": catalogErr,
+		"CheckedPlanning":        planningErr,
+		"CheckedDomainArtifacts": domainsErr,
+		"SavePlanning":           NewDomainFileStore("").SavePlanning(NewPlanningState()),
+	} {
+		if !errors.Is(err, ErrNoDataDir) {
+			t.Errorf("%s with empty dataDir = %v, want ErrNoDataDir", name, err)
+		}
+	}
+	after, err := os.ReadDir(InternalDir(cwd))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) != len(before) {
+		t.Errorf("refused commits changed the working directory's .tt: %d entries, then %d", len(before), len(after))
+	}
+}

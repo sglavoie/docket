@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/testutil/residue"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -62,6 +64,9 @@ func saveTestRuntime(manager *config.Manager, runtime *config.RuntimeState) erro
 // here keeps those paths from writing into the developer's real home directory
 // once that tier becomes part of Manager persistence. Tests that override $HOME
 // via t.Setenv restore to this throwaway directory rather than the real home.
+//
+// residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
+// in the package directory, which is what an unrooted runtime or project writes.
 func TestMain(m *testing.M) {
 	tmp, err := os.MkdirTemp("", "tt-cmd-home-*")
 	if err != nil {
@@ -70,7 +75,7 @@ func TestMain(m *testing.M) {
 	if err := os.Setenv("HOME", tmp); err != nil {
 		panic(err)
 	}
-	code := m.Run()
+	code := residue.Run(m.Run)
 	_ = os.RemoveAll(tmp)
 	os.Exit(code)
 }

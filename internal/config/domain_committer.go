@@ -61,6 +61,9 @@ func (c *DomainCoordinator) commitBaselined(
 // without also creating workspace.json, doing so could establish a second
 // identity that a later coordinator would silently abandon.
 func adoptWorkspaceID(store *DomainFileStore) error {
+	if err := store.requireDataDir(); err != nil {
+		return err
+	}
 	_, rev, err := store.LoadCatalogChecked()
 	if err != nil {
 		return err
@@ -76,6 +79,9 @@ func adoptWorkspaceID(store *DomainFileStore) error {
 func (c *DomainCoordinator) CommitCatalog(catalog *WorkspaceCatalog) error {
 	if catalog == nil {
 		return fmt.Errorf("workspace catalog is required")
+	}
+	if err := c.store.requireDataDir(); err != nil {
+		return err
 	}
 	diskCatalog, diskRev, err := c.store.LoadCatalogChecked()
 	if err != nil {

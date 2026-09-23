@@ -104,6 +104,11 @@ func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr erro
 // the bytes it wrote, so the caller can advance its baseline without re-reading
 // the file or re-deriving the encoding.
 func (s *DomainFileStore) saveObserved(kind domainKind, payload any, expectedRev string, baselineObserved bool) (string, error) {
+	if kind != domainMachine {
+		if err := s.requireDataDir(); err != nil {
+			return "", err
+		}
+	}
 	if catalog, ok := payload.(*WorkspaceCatalog); ok {
 		if _, err := s.bindCatalogPayload(catalog); err != nil {
 			return "", err

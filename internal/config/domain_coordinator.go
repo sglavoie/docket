@@ -130,6 +130,9 @@ func (c *DomainCoordinator) CheckedDomainArtifacts(
 	catalog *WorkspaceCatalog,
 	planning *PlanningState,
 ) ([]DomainArtifact, error) {
+	if err := c.store.requireDataDir(); err != nil {
+		return nil, err
+	}
 	if catalog == nil || planning == nil {
 		return nil, fmt.Errorf("all synced configuration domains are required")
 	}
@@ -204,6 +207,9 @@ func (c *DomainCoordinator) LoadCatalog() (*WorkspaceCatalog, error) {
 // CheckedCatalogArtifact renders only workspace.json under the revision observed
 // by LoadCatalog (or Load), leaving every other domain untouched.
 func (c *DomainCoordinator) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (DomainArtifact, error) {
+	if err := c.store.requireDataDir(); err != nil {
+		return DomainArtifact{}, err
+	}
 	if catalog == nil {
 		return DomainArtifact{}, fmt.Errorf("workspace catalog is required")
 	}
@@ -231,6 +237,9 @@ func (c *DomainCoordinator) CheckedCatalogArtifact(catalog *WorkspaceCatalog) (D
 // (or Load) recorded. Unlike CheckedArtifacts it leaves every other domain
 // untouched, so a planning-only mutation cannot clobber a concurrent write.
 func (c *DomainCoordinator) CheckedPlanningArtifact(planning *PlanningState) (DomainArtifact, error) {
+	if err := c.store.requireDataDir(); err != nil {
+		return DomainArtifact{}, err
+	}
 	if planning == nil {
 		return DomainArtifact{}, fmt.Errorf("planning state is required")
 	}

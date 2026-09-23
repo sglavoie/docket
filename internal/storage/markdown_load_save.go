@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -184,6 +186,11 @@ func auditProjectBeforeSave(project *models.Project) error {
 	return nil
 }
 
+// ErrNoProjectPath reports a filesystem save of a project rooted at no
+// directory. An empty path would otherwise resolve tasks.md and its lock beneath
+// the process working directory, so the save is refused by name instead.
+var ErrNoProjectPath = errors.New("storage: project has no directory path")
+
 // SaveProject saves a project's tasks to its tasks.md file.
 func SaveProject(project *models.Project) error {
 	if err := auditProjectBeforeSave(project); err != nil {
@@ -191,6 +198,9 @@ func SaveProject(project *models.Project) error {
 	}
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		return DefaultRepository.Save(project)
+	}
+	if strings.TrimSpace(project.Path) == "" {
+		return tterrors.NewSaveProjectError(project.Name, ErrNoProjectPath)
 	}
 	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
@@ -218,6 +228,9 @@ func SaveProject(project *models.Project) error {
 func SaveProjectLocked(project *models.Project) error {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		return SaveProject(project)
+	}
+	if project != nil && strings.TrimSpace(project.Path) == "" {
+		return tterrors.NewSaveProjectError(project.Name, ErrNoProjectPath)
 	}
 	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)

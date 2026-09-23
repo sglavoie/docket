@@ -11,3 +11,12 @@ tt
 .codegraph/
 .spec/
 .venv/
+
+# Workspace artifacts a test would write into its package directory; the
+# tracked migration fixtures under testdata stay visible.
+internal/**/.tt/
+internal/**/projects/
+internal/**/*.lock
+!internal/**/testdata/**
+coverage.html
+/dist/

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -38,6 +39,12 @@ var ErrWorkspaceIDMismatch = errors.New("config: workspace ID mismatch")
 // ErrWorkspaceIDRequired reports machine-state access attempted before the
 // synced workspace catalog established the workspace identity.
 var ErrWorkspaceIDRequired = errors.New("config: workspace ID is required")
+
+// ErrNoDataDir reports a synced-domain write attempted by a store rooted at no
+// data directory. An empty root would otherwise resolve every synced artifact
+// beneath the process working directory, so the write is refused by name; reads
+// stay permitted and simply observe whatever that relative path holds.
+var ErrNoDataDir = errors.New("config: no workspace data directory is set")
 
 // domainKind identifies one of the runtime configuration domains.
 type domainKind int
@@ -104,6 +111,10 @@ type DomainFileStore struct {
 	// home, so nothing but an explicitly named machine leaves $HOME. It is the
 	// only field a second machine over the same data directory differs in.
 	machineHome string
+	// unrooted records that the store was built over an empty data directory,
+	// which filepath.Clean has already turned into ".". It is what refuses a
+	// synced write rather than landing one in the working directory.
+	unrooted bool
 }
 
 // NewDomainFileStore roots a store at a data directory with no known workspace
@@ -118,7 +129,21 @@ func NewDomainFileStore(dataDir string) *DomainFileStore {
 // directory with distinct homes are two machines sharing one workspace, and
 // because neither reads $HOME they may be driven concurrently.
 func NewDomainFileStoreOnMachine(dataDir, machineHome string) *DomainFileStore {
-	return &DomainFileStore{dataDir: filepath.Clean(dataDir), machineHome: machineHome}
+	return &DomainFileStore{
+		dataDir:     filepath.Clean(dataDir),
+		machineHome: machineHome,
+		unrooted:    strings.TrimSpace(dataDir) == "",
+	}
+}
+
+// requireDataDir refuses a synced write from a store rooted at no data
+// directory. Machine-local state resolves beneath a home rather than the data
+// directory, so it is the one domain this does not gate.
+func (s *DomainFileStore) requireDataDir() error {
+	if s.unrooted {
+		return ErrNoDataDir
+	}
+	return nil
 }
 
 // DataDir returns the store's workspace data directory.
