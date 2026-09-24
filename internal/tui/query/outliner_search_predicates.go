@@ -186,6 +186,27 @@ func (p *SearchPredicates) applyToken(token textgrammar.Token, projects []*model
 		if compiled, ok := compileSearchDestination(token.Value, projects, plan); ok {
 			p.excludedDests = append(p.excludedDests, compiled)
 		}
+	case textgrammar.FieldProject:
+		p.projectPrefixes = append(p.projectPrefixes, strings.ToLower(strings.TrimSpace(token.Value)))
+	case textgrammar.FieldRemoveProject:
+		p.excludedProjects = append(p.excludedProjects, strings.ToLower(strings.TrimSpace(token.Value)))
+	case textgrammar.FieldDependency:
+		p.addDependency(token.Value, projects, &p.dependencies)
+	case textgrammar.FieldRemoveDependency:
+		p.addDependency(token.Value, projects, &p.excludedDeps)
+	case textgrammar.FieldDerived:
+		p.addDerived(token.Value, &p.derived)
+	case textgrammar.FieldRemoveDerived:
+		p.addDerived(token.Value, &p.excludedDerived)
+	default:
+		p.applyFlagToken(token)
+	}
+}
+
+// applyFlagToken compiles the three stored boolean axes — pinned, review, and
+// attachment presence — each of which either requires or refuses the flag.
+func (p *SearchPredicates) applyFlagToken(token textgrammar.Token) {
+	switch token.Field { //nolint:exhaustive // applyToken answers every other field.
 	case textgrammar.FieldPinned:
 		if token.Value == "pin" {
 			p.requirePinned = true
@@ -213,18 +234,6 @@ func (p *SearchPredicates) applyToken(token textgrammar.Token, projects []*model
 			return
 		}
 		p.refuseAttachments = true
-	case textgrammar.FieldProject:
-		p.projectPrefixes = append(p.projectPrefixes, strings.ToLower(strings.TrimSpace(token.Value)))
-	case textgrammar.FieldRemoveProject:
-		p.excludedProjects = append(p.excludedProjects, strings.ToLower(strings.TrimSpace(token.Value)))
-	case textgrammar.FieldDependency:
-		p.addDependency(token.Value, projects, &p.dependencies)
-	case textgrammar.FieldRemoveDependency:
-		p.addDependency(token.Value, projects, &p.excludedDeps)
-	case textgrammar.FieldDerived:
-		p.addDerived(token.Value, &p.derived)
-	case textgrammar.FieldRemoveDerived:
-		p.addDerived(token.Value, &p.excludedDerived)
 	}
 }
 
