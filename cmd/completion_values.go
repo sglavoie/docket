@@ -26,7 +26,7 @@ func completeProjectSlugs(_ *cobra.Command, args []string, toComplete string) ([
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	catalog, err := config.NewDomainFileStore(completionDataDir()).LoadCatalog()
+	catalog, err := config.NewDomainFileStore(completionDataDir()).LoadCatalogReadOnly()
 	if err != nil || catalog == nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

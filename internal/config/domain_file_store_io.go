@@ -21,6 +21,13 @@ import (
 // file yields ("", nil) so the caller keeps its seeded defaults; corruption
 // falls back to the .bak sidecar before failing.
 func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
+	return s.loadArtifact(kind, out, true)
+}
+
+// loadArtifact is load with the backup recovery optional: a read-only caller
+// passes recoverFromBackup false, so a corrupted primary fails without the
+// sidecar being read or the primary rewritten.
+func (s *DomainFileStore) loadArtifact(kind domainKind, out any, recoverFromBackup bool) (string, error) {
 	path, err := s.pathFor(kind)
 	if err != nil {
 		return "", err
@@ -36,6 +43,9 @@ func (s *DomainFileStore) load(kind domainKind, out any) (string, error) {
 	rev := revisionOf(data)
 	env, decErr := decodeEnvelope(data)
 	if decErr != nil {
+		if !recoverFromBackup {
+			return rev, fmt.Errorf("failed to parse %s: %w", filepath.Base(path), decErr)
+		}
 		recovered, recoveredData, recErr := s.recoverEnvelopeFromBackup(path, decErr)
 		if recErr != nil {
 			return rev, recErr

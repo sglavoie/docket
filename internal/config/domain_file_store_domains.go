@@ -17,8 +17,20 @@ func (s *DomainFileStore) LoadCatalog() (*WorkspaceCatalog, error) {
 // LoadCatalogChecked loads the catalog and returns the revision to pass back to
 // SaveCatalogChecked for optimistic concurrency.
 func (s *DomainFileStore) LoadCatalogChecked() (*WorkspaceCatalog, string, error) {
+	return s.loadCatalog(true)
+}
+
+// LoadCatalogReadOnly loads the catalog without the backup recovery a corrupted
+// primary otherwise triggers, so it never writes: a corrupt catalog is an
+// error even when a valid .bak exists.
+func (s *DomainFileStore) LoadCatalogReadOnly() (*WorkspaceCatalog, error) {
+	c, _, err := s.loadCatalog(false)
+	return c, err
+}
+
+func (s *DomainFileStore) loadCatalog(recoverFromBackup bool) (*WorkspaceCatalog, string, error) {
 	out := NewWorkspaceCatalog()
-	rev, err := s.load(domainCatalog, out)
+	rev, err := s.loadArtifact(domainCatalog, out, recoverFromBackup)
 	if err != nil {
 		return nil, "", err
 	}

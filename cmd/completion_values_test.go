@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"slices"
 	"strings"
@@ -74,6 +75,34 @@ func TestCompleteProjectSlugsQuietOnUnreadableCatalog(t *testing.T) {
 	values, directive := completeProjectSlugs(nil, nil, "")
 	if len(values) != 0 || directive != cobra.ShellCompDirectiveNoFileComp {
 		t.Errorf("completion = %v, %v; want nothing and NoFileComp", values, directive)
+	}
+}
+
+func TestCompleteProjectSlugsLeavesACorruptCatalogAndItsBackupAlone(t *testing.T) {
+	newExportFixtureWorkspace(t)
+	catalogPath := config.WorkspaceCatalogPath(completionDataDir())
+	healthy, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	backupPath := catalogPath + ".bak"
+	if err := os.WriteFile(backupPath, healthy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	broken := []byte("{broken catalog")
+	if err := os.WriteFile(catalogPath, broken, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	values, directive := completeProjectSlugs(nil, nil, "")
+	if len(values) != 0 || directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("completion = %v, %v; want nothing and NoFileComp", values, directive)
+	}
+	if got, _ := os.ReadFile(catalogPath); !bytes.Equal(got, broken) {
+		t.Errorf("completion rewrote the corrupt catalog: %q", got)
+	}
+	if got, _ := os.ReadFile(backupPath); !bytes.Equal(got, healthy) {
+		t.Errorf("completion changed the backup: %q", got)
 	}
 }
 
