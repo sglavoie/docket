@@ -22,8 +22,13 @@ import (
 // outlinerSearchSuggestionLimit is the dropdown's total row budget, counting the
 // overflow indicators RenderDropdownWithLimit spends rows on. The pane sits
 // between the operational title and the first task row, so every row it takes is
-// a row the result list loses.
-const outlinerSearchSuggestionLimit = 5
+// a row the result list loses, which is why outlinerSearchResultFloorRows
+// shrinks it on a short terminal before the list gives up its floor.
+const outlinerSearchSuggestionLimit = 10
+
+// outlinerSearchResultFloorRows is what the pane always leaves the result list:
+// the pane is the one that shortens when the frame cannot hold both whole.
+const outlinerSearchResultFloorRows = 5
 
 // outlinerSearchDropdownIndent aligns the suggestion rows under the title's
 // search segment without claiming a column of its own.
@@ -320,6 +325,12 @@ func (m *OutlinerModel) acceptSearchSuggestion() {
 	m.RefreshSearchAutocomplete()
 }
 
+// searchAutocompleteRowBudget is the pane's total row allowance: the shared
+// limit when the frame has room, else whatever the result floor leaves.
+func (m *OutlinerModel) searchAutocompleteRowBudget() int {
+	return min(outlinerSearchSuggestionLimit, max(m.ContentHeight()-2-outlinerSearchResultFloorRows, 1))
+}
+
 // renderSearchAutocompleteDropdown draws the bounded pane. The caller measures
 // the returned string rather than predicting its height, because
 // RenderDropdownWithLimit decides how many of its rows go to overflow hints.
@@ -327,7 +338,7 @@ func (m *OutlinerModel) renderSearchAutocompleteDropdown(width int) string {
 	if m == nil || !m.Search.Autocomplete.Active() {
 		return ""
 	}
-	budget := min(outlinerSearchSuggestionLimit, max(m.ContentHeight()-2, 1))
+	budget := m.searchAutocompleteRowBudget()
 	rendered := m.Search.Autocomplete.Ac.RenderDropdownWithLimit(outlinerSearchDropdownIndent, budget)
 	if rendered == "" {
 		return ""

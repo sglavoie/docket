@@ -189,7 +189,8 @@ submit it, only a submitted query joins the ring — one abandoned with `Esc` do
 not — and typing ends the walk, so the next `↑` starts from the newest again.
 The ring is session-only and written nowhere: it survives closing and reopening
 the input, and a relaunch starts empty. A query worth keeping is a lens. While
-the suggestion pane is open it owns `↑` and `↓` for its own cursor; one `Esc`
+the suggestion pane is open — up to ten rows, fewer on a short terminal so the
+results below keep room — it owns `↑` and `↓` for its own cursor; one `Esc`
 closes it and gives both keys back to the walk.
 
 The lowercase `f` chord refines the rows a projection already holds. Uppercase

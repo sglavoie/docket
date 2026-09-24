@@ -167,7 +167,7 @@ func TestSearchAutocompleteProjectsComeFromTheLoadedScope(t *testing.T) {
 // unreachable; typing either half of its identity must rank it first without the
 // scope growing by a single project.
 func TestSearchAutocompleteProjectsRankTypedPartial(t *testing.T) {
-	slugs := []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "zulu"}
+	slugs := []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliett", "zulu"}
 	projects := make([]*models.Project, 0, len(slugs))
 	for _, slug := range slugs {
 		projects = append(projects, primaryRowsProject(slug, searchACTask("t-"+slug, nil, "")))

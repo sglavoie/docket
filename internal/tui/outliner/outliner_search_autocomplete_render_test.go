@@ -22,11 +22,11 @@ func searchACWideOutliner(count int) *OutlinerModel {
 	return searchACOutliner(primaryRowsProject("alpha", tasks...))
 }
 
-// TestSearchAutocompleteRendersAtMostFiveRowsIncludingOverflow holds the pane to
+// TestSearchAutocompleteRendersAtMostTheLimitIncludingOverflow holds the pane to
 // its total budget at the top, the middle, and the bottom of a long list, where
 // the number of rows spent on hints differs.
-func TestSearchAutocompleteRendersAtMostFiveRowsIncludingOverflow(t *testing.T) {
-	outliner := searchACWideOutliner(12)
+func TestSearchAutocompleteRendersAtMostTheLimitIncludingOverflow(t *testing.T) {
+	outliner := searchACWideOutliner(24)
 	typeSearchAC(outliner, "#")
 
 	cases := []struct {
@@ -36,8 +36,8 @@ func TestSearchAutocompleteRendersAtMostFiveRowsIncludingOverflow(t *testing.T) 
 		wantBottom bool
 	}{
 		{"top", 0, false, true},
-		{"middle", 6, true, true},
-		{"bottom", 11, true, false},
+		{"middle", 12, true, true},
+		{"bottom", 23, true, false},
 	}
 	for _, tc := range cases {
 		outliner.Search.Autocomplete.Ac.Cursor = tc.cursor
@@ -79,7 +79,7 @@ func TestSearchAutocompleteViewportSubtractsTheRenderedHeight(t *testing.T) {
 	// Measure the pane exactly as the render did: whatever height it drew is the
 	// height the list lost.
 	dropdownHeight := lipgloss.Height(outliner.Search.Autocomplete.Ac.RenderDropdownWithLimit(
-		outlinerSearchDropdownIndent, outlinerSearchSuggestionLimit))
+		outlinerSearchDropdownIndent, outliner.searchAutocompleteRowBudget()))
 	if got, want := baseline-withPane, dropdownHeight; got != want {
 		t.Fatalf("rows reserved = %d, want the pane's own height %d", got, want)
 	}
@@ -87,8 +87,8 @@ func TestSearchAutocompleteViewportSubtractsTheRenderedHeight(t *testing.T) {
 		t.Fatalf("viewport collapsed to %d rows", withPane)
 	}
 	// The whole frame must still fit the terminal it was sized to.
-	if got := lipgloss.Height(content); got > outliner.ContentHeight()+1 {
-		t.Errorf("frame height = %d, want at most %d", got, outliner.ContentHeight()+1)
+	if got := lipgloss.Height(content); got > 24 {
+		t.Errorf("frame height = %d, want at most 24", got)
 	}
 }
 
@@ -107,8 +107,8 @@ func TestSearchAutocompleteRenderFitsNarrowAndMinimumLayouts(t *testing.T) {
 		}
 	}
 
-	// contentHeight()-2 is the pane's ceiling, so a three-row terminal leaves room
-	// for exactly one row and it must be the selected one rather than a hint.
+	// contentHeight()-2 less the result floor is the pane's ceiling, so a short
+	// terminal leaves room for exactly one row and it must be the selected one rather than a hint.
 	outliner.SetSize(120, 4)
 	outliner.Search.Autocomplete.Ac.Cursor = 6
 	outliner.Search.Autocomplete.Ac.ClampCursor()
@@ -126,6 +126,41 @@ func TestSearchAutocompleteRenderFitsNarrowAndMinimumLayouts(t *testing.T) {
 	outliner.RenderOutlinerTreeContent(40)
 	if got := outliner.LastViewport.VisibleRows; got < 1 {
 		t.Errorf("minimum-height viewport = %d rows, want at least 1", got)
+	}
+}
+
+// TestSearchAutocompleteShowsEveryDestinationWhenRoomAllows is the reason for
+// the ten-row limit: the ten $ destinations are listed whole, with no hint.
+func TestSearchAutocompleteShowsEveryDestinationWhenRoomAllows(t *testing.T) {
+	outliner := searchACWideOutliner(3)
+	outliner.SetSize(120, 40)
+	typeSearchAC(outliner, "$")
+	items := len(outliner.Search.Autocomplete.Ac.Items)
+	if items != outlinerSearchSuggestionLimit {
+		t.Fatalf("$ offers %d destinations, want %d", items, outlinerSearchSuggestionLimit)
+	}
+	rendered := ansi.Strip(outliner.renderSearchAutocompleteDropdown(120))
+	if got := len(strings.Split(rendered, "\n")); got != items {
+		t.Errorf("pane drew %d rows, want all %d destinations:\n%s", got, items, rendered)
+	}
+	if strings.Contains(rendered, "more") {
+		t.Errorf("pane drew an overflow hint with room for every row:\n%s", rendered)
+	}
+}
+
+// TestSearchAutocompleteShrinksBeforeTheResultFloor keeps a short terminal
+// reading results: the pane gives up rows before the list drops below its floor.
+func TestSearchAutocompleteShrinksBeforeTheResultFloor(t *testing.T) {
+	outliner := searchACWideOutliner(24)
+	outliner.SetSize(chrome.MinTerminalWidth, 14)
+	typeSearchAC(outliner, "#")
+	outliner.RenderOutlinerTreeContent(chrome.MinTerminalWidth)
+	pane := lipgloss.Height(outliner.renderSearchAutocompleteDropdown(chrome.MinTerminalWidth))
+	if pane >= outlinerSearchSuggestionLimit {
+		t.Fatalf("pane drew %d rows on a short terminal, want fewer than %d", pane, outlinerSearchSuggestionLimit)
+	}
+	if got := outliner.LastViewport.VisibleRows; got < outlinerSearchResultFloorRows {
+		t.Errorf("result rows = %d, want at least %d", got, outlinerSearchResultFloorRows)
 	}
 }
 
