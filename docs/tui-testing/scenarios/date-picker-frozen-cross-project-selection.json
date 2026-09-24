@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
+    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "v" },
     { "type": "key", "label": "and one in the second", "key": "j" },
     { "type": "key", "key": "j" },
@@ -34,6 +37,7 @@
 
     { "type": "key", "label": "finish the first task", "key": "g" },
     { "type": "key", "key": "g" },
+    { "type": "key", "label": "the restart folded Backlog again, so open it", "key": "l" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "w" },

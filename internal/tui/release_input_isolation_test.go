@@ -98,14 +98,28 @@ func (env *releaseIsolationEnv) outliner(t *testing.T) *outliner.OutlinerModel {
 
 func (env *releaseIsolationEnv) focusTask(t *testing.T) {
 	t.Helper()
+	if env.walkToTask(t) {
+		return
+	}
+	// A launch folds All's Backlog lane, so a task living there is reached by
+	// opening every fold first.
+	env.outliner(t).ClearAllFolds()
+	if env.walkToTask(t) {
+		return
+	}
+	t.Fatalf("the cursor never reached task %s", env.taskID)
+}
+
+func (env *releaseIsolationEnv) walkToTask(t *testing.T) bool {
+	t.Helper()
 	env.press(t, "home")
 	for range len(env.outliner(t).Rows) + 1 {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == env.taskID {
-			return
+			return true
 		}
 		env.press(t, "down")
 	}
-	t.Fatalf("the cursor never reached task %s", env.taskID)
+	return false
 }
 
 func (env *releaseIsolationEnv) project(t *testing.T) *models.Project {

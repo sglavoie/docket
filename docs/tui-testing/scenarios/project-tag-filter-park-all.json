@@ -3,6 +3,7 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "key", "label": "select the first two projects", "key": "v" },
     { "type": "key", "key": "j" },

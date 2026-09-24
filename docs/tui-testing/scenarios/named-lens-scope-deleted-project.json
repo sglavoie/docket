@@ -5,8 +5,11 @@
   "actions": [
     { "type": "switch_machine", "label": "the laptop is where the scoped lens is authored", "machine": "laptop" },
     { "type": "wait" },
+    { "type": "key", "label": "l opens Backlog, which launch folds, onto the Client Alpha group", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
 
-    { "type": "key", "label": "launch opens inside the Client Alpha group, so one stop reaches the Client Beta group header", "key": "n" },
+    { "type": "key", "label": "that opens inside the Client Alpha group, so one stop reaches the Client Beta group header", "key": "n" },
     { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "label": "scope to that project", "key": "g" },
     { "type": "key", "key": "p" },
@@ -22,6 +25,9 @@
 
     { "type": "switch_machine", "label": "the desktop deletes the project that lens opens in", "machine": "desktop" },
     { "type": "wait" },
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "fold the groups so the project has a header row, which seats the cursor on Client Alpha's", "key": "p" },
     { "type": "key", "label": "and one stop reaches Client Beta's", "key": "n" },
     { "type": "key", "label": "the project sheet is the only route to Delete", "key": "space" },
@@ -41,6 +47,7 @@
     { "type": "assert", "label": "a lens naming a deleted project fails closed the same way a deleted lens does", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "assert": "not_contains", "value": "Client Beta · All" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "label": "l opens the Backlog this launch folded", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "and silently, since the pointer is a hint rather than a record", "assert": "not_contains", "value": "no longer exists" },
     { "type": "assert", "assert": "no_layout_issues" },

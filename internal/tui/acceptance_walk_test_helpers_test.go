@@ -65,6 +65,12 @@ func seatCursorOnTaskTitled(t *testing.T, view *outliner.OutlinerModel, title st
 	if seatCursorOnVisibleTaskTitled(view, title) {
 		return
 	}
+	// A launch folds All's Backlog lane, so a task living there is reached by
+	// opening every fold, exactly as Clear All Folds would.
+	view.ClearAllFolds()
+	if seatCursorOnVisibleTaskTitled(view, title) {
+		return
+	}
 	t.Fatalf("no task row titled %q in the projection", title)
 }
 
@@ -88,6 +94,11 @@ func seatCursorOnVisibleTaskTitled(view *outliner.OutlinerModel, title string) b
 func foldEveryProjectGroup(t *testing.T, view *outliner.OutlinerModel) {
 	t.Helper()
 	groups := view.VisibleProjectGroups()
+	if len(groups) == 0 {
+		// A launch folds All's Backlog lane, which hides the groups inside it.
+		view.ClearAllFolds()
+		groups = view.VisibleProjectGroups()
+	}
 	if len(groups) == 0 {
 		t.Fatal("the projection carries no project group to fold")
 	}
@@ -161,5 +172,16 @@ func runChecklistActions(t *testing.T, driver *UITestDriver, actions []UITestAct
 		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
 			t.Fatalf("action %d (%s %q): %v", index, action.Type, action.Key+action.Text, err)
 		}
+	}
+}
+
+// sortPressKeys sends each key through the driver and drains it before the next.
+func sortPressKeys(t *testing.T, driver *UITestDriver, keys ...string) {
+	t.Helper()
+	for _, key := range keys {
+		if err := driver.SendKey(key); err != nil {
+			t.Fatalf("key %q: %v", key, err)
+		}
+		driver.drain()
 	}
 }

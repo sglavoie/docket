@@ -142,6 +142,10 @@ func moveCursorToTaskRow(t *testing.T, driver *UITestDriver) {
 		if out.Cursor >= 0 && out.Cursor < len(out.Rows) && out.Rows[out.Cursor].IsTaskRow() {
 			return
 		}
+		// A launch folds the Backlog lane, so the walk opens it on the way.
+		if row := out.Rows[out.Cursor]; row.IsCollapsibleHeader() && out.IsSectionRowCollapsed(row) {
+			sendKeys(t, driver, "l")
+		}
 		sendKeys(t, driver, "j")
 	}
 	t.Fatal("the launch view drew no task row to select")

@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x30",
   "actions": [
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
     { "type": "assert", "label": "the header footer offers the menu that reaches every act no key does", "assert": "contains", "value": "Space actions" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },

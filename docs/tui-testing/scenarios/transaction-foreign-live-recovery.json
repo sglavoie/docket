@@ -8,6 +8,7 @@
 
     { "type": "restart", "label": "launching runs recovery over the synced transaction directory" },
     { "type": "wait" },
+    { "type": "command", "label": "open Backlog, which the relaunch folds, so the whole workspace is on screen", "command": "Clear All Folds" },
     { "type": "assert", "label": "another machine's live transaction is left alone, not rolled anywhere", "assert": "not_contains", "value": "quarantine" },
     { "type": "assert", "assert": "not_contains", "value": "unresolved merge conflict" },
     { "type": "assert", "label": "so this machine opens on an ordinary root", "assert": "contains", "value": "Active Projects · All" },

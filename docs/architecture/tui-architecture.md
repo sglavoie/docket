@@ -5,7 +5,9 @@
 Every run creates one AppModel-owned Outliner and starts in Active Projects, All.
 Active Projects is the base task workspace: the non-archived projects the
 catalog does not tag parked. Search, filters, selection, folds, cursor, and
-scope are session state and are not restored. Typed navigation permits that one
+scope are session state and are not restored; the one fold a run starts with is
+All's Backlog lane, which `FoldBacklogForLaunch` seeds beside the launch focus
+rather than inside `ResetToGlobalAll`, so no reset or reload reapplies it. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
 receives no key or reload dispatch.
 

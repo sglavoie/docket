@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "160x55",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
     { "type": "key", "label": "search for the task at the top of a subtree", "key": "/" },
     { "type": "text", "text": "launch platform" },

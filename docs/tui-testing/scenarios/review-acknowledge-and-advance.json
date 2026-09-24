@@ -3,6 +3,7 @@
   "fixture": "stale",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
     { "type": "assert", "label": "untouched tasks stay in their lifecycle lane", "assert": "contains", "value": "Backlog  (3)" },
     { "type": "assert", "assert": "not_contains", "value": "Stale  (" },
 

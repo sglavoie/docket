@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "open the tag facet", "key": "f" },
     { "type": "key", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Filter by Tags" },

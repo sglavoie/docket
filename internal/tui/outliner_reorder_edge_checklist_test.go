@@ -12,6 +12,8 @@ func TestChecklistReorderEdge(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	outlinerView := driver.App().crossOutliner
+	// A launch folds All's Backlog lane, which holds the checklist owner.
+	outlinerView.ClearAllFolds()
 	focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
 	if !outlinerView.ExpandAtCursor() {
 		t.Fatal("expandAtCursor did not expand the checklist")

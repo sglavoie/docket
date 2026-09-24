@@ -177,11 +177,15 @@ func TestChecklistRowsSuppressedDuringVisualSelection(t *testing.T) {
 func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) taskref.TaskIdentity {
 	t.Helper()
 	outlinerView := driver.App().crossOutliner
-	for index, row := range outlinerView.Rows {
-		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
-			outlinerView.Cursor = index
-			return outlinerView.TaskIdentityForRow(row)
+	for range 2 {
+		for index, row := range outlinerView.Rows {
+			if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
+				outlinerView.Cursor = index
+				return outlinerView.TaskIdentityForRow(row)
+			}
 		}
+		// A launch folds the Backlog lane, so a miss opens it once.
+		openLaunchFoldedLanes(outlinerView)
 	}
 	t.Fatalf("checklist fixture has no visible task row titled %q", title)
 	return taskref.TaskIdentity{}
@@ -195,4 +199,23 @@ func checklistRowTexts(outlinerView *outliner.OutlinerModel) []string {
 		}
 	}
 	return texts
+}
+
+// openLaunchFoldedLanes opens every folded section header the way l does, which
+// is how the Backlog lane a launch folds is reached, and puts the cursor back.
+// Task and checklist folds are left alone, unlike ClearAllFolds.
+func openLaunchFoldedLanes(view *outliner.OutlinerModel) {
+	cursor := view.Cursor
+	for opened := true; opened; {
+		opened = false
+		for index, row := range view.Rows {
+			if row.IsCollapsibleHeader() && view.IsSectionRowCollapsed(row) {
+				view.Cursor = index
+				opened = view.ExpandAtCursor()
+				break
+			}
+		}
+	}
+	view.Cursor = cursor
+	view.ClampCursor()
 }

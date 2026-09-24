@@ -59,12 +59,18 @@ func (env *stateTransitionFeedbackEnv) press(t *testing.T, key string) {
 
 func (env *stateTransitionFeedbackEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
-	env.press(t, "home")
-	for range len(env.driver.App().crossOutliner.Rows) + 1 {
-		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
-			return
+	// A launch folds All's Backlog lane, so a miss opens every fold and walks again.
+	for attempt := range 2 {
+		if attempt > 0 {
+			env.driver.App().crossOutliner.ClearAllFolds()
 		}
-		env.press(t, "down")
+		env.press(t, "home")
+		for range len(env.driver.App().crossOutliner.Rows) + 1 {
+			if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
+				return
+			}
+			env.press(t, "down")
+		}
 	}
 	t.Fatalf("the cursor never reached task %s", taskID)
 }

@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
+    { "type": "key", "label": "down past its first project heading", "key": "j" },
+    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "key", "label": "launch opens inside the Client Alpha group, so one stop reaches the Client Beta group header", "key": "n" },
     { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "label": "scope to that project", "key": "g" },
@@ -22,6 +25,9 @@
     { "type": "wait" },
     { "type": "assert", "label": "the lens the user last opened comes back with its scope", "assert": "contains", "value": "Lens: Beta Desk" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+    { "type": "assert", "label": "a fold is no lens axis, so the relaunch folds Backlog under the lens too", "assert": "contains", "value": "▸  @ Backlog  (1)" },
+    { "type": "key", "label": "the launch seats the cursor on the project heading, the first row drawn, so step down to Backlog", "key": "j" },
+    { "type": "key", "label": "and open it", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
     { "type": "assert", "label": "the restored scope brought no other project's work in", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "a restored lens is not a modified one", "assert": "not_contains", "value": "Lens: Beta Desk*" },
@@ -31,6 +37,8 @@
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "Backlog folded, as that launch draws it", "assert": "contains", "value": "▸  @ Backlog  (4)" },
+    { "type": "key", "label": "and opening it brings every project's work back", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "no_layout_issues" },
 

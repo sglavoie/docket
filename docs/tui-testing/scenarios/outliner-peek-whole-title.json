@@ -3,6 +3,7 @@
   "fixture": "narrow",
   "size": "60x20",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select the row whose title the width clips", "key": "end" },
     { "type": "assert", "label": "the whole 60-column budget is the title's, so the clip falls at the end of it rather than after one word", "assert": "contains", "value": "Investigate intermittent timeout when syncing very…" },

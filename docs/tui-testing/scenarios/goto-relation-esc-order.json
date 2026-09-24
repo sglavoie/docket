@@ -3,6 +3,7 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "capture the referring task", "key": "a" },
     { "type": "text", "text": "Wire the importer %client-alpha ~client-beta:1" },
     { "type": "key", "key": "enter" },

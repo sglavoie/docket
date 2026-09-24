@@ -3,8 +3,11 @@
   "fixture": "multi-project",
   "size": "100x30",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
+    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task the cursor stood on", "key": "p" },
     { "type": "assert", "label": "the header footer teaches the key rather than the menu row it replaced", "assert": "contains", "value": "* project pin" },
     { "type": "assert", "label": "no fixture ships a pinned project, so the marker has to be earned", "assert": "not_contains", "value": "* [client-alpha]" },
 

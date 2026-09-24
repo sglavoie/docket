@@ -4,6 +4,9 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
+    { "type": "key", "label": "onto the project header", "key": "j" },
+    { "type": "key", "label": "onto the first task", "key": "j" },
     { "type": "key", "label": "expand its checklist", "key": "l" },
     { "type": "key", "label": "move onto the first checklist item", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },

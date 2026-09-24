@@ -361,6 +361,23 @@ func (m *OutlinerModel) ResetToGlobalAll() {
 	m.ClampCursor()
 }
 
+// FoldBacklogForLaunch seeds the one fold a launch owes: All's Backlog lane
+// starts folded, so the first screen leads with the work already in motion and
+// its header still counts what the fold hides. It is a launch act rather than
+// part of ResetToGlobalAll, so a reset, a reload, and Esc never reapply it, and
+// it reads nothing from disk, so no fold is ever restored.
+func (m *OutlinerModel) FoldBacklogForLaunch() {
+	if m == nil {
+		return
+	}
+	m.Folds.setSection(stateGroupCollapsePrefix+string(models.StateGroupBacklog), true)
+	// The rebuild guard's fingerprint does not cover the fold maps, so the
+	// population is invalidated to make the rebuild honor the new key.
+	m.Population.Invalidate()
+	m.RebuildRows()
+	m.ClampCursor()
+}
+
 // resetToLaunchView returns the view to the state a lens-free launch produces:
 // Active Projects, All, no query, no filters, no sort, no focus, and no lens
 // applied. Every axis is taken away through the same call its own key uses, the

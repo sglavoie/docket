@@ -244,8 +244,9 @@ func TestOutlinerGuidanceAdvertisesOnlyApplicableControlsOnEveryRowType(t *testi
 		}
 		t.Cleanup(func() { _ = ws.Cleanup() })
 		out := driver.App().crossOutliner
-		// A group draws its header only while it is folded, so `p` is what makes
-		// this row exist at all.
+		// The fixture's work sits in the Backlog lane a launch folds, so the lane
+		// is opened before `p` folds its project groups.
+		openLaunchFoldedLanes(out)
 		if err := driver.SendKey("p"); err != nil {
 			t.Fatalf("fold project groups: %v", err)
 		}

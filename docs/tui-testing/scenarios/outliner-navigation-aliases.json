@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "99x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "open actions for the row under the cursor", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },

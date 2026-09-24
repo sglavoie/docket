@@ -3,6 +3,7 @@
   "fixture": "stale",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "All leaves untouched work in its lifecycle lane", "assert": "not_contains", "value": "Stale  (2)" },
     { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew untouched vendor briefing" },

@@ -3,6 +3,9 @@
   "fixture": "workflow",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "complete that one task", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
@@ -19,6 +22,7 @@
     },
     { "type": "assert", "assert": "not_contains", "value": "now in" },
     { "type": "wait" },
+    { "type": "key", "label": "l opens the Backlog the relaunch folded", "key": "l" },
     { "type": "assert", "label": "the work still comes back", "assert": "contains", "value": "Sketch intake flow" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

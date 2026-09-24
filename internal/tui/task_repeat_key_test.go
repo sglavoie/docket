@@ -499,6 +499,9 @@ func TestRepeatKeyRepeatsInsideAnExplicitlyScopedParkedProject(t *testing.T) {
 		}
 	}
 
+	// Every task is Backlog, so launch seats the cursor on that folded lane's
+	// header and `l` opens it; the fold outlives the scope change below.
+	press("l")
 	press("P")
 	for range 32 {
 		screen := driver.Observe(ObserveOptions{}).PlainScreen

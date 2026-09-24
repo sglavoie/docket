@@ -21,16 +21,6 @@ func sortDriver(t *testing.T, fixture string, keys ...string) *UITestDriver {
 	return driver
 }
 
-func sortPressKeys(t *testing.T, driver *UITestDriver, keys ...string) {
-	t.Helper()
-	for _, key := range keys {
-		if err := driver.SendKey(key); err != nil {
-			t.Fatalf("key %q: %v", key, err)
-		}
-		driver.drain()
-	}
-}
-
 func sortSectionTaskTitles(t *testing.T, driver *UITestDriver, section func(outliner.OutlinerRow) bool) []string {
 	t.Helper()
 	outlinerView := driver.App().crossOutliner

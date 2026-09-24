@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
+    { "type": "key", "label": "down past its first project heading", "key": "j" },
+    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "@ Review" },
 

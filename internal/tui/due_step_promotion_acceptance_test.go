@@ -116,15 +116,29 @@ func (env *deadlineAcceptanceEnv) settle(t *testing.T, keys ...string) {
 
 func (env *deadlineAcceptanceEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
+	if env.walkToTask(t, taskID) {
+		return
+	}
+	// A launch folds All's Backlog lane, so a task living there is reached by
+	// opening every fold first.
+	env.driver.App().crossOutliner.ClearAllFolds()
+	if env.walkToTask(t, taskID) {
+		return
+	}
+	t.Fatalf("the cursor never reached task %s", taskID)
+}
+
+func (env *deadlineAcceptanceEnv) walkToTask(t *testing.T, taskID string) bool {
+	t.Helper()
 	env.press(t, "home")
 	view := env.driver.App().crossOutliner
 	for range len(view.Rows) + 1 {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
-			return
+			return true
 		}
 		env.press(t, "down")
 	}
-	t.Fatalf("the cursor never reached task %s", taskID)
+	return false
 }
 
 // promote opens the owner's checklist and presses `S` on the named item. It goes

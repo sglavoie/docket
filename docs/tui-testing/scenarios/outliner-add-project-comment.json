@@ -4,7 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "launch seats the cursor on the first task, so step up onto its project header", "key": "k" },
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
+    { "type": "key", "label": "step down onto the project header", "key": "j" },
 
     { "type": "key", "label": "C on a project header comments on the project", "key": "C" },
     { "type": "assert", "assert": "contains", "value": "Add project comment" },

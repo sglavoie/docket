@@ -254,6 +254,7 @@ The committed suite exercises the product contracts directly:
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
 | Inbox triage through the unified `w` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
 | Cursor recovery after a departure, in every mode: crossing a project group header, landing on a promoted child, walking past the descendants a moved parent carried away to the sibling that stayed, and holding still under undo | `inbox-triage-advance-across-project-groups.json`, `inbox-triage-advance-promotes-children.json`, `relocation-recovery-subtree-move.json`, `inbox-triage-undo-does-not-advance.json` |
+| Launch folding Backlog alone: the header still counting it, the cursor on the first task drawn, `l` opening it, and neither `Esc` nor `0` nor anything but a relaunch seeding it again | `outliner-launch-backlog-folded.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |

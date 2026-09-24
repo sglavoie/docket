@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -763,11 +764,12 @@ func TestUXDailyUseStateChangeNotesTheMissingCheckIn(t *testing.T) {
 // twice: the cursor is on a task, and it is on the *first* one, which is what
 // separates the rule from a landing that merely happened to clear the header.
 //
-// A folded or empty first section is not a separate case and is deliberately not
-// staged here: launch restores no folds, and a section holding nothing is never
-// emitted, so neither can stand over the first task at launch. What can stand
-// over it is a section header, a project group summary, or a focused-project
-// header, and the rule reads past all three by asking each row what it is. The
+// A launch folds All's Backlog lane and nothing else, so a fixture whose work
+// all sits in Backlog draws no task row and lands on the first row, that folded
+// header, which is the rule's own fallback. A section holding nothing is never
+// emitted. What can stand over the first task is a section header, a project
+// group summary, or a focused-project header, and the rule reads past all three
+// by asking each row what it is. The
 // asynchronous halves of the rule — a superseded read, a lens still loading its
 // own projects, a keystroke arriving first — are in app_launch_focus_test.go,
 // where they can be driven one message at a time.
@@ -786,7 +788,10 @@ func TestUXDailyUseLaunchSeatsTheCursorOnTheFirstTask(t *testing.T) {
 				}
 			}
 			if wanted < 0 {
-				t.Fatal("the fixture drew no task row, so it records nothing about this rule")
+				if !view.Folds.CollapsedSections["_state:"+string(models.StateGroupBacklog)] {
+					t.Fatal("the fixture drew no task row and no folded Backlog lane hides one")
+				}
+				wanted = 0
 			}
 			if view.Cursor != wanted {
 				t.Fatalf("a fresh launch seated the cursor on row %d, not the first task row %d", view.Cursor, wanted)
@@ -810,7 +815,19 @@ func TestUXDailyUseLaunchSeatsTheCursorOnTheFirstTask(t *testing.T) {
 //
 // Session 12 owns this, and session 11 reached it first by moving the landing.
 func TestUXDailyUseLaunchGuidanceNamesTheDailyActs(t *testing.T) {
-	driver, _ := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
+	driver, view := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
+	// This fixture's work all sits in the Backlog lane a launch folds, so the
+	// landing is that header; opening it and stepping down reaches the first task.
+	sortPressKeys(t, driver, "l")
+	for range len(view.Rows) {
+		if row := view.Rows[view.Cursor]; row.IsTaskRow() && row.Task != nil {
+			break
+		}
+		sortPressKeys(t, driver, "j")
+	}
+	if row := view.Rows[view.Cursor]; !row.IsTaskRow() || row.Task == nil {
+		t.Fatalf("opening the Backlog lane left the cursor off a task row: %+v", row)
+	}
 	footer := uxClarityFooter(driver)
 
 	leading := "a capture · w workflow · e edit · / search · b peek · ? help"

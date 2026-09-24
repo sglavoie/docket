@@ -27,6 +27,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "⊡ Tomorrow" },
     { "type": "restart", "label": "every press committed" },
+    { "type": "command", "label": "the relaunch folds Backlog again, so open it to keep the stepped task in view", "command": "Clear All Folds" },
     { "type": "assert", "assert": "contains", "value": "⊡ Tomorrow" },
     { "type": "key", "label": "one press is one undo entry, never a coalesced burst", "key": "u" },
     { "type": "wait" },

@@ -3,6 +3,7 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "the woken task is an ordinary row again", "assert": "contains", "value": "Alpha back from a break" },
     { "type": "assert", "label": "neither half of a deferral reaches the row", "assert": "not_contains", "value": "Alpha back from a break woke" },
     { "type": "assert", "assert": "not_contains", "value": "Alpha back from a break defer" },

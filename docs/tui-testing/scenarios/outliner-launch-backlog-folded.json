@@ -1,0 +1,46 @@
+{
+  "name": "outliner-launch-backlog-folded",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "label": "launch folds Backlog, whose header still counts what it hides", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+    { "type": "assert", "label": "so no Backlog task is drawn", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "assert", "label": "while the lanes in motion stay open", "assert": "contains", "value": "▾  @ Doing  (1)" },
+    { "type": "key", "label": "the cursor sits on the first task the list draws", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Build login form" },
+
+    { "type": "key", "label": "Esc at the launch view leaves the fold alone", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+    { "type": "key", "label": "and so does resetting to the launch view", "key": "0" },
+    { "type": "assert", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+
+    { "type": "key", "label": "walk down to the Backlog header", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "l opens it like any other fold", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Backlog  (3)" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "the seed is a launch act, so neither Esc nor the reset folds it again", "key": "esc" },
+    { "type": "key", "key": "0" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Backlog  (3)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "restart", "label": "folds are never restored, so the next launch seeds the fold afresh" },
+    { "type": "assert", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+    { "type": "assert", "assert": "not_contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "gp from Backlog mode reveals the task in All through the launch fold", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "the last Backlog row is the leaf the fold hides in All", "key": "G" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Add password validation" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "assert": "not_contains", "value": "not listed in All" },
+    { "type": "assert", "assert": "contains", "value": "▾  @ Backlog  (3)" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Add password validation" }
+  ]
+}

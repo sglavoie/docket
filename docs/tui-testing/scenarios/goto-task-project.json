@@ -3,7 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "launch opens on Client Alpha's task, so one stop reaches the Client Beta group header", "key": "n" },
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
+    { "type": "key", "label": "one stop reaches the Client Alpha group header", "key": "n" },
+    { "type": "key", "label": "a second stop reaches the Client Beta group header", "key": "n" },
     { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
 
     { "type": "key", "label": "start the go-to chord", "key": "g" },

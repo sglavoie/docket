@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "edit the selected row", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "reference a task in another project", "text": " ~client-beta:1" },

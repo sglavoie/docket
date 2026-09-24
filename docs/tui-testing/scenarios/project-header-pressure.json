@@ -3,6 +3,7 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "a Backlog project group names its overdue work", "assert": "contains", "value": "[signal-delivery-coordination-track] (3)  ! overdue 2" },
     { "type": "assert", "label": "a Today group does not restate its own size", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
     { "type": "assert", "label": "only the workspace pulse says today 1 here", "assert": "count_contains", "value": "today 1", "count": 1 },

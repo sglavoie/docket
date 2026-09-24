@@ -3,9 +3,12 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
+    { "type": "key", "label": "onto the Client Alpha group header", "key": "j" },
+    { "type": "key", "label": "onto Client Alpha's task", "key": "j" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
-    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering that task", "key": "p" },
     { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "[client-alpha]" },
     { "type": "assert", "assert": "not_contains", "value": "Client Alpha" },
 

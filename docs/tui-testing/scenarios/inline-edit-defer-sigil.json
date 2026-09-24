@@ -3,6 +3,7 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "open the filter chord", "key": "f" },
     { "type": "key", "label": "the deferred facet is a row on the due picker", "key": "@" },
     { "type": "key", "key": "down" },

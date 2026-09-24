@@ -3,6 +3,9 @@
   "fixture": "checklist",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "C opens the quick comment popup", "key": "C" },

@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "save a lens over the tag a rename is about to retire", "key": "/" },
     { "type": "text", "text": "#security" },
     { "type": "key", "label": "close the suggestions, keeping the query", "key": "esc" },

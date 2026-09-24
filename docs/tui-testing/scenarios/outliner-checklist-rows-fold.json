@@ -3,6 +3,9 @@
   "fixture": "checklist",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
+    { "type": "key", "label": "down past its first project heading", "key": "j" },
+    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the owner row is its title; the fold is what says a checklist hangs below", "assert": "contains", "value": "Draft the launch runbook" },
     { "type": "assert", "label": "progress is supporting detail, so the count is Peek's", "assert": "not_contains", "value": "1/3" },

@@ -117,6 +117,8 @@ func TestUITestFixtureParkedSplitsTaskWorkspaceFromCatalog(t *testing.T) {
 		t.Fatalf("base workspace project tags = %v, want no parked tag", active.Tags)
 	}
 
+	// The fixture's work is Backlog, which the launch folds.
+	driver.App().crossOutliner.ClearAllFolds()
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 	if !strings.Contains(screen, "Ship the delivery checklist") {
 		t.Fatalf("Active Projects is missing the unparked project's work:\n%s", screen)

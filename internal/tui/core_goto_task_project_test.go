@@ -35,10 +35,16 @@ const gotoProjectTaskTitle = "Beta rollout checklist"
 // gotoProjectCursorOnTask parks the cursor on the row holding Client Beta's task.
 func gotoProjectCursorOnTask(t *testing.T, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
-	for index, row := range outlinerView.Rows {
-		if row.IsTaskRow() && row.Task != nil && row.Task.Title == gotoProjectTaskTitle {
-			outlinerView.Cursor = index
-			return
+	// A launch folds All's Backlog lane, so a miss opens every fold and looks again.
+	for attempt := range 2 {
+		if attempt > 0 {
+			outlinerView.ClearAllFolds()
+		}
+		for index, row := range outlinerView.Rows {
+			if row.IsTaskRow() && row.Task != nil && row.Task.Title == gotoProjectTaskTitle {
+				outlinerView.Cursor = index
+				return
+			}
 		}
 	}
 	t.Fatalf("no row holds the task %q", gotoProjectTaskTitle)

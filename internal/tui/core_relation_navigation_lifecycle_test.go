@@ -87,6 +87,8 @@ func newRelationLifecycleEnv(t *testing.T) *relationLifecycleEnv {
 		t.Fatalf("launch the driver: %v", err)
 	}
 	driver.SetDrainTimeout(750 * time.Millisecond)
+	// Every task here sits in Backlog, which the launch folds.
+	driver.App().crossOutliner.ClearAllFolds()
 	return &relationLifecycleEnv{
 		driver:          driver,
 		originProjectID: origin.ID,

@@ -69,6 +69,9 @@ func newArchivedGuardEnv(t *testing.T) *archivedGuardEnv {
 	}
 
 	env := &archivedGuardEnv{workspace: workspace, driver: driver, active: active, archived: archived}
+	// Every fixture task is Backlog, so launch seats the cursor on that folded
+	// lane's header and `l` opens it.
+	env.press(t, "l")
 	env.press(t, "F", "a")
 	out := env.outliner(t)
 	if out.ProjectFilter.ArchivedMode != query.ProjectPopulationInclude {

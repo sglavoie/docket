@@ -105,7 +105,25 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 			return
 		}
 	}
+	if project := m.projectHoldingTask(task); project != nil &&
+		m.expandFoldsRevealing(task, taskref.For(task, project)) {
+		return
+	}
 	m.SetTransientStatus("Task is unavailable in this project")
+}
+
+// projectHoldingTask is the project whose tree holds task: the scoped one, else
+// the loaded project that owns it.
+func (m *OutlinerModel) projectHoldingTask(task *models.Task) *models.Project {
+	if m.Project != nil {
+		return m.Project
+	}
+	for _, project := range m.Population.Projects {
+		if project != nil && project.GetTaskByID(task.ID) == task {
+			return project
+		}
+	}
+	return nil
 }
 
 // NavigateToTaskInProject navigates to a task in the cross-project outliner.
@@ -151,7 +169,13 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	}
 	m.RebuildRows()
 
-	if !m.MoveCursorToProjectTask(task.ID, projectID) {
+	if m.MoveCursorToProjectTask(task.ID, projectID) {
+		return
+	}
+	// A lane fold, such as the Backlog one a launch seeds, is not spelled from
+	// the task, so the shared reveal reads it off the rebuilt rows instead.
+	identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+	if !m.expandFoldsRevealing(task, identity) {
 		m.SetTransientStatus("Task is hidden by current filters")
 	}
 }

@@ -3,6 +3,7 @@
   "fixture": "rich",
   "size": "80x24",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
     { "type": "key", "label": "search the entire active scope", "key": "/" },
     { "type": "text", "text": "launch" },

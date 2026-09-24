@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
+    { "type": "key", "label": "onto the Client Alpha group header", "key": "j" },
+    { "type": "key", "label": "onto Client Alpha's task", "key": "j" },
     { "type": "key", "key": "e" },
     { "type": "text", "label": "reference a task in a project this view can still read", "text": " ~client-beta:1" },
     { "type": "key", "key": "tab" },

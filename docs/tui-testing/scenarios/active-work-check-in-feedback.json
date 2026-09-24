@@ -3,6 +3,7 @@
   "fixture": "workflow",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "key": "a" },
     { "type": "text", "text": "Offer capture $doing " },
     { "type": "key", "key": "enter" },

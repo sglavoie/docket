@@ -3,6 +3,9 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
+    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "assert", "label": "every project's task is on screen", "assert": "contains", "value": "Beta rollout checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew passport" },
 

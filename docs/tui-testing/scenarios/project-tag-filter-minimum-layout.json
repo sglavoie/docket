@@ -3,6 +3,7 @@
   "fixture": "parked",
   "size": "80x24",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "the base scope says how much the population is hiding", "assert": "contains", "value": "Active Projects · 1 parked" },
     { "type": "assert", "assert": "no_layout_issues" },
 

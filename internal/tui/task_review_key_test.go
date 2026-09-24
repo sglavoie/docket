@@ -92,9 +92,14 @@ func (env *reviewKeyEnv) toggleReview(t *testing.T) {
 func (env *reviewKeyEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
 	env.press(t, "home")
-	for range len(env.driver.App().crossOutliner.Rows) + 1 {
+	out := env.driver.App().crossOutliner
+	for step := 0; step <= len(out.Rows); step++ {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
 			return
+		}
+		// A launch folds the Backlog lane, so the walk opens it on the way.
+		if row := out.Rows[out.Cursor]; row.IsCollapsibleHeader() && out.IsSectionRowCollapsed(row) {
+			env.press(t, "l")
 		}
 		env.press(t, "down")
 	}

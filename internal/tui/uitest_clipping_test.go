@@ -97,6 +97,7 @@ func TestObservationReportsClippedLines(t *testing.T) {
 		t.Fatalf("failed to build fixture driver: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
+	openLaunchFoldedLanes(driver.App().crossOutliner)
 
 	obs := driver.Observe(ObserveOptions{})
 	if len(obs.ClippedLines) == 0 {
@@ -120,6 +121,7 @@ func TestNotClippedAssertionNamesWhichDefectItFound(t *testing.T) {
 		t.Fatalf("failed to build fixture driver: %v", err)
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
+	openLaunchFoldedLanes(driver.App().crossOutliner)
 
 	assert := func(value string) error {
 		return driver.runAssert(UITestAction{Type: UITestActionAssert, Assert: "not_clipped", Value: value})

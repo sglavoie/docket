@@ -3,6 +3,7 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "the repeatedly deferred task is an ordinary row", "assert": "contains", "value": "Alpha back from a break" },
     { "type": "assert", "label": "the avoidance count is supporting detail, so no width buys it a place on the row", "assert": "not_contains", "value": "deferred ×3" },
     { "type": "assert", "assert": "no_layout_issues" },

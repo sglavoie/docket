@@ -27,6 +27,8 @@ func relationDriverWithReference(t *testing.T) (*UITestDriver, *models.Task, *mo
 	if outlinerView == nil {
 		t.Fatal("the fixture app has no Outliner")
 	}
+	// The launch folds Backlog, which holds part of the fixture's work.
+	outlinerView.ClearAllFolds()
 	// Both ends have to be rows the launch view already draws, or the hop would
 	// be proving something about revelation rather than about the keys. A row
 	// carries a copy of its task, so the pair is named by ID here and the

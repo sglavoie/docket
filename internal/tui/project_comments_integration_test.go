@@ -448,9 +448,13 @@ func seatCursorOnProjectHeaderFor(t *testing.T, driver *UITestDriver, projectID 
 	view := driver.App().crossOutliner
 	// A grouping projection draws the header only once the group is folded, and a
 	// scoped one leads with a focused header no fold produces, so the fold is
-	// what a miss spends rather than what the seat opens with.
-	for attempt := range 2 {
-		if attempt == 1 {
+	// what a miss spends rather than what the seat opens with. The launch's
+	// Backlog fold can hide the header too, so the first miss opens every fold.
+	for attempt := range 3 {
+		switch attempt {
+		case 1:
+			view.ClearAllFolds()
+		case 2:
 			foldEveryProjectGroup(t, view)
 		}
 		for index, row := range view.Rows {
@@ -459,7 +463,7 @@ func seatCursorOnProjectHeaderFor(t *testing.T, driver *UITestDriver, projectID 
 				return
 			}
 		}
-		if len(view.VisibleProjectGroups()) == 0 {
+		if attempt > 0 && len(view.VisibleProjectGroups()) == 0 {
 			break
 		}
 	}

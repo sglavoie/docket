@@ -3,6 +3,8 @@
   "fixture": "ux-acceptance",
   "size": "100x35",
   "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
+    { "type": "wait", "label": "and let its confirmation expire, so the baseline is the plain launch footer", "duration": "10s" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "launch is Active Projects, All", "assert": "contains", "value": "Active Projects · All" },
