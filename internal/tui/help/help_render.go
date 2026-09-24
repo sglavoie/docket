@@ -110,7 +110,8 @@ func helpSectionsForCategories(categories []string) []string {
 // the grammar declared.
 func (m *HelpViewModel) renderBySectionContent() string {
 	if len(m.filteredItems) == 0 {
-		return theme.MutedStyle.Render("No matching help items.")
+		return theme.MutedStyle.Render("No matching help items.") + "\n" +
+			theme.MutedStyle.Render("Clear or change the search.")
 	}
 
 	buckets := make(map[string][]filteredHelpItem)

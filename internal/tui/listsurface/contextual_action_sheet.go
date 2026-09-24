@@ -151,6 +151,7 @@ func normalizeContextActionSheetConfig(config ContextActionSheetConfig) ContextA
 	}
 	if config.NoMatchState.Title == "" {
 		config.NoMatchState.Title = "No matching actions."
+		config.NoMatchState.Detail = "Clear or change the search."
 	}
 	config.Categories = append([]ListCategory(nil), config.Categories...)
 	return config

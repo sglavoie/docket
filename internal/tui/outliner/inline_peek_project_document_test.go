@@ -158,7 +158,7 @@ func TestProjectPeekAlwaysHasSomethingToSay(t *testing.T) {
 		t.Fatalf("an empty project paged: %d rows", len(doc.Body))
 	}
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
-	if want := "Comments: No comments yet."; !strings.Contains(strings.Join(strings.Fields(body), " "), want) {
+	if want := "Comments: No comments yet. Press C to add one."; !strings.Contains(strings.Join(strings.Fields(body), " "), want) {
 		t.Fatalf("empty body = %q, want %q", body, want)
 	}
 

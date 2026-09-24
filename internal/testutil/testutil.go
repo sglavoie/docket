@@ -175,26 +175,3 @@ func SetupTestDeps[T any](t *testing.T, newState func(dataDir string) T) *TestDe
 		Cleanup:    cleanup,
 	}
 }
-
-// SetupTestDepsWithProject creates test deps and supplies a rooted project to
-// the caller-owned state factory before registering it with the mock repository.
-// Returns the TestDeps and the created project.
-func SetupTestDepsWithProject[T any](
-	t *testing.T,
-	projectName string,
-	newState func(dataDir string, project *models.Project) T,
-) (*TestDeps[T], *models.Project) {
-	t.Helper()
-	if newState == nil {
-		t.Fatal("SetupTestDepsWithProject requires a state factory")
-	}
-
-	project := NewTestProjectWithTasks(projectName)
-	deps := SetupTestDeps(t, func(dataDir string) T {
-		project.Path = filepath.Join(dataDir, "projects", project.Slug)
-		return newState(dataDir, project)
-	})
-	deps.Repository.Projects[project.ID] = project
-
-	return deps, project
-}

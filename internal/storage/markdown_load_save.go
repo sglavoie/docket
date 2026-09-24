@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // LoadProject loads tasks from a project's tasks.md file. Malformed hierarchy
@@ -220,26 +218,6 @@ func SaveProject(project *models.Project) error {
 	}
 
 	return nil
-}
-
-// SaveProjectLocked saves a project's tasks to its tasks.md file, acquiring
-// an exclusive file lock first. Use this for call sites that don't already
-// hold their own lock.
-func SaveProjectLocked(project *models.Project) error {
-	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
-		return SaveProject(project)
-	}
-	if project != nil && strings.TrimSpace(project.Path) == "" {
-		return tterrors.NewSaveProjectError(project.Name, ErrNoProjectPath)
-	}
-	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
-		return fmt.Errorf("failed to create project directory: %w", err)
-	}
-
-	lockPath := filepath.Join(project.Path, LockFileName)
-	return util.WithFileLock(lockPath, true, func() error {
-		return SaveProject(project)
-	})
 }
 
 // projectExists checks if a project directory and tasks file exist.

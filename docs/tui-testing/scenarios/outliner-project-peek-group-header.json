@@ -11,7 +11,7 @@
 
     { "type": "key", "label": "b opens Peek over the project the header names", "key": "b" },
     { "type": "assert", "label": "Peek leads with the stored name the row abbreviated", "assert": "contains", "value": "Client Alpha" },
-    { "type": "assert", "label": "an empty project still has something to say", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "label": "an empty project still has something to say", "assert": "contains", "value": "No comments yet. Press C to add one." },
     { "type": "assert", "label": "and no neighbouring project was read into it", "assert": "not_contains", "value": "Client Beta" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -48,7 +48,7 @@
 
     { "type": "key", "label": "undo takes the comment back and the pane says so", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "No comments yet." },
+    { "type": "assert", "assert": "contains", "value": "No comments yet. Press C to add one." },
     { "type": "assert", "assert": "not_contains", "value": "Kickoff moved to Monday morning" },
     { "type": "assert", "assert": "no_layout_issues" },
 

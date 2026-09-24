@@ -38,6 +38,7 @@
     { "type": "assert", "assert": "contains", "value": "Set Due or Defer: 国際化" },
     { "type": "text", "label": "narrow it to nothing at the minimum width", "text": "zzz" },
     { "type": "assert", "assert": "contains", "value": "No matching values." },
+    { "type": "assert", "label": "the no-match state names the way out at the minimum width", "assert": "contains", "value": "Clear or change the search." },
     { "type": "assert", "label": "the overlay reserves the guidance it rendered", "assert": "contains", "value": "Enter apply search · Esc clear search" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "one Esc clears the query and keeps the input", "key": "esc" },

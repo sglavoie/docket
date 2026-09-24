@@ -109,10 +109,17 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 			) + "\n"
 		}
 		message := "No notes yet."
-		if len(m.collectionErrors) > 0 {
+		hint := "Press a to choose a location and create one."
+		switch {
+		case len(m.collectionErrors) > 0:
 			message = "No notes loaded from the available owners."
+		case m.Scope.Kind == route.NotesScopeGlobal || m.Scope.Kind == route.NotesScopeProject:
+			// A narrowed scope may be empty while other owners hold notes, so
+			// the way out is named beside the way to fill it.
+			message = fmt.Sprintf("No notes in %s.", m.scopeLabel())
+			hint = "Press a to create one or p to change the scope."
 		}
-		return chrome.RenderEmptyState(message, "Press a to choose a location and create one.") + "\n"
+		return chrome.RenderEmptyState(message, hint) + "\n"
 	}
 
 	var b strings.Builder

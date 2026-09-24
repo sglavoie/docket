@@ -511,7 +511,7 @@ func (m *CommentsModel) renderMessages(b *strings.Builder, gap bool) {
 
 func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {
 	if len(m.entries) == 0 {
-		b.WriteString(theme.MutedStyle.Render("No comments yet."))
+		b.WriteString(theme.MutedStyle.Render("No comments yet. Press a to add one."))
 		b.WriteString("\n")
 		return
 	}

@@ -106,7 +106,29 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.PrimaryMode = chrome.ModeDue
 				out.Rows = nil
 			},
-			wantMessage: "Due is empty. Press Tab or Shift+Tab to change modes.",
+			wantMessage: "Due is empty. Press @ on a task to give it a deadline, or Tab to change modes.",
+			wantHint:    "Tab next mode",
+		},
+		{
+			name: "empty Today",
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
+				out.PrimaryMode = chrome.ModeToday
+				out.Rows = nil
+			},
+			wantMessage: "Today is empty. Press wt on a task to plan it for today, or Tab to change modes.",
+			wantHint:    "Tab next mode",
+		},
+		{
+			name: "empty Next",
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
+				out.PrimaryMode = chrome.ModeNext
+				out.Rows = nil
+			},
+			wantMessage: "Next is empty. Press wn on a task to add it to Next, or Tab to change modes.",
 			wantHint:    "Tab next mode",
 		},
 		{

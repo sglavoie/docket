@@ -71,7 +71,8 @@ func NewOperationValuePickerModel(
 			Title: "No values available.",
 		},
 		NoMatchState: listsurface.ListEmptyState{
-			Title: "No matching values.",
+			Title:  "No matching values.",
+			Detail: "Clear or change the search.",
 		},
 	})
 	if err != nil {

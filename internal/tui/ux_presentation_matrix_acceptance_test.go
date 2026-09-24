@@ -305,8 +305,10 @@ func onEmptyProjectionCursor(t *testing.T, driver *UITestDriver, view *outliner.
 	})
 	// The explanation is the other half of the requirement: a dock that reached
 	// its position by pushing the empty state off the screen would answer the
-	// geometry question and lose the sentence.
-	if obs := driver.Observe(ObserveOptions{}); !strings.Contains(obs.PlainScreen, view.OutlinerEmptyMessage()) {
+	// geometry question and lose the sentence. The sentence may wrap at the
+	// narrow sizes, so both sides are compared as whitespace-collapsed words.
+	words := func(text string) string { return strings.Join(strings.Fields(text), " ") }
+	if obs := driver.Observe(ObserveOptions{}); !strings.Contains(words(obs.PlainScreen), words(view.OutlinerEmptyMessage())) {
 		t.Fatalf("the empty projection dropped its explanation %q\n%s", view.OutlinerEmptyMessage(), obs.PlainScreen)
 	}
 	inspect()

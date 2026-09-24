@@ -524,7 +524,7 @@ the fingerprint, which is what makes a rename a different document.
 
 Body order is the name, description, tags, then comments. The comment section is appended
 unconditionally rather than through the `add` helper the other two take: a
-project with nothing stored still owes the reader `No comments yet.`, which is
+project with nothing stored still owes the reader `No comments yet. Press C to add one.`, which is
 also what keeps every resolvable header's document non-empty. Bodies read newest
 first, matching the `;` panel — storage keeps them oldest first because that
 order is canonical and byte-stable, and reversing for a reader touches nothing

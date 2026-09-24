@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -1050,7 +1051,16 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 		body.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
 		body.WriteString("\n")
 	}
-	body.WriteString(theme.MutedStyle.Render(m.OutlinerEmptyMessage()))
+	// The explanation is wrapped here rather than by the terminal, so the block
+	// measured below is the block drawn: a sentence the terminal wrapped would
+	// count as one row and push the dock down by the rows it spilled onto.
+	explanation := textfit.WrapText(m.OutlinerEmptyMessage(), max(width, 1))
+	for i, line := range explanation {
+		if i > 0 {
+			body.WriteString("\n")
+		}
+		body.WriteString(theme.MutedStyle.Render(line))
+	}
 	b.WriteString(body.String())
 
 	// The dock sits at the screen row the reservation paid for, on this path for
@@ -1136,10 +1146,42 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		if mode.ID == chrome.ModeInbox {
 			return "Inbox is empty. Press a to capture or Tab to change modes."
 		}
+		if step, ok := m.emptyModeNextStep(mode.ID); ok {
+			return fmt.Sprintf("%s is empty. Press %s, or Tab to change modes.", mode.Label, step)
+		}
 		return fmt.Sprintf("%s is empty. Press Tab or Shift+Tab to change modes.", mode.Label)
 	default:
 		return listsurface.EmptyStateNoTasks
 	}
+}
+
+// emptyModeNextStep names the act that fills an empty planning or deadline
+// mode, spelled with the key the live strategy binds, so a rebinding moves the
+// sentence with the grammar. A mode without one, or a strategy that no longer
+// binds the act, falls back to the plain mode-change sentence.
+func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (string, bool) {
+	var (
+		operationID operation.OperationID
+		act         string
+	)
+	switch mode {
+	case chrome.ModeToday:
+		operationID, act = operation.OperationCoreToday, "on a task to plan it for today"
+	case chrome.ModeNext:
+		operationID, act = operation.OperationCoreNext, "on a task to add it to Next"
+	case chrome.ModeDue:
+		operationID, act = operation.OperationTaskSetDueDate, "on a task to give it a deadline"
+	default:
+		return "", false
+	}
+	if m == nil || m.OperationRegistry == nil {
+		return "", false
+	}
+	key := m.OperationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, operationID)
+	if key == "" {
+		return "", false
+	}
+	return key + " " + act, true
 }
 
 // outlinerListRows is the height of the block between the header chrome and the

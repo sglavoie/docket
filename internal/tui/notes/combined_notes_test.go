@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
@@ -441,5 +442,44 @@ func TestNotesManagerRestoresOnlyMoveToTheMinimalOperations(t *testing.T) {
 		if slices.Contains(keys, removed) {
 			t.Fatalf("Notes manager still exposes removed key %q in %v", removed, keys)
 		}
+	}
+}
+
+func TestNotesEmptyScopeNamesTheScopeAndTheWayOut(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
+	beta := &models.Project{ID: "beta", Name: "Beta", Path: t.TempDir()}
+	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
+		app.ProjectNoteLocation("alpha"): {{Title: "Alpha note", Filename: "alpha.md", ModifiedAt: time.Unix(1, 0)}},
+	}}
+	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, alpha, beta)
+	mountNotesManager(t, view)
+	view.SetSize(100, 24)
+
+	render := func() string {
+		return strings.Join(strings.Fields(ansi.Strip(view.renderListPane(100, 10))), " ")
+	}
+	const scopedHint = "Press a to create one or p to change the scope."
+
+	view.SetScope(route.GlobalNotesScope())
+	if got, want := render(), "No notes in Global. "+scopedHint; got != want {
+		t.Fatalf("global empty state = %q, want %q", got, want)
+	}
+
+	view.SetScope(route.ProjectNotesScope(beta.ID))
+	label := view.scopeLabel()
+	if !strings.Contains(label, "Beta") {
+		t.Fatalf("project scope label = %q, want it to name Beta", label)
+	}
+	if got, want := render(), "No notes in "+label+". "+scopedHint; got != want {
+		t.Fatalf("project empty state = %q, want %q", got, want)
+	}
+
+	empty := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(),
+		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}}, nil, alpha)
+	mountNotesManager(t, empty)
+	empty.SetSize(100, 24)
+	got := strings.Join(strings.Fields(ansi.Strip(empty.renderListPane(100, 10))), " ")
+	if want := "No notes yet. Press a to choose a location and create one."; got != want {
+		t.Fatalf("all-scope empty state = %q, want %q", got, want)
 	}
 }

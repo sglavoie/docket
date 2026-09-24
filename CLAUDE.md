@@ -683,7 +683,7 @@ Row and Peek budget:
 - Both project header forms Peek through `inlinePeekProjectDocumentFor` over the
   row's own `ProjectID`, never the view's: name leading the body, then
   description,
-  tags, and every stored comment newest first, with `No comments yet.` for none,
+  tags, and every stored comment newest first, with `No comments yet. Press C to add one.` for none,
   so a header always has a document and an unresolved one has none.
   `projectPeekOwner` is that project identity, so All's several headers for one
   project share one window. Task Peek keeps its comment count.

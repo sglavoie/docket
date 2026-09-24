@@ -141,7 +141,7 @@ func inlinePeekProjectCommentSection(comments []*models.ProjectComment, indent s
 	if len(chunks) == 0 {
 		return inlinePeekSection{
 			key:   "comments:none",
-			lines: inlinePeekEntryLines(inlinePeekProjectCommentLabel, []string{"No comments yet."}, indent, width),
+			lines: inlinePeekEntryLines(inlinePeekProjectCommentLabel, []string{"No comments yet. Press C to add one."}, indent, width),
 		}
 	}
 	return inlinePeekSection{

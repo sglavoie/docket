@@ -67,7 +67,7 @@ func (m *TaskAttachmentsModel) renderMessages(b *strings.Builder) {
 
 func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availableRows int) {
 	if len(m.Task.Attachments) == 0 {
-		b.WriteString(theme.MutedStyle.Render("No attachments yet."))
+		b.WriteString(theme.MutedStyle.Render("No attachments yet. Press a to add one."))
 		b.WriteString("\n")
 		return
 	}
