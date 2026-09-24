@@ -16,9 +16,9 @@ if ! deadcode ./... >"$production_output" 2>&1; then
 fi
 
 # internal/models/query*.go is the canonical query value, built ahead of the
-# grammar that compiles into it. It has no production caller until the capture
-# and search grammar is wired to it; delete this pattern in that session, once
-# internal/textgrammar imports the query.
+# grammar that compiles into it. deadcode still reports NewQuery,
+# AllQueryModes, AllQuerySortFields, and ParseQuery as unreached from
+# production; delete this pattern once internal/textgrammar imports the query.
 grep -v '^internal/testutil/' "$production_output" |
 	grep -v '^internal/models/query' >"$actionable_output" || true
 if [ -s "$actionable_output" ]; then

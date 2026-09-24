@@ -19,6 +19,10 @@ formatters:
   enable:
     - gofmt
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/sglavoie/tt
 
 linters:
   enable:

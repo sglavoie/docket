@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 

@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"

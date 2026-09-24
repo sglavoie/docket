@@ -3,6 +3,7 @@ package chrome
 import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 

@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"

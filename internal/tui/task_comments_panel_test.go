@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/entityops"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"

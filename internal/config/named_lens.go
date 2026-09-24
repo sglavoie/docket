@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 

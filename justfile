@@ -35,19 +35,33 @@ test:
     @echo "Running tests..."
     go test -race ./...
 
-# Removed: test-race alias (use `just test` instead — race detector is always enabled)
+# Run tests outside internal/tui without the race detector (fast inner loop)
+test-fast:
+    go test $(go list ./... | grep -v /internal/tui)
 
-# Run tests with coverage report
+# Run one package's tests with the race detector, e.g. `just test-pkg ./cmd`
+test-pkg PKG:
+    go test -race {{ PKG }}
+
+# Run tests with coverage report and enforce the coverage thresholds
 coverage:
     @echo "Running tests with coverage..."
-    go test -coverprofile=coverage.out ./...
+    go test -race -coverprofile=coverage.out ./...
     go tool cover -html=coverage.out -o coverage.html
     @echo "Coverage report: coverage.html"
+    ./scripts/check_coverage.sh
 
-# Format Go code
+# Format Go code (goimports when installed, else go fmt)
 fmt:
-    @echo "Formatting code..."
-    go fmt ./...
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Formatting code..."
+    if command -v goimports &>/dev/null; then
+        goimports -w -local github.com/sglavoie/tt .
+    else
+        echo "goimports not found; falling back to go fmt"
+        go fmt ./...
+    fi
 
 # Clean up go.mod and go.sum
 tidy:
@@ -87,7 +101,7 @@ tui-scenarios:
 cross-machine:
     ./scripts/cross_machine_gate.sh
 
-# Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
+# Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:
     @echo "Running code quality checks..."
     ./scripts/check.sh
@@ -109,18 +123,18 @@ release:
             GOOS=${os} GOARCH=${arch} go build {{ ldflags }} -o "${out}" .
         done
     done
-    echo "Release binaries written to dist/"
+    (cd dist && shasum -a 256 tt-* > SHA256SUMS)
+    echo "Release binaries and SHA256SUMS written to dist/"
 
 # Remove build artifacts
 clean:
     @echo "Cleaning..."
-    rm -f {{ binary_name }}
+    rm -f {{ binary_name }} coverage.out coverage.html
+    rm -rf dist
     go clean
     @echo "Clean complete"
 
-# Install git hooks for pre-push checks
+# Install git hooks (points core.hooksPath at scripts/hooks)
 install-hooks:
-    @echo "Installing git hooks..."
-    @chmod +x scripts/pre-push
-    @ln -sf ../../scripts/pre-push .git/hooks/pre-push
-    @echo "Pre-push hook installed"
+    git config core.hooksPath scripts/hooks
+    @echo "Git hooks installed from scripts/hooks"
