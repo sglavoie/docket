@@ -54,8 +54,24 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	}
 	setCommandDataDir(t, src)
 
-	if err := runWorkspaceLocation(nil, nil); err != nil {
+	stdout, _, err := captureDoctorOutput(t, func() error { return runWorkspaceLocation(nil, nil) })
+	if err != nil {
 		t.Fatalf("runWorkspaceLocation: %v", err)
+	}
+	for _, want := range []string{
+		"Workspace data directory: ",
+		"Config file:              ",
+		"Logs:                     " + config.DisplayPath(filepath.Join(home, ".tt", "logs")) + " (machine-local)",
+		"Backups:                  " + config.DisplayPath(filepath.Join(src, ".tt", "backups")),
+		"Exports:                  " + config.DisplayPath(filepath.Join(src, "exports")),
+		"Conflicts:                " + config.DisplayPath(filepath.Join(src, ".tt", "conflicts")),
+	} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("workspace location output lacks %q:\n%s", want, stdout)
+		}
+	}
+	if _, statErr := os.Stat(filepath.Join(home, ".tt", "logs")); !os.IsNotExist(statErr) {
+		t.Errorf("workspace location created the logs dir: %v", statErr)
 	}
 }
 

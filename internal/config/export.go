@@ -6,7 +6,8 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// ExportsDir returns the directory where project export files are stored (~/.tt/exports/).
+// ExportsDir returns the directory where project export files are stored:
+// <data>/exports, a sibling of projects/ beside the workspace config.
 func (m *Manager) ExportsDir() string {
 	return filepath.Join(filepath.Dir(m.configPath), "exports")
 }

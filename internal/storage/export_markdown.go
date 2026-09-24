@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -22,12 +23,37 @@ const maxHeadingLevel = 6
 // read is skipped rather than failing the export, because its only contribution
 // is a display label and the locator fallback already carries the whole value.
 func ExportProjectMarkdown(p *models.Project, destPath string, related ...*models.Project) (string, error) {
-	if err := LoadProject(p); err != nil {
-		return "", fmt.Errorf("load project: %w", err)
-	}
-
 	if destPath == "" {
 		return "", fmt.Errorf("export destination path is required")
+	}
+	data, err := renderProjectExport(p, related)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(destPath, []byte(data), 0600); err != nil {
+		return "", fmt.Errorf("write export file: %w", err)
+	}
+	return destPath, nil
+}
+
+// ExportProjectMarkdownTo writes the same clean markdown export
+// ExportProjectMarkdown produces to w instead of a file.
+func ExportProjectMarkdownTo(w io.Writer, p *models.Project, related ...*models.Project) error {
+	data, err := renderProjectExport(p, related)
+	if err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, data); err != nil {
+		return fmt.Errorf("write export: %w", err)
+	}
+	return nil
+}
+
+// renderProjectExport loads p and the related label population and renders
+// the whole export document, notes included.
+func renderProjectExport(p *models.Project, related []*models.Project) (string, error) {
+	if err := LoadProject(p); err != nil {
+		return "", fmt.Errorf("load project: %w", err)
 	}
 
 	loaded := make([]*models.Project, 0, len(related))
@@ -47,13 +73,7 @@ func ExportProjectMarkdown(p *models.Project, destPath string, related ...*model
 	if err != nil {
 		return "", fmt.Errorf("list notes: %w", err)
 	}
-	data += writeNotesSectionClean(notes)
-
-	if err := os.WriteFile(destPath, []byte(data), 0600); err != nil {
-		return "", fmt.Errorf("write export file: %w", err)
-	}
-
-	return destPath, nil
+	return data + writeNotesSectionClean(notes), nil
 }
 
 // WriteProjectMarkdownClean generates a human-readable markdown export of a

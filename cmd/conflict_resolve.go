@@ -38,8 +38,9 @@ cannot safely replay only its project document. In that case local and file
 resolution fail closed: adopt remote to clear the record, then retry the original
 operation so every project, configuration artifact, and attachment is rebuilt in
 one transaction.`,
-	Args: cobra.ExactArgs(1),
-	RunE: runConflictResolve,
+	Args:              cobra.ExactArgs(1),
+	RunE:              runConflictResolve,
+	ValidArgsFunction: completeConflictIDs,
 }
 
 func init() {

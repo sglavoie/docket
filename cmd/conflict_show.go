@@ -9,11 +9,12 @@ import (
 var conflictShowJSON bool
 
 var conflictShowCmd = &cobra.Command{
-	Use:   "show <id>",
-	Short: "Show the details of a merge conflict",
-	Long:  `Show the base, local, and remote revisions and every structured conflict for one recorded merge conflict.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runConflictShow,
+	Use:               "show <id>",
+	Short:             "Show the details of a merge conflict",
+	Long:              `Show the base, local, and remote revisions and every structured conflict for one recorded merge conflict.`,
+	Args:              cobra.ExactArgs(1),
+	RunE:              runConflictShow,
+	ValidArgsFunction: completeConflictIDs,
 }
 
 func init() {

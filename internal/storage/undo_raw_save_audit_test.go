@@ -14,13 +14,9 @@ import (
 	"testing"
 )
 
-const (
-	rawSaveDoctorRepair = "explicit tt doctor repair rewrites an already-loaded damaged project; it is not an ordinary user mutation"
-	rawSaveAppTestRepo  = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
-)
+const rawSaveAppTestRepo = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
 
 var rawProjectSaveAllowlist = map[string]string{
-	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)":                             rawSaveDoctorRepair,
 	"internal/tui/domain_controller.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
 }
 

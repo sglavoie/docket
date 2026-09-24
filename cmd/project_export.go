@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -11,34 +14,60 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-var projectExportFile string
+var (
+	projectExportFile string
+	projectExportAll  bool
+	projectExportDir  string
+)
+
+// projectExportStdout is the --file value that sends the export to stdout.
+const projectExportStdout = "-"
 
 var projectExportCmd = &cobra.Command{
 	Use:   "export [slug-or-id]",
 	Short: "Export a project to clean Markdown",
 	Long: `Export a project to a human-readable Markdown file in the exports/ folder of your tt data directory.
 
-If no project is specified, exports the current project.
-Use --file to write to an arbitrary path instead.
+Name the project by slug or ID, or pass --all to export every project,
+archived ones included, as one <slug>.md file each.
+Use --file to write one project to an arbitrary path, or --file - to print it.
+Use --dir with --all to write somewhere other than exports/.
 
 EXAMPLES
 
-  tt project export
   tt project export my-project
-  tt project export my-project --file /tmp/my-project.md`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runProjectExport,
+  tt project export my-project --file /tmp/my-project.md
+  tt project export my-project --file -
+  tt project export --all
+  tt project export --all --dir /tmp/tt-export`,
+	Args:              cobra.MaximumNArgs(1),
+	RunE:              runProjectExport,
+	ValidArgsFunction: completeProjectSlugs,
 }
 
 func init() {
 	projectCmd.AddCommand(projectExportCmd)
-	projectExportCmd.Flags().StringVar(&projectExportFile, "file", "", "write to this path instead of the default exports/<slug>.md")
+	projectExportCmd.Flags().StringVar(&projectExportFile, "file", "", "write to this path instead of the default exports/<slug>.md (- for stdout)")
+	projectExportCmd.Flags().BoolVar(&projectExportAll, "all", false, "export every project, archived included, one <slug>.md each")
+	projectExportCmd.Flags().StringVar(&projectExportDir, "dir", "", "directory for --all (default: the exports/ folder)")
 }
 
 func runProjectExport(cmd *cobra.Command, args []string) error {
+	if err := validateProjectExportFlags(args); err != nil {
+		return err
+	}
+	if projectExportAll {
+		return runProjectExportAll(cmd)
+	}
+
 	project, workspace, err := LoadRuntimeProjectOrCurrent(args)
 	if err != nil {
 		return err
+	}
+	related := projectExportRelated(workspace)
+
+	if projectExportFile == projectExportStdout {
+		return storage.ExportProjectMarkdownTo(commandOut(cmd), project, related...)
 	}
 
 	dest := projectExportFile
@@ -48,22 +77,87 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("create exports dir: %w", err)
 		}
 	}
-	if guardErr := config.RefusePreSimplificationV5SnapshotMutation(workspace.Runtime.DataDir(), dest); guardErr != nil {
-		return fmt.Errorf("refusing project export destination: %w", guardErr)
-	}
-
-	// Archived projects join the label population deliberately. An export is a
-	// document rather than a live view, so naming a reference that points into
-	// archived work is strictly better than emitting its bare locator; nothing
-	// here loads an archived project for any other purpose.
-	related := append(workspace.Runtime.AvailableProjects(), workspace.Runtime.ArchivedProjects()...)
-	destPath, err := ExportProjectMarkdown(project, dest, related...)
+	destPath, err := exportProjectTo(workspace, project, dest, related)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Exported %q to %s\n", project.Name, destPath)
+	_, _ = fmt.Fprintf(commandOut(cmd), "Exported %q to %s\n", project.Name, destPath)
 	return nil
+}
+
+// validateProjectExportFlags refuses the argument and flag combinations that
+// name two different destinations or none at all.
+func validateProjectExportFlags(args []string) error {
+	if projectExportAll {
+		if len(args) > 0 {
+			return errors.New("--all exports every project; do not also name one")
+		}
+		if projectExportFile != "" {
+			return errors.New("--all writes one file per project; use --dir, not --file")
+		}
+		return nil
+	}
+	if projectExportDir != "" {
+		return errors.New("--dir only applies with --all; use --file for one project")
+	}
+	if len(args) == 0 {
+		return errors.New("project slug required: name a project, or pass --all")
+	}
+	return nil
+}
+
+// runProjectExportAll writes every cataloged project, archived included, as
+// <slug>.md into --dir, which defaults to the exports folder.
+func runProjectExportAll(cmd *cobra.Command) error {
+	workspace, err := LoadCLIWorkspace()
+	if err != nil {
+		return err
+	}
+	dir := projectExportDir
+	if dir == "" {
+		dir = workspace.Manager.ExportsDir()
+	}
+	if err = os.MkdirAll(dir, 0700); err != nil {
+		return fmt.Errorf("create export dir: %w", err)
+	}
+
+	related := projectExportRelated(workspace)
+	out := commandOut(cmd)
+	for _, project := range workspace.Runtime.AllProjects() {
+		dest := filepath.Join(dir, filepath.Base(project.Slug)+".md")
+		destPath, exportErr := exportProjectTo(workspace, project, dest, related)
+		if exportErr != nil {
+			return fmt.Errorf("export %q: %w", project.Slug, exportErr)
+		}
+		_, _ = fmt.Fprintf(out, "Exported %q to %s\n", project.Name, destPath)
+	}
+	return nil
+}
+
+// exportProjectTo guards one file destination against the immutable migration
+// snapshots and then writes the export there.
+func exportProjectTo(workspace *CLIWorkspace, project *models.Project, dest string, related []*models.Project) (string, error) {
+	if guardErr := config.RefusePreSimplificationV5SnapshotMutation(workspace.Runtime.DataDir(), dest); guardErr != nil {
+		return "", fmt.Errorf("refusing project export destination: %w", guardErr)
+	}
+	return ExportProjectMarkdown(project, dest, related...)
+}
+
+// projectExportRelated is the label population for outgoing references.
+// Archived projects join it deliberately. An export is a document rather than a
+// live view, so naming a reference that points into archived work is strictly
+// better than emitting its bare locator; nothing here loads an archived project
+// for any other purpose.
+func projectExportRelated(workspace *CLIWorkspace) []*models.Project {
+	return append(workspace.Runtime.AvailableProjects(), workspace.Runtime.ArchivedProjects()...)
+}
+
+// commandOut is the command's output writer, or stdout when run without one.
+func commandOut(cmd *cobra.Command) io.Writer {
+	if cmd == nil {
+		return os.Stdout
+	}
+	return cmd.OutOrStdout()
 }
 
 // ExportProjectMarkdown writes the project to destPath (which must be non-empty;

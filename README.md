@@ -171,7 +171,8 @@ tt doctor [--fix]
 tt conflict list|show|resolve
 tt workspace [location|move]
 tt completion bash|zsh|fish
-tt project export [slug-or-id]
+tt project export <slug-or-id> [--file PATH|-]
+tt project export --all [--dir DIR]
 tt --version
 ```
 

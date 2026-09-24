@@ -18,13 +18,10 @@ import (
 // SaveProject call as a forbidden reintroduction and flags every direct storage
 // save inside cmd/.
 //
-// Every surviving entry is an explicit privileged repair/restore path or a
-// production implementation branch reachable only with a test repository.
-const cmdSaveInfra = "infra: privileged repair/restore or test-repository adapter path below the app layer"
-
-var cmdLegacySaveAllowlist = map[string]string{
-	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)": cmdSaveInfra,
-}
+// The allowlist is empty: `tt doctor --fix` commits through the journaled
+// CommitProjectRepair. A future entry must name an explicit privileged
+// repair/restore path or a branch reachable only with a test repository.
+var cmdLegacySaveAllowlist = map[string]string{}
 
 func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {
 	root := findRepoRootForUndoAudit(t)

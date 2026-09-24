@@ -78,11 +78,19 @@ The live portable layout is deliberately small:
 │   ├── undo/
 │   ├── conflicts/
 │   └── backups/
+├── exports/
 └── projects/<slug>/
     ├── tasks.md
     ├── notes/
     └── .attachments/
 ```
+
+`exports/` is where `tt project export` writes `<slug>.md` by default, a
+sibling of `projects/`. Nothing in it is read back: an export is a document for
+you, so deleting one costs nothing but the file. Logs are not in the workspace
+at all. They are machine-local, under `~/.tt/logs` as timestamped `.log`
+files, and any older than 30 days are removed the next time a command logs.
+`tt workspace location` prints every one of these paths.
 
 Project task files use strict schema-19 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
@@ -305,8 +313,9 @@ revision checks refuse a stale write, lens lists merge instead of overwriting,
 and another machine's live commit is left for its owner to finish — but they are
 there to survive an overlap, not to make one a way of working. Sync services
 deliver files whenever they get to them, so two open sessions see each other's
-writes at unpredictable moments; the ten-minute heartbeat window above is the
-only clock difference between machines the design accounts for. Quit on one
+writes at unpredictable moments; the ten-minute heartbeat window above
+(`ForeignTransactionGrace` in `internal/transaction/recovery.go`) is the only
+clock difference between machines the design accounts for. Quit on one
 machine, let the sync settle, then open on the other.
 
 **A `.conflicted copy` file is your sync client's, not `tt`'s.** When two
