@@ -209,7 +209,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		}
 	}
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.Prefix, prefixBudget), foldIndicator, bg)
+	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.Prefix, prefixBudget), foldIndicator, bg, m.treeConnectorStyle(row))
 
 	segments := taskRowSegments{
 		cursorPrefix:    paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix()),
@@ -501,10 +501,17 @@ func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
 	return "…" + string(runes[len(runes)-tailWidth:])
 }
 
-func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, string) {
+func renderTaskPrefix(prefix, foldIndicator string, bg color.Color, style lipgloss.Style) (string, string) {
 	// A leaf connector already communicates its tree position with ├──/└──.
 	// Do not extend it into the task-content gutter.
-	return gutterPiece(bg, theme.MutedStyle, prefix), foldIndicator
+	return gutterPiece(bg, style, prefix), foldIndicator
+}
+
+// treeConnectorStyle paints a row's tree connectors in its project's color, so
+// the tree reads as belonging to the header above it; an uncolored or
+// unresolved project keeps the muted default ProjectColorStyle falls back to.
+func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
+	return theme.ProjectColorStyle(m.ResolveProjectForRow(row))
 }
 
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {

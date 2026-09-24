@@ -41,7 +41,7 @@ func TestBuildTreePrefix(t *testing.T) {
 }
 
 func TestRenderTaskPrefixKeepsLeafConnectorsCompact(t *testing.T) {
-	prefix, fold := renderTaskPrefix("├── ", "", nil)
+	prefix, fold := renderTaskPrefix("├── ", "", nil, lipgloss.NewStyle())
 	if got, want := ansi.Strip(prefix), "├── "; got != want {
 		t.Fatalf("leaf connector = %q, want compact %q", got, want)
 	}
