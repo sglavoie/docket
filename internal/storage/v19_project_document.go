@@ -44,6 +44,16 @@ func ValidateV19ProjectDocument(document V19ProjectDocument) error {
 
 // ParseV19ProjectDocument strictly parses schema-19 project Markdown.
 func ParseV19ProjectDocument(content string) (V19ProjectDocument, error) {
+	document, err := scanV19ProjectDocument(content)
+	if err != nil {
+		return V19ProjectDocument{}, err
+	}
+	return document, ValidateV19ProjectDocument(document)
+}
+
+// scanV19ProjectDocument reads schema-19 Markdown into records without the
+// document-wide validation, so a repair reader can judge that validation itself.
+func scanV19ProjectDocument(content string) (V19ProjectDocument, error) {
 	scanned, err := scanTaskProjectDocumentWithComments(content, SchemaVersionV19, "v19")
 	if err != nil {
 		return V19ProjectDocument{}, err
@@ -56,7 +66,7 @@ func ParseV19ProjectDocument(content string) (V19ProjectDocument, error) {
 		}
 		document.Tasks = append(document.Tasks, task)
 	}
-	return document, ValidateV19ProjectDocument(document)
+	return document, nil
 }
 
 // WriteV19ProjectDocument renders canonical schema-19 Markdown.

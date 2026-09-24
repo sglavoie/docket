@@ -17,8 +17,8 @@ import (
 // builds the tree, and ParseProjectDocument already rejects a missing
 // project-local parent, a parent cycle, and a depth overflow — the same three
 // conditions BuildTaskTree would otherwise repair in memory. A corrupted file
-// is therefore a counted load failure that doctor prints under "Project load
-// failures", not a silent in-memory rewrite.
+// is therefore refused rather than silently rewritten in memory; doctor alone
+// reads the missing parent through LoadProjectForRepair, to report and repair it.
 func TestLoadProjectRejectsBrokenHierarchyRatherThanRepairing(t *testing.T) {
 	project := danglingParentProject(t)
 
@@ -96,4 +96,71 @@ func danglingParentProject(t *testing.T) *models.Project {
 	reloaded := testutil.NewTestProject("Dangling")
 	reloaded.Path = project.Path
 	return reloaded
+}
+
+// TestLoadProjectForRepairKeepsTheRepairableDefects pins the doctor reader:
+// the two defects doctor --fix repairs load as stored, so doctor can report
+// them, while the strict reader keeps refusing the same bytes.
+func TestLoadProjectForRepairKeepsTheRepairableDefects(t *testing.T) {
+	project := danglingParentProject(t)
+	tasksPath := filepath.Join(project.Path, "tasks.md")
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("read tasks file: %v", err)
+	}
+	duplicated := strings.Replace(string(content), "short_id: 2,", "short_id: 1,", 1)
+	if duplicated == string(content) {
+		t.Fatalf("could not duplicate the short ID in:\n%s", content)
+	}
+	if writeErr := os.WriteFile(tasksPath, []byte(duplicated), FilePermissions); writeErr != nil {
+		t.Fatalf("write corrupted tasks file: %v", writeErr)
+	}
+
+	if strictErr := LoadProject(project); strictErr == nil {
+		t.Fatal("the strict reader accepted a duplicate short ID and a dangling parent")
+	}
+	revision, err := LoadProjectForRepair(project)
+	if err != nil {
+		t.Fatalf("LoadProjectForRepair: %v", err)
+	}
+	if revision == nil || *revision != RawArtifactRevision([]byte(duplicated)) {
+		t.Fatal("the repair reader did not return the raw revision of the bytes it read")
+	}
+	if len(project.Tasks) != 2 || project.Tasks[0].ShortID != 1 || project.Tasks[1].ShortID != 1 {
+		t.Fatalf("tasks = %+v, want both tasks with the stored duplicate short ID", project.Tasks)
+	}
+	child := project.Tasks[1]
+	if child.ParentID == nil || *child.ParentID != "parent-1" || child.Parent != nil {
+		t.Fatalf("child parent = %v, want the stored missing reference kept on a root", child.ParentID)
+	}
+	if project.NextShortID != 2 {
+		t.Fatalf("NextShortID = %d, want 2", project.NextShortID)
+	}
+}
+
+// TestLoadProjectForRepairRefusesEveryOtherDefect pins that the repair reader
+// widens nothing beyond the two repairable defects: a duplicate task identity
+// still fails with the strict reader's error.
+func TestLoadProjectForRepairRefusesEveryOtherDefect(t *testing.T) {
+	project := danglingParentProject(t)
+	tasksPath := filepath.Join(project.Path, "tasks.md")
+	content, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatalf("read tasks file: %v", err)
+	}
+	corrupted := strings.Replace(string(content), "id: child-1,", "id: renamed-1,", 1)
+	if corrupted == string(content) {
+		t.Fatalf("could not rename the child task in:\n%s", content)
+	}
+	if writeErr := os.WriteFile(tasksPath, []byte(corrupted), FilePermissions); writeErr != nil {
+		t.Fatalf("write corrupted tasks file: %v", writeErr)
+	}
+
+	strictErr := LoadProject(project)
+	if strictErr == nil {
+		t.Fatal("the strict reader accepted a duplicate task identity")
+	}
+	if _, err := LoadProjectForRepair(project); err == nil || err.Error() != strictErr.Error() {
+		t.Fatalf("LoadProjectForRepair error = %v, want the strict error %v", err, strictErr)
+	}
 }

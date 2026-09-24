@@ -38,6 +38,12 @@ func parseCurrentTaskProjectDocument(content string) (currentTaskProjectDocument
 	return ParseV19ProjectDocument(content)
 }
 
+// scanCurrentTaskProjectDocument parses live task Markdown into records without
+// the document-wide validation; only the repair reader may use it.
+func scanCurrentTaskProjectDocument(content string) (currentTaskProjectDocument, error) {
+	return scanV19ProjectDocument(content)
+}
+
 // writeCurrentTaskProjectDocument renders canonical live task Markdown.
 func writeCurrentTaskProjectDocument(document currentTaskProjectDocument) (string, error) {
 	return WriteV19ProjectDocument(document)

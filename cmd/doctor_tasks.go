@@ -120,7 +120,7 @@ func checkCompletionTimestamps(projects []*models.Project, results *doctorResult
 // loadProjectForRepair reloads a project and returns the raw revision a repair
 // commit must still find on disk. It is a seam so a test can land a concurrent
 // write between the read and the commit.
-var loadProjectForRepair = storage.LoadProjectForRewrite
+var loadProjectForRepair = storage.LoadProjectForRepair
 
 // fixIssues repairs duplicate short IDs and broken parent refs. Each project is
 // reloaded from disk and repaired from those exact bytes, then committed as a

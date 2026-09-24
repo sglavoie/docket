@@ -156,16 +156,17 @@ func collectDoctorResults() (*doctorResults, *doctorState, error) {
 	checkWorkspaceHealth(workspace, results)
 
 	// Load every retained project, including archived projects, so terminal work
-	// and hierarchy integrity remain visible.
+	// and hierarchy integrity remain visible. The repair reader admits the defects
+	// --fix repairs, so they are reported by their own checks below rather than
+	// as a load failure --fix could never reach.
 	for _, project := range state.everyProject {
-		if loadErr := storage.LoadProject(project); loadErr != nil {
+		if _, loadErr := storage.LoadProjectForRepair(project); loadErr != nil {
 			results.loadFailures = append(results.loadFailures, doctorIssue{
 				project: project.Name,
 				detail:  loadErr.Error(),
 			})
 			continue
 		}
-		project.BuildTaskTree()
 		state.loadedProjects = append(state.loadedProjects, project)
 	}
 	loadedProjects := state.loadedProjects

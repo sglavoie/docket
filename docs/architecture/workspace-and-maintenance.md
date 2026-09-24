@@ -48,10 +48,15 @@ conflict IDs from a direct catalog and conflict-store read, never
 paths.
 `main.run` exits with the code of any error implementing `ExitCode() int` and 1
 for every other error; `doctor`'s `doctorIssuesError` is the one such error, 2
-for "issues found". `doctor --fix` reloads each project it repairs through
-`LoadProjectForRewrite` and commits through `CommitProjectRepair` against that
-revision, then runs `collectDoctorResults` again from a fresh workspace load, so
-the exit reflects the state after fixing.
+for "issues found". `doctor` loads every project through
+`LoadProjectForRepair`, the one reader that admits the two defects `--fix`
+repairs — a duplicated short ID and a missing parent — keeping both in the model
+so their own checks report them, while validating everything else exactly as the
+strict reader does; every other surface keeps the strict `LoadProject`.
+`doctor --fix` reloads each project it repairs through that reader and commits
+through `CommitProjectRepair` against the raw revision it read, then runs
+`collectDoctorResults` again from a fresh workspace load, so the exit reflects
+the state after fixing.
 `doctor` adds one informational census of its own: `checkDependencyCycles`
 prints each ring of soft references as `reference cycle: a -> b -> a`. It is
 never an issue and never a fix target, because a ring deadlocks nothing a soft
