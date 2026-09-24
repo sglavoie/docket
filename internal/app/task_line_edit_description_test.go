@@ -71,7 +71,7 @@ func TestTaskLineEditCommitsDescriptionWithTheTitlePatch(t *testing.T) {
 }
 
 // TestTaskLineEditReportsADescriptionOnlySaveAsChanged keeps a body-only edit off
-// the no-op path, where the shell would report "No task changes" and drop it.
+// the no-op path, where the shell would report "Task unchanged" and drop it.
 func TestTaskLineEditReportsADescriptionOnlySaveAsChanged(t *testing.T) {
 	dataDir := t.TempDir()
 	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})

@@ -68,7 +68,7 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskSetResumeNote, Label: "Set Resume Note", Aliases: []string{"resume note", "where was I", "clear resume note"}, Provider: operation.ValueProviderResumeNote, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Not Bulk for the same reason: a comment is one task's own remark, and a
 		// selection of tasks has nothing to say in one voice. Comments above keeps
-		// the panel that reads, edits, reorders, and deletes; this only appends.
+		// the panel that reads, edits, and deletes; this only appends.
 		{ID: operation.OperationTaskAddComment, Label: "Add Comment", Aliases: []string{"comment", "quick comment", "note on task"}, Provider: operation.ValueProviderComment, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Not Bulk: the draft it opens is one task's, and a composer holding a
 		// selection would have to be a batch creation screen the product does not

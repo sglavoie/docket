@@ -231,7 +231,7 @@ func TestTabReportsThatNoDateValuesMatchAtAll(t *testing.T) {
 	}
 	_, result := pressKey(picker, "tab")
 	message, ok := result.(status.StatusMsg)
-	if !ok || string(message) != "No date values match" {
+	if !ok || string(message) != "No matching date values" {
 		t.Fatalf("tab with no matches = %#v, want the no-values refusal", result)
 	}
 }

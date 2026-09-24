@@ -187,7 +187,7 @@ both tags and the task context, so neither `@@` nor `##` is a key sequence. `&`
 and `;` are the last two sigils to become keys, and the only pair that opens a
 panel rather than a picker: `&link` and `;comment;` write at capture time, and
 on a row the same characters open the Attachments and Comments panels that own
-add, reorder, unlink, and delete. `C` and `;` are the same pair once more on a
+add and delete, with reorder and unlink in Attachments alone. `C` and `;` are the same pair once more on a
 project header, where both answer for the project rather than for a task. The
 old standalone `d` action and comma state prefix are intentionally unbound, as
 are `m`, `$`, `:`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, `R`, and `w` are

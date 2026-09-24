@@ -47,7 +47,7 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("E", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithGate(func() bool {
 			return hasBrowseSelection() && !selectedIsURL()
 		})),
-		keymap.Bind("y", "Copy path to clipboard", "Actions", keymap.WithFooter(4, "copy", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("y", "Copy path to clipboard", "Actions", keymap.WithFooter(4, "copy path", false), keymap.WithGate(hasBrowseSelection)),
 		// Space outranks the two niche hints below it: it is the only route to
 		// five operations, two of them destructive, so a narrow footer must shed
 		// a copy variant and a reorder before it sheds the menu.
@@ -61,7 +61,11 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		// for, and the undo toast already says "u undo" when one is live.
 		keymap.Bind("u", "Undo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
 		keymap.Bind("ctrl+r", "Redo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
-		keymap.Bind("?", "Toggle help", "Navigation", keymap.WithFooter(10, "help", false), keymap.WithGate(inBrowseMode)),
+		// Deliberately unranked, as in the comments panel: the panel is a
+		// HelpProvider, so the shell strip under this footer already prints
+		// "? help" beside the breadcrumb. "System" is the core descriptor's own
+		// category, so the row lands in the same help bucket as the Outliner's `?`.
+		keymap.Bind("?", "Help", "System", keymap.WithGate(inBrowseMode)),
 		keymap.Bind("esc", "Close attachments", "Navigation", keymap.WithFooter(11, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 
 		keymap.Bind("enter", "Add attachment", "Actions", keymap.WithFooter(1, addLabel, true), keymap.WithFooterKey("Enter"), keymap.WithGate(inAddMode)),

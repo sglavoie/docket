@@ -617,7 +617,7 @@ func (m *OutlinerModel) PeelQueryReadoutRow(index int) tea.Cmd {
 	// snapshot that reload replaces, so it refuses here in the same words the f
 	// chord refuses in rather than reloading out from under the results.
 	if queryReadoutRowRequiresReload(row) && m.ShowsRankedList() {
-		m.SetTransientStatus("Exit search before changing filters")
+		m.SetTransientStatus("Filters are locked in the ranked list · or returns to the narrowed search")
 		return status.DefaultStatusTimeout()
 	}
 	peeled := "Peeled " + row.Label + ": " + row.value

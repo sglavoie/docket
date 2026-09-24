@@ -72,7 +72,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 				if msg.Create {
 					nv.SetStatus("Note creation canceled")
 				} else {
-					nv.SetStatus("No changes made")
+					nv.SetStatus("Note unchanged")
 				}
 			}
 			return true, nil

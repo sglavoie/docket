@@ -1350,7 +1350,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
-		"`;` opens the panel that reads, edits, reorders, and deletes comments and `C` " +
+		"`;` opens the panel that reads, edits, and deletes comments and `C` " +
 			"only appends one from the list; on a task both commit through `Service.AddComment` " +
 			"under the one limit `taskdetail.CommentCharLimit` states",
 		"On a project header both keys answer for the project, through a second `CommentOwner` " +

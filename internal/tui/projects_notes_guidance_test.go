@@ -29,7 +29,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	view.SetSize(80, 24)
 
 	spec, ok := view.ContextualGuidance()
-	assertGuidanceContains(t, "notes browse", spec, ok, "Enter open/edit", "a new", "p scope", "/ search")
+	assertGuidanceContains(t, "notes browse", spec, ok, "Enter open/edit", "a new note", "p scope", "/ search")
 	if !strings.Contains(spec.Supplemental, "location: Global") {
 		t.Fatalf("browse guidance omits location context: %+v", spec)
 	}
@@ -88,7 +88,7 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 	mountNotesManager(t, empty, route.AllNotesScope())
 	empty.SetSize(32, 12)
 	spec, ok := empty.ContextualGuidance()
-	assertRequiredGuidance(t, "empty notes", spec, ok, "a choose location")
+	assertRequiredGuidance(t, "empty notes", spec, ok, "a new note")
 	_, _ = empty.Update(syntheticKey('a'))
 	spec, ok = empty.ContextualGuidance()
 	assertRequiredGuidance(t, "notes creation location", spec, ok, "Enter choose", "Esc cancel")

@@ -333,8 +333,8 @@ attached to the first nine narrowings wherever the window sits, so scrolling
 never moves what `1` removes. A tenth narrowing is listed without a digit and
 reached by scrolling rather than dropped, and no new key is minted to press it.
 Under the flat ranked list, peeling a population row refuses with
-`Exit search before changing filters`, the same refusal the `F` family gives
-there and for the same reason.
+`Filters are locked in the ranked list · or returns to the narrowed search`,
+the same refusal the `F` family gives there and for the same reason.
 
 
 ### Named lenses

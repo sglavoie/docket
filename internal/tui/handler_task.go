@@ -291,7 +291,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 	m.supersedeDueStepsForEffect(lineEditEffect)
 	m.dueClocks.ObserveCommit(msg.Result.TransactionID, lineEditEffect)
 	if !msg.Result.Changed {
-		m.setInfoStatus("No task changes")
+		m.setInfoStatus("Task unchanged")
 		return status.DefaultStatusTimeout()
 	}
 	// A row edit names both halves outright: the identity the editor was opened on

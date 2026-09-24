@@ -743,7 +743,7 @@ and an unshifted letter is worth more there than the correspondence is.
 costs `$` its root key and `f$` its facet — the states facet follows the chord to
 `fw` so one axis keeps one keyboard spelling.
 `&` and `;` are the only pair that opens a panel rather than a picker, because the
-panel already owns add, reorder, unlink, and delete.
+panel already owns add and delete, with reorder and unlink in Attachments alone.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
 the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
 than silently splitting the two vocabularies. Four triggers deliberately have no

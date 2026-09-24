@@ -46,7 +46,8 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"the destination mints its own `#N` numbers for every task it receives",
 		"`&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of " +
 			"whatever the cursor names — the task, or the project a group header names — the two " +
-			"capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
+			"capture sigils reaching, as keys, the panels that own add and delete, with reorder " +
+			"and unlink in Attachments alone",
 		"`C` appends one comment to the same two things without opening that panel, in a " +
 			"multiline popup where `Enter` starts a new line and `Ctrl+S` saves",
 		"`;` on a project group header opens that same panel over the project's own comments",

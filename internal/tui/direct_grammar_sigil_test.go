@@ -52,8 +52,9 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	">": sigilRootKey,
 	"<": sigilRootKey,
 	// The attachment and comment sigils open their panels rather than a picker:
-	// the panel already owns add, reorder, unlink and delete, so the key that
-	// writes the field at capture time is the key that reaches it on a row.
+	// the panel already owns add and delete (reorder and unlink are Attachments'
+	// alone), so the key that writes the field at capture time is the key that
+	// reaches it on a row.
 	"&": sigilRootKey,
 	";": sigilRootKey,
 	// Two runes are not one key event, and the # picker already unchecks a tag.

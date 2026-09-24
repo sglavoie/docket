@@ -119,7 +119,7 @@ func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("Could not open %s: %w", m.attachmentDisplayName(att), err)}
 		}
 		return nil
 	})
@@ -152,7 +152,7 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 	}
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("Could not open %s: %w", m.attachmentDisplayName(att), err)}
 		}
 		return nil
 	})
@@ -172,7 +172,7 @@ func (m *TaskAttachmentsModel) OpenAttachmentsDir() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("Could not open attachments folder: %w", err)}
 		}
 		return nil
 	})
@@ -237,7 +237,7 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("Could not open folder for %s: %w", m.attachmentDisplayName(att), err)}
 		}
 		return nil
 	})
@@ -265,7 +265,7 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to reveal file: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("Could not reveal %s: %w", m.attachmentDisplayName(att), err)}
 		}
 		return nil
 	})
@@ -277,7 +277,7 @@ func (m *TaskAttachmentsModel) openCodeReference(att models.Attachment) tea.Cmd 
 		return nil
 	}
 	if err := external.OpenCodeReference("", att.OriginalPath, att.LineNumber); err != nil {
-		m.Err = fmt.Errorf("failed to open code reference: %w", err)
+		m.Err = fmt.Errorf("Could not open code reference: %w", err)
 		return nil
 	}
 	m.SetStatus(fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber))

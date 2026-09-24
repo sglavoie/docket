@@ -137,8 +137,8 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	if out.QuickEdit.IsActive() {
 		t.Fatal("unchanged inline commit left the row editor active")
 	}
-	if m.feedback.message != "No task changes" {
-		t.Fatalf("unchanged inline status = %q, want No task changes", m.feedback.message)
+	if m.feedback.message != "Task unchanged" {
+		t.Fatalf("unchanged inline status = %q, want Task unchanged", m.feedback.message)
 	}
 	after, err := m.domain.ledger.UndoCount(storage.GlobalScope())
 	if err != nil {

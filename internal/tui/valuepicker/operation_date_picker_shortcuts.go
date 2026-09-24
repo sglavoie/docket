@@ -27,7 +27,7 @@ func (model *OperationValuePickerModel) handleDatePresetShortcut(key string) (te
 		// No row under the cursor means no field, and a shortcut with no field to
 		// resolve in has nothing to apply. The key is still claimed, because it is
 		// this picker's key whether or not a search left it a row to answer with.
-		return status.StatusMsg("No date values match"), false, true
+		return status.StatusMsg("No matching date values"), false, true
 	}
 	if section == datePickerSectionCheckIn {
 		// Preset keys belong to Due and Defer only. They stay claimed here so a

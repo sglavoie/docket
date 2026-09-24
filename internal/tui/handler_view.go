@@ -282,7 +282,7 @@ func (m *AppModel) handleTextEditorExternal(msg chrome.TextEditorExternalMsg) (b
 	}
 	c := external.EditorCommand(editor, tmpPath)
 
-	m.setInfoStatus("Opening in editor...")
+	m.setInfoStatus("Opening in editor…")
 	fieldName := msg.FieldName
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {

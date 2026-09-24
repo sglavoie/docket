@@ -249,7 +249,7 @@ func TestAPresetKeyWithNoMatchesAtAllSaysSo(t *testing.T) {
 		t.Fatal("a preset key closed a picker with no matches")
 	}
 	message, ok := result.(status.StatusMsg)
-	if !ok || string(message) != "No date values match" {
+	if !ok || string(message) != "No matching date values" {
 		t.Fatalf("`m` with no matches = %#v, want the no-values refusal", result)
 	}
 }

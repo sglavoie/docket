@@ -124,7 +124,7 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterProjectTags},
 		Value:      []string{"backend"},
 	})
-	if result.Status != "Exit search before changing filters" {
+	if result.Status != "Filters are locked in the ranked list · or returns to the narrowed search" {
 		t.Fatalf("F# handler under search = %+v, want the refusal", result)
 	}
 	if len(app.crossOutliner.ProjectFilter.Tags) != 0 {

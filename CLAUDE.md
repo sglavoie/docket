@@ -818,7 +818,7 @@ comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `wd` alone and no `d` alias may return.
 `b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
 
-`;` opens the panel that reads, edits, reorders, and deletes comments and `C`
+`;` opens the panel that reads, edits, and deletes comments and `C`
 only appends one from the list; on a task both commit through
 `Service.AddComment` under
 the one limit `taskdetail.CommentCharLimit` states. That popup is the multiline

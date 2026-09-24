@@ -44,7 +44,7 @@ func (m *NotesViewModel) BuildKeyMap() *keymap.KeyMap {
 			keymap.WithGate(hasRow), keymap.WithFooter(1, "open/edit", false),
 			keymap.WithFooterKey("Enter")),
 		keymap.Bind("a", "Create note after choosing location", "Actions",
-			keymap.WithFooter(2, "new", false)),
+			keymap.WithFooter(2, "new note", false)),
 
 		keymap.Bind("e", "Rename note", "Actions",
 			keymap.WithGate(canRename), keymap.WithFooter(3, "rename", false)),

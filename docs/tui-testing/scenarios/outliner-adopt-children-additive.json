@@ -15,7 +15,7 @@
     { "type": "assert", "label": "the other existing child is still only the row behind the overlay", "assert": "count_contains", "value": "Add password validation", "count": 1 },
 
     { "type": "key", "label": "commit with nothing checked, which is the closest thing to a detach", "key": "enter" },
-    { "type": "assert", "label": "an empty adoption is a no-op, never a detach", "assert": "status_contains", "value": "No task changes" },
+    { "type": "assert", "label": "an empty adoption is a no-op, never a detach", "assert": "status_contains", "value": "Task unchanged" },
 
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },

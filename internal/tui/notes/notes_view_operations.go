@@ -80,7 +80,7 @@ func (m *NotesViewModel) BeginMovePickerForSource(source NoteMutationRef) tea.Cm
 		return nil
 	}
 	if source.Note.ParseError != "" {
-		m.SetErrorStatus("cannot move — note has a parse error; press Enter to repair it")
+		m.SetErrorStatus("Cannot move: note has a parse error; press Enter to repair it")
 		return nil
 	}
 

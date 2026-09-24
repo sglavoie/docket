@@ -105,7 +105,7 @@ func (model *OperationValuePickerModel) sectionedDatePicker() bool {
 func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg {
 	current, ok := model.dateSectionUnderCursor()
 	if !ok {
-		return status.StatusMsg("No date values match")
+		return status.StatusMsg("No matching date values")
 	}
 	currentIndex := 0
 	for index, section := range datePickerSections {

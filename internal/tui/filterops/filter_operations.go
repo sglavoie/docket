@@ -146,7 +146,7 @@ func (c *Controller) ApplyFilterClauseEdit(shell Shell, id operation.OperationID
 	}
 	reload := outliner.FilterOperationRequiresReload(id)
 	if reload && out.ShowsRankedList() {
-		return operation.OperationHandlerResult{Status: "Exit search before changing filters"}
+		return operation.OperationHandlerResult{Status: "Filters are locked in the ranked list · or returns to the narrowed search"}
 	}
 	if edit.Declined {
 		return operation.OperationHandlerResult{Status: edit.Status}

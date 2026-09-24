@@ -96,7 +96,7 @@ func (m *NotesViewModel) emptyGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	}
 	return chrome.GuidanceSpec{
-		Hints: append(chrome.RequiredGuidanceHints("a choose location"),
+		Hints: append(chrome.RequiredGuidanceHints("a new note"),
 			chrome.OptionalGuidanceHints(10, "p scope", "Esc close")...),
 		Rows: 1,
 	}, true

@@ -570,7 +570,7 @@ func inlinePeekReferenceKey(details []DependencyDetail) string {
 }
 
 // inlinePeekCommentsLines keeps comments a count. The bodies belong to the
-// Comments panel, which reads, edits, reorders, and deletes them; repeating one
+// Comments panel, which reads, edits, and deletes them; repeating one
 // here would spend the page budget on a surface that already exists.
 func inlinePeekCommentsLines(task *models.Task, indent string, width int) []string {
 	if task == nil || len(task.Comments) == 0 {

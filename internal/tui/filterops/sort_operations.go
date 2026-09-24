@@ -89,7 +89,7 @@ func (c *Controller) ExecuteSortOperation(shell Shell, invocation operation.Oper
 	}
 	if invocation.Descriptor.ID == operation.OperationSortRanked {
 		if !out.ToggleRankedList() {
-			return operation.OperationHandlerResult{Status: "Search for something first"}
+			return operation.OperationHandlerResult{Status: "Ranked list needs a search · press / first"}
 		}
 		if out.ShowsRankedList() {
 			return operation.OperationHandlerResult{Status: "Ranked list · one flat relevance order"}
