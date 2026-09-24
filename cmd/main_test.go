@@ -7,7 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/testutil/residue"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
@@ -26,17 +25,6 @@ func setupTestDeps(t *testing.T) *testDeps {
 	t.Helper()
 	return testutil.SetupTestDeps(t, func(dataDir string) *config.RuntimeState {
 		return config.NewRuntimeState(dataDir, config.NewDomains())
-	})
-}
-
-func setupTestDepsWithProject(t *testing.T, projectName string) (*testDeps, *models.Project) {
-	t.Helper()
-	return testutil.SetupTestDepsWithProject(t, projectName, func(dataDir string, project *models.Project) *config.RuntimeState {
-		domains := config.NewDomains()
-		if err := domains.Catalog.UpsertProject(project); err != nil {
-			t.Fatalf("UpsertProject: %v", err)
-		}
-		return config.NewRuntimeState(dataDir, domains)
 	})
 }
 

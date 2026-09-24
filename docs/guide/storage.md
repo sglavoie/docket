@@ -267,7 +267,12 @@ backup you are meant to rely on, and a copy you made yourself is the only thing
 that lets you go back to the build you were running.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
-explicitly supported repairs.
+explicitly supported repairs. `--fix` commits each repair as a journaled
+transaction that refuses if the file changed since doctor read it, then runs
+every check again, so the verdict describes the workspace after fixing.
+`tt doctor --json` prints one JSON report on stdout and nothing else. Doctor
+exits 0 when every check passes, 2 when it ran and found issues, and 1 when it
+could not run or a repair failed.
 
 ## Running one workspace on more than one machine
 

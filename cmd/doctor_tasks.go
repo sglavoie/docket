@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -115,40 +117,95 @@ func checkCompletionTimestamps(projects []*models.Project, results *doctorResult
 	}
 }
 
-func fixIssues(projects []*models.Project) {
-	dirtyProjects := make(map[string]bool)
+// loadProjectForRepair reloads a project and returns the raw revision a repair
+// commit must still find on disk. It is a seam so a test can land a concurrent
+// write between the read and the commit.
+var loadProjectForRepair = storage.LoadProjectForRewrite
+
+// fixIssues repairs duplicate short IDs and broken parent refs. Each project is
+// reloaded from disk and repaired from those exact bytes, then committed as a
+// journaled maintenance transaction checked against their revision, so a write
+// that lands in between refuses the repair instead of being overwritten. It
+// returns what it fixed and every failure, naming the project.
+func fixIssues(dataDir string, projects []*models.Project) ([]string, error) {
+	var fixed []string
+	var errs []error
+	var commit *storage.CommitService
 
 	for _, project := range projects {
-		// Fix duplicate short IDs by reassigning duplicates
-		seenShortIDs := make(map[int]bool)
-		for _, task := range project.Tasks {
-			if seenShortIDs[task.ShortID] {
-				newID := project.GetNextShortID()
-				fmt.Printf("  Fixed: reassigned duplicate short ID #%d to #%d for task %s in %s\n", task.ShortID, newID, task.Title, project.Name)
-				task.ShortID = newID
-				dirtyProjects[project.ID] = true
-			}
-			seenShortIDs[task.ShortID] = true
+		if !projectNeedsRepair(project) {
+			continue
 		}
-
-		taskMap := buildTaskMap(project)
-		for _, task := range project.Tasks {
-			// Fix broken parent refs
-			if task.ParentID != nil && *task.ParentID != "" {
-				if _, exists := taskMap[*task.ParentID]; !exists {
-					fmt.Printf("  Fixed: cleared broken parent ref %s from task %s in %s\n", *task.ParentID, task.Title, project.Name)
-					task.ParentID = nil
-					dirtyProjects[project.ID] = true
-				}
-			}
+		rev, err := loadProjectForRepair(project)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("reload project %s for repair: %w", project.Name, err))
+			continue
 		}
+		lines := repairProject(project)
+		if len(lines) == 0 {
+			continue
+		}
+		if commit == nil {
+			commit = storage.NewCommitService(config.TransactionsDir(dataDir), []string{dataDir})
+		}
+		if _, err := commit.CommitProjectRepair(project, *rev); err != nil {
+			if errors.Is(err, storage.ErrStaleArtifact) {
+				errs = append(errs, fmt.Errorf("project %s changed on disk while it was being repaired; re-run 'tt doctor --fix': %w", project.Name, err))
+			} else {
+				errs = append(errs, fmt.Errorf("commit repair for project %s: %w", project.Name, err))
+			}
+			continue
+		}
+		fixed = append(fixed, lines...)
+	}
+	return fixed, errors.Join(errs...)
+}
 
-		if dirtyProjects[project.ID] {
-			if err := storage.SaveProjectLocked(project); err != nil {
-				fmt.Fprintf(os.Stderr, "error: failed to save project %s: %v\n", project.Name, err)
+// projectNeedsRepair reports whether repairProject would change anything, so
+// a project with nothing to fix is never reloaded.
+func projectNeedsRepair(project *models.Project) bool {
+	taskMap := buildTaskMap(project)
+	seenShortIDs := make(map[int]bool)
+	for _, task := range project.Tasks {
+		if seenShortIDs[task.ShortID] {
+			return true
+		}
+		seenShortIDs[task.ShortID] = true
+		if task.ParentID != nil && *task.ParentID != "" {
+			if _, exists := taskMap[*task.ParentID]; !exists {
+				return true
 			}
 		}
 	}
+	return false
+}
+
+// repairProject applies the supported repairs in memory and describes each.
+func repairProject(project *models.Project) []string {
+	var fixed []string
+
+	// Fix duplicate short IDs by reassigning duplicates
+	seenShortIDs := make(map[int]bool)
+	for _, task := range project.Tasks {
+		if seenShortIDs[task.ShortID] {
+			newID := project.GetNextShortID()
+			fixed = append(fixed, fmt.Sprintf("reassigned duplicate short ID #%d to #%d for task %s in %s", task.ShortID, newID, task.Title, project.Name))
+			task.ShortID = newID
+		}
+		seenShortIDs[task.ShortID] = true
+	}
+
+	taskMap := buildTaskMap(project)
+	for _, task := range project.Tasks {
+		// Fix broken parent refs
+		if task.ParentID != nil && *task.ParentID != "" {
+			if _, exists := taskMap[*task.ParentID]; !exists {
+				fixed = append(fixed, fmt.Sprintf("cleared broken parent ref %s from task %s in %s", *task.ParentID, task.Title, project.Name))
+				task.ParentID = nil
+			}
+		}
+	}
+	return fixed
 }
 
 func buildTaskMap(project *models.Project) map[string]*models.Task {

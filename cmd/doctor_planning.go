@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -152,9 +151,9 @@ func planningMembershipDefect(
 // fixPlanningMembership commits the pruned membership through the runtime's
 // checked planning commit, so a repair takes part in the same optimistic
 // concurrency every other planning write does.
-func fixPlanningMembership(runtime *config.RuntimeState, repair *planningRepair) {
+func fixPlanningMembership(runtime *config.RuntimeState, repair *planningRepair) (string, error) {
 	if repair == nil || !repair.changed || repair.repaired == nil {
-		return
+		return "", nil
 	}
 	before := runtime.Planning()
 	removed := 0
@@ -162,10 +161,9 @@ func fixPlanningMembership(runtime *config.RuntimeState, repair *planningRepair)
 		removed = len(before.Today) + len(before.Next) - len(repair.repaired.Today) - len(repair.repaired.Next)
 	}
 	if err := runtime.CommitPlanning(repair.repaired); err != nil {
-		fmt.Fprintf(os.Stderr, "error: failed to repair planning membership: %v\n", err)
-		return
+		return "", fmt.Errorf("repair planning membership: %w", err)
 	}
-	fmt.Printf("  Fixed: pruned %s from Today and Next\n", Pluralize(removed, "planning entry", "planning entries"))
+	return fmt.Sprintf("pruned %s from Today and Next", Pluralize(removed, "planning entry", "planning entries")), nil
 }
 
 // checkOrphanedAttachments compares each project's attachment metadata against

@@ -21,13 +21,22 @@ named lenses, transaction journal and quarantine, conflict bundles, lock
 files, migration snapshots, planning membership, attachments, checklist and
 comment structure, state clocks, project files, task identities, and
 hierarchy references. Diagnostics are read-only unless --fix is explicitly
-supplied; immutable migration snapshots are never changed.`,
+supplied; immutable migration snapshots are never changed.
+
+--fix commits each repair as a journaled transaction checked against the
+revision it read, then runs every check again, so the verdict describes the
+workspace the fixes left behind. --json prints one JSON report on stdout and
+nothing else.
+
+Exit status: 0 when every check passes, 2 when doctor ran and found issues,
+and 1 when doctor could not run or a repair failed.`,
 	Args: cobra.NoArgs,
 	RunE: runDoctor,
 }
 
 func init() {
 	doctorCmd.Flags().Bool("fix", false, "Automatically fix issues where possible")
+	doctorCmd.Flags().Bool("json", false, "Print the report as JSON")
 	rootCmd.AddCommand(doctorCmd)
 }
 
@@ -92,9 +101,38 @@ func (r *doctorResults) informationalNotes() int {
 		len(r.dependencyCycles)
 }
 
-func runDoctor(cmd *cobra.Command, _ []string) error {
-	fix, _ := cmd.Flags().GetBool("fix")
+// doctorIssuesError reports that doctor ran to completion and found integrity
+// issues. It exits 2 so a script can tell "the workspace needs attention" apart
+// from "doctor could not run", which exits 1. quiet keeps the message off stderr
+// when --json already carried the count.
+type doctorIssuesError struct {
+	count int
+	quiet bool
+}
 
+func (e *doctorIssuesError) Error() string {
+	if e.quiet {
+		return ""
+	}
+	return fmt.Sprintf("found %d issue(s)", e.count)
+}
+
+// ExitCode is the process status main reports for this error.
+func (e *doctorIssuesError) ExitCode() int { return 2 }
+
+// doctorState is what one check pass loaded, which is exactly what a --fix
+// pass repairs.
+type doctorState struct {
+	runtime        *config.RuntimeState
+	everyProject   []*models.Project
+	loadedProjects []*models.Project
+	planning       *planningRepair
+}
+
+// collectDoctorResults loads the workspace from disk and runs every check
+// against it. It is called once for the verdict and, under --fix, again after
+// repairing, so the verdict always describes the state the fixes left behind.
+func collectDoctorResults() (*doctorResults, *doctorState, error) {
 	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		// A quarantine refuses every workspace mutation, and loading the workspace
@@ -107,17 +145,19 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 				transaction.QuarantineDirFor(config.TransactionsDir(dataDir)),
 			))
 		}
-		return err
+		return nil, nil, err
 	}
 
-	everyProject := workspace.Runtime.AllProjects()
-	var loadedProjects []*models.Project
+	state := &doctorState{
+		runtime:      workspace.Runtime,
+		everyProject: workspace.Runtime.AllProjects(),
+	}
 	results := &doctorResults{}
 	checkWorkspaceHealth(workspace, results)
 
 	// Load every retained project, including archived projects, so terminal work
 	// and hierarchy integrity remain visible.
-	for _, project := range everyProject {
+	for _, project := range state.everyProject {
 		if loadErr := storage.LoadProject(project); loadErr != nil {
 			results.loadFailures = append(results.loadFailures, doctorIssue{
 				project: project.Name,
@@ -126,49 +166,98 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 			continue
 		}
 		project.BuildTaskTree()
-		loadedProjects = append(loadedProjects, project)
+		state.loadedProjects = append(state.loadedProjects, project)
 	}
+	loadedProjects := state.loadedProjects
 
 	// The four synced-state buckets that need loaded tasks continue the order
 	// checkWorkspaceHealth started: planning membership, then attachments, then
 	// checklist and comment structure, then the state clocks.
-	planning := checkPlanningMembership(workspace.Runtime, loadedProjects, results)
+	state.planning = checkPlanningMembership(workspace.Runtime, loadedProjects, results)
 	checkOrphanedAttachments(loadedProjects, results)
 	checkChecklistAndComments(loadedProjects, results)
 	checkStateClocks(loadedProjects, results)
 
-	checkMissingTaskFiles(everyProject, results)
+	checkMissingTaskFiles(state.everyProject, results)
 	checkEmptyProjects(loadedProjects, results)
 	checkDuplicateIDs(loadedProjects, results)
 	checkDuplicateShortIDs(loadedProjects, results)
 	checkBrokenParentRefs(loadedProjects, results)
 	checkCompletionTimestamps(loadedProjects, results)
-	checkTaskReferences(everyProject, loadedProjects, results)
+	checkTaskReferences(state.everyProject, loadedProjects, results)
 	checkDependencyCycles(loadedProjects, results)
 
+	return results, state, nil
+}
+
+// doctorApplyFixes is the --fix step, a seam so a test can land a concurrent
+// write between the check pass and the repairs.
+var doctorApplyFixes = applyDoctorFixes
+
+// applyDoctorFixes runs every supported repair and keeps going past a failure,
+// so one stale project does not hide what the others fixed.
+func applyDoctorFixes(state *doctorState) ([]string, error) {
+	fixed, taskErr := fixIssues(state.runtime.DataDir(), state.loadedProjects)
+	planningFixed, planningErr := fixPlanningMembership(state.runtime, state.planning)
+	if planningFixed != "" {
+		fixed = append(fixed, planningFixed)
+	}
+	return fixed, errors.Join(taskErr, planningErr)
+}
+
+func runDoctor(cmd *cobra.Command, _ []string) error {
+	fix, _ := cmd.Flags().GetBool("fix")
+	asJSON, _ := cmd.Flags().GetBool("json")
+
+	results, state, err := collectDoctorResults()
+	if err != nil {
+		return err
+	}
+
+	var fixed []string
+	var fixErr error
 	if fix {
-		fixIssues(loadedProjects)
-		fixPlanningMembership(workspace.Runtime, planning)
-	}
-
-	printResults(results)
-
-	if results.totalIssues() > 0 {
-		switch {
-		case fix && results.fixableIssues() > 0:
-			fmt.Println("\nSome issues were fixed. Re-run 'tt doctor' to verify.")
-		case !fix && results.fixableIssues() > 0:
-			fmt.Println("\nRun 'tt doctor --fix' to automatically fix fixable issues.")
-		default:
-			fmt.Println("\nResolve the reported integrity issues, then re-run 'tt doctor'.")
+		fixed, fixErr = doctorApplyFixes(state)
+		if fixErr != nil {
+			fixErr = fmt.Errorf("doctor --fix could not apply every repair: %w", fixErr)
 		}
-		return fmt.Errorf("found %d issue(s)", results.totalIssues())
+		results, _, err = collectDoctorResults()
+		if err != nil {
+			return errors.Join(fixErr, fmt.Errorf("re-checking the workspace after --fix: %w", err))
+		}
 	}
 
-	if results.informationalNotes() > 0 {
-		fmt.Println("\nAll checks passed (with informational notes above).")
+	if asJSON {
+		if err := printJSON(newDoctorReport(results, fixed)); err != nil {
+			return err
+		}
 	} else {
-		fmt.Println("\nAll checks passed.")
+		for _, line := range fixed {
+			fmt.Printf("  Fixed: %s\n", line)
+		}
+		printResults(results)
+	}
+
+	if fixErr != nil {
+		return fixErr
+	}
+	if results.totalIssues() > 0 {
+		if !asJSON {
+			if !fix && results.fixableIssues() > 0 {
+				fmt.Println("\nRun 'tt doctor --fix' to automatically fix fixable issues.")
+			} else {
+				fmt.Println("\nResolve the reported integrity issues, then re-run 'tt doctor'.")
+			}
+		}
+		return &doctorIssuesError{count: results.totalIssues(), quiet: asJSON}
+	}
+
+	if !asJSON {
+		if results.informationalNotes() > 0 {
+			fmt.Println("\nAll checks passed (with informational notes above).")
+		} else {
+			fmt.Println("\nAll checks passed.")
+		}
 	}
 	return nil
 }

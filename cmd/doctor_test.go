@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -213,27 +217,375 @@ func TestTotalIssues(t *testing.T) {
 	}
 }
 
+// corruptOnRepairReload makes loadProjectForRepair plant a duplicate short ID
+// and a missing parent in the project it reloads. The schema-19 reader refuses
+// both at load, so they can only be staged in memory, after the bytes whose
+// revision the repair commits against were read.
+func corruptOnRepairReload(t *testing.T, afterLoad func()) {
+	t.Helper()
+	oldLoad := loadProjectForRepair
+	t.Cleanup(func() { loadProjectForRepair = oldLoad })
+	loadProjectForRepair = func(project *models.Project) (*string, error) {
+		rev, err := oldLoad(project)
+		if err != nil {
+			return nil, err
+		}
+		corruptDoctorFixture(project)
+		if afterLoad != nil {
+			afterLoad()
+		}
+		return rev, nil
+	}
+}
+
+// corruptDoctorFixture gives Beta Alpha's short ID and a parent that does not
+// exist.
+func corruptDoctorFixture(project *models.Project) {
+	alpha, beta := project.Tasks[0], project.Tasks[1]
+	beta.ShortID = alpha.ShortID
+	missing := "nonexistent-parent"
+	beta.ParentID = &missing
+}
+
 func TestFixIssues(t *testing.T) {
-	deps, project := setupTestDepsWithProject(t, "FixTest")
-	defer deps.Cleanup()
+	root, workspace := newDoctorFixtureWorkspace(t)
+	unfiled := loadedUnfiled(t, workspace)
+	corruptDoctorFixture(unfiled)
+	corruptOnRepairReload(t, nil)
 
-	task1 := testutil.NewTestTask("Good Task")
-	task2 := testutil.NewTestTask("Broken Task")
-	badParent := "nonexistent-parent"
-	task2.ParentID = &badParent
-
-	project.Tasks = []*models.Task{task1, task2}
-
-	// Save initial state so fixIssues can persist
-	deps.Repository.Projects[project.ID] = project
-
-	fixIssues([]*models.Project{project})
-
-	// Verify broken parent ref was cleared
-	if task2.ParentID != nil {
-		t.Errorf("expected ParentID to be cleared, got %v", task2.ParentID)
+	fixed, err := fixIssues(root, []*models.Project{unfiled})
+	if err != nil {
+		t.Fatalf("fixIssues: %v", err)
+	}
+	if len(fixed) != 2 ||
+		!strings.Contains(fixed[0], "reassigned duplicate short ID #1") ||
+		!strings.Contains(fixed[1], "cleared broken parent ref nonexistent-parent") {
+		t.Fatalf("fixed = %q", fixed)
 	}
 
+	// The repair is on disk, not only in memory.
+	reloaded := &models.Project{ID: unfiled.ID, Name: unfiled.Name, Slug: unfiled.Slug, Path: unfiled.Path}
+	if err := storage.LoadProject(reloaded); err != nil {
+		t.Fatalf("reload repaired project: %v", err)
+	}
+	if len(reloaded.Tasks) != 2 || reloaded.Tasks[0].ShortID == reloaded.Tasks[1].ShortID {
+		t.Fatalf("reloaded tasks = %+v, want two distinct short IDs", reloaded.Tasks)
+	}
+	for _, task := range reloaded.Tasks {
+		if task.ParentID != nil {
+			t.Fatalf("task %q still has parent %q", task.Title, *task.ParentID)
+		}
+	}
+}
+
+func TestFixIssuesSkipsAProjectWithNothingToRepair(t *testing.T) {
+	root, workspace := newDoctorFixtureWorkspace(t)
+	unfiled := loadedUnfiled(t, workspace)
+	oldLoad := loadProjectForRepair
+	t.Cleanup(func() { loadProjectForRepair = oldLoad })
+	loadProjectForRepair = func(*models.Project) (*string, error) {
+		t.Fatal("a healthy project was reloaded for repair")
+		return nil, nil
+	}
+
+	fixed, err := fixIssues(root, []*models.Project{unfiled})
+	if err != nil || len(fixed) != 0 {
+		t.Fatalf("fixIssues = %q, %v; want nothing", fixed, err)
+	}
+}
+
+func TestFixIssuesRefusesAStaleRevision(t *testing.T) {
+	root, workspace := newDoctorFixtureWorkspace(t)
+	unfiled := loadedUnfiled(t, workspace)
+	path := storage.TasksFilePath(unfiled.Path)
+	corruptDoctorFixture(unfiled)
+	corruptOnRepairReload(t, func() {
+		// Another process commits between the repair's read and its commit.
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read tasks.md: %v", err)
+		}
+		concurrent := strings.Replace(string(content), "## Task: Alpha", "## Task: Alpha elsewhere", 1)
+		if err := os.WriteFile(path, []byte(concurrent), 0o600); err != nil {
+			t.Fatalf("write concurrent change: %v", err)
+		}
+	})
+
+	fixed, err := fixIssues(root, []*models.Project{unfiled})
+	if !errors.Is(err, storage.ErrStaleArtifact) || !strings.Contains(err.Error(), "project Unfiled") {
+		t.Fatalf("fixIssues error = %v, want a stale revision naming Unfiled", err)
+	}
+	if len(fixed) != 0 {
+		t.Fatalf("fixed = %q, want nothing reported for a refused commit", fixed)
+	}
+	content, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read tasks.md: %v", readErr)
+	}
+	if !strings.Contains(string(content), "Alpha elsewhere") {
+		t.Fatal("the stale repair overwrote the concurrent change")
+	}
+}
+
+// newDoctorFixtureWorkspace mints a filesystem workspace whose Unfiled project
+// holds Alpha (#1) and its child Beta (#2), letting each edit rewrite the
+// canonical tasks.md. It returns the data directory and a workspace loaded
+// after those edits.
+func newDoctorFixtureWorkspace(t *testing.T, edits ...func(document string, alpha *models.Task) string) (string, *CLIWorkspace) {
+	t.Helper()
+	root := t.TempDir()
+	setCommandDataDir(t, root)
+	t.Setenv("HOME", t.TempDir())
+	oldRepo := storage.DefaultRepository
+	storage.DefaultRepository = storage.NewFileSystemRepository()
+	t.Cleanup(func() { storage.DefaultRepository = oldRepo })
+
+	workspace, err := LoadCLIWorkspace()
+	if err != nil {
+		t.Fatalf("LoadCLIWorkspace: %v", err)
+	}
+	unfiled := workspace.Runtime.SystemUnfiledProject()
+	if loadErr := storage.LoadProject(unfiled); loadErr != nil {
+		t.Fatalf("load Unfiled: %v", loadErr)
+	}
+	alpha := testutil.NewTestTask("Alpha")
+	alpha.ShortID = 1
+	beta := testutil.NewTestTask("Beta")
+	beta.ShortID = 2
+	parentID := alpha.ID
+	beta.ParentID = &parentID
+	unfiled.Tasks = []*models.Task{alpha, beta}
+	if saveErr := storage.SaveProject(unfiled); saveErr != nil {
+		t.Fatalf("seed Unfiled: %v", saveErr)
+	}
+
+	path := storage.TasksFilePath(unfiled.Path)
+	for _, edit := range edits {
+		document, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read seeded tasks.md: %v", readErr)
+		}
+		edited := edit(string(document), alpha)
+		if edited == string(document) {
+			t.Fatal("fixture edit changed nothing")
+		}
+		if writeErr := os.WriteFile(path, []byte(edited), 0o600); writeErr != nil {
+			t.Fatalf("write edited tasks.md: %v", writeErr)
+		}
+	}
+
+	workspace, err = LoadCLIWorkspace()
+	if err != nil {
+		t.Fatalf("reload workspace: %v", err)
+	}
+	return root, workspace
+}
+
+// loadedUnfiled returns the workspace's Unfiled project with its tasks loaded.
+func loadedUnfiled(t *testing.T, workspace *CLIWorkspace) *models.Project {
+	t.Helper()
+	unfiled := workspace.Runtime.SystemUnfiledProject()
+	if err := storage.LoadProject(unfiled); err != nil {
+		t.Fatalf("load Unfiled: %v", err)
+	}
+	return unfiled
+}
+
+func newDoctorCommand(t *testing.T, args ...string) *cobra.Command {
+	t.Helper()
+	command := &cobra.Command{}
+	command.Flags().Bool("fix", false, "")
+	command.Flags().Bool("json", false, "")
+	if err := command.Flags().Parse(args); err != nil {
+		t.Fatalf("parse doctor flags %v: %v", args, err)
+	}
+	return command
+}
+
+// plantStaleTodayEntry commits a Today entry naming a task Unfiled does not
+// own, the fixable skew two machines most often leave behind.
+func plantStaleTodayEntry(t *testing.T, workspace *CLIWorkspace) {
+	t.Helper()
+	unfiled := workspace.Runtime.SystemUnfiledProject()
+	planning := &config.PlanningState{Today: []config.ProjectTaskLocator{{ProjectID: unfiled.ID, TaskID: "task-gone"}}}
+	if err := workspace.Runtime.CommitPlanning(planning); err != nil {
+		t.Fatalf("plant stale Today entry: %v", err)
+	}
+}
+
+func TestRunDoctorFixRepairsThenReportsTheCleanState(t *testing.T) {
+	_, workspace := newDoctorFixtureWorkspace(t)
+	plantStaleTodayEntry(t, workspace)
+
+	stdout, stderr, err := captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t, "--fix"), nil)
+	})
+	if err != nil {
+		t.Fatalf("doctor --fix: %v\n%s", err, stdout)
+	}
+	if stderr != "" {
+		t.Fatalf("doctor --fix stderr = %q, want empty", stderr)
+	}
+	if !strings.Contains(stdout, "Fixed: pruned 1 planning entry from Today and Next") ||
+		!strings.Contains(stdout, "Planning membership issues: 0") ||
+		!strings.Contains(stdout, "All checks passed") {
+		t.Fatalf("doctor --fix did not report the post-fix state:\n%s", stdout)
+	}
+	if strings.Contains(stdout, "Re-run") {
+		t.Fatalf("doctor --fix still asks for a re-run:\n%s", stdout)
+	}
+
+	stdout, _, err = captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t), nil)
+	})
+	if err != nil {
+		t.Fatalf("second doctor run: %v\n%s", err, stdout)
+	}
+}
+
+func TestRunDoctorWithoutFixExitsTwoForAFixableIssue(t *testing.T) {
+	_, workspace := newDoctorFixtureWorkspace(t)
+	plantStaleTodayEntry(t, workspace)
+
+	stdout, _, err := captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t), nil)
+	})
+	var issues *doctorIssuesError
+	if !errors.As(err, &issues) || issues.ExitCode() != 2 {
+		t.Fatalf("doctor error = %v, want an exit-2 issues error", err)
+	}
+	if !strings.Contains(stdout, "Run 'tt doctor --fix'") {
+		t.Fatalf("doctor did not point at --fix:\n%s", stdout)
+	}
+}
+
+func TestRunDoctorUnfixableIssueExitsTwo(t *testing.T) {
+	newDoctorFixtureWorkspace(t, func(document string, alpha *models.Task) string {
+		stamp := alpha.CreatedAt.Format(time.RFC3339Nano)
+		return strings.Replace(document, "state: backlog,", "state: backlog, completed: "+stamp+",", 1)
+	})
+
+	stdout, _, err := captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t, "--fix"), nil)
+	})
+	var issues *doctorIssuesError
+	if !errors.As(err, &issues) {
+		t.Fatalf("doctor --fix error = %v, want doctorIssuesError\n%s", err, stdout)
+	}
+	if issues.ExitCode() != 2 || issues.count != 1 || err.Error() != "found 1 issue(s)" {
+		t.Fatalf("issues error = %+v (%q), want exit 2 for one issue", issues, err.Error())
+	}
+	if !strings.Contains(stdout, "Invalid completion timestamps: 1") ||
+		!strings.Contains(stdout, "Resolve the reported integrity issues") {
+		t.Fatalf("doctor did not report the unfixable issue:\n%s", stdout)
+	}
+}
+
+func TestRunDoctorFixFailureIsNotAnIssuesVerdict(t *testing.T) {
+	_, workspace := newDoctorFixtureWorkspace(t)
+	plantStaleTodayEntry(t, workspace)
+	unfiledID := workspace.Runtime.SystemUnfiledProject().ID
+	apply := doctorApplyFixes
+	t.Cleanup(func() { doctorApplyFixes = apply })
+	doctorApplyFixes = func(state *doctorState) ([]string, error) {
+		// Another process rewrites planning after doctor read it.
+		other, err := LoadCLIWorkspace()
+		if err != nil {
+			t.Fatalf("load concurrent workspace: %v", err)
+		}
+		concurrent := &config.PlanningState{Next: []config.ProjectTaskLocator{{ProjectID: unfiledID, TaskID: "task-elsewhere"}}}
+		if err := other.Runtime.CommitPlanning(concurrent); err != nil {
+			t.Fatalf("concurrent planning commit: %v", err)
+		}
+		return apply(state)
+	}
+
+	_, _, err := captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t, "--fix"), nil)
+	})
+	var issues *doctorIssuesError
+	if err == nil || errors.As(err, &issues) {
+		t.Fatalf("doctor --fix error = %v, want a fix failure that exits 1", err)
+	}
+	if !strings.Contains(err.Error(), "could not apply every repair") ||
+		!strings.Contains(err.Error(), "repair planning membership") {
+		t.Fatalf("doctor --fix error = %v, want it to name the failed planning repair", err)
+	}
+}
+
+func TestDoctorJSONPrintsOnlyAParseableReport(t *testing.T) {
+	root, workspace := newDoctorFixtureWorkspace(t)
+	plantStaleTodayEntry(t, workspace)
+	home := os.Getenv("HOME")
+
+	// Anything logged while doctor runs, as BuildTaskTree's warnings are, must
+	// reach the log file the root pre-run opened and never the standard logger.
+	var leaked bytes.Buffer
+	log.SetOutput(&leaked)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	runE := doctorCmd.RunE
+	doctorCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		logging.Warn("doctor json probe")
+		return runE(cmd, args)
+	}
+
+	rootCmd.SetArgs([]string{"doctor", "--json", "--data-dir", root})
+	t.Cleanup(func() {
+		doctorCmd.RunE = runE
+		rootCmd.SetArgs(nil)
+		_ = doctorCmd.Flags().Set("json", "false")
+	})
+	stdout, stderr, err := captureDoctorOutput(t, func() error {
+		return executeCommand(rootCmd)
+	})
+
+	var issues *doctorIssuesError
+	if !errors.As(err, &issues) || issues.ExitCode() != 2 || err.Error() != "" {
+		t.Fatalf("doctor --json error = %v, want a silent exit-2 issues error", err)
+	}
+	if stderr != "" || leaked.Len() != 0 {
+		t.Fatalf("stderr = %q, standard logger = %q; want both empty", stderr, leaked.String())
+	}
+	var report doctorReport
+	if decodeErr := json.Unmarshal([]byte(stdout), &report); decodeErr != nil {
+		t.Fatalf("stdout is not one JSON report: %v\n%s", decodeErr, stdout)
+	}
+	if report.Schema != doctorReportSchema || report.TotalIssues != 1 ||
+		len(report.Buckets["planning_membership"]) != 1 ||
+		report.Buckets["duplicate_short_ids"] == nil ||
+		report.Notes["workspace_status"] == nil ||
+		report.Fixed == nil {
+		t.Fatalf("report = %+v", report)
+	}
+
+	logs, globErr := filepath.Glob(filepath.Join(home, ".tt", "logs", "tt-*.log"))
+	if globErr != nil || len(logs) != 1 {
+		t.Fatalf("log files = %v (%v), want exactly one", logs, globErr)
+	}
+	content, readErr := os.ReadFile(logs[0])
+	if readErr != nil || !strings.Contains(string(content), "doctor json probe") {
+		t.Fatalf("log file = %q (%v), want the probe warning", content, readErr)
+	}
+}
+
+func TestDoctorJSONFixCarriesFixedLinesInTheReport(t *testing.T) {
+	_, workspace := newDoctorFixtureWorkspace(t)
+	plantStaleTodayEntry(t, workspace)
+
+	stdout, stderr, err := captureDoctorOutput(t, func() error {
+		return runDoctor(newDoctorCommand(t, "--fix", "--json"), nil)
+	})
+	if err != nil || stderr != "" {
+		t.Fatalf("doctor --fix --json = %v, stderr %q", err, stderr)
+	}
+	var report doctorReport
+	if decodeErr := json.Unmarshal([]byte(stdout), &report); decodeErr != nil {
+		t.Fatalf("stdout is not one JSON report: %v\n%s", decodeErr, stdout)
+	}
+	if report.TotalIssues != 0 || len(report.Fixed) != 1 ||
+		report.Fixed[0] != "pruned 1 planning entry from Today and Next" {
+		t.Fatalf("report = %+v", report)
+	}
 }
 
 func captureDoctorOutput(t *testing.T, fn func() error) (stdout string, stderr string, runErr error) {
@@ -318,6 +670,7 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testin
 
 	command := &cobra.Command{}
 	command.Flags().Bool("fix", false, "")
+	command.Flags().Bool("json", false, "")
 	stdout, stderr, runErr := captureDoctorOutput(t, func() error {
 		return runDoctor(command, nil)
 	})

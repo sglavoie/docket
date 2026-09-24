@@ -101,7 +101,10 @@ func TestCheckTaskReferencesNeverPrunes(t *testing.T) {
 	results := &doctorResults{}
 	projects := []*models.Project{holder}
 	checkTaskReferences(projects, projects, results)
-	fixIssues(projects)
+	fixed, err := fixIssues(t.TempDir(), projects)
+	if err != nil || len(fixed) != 0 {
+		t.Fatalf("fixIssues = %v, %v; want nothing fixed and no error", fixed, err)
+	}
 
 	if len(task.Dependencies) != 1 {
 		t.Fatalf("task references after doctor = %v, want the corrupted reference retained", task.Dependencies)
