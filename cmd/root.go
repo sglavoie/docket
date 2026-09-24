@@ -20,7 +20,10 @@ var noColor bool
 // TUI, and no maintenance subcommand renders a status strip.
 var noAdvisories bool
 
-var closeLogging = logging.Close
+var (
+	openLogging  = logging.Init
+	closeLogging = logging.Close
+)
 
 var dataDir string
 
@@ -110,6 +113,9 @@ func Execute() error {
 }
 
 func executeCommand(command *cobra.Command) error {
+	// Logging opens here rather than in init so that importing this package,
+	// as a test binary does, never creates a log file beneath the real $HOME.
+	openLogging()
 	defer closeLogging()
 	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
 	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
@@ -120,7 +126,6 @@ func executeCommand(command *cobra.Command) error {
 
 func init() {
 	cobra.OnInitialize(initNoColor)
-	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))

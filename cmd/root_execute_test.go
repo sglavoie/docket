@@ -50,10 +50,13 @@ func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 		},
 	}
 
-	originalClose := closeLogging
-	defer func() { closeLogging = originalClose }()
+	originalOpen, originalClose := openLogging, closeLogging
+	defer func() { openLogging, closeLogging = originalOpen, originalClose }()
 
-	closed := false
+	opened, closed := false, false
+	openLogging = func() {
+		opened = true
+	}
 	closeLogging = func() {
 		closed = true
 	}
@@ -64,6 +67,9 @@ func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 	}
 	if !command.SilenceErrors {
 		t.Fatal("executeCommand should silence cobra's default error printing")
+	}
+	if !opened {
+		t.Fatal("executeCommand should open logging, since importing the package no longer does")
 	}
 	if !closed {
 		t.Fatal("executeCommand should close logging before returning")
