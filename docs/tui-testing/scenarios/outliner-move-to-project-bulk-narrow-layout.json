@@ -23,7 +23,8 @@
 
     { "type": "key", "label": "Inbox mode holds the three captures alone", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "key", "label": "start on the newest capture, the group's first row", "key": "home" },
+    { "type": "key", "label": "start from the project header", "key": "home" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "select the newest capture", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select a second", "key": "v" },
@@ -41,7 +42,7 @@
 
     { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "count_contains", "value": "[unfiled]", "count": 3 },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] (3)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the same act renders at the wider narrow band", "width": 72, "height": 20 },

@@ -193,20 +193,19 @@ themselves, and re-aims an in-flight reload at the row they chose.
 Project grouping is universal, not per-mode: whenever the Outliner is not showing
 one project's own view, every mode groups its rows by project and ranks each
 group by its best task under the active order, pinned projects first and then
-alphabetically breaking a tie. What differs is how a group states
-its identity. While it is expanded it costs no row at all: each of its task rows
-carries a compact `[label]` in a column after the title and the run of rows is
-the group.
-While it is folded, the one summary row `appendProjectGroupHeader` emits is that
-whole statement, `IsProjectHeader` and all. Every mode emits that summary
-through the shared `appendProjectGroupHeader` kernel, and each grouping surface
+alphabetically breaking a tie. A group states its identity on one header row,
+`IsProjectHeader` and all, that `appendProjectGroupHeader` emits above its tasks
+whether the group is expanded or folded; the tasks sit one level beneath it and
+carry no project label of their own. Folded, that same header is the summary
+that stands in for the group's rows. Every mode emits it through the shared
+`appendProjectGroupHeader` kernel, and each grouping surface
 owns a disjoint `CollapsedSections` key
 namespace, because that map is never cleared on a mode change.
 
 A group is a value before it is a row. `OutlinerRowGroup` is that value —
 `SectionKey`, `ProjectKey`, `ProjectID` — and every row a grouped projection
-emits carries the one its block belongs to: the section header, the summary a
-folded group leaves behind, each task, each descendant, and, because
+emits carries the one its block belongs to: the section header, the project
+header, each task, each descendant, and, because
 `expandChecklistRows` copies the owner row, each checklist item. Both key halves are the collapse keys the fold
 state already stores, so a group mints no namespace of its own and names exactly
 the folds that can hide it; `CollapseKeys()` returns them nearest first. The
@@ -215,10 +214,9 @@ a rebuild that moved the row.
 
 `m.rowGroupFor` builds it and `groupsRowsByProject()` — `m.Project == nil &&
 !m.IsProjectScoped()` — is the one predicate deciding whether the project half is
-written. `appendProjectGroupHeader` and `taskProjectLabel` both read that same
-value rather than re-deriving the condition, so the summary the projection draws,
-the label its rows wear, and the identity they carry cannot disagree about which
-groups exist. Both single-project forms therefore
+written. `appendProjectGroupHeader` reads that same value rather than
+re-deriving the condition, so the header the projection draws and the identity
+its rows carry cannot disagree about which groups exist. Both single-project forms therefore
 leave both project halves empty: their rows are sectioned but not project-grouped
 and `ProjectGrouped()` says so. A row nothing can fold — a separator, a ranked
 search result, the keyless focused-project header — carries the zero value.
@@ -237,50 +235,20 @@ key rather than the header declaring it — the same landing today, because a
 group's header is emitted above its members and carries the group, and a landing
 that survives a projection choosing not to draw one.
 
-Because the group is a value, the projection declines to draw the heading that
-names it and every key still reaches it. `appendProjectGroupHeader` emits nothing
-for an expanded group and keeps the summary a folded one is, since that row is
-the whole of what the group shows — it names the project, carries the pressure
-counts, is what `l` expands, and is what every project operation resolves from.
-What an expanded group spends on identity instead is one compact `[label]`
-column after each task row's title, from `taskProjectLabel` under the same
-`groupsRowsByProject` predicate the emitter reads, so the two can never both
-speak or both stay silent. The label is bounded by `projectLabelBudget` and
-reserved at every width beside the pin and relation markers rather than joining
-`indicatorDropLadder`: a deadline a narrow row sheds is recoverable in Peek,
-while a row whose owner is unknown is a row whose title may name either of two
-projects. That budget is the row's own rather than a constant: it is
-`projectLabelWidth` for every row up to `projectLabelGrowthFloorWidth` and then
-rises slowly to `projectLabelCeilingWidth`, because a wide terminal is where a
-cut slug is least excusable and where the title can most afford the columns,
-while an ordinary row is charged nothing for a spelling only a wide one can
-spare. The truncation the
-ceiling still imposes has the folded summary as its counterpart — `p` or `h`
-closes the group and the summary spells the slug whole — which is why the label
-may cut where `TruncateToVisualWidth`'s general rule would refuse. A row seated
-under its own parent draws none, on the same grounds the pinned lane's rows draw
-no pin: parents are project-local, so the connectors above have already
-answered, and a promoted root whose parent is elsewhere is not seated under it
-and keeps its label.
-
-It is a column and not a segment, and `ComputeOutlinerRowLayout` is the one
-measurement that makes it one. It reads the whole projection rather than the
-window on screen, which is the whole reason the column holds still: a
-measurement taken from the visible slice would move the label — and every title
-with it — each time a longer neighbor scrolled into view. `ProjectColumn` is
-where the longest title in the projection already ended, pulled left far enough
-that the widest indicator run in the same projection still fits the row, so
-every row reaches one column without any row clipping a deadline to get there:
-the title is what gives way, which is the trade `indicatorDropLadder` already
-makes a rung earlier. Every task-row consumer takes that one seam, the inline
-editor included, since its caret has to open in the column the committed title
-will be drawn in. [Row indicators](row-indicators.md) is where the field, its
-padding, and its width budget are described.
+Because the group is a value, keys never depend on the heading being drawn,
+though every cross-project group draws one. `appendProjectGroupHeader` emits the
+header for an expanded group and a folded one alike: it names the project,
+carries the pressure counts, is what `l` expands and `h` folds, and is what
+every project operation resolves from. The task rows under it name no project,
+so the title keeps every column the header already paid for.
+`ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns the
+leading segments align in — and it reads the whole projection rather than the
+window on screen, which is why titles hold still while the list scrolls; the
+inline editor and the Hub preview painter read the same layout.
 
 `rowStartsGroup` is what `n`/`N` step between, and it is one rule covering the
-three cases that used to need a heading: a drawn header starts a block, a folded
-group's summary starts one, and so does the first row of a group whose heading
-was never drawn, because `index == 0 || m.Rows[index-1].Group != row.Group`. A
+cases a block can open on: a drawn header starts a block, and so does the first
+row of a group whose predecessor carried another group, because `index == 0 || m.Rows[index-1].Group != row.Group`. A
 separator, a note row, and the keyless focused-project header all carry the zero
 group, so none of them turns the row after it into a second start of the same
 block.
@@ -368,12 +336,12 @@ row count — is what decides that a projection is empty, and
 full width, since one row can never overflow the window.
 
 `n`/`N` step the cursor between blocks, and their stop set is `rowStartsGroup` —
-any header row, plus the first row of a project group whose heading was not drawn
-— because neither the header kind nor the presence of a header is uniform: All,
-Due, and Recent emit section headers while Inbox, Backlog, Today, and Next group
-by project only, so a section-only stop set would leave the keys dead in four of
-the seven modes, and a header-only one would leave every expanded group
-unreachable. `h`/`l` and the `p` toggle narrow that to
+any header row, plus the first row of a group whose predecessor carried another
+— because the header kind is not uniform: All, Due, and Recent emit section
+headers while Inbox, Backlog, Today, and Next group by project only, so a
+section-only stop set would leave the keys dead in four of the seven modes, and
+reading the group off the row rather than the header keeps a block reachable
+however the projection chooses to head it. `h`/`l` and the `p` toggle narrow that to
 `IsCollapsibleHeader()`, since the focused-project header is a stop without a
 fold. The walk wraps at either end, and a projection holding no block at all —
 the flat ranked list outside a focused project — reports so through

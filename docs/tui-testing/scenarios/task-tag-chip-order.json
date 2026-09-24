@@ -19,7 +19,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header onto the captured row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the captured row", "key": "j" },
     { "type": "key", "label": "open Peek, the one surface that renders a chip at all", "key": "b" },
     { "type": "assert", "label": "the whole set, alphabetically, with the semantic tag demoted rather than dropped", "assert": "contains", "value": "Tags: #billing #ux #bug" },
     { "type": "assert", "label": "insertion order never reaches a surface", "assert": "not_contains", "value": "Tags: #ux #bug" },
@@ -27,8 +28,8 @@
     { "type": "key", "label": "Esc closes Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Tags: #billing #ux #bug" },
 
-    { "type": "resize", "label": "at the minimum width the compact project label is the one thing still competing for the title", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "Ship the invoice redesign to the billing p… [unfiled]" },
+    { "type": "resize", "label": "the minimum width now holds the whole title, because nothing competes for it", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "not_clipped", "value": "Ship the invoice redesign to the billing portal" },
     { "type": "assert", "assert": "not_contains", "value": "#billing" },
     { "type": "assert", "assert": "no_layout_issues" },
 

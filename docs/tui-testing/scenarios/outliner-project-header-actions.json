@@ -3,7 +3,7 @@
   "fixture": "multi-project",
   "size": "100x30",
   "actions": [
-    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
     { "type": "assert", "label": "the header footer offers the menu that reaches every act no key does", "assert": "contains", "value": "Space actions" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },
     { "type": "assert", "label": "and the two acts that left the menu for their own keys", "assert": "contains", "value": "* project pin" },

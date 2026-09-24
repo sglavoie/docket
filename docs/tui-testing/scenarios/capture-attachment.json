@@ -21,7 +21,8 @@
     { "type": "assert", "label": "the row leaves the attachment count to Peek and the panel below", "assert": "not_contains", "value": "⊕ 1" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header onto the new row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "label": "the captured URL landed in the same transaction as the task", "assert": "contains", "value": "1 attachment(s)" },
@@ -43,7 +44,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header onto the new row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the newest row", "key": "j" },
     { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "label": "the space survived capture rather than splitting the value", "assert": "contains", "value": "docs/Design Notes.md:19" },

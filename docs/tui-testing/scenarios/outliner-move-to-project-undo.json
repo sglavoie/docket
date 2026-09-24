@@ -13,16 +13,16 @@
     { "type": "key", "label": "choose Client Beta", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the ledger entry names the move, not the request that carried it", "assert": "status_contains", "value": "Move to Project: #2 Alpha migration kickoff → client-beta" },
-    { "type": "assert", "assert": "count_contains", "value": "[client-beta]", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (2)" },
 
     { "type": "key", "label": "undo names the same action back", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: #2 Alpha migration kickoff → client-beta" },
     { "type": "wait" },
-    { "type": "assert", "assert": "count_contains", "value": "[client-alpha]", "count": 1 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
 
     { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
     { "type": "wait" },
-    { "type": "assert", "assert": "count_contains", "value": "[client-beta]", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (2)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

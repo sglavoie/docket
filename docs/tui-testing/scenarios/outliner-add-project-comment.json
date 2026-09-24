@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "an expanded group spends no row on a heading, so fold it to reach one", "key": "p" },
-    { "type": "key", "label": "move onto the project header", "key": "j" },
+    { "type": "key", "label": "launch seats the cursor on the first task, so step up onto its project header", "key": "k" },
 
     { "type": "key", "label": "C on a project header comments on the project", "key": "C" },
     { "type": "assert", "assert": "contains", "value": "Add project comment" },
@@ -47,7 +46,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "unfolding seats the cursor on a task row", "key": "l" },
+    { "type": "key", "label": "the cursor moves onto a task row", "key": "j" },
     { "type": "key", "label": "and C there still writes a task comment", "key": "C" },
     { "type": "assert", "assert": "contains", "value": "Add Comment" },
     { "type": "assert", "label": "naming the task, not the project", "assert": "contains", "value": "Draft the launch runbook" },

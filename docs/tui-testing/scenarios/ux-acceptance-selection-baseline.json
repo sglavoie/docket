@@ -12,7 +12,8 @@
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "one row up is the next task, with no heading left between them", "key": "up" },
+    { "type": "key", "label": "two rows up clears the project header between them", "key": "up" },
+    { "type": "key", "key": "up" },
     { "type": "key", "key": "v" },
     { "type": "key", "key": "up" },
     { "type": "key", "key": "up" },

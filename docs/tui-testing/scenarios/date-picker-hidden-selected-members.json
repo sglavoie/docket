@@ -10,6 +10,8 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "freeze it", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 5 selected" },
     { "type": "key", "label": "fold the task axis, hiding two selected members", "key": "t" },

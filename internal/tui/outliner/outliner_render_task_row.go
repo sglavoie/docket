@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -27,54 +26,14 @@ type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker           string
 	indicators, relationMarker, matchCue             string
-	// projectField is the trailing project column: one separating space, the
-	// compact label, and the blanks that carry it out to the projection's own
-	// width. A row that names no project inside a projection that does reserves
-	// the field blank, so the indicators after it stay in their column too.
-	projectField string
-	// cueColumns is the shared width of the title and the cues that travel with
-	// it, which is what the project field is aligned by. Zero means this row is
-	// packed left — no projection-wide column was measured, or this row is too
-	// deeply indented to seat one — and the field follows its cues immediately.
-	cueColumns int
 }
 
-// preTitleWidth is every column drawn before the title: the structural gutter,
-// the badges, and the one space after the state badge.
-func (s taskRowSegments) preTitleWidth() int {
-	return lipgloss.Width(s.cursorPrefix) + lipgloss.Width(s.checkbox) +
-		lipgloss.Width(s.prefixStr) + lipgloss.Width(s.foldIndicator) +
-		lipgloss.Width(s.statusIcon) + 1 +
-		lipgloss.Width(s.prioritySegment) + lipgloss.Width(s.pinMarker)
-}
-
-// postTitleWidth is every column drawn after the title: the cues that travel
-// with it, the trailing project field, and the operational indicators.
-func (s taskRowSegments) postTitleWidth() int {
-	return lipgloss.Width(s.relationMarker) + lipgloss.Width(s.matchCue) +
-		lipgloss.Width(s.projectField) + lipgloss.Width(s.indicators)
-}
-
-// titleWidth is the columns the title text itself may spend. Under a shared
-// column it is that column's budget less the cues seated inside it, so the
-// title is what gives way when a row wears more cues than its neighbors; with
-// no column it is the row's own remainder, which is what a preview, a
-// standalone render, and a projection naming no project all take.
 func (s taskRowSegments) titleWidth(rowWidth int) int {
-	if s.cueColumns > 0 {
-		return max(s.cueColumns-lipgloss.Width(s.relationMarker)-lipgloss.Width(s.matchCue), 1)
-	}
-	return max(rowWidth-s.preTitleWidth()-s.postTitleWidth(), 1)
-}
-
-// naturalCueEnd is the column this row's title and cues end in when the row is
-// packed left, which is where its project field would sit with no column to
-// answer to. The projection's column is the maximum of these, so the column
-// lands exactly where the longest title in view already ended.
-func (s taskRowSegments) naturalCueEnd(rowWidth int, title string) int {
-	return s.preTitleWidth() +
-		min(lipgloss.Width(title), s.titleWidth(rowWidth)) +
-		lipgloss.Width(s.relationMarker) + lipgloss.Width(s.matchCue)
+	return max(rowWidth-outlinerNonTitleWidth(
+		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
+		s.statusIcon, s.prioritySegment, s.pinMarker,
+		s.indicators, s.relationMarker, s.matchCue,
+	), 1)
 }
 
 // gutter is the leading structural region the cursor highlight owns: the left
@@ -90,30 +49,21 @@ func (s taskRowSegments) gutter() string {
 // it, so the inline editor opens its input in the column the title occupied and
 // sizes it to the columns the title actually had. A widened title budget reaches
 // the editor by construction, which is the whole point of naming this once.
-// Nothing trailing belongs here: the project field is drawn past the title now,
-// so the caret lands on the title's own first column.
 func (s taskRowSegments) titlePrefix() string {
 	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.pinMarker
 }
 
 // content is everything from the state badge on, the region that keeps its own
-// colors under the cursor. The space after the badge is the one preTitleWidth
-// counts. The title and its cues are padded out to the shared column as one
-// run, so a row wearing a relation marker or a match cue seats its project
-// field in the same column as the row beside it that wears neither.
+// colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
+// counts.
 func (s taskRowSegments) content(title string) string {
-	cues := title + s.relationMarker + s.matchCue
-	if s.cueColumns > 0 {
-		if pad := s.cueColumns - lipgloss.Width(cues); pad > 0 {
-			cues += strings.Repeat(" ", pad)
-		}
-	}
-	return fmt.Sprintf("%s %s%s%s%s%s",
+	return fmt.Sprintf("%s %s%s%s%s%s%s",
 		s.statusIcon,
 		s.prioritySegment,
 		s.pinMarker,
-		cues,
-		s.projectField,
+		title,
+		s.relationMarker,
+		s.matchCue,
 		s.indicators,
 	)
 }
@@ -141,106 +91,6 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 		return ""
 	}
 	return theme.MutedStyle.Render("  " + marker)
-}
-
-// projectLabelWidth is every column the compact project label may spend at the
-// app's own minimum width, brackets included. The ceiling is what makes the
-// label compact rather than a heading laid sideways: the heading it replaced
-// had a row to itself and could spell the whole slug, while this rides in a
-// column beside a title that still has to be readable. Twelve characters of
-// slug is where the two stop trading against each other at 60 columns — long
-// enough that an ordinary slug arrives whole and a long one is cut somewhere
-// recognizable, and short enough that the widest titles the row is meant to
-// carry still arrive whole.
-const projectLabelWidth = 14
-
-const (
-	// projectLabelCeilingWidth is the widest the label may ever grow to. Past
-	// this the column is spelling a name nobody is reading twice, and the
-	// columns belong to the titles.
-	projectLabelCeilingWidth = 24
-
-	// projectLabelGrowthFloorWidth is the row width below which the label does
-	// not grow at all. Growth is what a wide row can spare, never what an
-	// ordinary one is charged: the fixture titles this product is measured
-	// against still arrive whole at 120 columns, and they only do so because the
-	// label spends nothing extra until the row is already wider than the work.
-	projectLabelGrowthFloorWidth = 100
-
-	// projectLabelGrowthStep is the columns of row width above that floor that
-	// buy one column of label. A wide terminal is where a truncated slug is
-	// least excusable, so the ceiling rises with the row — slowly, because the
-	// label is one answer and the title is the work.
-	projectLabelGrowthStep = 10
-)
-
-// projectLabelBudget is the compact label's ceiling at one row width, brackets
-// included. It reads the row rather than the terminal because the row is what
-// the label has to fit inside, so a scrollbar or a pane border narrows the
-// label exactly as it narrows everything else on the row.
-func projectLabelBudget(rowWidth int) int {
-	grown := projectLabelWidth + max(rowWidth-projectLabelGrowthFloorWidth, 0)/projectLabelGrowthStep
-	return min(grown, projectLabelCeilingWidth)
-}
-
-// taskProjectLabel names the project owning one cross-project task row.
-// groupsRowsByProject is the same predicate appendProjectGroupHeader reads, so
-// the label appears in exactly the projections that used to open a heading over
-// the group: the identity moves onto the rows rather than being stated twice.
-// Both single-project forms stay silent, because their chrome already names the
-// project and a label there would only repeat it.
-//
-// It is reserved at every width, like the pin and relation markers, instead of
-// joining indicatorDropLadder. A row whose project is unknown is a row whose
-// title may mean two different things, and no deadline makes up for that; the
-// ceiling above is how the reserve stays affordable at the narrow widths where
-// the ladder is already running.
-//
-// It is the bare label rather than a placed one: taskProjectField is what lays
-// it into the projection's column, so the row's one truncation rule stays here
-// and the column's arithmetic stays there.
-//
-// A row seated under its own parent is silent for the same reason the pinned
-// lane's rows carry no pin: parents are project-local, so the connectors above
-// have already answered the question, and the columns a nested row can least
-// afford go to its title. A promoted root whose parent is elsewhere is not
-// seated under it, so it keeps the label.
-func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int) string {
-	if !m.groupsRowsByProject() || row.ProjectID == "" {
-		return ""
-	}
-	if row.Task != nil && row.Task.ParentID != nil && row.Breadcrumb == "" {
-		return ""
-	}
-	project := m.ResolveProjectForRow(row)
-	label := row.ProjectID
-	if project != nil {
-		label = grammar.ProjectLabel(project)
-	}
-	label = textfit.TruncateToVisualWidth(label, projectLabelBudget(rowWidth)-2)
-	return theme.ProjectColorStyle(project).Render("[" + label + "]")
-}
-
-// taskProjectField lays one row's label into the projection's trailing column:
-// the separating space the title is never allowed to eat, the label, and the
-// blanks out to the widest label in view. A row naming no project inside a
-// projection that names one reserves the field blank rather than dropping it,
-// because the indicators sit after the field and a dropped field would leave
-// them ragged. With no measured column — a preview, a standalone render, a
-// projection where no row names a project — the field is exactly what the row
-// itself carries.
-func taskProjectField(label string, colLayout *chrome.ColumnLayout) string {
-	width := 0
-	if colLayout != nil {
-		width = colLayout.ProjectWidth
-	}
-	if width <= 0 {
-		if label == "" {
-			return ""
-		}
-		return " " + label
-	}
-	return " " + label + strings.Repeat(" ", max(width-lipgloss.Width(label), 0))
 }
 
 // taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
@@ -327,7 +177,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
 		matchCue:        taskMatchSourceCue(row),
-		projectField:    taskProjectField(m.taskProjectLabel(row, rowWidth), colLayout),
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
@@ -348,34 +197,8 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		dropSegment(&indicatorSegments)
 		segments.indicators = indicatorSegments.render()
 	}
-
-	// The shared column is applied after the ladder rather than inside it, so
-	// the measurement pass and this one shed the same indicators from the same
-	// row: the ladder answers what the row can afford at its own width, and the
-	// column answers where the answer is drawn.
-	//
-	// The projection reserves trailing space for every row's indicators. Keep
-	// the local width clamp for standalone callers, and let deeply indented rows
-	// leave the column when aligning would make their title unreadable.
-	if colLayout != nil && colLayout.ProjectColumn > 0 {
-		columns := min(
-			colLayout.ProjectColumn-segments.preTitleWidth(),
-			segments.titleWidth(rowWidth)+
-				lipgloss.Width(segments.relationMarker)+lipgloss.Width(segments.matchCue),
-		)
-		if columns >= minSharedCueColumns {
-			segments.cueColumns = columns
-		}
-	}
 	return segments
 }
-
-// minSharedCueColumns is the title-and-cue budget below which a row leaves the
-// shared column rather than honoring it. A deeply nested row can start past
-// where the projection's column sits, and a column that truncated its title to
-// two glyphs to keep one label aligned would have spent the row on the answer
-// nobody was reading.
-const minSharedCueColumns = 8
 
 // RenderOutlinerTaskRow draws one task row, and exactly one line of it. The
 // detail behind the row is the dock's, below the list, so the renderer takes the
@@ -658,6 +481,15 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 		return "", false
 	}
 	return m.LensTextQuery(), m.LensCaseSensitive()
+}
+
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, indicators, relationMarker, matchCue string) int {
+	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
+		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
+		lipgloss.Width(statusIcon) + 1 +
+		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
+		lipgloss.Width(indicators) +
+		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }
 
 // taskRowTint names the row-level background a task earns, and a missed deadline

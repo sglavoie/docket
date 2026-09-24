@@ -24,10 +24,11 @@
     { "type": "key", "label": "undo the correlated transaction", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid" },
     { "type": "wait" },
-    { "type": "assert", "label": "the reparent is taken back whole", "assert": "contains", "value": "├── □ Alpha intake ready for triage               [triage-alpha]" },
+    { "type": "assert", "label": "the reparent is taken back whole", "assert": "contains", "value": "├── □ Alpha intake ready for triage" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "back onto that same intake", "key": "home" },
+    { "type": "key", "label": "back onto that same intake, past the lane and its project header", "key": "home" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "completing it is a departure: All draws no terminal work, so the block the keypress was aimed from no longer holds it", "key": "w" },
     { "type": "key", "key": "d" },

@@ -11,19 +11,19 @@
     },
     {
       "type": "assert",
-      "label": "three projects are scanned from one list, each row naming its own",
+      "label": "three projects are scanned from one list, each group opening under the header that names it",
       "assert": "contains",
-      "value": "[ux-platform…]"
+      "value": "[ux-platform-delivery] ("
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-client-r…]"
+      "value": "[ux-client-rollout] ("
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-support-…]"
+      "value": "[ux-support-queue] ("
     },
     {
       "type": "assert",
@@ -36,7 +36,7 @@
     },
     {
       "type": "assert",
-      "label": "the summary a fold leaves behind spells the whole slug the row abbreviated",
+      "label": "the summary a fold leaves behind is the same header, still naming the project",
       "assert": "contains",
       "value": "[ux-platform-delivery]"
     },
@@ -75,14 +75,15 @@
     },
     {
       "type": "assert",
+      "label": "the rows are back under their headers",
       "assert": "contains",
-      "value": "[ux-platform…]"
+      "value": "Restore the overdue billing"
     },
     {
       "type": "assert",
-      "label": "an expanded group is headerless, so its name is on the rows alone",
-      "assert": "not_contains",
-      "value": "[ux-platform-delivery]"
+      "label": "an expanded group keeps its header, the one row naming the project",
+      "assert": "contains",
+      "value": "[ux-platform-delivery] ("
     },
     {
       "type": "assert",
@@ -696,7 +697,20 @@
     },
     {
       "type": "key",
-      "label": "the row sheet holds the rare and destructive acts alone",
+      "label": "the row sheet holds the rare and destructive acts alone, so take a task row from the top",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "label": "past the lane and its project header",
+      "key": "j"
+    },
+    {
+      "type": "key",
       "key": "j"
     },
     {
@@ -766,9 +780,8 @@
     },
     {
       "type": "assert",
-      "label": "and the host rows the box does not cover are drawn whole",
       "assert": "contains",
-      "value": "Await the vendor security questionnaire"
+      "value": "Triage the duplicate support tickets"
     },
     {
       "type": "assert",
@@ -889,6 +902,11 @@
     {
       "type": "key",
       "key": "g"
+    },
+    {
+      "type": "key",
+      "label": "past the lane and its project header",
+      "key": "j"
     },
     {
       "type": "key",

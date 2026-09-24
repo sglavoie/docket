@@ -18,7 +18,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Review section header onto the flagged row", "key": "j" },
+    { "type": "key", "label": "past the Review section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the flagged row", "key": "j" },
     { "type": "key", "label": "edit the row in place", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "the clear form exists only on the edit surface", "text": " =unreview " },

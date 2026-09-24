@@ -357,9 +357,11 @@ selection; otherwise the restore names the location instead. It runs ahead of
 `refreshTaskViewsAfterSave`, which captures the cursor's own task at request
 time. `Ctrl+O origin` is advertised only where a frame was pushed.
 
-A projection draws no heading over an expanded group and every key still reaches
-it: `appendProjectGroupHeader` emits the header only while the group is folded,
-and that summary is the whole of what it shows. `rowStartsGroup` is `n`/`N`'s stop set —
+Every cross-project group opens with its header, expanded or folded:
+`appendProjectGroupHeader` emits it whenever the group has a project half, so
+the header is the one row naming the project and its tasks sit one level
+beneath it, carrying no label of their own. Keys still read the group off the
+row, never the header: `rowStartsGroup` is `n`/`N`'s stop set —
 a header row, or a row whose predecessor carried another group — and
 `VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
 the three scans for a header. `h`'s last rung folds the cursor's own group, after
@@ -715,29 +717,13 @@ Row and Peek budget:
   out of that ladder — `taskRowSegments` reserves both at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
-  `ShowsPinned`. `taskProjectLabel` is reserved on those same terms and joins no
-  ladder: a cross-project row names its project in a compact `[label]` after the
-  title and its cues and before the indicators, under that one
-  `groupsRowsByProject` predicate, so a group states its identity exactly once —
-  the labels while expanded, the summary while folded, which is also the
-  counterpart spelling a slug `projectLabelBudget` cut. That budget is the row's
-  own: flat at `projectLabelWidth` below `projectLabelGrowthFloorWidth` and
-  rising to `projectLabelCeilingWidth` above it. Both single-project forms stay
-  silent, and so does a row seated under its own parent, since parents are
-  project-local and the connectors have already answered; both still reserve the
-  field. The match cue is shed ahead of the whole ladder and is now the one
-  on-row explanation of a hit the row cannot show.
-- `ComputeOutlinerRowLayout` is the one task-row geometry, measured over the
-  whole projection and never a window or a cursor, which holds the column still
-  while the list scrolls. `ProjectColumn` is where the longest title in view
-  ended, and nothing pulls it further right. Whether a row reaches it is that
-  row's own question, asked against what its indent, cues, and indicators leave;
-  one that cannot gets as near as its width allows and never buys the column by
-  cutting its title, since pulling it left to fit the deepest indent and the
-  longest deadline is one row buying every other row's title shorter.
-  `cueColumns` is that column as one row sees it and `taskProjectField` the
-  padded field; every task-row consumer reads that one layout, the inline editor
-  and the Hub preview painter included.
+  `ShowsPinned`. A task row names no project: the group header above it does,
+  so no label competes with the title. The match cue is shed ahead of the whole
+  ladder and is now the one on-row explanation of a hit the row cannot show.
+- `ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns —
+  measured over the whole projection and never a window or a cursor, so titles
+  hold still while the list scrolls; the inline editor and the Hub preview
+  painter read that same layout.
 - `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent
   and its width, so the title budget reaches the caret by construction and never
   as a second copy of the row's arithmetic. A validation refusal is readable

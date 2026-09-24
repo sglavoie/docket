@@ -10,7 +10,7 @@
     { "type": "key", "label": "commit the atomic subtree move", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the destination group is two rows wide, each naming it", "assert": "count_contains", "value": "[reading-list]", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "[reading-list] (2)" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "[client-alpha]" },
     { "type": "assert", "label": "the atomic edit exposes its correlated transaction", "assert": "status_contains", "value": "Edit Task Line" },

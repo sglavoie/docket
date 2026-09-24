@@ -246,22 +246,19 @@ func (m *OutlinerModel) rowGroupFor(sectionKey, projectKey, projectID string) Ou
 // header because its chrome already names the project, which is exactly the
 // group carrying no project half.
 //
-// An expanded group emits no header either: each of its task rows names the
-// project in its own compact label, and every row carries the group, so
-// discovery, folding, and navigation still reach it and the row the heading
-// would have cost goes to the tasks. A folded group keeps its header, because
-// that row is the whole of what the group shows — the collapsed summary that
-// names the project, carries its pressure counts, and is what l expands and
-// every project operation resolves from.
+// Every other project group draws its header, expanded or folded: the header
+// is the one row that names the project, so its task rows carry no label of
+// their own and sit one level beneath it. Every row still carries the group, so
+// discovery, folding, and navigation read it off the row rather than scanning
+// for the header, and a folded header is the summary that carries the group's
+// pressure counts and is what l expands and every project operation resolves
+// from.
 func (m *OutlinerModel) appendProjectGroupHeader(
 	template OutlinerRow,
 	group OutlinerRowGroup,
 	tasks []*models.Task,
 ) bool {
 	if !group.ProjectGrouped() {
-		return true
-	}
-	if !m.sectionCollapsed(group.ProjectKey) {
 		return true
 	}
 	header := template

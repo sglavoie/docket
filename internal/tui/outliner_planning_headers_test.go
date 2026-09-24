@@ -7,10 +7,9 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
-func TestPlanningRowsGroupEachProjectUnderOneGroup(t *testing.T) {
+func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 	alphaOne := primaryRowsTask("alpha-one", models.StateBacklog)
 	alphaTwo := primaryRowsTask("alpha-two", models.StateBacklog)
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
@@ -33,14 +32,16 @@ func TestPlanningRowsGroupEachProjectUnderOneGroup(t *testing.T) {
 				t.Fatalf("Next task order = %v, want rows grouped under pinned-first project headers", got)
 			}
 
-			// The lane's groups are read off its rows: an open group draws no
-			// heading, so the group each row carries is the whole of what says
-			// where one project's run ends and the next begins.
-			groups, counts := planningLaneGroups(outlinerView, func(row outliner.OutlinerRow) bool {
-				return row.IsNextSection
-			})
-			if !slices.Equal(groups, []string{beta.ID, alpha.ID}) {
-				t.Fatalf("Next project groups = %v, want pinned projects first", groups)
+			var headers []string
+			counts := make(map[string]int)
+			for _, row := range outlinerView.Rows {
+				if row.IsProjectHeader && row.IsNextSection {
+					headers = append(headers, row.ProjectID)
+					counts[row.ProjectID] = row.SectionCount
+				}
+			}
+			if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
+				t.Fatalf("Next project headers = %v, want pinned projects first", headers)
 			}
 			if counts[alpha.ID] != 2 || counts[beta.ID] != 1 {
 				t.Fatalf("Next project counts = %v, want alpha=2 and beta=1", counts)
@@ -49,7 +50,7 @@ func TestPlanningRowsGroupEachProjectUnderOneGroup(t *testing.T) {
 	}
 }
 
-func TestPlanningProjectGroupsCollapseAndDisappearInProjectScope(t *testing.T) {
+func TestPlanningProjectHeadersCollapseAndDisappearInProjectScope(t *testing.T) {
 	alphaOne := primaryRowsTask("alpha-one", models.StateBacklog)
 	alphaTwo := primaryRowsTask("alpha-two", models.StateBacklog)
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
@@ -63,20 +64,14 @@ func TestPlanningProjectGroupsCollapseAndDisappearInProjectScope(t *testing.T) {
 	})
 	outlinerView.SelectOutlinerMode(chrome.ModeNext)
 
-	// Folding starts from a task row inside the group, since the group draws no
-	// header until the fold it would name is already closed.
-	seated := false
 	for index, row := range outlinerView.Rows {
-		if row.IsTaskRow() && row.IsNextSection && row.Group.ProjectID == alpha.ID {
-			outlinerView.Cursor, seated = index, true
+		if row.IsProjectHeader && row.IsNextSection && row.ProjectID == alpha.ID {
+			outlinerView.Cursor = index
 			break
 		}
 	}
-	if !seated {
-		t.Fatalf("Next carries no alpha row to fold from: %+v", outlinerView.Rows)
-	}
 	if !outlinerView.CollapseOrMoveToParent() {
-		t.Fatal("left on a Next row did not collapse its project group")
+		t.Fatal("left on a Next project header did not collapse its project group")
 	}
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{betaOne.ID}) {
 		t.Fatalf("collapsed Next tasks = %v, want only beta", got)
@@ -90,7 +85,7 @@ func TestPlanningProjectGroupsCollapseAndDisappearInProjectScope(t *testing.T) {
 	}
 }
 
-func TestTodayRowsUseTheSameProjectGroupContract(t *testing.T) {
+func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 	alphaTask := primaryRowsTask("alpha-today", models.StateBacklog)
 	betaTask := primaryRowsTask("beta-today", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -103,36 +98,13 @@ func TestTodayRowsUseTheSameProjectGroupContract(t *testing.T) {
 	})
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	groups, _ := planningLaneGroups(outlinerView, func(row outliner.OutlinerRow) bool {
-		return row.IsTodaySection
-	})
-	if !slices.Equal(groups, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Today project groups = %v, want pinned projects first", groups)
-	}
-}
-
-// planningLaneGroups returns the project groups one planning lane shows, in row
-// order, and how many task rows each holds. A folded group states both on its
-// summary and an open one on every row it holds, so both are counted from the
-// group the rows carry rather than from a heading that may not be drawn.
-func planningLaneGroups(
-	view *outliner.OutlinerModel,
-	inLane func(outliner.OutlinerRow) bool,
-) (groups []string, counts map[string]int) {
-	counts = make(map[string]int)
-	for _, row := range view.Rows {
-		if !inLane(row) || !row.Group.ProjectGrouped() {
-			continue
-		}
-		if !slices.Contains(groups, row.Group.ProjectID) {
-			groups = append(groups, row.Group.ProjectID)
-		}
-		switch {
-		case row.IsProjectHeader:
-			counts[row.Group.ProjectID] += row.SectionCount
-		case row.IsTaskRow():
-			counts[row.Group.ProjectID]++
+	var headers []string
+	for _, row := range outlinerView.Rows {
+		if row.IsProjectHeader && row.IsTodaySection {
+			headers = append(headers, row.ProjectID)
 		}
 	}
-	return groups, counts
+	if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
+		t.Fatalf("Today project headers = %v, want pinned projects first", headers)
+	}
 }

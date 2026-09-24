@@ -21,7 +21,8 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
 
-    { "type": "key", "label": "the scope push is the same selection by another spelling, and Esc left the cursor inside the Client Alpha group", "key": "n" },
+    { "type": "key", "label": "the scope push is the same selection by another spelling, and Esc left the cursor inside the Client Alpha group, so one stop reaches the Client Beta header", "key": "n" },
+    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
     { "type": "key", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

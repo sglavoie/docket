@@ -200,8 +200,8 @@ func TestUXDailyUseIntegratedDailyLoopHoldsEveryChangeTogether(t *testing.T) {
 // reviewed size in both palettes.
 //
 // Each gesture is checked for the thing this plan changed about it rather than
-// for the thing it has always done: a searched row still names its project in
-// the trailing column, a child row does not, a hidden selection is stated once,
+// for the thing it has always done: a search still reads across projects, a
+// child row names no project, a hidden selection is stated once,
 // the picker leads with what the selection already carries, and a relocation
 // leaves the cursor on work.
 func TestUXDailyUseIntegratedWorkspaceGesturesFitEveryReviewedSize(t *testing.T) {
@@ -233,9 +233,8 @@ func TestUXDailyUseIntegratedWorkspaceGesturesFitEveryReviewedSize(t *testing.T)
 }
 
 // uxDailyUseIntegratedSearchesAcrossProjects runs one query over the whole
-// workspace and reads the result rows for the two facts the trailing column has
-// to keep: the ranked list is drawn from more than one project, and each of
-// those rows still says which.
+// workspace and reads the result for the fact the ranked list has to keep: it
+// is drawn from more than one project and still fits the terminal.
 func uxDailyUseIntegratedSearchesAcrossProjects(
 	t *testing.T,
 	driver *UITestDriver,
@@ -260,9 +259,6 @@ func uxDailyUseIntegratedSearchesAcrossProjects(
 	if len(projects) < 2 {
 		t.Fatalf("the ranked result draws rows from %d project(s), so it is not a cross-project read", len(projects))
 	}
-	if !strings.Contains(obs.PlainScreen, "[ux-") {
-		t.Fatalf("no searched row names the project it came from\n%s", obs.PlainScreen)
-	}
 	uxClarityPress(t, driver, uxClarityKeys("esc")...)
 }
 
@@ -285,8 +281,8 @@ func uxDailyUseIntegratedReadsHierarchyByDepth(
 	generations := []string{uxAcceptanceParentTitle, uxAcceptanceChildTitle, uxAcceptanceGrandchildTitle}
 	indents := make([]int, 0, len(generations))
 	for depth, generation := range generations {
-		// The unique first word survives truncation beside the aligned project
-		// column at the minimum width; the indent is what is under test.
+		// The unique first word survives truncation at the minimum width; the
+		// indent is what is under test.
 		lead := strings.Fields(generation)[0]
 		line, ok := uxLineContaining(obs.PlainScreen, lead)
 		if !ok {
@@ -473,7 +469,7 @@ var uxDailyUseIntegratedCombinedStates = []uxDailyUseIntegratedCombinedState{
 	},
 	{
 		name:    "long-project-names-and-urgency",
-		why:     "a trailing project column and a deadline indicator competing for the same row",
+		why:     "a long project heading and a deadline indicator sharing one frame",
 		stage:   uxDailyUseIntegratedStageLongNamesAndUrgency,
 		require: []string{"[ux-"},
 	},

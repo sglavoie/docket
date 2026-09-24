@@ -34,6 +34,7 @@
 
     { "type": "key", "label": "onto the first flagged candidate", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "acknowledge it", "key": "R" },
     { "type": "assert", "assert": "status_contains", "value": "Mark Reviewed" },
     { "type": "wait" },

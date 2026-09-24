@@ -78,41 +78,38 @@ func assertUXLaunchPresentation(t *testing.T, driver *UITestDriver, view *outlin
 	obs := driver.Observe(ObserveOptions{IncludeANSI: true})
 	assertUXScreenFitsItsTerminal(t, obs, size)
 	assertUXMonochromeKeepsContent(t, obs,
-		// The operational title, one lane header, and the compact project label
-		// session 8 put on cross-project rows. All three are reserved at every
-		// width, so they survive the narrowest terminal and the ASCII profile
-		// alike; the workspace pulse is not, since its ladder drops entries.
+		// The operational title, one lane header, and a project heading. All
+		// three are drawn at every width, so they survive the narrowest terminal
+		// and the ASCII profile alike; the workspace pulse is not, since its
+		// ladder drops entries.
 		"Active Projects · All",
-		"@ Backlog",
+		"@ Doing",
 		"[ux-",
 	)
 
+	// Every cross-project group opens with its heading, expanded or folded, and
+	// with exactly one: the heading is the one row naming the project, so a
+	// group with none is anonymous and a group with two says it twice. Groups
+	// are counted over the whole projection, because the window only decides
+	// how much of it is on screen.
 	plain := obs.PlainScreen
-	// No cross-project projection draws an expanded project heading any more:
-	// the folded summary is the only header form, and no group is folded here.
-	// Counting the project's own name is the direct measurement, since that is
-	// the text a heading row carried.
-	for _, name := range []string{uxAcceptancePlatformName, uxAcceptanceClientName, uxAcceptanceSupportName} {
-		if strings.Contains(plain, name) {
-			t.Fatalf("an expanded group drew a project heading for %q\n%s", name, plain)
-		}
-	}
-
-	// Row density is measured over the whole projection rather than the window,
-	// because the projection is what the refinement changed and the window only
-	// decides how much of it is on screen. Two of every three rows must carry
-	// work; before the compact labels landed this fixture spent twelve rows of
-	// twenty-seven on headings and could not have reached it.
-	var taskRows, headerRows int
+	groups := map[outliner.OutlinerRowGroup]bool{}
+	headings := map[outliner.OutlinerRowGroup]int{}
 	for _, row := range view.Rows {
-		if row.IsTaskRow() {
-			taskRows++
-			continue
+		switch {
+		case row.IsProjectHeader:
+			headings[row.Group]++
+		case row.IsTaskRow() && row.Group.ProjectGrouped():
+			groups[row.Group] = true
 		}
-		headerRows++
 	}
-	if taskRows*3 < (taskRows+headerRows)*2 {
-		t.Fatalf("the projection spends %d of %d rows on chrome, which is more than a third", headerRows, taskRows+headerRows)
+	if len(groups) == 0 {
+		t.Fatal("the launch projection grouped no rows by project")
+	}
+	for group := range groups {
+		if headings[group] != 1 {
+			t.Fatalf("group %+v drew %d project headings, want exactly one", group, headings[group])
+		}
 	}
 
 	// The list fills the window the viewport authority handed it. A projection
@@ -451,8 +448,8 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 		t.Fatalf("the dock has no divider %d rows above its position row\n%s", dockRows-1, plain)
 	}
 	// And the list keeps a row of its own between the two, which is the floor the
-	// dock's availability is capped against. A cross-project row names its project,
-	// so the compact label is what proves the row is a task row.
+	// dock's availability is capped against. A task title drawn there is what
+	// proves the row is a task row rather than chrome.
 	var listRows int
 	for _, line := range lines[2:divider] {
 		if uxTrimRowFurniture(line) != "" {
@@ -462,7 +459,15 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 	if listRows < 1 {
 		t.Fatalf("the dock and the panel left the list no rows at all\n%s", plain)
 	}
-	if !strings.Contains(strings.Join(lines[2:divider], "\n"), "[ux-") {
+	listText := strings.Join(lines[2:divider], "\n")
+	taskRowDrawn := false
+	for _, row := range view.Rows {
+		if row.IsTaskRow() && row.Task != nil && strings.Contains(listText, row.Task.Title) {
+			taskRowDrawn = true
+			break
+		}
+	}
+	if !taskRowDrawn {
 		t.Fatalf("no task row survives between the context row and the dock\n%s", plain)
 	}
 

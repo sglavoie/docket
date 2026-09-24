@@ -299,15 +299,15 @@ changes, or the terminal is resized. Future check-ins appear here while the task
 row stays quiet; only an arrived, undeferred schedule adds `review today` or
 `review +Nd` to the row, and the review flag alone adds a bare `review`.
 
-On a project header — the summary a folded project group leaves behind, and the
-single header a project-scoped or focused view leads with — the same key opens
-the same pane over the project instead. It leads with the
+On a project header — the group header a cross-project mode draws above each
+project's tasks, and the single header a project-scoped or focused view leads
+with — the same key opens the same pane over the project instead. It leads with the
 project's full name, then its description, its tags, and every
 comment it has, newest first, each under a `[2026-03-03 09:30] 6 days ago` stamp.
 A project with no comments yet says `No comments yet. Press C to add one.` rather than showing
 nothing, so the key always answers on a header. Everything is shown whole and the
 same four keys page through it, exactly as on a task. A project shown under
-several headers at once — All folds one per state section — is one detail behind
+several headers at once — All draws one per state section — is one detail behind
 all of them, so where you scrolled to under one is where you are under the next.
 A task's Peek is unchanged: its comments stay a count, because `;` is the panel
 that reads them.

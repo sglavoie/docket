@@ -114,9 +114,9 @@ one read as a section header instead of a date; `TestDueBadgeFillsAvoidSectionBa
 holds the two populations apart, and urgency travels on saturation within the
 one hue so lightness stays in the band section badges already occupy. The chip's
 two `Padding(0, 1)` cells need
-no width formula of their own: `taskRowSegments.postTitleWidth` sums
-`lipgloss.Width` over the already-styled segments, so the title budget shrinks by
-exactly two like any other segment growth.
+no width formula of their own: `outlinerNonTitleWidth` sums `lipgloss.Width`
+over the already-styled segments, so the title budget shrinks by exactly two
+like any other segment growth.
 
 The attention ladder is `chrome.PickHeroAttribute`, and it is the row's one
 authority on how loudly a task is asking: overdue, then review, then due-today,
@@ -254,80 +254,6 @@ mode's `ShowsPinned` flag, so the flat ranked list — which returns before any
 Pinned section is built — and a filter-admitted terminal or deferred pinned row
 inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
-
-The compact project label is the fourth, and it exists because the heading that
-used to name a group is no longer drawn while the group is open.
-`taskProjectLabel` renders `[slug]` — the project's slug, else its name, else
-the stored ID when neither resolves — in `theme.ProjectColorStyle`, under the
-one `groupsRowsByProject` predicate `appendProjectGroupHeader` reads. That
-shared predicate is the whole of the coordination: the heading and the labels
-are two presentations of one fact, so they can never both speak over a group nor
-both stay silent over one.
-
-It sits after the title and the cues that travel with it — the relation marker
-and the search cue — and before the trailing operational indicators, because the
-title is what the eye scans and a field that pushes every title right by a
-different amount makes the lane unscannable. Ahead of the indicators rather than
-after them, because the indicators are the row's most volatile field and a
-column drawn past them would move whenever a deadline arrived or a review came
-due.
-
-It is a column rather than a per-row segment, and `ComputeOutlinerRowLayout` is
-the one place that is decided. It measures `ProjectWidth` as the widest label any
-row of the projection carries and `ProjectColumn` as the column the longest
-title already ended in, and it reads the whole projection rather than the window
-on screen: a measurement taken from the visible rows would move the column, and
-every title with it, each time a longer neighbor scrolled into view. That column
-is then pulled left far enough that the widest indicator run in the same
-projection still fits — `rowWidth - 1 - ProjectWidth - maxIndicators` — so
-reaching one column costs a title its tail rather than costing a row its
-deadline, which is the same trade `indicatorDropLadder` makes a rung further
-down. `taskRowSegments.cueColumns` is that column as one row sees it, the shared
-width of the title and its cues, and `taskProjectField` lays the label into it,
-padded out to `ProjectWidth`, so the indicators after it stay in their column
-too. A row indented past the column keeps its own left-packed budget instead of
-being squeezed to a stub. Badge alignment keeps its `MinColumnAlignWidth` floor
-and this column has none, because the label is reserved at every width the row
-is drawn at.
-
-That reservation rests on the strongest form of the pin's argument. A deadline a
-60-column row sheds is still one keypress away in Peek, and the row above it is
-unambiguous without it; a row whose owner is unknown is a row whose title may
-belong to either of two projects, and no amount of Peek fixes a misread that
-happened at a glance. `projectLabelBudget` is what keeps that reserve
-affordable: at the app's own `MinTerminalWidth` floor the label spends
-`projectLabelWidth` columns, brackets included, so an ordinary slug arrives
-whole and a long one is cut to its recognisable head rather than laid sideways
-as a heading was. It spends nothing beyond that until the row passes
-`projectLabelGrowthFloorWidth`, and then rises one column per
-`projectLabelGrowthStep` columns of row, to `projectLabelCeilingWidth`, because
-a wide terminal is where a cut slug is least excusable and where the title can
-most afford to give the columns up. The floor is what keeps growth something a
-wide row spares rather than something an ordinary one is charged: the longest
-fixture title this product is measured against arrives whole at 120 columns,
-and it does so because the label is still the floor's own width for every row
-narrower than that. The ceiling is the other end of the same argument, so an
-enormous terminal does not turn the field into a second title column.
-That cut is the one truncation on the row with a counterpart — `p` or `h` folds
-the group and the summary spells the slug whole — which is what lets it exist at
-all under the rule that a dropped tail must be recoverable somewhere.
-
-Two rows draw none, and both still reserve the column, since the indicators sit
-after it and a dropped field would leave them ragged down the lane. Both
-single-project forms are silent because `groupsRowsByProject` is false there and
-the focused-project header above already names the project; a projection where
-no row names a project measures no column at all and every row packs left. A row
-seated under its own parent is silent for the pinned lane's reason: parents are
-project-local, so the connectors drawn above have already answered. A promoted
-root whose parent lives elsewhere is not seated under it — it carries a
-`Breadcrumb` instead — so it keeps the label.
-
-Every consumer of a task row takes that one seam. The Outliner's render measures
-once per frame over `m.Rows` and hands the layout to each row; the inline row
-editor takes its indent from `taskRowSegments.titlePrefix()`, so the caret opens
-in the column the committed title will be drawn in; and the Hub's preview
-painter measures its own pane, caching one layout per pane width, so a preview
-column is the preview's rather than the list's.
 
 A pinned *project* wears the same glyph, from the same `PinnedMarker()` helper,
 on every surface that lists one: the Outliner project group header, the Select

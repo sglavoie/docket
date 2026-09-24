@@ -4,7 +4,7 @@
   "size": "100x20",
   "actions": [
     { "type": "assert", "label": "the bar is hidden until a machine asks for it", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
-    { "type": "assert", "label": "a list that overflows, so the last drawn row is a witness to the row budget", "assert": "contains", "value": "Release acceptance item 053" },
+    { "type": "assert", "label": "a list that overflows, so the last drawn row is a witness to the row budget", "assert": "contains", "value": "Release acceptance item 032" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "M shows the bar", "key": "M" },
     { "type": "assert", "assert": "contains", "value": "Menu bar shown" },
@@ -12,8 +12,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
     { "type": "assert", "label": "the bar sits above the operational title rather than replacing it", "assert": "contains", "value": "Active Projects · All" },
     { "type": "wait", "label": "the toggle's own confirmation is a footer row, and a footer row is a list row: let it expire so what the bar costs is measured alone", "duration": "10s" },
-    { "type": "assert", "label": "and costs exactly one list row: the last one is gone", "assert": "not_contains", "value": "Release acceptance item 053" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 032" },
+    { "type": "assert", "label": "and costs exactly one list row: the last one is gone", "assert": "not_contains", "value": "Release acceptance item 032" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 011" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the whole bar still fits at the narrowest supported width", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
@@ -32,7 +32,7 @@
     { "type": "key", "label": "M hides it again and the row comes back", "key": "M" },
     { "type": "assert", "assert": "contains", "value": "Menu bar hidden" },
     { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 032" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 011" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "wait", "label": "let the toggle's transient status expire so the footer is guidance again", "duration": "10s" },
@@ -44,7 +44,7 @@
     { "type": "assert", "label": "the open menu's gated keymap owns the footer", "assert": "contains", "value": "Enter run" },
     { "type": "assert", "label": "and names the key that opened it as the key that closes it", "assert": "contains", "value": "Ctrl+M/Esc close" },
     { "type": "assert", "label": "the menu stands on the view rather than replacing it: the title and its pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "label": "and the list is still there, dimmed, wherever the box does not reach", "assert": "contains", "value": "bounded viewport content [release-pro…]" },
+    { "type": "assert", "label": "and the list is still there, dimmed, wherever the box does not reach", "assert": "contains", "value": "bounded viewport content" },
     { "type": "assert", "label": "what the box does reach is covered rather than shrunk, so no row moves to make space", "assert": "not_contains", "value": "Release acceptance item 088" },
     { "type": "assert", "assert": "no_layout_issues" },
 

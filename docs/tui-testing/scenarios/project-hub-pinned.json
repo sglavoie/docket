@@ -4,7 +4,7 @@
   "size": "100x30",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "step up from the task launch opened on onto its project header", "key": "k" },
     { "type": "key", "label": "pin Client Alpha", "key": "*" },
     { "type": "wait" },
 

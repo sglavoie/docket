@@ -5,7 +5,8 @@
   "actions": [
     { "type": "key", "label": "go to Backlog", "key": "g" },
     { "type": "key", "key": "b" },
-    { "type": "key", "label": "Backlog draws no section header and the mode change kept the index launch left in All, so take the top explicitly", "key": "home" },
+    { "type": "key", "label": "the mode change kept the index launch left in All, so take the top explicitly: the project header", "key": "home" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
     { "type": "key", "label": "step onto User authentication", "key": "j" },
 
     { "type": "key", "label": "open Adopt Children", "key": "<" },

@@ -10,6 +10,7 @@
 
     { "type": "key", "label": "to the last row", "key": "end" },
     { "type": "key", "key": "k" },
+    { "type": "key", "key": "k" },
     { "type": "key", "label": "onto the woken task", "key": "k" },
     { "type": "key", "label": "open Peek on it", "key": "b" },
     { "type": "assert", "label": "a wake already happened, so it is spent: it closes the document on the history line rather than joining the schedule", "assert": "contains", "value": "created now · updated now · woke 1d" },

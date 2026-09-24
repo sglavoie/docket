@@ -22,7 +22,8 @@
     { "type": "assert", "label": "the row leaves the comment count to Peek and the panel below", "assert": "not_contains", "value": "▪ 1" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header onto the new row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "label": "the captured comment landed in the same transaction as the task", "assert": "contains", "value": "1 comment(s)" },

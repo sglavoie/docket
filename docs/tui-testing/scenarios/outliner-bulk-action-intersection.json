@@ -5,6 +5,7 @@
   "actions": [
     { "type": "key", "label": "select the Doing task and enter multi-select", "key": "v" },
     { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },

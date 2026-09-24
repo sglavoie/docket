@@ -24,7 +24,7 @@
     { "type": "assert", "label": "nothing opened, so the chord left the outline standing", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change State" },
     { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },
-    { "type": "assert", "assert": "contains", "value": "⊘   Build login form  ‹             [rich-project]" },
+    { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "abandon a half-typed chord", "key": "w" },

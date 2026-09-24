@@ -105,10 +105,10 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 func TestSortAxisOrdersPinnedWithPinOrderBreakingTies(t *testing.T) {
 	driver := sortDriver(t, FixtureRich, "end", "*")
 	driver.Wait(defaultWaitTimeout)
-	// Three rows below the top: the Pinned lane header, the row it holds, the
-	// Doing lane header, then Doing's first task. No project heading sits
-	// between a lane and its rows.
-	sortPressKeys(t, driver, "home", "down", "down", "down", "*")
+	// Five rows below the top: the Pinned lane header, its project heading, the
+	// row it holds, the Doing lane header and its project heading, then Doing's
+	// first task.
+	sortPressKeys(t, driver, "home", "down", "down", "down", "down", "down", "*")
 	driver.Wait(defaultWaitTimeout)
 
 	pinned := func() []string {

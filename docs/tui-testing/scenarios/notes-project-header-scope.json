@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
     { "type": "key", "label": "open Notes from a project header row", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "Notes" },
     { "type": "assert", "label": "the header names the scope it opened", "assert": "contains", "value": "1 notes in Rich Project" },

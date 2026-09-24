@@ -5,7 +5,8 @@
   "actions": [
     { "type": "key", "label": "go to Backlog", "key": "g" },
     { "type": "key", "key": "b" },
-    { "type": "key", "label": "Backlog draws no section header and the mode change kept the index launch left in All, so take the top explicitly", "key": "home" },
+    { "type": "key", "label": "the mode change kept the index launch left in All, so take the top explicitly: the project header", "key": "home" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
     { "type": "key", "label": "step onto User authentication", "key": "j" },
 
     { "type": "key", "label": "open Move to Project", "key": "%" },
@@ -16,8 +17,8 @@
     { "type": "key", "label": "choose the system Inbox", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the destination minted its own ShortID for the moved root", "assert": "status_contains", "value": "Move to Project: #1 User authentication → unfiled" },
-    { "type": "assert", "label": "the root and its backlog child left together, and only the root has to say so", "assert": "contains", "value": "User authentication       [unfiled]" },
-    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "Launch platform             [rich-project]" },
+    { "type": "assert", "label": "the root and its backlog child left together", "assert": "contains", "value": "[unfiled] (2)" },
+    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "[rich-project] (1)" },
 
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },

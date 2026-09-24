@@ -200,7 +200,7 @@ has found a regression.
 
 | Recorded expectation | Test | Owner |
 | --- | --- | --- |
-| ~~A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length.~~ Rewritten by session 2: the label follows the title in one measured column, so every title and every label starts in one column. | `TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn` | 2 |
+| ~~A task row names its project in a `[label]` **ahead** of the title, and title start columns therefore vary with project-name length.~~ Rewritten by session 2 to a trailing label column, then retired by the layout plan that restored the expanded heading: the `[slug] (count)` header opening each group names the project, the row names none, and every root title starts in one column. | `TestUXDailyUseProjectHeaderNamesEachGroup` | 2 |
 | ~~The cursor row is marked in its first column and trailing fill alone: the bytes from the gutter through the title are identical focused and unfocused.~~ Rewritten by session 3: a task row also wears one band under everything it drew, and the assertion is now that every foreground the unfocused row carried still reads on the focused one. | `TestUXDailyUseCursorRowWearsOneBandUnderItsContent` | 3 |
 | ~~A visual selection with hidden members is counted **twice** — once in the status strip and again in the footer.~~ Rewritten by session 4: the context row is the sole persistent summary, the status channel says nothing about a selection, the hidden count survives into the compact spelling, and `Q` keeps all three numbers. | `TestUXDailyUseSelectionCountsAreStatedOnce` | 4 |
 | ~~The `w` chord lists all ten destinations as one flat run, with no Plan/Status division.~~ Rewritten by session 5: the row heads `n next` and `t today` with `Plan:` and the eight lifecycle states with `Status:`, Plan leading, and the assertion is now where that division falls rather than that it is absent. | `TestUXDailyUseWorkflowChordDividesPlanFromStatus` | 5 |
@@ -219,9 +219,9 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 
 | Assertion | Where | Owner |
 | --- | --- | --- |
-| ~~"each of its task rows carries a compact `[label]` ahead of the title"~~ Rewritten by session 2 to "in a column after the title". | `docs/architecture/tui-architecture.md` line 197 | 2 |
-| ~~The required string "one compact `[label]` segment per task row, from `taskProjectLabel`…"~~ Rewritten by session 2 to the column form, with `ComputeOutlinerRowLayout` and the clamp's direction added beside it. | `architecture_docs_test.go` lines 97–105 | 2 |
-| ~~"`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded"~~ Rewritten by session 2, which also added the `ComputeOutlinerRowLayout` geometry rule and raised the budget for it. | `CLAUDE.md` lines 627–649 | 2 |
+| ~~"each of its task rows carries a compact `[label]` ahead of the title"~~ Rewritten by session 2 to "in a column after the title", then by the layout plan to the header that opens every group. | `docs/architecture/tui-architecture.md` line 197 | 2 |
+| ~~The required string "one compact `[label]` segment per task row, from `taskProjectLabel`…"~~ Rewritten by session 2 to the column form, then by the layout plan to the drawn header and `ComputeOutlinerRowLayout`'s badge geometry. | `architecture_docs_test.go` lines 97–105 | 2 |
+| ~~"`taskProjectLabel` is reserved on those same terms and joins no ladder… the labels while it is expanded"~~ Rewritten by session 2, which also added the `ComputeOutlinerRowLayout` geometry rule and raised the budget for it; the layout plan retired the label and kept the geometry rule. | `CLAUDE.md` lines 627–649 | 2 |
 | ~~"`outlinerCursorRow` marks the cursor row in its first column and trailing fill alone, not its content"~~ Rewritten by session 3 to the band and its background precedence, and the budget raised for it. | `CLAUDE.md` line 532 | 3 |
 | ~~The cursor-row paint description — `cursorPaint`, the gutter truncation, the `trail()` pad~~ Rewritten by session 3, which added `rowBg`/`overTaskRow`, the band's derivation, `textfit.PaintBackground`, and why the bar is an attribute. | `docs/architecture/presentation-chrome.md` lines 479–512 | 3 |
 | ~~"A view status is transient except the multi-select summary."~~ Rewritten by session 4: every view status is transient, the Outliner writes none about a selection, and the context row's `selection` entry is the one persistent summary. | `CLAUDE.md` line 409 | 4 |
@@ -244,10 +244,10 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 2 — Trailing project column and task-row geometry
 
-- Go: `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/outliner/outliner_project_label_outlinersplit_test.go`, `internal/tui/outliner/outliner_row_budget_acceptance_test.go`, `internal/tui/inline_row_editor_test.go`
+- Go: `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/outliner/outliner_row_budget_acceptance_test.go`, `internal/tui/inline_row_editor_test.go`
 - Frames: `project-label-widths`, `dense-scrolled`
 - Contracts: `architecture_docs_test.go` lines 97–105; `docs/architecture/tui-architecture.md` line 197; `CLAUDE.md` lines 627–649
-- Landed: `chrome.ColumnLayout.ProjectColumn` and `OutlinerModel.ComputeOutlinerRowLayout` — one geometry measured over the whole projection; `taskRowSegments` split into `preTitleWidth`/`postTitleWidth` with the project field between the cues and the indicators; `projectLabelBudget` holding the label at `projectLabelWidth` up to `projectLabelGrowthFloorWidth` and growing it toward `projectLabelCeilingWidth` past that; `RenderOutlinerQuickEditRow` and the Hub preview painter taking that same layout.
+- Landed: `OutlinerModel.ComputeOutlinerRowLayout` — one geometry measured over the whole projection, which `RenderOutlinerQuickEditRow` and the Hub preview painter take too. The trailing project column it also landed (`ProjectColumn`, `projectLabelBudget`) was retired by the layout plan that restored the expanded project heading.
 
 ### Session 3 — Current-row tint and semantic colors
 

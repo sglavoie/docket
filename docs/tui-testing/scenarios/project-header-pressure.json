@@ -3,24 +3,27 @@
   "fixture": "signals",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "an expanded group draws no heading, so no row states its pressure", "assert": "not_contains", "value": "! overdue 2" },
-    { "type": "key", "label": "fold every project group so each states itself in one summary", "key": "p" },
-    { "type": "assert", "label": "a folded Backlog project group names its overdue work", "assert": "contains", "value": "[signal-delivery-coordination-track] (3)  ! overdue 2" },
-    { "type": "assert", "label": "a folded Today group does not restate its own size", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
+    { "type": "assert", "label": "a Backlog project group names its overdue work", "assert": "contains", "value": "[signal-delivery-coordination-track] (3)  ! overdue 2" },
+    { "type": "assert", "label": "a Today group does not restate its own size", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
     { "type": "assert", "label": "only the workspace pulse says today 1 here", "assert": "count_contains", "value": "today 1", "count": 1 },
     { "type": "assert", "label": "a project with no pressure wears no suffix", "assert": "not_contains", "value": "[signal-beta] (1)  overdue" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "launch opens on the Today task, so the first stop is the Backlog section header", "key": "n" },
+    { "type": "key", "label": "jump to the first Backlog project header", "key": "n" },
+    { "type": "key", "label": "jump to the target Backlog project header", "key": "n" },
+    { "type": "key", "label": "fold the group", "key": "h" },
+    { "type": "assert", "label": "a folded group still names its overdue work", "assert": "contains", "value": "[signal-delivery-coordination-track] (3)  ! overdue 2" },
     { "type": "assert", "label": "the folded rows are gone", "assert": "not_contains", "value": "Alpha overdue audit" },
-    { "type": "key", "label": "unfold every group again", "key": "p" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "unfold the group", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Alpha overdue audit" },
-    { "type": "assert", "label": "and the summaries that named the pressure went with the folds", "assert": "not_contains", "value": "! overdue 2" },
 
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "key", "label": "fold the Inbox groups", "key": "p" },
-    { "type": "assert", "label": "a summary carries both counts when both apply", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · ◷ today 1" },
-    { "type": "assert", "label": "the pulse and the summary each say today 1", "assert": "count_contains", "value": "today 1", "count": 2 },
+    { "type": "assert", "label": "a header carries both counts when both apply", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · ◷ today 1" },
+    { "type": "assert", "label": "the pulse and the header each say today 1", "assert": "count_contains", "value": "today 1", "count": 2 },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -10,14 +10,6 @@ type ColumnLayout struct {
 	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
 	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
-	// ProjectColumn is the column the trailing project field begins in, measured
-	// over one whole projection rather than over the rows a window happens to
-	// hold. It is what makes the field a column instead of a segment: every row
-	// pads its title and cues out to it, so scrolling moves rows past a fixed
-	// column instead of moving the column. Zero means no row names a project, or
-	// the row is too narrow to seat one, and the field follows each row's own
-	// cues immediately.
-	ProjectColumn int
 	HasPriority   bool
 	HasStatus     bool
 }

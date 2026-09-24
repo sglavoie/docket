@@ -474,22 +474,21 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 }
 
 // ComputeOutlinerRowLayout is the one measurement of a projection's shared row
-// geometry: the badge columns the leading segments align in, and the trailing
-// column the project field sits in. It reads the whole row set it is handed
-// rather than the slice a window happens to show, which is what keeps the
-// column where it is while the list scrolls past it — a measurement taken from
-// the window would move every row's title each time a wider neighbor scrolled
-// into view.
+// geometry: the badge columns the leading segments align in. It reads the whole
+// row set it is handed rather than the slice a window happens to show, which is
+// what keeps the titles where they are while the list scrolls — a measurement
+// taken from the window would move every row's title each time a wider badge
+// scrolled into view.
 //
 // It is the seam every task-row consumer takes: the Outliner's own render, the
 // inline editor that has to open in the column the title was drawn in, and the
-// Hub's preview painter, which is a standalone render of the same rows.
-//
-// Badge alignment keeps its own width floor, because padding a badge is a
-// wide-terminal nicety that a cramped row is better off without. The project
-// column has no floor: the label is reserved at every width the row is drawn
-// at, so the column it is reserved in has to exist at every one of them too.
+// Hub's preview painter, which is a standalone render of the same rows. Badge
+// alignment keeps its width floor, because padding a badge is a wide-terminal
+// nicety that a cramped row is better off without.
 func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth int) *chrome.ColumnLayout {
+	if rowWidth < chrome.MinColumnAlignWidth {
+		return nil
+	}
 	tasks := make([]*models.Task, 0, len(rows))
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
@@ -500,44 +499,7 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 	if len(tasks) == 0 {
 		return nil
 	}
-
-	layout := &chrome.ColumnLayout{}
-	if rowWidth >= chrome.MinColumnAlignWidth {
-		if badge := chrome.ComputeBadgeWidths(tasks, chrome.BadgeWidthOpts{IncludeStatus: true}); badge != nil {
-			layout = badge
-		}
-	}
-
-	for _, row := range rows {
-		if !row.IsTaskRow() || row.Task == nil {
-			continue
-		}
-		if width := lipgloss.Width(m.taskProjectLabel(row, rowWidth)); width > layout.ProjectWidth {
-			layout.ProjectWidth = width
-		}
-	}
-	if layout.ProjectWidth == 0 {
-		return layout
-	}
-
-	// Start at the longest title's end, then reserve enough trailing space for
-	// every row's surviving indicators. Otherwise a review or deadline badge
-	// pushes only its own project label left and breaks the shared column.
-	maxCueEnd := 0
-	columnLimit := rowWidth
-	for _, row := range rows {
-		if !row.IsTaskRow() || row.Task == nil {
-			continue
-		}
-		segments := m.buildTaskRowSegments(row, rowWidth, layout, cursorPaint{})
-		columnLimit = min(columnLimit, rowWidth-
-			lipgloss.Width(segments.projectField)-lipgloss.Width(segments.indicators))
-		if end := segments.naturalCueEnd(rowWidth, row.Task.Title); end > maxCueEnd {
-			maxCueEnd = end
-		}
-	}
-	layout.ProjectColumn = max(min(maxCueEnd, columnLimit), 0)
-	return layout
+	return chrome.ComputeBadgeWidths(tasks, chrome.BadgeWidthOpts{IncludeStatus: true})
 }
 
 type outlinerViewport struct {

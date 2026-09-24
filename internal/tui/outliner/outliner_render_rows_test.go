@@ -39,12 +39,12 @@ func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
 	row := OutlinerRow{Task: task, ProjectID: project.ID}
 
 	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
-	if segments.titleWidth(60) != 60-segments.preTitleWidth()-segments.postTitleWidth() {
-		t.Fatal("a segment drifted between titleWidth and the two halves it subtracts")
-	}
-	if assembled := lipgloss.Width(ansi.Strip(segments.gutter() + segments.content("x"))); assembled != segments.preTitleWidth()+segments.postTitleWidth()+1 {
-		t.Fatalf("the assembled row is %d columns and the arithmetic says %d, so a segment is measured but not drawn or drawn but not measured",
-			assembled, segments.preTitleWidth()+segments.postTitleWidth()+1)
+	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
+		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
+		segments.statusIcon, segments.prioritySegment, segments.pinMarker,
+		segments.indicators, segments.relationMarker, segments.matchCue,
+	) {
+		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")
 	}
 
 	// 24 columns is where a reserved badge used to leave the title four of them.
@@ -172,32 +172,31 @@ func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 }
 
 // TestCrossProjectProjectIdentityHasExactlyOneCarrier walks both halves of the
-// same guarantee: a group states its project once. Expanded, the carrier is
-// every task row's compact label and there is no heading to repeat it; folded,
-// the carrier is the summary that replaces those rows.
+// same guarantee: a group states its project once, on the header that opens it.
+// Expanded, the header sits above the task rows and no row repeats the name;
+// folded, the same header is the summary that replaces those rows.
 func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateBacklog))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	labeled := make(map[string]int)
+	headed := make(map[string]int)
 	for index, row := range outliner.Rows {
 		if row.IsProjectHeader {
-			t.Fatalf("expanded group drew a heading beside its labeled rows: %+v", row)
+			headed[row.ProjectID]++
+			continue
 		}
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
-		if !strings.Contains(line, "["+row.ProjectID+"]") {
-			t.Errorf("task row %q named no project in %q", row.Task.ID, line)
-			continue
+		if strings.Contains(line, "["+row.ProjectID+"]") {
+			t.Errorf("task row %q repeated its project beneath the header: %q", row.Task.ID, line)
 		}
-		labeled[row.ProjectID]++
 	}
-	if labeled[alpha.ID] != 1 || labeled[beta.ID] != 1 {
-		t.Fatalf("labeled rows = %v, want one per project", labeled)
+	if headed[alpha.ID] != 1 || headed[beta.ID] != 1 {
+		t.Fatalf("expanded headers = %v, want one per project", headed)
 	}
 
 	for _, group := range outliner.VisibleProjectGroups() {

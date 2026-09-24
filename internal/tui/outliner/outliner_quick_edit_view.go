@@ -85,9 +85,7 @@ func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int
 	// the cursor cell after it, so the window must leave that column free. The
 	// prefix is the row's own, so the columns the input is given are exactly the
 	// columns the title had — which is what keeps the caret on screen as the row
-	// budget changes. The buffer takes the whole remainder rather than the
-	// title's own column budget, because the editor draws no trailing column:
-	// the project field and the indicators are what the commit redraws.
+	// budget changes.
 	m.QuickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
 	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.QuickEdit.RenderSelectedInput(), rowWidth)

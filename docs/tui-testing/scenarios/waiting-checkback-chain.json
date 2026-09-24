@@ -19,19 +19,20 @@
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form  ‹             [rich-project]"},
+    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form"},
     {"type": "assert", "assert": "not_contains", "value": "review today"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "assert": "contains", "value": "▶   Build login form  ‹             [rich-project]"},
+    {"type": "assert", "assert": "contains", "value": "▶   Build login form"},
     {"type": "key", "label": "blocking it emptied the Doing lane, so the cursor swept on and the undos left it there", "key": "home"},
+    {"type": "key", "label": "past the lane and its project header", "key": "j"},
     {"type": "key", "label": "back onto the restored row", "key": "j"},
     {"type": "key", "key": "w"},
     {"type": "key", "key": "w"},
     {"type": "wait"},
     {"type": "assert", "label": "the undone schedule is owed again, and the note says so without taking a key", "assert": "contains", "value": "No check-in:"},
     {"type": "assert", "assert": "not_contains", "value": "Set Check-In"},
-    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form  ‹             [rich-project]"},
+    {"type": "assert", "label": "the state badge is the row's witness; the age it used to wear is Peek's", "assert": "contains", "value": "⊘   Build login form"},
     {"type": "assert", "assert": "no_layout_issues"}
   ]
 }

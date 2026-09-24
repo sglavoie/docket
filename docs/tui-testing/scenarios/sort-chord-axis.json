@@ -3,8 +3,8 @@
   "fixture": "busy",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the mode's own order leads each group", "assert": "contains", "value": "├── □ ◉ Overdue: submit quarterly report [busy-project]" },
-    { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage       [busy-project]" },
+    { "type": "assert", "label": "the mode's own order leads each group", "assert": "contains", "value": "├── □ ◉ Overdue: submit quarterly report" },
+    { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage" },
 
     { "type": "key", "label": "hold the sort prefix", "key": "o" },
     { "type": "assert", "assert": "contains", "value": "@ due date" },
@@ -19,15 +19,15 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↑" },
     { "type": "assert", "label": "the sort badge joins the title row", "assert": "contains", "value": "Sort: title ↑" },
-    { "type": "assert", "assert": "contains", "value": "├── □ ● Due soon: renew certificate      [busy-project]" },
-    { "type": "assert", "assert": "contains", "value": "├── ⊘   Waiting on vendor response       [busy-project]" },
+    { "type": "assert", "assert": "contains", "value": "├── □ ● Due soon: renew certificate" },
+    { "type": "assert", "assert": "contains", "value": "├── ⊘   Waiting on vendor response" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "repeat the same field to reverse it", "key": "o" },
     { "type": "key", "key": "t" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↓" },
     { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
-    { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage       [busy-project]" },
+    { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "switch the axis to due date", "key": "o" },
@@ -43,7 +43,7 @@
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Sort cleared" },
     { "type": "assert", "assert": "not_contains", "value": "Sort: " },
-    { "type": "assert", "label": "the mode's own order returns", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage       [busy-project]" },
+    { "type": "assert", "label": "the mode's own order returns", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "shrink to the comfortable minimum", "width": 80, "height": 24 },

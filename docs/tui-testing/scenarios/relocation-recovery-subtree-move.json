@@ -6,8 +6,11 @@
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "the mode change kept the index launch left in All, so take the top explicitly: the first group's header", "key": "home" },
     { "type": "key", "label": "past the first group's two tasks", "key": "j" },
-    { "type": "key", "label": "onto the nested Inbox parent, the second group's first row", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "and the second group's header", "key": "j" },
+    { "type": "key", "label": "onto the nested Inbox parent, the second group's first task", "key": "j" },
     { "type": "key", "label": "copy the cursor row's title", "key": "y" },
     { "type": "assert", "assert": "clipboard_contains", "value": "Beta intake parent awaiting triage" },
     { "type": "key", "label": "move the parent to another project", "key": "%" },
@@ -17,7 +20,7 @@
       "type": "assert",
       "label": "the parent and the child it carried are drawn in the destination group",
       "assert": "contains",
-      "value": "Beta intake parent awaiting triage        [triage-alpha]"
+      "value": "[triage-alpha] (4)"
     },
     { "type": "key", "label": "copy whatever the sweep continued onto", "key": "y" },
     {
@@ -27,7 +30,8 @@
       "value": "Beta intake trailing remainder"
     },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "move the cursor while the cross-project reload is still in flight", "key": "k" },
+    { "type": "key", "label": "move the cursor while the cross-project reload is still in flight, over the remaining group's header", "key": "k" },
+    { "type": "key", "label": "onto the carried child", "key": "k" },
     { "type": "wait", "label": "drain the asynchronous reload" },
     { "type": "key", "label": "copy the row the user chose", "key": "y" },
     {

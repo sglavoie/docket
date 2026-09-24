@@ -164,8 +164,7 @@ func visibleQualifiedTaskIDs(outliner *OutlinerModel) []string {
 
 // projectGroupOrder names the project groups a projection emitted, in render
 // order. It reads the OutlinerRowGroup the rows carry rather than the headings
-// above them: an expanded group draws no heading at all now, and a focused
-// projection's leading header groups nothing and folds nothing, so it carries no
+// above them: a focused projection's leading header groups nothing and folds nothing, so it carries no
 // project half and is excluded by construction rather than by a row-kind test.
 func projectGroupOrder(m *OutlinerModel) []string {
 	groups := m.VisibleProjectGroups()
@@ -176,20 +175,13 @@ func projectGroupOrder(m *OutlinerModel) []string {
 	return ids
 }
 
-// projectGroupTaskCounts counts the task rows each project group holds. It reads
-// the rows because an expanded group draws no heading to read a count off, and a
-// folded group's summary is the only place SectionCount is ever rendered.
+// projectGroupTaskCounts reads each project group's declared count off the
+// header that opens it, expanded or folded.
 func projectGroupTaskCounts(m *OutlinerModel) map[string]int {
 	counts := make(map[string]int)
 	for _, row := range m.Rows {
-		if !row.Group.ProjectGrouped() {
-			continue
-		}
-		switch {
-		case row.IsProjectHeader:
+		if row.IsProjectHeader && row.Group.ProjectGrouped() {
 			counts[row.Group.ProjectID] += row.SectionCount
-		case row.IsTaskRow():
-			counts[row.Group.ProjectID]++
 		}
 	}
 	return counts

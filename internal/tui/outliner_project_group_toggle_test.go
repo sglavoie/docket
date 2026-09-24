@@ -60,18 +60,15 @@ func sectionFoldStates(m *outliner.OutlinerModel) map[string]bool {
 	return states
 }
 
-// One press folds every project group and the next puts them back. What the
-// press changes is which way the group states its identity: the labels its task
-// rows carry while it is open, the one summary row while it is folded.
-func TestToggleVisibleProjectGroupsFoldsEveryGroupAndRestoresThem(t *testing.T) {
+// One press folds every project group and the next puts them back. The headers
+// themselves keep rendering throughout: folding a group hides its tasks, not the
+// row naming the project the tasks belong to.
+func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T) {
 	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	groups := visibleProjectGroupIDs(outlinerView)
-	if len(groups) != 2 {
-		t.Fatalf("seeded project groups = %v, want one per project", groups)
-	}
-	if headers := projectHeaderRowIDs(outlinerView); len(headers) != 0 {
-		t.Fatalf("expanded project groups drew headers %v, want none", headers)
+	headers := projectHeaderRowIDs(outlinerView)
+	if len(headers) != 2 {
+		t.Fatalf("seeded project headers = %v, want one per project", headers)
 	}
 
 	if !outlinerView.ToggleVisibleProjectGroups() {
@@ -85,8 +82,8 @@ func TestToggleVisibleProjectGroupsFoldsEveryGroupAndRestoresThem(t *testing.T) 
 	if got := visibleTaskIDs(outlinerView); len(got) != 0 {
 		t.Fatalf("folded rows = %v, want no task rows", got)
 	}
-	if folded := projectHeaderRowIDs(outlinerView); !slices.Equal(folded, groups) {
-		t.Fatalf("folded project headers = %v, want one summary per group %v", folded, groups)
+	if folded := projectHeaderRowIDs(outlinerView); !slices.Equal(folded, headers) {
+		t.Fatalf("folded project headers = %v, want the same headers still rendered", folded)
 	}
 
 	if !outlinerView.ToggleVisibleProjectGroups() {

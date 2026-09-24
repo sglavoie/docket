@@ -5,7 +5,7 @@
   "actions": [
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
-    { "type": "key", "label": "fold the groups, since an expanded one spends no row on a heading, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
+    { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task launch opened on", "key": "p" },
     { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "[client-alpha]" },
     { "type": "assert", "assert": "not_contains", "value": "Client Alpha" },
 

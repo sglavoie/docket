@@ -14,13 +14,13 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Set Priority" },
-    { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form  ‹             [rich-project]" },
+    { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "drop it to Low priority", "key": "!" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
-    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "▶ ◆ Build login form  ‹             [rich-project]" },
+    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "▶ ◆ Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "▶ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -36,6 +36,7 @@
 
     { "type": "key", "label": "select the Doing task and enter multi-select", "key": "v" },
     { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
@@ -44,8 +45,8 @@
     { "type": "key", "key": "1" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Priority: priority 1 · u undo" },
-    { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form  ‹             [rich-project]" },
-    { "type": "assert", "assert": "contains", "value": "□ ◉ Triage support inbox            [rich-project]" },
+    { "type": "assert", "assert": "contains", "value": "▶ ◉ Build login form" },
+    { "type": "assert", "assert": "contains", "value": "□ ◉ Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

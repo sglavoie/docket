@@ -13,7 +13,7 @@
     { "type": "assert", "label": "the triage advanced onto the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
     { "type": "key", "label": "undo the triage", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "label": "the task is back in the Inbox, so its group is two labelled rows again", "assert": "count_contains", "value": "[triage-alpha]", "count": 2 },
+    { "type": "assert", "label": "the task is back in the Inbox", "assert": "contains", "value": "[triage-alpha] (2)" },
     { "type": "assert", "label": "the workspace pulse counts the restored intake", "assert": "contains", "value": "inbox 5" },
     { "type": "assert", "label": "undo armed no relocation, so the cursor is still on the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
     { "type": "assert", "label": "the cursor did not step back onto the restored task", "assert": "not_contains", "value": "Detail line belonging to the departing intake." },

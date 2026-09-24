@@ -141,22 +141,20 @@ func TestRowGroupSeparatesOneProjectRepeatedAcrossSections(t *testing.T) {
 	}
 }
 
-// TestRowGroupMatchesTheHeaderAbovePeriod holds every header to the group its
-// members carry rather than the other way round. A section header carries the
-// section half alone. An expanded project group has no header at all, so its
-// rows are the only statement of the group; folding one produces the summary,
-// and that summary must carry exactly the group those rows carried.
+// TestRowGroupMatchesTheHeaderAbovePeriod holds the header to the group rather
+// than the other way round: every project header carries the identity its
+// members carry, and every section header carries the section half alone.
 func TestRowGroupMatchesTheHeaderAbovePeriod(t *testing.T) {
 	fixture := newRowGroupFixture()
 	outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
 
-	var section OutlinerRowGroup
-	rowGroups := make(map[string]OutlinerRowGroup)
+	var section, project OutlinerRowGroup
 	for _, row := range outliner.Rows {
 		switch {
 		case row.IsSectionHeader:
 			section = row.Group
+			project = OutlinerRowGroup{}
 			if row.Group.ProjectGrouped() {
 				t.Fatalf("section header %q carries a project half: %+v", row.SectionName, row.Group)
 			}
@@ -164,45 +162,21 @@ func TestRowGroupMatchesTheHeaderAbovePeriod(t *testing.T) {
 				t.Fatalf("section header %q group = %+v, want its own fold key %q",
 					row.SectionName, row.Group, row.EffectiveCollapseKey())
 			}
-		case row.IsProjectHeader:
-			t.Fatalf("expanded project group drew a header: %+v", row)
-		case row.IsTaskRow():
+		case row.IsProjectHeader && row.IsCollapsibleHeader():
+			project = row.Group
 			if row.Group.SectionKey != section.SectionKey {
-				t.Fatalf("task %q group = %+v, want section %q",
-					row.Task.ID, row.Group, section.SectionKey)
+				t.Fatalf("project header %q group = %+v, want section %q",
+					row.ProjectID, row.Group, section.SectionKey)
 			}
-			if !row.Group.ProjectGrouped() {
-				t.Fatalf("task %q carries no project half: %+v", row.Task.ID, row.Group)
+			if row.Group.ProjectKey != row.EffectiveCollapseKey() {
+				t.Fatalf("project header %q group = %+v, want its own fold key %q",
+					row.ProjectID, row.Group, row.EffectiveCollapseKey())
 			}
-			rowGroups[row.Group.ProjectKey] = row.Group
-		}
-	}
-	if len(rowGroups) == 0 {
-		t.Fatal("no task row carried a project group")
-	}
-
-	for _, group := range outliner.VisibleProjectGroups() {
-		outliner.SetProjectGroupFolded(group, true)
-	}
-	outliner.RebuildRows()
-
-	summaries := make(map[string]OutlinerRowGroup)
-	for _, row := range outliner.Rows {
-		if !row.IsProjectHeader || !row.IsCollapsibleHeader() {
-			continue
-		}
-		if row.Group.ProjectKey != row.EffectiveCollapseKey() {
-			t.Fatalf("project summary %q group = %+v, want its own fold key %q",
-				row.ProjectID, row.Group, row.EffectiveCollapseKey())
-		}
-		summaries[row.Group.ProjectKey] = row.Group
-	}
-	if len(summaries) != len(rowGroups) {
-		t.Fatalf("folded summaries = %+v, want one per row group %+v", summaries, rowGroups)
-	}
-	for key, group := range rowGroups {
-		if summaries[key] != group {
-			t.Fatalf("summary for %q = %+v, want the rows' own group %+v", key, summaries[key], group)
+		case row.IsTaskRow():
+			if row.Group != project {
+				t.Fatalf("task %q group = %+v, want the header group %+v",
+					row.Task.ID, row.Group, project)
+			}
 		}
 	}
 }

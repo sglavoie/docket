@@ -28,6 +28,7 @@
 
     { "type": "key", "label": "every destination is another lane, so the cursor stayed with the Backlog sweep rather than following the task", "key": "home" },
     { "type": "key", "label": "the Inbox lane leads the projection, so its one row is a step away", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wg starts it", "key": "g" },
     { "type": "wait" },
@@ -36,6 +37,7 @@
 
     { "type": "key", "label": "Doing leads it now", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "ww blocks it and notes the missing schedule", "key": "w" },
     { "type": "wait" },
@@ -51,6 +53,7 @@
 
     { "type": "key", "label": "Paused sorts above Backlog", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wm shelves it", "key": "m" },
     { "type": "wait" },
@@ -64,6 +67,7 @@
 
     { "type": "key", "label": "back in Backlog it takes its stored place at the head of the lane", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wn plans it into Next", "key": "n" },
     { "type": "wait" },
@@ -71,6 +75,7 @@
 
     { "type": "key", "label": "Next sorts above Backlog", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wt moves it to Today, which Next cannot share", "key": "t" },
     { "type": "wait" },
@@ -78,6 +83,7 @@
 
     { "type": "key", "label": "Today leads every lane", "key": "home" },
     { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "label": "the planned task reports both halves in Peek", "key": "b" },
     { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "plan today · status backlog" },
     { "type": "key", "label": "close the dock again", "key": "b" },
@@ -89,6 +95,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
 
     { "type": "key", "label": "back to the top of the Outliner", "key": "home" },
+    { "type": "key", "label": "onto the project header", "key": "j" },
     { "type": "key", "label": "onto the next remaining task", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wd completes that one", "key": "d" },

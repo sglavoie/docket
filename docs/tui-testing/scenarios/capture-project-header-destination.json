@@ -10,7 +10,7 @@
     { "type": "assert", "label": "the divider names the act alone, so the destination is stated once", "assert": "not_contains", "value": "Capture →" },
     { "type": "key", "label": "leave the composer without capturing", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "key", "label": "an expanded group spends no row on a heading, so fold them to reach one", "key": "p" },
+    { "type": "key", "label": "step up onto a project header", "key": "k" },
     { "type": "key", "label": "return to the top row", "key": "home" },
     { "type": "key", "label": "step onto the first project header", "key": "j" },
     { "type": "key", "label": "capture from a project header row", "key": "a" },

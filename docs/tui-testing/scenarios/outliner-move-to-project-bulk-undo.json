@@ -28,9 +28,10 @@
 
     { "type": "key", "label": "Inbox mode holds the four captures alone", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "assert", "assert": "count_contains", "value": "[unfiled]", "count": 4 },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] (4)" },
 
-    { "type": "key", "label": "start on the newest capture, the group's first row", "key": "home" },
+    { "type": "key", "label": "start from the project header", "key": "home" },
+    { "type": "key", "label": "step onto the newest capture", "key": "j" },
     { "type": "key", "label": "select it and enter multi-select", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select a second", "key": "v" },
@@ -47,21 +48,21 @@
     { "type": "key", "label": "choose Client Alpha", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "one ledger entry covers the whole selection", "assert": "status_contains", "value": "Move to Project: 3 task(s) → client-alpha · u undo" },
-    { "type": "assert", "assert": "count_contains", "value": "[client-alpha]", "count": 3 },
-    { "type": "assert", "label": "the unselected capture stayed behind", "assert": "count_contains", "value": "[unfiled]", "count": 1 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (3)" },
+    { "type": "assert", "label": "the unselected capture stayed behind", "assert": "contains", "value": "[unfiled] (1)" },
     { "type": "assert", "assert": "contains", "value": "Sort the desk drawer" },
     { "type": "assert", "label": "the move invalidated every identity the selection held", "assert": "not_contains", "value": "MULTI-SELECT" },
 
     { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: 3 task(s) → client-alpha" },
     { "type": "wait" },
-    { "type": "assert", "assert": "count_contains", "value": "[unfiled]", "count": 4 },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] (4)" },
     { "type": "assert", "assert": "not_contains", "value": "[client-alpha]" },
 
     { "type": "key", "label": "redo the same one transaction", "key": "ctrl+r" },
     { "type": "wait" },
-    { "type": "assert", "assert": "count_contains", "value": "[client-alpha]", "count": 3 },
-    { "type": "assert", "assert": "count_contains", "value": "[unfiled]", "count": 1 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (3)" },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] (1)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

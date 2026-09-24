@@ -9,7 +9,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Toggle Review" },
     { "type": "assert", "label": "the flag promotes the task into the All-mode lane", "assert": "contains", "value": "@ Review" },
-    { "type": "assert", "label": "the lane claims the row rather than copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff       [client-alpha]", "count": 1 },
+    { "type": "assert", "label": "the lane claims the row rather than copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "label": "the lane and its strip fit the app's own minimum", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the same state in the light theme", "key": "T" },
@@ -19,7 +19,7 @@
 
     { "type": "resize", "label": "and at the widest committed size", "width": 160, "height": 55 },
     { "type": "assert", "assert": "contains", "value": "@ Review" },
-    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff             [client-alpha]", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "back to dark, still wide", "key": "T" },
@@ -31,7 +31,7 @@
     { "type": "key", "label": "one ledger entry takes the flag back", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "label": "the lane empties with it", "assert": "not_contains", "value": "@ Review" },
-    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff             [client-alpha]", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -111,8 +111,8 @@ func TestPrimaryAllFocusedProjectLeadsWithOneHeader(t *testing.T) {
 }
 
 // assertCrossProjectGrouping pins the unscoped form: the project axis is live,
-// every task row carries its group, and the row names the project itself, since
-// an expanded group spends no row on a heading that could name it instead.
+// every task row carries its group, and each group opens with the header that
+// names its project.
 func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label string) {
 	t.Helper()
 	groups := m.VisibleProjectGroups()
@@ -124,9 +124,14 @@ func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label
 			t.Fatalf("%s project group = %+v, want %q", label, group, projectID)
 		}
 	}
+	headers := 0
 	for _, row := range m.Rows {
 		if row.IsFocusedProjectHeader {
 			t.Fatalf("%s rendered a focused project header: %+v", label, row)
+		}
+		if row.IsProjectHeader {
+			headers++
+			continue
 		}
 		if !row.IsTaskRow() {
 			continue
@@ -134,9 +139,9 @@ func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label
 		if !slices.Contains(groups, row.Group) {
 			t.Fatalf("%s task row %q carries group %+v, want one of %+v", label, row.Task.ID, row.Group, groups)
 		}
-		if m.taskProjectLabel(row, 120) == "" {
-			t.Fatalf("%s task row %q named no project", label, row.Task.ID)
-		}
+	}
+	if headers != len(groups) {
+		t.Fatalf("%s drew %d project headers over %d groups", label, headers, len(groups))
 	}
 }
 

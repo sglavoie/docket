@@ -74,11 +74,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
 		"Project grouping is universal, not per-mode",
 		"through the shared `appendProjectGroupHeader` kernel",
-		// Session 7 widened that stop set: a group whose heading is not drawn still
-		// starts a block, so the rule is stated over rowStartsGroup rather than over
-		// the row kind that used to be the only way to declare one.
 		"`n`/`N` step the cursor between blocks, and their stop set is `rowStartsGroup`",
-		"a header-only one would leave every expanded group unreachable",
+		"reading the group off the row rather than the header keeps a block reachable",
 		"There are three fold axes and therefore three bulk keys: `s` for section headers, " +
 			"`p` for project group headers, `t` for task subtrees",
 		"if any member of the set is folded the press expands them all, otherwise it folds them all",
@@ -92,21 +89,12 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"groups `VisibleProjectGroups()` reports, and each writes its own half through " +
 			"`setGroupFold`",
 		"Neither scans for a header and neither matches a key prefix",
-		// Session 8 retired the switch: the headerless presentation is now the only
-		// one, and the compact per-row label is what makes it readable. Session 2 of
-		// the daily-use plan moved that label off the front of the title into a
-		// trailing column measured over the whole projection.
-		"one compact `[label]` column after each task row's title, from `taskProjectLabel` " +
-			"under the same `groupsRowsByProject` predicate the emitter reads",
-		"bounded by `projectLabelBudget` and reserved at every width beside the pin and " +
-			"relation markers rather than joining `indicatorDropLadder`",
-		"The truncation the ceiling still imposes has the folded summary as its counterpart",
-		"`ComputeOutlinerRowLayout` is the one measurement that makes it one",
-		"It reads the whole projection rather than the window on screen, which is the whole " +
-			"reason the column holds still",
-		"the title is what gives way",
-		"`appendProjectGroupHeader` emits nothing for an expanded group and keeps the summary " +
-			"a folded one is",
+		// The layout plan restored the expanded heading: every cross-project group
+		// opens with its header again, and the per-row project label is gone.
+		"`appendProjectGroupHeader` emits the header for an expanded group and a folded one alike",
+		"The task rows under it name no project",
+		"`ComputeOutlinerRowLayout` is the one task-row geometry",
+		"it reads the whole projection rather than the window on screen",
 		"`rowStartsGroup` is what `n`/`N` step between",
 		"A task row that has run out of hierarchy — no open checklist, no open children, " +
 			"and no parent at all — folds its own project group through `foldGroupAtCursor`",

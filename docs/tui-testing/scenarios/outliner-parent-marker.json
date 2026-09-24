@@ -6,6 +6,8 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "a parent showing its child carries no count", "assert": "not_contains", "value": "User authentication  ›" },
 
+    { "type": "key", "label": "step onto the last open child in Backlog", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },

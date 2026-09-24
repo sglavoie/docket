@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -51,51 +52,45 @@ func uxDailyUseSizeName(size [2]int) string {
 	return fmt.Sprintf("%dx%d", size[0], size[1])
 }
 
-// TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn is this contract after
-// session 2 rewrote it. Project identity is a bracketed slug drawn *after* the
-// title, in a column measured over the whole projection, so four projects with
-// four different name lengths give their four tasks one title column and one
-// label column instead of four of each.
+// TestUXDailyUseProjectHeaderNamesEachGroup is this contract after the layout
+// plan restored the expanded project heading. Project identity is the
+// `[slug] (count)` header that opens each group, so a task row spends no column
+// on its project and four projects with four different name lengths still give
+// their four root tasks one title column.
 //
 // Both halves are asserted, because either alone passes on an arrangement this
-// is meant to refuse. Equal title starts alone would still hold if the label had
-// simply been deleted, and equal label starts alone would hold if the label had
-// stayed in front of a title padded out to a common width — which is the shape
-// the predecessor contract was written to catch.
+// is meant to refuse: equal title starts alone would still hold if the project
+// were simply never named, and a header alone would hold beside a row that
+// repeats the slug after its title.
 //
 // Columns are measured with lipgloss rather than by byte offset: the tree
 // connectors and the state badge are multi-byte, so a byte index into the line
 // is not the column the terminal draws the fragment in.
-func TestUXDailyUseProjectLabelFollowsTheTitleInOneColumn(t *testing.T) {
+func TestUXDailyUseProjectHeaderNamesEachGroup(t *testing.T) {
 	for _, size := range uxDailyUseMatrixSizes {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
 			driver, _ := uxDailyUseStagedDriver(t, "project-label-widths", size[0], size[1])
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
+			lines := strings.Split(screen, "\n")
 
 			starts := map[string]int{}
-			labels := map[string]int{}
 			for _, title := range uxDailyUseMultiProjectTitles {
-				line := uxDailyUseScreenLine(t, screen, title)
-				label := strings.Index(line, "[")
-				start := strings.Index(line, title)
-				if label < 0 {
-					t.Fatalf("the row for %q names no project:\n%s", title, line)
+				index := slices.IndexFunc(lines, func(line string) bool { return strings.Contains(line, title) })
+				if index < 0 {
+					t.Fatalf("no screen row carries %q:\n%s", title, screen)
 				}
-				if label < start {
-					t.Fatalf("the project label precedes the title on %q, which session 2 retired:\n%s",
-						title, line)
+				line := lines[index]
+				if strings.Contains(line, "[") {
+					t.Fatalf("the row for %q names its project beside the title:\n%s", title, line)
 				}
-				starts[title] = lipgloss.Width(line[:start])
-				labels[title] = lipgloss.Width(line[:label])
+				if index == 0 || !strings.Contains(lines[index-1], "[") {
+					t.Fatalf("no project header opens the group holding %q:\n%s", title, screen)
+				}
+				starts[title] = lipgloss.Width(line[:strings.Index(line, title)])
 			}
 
 			if distinct := uxDailyUseDistinct(starts); len(distinct) != 1 {
-				t.Fatalf("the titles start in %d different columns, so the label is still sized per row: %v",
-					len(distinct), starts)
-			}
-			if distinct := uxDailyUseDistinct(labels); len(distinct) != 1 {
-				t.Fatalf("the labels start in %d different columns, so they are segments rather than a column: %v",
-					len(distinct), labels)
+				t.Fatalf("the titles start in %d different columns: %v", len(distinct), starts)
 			}
 		})
 	}
