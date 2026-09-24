@@ -9,25 +9,14 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
-// projectHeaderRowIDs returns the project summaries actually drawn, in render
-// order. Only a folded group draws one, so an expanded projection answers with
-// nothing and the group each row carries is what names its project instead.
+// projectHeaderRowIDs returns the project headers actually drawn, in render
+// order. Every cross-project group opens with one, expanded or folded.
 func projectHeaderRowIDs(m *outliner.OutlinerModel) []string {
 	var ids []string
 	for _, row := range m.Rows {
 		if row.IsProjectHeader {
 			ids = append(ids, row.ProjectID)
 		}
-	}
-	return ids
-}
-
-// visibleProjectGroupIDs returns the project groups the projection holds, in
-// render order and regardless of fold state.
-func visibleProjectGroupIDs(m *outliner.OutlinerModel) []string {
-	var ids []string
-	for _, group := range m.VisibleProjectGroups() {
-		ids = append(ids, group.ProjectID)
 	}
 	return ids
 }
