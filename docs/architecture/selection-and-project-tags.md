@@ -161,6 +161,16 @@ screen — `ListSurfacePreviewGeometry` is the same width arithmetic the rendere
 runs — and on the cursor project holding tasks, never on a page count, which
 would be one frame stale in the very pass that settles it.
 
+`<` and `>` move the split. `ListSurfaceRenderConfig.ListWidthPercent` is the
+list's share, zero meaning the 55% default and clamped to 25–75%, and
+`ListSurfacePreviewGeometry` still lets both panes' minimum widths win over it,
+so no percent can break the compact fallback. The value is session-only:
+`ManageHubModel` outlives each Hub it mounts and lends every new one the same
+`ProjectHubPreviewSplit`, so a reopen keeps the divider and a restart forgets it.
+`ShiftPreviewSplit` moves it 5% a press and is inert while `previewPaneVisible`
+says no pane is drawn — the same gate, minus a query being typed, that shows the
+`</> split` hint.
+
 ### Project tags
 
 Three orthogonal axes describe where work sits, and none of them substitutes for

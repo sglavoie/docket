@@ -266,3 +266,29 @@ func assertListSurfaceWidth(t *testing.T, rendered string, width int) {
 		}
 	}
 }
+
+func TestListSurfacePreviewGeometryHonorsListWidthPercent(t *testing.T) {
+	cases := []struct {
+		name        string
+		width       int
+		percent     int
+		wantList    int
+		wantPreview int
+	}{
+		{name: "default", width: 120, wantList: 66, wantPreview: 51},
+		{name: "narrower list", width: 120, percent: 40, wantList: 48, wantPreview: 69},
+		{name: "below bound clamps", width: 120, percent: 5, wantList: 30, wantPreview: 87},
+		{name: "above bound clamps", width: 120, percent: 95, wantList: 90, wantPreview: 27},
+		{name: "list minimum wins", width: 80, percent: 25, wantList: 24, wantPreview: 53},
+		{name: "preview minimum wins", width: 80, percent: 75, wantList: 53, wantPreview: 24},
+		{name: "compact fallback", width: 50, percent: 40, wantList: 50, wantPreview: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			list, preview := ListSurfacePreviewGeometry(ListSurfaceRenderConfig{Width: tc.width, ListWidthPercent: tc.percent})
+			if list != tc.wantList || preview != tc.wantPreview {
+				t.Fatalf("geometry = %d/%d, want %d/%d", list, preview, tc.wantList, tc.wantPreview)
+			}
+		})
+	}
+}

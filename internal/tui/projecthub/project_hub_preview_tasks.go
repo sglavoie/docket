@@ -160,10 +160,7 @@ func (m *ProjectHubModel) PageProjectPreview(direction int) {
 // the pane's height is settled during the render this footer is part of, so a
 // page count here would be one frame stale.
 func (m *ProjectHubModel) previewTasksScrollable() bool {
-	if m.surface == nil || m.actions != nil {
-		return false
-	}
-	if _, previewWidth := listsurface.ListSurfacePreviewGeometry(m.projectHubRenderConfig(0)); previewWidth <= 0 {
+	if !m.previewPaneVisible() {
 		return false
 	}
 	_, tasks, loaded := m.previewTaskSource()

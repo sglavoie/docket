@@ -40,8 +40,12 @@ Outliner's rows. `Ctrl+F` and `Ctrl+B` page that list a pane at a time, `↑ N
 more` and `↓ N more` count what sits off either end, and moving the list cursor
 swaps the tasks and returns to the top of the new project. A project holding
 nothing reads `No tasks.`, and one whose tasks could not be read says `Tasks not
-loaded.` rather than passing for the first. Below the two-pane minimum width the
-pane is gone and the paging keys go quiet with it.
+loaded.` rather than passing for the first. `<` and `>` move the divider between
+the two panes left and right, 5% of the width a press, between a quarter and
+three quarters of it; the position holds until `tt` exits, so reopening Select
+Project finds it where you left it. While you type a query they are just
+characters. Below the two-pane minimum width the pane is gone and the paging and
+split keys go quiet with it.
 
 Those acts also reach a project from the Outliner itself: `Space` on a project
 group header opens Project Actions, so editing, archiving, or deleting a project

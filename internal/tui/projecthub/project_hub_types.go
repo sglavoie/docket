@@ -151,5 +151,6 @@ type ProjectHubModel struct {
 	// Outliner only, so the Hub keeps its own one-key prefix.
 	pendingTopChord bool
 	preview         projectHubPreviewState
+	split           *ProjectHubPreviewSplit
 	newPainter      NewPreviewTaskPainter
 }

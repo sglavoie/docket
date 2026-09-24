@@ -148,7 +148,7 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
 		// is the selection rung of the unwind and never the close.
 		m.surface.ClearSelection()
-	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a", "ctrl+f", "ctrl+b":
+	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a", "ctrl+f", "ctrl+b", "<", ">":
 		return m, m.dispatchProjectHubKey(key.String())
 	case " ", "space":
 		return m, m.dispatchProjectHubKey("space")

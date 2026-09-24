@@ -29,7 +29,15 @@ const (
 	ListSurfaceDefaultWideMinWidth    = 72
 	ListSurfaceDefaultListMinWidth    = 24
 	ListSurfaceDefaultPreviewMinWidth = 24
-	listSurfacePaneGapWidth           = 3
+	// ListSurfaceDefaultListWidthPercent is the list pane's share of a two-pane
+	// split when the caller states none.
+	ListSurfaceDefaultListWidthPercent = 55
+	// ListSurfaceMinListWidthPercent and ListSurfaceMaxListWidthPercent bound a
+	// caller-moved split, and ListSurfaceListWidthPercentStep is one move of it.
+	ListSurfaceMinListWidthPercent  = 25
+	ListSurfaceMaxListWidthPercent  = 75
+	ListSurfaceListWidthPercentStep = 5
+	listSurfacePaneGapWidth         = 3
 	// listSurfacePreviewBodyLines caps the wrapped Body lines the preview header
 	// may spend. Body is a description, and a long one would otherwise swallow the
 	// rows PreviewBody exists to fill.
@@ -48,6 +56,9 @@ type ListSurfaceRenderConfig struct {
 	WideMinWidth    int
 	ListMinWidth    int
 	PreviewMinWidth int
+	// ListWidthPercent is the list pane's share of a two-pane split; zero means
+	// ListSurfaceDefaultListWidthPercent. Both panes' minimum widths still win.
+	ListWidthPercent int
 	// PreviewBody renders pane-owned lines below the preview header, at the
 	// resolved pane width and within the rows the header left. It returns lines
 	// already fitted to width; the renderer appends them verbatim. ListPreview
@@ -125,6 +136,10 @@ func normalizeListSurfaceRenderConfig(
 	if config.PreviewMinWidth <= 0 {
 		config.PreviewMinWidth = ListSurfaceDefaultPreviewMinWidth
 	}
+	if config.ListWidthPercent <= 0 {
+		config.ListWidthPercent = ListSurfaceDefaultListWidthPercent
+	}
+	config.ListWidthPercent = min(max(config.ListWidthPercent, ListSurfaceMinListWidthPercent), ListSurfaceMaxListWidthPercent)
 	return config
 }
 
@@ -149,7 +164,7 @@ func listSurfaceRenderLayout(
 // width of zero means the terminal cannot satisfy both panes' minimums and the
 // layout falls back to the list alone, so a caller deciding whether to advertise
 // a key that only acts inside the preview asks this rather than re-deriving the
-// 55%/gap formula and drifting from what the renderer draws.
+// percent/gap formula and drifting from what the renderer draws.
 func ListSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
 	config = normalizeListSurfaceRenderConfig(config, nil)
 	required := max(
@@ -159,7 +174,7 @@ func ListSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
 	if config.Width < required {
 		return config.Width, 0
 	}
-	listWidth := max(config.Width*55/100, config.ListMinWidth)
+	listWidth := max(config.Width*config.ListWidthPercent/100, config.ListMinWidth)
 	previewWidth := config.Width - listWidth - listSurfacePaneGapWidth
 	if previewWidth < config.PreviewMinWidth {
 		previewWidth = config.PreviewMinWidth

@@ -52,6 +52,9 @@ type ManageHubModel struct {
 	params    route.ManageParams
 	active    route.View
 	activeKey string
+	// previewSplit outlives each Project Hub it mounts, so the divider a user
+	// moved is where the next Select Project opens.
+	previewSplit ProjectHubPreviewSplit
 }
 
 func NewManageHubModel(deps ManageHubDependencies) *ManageHubModel {
@@ -154,6 +157,7 @@ func (m *ManageHubModel) Activate(params route.ManageParams) error {
 		hub := NewProjectHubModel(m.deps.Runtime, params.ProjectHubMode)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
 		hub.SetPreviewTaskPainter(m.deps.PreviewTaskPainter)
+		hub.SetPreviewSplit(&m.previewSplit)
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
 		}

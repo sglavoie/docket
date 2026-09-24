@@ -346,6 +346,10 @@ func (f *projectHubFixture) hubSurfaceHandler(
 			hub.PageProjectPreview(1)
 		case OperationProjectHubPreviewPageUp:
 			hub.PageProjectPreview(-1)
+		case OperationProjectHubSplitLeft:
+			hub.ShiftPreviewSplit(-1)
+		case OperationProjectHubSplitRight:
+			hub.ShiftPreviewSplit(1)
 		}
 		return operation.OperationHandlerResult{}
 	}

@@ -63,6 +63,10 @@ func (c *Controller) executeProjectHubOperation(shell Shell, invocation operatio
 		hub.PageProjectPreview(1)
 	case projecthub.OperationProjectHubPreviewPageUp:
 		hub.PageProjectPreview(-1)
+	case projecthub.OperationProjectHubSplitLeft:
+		hub.ShiftPreviewSplit(-1)
+	case projecthub.OperationProjectHubSplitRight:
+		hub.ShiftPreviewSplit(1)
 	}
 	return operation.OperationHandlerResult{}
 }

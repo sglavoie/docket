@@ -69,6 +69,13 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanc
 		keymap.Bind("ctrl+f", "Page project tasks", "Navigation",
 			keymap.WithGate(m.previewTasksScrollable),
 			keymap.WithFooter(31, "task page", false), keymap.WithFooterKey("Ctrl+F/B")),
+		// Ranked below both paging hints: moving the divider is an occasional
+		// adjustment, not something the pane is read for.
+		// Gated off the query, where < and > are literal characters.
+		keymap.Bind("<", "Move pane split", "Navigation",
+			keymap.WithGate(func() bool { return !searchEditing() && m.previewPaneVisible() }),
+			keymap.WithFooter(32, "split", false), keymap.WithFooterKey("</>"),
+			keymap.WithHelpKey("</>")),
 		// Unranked, like `?` and the ledger keys below: the Hub's ranked bindings
 		// are the project acts it exists for. Each row is spelled as the whole path
 		// the strategy binds — the gg chord and its Home alias, G and End — so the

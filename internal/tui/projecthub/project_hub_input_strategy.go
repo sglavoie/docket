@@ -13,6 +13,8 @@ const (
 	OperationProjectHubTaskFilter      operation.OperationID = "tui.project-hub.task-filter"
 	OperationProjectHubPreviewPageDown operation.OperationID = "tui.project-hub.preview-page-down"
 	OperationProjectHubPreviewPageUp   operation.OperationID = "tui.project-hub.preview-page-up"
+	OperationProjectHubSplitLeft       operation.OperationID = "tui.project-hub.split-left"
+	OperationProjectHubSplitRight      operation.OperationID = "tui.project-hub.split-right"
 )
 
 // ProjectHubInputStrategy is the Project Hub's whole direct key grammar and the
@@ -55,6 +57,9 @@ func ProjectHubInputStrategy() operation.InputStrategy {
 			// halves of vim's paging vocabulary split between them.
 			{OperationID: OperationProjectHubPreviewPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationProjectHubPreviewPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
+			// < and > move the divider between the two panes, pointing the way it goes.
+			{OperationID: OperationProjectHubSplitLeft, Keys: []string{"<"}, DisplayKey: "<"},
+			{OperationID: OperationProjectHubSplitRight, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operation.OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operation.OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operation.OperationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
@@ -73,12 +78,12 @@ func ProjectHubInputStrategy() operation.InputStrategy {
 }
 
 // ProjectOperationManifest is the authoritative ordered Project Hub action list
-// and the source the action sheet groups by. The thirteen operations the grammar
+// and the source the action sheet groups by. The fifteen operations the grammar
 // reaches on press one are DirectOnly: they keep their descriptor, value
 // provider and category, and leave the Space menu to archiving, unarchiving, and
 // the bulk tag set.
 //
-// The seven list operations below the six project ones are here so the one-path
+// The nine list operations below the six project ones are here so the one-path
 // rule sees them: a manifest is all ValidateOperationOnePath inspects, so an
 // unmanifested operation is the one thing that gate cannot check. Listing them
 // adds no menu row, because both sheets take an explicit operation list rather
@@ -99,6 +104,8 @@ func ProjectOperationManifest() []operation.OperationManifestEntry {
 		{ID: OperationProjectHubTaskFilter, Label: "Cycle every project, only those holding open tasks, only those holding none open", Aliases: []string{"projects holding open tasks", "projects holding no open tasks"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: OperationProjectHubPreviewPageDown, Label: "Page project tasks down", Aliases: []string{"scroll project preview down"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: OperationProjectHubPreviewPageUp, Label: "Page project tasks up", Aliases: []string{"scroll project preview up"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationProjectHubSplitLeft, Label: "Move pane split left", Aliases: []string{"widen project preview"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationProjectHubSplitRight, Label: "Move pane split right", Aliases: []string{"widen project list"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectBulkAddTag, Label: "Add tag", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},

@@ -58,12 +58,13 @@ func (m *ProjectHubModel) View() tea.View {
 // has measured the header and footer around the list.
 func (m *ProjectHubModel) projectHubRenderConfig(height int) listsurface.ListSurfaceRenderConfig {
 	return listsurface.ListSurfaceRenderConfig{
-		Width:       max(m.Width(), 1),
-		Height:      height,
-		Layout:      listsurface.ListSurfaceLayoutAuto,
-		ShowPreview: true,
-		HideHelp:    true,
-		PreviewBody: m.renderProjectPreviewTasks,
+		Width:            max(m.Width(), 1),
+		Height:           height,
+		Layout:           listsurface.ListSurfaceLayoutAuto,
+		ShowPreview:      true,
+		HideHelp:         true,
+		ListWidthPercent: m.previewSplit().ListPercent,
+		PreviewBody:      m.renderProjectPreviewTasks,
 	}
 }
 
@@ -228,5 +229,7 @@ func ProjectHubOperationDescriptors() []operation.OperationDescriptor {
 		surface(OperationProjectHubTaskFilter, "Cycle every project, only those holding open tasks, only those holding none open", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "projects holding open tasks", "projects holding no open tasks"),
 		needsRow(surface(OperationProjectHubPreviewPageDown, "Page project tasks down", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview down")),
 		needsRow(surface(OperationProjectHubPreviewPageUp, "Page project tasks up", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview up")),
+		needsRow(surface(OperationProjectHubSplitLeft, "Move pane split left", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project preview")),
+		needsRow(surface(OperationProjectHubSplitRight, "Move pane split right", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project list")),
 	}
 }
