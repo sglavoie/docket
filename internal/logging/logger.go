@@ -20,6 +20,30 @@ var (
 	loggerStateCaptured  bool
 )
 
+// logRetention is how long a log file survives before pruneOldLogs removes it.
+const logRetention = 30 * 24 * time.Hour
+
+// Log files can quote task titles and workspace paths, so the directory and
+// every file in it are private to the user.
+const (
+	logDirMode  os.FileMode = 0o700
+	logFileMode os.FileMode = 0o600
+)
+
+// openFile is the os.OpenFile seam the open-failure test replaces: Init
+// re-tightens the directory mode, so a read-only directory no longer fails it.
+var openFile = os.OpenFile
+
+// Dir returns the directory Init writes log files into, ~/.tt/logs. It creates
+// nothing.
+func Dir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".tt", "logs"), nil
+}
+
 // Init creates the log directory and opens a timestamped log file.
 // All subsequent log.Printf calls (and Warn) write to that file.
 func Init() {
@@ -32,19 +56,23 @@ func Init() {
 	logDirPath = ""
 	logFilePath = ""
 
-	home, err := os.UserHomeDir()
+	dir, err := Dir()
 	if err != nil {
 		return
 	}
-	dir := filepath.Join(home, ".tt", "logs")
 
-	if err = os.MkdirAll(dir, 0o755); err != nil {
+	if err = os.MkdirAll(dir, logDirMode); err != nil {
+		return
+	}
+	// MkdirAll leaves an existing directory's mode alone, so a directory an
+	// older release created world-readable is tightened here.
+	if err = os.Chmod(dir, logDirMode); err != nil {
 		return
 	}
 	logDirPath = dir
 	name := logFileName(time.Now())
 	logFilePath = filepath.Join(logDirPath, name)
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := openFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, logFileMode)
 	if err != nil {
 		logFilePath = ""
 		return
@@ -61,10 +89,10 @@ func Init() {
 	pruneOldLogs()
 }
 
-// pruneOldLogs removes .log files older than 30 days from the log directory.
-// Caller must hold mu.
+// pruneOldLogs removes .log files older than logRetention from the log
+// directory. Caller must hold mu.
 func pruneOldLogs() {
-	cutoff := time.Now().AddDate(0, 0, -30)
+	cutoff := time.Now().Add(-logRetention)
 	entries, err := os.ReadDir(logDirPath)
 	if err != nil {
 		return

@@ -34,7 +34,7 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-17 Markdown, transactions,
+cases and mutation policy, `internal/storage` task Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
 itself nine layers, acyclic, and every concern belongs to exactly one:

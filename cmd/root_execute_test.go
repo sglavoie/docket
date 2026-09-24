@@ -68,8 +68,8 @@ func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 	if !command.SilenceErrors {
 		t.Fatal("executeCommand should silence cobra's default error printing")
 	}
-	if !opened {
-		t.Fatal("executeCommand should open logging, since importing the package no longer does")
+	if opened {
+		t.Fatal("executeCommand should leave opening logging to the root pre-run hook")
 	}
 	if !closed {
 		t.Fatal("executeCommand should close logging before returning")

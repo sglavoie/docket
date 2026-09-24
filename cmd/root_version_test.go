@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // Version reporting is the acceptance surface for `go install`, which passes no
@@ -122,8 +126,13 @@ func TestPrintVersionRendersResolvedValues(t *testing.T) {
 // reads from drifting behind the migration chain again.
 func TestRootLongDescriptionNamesTheCurrentSchema(t *testing.T) {
 	long := rootCmd.Long
-	if !strings.Contains(long, "schema-16") {
-		t.Errorf("root Long description does not name schema-16:\n%s", long)
+	for _, current := range []string{
+		fmt.Sprintf("schema-%d catalogs", config.CurrentConfigVersion),
+		fmt.Sprintf("schema-%d task Markdown", storage.CurrentTaskSchemaVersion),
+	} {
+		if !strings.Contains(long, current) {
+			t.Errorf("root Long description does not name %q:\n%s", current, long)
+		}
 	}
 	for _, retired := range []string{"schema-6", "schema-5", "schema 6", "schema 5"} {
 		if strings.Contains(long, retired) {

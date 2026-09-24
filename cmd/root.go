@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/ttenv"
 	"github.com/sglavoie/tt/internal/tui"
 )
@@ -80,13 +81,13 @@ func resolveBuildInfo() (version, commit, buildTime string) {
 var rootCmd = &cobra.Command{
 	Use:   "tt",
 	Short: "An Outliner-first terminal task manager",
-	Long: `tt is an Outliner-first terminal task manager.
+	Long: fmt.Sprintf(`tt is an Outliner-first terminal task manager.
 
 Run tt without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
-Startup validates schema-18 catalogs and schema-16 task Markdown before loading,
+Startup validates schema-%d catalogs and schema-%d task Markdown before loading,
 and migrates any supported older workspace forward through the whole chain of
 immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
 your workspace before a version jump. Run 'tt doctor' for read-only integrity
@@ -97,9 +98,14 @@ Examples:
   tt doctor
   tt conflict list
   tt workspace location
-  tt project export`,
+  tt project export`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
+	// No subcommand defines its own PersistentPreRunE: cobra runs only the
+	// nearest one, so a child's would shadow this hook and skip logging.
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		cmd.SilenceUsage = true
+		if commandLogs(cmd) {
+			openLogging()
+		}
 		return nil
 	},
 	Args: cobra.NoArgs,
@@ -113,15 +119,35 @@ func Execute() error {
 }
 
 func executeCommand(command *cobra.Command) error {
-	// Logging opens here rather than in init so that importing this package,
-	// as a test binary does, never creates a log file beneath the real $HOME.
-	openLogging()
+	// Logging opens lazily in the root PersistentPreRunE, so importing this
+	// package, as a test binary does, never creates a log file beneath the real
+	// $HOME. Close is a no-op when nothing opened.
 	defer closeLogging()
 	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
 	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
 	// suppressed for errors that originate inside RunE.
 	command.SilenceErrors = true
 	return command.Execute()
+}
+
+// commandLogs reports whether cmd may write a log, and so whether the pre-run
+// hook opens one. Help, shell completion, and root --version never log, so they
+// must not create ~/.tt/logs. --help needs no case: cobra answers it before any
+// pre-run hook runs.
+func commandLogs(cmd *cobra.Command) bool {
+	switch cmd.Name() {
+	case "help", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd, "completion":
+		return false
+	}
+	if parent := cmd.Parent(); parent != nil && parent.Name() == "completion" {
+		return false
+	}
+	if !cmd.HasParent() {
+		if showVersion, err := cmd.Flags().GetBool("version"); err == nil && showVersion {
+			return false
+		}
+	}
+	return true
 }
 
 func init() {

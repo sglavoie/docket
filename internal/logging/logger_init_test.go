@@ -122,16 +122,13 @@ func TestInitClearsLogFilePathOnOpenFailure(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// Force OpenFile to fail by making the would-be log dir read-only. The
-	// resulting path inside it is not creatable.
-	logsDir := filepath.Join(home, ".tt", "logs")
-	if err := os.MkdirAll(logsDir, 0o755); err != nil {
-		t.Fatalf("setup mkdir: %v", err)
+	// Force OpenFile to fail. A read-only directory no longer does, since Init
+	// tightens the directory back to 0700 before opening.
+	origOpenFile := openFile
+	openFile = func(string, int, os.FileMode) (*os.File, error) {
+		return nil, os.ErrPermission
 	}
-	if err := os.Chmod(logsDir, 0o500); err != nil {
-		t.Fatalf("chmod readonly: %v", err)
-	}
-	defer func() { _ = os.Chmod(logsDir, 0o755) }()
+	defer func() { openFile = origOpenFile }()
 
 	// Pre-set logFilePath to a sentinel so we can detect whether the failure
 	// path clears it.
@@ -145,6 +142,67 @@ func TestInitClearsLogFilePathOnOpenFailure(t *testing.T) {
 	}
 	if logFilePath != "" {
 		t.Errorf("Init should clear logFilePath on OpenFile failure, got %q", logFilePath)
+	}
+}
+
+// Logs can quote task titles and workspace paths, so Init keeps them private:
+// it creates the directory 0700, tightens one an older release left wider, and
+// opens the file 0600.
+func TestInitCreatesPrivateLogDirAndFile(t *testing.T) {
+	origDir := logDirPath
+	origFile := logFile
+	origPath := logFilePath
+	origOutput := log.Writer()
+	origFlags := log.Flags()
+	origPrevOutput := previousLoggerOutput
+	origPrevFlags := previousLoggerFlags
+	origStateCaptured := loggerStateCaptured
+	defer func() {
+		logDirPath = origDir
+		logFile = origFile
+		logFilePath = origPath
+		log.SetOutput(origOutput)
+		log.SetFlags(origFlags)
+		previousLoggerOutput = origPrevOutput
+		previousLoggerFlags = origPrevFlags
+		loggerStateCaptured = origStateCaptured
+	}()
+
+	for _, preexisting := range []bool{false, true} {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		logsDir := filepath.Join(home, ".tt", "logs")
+		if preexisting {
+			if err := os.MkdirAll(logsDir, 0o755); err != nil {
+				t.Fatalf("setup mkdir: %v", err)
+			}
+			if err := os.Chmod(logsDir, 0o755); err != nil {
+				t.Fatalf("setup chmod: %v", err)
+			}
+		}
+
+		Init()
+		if logFile == nil {
+			t.Fatalf("preexisting=%v: Init should open a log file", preexisting)
+		}
+		if dir, err := Dir(); err != nil || dir != logsDir {
+			t.Errorf("Dir() = %q, %v; want %q", dir, err, logsDir)
+		}
+		dirInfo, err := os.Stat(logsDir)
+		if err != nil {
+			t.Fatalf("stat log dir: %v", err)
+		}
+		if got := dirInfo.Mode().Perm(); got != 0o700 {
+			t.Errorf("preexisting=%v: log dir mode = %o, want 700", preexisting, got)
+		}
+		fileInfo, err := os.Stat(logFilePath)
+		if err != nil {
+			t.Fatalf("stat log file: %v", err)
+		}
+		if got := fileInfo.Mode().Perm(); got != 0o600 {
+			t.Errorf("preexisting=%v: log file mode = %o, want 600", preexisting, got)
+		}
+		Close()
 	}
 }
 
