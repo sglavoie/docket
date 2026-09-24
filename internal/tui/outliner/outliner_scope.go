@@ -361,16 +361,18 @@ func (m *OutlinerModel) ResetToGlobalAll() {
 	m.ClampCursor()
 }
 
-// FoldBacklogForLaunch seeds the one fold a launch owes: All's Backlog lane
-// starts folded, so the first screen leads with the work already in motion and
-// its header still counts what the fold hides. It is a launch act rather than
+// FoldQuietLanesForLaunch seeds the folds a launch owes: All's Backlog and
+// Someday lanes start folded, so the first screen leads with the work already
+// in motion and each header still counts what its fold hides. It is a launch act rather than
 // part of ResetToGlobalAll, so a reset, a reload, and Esc never reapply it, and
 // it reads nothing from disk, so no fold is ever restored.
-func (m *OutlinerModel) FoldBacklogForLaunch() {
+func (m *OutlinerModel) FoldQuietLanesForLaunch() {
 	if m == nil {
 		return
 	}
-	m.Folds.setSection(stateGroupCollapsePrefix+string(models.StateGroupBacklog), true)
+	for _, group := range []models.WorkflowStateGroup{models.StateGroupBacklog, models.StateGroupSomeday} {
+		m.Folds.setSection(stateGroupCollapsePrefix+string(group), true)
+	}
 	// The rebuild guard's fingerprint does not cover the fold maps, so the
 	// population is invalidated to make the rebuild honor the new key.
 	m.Population.Invalidate()

@@ -63,6 +63,8 @@
     { "type": "assert", "assert": "status_contains", "value": "Change State: Someday" },
 
     { "type": "key", "label": "Someday is the last lane All draws", "key": "end" },
+    { "type": "key", "label": "open it, since launch folds Someday", "key": "l" },
+    { "type": "key", "key": "end" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wb returns it to Backlog", "key": "b" },
     { "type": "wait" },

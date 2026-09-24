@@ -18,7 +18,7 @@
     { "type": "assert", "label": "narrowing leaves the mode standing, so its lanes decide the rows again", "assert": "contains", "value": "@ Doing" },
     { "type": "assert", "assert": "contains", "value": "@ Someday" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login" },
+    { "type": "assert", "label": "Someday stays folded as the launch left it, its header counting the hit", "assert": "contains", "value": "@ Someday  (1)" },
 
     { "type": "key", "label": "the order axis reorders the narrowed rows in place", "key": "o" },
     { "type": "key", "key": "@" },

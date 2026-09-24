@@ -144,9 +144,9 @@ project scope) are reapplied on top of that clean start. Navigation, folds,
 cursor, and selection are still never restored, and the first Esc after a
 restored lens lands on the same Active Projects, All view a lens-free launch
 would have shown. An active-lens pointer that no longer resolves fails closed to
-no lens, silently. That clean start folds All's Backlog lane and nothing else:
-`FoldBacklogForLaunch` seeds it after `ResetToGlobalAll`, beside the launch
-focus, so a reset, a reload, and Esc never reapply it.
+no lens, silently. That clean start folds All's Backlog and Someday lanes and
+nothing else: `FoldQuietLanesForLaunch` seeds them after `ResetToGlobalAll`,
+beside the launch focus, so a reset, a reload, and Esc never reapply them.
 
 The cursor is the one position a launch writes, as a one-shot intent the launch
 message alone arms — `ResetToGlobalAll` does not, so no reload, mode change, Esc

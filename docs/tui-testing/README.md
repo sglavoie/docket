@@ -254,7 +254,7 @@ The committed suite exercises the product contracts directly:
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
 | Inbox triage through the unified `w` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
 | Cursor recovery after a departure, in every mode: crossing a project group header, landing on a promoted child, walking past the descendants a moved parent carried away to the sibling that stayed, and holding still under undo | `inbox-triage-advance-across-project-groups.json`, `inbox-triage-advance-promotes-children.json`, `relocation-recovery-subtree-move.json`, `inbox-triage-undo-does-not-advance.json` |
-| Launch folding Backlog alone: the header still counting it, the cursor on the first task drawn, `l` opening it, and neither `Esc` nor `0` nor anything but a relaunch seeding it again | `outliner-launch-backlog-folded.json` |
+| Launch folding Backlog and Someday alone: each header still counting its lane, the cursor on the first task drawn, `l` opening it, and neither `Esc` nor `0` nor anything but a relaunch seeding it again | `outliner-launch-backlog-folded.json` |
 | Searching for unprioritized work with `!0`, and its negation keeping only prioritized work | `search-priority-unset.json` |
 | The flat ranked list naming each row's project, in its heading color and padded so titles share one column, at the minimum width too, and a single-project scope carrying no label | `outliner-search-ranked-project-label.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |

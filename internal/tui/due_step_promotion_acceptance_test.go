@@ -119,7 +119,7 @@ func (env *deadlineAcceptanceEnv) focusTask(t *testing.T, taskID string) {
 	if env.walkToTask(t, taskID) {
 		return
 	}
-	// A launch folds All's Backlog lane, so a task living there is reached by
+	// A launch folds All's Backlog and Someday lanes, so a task living there is reached by
 	// opening every fold first.
 	env.driver.App().crossOutliner.ClearAllFolds()
 	if env.walkToTask(t, taskID) {

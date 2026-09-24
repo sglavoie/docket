@@ -4,6 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "move to the last task", "key": "end" },
+    { "type": "key", "label": "open Someday, which launch folds", "key": "l" },
+    { "type": "key", "key": "end" },
     { "type": "key", "label": "pin Explore social login", "key": "*" },
     { "type": "wait" },
     { "type": "key", "label": "return to the top of the projection", "key": "home" },

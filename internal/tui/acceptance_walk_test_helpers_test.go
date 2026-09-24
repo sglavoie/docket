@@ -65,7 +65,7 @@ func seatCursorOnTaskTitled(t *testing.T, view *outliner.OutlinerModel, title st
 	if seatCursorOnVisibleTaskTitled(view, title) {
 		return
 	}
-	// A launch folds All's Backlog lane, so a task living there is reached by
+	// A launch folds All's Backlog and Someday lanes, so a task living there is reached by
 	// opening every fold, exactly as Clear All Folds would.
 	view.ClearAllFolds()
 	if seatCursorOnVisibleTaskTitled(view, title) {
@@ -95,7 +95,7 @@ func foldEveryProjectGroup(t *testing.T, view *outliner.OutlinerModel) {
 	t.Helper()
 	groups := view.VisibleProjectGroups()
 	if len(groups) == 0 {
-		// A launch folds All's Backlog lane, which hides the groups inside it.
+		// A launch folds All's Backlog and Someday lanes, which hide the groups inside them.
 		view.ClearAllFolds()
 		groups = view.VisibleProjectGroups()
 	}

@@ -22,9 +22,9 @@ All mode shows open, undeferred work in this order:
 Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
-Each launch opens with the Backlog section folded, so the first screen leads
-with work already in motion; its header still counts what it hides, and `l` or
-`s` opens it. Only a launch folds it: `Esc`, `0`, and a reload leave it as you
+Each launch opens with the Backlog and Someday sections folded, so the first
+screen leads with work already in motion; each header still counts what it
+hides, and `l` or `s` opens it. Only a launch folds them: `Esc`, `0`, and a reload leave it as you
 last set it.
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer

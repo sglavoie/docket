@@ -172,9 +172,11 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outlinerView.HasActiveLens() || outlinerView.Lens.Query != "" || outlinerView.HasSuspendedLens() {
 		t.Fatalf("launch retained lens state: active=%v query=%q suspended=%v", outlinerView.HasActiveLens(), outlinerView.Lens.Query, outlinerView.HasSuspendedLens())
 	}
-	// The one fold a launch owes is All's Backlog lane; the stale fold is gone.
+	// The folds a launch owes are All's Backlog and Someday lanes; the stale
+	// fold is gone.
 	backlogFolded := outlinerView.Folds.CollapsedSections["_state:"+string(models.StateGroupBacklog)]
-	if len(outlinerView.Folds.CollapsedSections) != 1 || !backlogFolded || len(outlinerView.Folds.ExpandedNodes) != 0 || len(outlinerView.Focus.Stack) != 0 || len(outlinerView.Focus.CrossStack) != 0 {
+	somedayFolded := outlinerView.Folds.CollapsedSections["_state:"+string(models.StateGroupSomeday)]
+	if len(outlinerView.Folds.CollapsedSections) != 2 || !backlogFolded || !somedayFolded || len(outlinerView.Folds.ExpandedNodes) != 0 || len(outlinerView.Focus.Stack) != 0 || len(outlinerView.Focus.CrossStack) != 0 {
 		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outlinerView.Folds.CollapsedSections, outlinerView.Folds.ExpandedNodes, outlinerView.Focus.Stack, outlinerView.Focus.CrossStack)
 	}
 }

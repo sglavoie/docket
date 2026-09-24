@@ -93,7 +93,7 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 // Pinned follows the axis like every other section, and that clearing it gives
 // the order the user built by hand back.
 func TestSortAxisOrdersPinnedWithPinOrderBreakingTies(t *testing.T) {
-	driver := sortDriver(t, FixtureRich, "end", "*")
+	driver := sortDriver(t, FixtureRich, "end", "l", "end", "*")
 	driver.Wait(defaultWaitTimeout)
 	// Five rows below the top: the Pinned lane header, its project heading, the
 	// row it holds, the Doing lane header and its project heading, then Doing's

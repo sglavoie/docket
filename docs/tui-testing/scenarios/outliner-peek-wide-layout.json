@@ -6,6 +6,8 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Inspector" },
     { "type": "key", "label": "select the task with additive detail", "key": "end" },
+    { "type": "key", "label": "open Someday, which launch folds", "key": "l" },
+    { "type": "key", "key": "end" },
     { "type": "key", "label": "enable cursor-following Peek", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
     { "type": "assert", "label": "Peek closes with the spent instants the row has no width for", "assert": "contains", "value": "created" },

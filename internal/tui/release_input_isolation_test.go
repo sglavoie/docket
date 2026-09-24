@@ -101,7 +101,7 @@ func (env *releaseIsolationEnv) focusTask(t *testing.T) {
 	if env.walkToTask(t) {
 		return
 	}
-	// A launch folds All's Backlog lane, so a task living there is reached by
+	// A launch folds All's Backlog and Someday lanes, so a task living there is reached by
 	// opening every fold first.
 	env.outliner(t).ClearAllFolds()
 	if env.walkToTask(t) {

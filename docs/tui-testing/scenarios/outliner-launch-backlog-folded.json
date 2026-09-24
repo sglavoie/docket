@@ -5,6 +5,8 @@
   "actions": [
     { "type": "assert", "label": "launch folds Backlog, whose header still counts what it hides", "assert": "contains", "value": "▸  @ Backlog  (3)" },
     { "type": "assert", "label": "so no Backlog task is drawn", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "assert", "label": "launch folds Someday the same way", "assert": "contains", "value": "▸  @ Someday  (1)" },
+    { "type": "assert", "label": "so no Someday task is drawn", "assert": "not_contains", "value": "Explore social login" },
     { "type": "assert", "label": "while the lanes in motion stay open", "assert": "contains", "value": "▾  @ Doing  (1)" },
     { "type": "key", "label": "the cursor sits on the first task the list draws", "key": "y" },
     { "type": "assert", "assert": "clipboard_contains", "value": "Build login form" },

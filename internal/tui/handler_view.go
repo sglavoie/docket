@@ -177,7 +177,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.crossOutliner.ResetToGlobalAll()
 		// Seeded after the reset, which clears every fold, and beside the launch
 		// focus for the same reason: only starting a session owes it.
-		m.crossOutliner.FoldBacklogForLaunch()
+		m.crossOutliner.FoldQuietLanesForLaunch()
 		m.setAccentOnView(m.crossOutliner)
 		// The reset drops any parked focus after presentationCmd captured it, so
 		// supersede that load with one that requests the base workspace alone.
