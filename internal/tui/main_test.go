@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"flag"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/testutil/residue"
 )
@@ -17,7 +19,12 @@ import (
 //
 // residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
 // in the package directory, which is what an unrooted runtime or project writes.
+//
+// It also raises the test timeout to 30m when the caller left Go's 10m
+// default: this package alone measures ~757s under -race on a lightly loaded
+// host, so the default fails a passing run. An explicit -timeout still wins.
 func TestMain(m *testing.M) {
+	raiseDefaultTestTimeout()
 	tmp, err := os.MkdirTemp("", "tt-tui-home-*")
 	if err != nil {
 		panic(err)
@@ -28,4 +35,22 @@ func TestMain(m *testing.M) {
 	code := residue.Run(m.Run)
 	_ = os.RemoveAll(tmp)
 	os.Exit(code)
+}
+
+const (
+	goDefaultTestTimeout = 10 * time.Minute
+	packageTestTimeout   = 30 * time.Minute
+)
+
+func raiseDefaultTestTimeout() {
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+	timeout := flag.Lookup("test.timeout")
+	if timeout == nil || timeout.Value.String() != goDefaultTestTimeout.String() {
+		return
+	}
+	if err := timeout.Value.Set(packageTestTimeout.String()); err != nil {
+		panic(err)
+	}
 }
