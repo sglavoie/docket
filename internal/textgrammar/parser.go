@@ -208,6 +208,11 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 			return clear.Value == value
 		})
 	case validateAttachment:
+		// Search reads presence alone, so a locator stays in the text where
+		// placementDiagnostics refuses it by name, and -& reads its twin's pair.
+		if surface == SurfaceSearch {
+			return slices.Contains(searchAttachmentPresetNames, strings.ToLower(strings.TrimSpace(value)))
+		}
 		return validAttachmentTokenValue(value)
 	case validateDerived:
 		return validDerivedTokenValue(value)

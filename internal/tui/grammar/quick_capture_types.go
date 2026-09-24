@@ -50,6 +50,7 @@ const (
 	acModeRemovePin
 	acModeRemoveReview
 	acModeRemoveProject
+	acModeRemoveAttachment
 	// acModeDerived completes a ?predicate and acModeRemoveDerived a -?predicate.
 	// Both are search-only: a derived value is computed from the task rather than
 	// stored on it, so there is nothing for capture or edit to write.
@@ -242,11 +243,13 @@ func AutocompleteModeForField(field textgrammar.Field) int {
 	case textgrammar.FieldRemoveDerived:
 		return acModeRemoveDerived
 	case textgrammar.FieldAttachment:
-		// An attachment value is a pasted URL or path, so there is nothing to
-		// suggest. The mode exists because quickCaptureTriggers drops a field
+		// While capturing, an attachment value is a pasted URL or path, so there
+		// is nothing to suggest; search completes its &any/&none pair instead. The mode exists because quickCaptureTriggers drops a field
 		// returning ACModeNone, and the registry projection must stay one-to-one;
 		// RefreshAutocomplete has no default arm, so the mode simply shows nothing.
 		return acModeAttachment
+	case textgrammar.FieldRemoveAttachment:
+		return acModeRemoveAttachment
 	case textgrammar.FieldComment:
 		// A comment is free prose, so there is nothing to suggest either; the mode
 		// exists for the same one-to-one reason acModeAttachment does.

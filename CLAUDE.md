@@ -994,13 +994,14 @@ committing one transaction.
 Slash search is the fourth surface of the same registry, not a parallel query
 language. Its sigil set is the capture set minus `>parent`, `<child`, `&link`,
 and `;comment;`, which refuse by name, plus `~task`, whose `~0` refuses by name
-there too. Sigils compile to an AND gate applied before scoring, and the
+there too. `&` still reaches search, reading presence alone: `&any` and `&none`
+are its whole vocabulary there, so a locator refuses by name and `R&D` is prose. Sigils compile to an AND gate applied before scoring, and the
 case-relaxed retry re-runs that same gate.
 Only a recognized value the grammar cannot honor blocks a query.
 
 - `-` is the one negation: on a mutation surface it removes a value from the
   task, in search it removes matches from the result. Search reads `-!`, `-#`,
-  `-##`, `-@`, `-@@`, `-$`, `-*`, `-=`, `-%`, `-~`, `-?`; only `-#` and `-~`
+  `-##`, `-@`, `-@@`, `-$`, `-*`, `-=`, `-&`, `-%`, `-~`, `-?`; only `-#` and `-~`
   mutate. A
   negation owns no vocabulary — values, viability, diagnostics, presets, and
   completion resolve through its twin — and negatives join as an AND-of-nots at

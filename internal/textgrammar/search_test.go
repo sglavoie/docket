@@ -314,3 +314,35 @@ func TestParseSearchPriorityZeroMatchesUnsetOnly(t *testing.T) {
 		t.Fatal("!0+ raised no guidance")
 	}
 }
+
+func TestParseSearchAttachmentReadsPresenceAlone(t *testing.T) {
+	for input, field := range map[string]Field{
+		"&any": FieldAttachment, "&none": FieldAttachment,
+		"-&any": FieldRemoveAttachment, "-&none": FieldRemoveAttachment,
+	} {
+		parsed := ParseSearch("brief " + input)
+		if parsed.Text != "brief" || len(parsed.TokensFor(field)) != 1 {
+			t.Errorf("ParseSearch(brief %s) = %+v, want one %s token", input, parsed, field)
+		}
+		if guidance := SearchGuidance(parsed); guidance != "" {
+			t.Errorf("%s raised guidance %q", input, guidance)
+		}
+	}
+	// A locator is still a capture act, refused by name and pointed at the pair.
+	for _, input := range []string{"&https://example.com/spec.pdf", "&main.go:4"} {
+		guidance := SearchGuidance(ParseSearch(input))
+		if !strings.Contains(guidance, "&link is not a search predicate") || !strings.Contains(guidance, "&any and &none") {
+			t.Errorf("%s guidance = %q, want the &link refusal naming &any and &none", input, guidance)
+		}
+	}
+	for _, input := range []string{"R&D budget", "render &nbsp; entity", "keep -&foo literal"} {
+		parsed := ParseSearch(input)
+		if len(parsed.Tokens) != 0 || parsed.Text != input || SearchGuidance(parsed) != "" {
+			t.Errorf("ParseSearch(%q) = %+v, want prose", input, parsed)
+		}
+	}
+	// Presence is search vocabulary: capture keeps &any as title text.
+	if capture := Parse("Read &any docs", SurfaceCapture); len(capture.Tokens) != 0 || capture.Text != "Read &any docs" {
+		t.Errorf("capture parsed &any as %+v, want title text", capture)
+	}
+}

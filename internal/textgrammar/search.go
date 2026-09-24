@@ -17,6 +17,11 @@ var searchDuePresetNames = []string{"overdue", "today", "week", "none"}
 // itself cannot express.
 var searchDeferPresetNames = []string{"any", "none"}
 
+// searchAttachmentPresetNames are the whole search vocabulary of &. An
+// attachment is a creation-time or panel act, so search never reads a locator:
+// it asks only whether a task holds any attachment at all.
+var searchAttachmentPresetNames = []string{"any", "none"}
+
 // searchDueExampleValues are the parametric search-only due forms that no fixed
 // preset name can express. The "+Nh" hour window is illustrated with one
 // concrete value so `?` help can advertise it the way the preset buckets are,
@@ -34,11 +39,13 @@ var searchPriorityExampleValues = []string{"2+"}
 // search vocabulary reads the same list ParseSearch matches against rather than
 // hand-authoring a second copy that can drift.
 func SearchPresetValues(field Field) []string {
-	switch negatedField(field) { //nolint:exhaustive // Only the two relational fields have search-only values.
+	switch negatedField(field) { //nolint:exhaustive // Only the relational and presence fields have search-only values.
 	case FieldDue:
 		return slices.Clone(searchDuePresetNames)
 	case FieldDefer:
 		return slices.Clone(searchDeferPresetNames)
+	case FieldAttachment:
+		return slices.Clone(searchAttachmentPresetNames)
 	default:
 		return nil
 	}
@@ -137,7 +144,7 @@ type refusedSearchField struct {
 var refusedSearchFields = []refusedSearchField{
 	{FieldParent, "placement is set with e"},
 	{FieldChild, "placement is set with e"},
-	{FieldAttachment, "attachments are added at capture or in the task's Attachments panel"},
+	{FieldAttachment, "search reads &any and &none; attachments are added at capture or in the task's Attachments panel"},
 	{FieldComment, "comments are added at capture or in the task's Comments panel"},
 }
 

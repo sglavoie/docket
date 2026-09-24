@@ -71,6 +71,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldProject: {"%project"}, FieldRemoveProject: {"-%project"},
 				FieldDependency: {"~task"}, FieldRemoveDependency: {"-~task"},
 				FieldDerived: {"?derived"}, FieldRemoveDerived: {"-?derived"},
+				FieldAttachment: {"&any", "&none"}, FieldRemoveAttachment: {"-&any"},
 			},
 		},
 	}

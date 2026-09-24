@@ -44,6 +44,22 @@ var registry = []definitionSpec{
 	// Attachments panel runs on a paste, so a quoted path and a typed one
 	// classify identically. An unterminated quote matches no quoted span, falls
 	// through to the last alternative, and stays the prefix it already was.
+	//
+	// Search reads & as presence alone — &any and &none — and its negation sits
+	// immediately ahead so the two-rune trigger is peeled whole, which also puts
+	// it ahead of #tag for the reason the positive is.
+	{
+		Definition: Definition{
+			Field: FieldRemoveAttachment, Group: "Attachments", Trigger: "-&",
+			Examples: []string{"-&any"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "-&any", Surfaces: SurfaceSearch}},
+		pattern:           `(?:^|\s)-&(\S+)`,
+		validation:        validateAttachment,
+		negates:           FieldAttachment,
+		searchDescription: "Exclude tasks with (-&any) or without (-&none) attachments",
+	},
 	{
 		Definition: Definition{
 			Field: FieldAttachment, Group: "Attachments", Trigger: "&",
@@ -57,12 +73,19 @@ var registry = []definitionSpec{
 				"&internal/app/add.go:19",
 				"&'~/notes/Q3 plan.pdf'",
 			},
-			Surfaces: SurfaceCapture, Cardinality: CardinalityRepeatable,
+			Surfaces: SurfaceCapture | SurfaceSearch, Cardinality: CardinalityRepeatable,
 		},
-		forms:      []surfaceForm{{Text: "&link", Surfaces: SurfaceCapture}},
-		pattern:    `(?:^|\s)&('[^']*'|"(?:\\.|[^"\\])*"|(?:\\ |\S)+)`,
-		normalize:  util.NormalizePastedPathInput,
-		validation: validateAttachment,
+		// &link leads so the search refusal, which names forms[0], still names
+		// the capture spelling a locator belongs to.
+		forms: []surfaceForm{
+			{Text: "&link", Surfaces: SurfaceCapture},
+			{Text: "&any", Surfaces: SurfaceSearch},
+			{Text: "&none", Surfaces: SurfaceSearch},
+		},
+		pattern:           `(?:^|\s)&('[^']*'|"(?:\\.|[^"\\])*"|(?:\\ |\S)+)`,
+		normalize:         util.NormalizePastedPathInput,
+		validation:        validateAttachment,
+		searchDescription: "Match tasks with (&any) or without (&none) attachments",
 	},
 	// Both dependency sigils are parsed BEFORE #tag, for the reason attachment is:
 	// RE2 has no lookaround, so #([\w][\w.:-]*) stops at the tilde in
@@ -472,6 +495,7 @@ var guideOrder = []Field{
 	FieldDependency,
 	FieldRemoveDependency,
 	FieldAttachment,
+	FieldRemoveAttachment,
 	FieldComment,
 	FieldTaskType,
 }

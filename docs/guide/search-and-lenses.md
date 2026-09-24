@@ -112,6 +112,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `$today`, `$next` | Match membership in the durable planning list |
 | `*pin`, `*unpin` | Match pinned or unpinned tasks |
 | `=review`, `=unreview` | Match tasks flagged for review, or the rest |
+| `&any`, `&none` | Match tasks holding at least one attachment, or none |
 | `~task` | Match tasks that depend directly on that target; repeatable, combined with AND |
 | `%project` | Narrow the search to matching projects within the active scope |
 | `?property` | Match a property computed from the workspace rather than stored on the task |
@@ -127,7 +128,7 @@ A leading `-` always means *remove*, and what it removes from is whatever you
 are working on. While you are writing a task, `-#tag` takes a tag off it. In the
 search box there is no task to edit, so the same `-` takes rows out of the
 result: `-!1`, `-#tag`, `-##context`, `-@today`, `-@@tomorrow`, `-$doing`,
-`-*pin`, `-=review`, `-%project`, `-~task`, `-?review`, and `-?stale` each subtract exactly what the
+`-*pin`, `-=review`, `-&any`, `-%project`, `-~task`, `-?review`, and `-?stale` each subtract exactly what the
 token without the `-` would have selected. That is the whole rule — every
 negation accepts the same values, offers the same completions, and reports the
 same problems as its positive twin, so there is nothing extra to learn. Several
@@ -164,7 +165,7 @@ out-of-range priority such as `!9`, a retired destination such as `$ready`, the
 reserved `##0`, the structural `>parent` and `<child` sigils that belong to the
 edit grammar alone, a `~0` that would clear a stored set search does
 not hold, a `~task` naming nothing the loaded population depends on, a `?stale:90d`
-or `?completed:0d` whose qualifier the property cannot take, an `&link` naming something genuinely attachable, which
+or `?completed:0d` whose qualifier the property cannot take, an `&link` naming something genuinely attachable rather than `&any` or `&none`, which
 belongs to capture and to the task's Attachments panel, and a paired
 `;comment;`, which belongs to capture and to the task's Comments panel. Those
 refuse by name in

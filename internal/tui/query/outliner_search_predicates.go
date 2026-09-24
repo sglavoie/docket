@@ -79,6 +79,8 @@ type SearchPredicates struct {
 	refusePinned       bool
 	requireReview      bool
 	refuseReview       bool
+	requireAttachments bool
+	refuseAttachments  bool
 	projectPrefixes    []string
 	excludedProjects   []string
 	derived            []textgrammar.DerivedPredicate
@@ -200,6 +202,17 @@ func (p *SearchPredicates) applyToken(token textgrammar.Token, projects []*model
 		p.refuseReview = true
 	case textgrammar.FieldRemoveReview:
 		p.refuseReview = true
+	case textgrammar.FieldAttachment, textgrammar.FieldRemoveAttachment:
+		// -& reads its twin's pair inverted, so -&none asks what &any does.
+		present := strings.EqualFold(strings.TrimSpace(token.Value), "any")
+		if token.Field == textgrammar.FieldRemoveAttachment {
+			present = !present
+		}
+		if present {
+			p.requireAttachments = true
+			return
+		}
+		p.refuseAttachments = true
 	case textgrammar.FieldProject:
 		p.projectPrefixes = append(p.projectPrefixes, strings.ToLower(strings.TrimSpace(token.Value)))
 	case textgrammar.FieldRemoveProject:

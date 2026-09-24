@@ -81,6 +81,7 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	"-$":  sigilSearchOnly,
 	"-*":  sigilSearchOnly,
 	"-=":  sigilSearchOnly,
+	"-&":  sigilSearchOnly,
 	// Review is a stored flag like the pin, so the character that writes it in a
 	// capture line is the key that toggles it on a row. The f= facet spelled with
 	// the same character narrows by what this writes; the two are not in tension,

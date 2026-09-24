@@ -43,11 +43,11 @@ func TestSearchAutocompleteTriggersProjectTheSearchSurfaceOneToOne(t *testing.T)
 	}
 
 	// The placement sigils search refuses by name must never acquire a completion
-	// mode, or the pane would teach a query the gate rejects.
+	// mode, or the pane would teach a query the gate rejects. & is absent: search
+	// reads its presence pair, and only its capture locator is refused.
 	for _, field := range []textgrammar.Field{
 		textgrammar.FieldParent,
 		textgrammar.FieldChild,
-		textgrammar.FieldAttachment,
 		textgrammar.FieldComment,
 	} {
 		if _, ok := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, field); ok {
@@ -76,6 +76,8 @@ func TestSearchAutocompleteUsesLongestTriggerAtTheCursor(t *testing.T) {
 		{"$", textgrammar.FieldDestination},
 		{"*", textgrammar.FieldPinned},
 		{"%", textgrammar.FieldProject},
+		{"&", textgrammar.FieldAttachment},
+		{"-&", textgrammar.FieldRemoveAttachment},
 	}
 	for _, tc := range cases {
 		typeSearchAC(outliner, tc.query)
@@ -118,6 +120,17 @@ func TestSearchAutocompleteStaticValuesComeFromTheSearchGrammar(t *testing.T) {
 			!strings.Contains(display, models.PriorityName(models.PriorityUnset)) {
 			t.Errorf("priority row %q names no shared priority", display)
 		}
+	}
+
+	// & completes its presence pair alone; the capture locator examples are
+	// refused in search, so offering them would teach a dead end.
+	typeSearchAC(outliner, "&")
+	if got, want := searchACValues(outliner), textgrammar.SearchPresetValues(textgrammar.FieldAttachment); !slices.Equal(got, want) {
+		t.Errorf("attachment values = %v, want presence pair %v", got, want)
+	}
+	typeSearchAC(outliner, "-&")
+	if got, want := searchACValues(outliner), textgrammar.SearchPresetValues(textgrammar.FieldRemoveAttachment); !slices.Equal(got, want) {
+		t.Errorf("attachment negation values = %v, want its twin's pair %v", got, want)
 	}
 
 	destination, _ := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, textgrammar.FieldDestination)

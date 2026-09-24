@@ -49,7 +49,7 @@ const (
 	// in the grammar: on a mutation surface it takes a value away from the task,
 	// and on search it takes the rows carrying that value away from the result
 	// set. FieldRemoveTag and FieldRemoveDependency already carry both readings;
-	// these eight carry only the second, because there is nothing to subtract
+	// these nine carry only the second, because there is nothing to subtract
 	// from a task that does not hold a set.
 	FieldRemovePriority    Field = "remove_priority"
 	FieldRemoveContext     Field = "remove_context"
@@ -59,6 +59,7 @@ const (
 	FieldRemovePinned      Field = "remove_pinned"
 	FieldRemoveReview      Field = "remove_review"
 	FieldRemoveProject     Field = "remove_project"
+	FieldRemoveAttachment  Field = "remove_attachment"
 	// FieldDerived is the computed-predicate family. Its whole meaning is
 	// "derived, never assigned", which is why it can only ever reach search: no
 	// capture or edit surface may set a value the workspace computes.

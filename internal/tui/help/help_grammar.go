@@ -1,6 +1,7 @@
 package help
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -47,8 +48,9 @@ func GrammarHelpItems() []operation.HelpItem {
 
 // grammarHelpSearchForms renders the search-only spellings that appear nowhere
 // else on screen so `?` shows them rather than hiding them behind an exact-string
-// alias search. Only the due and deferral sigils carry such forms today: the due
-// relational buckets and the `@+Nh` window, and the deferral presence split. The
+// alias search. Only the due, deferral, and attachment sigils carry such forms
+// today: the due relational buckets and the `@+Nh` window, and the deferral and
+// attachment presence splits. The
 // forms read from the canonical search lists, so this row can never drift from
 // what ParseSearch honors. Every other field's search vocabulary is identical to
 // its capture vocabulary and so is already visible in the key column.
@@ -56,11 +58,18 @@ func grammarHelpSearchForms(def textgrammar.Definition) string {
 	presets := textgrammar.SearchPresetValues(def.Field)
 	examples := textgrammar.SearchExampleValues(def.Field)
 	forms := make([]string, 0, len(presets)+len(examples))
+	// A preset the row's key column already spells, such as &any, is not
+	// repeated as a search form.
+	add := func(form string) {
+		if !slices.Contains(def.Forms, form) {
+			forms = append(forms, form)
+		}
+	}
 	for _, preset := range presets {
-		forms = append(forms, def.Trigger+preset)
+		add(def.Trigger + preset)
 	}
 	for _, example := range examples {
-		forms = append(forms, def.Trigger+example)
+		add(def.Trigger + example)
 	}
 	return strings.Join(forms, " ")
 }

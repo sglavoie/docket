@@ -365,3 +365,28 @@ func TestSearchReviewDerivedUsesTheSharedAttentionPredicate(t *testing.T) {
 		}
 	}
 }
+
+// & reads presence alone in search, and -& is its twin inverted, so the four
+// spellings split the population into exactly two halves.
+func TestSearchAttachmentPresenceSplitsThePopulation(t *testing.T) {
+	attached := &models.Task{
+		ID: "attached", ShortID: 1, Title: "Attached", WorkflowState: models.StateBacklog,
+		Attachments: []models.Attachment{{Filename: "brief.md", AddedAt: time.Now()}},
+	}
+	bare := &models.Task{ID: "bare", ShortID: 2, Title: "Bare", WorkflowState: models.StateBacklog}
+	project := &models.Project{ID: "alpha", Slug: "alpha", Name: "Alpha", Tasks: []*models.Task{attached, bare}}
+	for query, wantAttached := range map[string]bool{"&any": true, "-&none": true, "&none": false, "-&any": false, "&ANY": true} {
+		_, gate := CompileSearchQuery(query, []*models.Project{project}, nil, models.Query{})
+		if gate.Invalid() {
+			t.Fatalf("%s produced guidance %q", query, gate.GuidanceText())
+		}
+		if gate.Admits(attached, project) != wantAttached || gate.Admits(bare, project) == wantAttached {
+			t.Errorf("%s admitted attached=%t bare=%t, want attached=%t alone",
+				query, gate.Admits(attached, project), gate.Admits(bare, project), wantAttached)
+		}
+	}
+	_, contradiction := CompileSearchQuery("&any &none", []*models.Project{project}, nil, models.Query{})
+	if contradiction.Admits(attached, project) || contradiction.Admits(bare, project) {
+		t.Error("&any &none admitted a task; a contradiction admits nothing")
+	}
+}

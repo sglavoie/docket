@@ -181,6 +181,10 @@ func (m *OutlinerModel) searchAutocompleteSuggestions(
 		return m.searchDependencySuggestions(definition, partial)
 	case textgrammar.FieldDerived, textgrammar.FieldRemoveDerived:
 		return searchStaticSuggestions(definition, searchDerivedVocabulary(definition), partial)
+	case textgrammar.FieldAttachment, textgrammar.FieldRemoveAttachment:
+		// Presence is the whole search vocabulary, so the capture locator
+		// examples are never offered here.
+		return searchStaticSuggestions(definition, textgrammar.SearchPresetValues(definition.Field), partial)
 	default:
 		return nil
 	}

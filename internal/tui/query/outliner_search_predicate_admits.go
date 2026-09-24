@@ -68,7 +68,8 @@ func (p *SearchPredicates) Admits(task *models.Task, project *models.Project) bo
 	if task == nil {
 		return false
 	}
-	if !p.admitsPriority(task) || !p.admitsPinned(task) || !p.admitsReview(task) {
+	if !p.admitsPriority(task) || !p.admitsPinned(task) || !p.admitsReview(task) ||
+		!p.admitsAttachments(task) {
 		return false
 	}
 	if !p.admitsTags(task) || !p.admitsContext(task) || !p.admitsDue(task) || !p.admitsDeferral(task) {
@@ -110,6 +111,16 @@ func (p *SearchPredicates) admitsReview(task *models.Task) bool {
 		return false
 	}
 	return !p.refuseReview || !task.Review
+}
+
+// admitsAttachments answers the presence axis the way admitsPinned answers the
+// pin one, contradiction included: &any and &none in one query admit nothing.
+func (p *SearchPredicates) admitsAttachments(task *models.Task) bool {
+	held := len(task.Attachments) > 0
+	if p.requireAttachments && !held {
+		return false
+	}
+	return !p.refuseAttachments || !held
 }
 
 func (p *SearchPredicates) admitsTags(task *models.Task) bool {
