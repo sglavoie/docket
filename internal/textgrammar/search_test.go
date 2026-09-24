@@ -52,7 +52,6 @@ func TestParseSearchLeavesUnrecognizedShapesAsProse(t *testing.T) {
 		"ship !important work",
 		"costs $100 total",
 		"read @0 again",
-		"pick !0 branch",
 	} {
 		parsed := ParseSearch(input)
 		if len(parsed.Tokens) != 0 || parsed.Text != input {
@@ -293,5 +292,25 @@ func TestParseSearchPriorityThresholdIsSearchOnly(t *testing.T) {
 	// value it can honor, and the token is raised rather than silently accepted.
 	if _, ok := ParsePriority("2+", false); ok {
 		t.Error("ParsePriority(2+) succeeded; the threshold belongs to search alone")
+	}
+}
+
+func TestParseSearchPriorityZeroMatchesUnsetOnly(t *testing.T) {
+	got, ok := ParseSearchPriority("0")
+	if !ok || len(got) != 1 || got[0] != models.EffectivePriority(models.PriorityUnset) {
+		t.Fatalf("ParseSearchPriority(0) = %v, %t, want the unset priority alone", got, ok)
+	}
+	if _, ok := ParseSearchPriority("0+"); ok {
+		t.Fatal("ParseSearchPriority(0+) accepted a threshold nothing ranks below")
+	}
+	parsed := ParseSearch("inbox !0")
+	if parsed.Text != "inbox" || len(parsed.TokensFor(FieldPriority)) != 1 {
+		t.Fatalf("ParseSearch(inbox !0) = %+v, want one priority token", parsed)
+	}
+	if guidance := SearchGuidance(parsed); guidance != "" {
+		t.Fatalf("!0 raised guidance %q", guidance)
+	}
+	if guidance := SearchGuidance(ParseSearch("!0+")); guidance == "" {
+		t.Fatal("!0+ raised no guidance")
 	}
 }

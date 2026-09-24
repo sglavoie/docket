@@ -100,6 +100,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | --- | --- |
 | `!1`–`!3` | Match that priority exactly, unlike `f!`'s threshold; Unset never matches |
 | `!2+` | Match that priority and every more urgent one, the way `f!`'s threshold reads |
+| `!0` | Match the tasks carrying no priority; `-!0` keeps only prioritized work, and `!0+` is refused |
 | `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
 | `##context` | Match the task context by prefix, a separate axis from tags |
 | `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |

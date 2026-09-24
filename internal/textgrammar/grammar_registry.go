@@ -125,11 +125,11 @@ var registry = []definitionSpec{
 			Description: "Set priority", Values: priorityNames, RetiredValues: retiredPriorityNames,
 			Examples: []string{"!1", "!2", "!3"}, Surfaces: allSurfaces,
 			Cardinality: CardinalitySingleton,
-			Clears:      []ClearOperation{{Value: clearValue, Description: "Clear priority", Surfaces: SurfaceEdit}},
+			Clears:      []ClearOperation{{Value: clearValue, Description: "Clear priority", Surfaces: SurfaceEdit | SurfaceSearch}},
 		},
 		forms: []surfaceForm{
 			{Text: "!1-3", Surfaces: allSurfaces},
-			{Text: "!0", Surfaces: SurfaceEdit},
+			{Text: "!0", Surfaces: SurfaceEdit | SurfaceSearch},
 		},
 		pattern: `(?:^|\s)!([^\s]+)`, validation: validatePriority,
 		// The threshold is accepted in validatePriority rather than in the pattern:
@@ -137,6 +137,7 @@ var registry = []definitionSpec{
 		// would make one surface's vocabulary a property of the shape every surface
 		// is peeled with. Only search reads the suffix.
 		searchDescription: "Match a priority, or !N+ for that priority and above",
+		searchClearText:   map[string]string{clearValue: "Match tasks with no priority"},
 	},
 	{
 		Definition: Definition{

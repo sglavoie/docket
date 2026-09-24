@@ -476,6 +476,20 @@ func searchPrioritySuggestions(definition textgrammar.Definition, partial string
 			Value:   value,
 		})
 	}
+	// !0 is the positive's search clear, read from its entry so -!0 offers it
+	// too: a negation completes from its twin's vocabulary. It is named like the
+	// levels, by the shared priority name the unset value carries.
+	if twin, ok := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, textgrammar.FieldPriority); ok {
+		for _, clear := range twin.Clears {
+			if partial != "" && !strings.HasPrefix(clear.Value, partial) {
+				continue
+			}
+			result = append(result, grammar.ACSuggestion{
+				Display: fmt.Sprintf("%s%s (%s)", definition.Trigger, clear.Value, models.PriorityName(models.PriorityUnset)),
+				Value:   clear.Value,
+			})
+		}
+	}
 	return result
 }
 

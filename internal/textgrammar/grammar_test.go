@@ -179,10 +179,10 @@ func TestPriorityTokenSurfaceBoundary(t *testing.T) {
 	}
 
 	search := Parse("Task !0 !1 !9 !important", SurfaceSearch)
-	if got := search.TokensFor(FieldPriority); len(got) != 2 || got[0].Value != "1" || got[1].Value != "9" {
-		t.Fatalf("search priority tokens = %+v, want !1 plus numeric !9 for guidance", got)
+	if got := search.TokensFor(FieldPriority); len(got) != 3 || got[0].Value != "0" || got[1].Value != "1" || got[2].Value != "9" {
+		t.Fatalf("search priority tokens = %+v, want the !0 question, !1, and numeric !9 for guidance", got)
 	}
-	if search.Text != "Task !0 !important" {
-		t.Fatalf("search text = %q, want the clear form and the prose word left literal", search.Text)
+	if search.Text != "Task !important" {
+		t.Fatalf("search text = %q, want only the prose word left literal", search.Text)
 	}
 }

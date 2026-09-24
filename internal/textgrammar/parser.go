@@ -172,7 +172,9 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		if slices.Contains(spec.Values, value) || slices.Contains(spec.RetiredValues, value) {
 			return true
 		}
-		if value == clearValue && surface != SurfaceEdit {
+		// The clear is a removal on edit and a question in search: !0 finds
+		// the tasks carrying no priority. Capture has nothing to clear.
+		if value == clearValue && surface == SurfaceCapture {
 			return false
 		}
 		// Search tokenizes any numeric priority so !9 can be diagnosed, and

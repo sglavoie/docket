@@ -76,8 +76,18 @@ const searchPriorityThresholdSuffix = "+"
 // everything more urgent, which is every smaller number, because !1 is the most
 // urgent. It is the one reader of the "+" suffix, so the gate that filters and
 // the diagnostic that refuses cannot disagree about whether !2+ is a legal query.
+//
+// !0 admits the tasks carrying no priority, spelled as the effective priority an
+// unset value reads as, so the gate needs no second case. It takes no threshold:
+// nothing ranks below unset, so !0+ would be every task under a narrower name.
 func ParseSearchPriority(value string) ([]int, bool) {
 	body, threshold := strings.CutSuffix(strings.TrimSpace(value), searchPriorityThresholdSuffix)
+	if body == clearValue {
+		if threshold {
+			return nil, false
+		}
+		return []int{models.EffectivePriority(models.PriorityUnset)}, true
+	}
 	priorities, ok := ParsePriority(body, false)
 	if !ok || !threshold {
 		return priorities, ok

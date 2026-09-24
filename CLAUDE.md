@@ -1018,6 +1018,9 @@ Only a recognized value the grammar cannot honor blocks a query.
   are one hop.
 - `!N+` is that priority and above, accepted in `validatePriority` rather than
   the pattern and read only by `ParseSearchPriority`.
+- `!0` is the one clear search reads, as a question: the tasks carrying no
+  priority, spelled as the unset value's `EffectivePriority` so the gate has no
+  second case. It takes no `+`, and capture still leaves it prose.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.

@@ -60,7 +60,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 		{
 			name: "search", surface: SurfaceSearch,
 			want: map[Field][]string{
-				FieldPriority: {"!1-3"}, FieldRemovePriority: {"-!1-3"},
+				FieldPriority: {"!1-3", "!0"}, FieldRemovePriority: {"-!1-3"},
 				FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
 				FieldContext: {"##context"}, FieldRemoveContext: {"-##context"},
 				FieldDue: {"@date"}, FieldRemoveDue: {"-@date"},
@@ -137,11 +137,18 @@ func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
 			t.Errorf("edit %s clears = %+v, want one zero clear", field, edit.Clears)
 		}
 	}
-	for _, field := range []Field{FieldPriority, FieldDue, FieldContext} {
+	for _, field := range []Field{FieldDue, FieldContext} {
 		search, ok := DefinitionFor(SurfaceSearch, field)
 		if !ok || len(search.Clears) != 0 {
 			t.Errorf("search %s clears = %+v, want none; a clear is a mutation", field, search.Clears)
 		}
+	}
+	// Priority's clear is the one search reads, as a question: !0 matches the
+	// tasks carrying no priority.
+	search, ok := DefinitionFor(SurfaceSearch, FieldPriority)
+	if !ok || len(search.Clears) != 1 || search.Clears[0].Value != "0" ||
+		search.Clears[0].Description != "Match tasks with no priority" {
+		t.Errorf("search priority clears = %+v, want the !0 question", search.Clears)
 	}
 	if _, ok := DefinitionFor(SurfaceSearch, FieldParent); ok {
 		t.Error("search advertises parent; placement is not a search predicate")

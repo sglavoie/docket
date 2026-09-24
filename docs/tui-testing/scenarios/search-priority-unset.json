@@ -1,0 +1,28 @@
+{
+  "name": "search-priority-unset",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the search reads the whole workspace", "command": "Clear All Folds" },
+    { "type": "key", "label": "!0 asks for the tasks carrying no priority", "key": "/" },
+    { "type": "text", "text": "!" },
+    { "type": "assert", "label": "the trigger offers it beside the three priorities", "assert": "contains", "value": "!0 (Unset)" },
+    { "type": "assert", "assert": "contains", "value": "!3 (Low)" },
+    { "type": "text", "text": "0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "label": "a prioritized task is not among them", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "label": "the token is a question, never prose to match", "assert": "not_contains", "value": "invalid priority" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "its negation keeps only the prioritized work", "key": "/" },
+    { "type": "key", "key": "ctrl+u" },
+    { "type": "text", "text": "-!" },
+    { "type": "assert", "label": "and the negation offers it through its twin", "assert": "contains", "value": "-!0 (Unset)" },
+    { "type": "text", "text": "0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

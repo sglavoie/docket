@@ -102,15 +102,20 @@ func TestSearchAutocompleteStaticValuesComeFromTheSearchGrammar(t *testing.T) {
 
 	priority, _ := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, textgrammar.FieldPriority)
 	typeSearchAC(outliner, "!")
-	if got := searchACValues(outliner); !slices.Equal(got, priority.Values) {
-		t.Errorf("priority values = %v, want registry %v", got, priority.Values)
+	wantPriorities := slices.Clone(priority.Values)
+	for _, clear := range priority.Clears {
+		wantPriorities = append(wantPriorities, clear.Value)
+	}
+	if got := searchACValues(outliner); !slices.Equal(got, wantPriorities) {
+		t.Errorf("priority values = %v, want registry %v", got, wantPriorities)
 	}
 	// The name beside each level comes from the shared priority parse, not from a
 	// second table of level names.
 	for _, display := range searchACDisplays(outliner) {
 		if !strings.Contains(display, models.PriorityName(1)) &&
 			!strings.Contains(display, models.PriorityName(2)) &&
-			!strings.Contains(display, models.PriorityName(3)) {
+			!strings.Contains(display, models.PriorityName(3)) &&
+			!strings.Contains(display, models.PriorityName(models.PriorityUnset)) {
 			t.Errorf("priority row %q names no shared priority", display)
 		}
 	}
