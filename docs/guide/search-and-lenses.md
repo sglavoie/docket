@@ -62,6 +62,11 @@ name; nothing else does, in either presentation.
 | `fx` | Clear every facet |
 | `/` | Search title, description, resume note, checklist, comment, tag, context, attachment, and project as one flat ranked list over the project scope, gated by any capture sigils the query carries; `or` reads the same query as a narrowing of the mode |
 
+The ranked list has no project headings, so across several projects each row
+opens with its project's `[slug]`, in the color that project's heading wears in
+the main view, and the titles line up after it. Scoped to one project, the
+heading at the top names it and the rows carry no label.
+
 A chord and a typed query are two ways of writing the same narrowing, so the
 title row shows what you narrowed by in the sigil spelling you would have typed:
 `Filters: !2+ #focus @today` rather than a vocabulary of its own. A facet you

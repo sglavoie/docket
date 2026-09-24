@@ -1,0 +1,27 @@
+{
+  "name": "outliner-search-ranked-project-label",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "slash opens the flat ranked list, which draws no project headings", "key": "/" },
+    { "type": "text", "text": "a" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "so each row leads its title with its project's slug", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "label": "padded to the widest slug, so every title starts in one column", "assert": "contains", "value": "[client-beta]  Beta rollout checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the label survives the minimum width", "width": 60, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 30 },
+
+    { "type": "key", "label": "scoped to one project, its header names it and rows carry no label", "key": "g" },
+    { "type": "key", "key": "p" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "a" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "[client-alpha] Alpha" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

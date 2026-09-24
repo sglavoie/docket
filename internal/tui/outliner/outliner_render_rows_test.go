@@ -41,7 +41,7 @@ func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
 	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.pinMarker,
+		segments.statusIcon, segments.prioritySegment, segments.projectLabel, segments.pinMarker,
 		segments.indicators, segments.relationMarker, segments.matchCue,
 	) {
 		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")

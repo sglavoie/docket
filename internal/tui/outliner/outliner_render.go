@@ -279,6 +279,20 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	return chrome.ZebraLine(gutter+content, rowWidth, rowIndex)
 }
 
+// projectSlugForRow is the name a project header spells for the row's
+// project, and the project it resolved: the slug, else the name, else the bare
+// ID of a project the runtime no longer resolves.
+func (m *OutlinerModel) projectSlugForRow(row OutlinerRow) (string, *models.Project) {
+	project := m.ResolveProjectForRow(row)
+	if project == nil {
+		return row.ProjectID, nil
+	}
+	if project.Slug != "" {
+		return project.Slug, project
+	}
+	return project.Name, project
+}
+
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
 // that visually clusters adjacent tasks from the same project in cross-project
 // modes. In All these rows sit beneath shared state-group headers. The header
@@ -287,14 +301,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 // They use the same fold indicator as built-in sections, while Enter retains
 // its project scope behavior.
 func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
-	project := m.ResolveProjectForRow(row)
-	projectSlug := row.ProjectID
-	if project != nil {
-		projectSlug = project.Slug
-		if projectSlug == "" {
-			projectSlug = project.Name
-		}
-	}
+	projectSlug, project := m.projectSlugForRow(row)
 	badge := theme.ProjectColorStyle(project).
 		Bold(true).
 		Render("[" + projectSlug + "]")
@@ -490,16 +497,28 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 		return nil
 	}
 	tasks := make([]*models.Task, 0, len(rows))
+	var slugs map[*models.Task]string
+	if m.showsRankedProjectLabel() {
+		slugs = make(map[*models.Task]string, len(rows))
+	}
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		tasks = append(tasks, row.Task)
+		if slugs != nil {
+			slugs[row.Task] = m.rankedProjectSlug(row)
+		}
 	}
 	if len(tasks) == 0 {
 		return nil
 	}
-	return chrome.ComputeBadgeWidths(tasks, chrome.BadgeWidthOpts{IncludeStatus: true})
+	opts := chrome.BadgeWidthOpts{IncludeStatus: true}
+	if slugs != nil {
+		opts.ProjectNameFor = func(task *models.Task) string { return slugs[task] }
+		opts.MaxProjectLen = rankedProjectLabelMaxSlug
+	}
+	return chrome.ComputeBadgeWidths(tasks, opts)
 }
 
 type outlinerViewport struct {

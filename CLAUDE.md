@@ -720,7 +720,10 @@ Row and Peek budget:
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`. A task row names no project: the group header above it does,
-  so no label competes with the title. The match cue is shed ahead of the whole
+  so no label competes with the title. The cross-project ranked list is the one
+  exception, since it draws no header: `taskProjectLabel` leads each title with
+  the header's own bold `[slug]` in the project color, padded to
+  `ColumnLayout.ProjectWidth` so the titles share a column. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.
 - `ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns —
   measured over the whole projection and never a window or a cursor, so titles

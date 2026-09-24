@@ -26,12 +26,15 @@ type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker           string
 	indicators, relationMarker, matchCue             string
+	// projectLabel names the task's project where no heading above it does: the
+	// ranked list, which draws no group headers. It is empty everywhere else.
+	projectLabel string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
-		s.statusIcon, s.prioritySegment, s.pinMarker,
+		s.statusIcon, s.prioritySegment, s.projectLabel, s.pinMarker,
 		s.indicators, s.relationMarker, s.matchCue,
 	), 1)
 }
@@ -50,16 +53,17 @@ func (s taskRowSegments) gutter() string {
 // sizes it to the columns the title actually had. A widened title budget reaches
 // the editor by construction, which is the whole point of naming this once.
 func (s taskRowSegments) titlePrefix() string {
-	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.pinMarker
+	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.projectLabel + s.pinMarker
 }
 
 // content is everything from the state badge on, the region that keeps its own
 // colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
 // counts.
 func (s taskRowSegments) content(title string) string {
-	return fmt.Sprintf("%s %s%s%s%s%s%s",
+	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
 		s.statusIcon,
 		s.prioritySegment,
+		s.projectLabel,
 		s.pinMarker,
 		title,
 		s.relationMarker,
@@ -91,6 +95,46 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 		return ""
 	}
 	return theme.MutedStyle.Render("  " + marker)
+}
+
+// rankedProjectLabelMaxSlug bounds the slug a ranked row spells, so a long
+// one costs the titles beside it no more than twelve columns.
+const rankedProjectLabelMaxSlug = 12
+
+// showsRankedProjectLabel reports whether task rows lead their title with the
+// project: the ranked list across several projects, the one cross-project
+// projection whose rows no group header stands over.
+func (m *OutlinerModel) showsRankedProjectLabel() bool {
+	return m.ShowsRankedList() && m.groupsRowsByProject()
+}
+
+// rankedProjectSlug is the bare slug a ranked row names, bounded to the label's
+// ceiling so the render and ComputeOutlinerRowLayout measure one string.
+func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow) string {
+	if row.ProjectID == "" {
+		return ""
+	}
+	slug, _ := m.projectSlugForRow(row)
+	return textfit.TruncateToVisualWidth(slug, rankedProjectLabelMaxSlug)
+}
+
+// taskProjectLabel is the `[slug]` the project header would have drawn, in the
+// same bold project color, padded to the projection's widest label so every
+// ranked title starts in one column.
+func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, colLayout *chrome.ColumnLayout) string {
+	if !m.showsRankedProjectLabel() {
+		return ""
+	}
+	slug := m.rankedProjectSlug(row)
+	if slug == "" {
+		return ""
+	}
+	_, project := m.projectSlugForRow(row)
+	label := theme.ProjectColorStyle(project).Bold(true).Render("[" + slug + "]")
+	if colLayout != nil {
+		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
+	}
+	return label + " "
 }
 
 // taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
@@ -174,6 +218,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
+		projectLabel:    m.taskProjectLabel(row, colLayout),
 		pinMarker:       m.taskPinnedMarker(row),
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
@@ -490,11 +535,11 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 	return m.LensTextQuery(), m.LensCaseSensitive()
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, indicators, relationMarker, matchCue string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, projectLabel, pinMarker, indicators, relationMarker, matchCue string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
-		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
+		lipgloss.Width(prioritySegment) + lipgloss.Width(projectLabel) + lipgloss.Width(pinMarker) +
 		lipgloss.Width(indicators) +
 		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }

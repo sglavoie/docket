@@ -220,6 +220,15 @@ demoted within it, they left the row for Peek. Adding one back means arguing tha
 it is required to decide what to do next from the list alone, not merely that it
 is useful.
 
+The flat ranked list across several projects draws no project header, so its
+rows carry the one project label a task row still wears: `taskProjectLabel`
+puts the header's bold `[slug]`, in the same `ProjectColorStyle`, between the
+badges and the title, capped at twelve columns of slug. `ComputeOutlinerRowLayout`
+measures the widest label into `ColumnLayout.ProjectWidth` and every label pads
+to it, so the titles start in one column; it is part of `titlePrefix`, so the
+inline editor opens after it. A single-project scope keeps its focused header
+and no label.
+
 The search match cue sits above that ladder rather than in it. A projected row
 whose hit came from a field the title cannot show carries one muted
 `· description`, `· resume`, `· checklist`, `· comment`, `· tag`, `· context`,
