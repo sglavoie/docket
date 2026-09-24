@@ -154,9 +154,10 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	// Von Restorff: one row asks for attention with one badge. The ladder in
 	// chrome.PickHeroAttribute decides whether priority is that badge, and the
 	// priority badge quietens when something more time-sensitive is on the row.
-	// The state badge is not in this: its symbol says the workflow state and its
-	// semantic accent identifies the kind of work, so neither is demoted with
-	// lower-priority attention signals.
+	// The state badge is not in this: its symbol says the workflow state, which is
+	// identity, so it is never demoted with lower-priority attention signals.
+	// Inside the Review lane a flag-only review demotes priority though the row
+	// drops the bare word, since the lane heading is what names it there.
 	hero := chrome.PickHeroAttribute(task, now)
 	if hero != chrome.HeroNone && !chrome.PriorityIsHero(hero) && prioritySegment != "" {
 		if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
@@ -327,6 +328,11 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow, now time.Ti
 		return segments
 	}
 	segments.review = formatReviewIndicator(task, now)
+	// The Review lane already names a flag-only review, so a row there drops the
+	// bare word and keeps the tiers that carry a day.
+	if row.PromotedTag == reviewLaneKey && !task.CheckInIsDueAt(now) {
+		segments.review = ""
+	}
 	// A deadline remains a deadline in every lifecycle state. Check-ins have
 	// their own schedule and indicator, so Waiting no longer reinterprets a due
 	// date as a check-back or suppresses the ordinary due chip.
@@ -377,7 +383,8 @@ func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) st
 // badge for a review it does not name.
 //
 // The three tiers share deadline emphasis without borrowing deadline meaning:
-// the word review keeps the signals distinct even when both occur on one row.
+// the word review keeps the signals distinct even when both occur on one row,
+// and a late one is amber rather than the teal of a deadline.
 // The bare `review` is the flag alone — someone marked this task, so there is no
 // day to be late against — and it stays as long as the flag does, since `=` set
 // it and `R` is what takes it off.
@@ -392,7 +399,7 @@ func formatReviewIndicator(task *models.Task, now time.Time) string {
 	if daysLate == 0 {
 		return theme.DueTodayStyle.Render("review today")
 	}
-	return theme.OverdueStyle.Render(fmt.Sprintf("review +%dd", daysLate))
+	return theme.ReviewLateStyle.Render(fmt.Sprintf("review +%dd", daysLate))
 }
 
 const repeatedDeferralThreshold = 3

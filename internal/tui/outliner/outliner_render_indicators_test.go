@@ -255,6 +255,8 @@ func TestReviewIndicatorRendersOnlyArrivedEligibleCheckIns(t *testing.T) {
 	}
 }
 
+// A review on its day wears the due-today chip; a late one wears the amber
+// warning chip rather than the teal of a missed deadline.
 func TestReviewIndicatorSharesArrivedDueChipEmphasis(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
@@ -268,7 +270,7 @@ func TestReviewIndicatorSharesArrivedDueChipEmphasis(t *testing.T) {
 				day  time.Time
 				want string
 			}{
-				{"overdue", util.StartOfDay(now.AddDate(0, 0, -5)), theme.OverdueStyle.Render("review +5d")},
+				{"late", util.StartOfDay(now.AddDate(0, 0, -5)), theme.ReviewLateStyle.Render("review +5d")},
 				{"today", util.StartOfDay(now), theme.DueTodayStyle.Render("review today")},
 			}
 			for _, tc := range cases {
@@ -280,7 +282,7 @@ func TestReviewIndicatorSharesArrivedDueChipEmphasis(t *testing.T) {
 					NextCheckIn:   &day,
 				}
 				if got := formatReviewIndicator(task, now); got != tc.want {
-					t.Errorf("%s review indicator = %q, want the arrived due tier's render %q", tc.name, got, tc.want)
+					t.Errorf("%s review indicator = %q, want %q", tc.name, got, tc.want)
 				}
 			}
 		})
@@ -307,4 +309,35 @@ func TestReviewIndicatorCountsCalendarDaysAcrossDST(t *testing.T) {
 
 func timePtr(value time.Time) *time.Time {
 	return &value
+}
+
+// The Review lane names a flag-only review already, so a row inside it drops the
+// bare word; a check-in on or past its day still says so, and the same flag on
+// a row outside the lane keeps its badge.
+func TestReviewLaneRowDropsTheBareReviewOnly(t *testing.T) {
+	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
+	outliner := &OutlinerModel{columnConfig: listsurface.NewColumnConfig(nil, nil, nil)}
+	late := util.StartOfDay(now.AddDate(0, 0, -2))
+	today := util.StartOfDay(now)
+
+	cases := []struct {
+		name string
+		task *models.Task
+		lane bool
+		want string
+	}{
+		{"flag in lane", &models.Task{WorkflowState: models.StateBacklog, Review: true}, true, ""},
+		{"flag outside lane", &models.Task{WorkflowState: models.StateBacklog, Review: true}, false, "review"},
+		{"today in lane", &models.Task{WorkflowState: models.StateBacklog, NextCheckIn: &today}, true, "review today"},
+		{"late in lane", &models.Task{WorkflowState: models.StateBacklog, Review: true, NextCheckIn: &late}, true, "review +2d"},
+	}
+	for _, tc := range cases {
+		row := OutlinerRow{Task: tc.task}
+		if tc.lane {
+			row.PromotedTag = reviewLaneKey
+		}
+		if got := strings.TrimSpace(ansi.Strip(outliner.renderTaskIndicatorSegments(row, now).review)); got != tc.want {
+			t.Errorf("%s: review segment = %q, want %q", tc.name, got, tc.want)
+		}
+	}
 }

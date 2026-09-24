@@ -56,8 +56,8 @@ type TaskTitleStyleOptions struct {
 
 // SemanticTaskTitleStyle resolves the color the six-member semantic vocabulary
 // reserves for one of its roles. It is the vocabulary's own accent, not a task
-// title's: no task title wears one. The `SEMANTIC` picker rows and task status
-// icons use this accent to identify the kind of work.
+// title's: no task title or status icon wears one. The `SEMANTIC` picker rows
+// use this accent to identify the kind of work.
 //
 // The name and the palette keys behind it — ColorSemanticBugTitle and its
 // selected and deferred variants — are historical. They stay as they are because
@@ -205,24 +205,15 @@ func GetStateBadge(state models.WorkflowState) string {
 	return stateBadgeStyle(state).Render(state.Icon())
 }
 
-// GetTaskStateBadge keeps the workflow-state symbol and badge styling, but uses
-// the highest-precedence semantic tag's accent when the task has one.
+// GetTaskStateBadge renders the task's workflow-state symbol in its state's
+// badge style. A semantic tag does not tint it: the glyph sits beside the
+// priority badge, and a tag accent there read as a second priority.
 func GetTaskStateBadge(task *models.Task) string {
 	return taskStateBadgeStyle(task).Render(task.State().Icon())
 }
 
 func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
-	style := stateBadgeStyle(task.State())
-	role := models.SemanticTaskTagNone
-	for _, tag := range task.Tags {
-		if entry, ok := models.SemanticTaskTagByName(tag); ok && (role == models.SemanticTaskTagNone || entry.Role < role) {
-			role = entry.Role
-		}
-	}
-	if role != models.SemanticTaskTagNone {
-		style = style.Foreground(SemanticTaskTitleStyle(role, 0, false, false).GetForeground())
-	}
-	return style
+	return stateBadgeStyle(task.State())
 }
 
 func stateBadgeStyle(state models.WorkflowState) lipgloss.Style {

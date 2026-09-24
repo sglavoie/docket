@@ -51,6 +51,18 @@ func newDueDateBadgeStyle() lipgloss.Style {
 	})
 }
 
+// newReviewLateBadgeStyle is the one chip outside the teal family: a check-in
+// whose day has passed is a warning rather than a deadline, so it takes amber at
+// the emphasized weight. Its fill is held apart from the P2 title amber and the
+// Waiting section fill, so lateness never reads as a priority or a header.
+func newReviewLateBadgeStyle() lipgloss.Style {
+	return makeDueBadgeStyle(dueBadgeTone{
+		darkFill: "#6b4a06", darkInk: "#fffbeb",
+		lightFill: "#fde68a", lightInk: "#422006",
+		emphasized: true,
+	})
+}
+
 // Due date styles.
 var (
 	OverdueStyle = newOverdueBadgeStyle()
@@ -61,4 +73,6 @@ var (
 	DueDateStyle = newDueDateBadgeStyle()
 
 	DueTodayStyle = newDueTodayBadgeStyle()
+
+	ReviewLateStyle = newReviewLateBadgeStyle()
 )

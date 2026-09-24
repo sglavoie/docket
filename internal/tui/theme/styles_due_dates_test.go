@@ -219,3 +219,34 @@ func dueBadgeContrast(foreground, background color.Color) float64 {
 	}
 	return (first + 0.05) / (second + 0.05)
 }
+
+// The late-review chip is amber, so it is held apart from every amber the row
+// already speaks: the P2 title ink, the Waiting section fill, and the due chips
+// it sits beside. It is emphasized, so its ink meets the enhanced ratio.
+func TestReviewLateBadgeIsItsOwnAmber(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			ApplyTheme(ThemeConfig{Name: themeName})
+			fill := ReviewLateStyle.GetBackground()
+			if fill == (lipgloss.NoColor{}) || !ReviewLateStyle.GetBold() {
+				t.Fatal("late-review badge lost its fill or its emphasis")
+			}
+			if fill == TitlePriority2Style.GetForeground() {
+				t.Fatalf("late-review fill %v is the P2 title ink", fill)
+			}
+			if fill == ViewModeWaitingStyle.GetBackground() {
+				t.Fatalf("late-review fill %v is the Waiting section fill", fill)
+			}
+			for _, tier := range dueBadgeTiers() {
+				if fill == tier.style.GetBackground() {
+					t.Fatalf("late-review fill %v is the %s due fill", fill, tier.name)
+				}
+			}
+			if ratio := dueBadgeContrast(ReviewLateStyle.GetForeground(), fill); ratio < 7.0 {
+				t.Fatalf("late-review ink contrast = %.2f, want at least 7", ratio)
+			}
+		})
+	}
+}

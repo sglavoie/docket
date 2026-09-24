@@ -126,7 +126,10 @@ a deadline and keeps the ordinary due chip on the row. A check-in is a separate
 schedule: once its day arrives the row says `review today` or `review +<age>`,
 unless the task is deferred; before then it appears only in Peek and scheduling
 controls. A task you flagged with `=` and owe no date for says a bare `review`,
-so the row always names what it is asking for. Moving a task to Waiting with
+so the row always names what it is asking for; inside the Review lane that bare
+word is left off, since the lane's heading already says it. `review` and
+`review today` share the teal of a due-today date, and a late `review +<age>`
+turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
 `ww` still asks for the deadline immediately; `Esc` there declines the date and
 the Waiting move still stands.
 

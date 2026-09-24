@@ -84,7 +84,12 @@ the row and `chrome.PickHeroAttribute` read one predicate and a row can never
 demote a badge for a review it does not name. It has three tiers: a bare `review`
 for the stored flag alone, which has no day to be late against and stays until
 `R` clears it, then `review today` and `review +<age>` once
-`Task.CheckInIsDueAt` says the schedule has arrived and is eligible. Future
+`Task.CheckInIsDueAt` says the schedule has arrived and is eligible. The first
+two wear the teal due-today chip; the late tier wears `theme.ReviewLateStyle`,
+the one amber chip, held apart from the P2 title ink and the Waiting section
+fill, since a missed check-in is a warning and not a deadline. A row inside the
+Review lane drops the bare tier, which the lane heading already names, and keeps
+the two that carry a day; `chrome.PickHeroAttribute` is unchanged there. Future
 schedules stay in Peek, while deferral and terminal state suppress the row
 signal. Waiting and Doing ages remain muted beside it. The periodic tick compares
 the projection's frozen local day with the current one and safely invalidates
@@ -137,7 +142,10 @@ lifecycle alone: muted or disabled, canceled, cursor-selected, otherwise ordinar
 text. No signal in the ladder reaches a title. `theme.SemanticTaskTitleStyle`
 survives as the six-name vocabulary's reserved accent with the `SEMANTIC` picker
 rows as its one consumer; its `...Title` palette keys are historical names kept
-because the palette is a published surface.
+because the palette is a published surface. The state glyph does not wear it
+either: `theme.GetTaskStateBadge` is the state's own badge, since a tag accent
+beside the priority badge read as a second priority, and the capture preview
+borrows that same badge.
 
 Repeated deferral starts at `DeferCount >= 3` and is Peek's alone:
 `inlinePeekHistoryLine` appends `deferred ×N` — avoidance is something the task

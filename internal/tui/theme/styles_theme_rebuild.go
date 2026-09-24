@@ -35,6 +35,7 @@ func rebuildTaskStyles() {
 	MaybeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
 	OverdueStyle = newOverdueBadgeStyle()
+	ReviewLateStyle = newReviewLateBadgeStyle()
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
 	if ActiveThemeName == "light" {

@@ -159,8 +159,8 @@ plan and the status it implies is one the word does not spell. A draft with no
 whose lines disagree about an axis reads `Mixed` for that axis alone, and the
 preview repeats the pair under the same two words. Both wear the colors the
 Outliner already uses: the project its own color, the plan and the status their
-section badges, the preview's state glyph the badge the new row will carry
-(a semantic tag such as `#bug` included), and each tag its chip color; `Mixed`
+section badges, the preview's state glyph the badge the new row will carry,
+and each tag its chip color; `Mixed`
 and `Unavailable` read muted. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long
 as it is up. `Ctrl+F` expands the same draft into the full form, which does
@@ -225,7 +225,7 @@ unchanged and still means a child of the cursor task, one level deeper.
 
 Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`
 tags name a kind of work. They wear their own chip on a row like any other tag
-and leave the title alone; the order above is the order they are listed in.
+and leave the title and the state glyph alone; the order above is the order they are listed in.
 Namespaced values such as
 `type:bug` and partial matches remain ordinary tags and add no prefix or marker
 icon. Both tag pickers group those six under a `SEMANTIC` section above the rest:

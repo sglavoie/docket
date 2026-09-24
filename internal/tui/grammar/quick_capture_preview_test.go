@@ -63,16 +63,16 @@ func previewRouteAndTags(t *testing.T, value string) (route, tags string) {
 }
 
 // TestCapturePreviewGlyphIsTheRowsStateBadge holds the preview's glyph to the
-// badge the created row will wear: the destination's state, semantic accent
-// included, rather than a bare Inbox icon.
+// badge the created row will wear: the destination's state rather than a bare
+// Inbox icon, and no semantic accent, since the row wears none.
 func TestCapturePreviewGlyphIsTheRowsStateBadge(t *testing.T) {
 	route, _ := previewRouteAndTags(t, "fix it #bug $doing")
 	want := theme.GetTaskStateBadge(&models.Task{WorkflowState: models.StateDoing, Tags: []string{"bug"}})
 	if !strings.HasPrefix(route, want+" ") {
-		t.Fatalf("route %q does not lead with the semantic Doing badge %q", route, want)
+		t.Fatalf("route %q does not lead with the Doing badge %q", route, want)
 	}
-	if want == theme.GetStateBadge(models.StateDoing) {
-		t.Fatal("the #bug accent left the badge unchanged; the test proves nothing")
+	if want != theme.GetStateBadge(models.StateDoing) {
+		t.Fatal("the #bug tag tinted the state badge")
 	}
 
 	route, _ = previewRouteAndTags(t, "plain work $doing")

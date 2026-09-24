@@ -9,7 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func TestTaskRowStatusIconUsesSemanticAccent(t *testing.T) {
+// A semantic tag leaves the row's state glyph in its state's own color.
+func TestTaskRowStatusIconIgnoresSemanticTags(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{Name: "dark"}) })
 	for _, themeName := range []string{"dark", "light"} {
 		theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
@@ -18,7 +19,7 @@ func TestTaskRowStatusIconUsesSemanticAccent(t *testing.T) {
 			outliner := &OutlinerModel{}
 			for _, selected := range []bool{false, true} {
 				segments := outliner.buildTaskRowSegments(OutlinerRow{Task: task}, 60, nil, outliner.cursorPaintFor(selected))
-				want := theme.TodoBadgeStyle.Foreground(theme.SemanticTaskTitleStyle(entry.Role, 0, false, false).GetForeground()).Render(task.State().Icon())
+				want := theme.TodoBadgeStyle.Render(task.State().Icon())
 				if segments.statusIcon != want {
 					t.Errorf("%s/%s selected=%v status icon = %q, want %q", themeName, entry.Name, selected, segments.statusIcon, want)
 				}

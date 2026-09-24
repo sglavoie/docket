@@ -87,8 +87,8 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	case !q.Preview.DestinationSet:
 		destinationLabel += " (default)"
 	}
-	// The glyph is the row's own state badge, semantic accent included, so a
-	// `#bug` capture previews the mark its row will wear; the label and the
+	// The glyph is the row's own state badge, so a capture previews the mark
+	// its row will wear; the label and the
 	// plan/status values wear the same inline badges as the composer's route row.
 	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
 	// A planning sigil answers two questions with one token: `$today` is a
