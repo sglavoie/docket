@@ -41,11 +41,8 @@ func prePortableLensesV16SnapshotNames(t *testing.T, root string) []string {
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV16MigrationLeavesTaskMarkdownAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 15)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV15(); err != nil {
-		t.Fatalf("publish schema 15: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
@@ -142,11 +139,8 @@ func TestManagerSnapshotFirstV16MigrationLeavesTaskMarkdownAndClearsHistory(t *t
 // still reads every project document even though it rewrites none: a workspace
 // this build cannot parse is refused before any artifact is published.
 func TestManagerV16MigrationValidationFailurePublishesNothing(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 15)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV15(); err != nil {
-		t.Fatalf("publish schema 15: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -183,11 +177,8 @@ func TestManagerV16MigrationValidationFailurePublishesNothing(t *testing.T) {
 
 //nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV16MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 15)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV15(); err != nil {
-		t.Fatalf("publish schema 15: %v", err)
-	}
 	plan, err := buildV16MigrationPlan(root)
 	if err != nil {
 		t.Fatalf("build activation plan: %v", err)
@@ -277,11 +268,8 @@ func TestManagerV16MigrationIsIdempotent(t *testing.T) {
 // TestManagerV16MigrationRefusesANewerWorkspace keeps the startup chain honest
 // about a catalog this build cannot read.
 func TestManagerV16MigrationRefusesANewerWorkspace(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("migrate schema 16: %v", err)
-	}
 	catalogPath := WorkspaceCatalogPath(root)
 	source, err := os.ReadFile(catalogPath)
 	if err != nil {

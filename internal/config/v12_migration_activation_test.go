@@ -25,11 +25,8 @@ func (h *v12MigrationActivationTestHooks) didPublishSnapshot(archivePath, auditP
 // TestManagerV12MigrationAbortsOnWorkspaceMutationAfterSnapshot proves the
 // activation guard refuses a candidate the rollback archive cannot restore.
 func TestManagerV12MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 11)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV11(); err != nil {
-		t.Fatalf("publish schema 11: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -111,11 +108,8 @@ func writeV10TaskDocument(t *testing.T, path string, document storage.V10Project
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV12MigrationAddsEmptyContextAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 11)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV11(); err != nil {
-		t.Fatalf("publish schema 11: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
@@ -238,11 +232,8 @@ func TestManagerSnapshotFirstV12MigrationAddsEmptyContextAndClearsHistory(t *tes
 
 //nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV12MigrationRecoversPreparedActivationBeforeInspection(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 11)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV11(); err != nil {
-		t.Fatalf("publish schema 11: %v", err)
-	}
 	plan, err := buildV12MigrationPlan(root)
 	if err != nil {
 		t.Fatalf("build activation plan: %v", err)

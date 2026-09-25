@@ -11,11 +11,8 @@ import (
 )
 
 func TestV20MigrationPreservesTasksAndClearsOldUndo(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 19)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV19(); err != nil {
-		t.Fatal(err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)

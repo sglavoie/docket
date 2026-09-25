@@ -50,6 +50,7 @@ type testHelperDecl struct {
 // The rule is deliberately one-directional. A helper-only file may hold a helper
 // nobody else reads yet; what it may not do is hide behind a test.
 func TestSharedTestHelpersLiveInFilesThatDeclareNoTest(t *testing.T) {
+	t.Parallel()
 	root := repositoryRootDir(t)
 	packages := testBearingPackageDirs(t, filepath.Join(root, filepath.FromSlash(tuiSubtree)))
 	if len(packages) < tuiTestMainFloor {

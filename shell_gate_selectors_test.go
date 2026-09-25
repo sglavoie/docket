@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"regexp/syntax"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -50,23 +52,37 @@ type scriptLine struct {
 // an alternation, so one dead alternative hides behind its live siblings and
 // the gate stays green while one whole test family has stopped being selected.
 func TestShellGatesSelectAtLeastOneTest(t *testing.T) {
+	t.Parallel()
 	root := repositoryRoot(t)
+
+	parsed := make(map[string][]goTestInvocation, len(gateScripts))
+	var patterns []string
+	for _, script := range gateScripts {
+		parsed[script] = parseGoTestInvocations(t, root, script)
+		for _, invocation := range parsed[script] {
+			patterns = append(patterns, invocation.packages...)
+		}
+	}
+	listed := listPackageTests(t, root, append(patterns, "."))
 
 	// An impossible selector proves the zero-match detector itself works, so a
 	// regression in parsing or counting cannot quietly make this audit vacuous.
-	if names := listTests(t, root, "^TestNoSuchTestExistsUnderThisName$", []string{"."}); len(names) != 0 {
+	if names := selectTests(t, listed, "^TestNoSuchTestExistsUnderThisName$", []string{"."}); len(names) != 0 {
 		t.Fatalf("impossible selector listed %v; the zero-match detector is broken", names)
+	}
+	if names := selectTests(t, listed, "^TestShellGatesSelectAtLeastOneTest$", []string{"."}); len(names) != 1 {
+		t.Fatalf("this audit's own name listed %v; the listing is broken", names)
 	}
 
 	for _, script := range gateScripts {
-		invocations := parseGoTestInvocations(t, root, script)
+		invocations := parsed[script]
 		if len(invocations) == 0 {
 			t.Errorf("%s: parsed no `go test -run` invocation", script)
 			continue
 		}
 		for _, invocation := range invocations {
 			scope := strings.Join(invocation.packages, " ")
-			names := listTests(t, root, invocation.selector, invocation.packages)
+			names := selectTests(t, listed, invocation.selector, invocation.packages)
 			if len(names) == 0 {
 				t.Errorf(
 					"%s:%d: selector %q matches no test in %s; the gate would exit 0 without running anything",
@@ -303,15 +319,73 @@ func shellTokens(line string) []string {
 	return tokens
 }
 
-// listTests reports the test names `go test -list` matches for one selector.
-func listTests(t *testing.T, root, selector string, packages []string) []string {
+// listPackageTests lists every test name under each distinct package pattern
+// once, all patterns at the same time. Each gate selector is then applied
+// in-process: `go test -list` matches its pattern against top-level names with
+// the same unanchored semantics, so filtering one complete listing answers
+// every selector without building each test binary again per selector.
+func listPackageTests(t *testing.T, root string, patterns []string) map[string][]string {
 	t.Helper()
-	arguments := append([]string{"test", "-list", selector}, packages...)
+	type listing struct {
+		names []string
+		err   error
+	}
+	results := make(map[string]*listing)
+	var group sync.WaitGroup
+	for _, pattern := range patterns {
+		if results[pattern] != nil {
+			continue
+		}
+		result := &listing{}
+		results[pattern] = result
+		group.Go(func() {
+			result.names, result.err = listTests(root, pattern)
+		})
+	}
+	group.Wait()
+
+	listed := make(map[string][]string, len(results))
+	for pattern, result := range results {
+		if result.err != nil {
+			t.Fatal(result.err)
+		}
+		listed[pattern] = result.names
+	}
+	return listed
+}
+
+// selectTests reports the listed test names under packages that selector
+// matches, as `go test -list selector packages...` would print them.
+func selectTests(t *testing.T, listed map[string][]string, selector string, packages []string) []string {
+	t.Helper()
+	pattern, err := regexp.Compile(selector)
+	if err != nil {
+		t.Fatalf("compile selector %q: %v", selector, err)
+	}
+	var names []string
+	for _, pkg := range packages {
+		all, ok := listed[pkg]
+		if !ok {
+			t.Fatalf("package pattern %q was never listed", pkg)
+		}
+		for _, name := range all {
+			if pattern.MatchString(name) {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
+}
+
+// listTests reports every test name `go test -list` prints for one package
+// pattern.
+func listTests(root, pattern string) ([]string, error) {
+	arguments := []string{"test", "-list", ".", pattern}
 	command := exec.Command("go", arguments...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	if err != nil {
-		t.Fatalf("go %s: %v\n%s", strings.Join(arguments, " "), err, output)
+		return nil, fmt.Errorf("go %s: %w\n%s", strings.Join(arguments, " "), err, output)
 	}
 
 	var names []string
@@ -320,5 +394,5 @@ func listTests(t *testing.T, root, selector string, packages []string) []string 
 			names = append(names, line)
 		}
 	}
-	return names
+	return names, nil
 }

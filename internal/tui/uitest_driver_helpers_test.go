@@ -30,6 +30,12 @@ type UITestDriver struct {
 	// record it so nothing is silently dropped.
 	pendingCmd tea.Cmd
 
+	// stepObserveOptions is how the running scenario observes each step, so an
+	// assertion's own render carries what the step's observation would.
+	// assertObservation is that render, spent by the step that made it.
+	stepObserveOptions ObserveOptions
+	assertObservation  *UITestObservation
+
 	// pendingFutures holds the result channels of commands that did not complete
 	// within the drain timeout. A "wait" action re-visits these; Observe reports
 	// their count as PendingAsync.

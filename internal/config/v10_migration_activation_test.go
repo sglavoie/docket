@@ -26,11 +26,8 @@ func (h *v10MigrationActivationTestHooks) didPublishSnapshot(archivePath, auditP
 // workspace exactly as the mutation left it, still carrying the schema-8
 // Markdown marker and the pre-rename `snoozed` key.
 func TestManagerV10MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 9)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV9(); err != nil {
-		t.Fatalf("publish schema 9: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -125,11 +122,8 @@ func writeV8TaskDocument(t *testing.T, path string, document storage.V8ProjectDo
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV10MigrationRenamesDeferralKeyAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 9)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV9(); err != nil {
-		t.Fatalf("publish schema 9: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {

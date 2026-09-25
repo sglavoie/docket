@@ -16,11 +16,8 @@ import (
 
 // selected before.
 func TestManagerV17MigrationRewritesPortableLensQueries(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -118,11 +115,8 @@ func waitForNextV17SnapshotStem() {
 // bytes verbatim, so the one file the transaction rewrites in place can be
 // restored beside the catalog and the task documents it rewrote with it.
 func TestV17MigrationSnapshotArchivesTheSourceLensDefinitions(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -160,11 +154,8 @@ func TestV17MigrationSnapshotArchivesTheSourceLensDefinitions(t *testing.T) {
 // same inventory guard every other workspace byte answers to, and then proves the
 // refusal is retryable rather than terminal.
 func TestV17MigrationRefusesALensWriteAfterTheSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -296,11 +287,8 @@ func TestMachineLocalV16LensesLiftOnLoadAndHealOnTheNextWrite(t *testing.T) {
 // rides the same prepared transaction as the catalog: an activation interrupted
 // after prepare is completed by ordinary startup recovery, lens rewrite included.
 func TestV17MigrationRecoversTheInterruptedLensRewrite(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)

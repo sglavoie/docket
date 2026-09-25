@@ -41,11 +41,8 @@ func preDueTimeV14SnapshotNames(t *testing.T, root string) []string {
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV14MigrationAddsNoDueTimeAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 13)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV13(); err != nil {
-		t.Fatalf("publish schema 13: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
@@ -166,11 +163,8 @@ func TestManagerSnapshotFirstV14MigrationAddsNoDueTimeAndClearsHistory(t *testin
 }
 
 func TestManagerV14MigrationValidationFailurePublishesNothing(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 13)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV13(); err != nil {
-		t.Fatalf("publish schema 13: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -207,11 +201,8 @@ func TestManagerV14MigrationValidationFailurePublishesNothing(t *testing.T) {
 
 //nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV14MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 13)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV13(); err != nil {
-		t.Fatalf("publish schema 13: %v", err)
-	}
 	plan, err := buildV14MigrationPlan(root)
 	if err != nil {
 		t.Fatalf("build activation plan: %v", err)

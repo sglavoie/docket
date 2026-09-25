@@ -33,11 +33,8 @@ var bareDeferralDate = regexp.MustCompile(`deferred: [0-9]{4}-[0-9]{2}-[0-9]{2}(
 // workspace exactly as the mutation left it, still carrying the schema-9
 // Markdown marker and the pre-lift calendar-day deferral.
 func TestManagerV11MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 10)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV10(); err != nil {
-		t.Fatalf("publish schema 10: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -149,11 +146,8 @@ func useFixedLocalTimezone(t *testing.T, name string) *time.Location {
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV11MigrationLiftsDeferralInstantAndClearsHistory(t *testing.T) {
 	loc := useFixedLocalTimezone(t, "America/Los_Angeles")
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 10)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV10(); err != nil {
-		t.Fatalf("publish schema 10: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {

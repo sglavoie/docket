@@ -66,11 +66,8 @@ func tagFirstV14TaskForReview(t *testing.T, path string) {
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV17MigrationLiftsReviewAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
@@ -183,11 +180,8 @@ func containsString(values []string, want string) bool {
 // TestManagerV17MigrationValidationFailurePublishesNothing proves the boundary
 // reads every project document strictly before it publishes one byte.
 func TestManagerV17MigrationValidationFailurePublishesNothing(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -224,11 +218,8 @@ func TestManagerV17MigrationValidationFailurePublishesNothing(t *testing.T) {
 
 //nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV17MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 16)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV16(); err != nil {
-		t.Fatalf("publish schema 16: %v", err)
-	}
 	plan, err := buildV17MigrationPlan(root)
 	if err != nil {
 		t.Fatalf("build activation plan: %v", err)
@@ -314,11 +305,8 @@ func TestManagerV17MigrationIsIdempotent(t *testing.T) {
 // TestManagerV17MigrationRefusesANewerWorkspace keeps the startup chain honest
 // about a catalog this build cannot read.
 func TestManagerV17MigrationRefusesANewerWorkspace(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("migrate schema 17: %v", err)
-	}
 	catalogPath := WorkspaceCatalogPath(root)
 	source, err := os.ReadFile(catalogPath)
 	if err != nil {
@@ -337,11 +325,7 @@ func TestManagerV17MigrationRefusesANewerWorkspace(t *testing.T) {
 // the boundary owes: a workspace that migrates must still be able to name every
 // built-in lens, and every one of them must still carry a definition.
 func TestV17MigrationLeavesEveryBuiltinLensNonEmpty(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
-	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("migrate schema 17: %v", err)
-	}
+	copyMigratedFixture(t, 17)
 	for _, lens := range BuiltinNamedLensTemplates() {
 		t.Run(lens.Name, func(t *testing.T) {
 			if err := lens.Validate(); err != nil {

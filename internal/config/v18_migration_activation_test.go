@@ -69,11 +69,8 @@ func rewriteV15TaskTitle(t *testing.T, path, title string) []byte {
 //
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV18MigrationAdvancesTheMarkerAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("publish schema 17: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
@@ -197,11 +194,8 @@ func readLensDefinitionsIfPresent(t *testing.T, root string) ([]byte, bool) {
 // TestManagerV18MigrationValidationFailurePublishesNothing proves the boundary
 // reads every project document strictly before it publishes one byte.
 func TestManagerV18MigrationValidationFailurePublishesNothing(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("publish schema 17: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -239,11 +233,8 @@ func TestManagerV18MigrationValidationFailurePublishesNothing(t *testing.T) {
 // TestManagerV18MigrationAbortsOnWorkspaceMutationAfterSnapshot proves the
 // activation guard refuses a candidate the rollback archive cannot restore.
 func TestManagerV18MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("publish schema 17: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -293,11 +284,8 @@ func TestManagerV18MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T)
 
 //nolint:govet // Scoped setup and recovery errors keep the interrupted transaction stages readable.
 func TestManagerV18MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("publish schema 17: %v", err)
-	}
 	plan, err := buildV18MigrationPlan(root)
 	if err != nil {
 		t.Fatalf("build activation plan: %v", err)
@@ -383,11 +371,8 @@ func TestManagerV18MigrationIsIdempotent(t *testing.T) {
 // TestManagerV18MigrationRefusesANewerWorkspace keeps the startup chain honest
 // about a catalog this build cannot read.
 func TestManagerV18MigrationRefusesANewerWorkspace(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 18)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV18(); err != nil {
-		t.Fatalf("migrate schema 18: %v", err)
-	}
 	catalogPath := WorkspaceCatalogPath(root)
 	source, err := os.ReadFile(catalogPath)
 	if err != nil {
@@ -406,11 +391,8 @@ func TestManagerV18MigrationRefusesANewerWorkspace(t *testing.T) {
 // to a project's lifecycle: every cataloged project is migrated, not just the ones
 // the Outliner would show.
 func TestV18MigrationCarriesArchivedAndParkedProjects(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 17)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV17(); err != nil {
-		t.Fatalf("publish schema 17: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)

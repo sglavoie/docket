@@ -14,11 +14,8 @@ import (
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerMigratesAllTagsToSchema8AtomicallyAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 7)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV7(); err != nil {
-		t.Fatalf("publish schema 7: %v", err)
-	}
 
 	catalogPath := WorkspaceCatalogPath(root)
 	data, err := os.ReadFile(catalogPath)

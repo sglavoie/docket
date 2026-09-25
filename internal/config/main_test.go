@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	code := residue.Run(m.Run)
+	removeMigratedFixtures()
 	_ = os.RemoveAll(tmp)
 	os.Exit(code)
 }

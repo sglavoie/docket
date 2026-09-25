@@ -17,6 +17,7 @@ import (
 )
 
 func TestRetiredProductVocabularyOwnership(t *testing.T) {
+	t.Parallel()
 	retiredIdentifiers := map[string]bool{
 		"DashboardCoordinator":     true,
 		"JumpDashboardMsg":         true,
@@ -157,6 +158,7 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 // retired set is explicit rather than "every f-prefixed pair the keymap does not
 // bind", because pairs like fn and fg are ordinary variable names.
 func TestRetiredFilterChordVocabularyStaysOutOfComments(t *testing.T) {
+	t.Parallel()
 	replacements := map[string]string{
 		"ft":  "f#",
 		"Ft":  "F#",
@@ -225,6 +227,7 @@ func TestRetiredFilterChordVocabularyStaysOutOfComments(t *testing.T) {
 // set names the Focus stack's own compounds rather than the bare word, which
 // would now reject `sectionZoom` and every honest use around it.
 func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
+	t.Parallel()
 	retired := []string{
 		"zoomstack",
 		"crosszoom",

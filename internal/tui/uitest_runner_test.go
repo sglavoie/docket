@@ -83,7 +83,10 @@ func (e *UITestActionError) Error() string {
 func (d *UITestDriver) RunScenario(sc UITestScenario, opts ObserveOptions) ([]UITestObservation, error) {
 	defer d.captureClipboard()()
 	observations := make([]UITestObservation, 0, len(sc.Actions))
+	d.stepObserveOptions = opts
+	defer func() { d.stepObserveOptions = ObserveOptions{} }()
 	for i, action := range sc.Actions {
+		d.assertObservation = nil
 		if err := d.runAction(action); err != nil {
 			return observations, &UITestActionError{
 				Index:       i,
@@ -93,9 +96,21 @@ func (d *UITestDriver) RunScenario(sc UITestScenario, opts ObserveOptions) ([]UI
 				Observation: d.Observe(opts),
 			}
 		}
-		observations = append(observations, d.Observe(opts))
+		observations = append(observations, d.stepObservation(opts))
 	}
 	return observations, nil
+}
+
+// stepObservation is the observation recorded after an action. An assertion
+// changes nothing and has just rendered the screen it judged, so that render is
+// the step's observation; rendering again would only redraw the same state,
+// which the running app never does without a message in between.
+func (d *UITestDriver) stepObservation(opts ObserveOptions) UITestObservation {
+	if obs := d.assertObservation; obs != nil {
+		d.assertObservation = nil
+		return *obs
+	}
+	return d.Observe(opts)
 }
 
 // ApplyAction runs a single action against the driver, preserving all driver
@@ -104,6 +119,9 @@ func (d *UITestDriver) RunScenario(sc UITestScenario, opts ObserveOptions) ([]UI
 // RunScenario's error contract. It is the per-request entry point the
 // interactive `tt tui-test session` mode drives, one stdin line at a time.
 func (d *UITestDriver) ApplyAction(a UITestAction, opts ObserveOptions) (UITestObservation, error) {
+	d.stepObserveOptions = opts
+	defer func() { d.stepObserveOptions = ObserveOptions{} }()
+	d.assertObservation = nil
 	if err := d.runAction(a); err != nil {
 		obs := d.Observe(opts)
 		return obs, &UITestActionError{
@@ -113,7 +131,7 @@ func (d *UITestDriver) ApplyAction(a UITestAction, opts ObserveOptions) (UITestO
 			Observation: obs,
 		}
 	}
-	return d.Observe(opts), nil
+	return d.stepObservation(opts), nil
 }
 
 // runAction applies a single action, draining any commands it produces.
@@ -226,9 +244,11 @@ func (d *UITestDriver) runCommand(name string) error {
 	return nil
 }
 
-// runAssert evaluates an assertion against a fresh observation.
+// runAssert evaluates an assertion against a fresh observation, which it keeps
+// as the step's own observation.
 func (d *UITestDriver) runAssert(a UITestAction) error {
-	obs := d.Observe(ObserveOptions{})
+	obs := d.Observe(d.stepObserveOptions)
+	d.assertObservation = &obs
 	switch a.Assert {
 	case "contains":
 		if !strings.Contains(obs.PlainScreen, a.Value) {

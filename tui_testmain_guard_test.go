@@ -70,6 +70,7 @@ func (isolation homeIsolation) missing() []string {
 // set the uniform shape by giving internal/tui/presentation a TestMain it does
 // not need yet.
 func TestEveryTestBearingTUIPackageIsolatesHome(t *testing.T) {
+	t.Parallel()
 	root := repositoryRootDir(t)
 	packages := testBearingPackageDirs(t, filepath.Join(root, filepath.FromSlash(tuiSubtree)))
 	if len(packages) < tuiTestMainFloor {

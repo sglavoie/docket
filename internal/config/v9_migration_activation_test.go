@@ -25,11 +25,8 @@ func (h *v9MigrationActivationTestHooks) didPublishSnapshot(archivePath, auditPa
 // task document written after snapshot publication leaves the live schema-8
 // workspace exactly as the mutation left it.
 func TestManagerV9MigrationAbortsOnWorkspaceMutationAfterSnapshot(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 8)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV8(); err != nil {
-		t.Fatalf("publish schema 8: %v", err)
-	}
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)
@@ -100,11 +97,8 @@ func rewriteV9TaskTitle(t *testing.T, path, title string) []byte {
 
 //nolint:gocyclo // One end-to-end migration rehearsal keeps the guarded contract together.
 func TestManagerSnapshotFirstV9MigrationBackfillsStateClockAndClearsHistory(t *testing.T) {
-	root := copyPreScopeV7Fixture(t).DataDir
+	root := copyMigratedFixture(t, 8)
 	manager := NewManager(ConfigPathForDataDir(root))
-	if err := manager.MigrateWorkspaceToV8(); err != nil {
-		t.Fatalf("publish schema 8: %v", err)
-	}
 
 	catalog, err := readV8PublishedCatalog(WorkspaceCatalogPath(root))
 	if err != nil {
