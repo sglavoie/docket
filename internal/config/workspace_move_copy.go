@@ -9,6 +9,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // precheckDestination verifies every destination file is absent or byte-
@@ -166,7 +168,7 @@ func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (b
 		_ = os.Remove(tmpName)
 		return false, fmt.Errorf("workspace move: failed to set permissions on %s: %w", tmpName, err)
 	}
-	if err := tmp.Sync(); err != nil {
+	if err := util.SyncFile(tmp); err != nil {
 		_ = tmp.Close()
 		_ = os.Remove(tmpName)
 		return false, fmt.Errorf("workspace move: failed to fsync %s: %w", tmpName, err)
@@ -212,16 +214,6 @@ func copyFileVerified(src, dst string, perm fs.FileMode, expectedHash string) (b
 	if err := os.Remove(tmpName); err != nil {
 		return false, fmt.Errorf("workspace move: failed to remove linked temp file %s: %w", tmpName, err)
 	}
-	fsyncDir(dir)
+	_ = util.SyncDir(dir)
 	return true, nil
-}
-
-// fsyncDir best-effort fsyncs a directory so a rename into it is durable.
-func fsyncDir(dir string) {
-	d, err := os.Open(dir)
-	if err != nil {
-		return
-	}
-	_ = d.Sync()
-	_ = d.Close()
 }

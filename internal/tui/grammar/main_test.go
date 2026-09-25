@@ -3,6 +3,8 @@ package grammar
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the grammar package. TUI tests that
@@ -13,6 +15,7 @@ import (
 // override $HOME via t.Setenv restore to this throwaway directory rather than
 // the real home.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-grammar-home-*")
 	if err != nil {
 		panic(err)

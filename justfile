@@ -30,10 +30,10 @@ install: build
 # Alias for install
 tt: install
 
-# Run tests (with race detector)
+# Run tests (with race detector; internal/tui split across processes)
 test:
     @echo "Running tests..."
-    go test -race ./...
+    ./scripts/test_race.sh
 
 # Run tests outside internal/tui without the race detector (fast inner loop)
 test-fast:
@@ -46,7 +46,7 @@ test-pkg PKG:
 # Run tests with coverage report and enforce the coverage thresholds
 coverage:
     @echo "Running tests with coverage..."
-    go test -race -coverprofile=coverage.out ./...
+    ./scripts/test_race.sh coverage.out
     go tool cover -html=coverage.out -o coverage.html
     @echo "Coverage report: coverage.html"
     ./scripts/check_coverage.sh

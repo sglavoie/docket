@@ -3,6 +3,8 @@ package listsurface
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the listsurface package. The list
@@ -12,6 +14,7 @@ import (
 // fixtures reaches the storage stack the developer's own ~/.tt is what it
 // would touch.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-listsurface-home-*")
 	if err != nil {
 		panic(err)

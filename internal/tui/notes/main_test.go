@@ -3,6 +3,8 @@ package notes
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the notes package. The manager
@@ -10,6 +12,7 @@ import (
 // the storage stack, so without this guard a mutation test would reach the
 // developer's own ~/.tt.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-notes-home-*")
 	if err != nil {
 		panic(err)

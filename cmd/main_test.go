@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
+
 	"github.com/sglavoie/tt/internal/testutil/residue"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -56,6 +58,7 @@ func saveTestRuntime(manager *config.Manager, runtime *config.RuntimeState) erro
 // residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
 // in the package directory, which is what an unrooted runtime or project writes.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-cmd-home-*")
 	if err != nil {
 		panic(err)

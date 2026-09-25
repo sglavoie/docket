@@ -3,6 +3,8 @@ package route
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the route package. Nothing here
@@ -11,6 +13,7 @@ import (
 // the moment one of those reaches the real storage stack the developer's own
 // ~/.tt is what it would touch.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-route-home-*")
 	if err != nil {
 		panic(err)

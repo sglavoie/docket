@@ -15,11 +15,34 @@ const (
 	FilePermissions = 0600
 )
 
-// syncDir fsyncs a directory so that a create or rename within it is durably
-// recorded in the directory entry, surviving a crash immediately after the
-// operation returns. It is a package variable so tests can observe or stub the
-// rename durability hook.
-var syncDir = func(dir string) error {
+// SkipFsyncEnv names the environment variable that, set to "1", turns every
+// fsync this module issues into a no-op. It exists for test binaries alone,
+// which write thousands of throwaway files where darwin's F_FULLFSYNC costs
+// more than everything else they do; the writes themselves, their order, and
+// their atomic renames are unchanged, so only crash durability is given up.
+// Nothing in production sets it.
+const SkipFsyncEnv = "TT_UNSAFE_SKIP_FSYNC"
+
+func fsyncSkipped() bool {
+	return os.Getenv(SkipFsyncEnv) == "1"
+}
+
+// SyncFile fsyncs f unless SkipFsyncEnv is set. Every fsync of a file or
+// directory goes through it or SyncDir, so the one switch reaches them all.
+func SyncFile(f *os.File) error {
+	if fsyncSkipped() {
+		return nil
+	}
+	return f.Sync()
+}
+
+// SyncDir fsyncs a directory so that a create, rename, or removal within it is
+// durably recorded in the directory entry, surviving a crash immediately after
+// the operation returns.
+func SyncDir(dir string) error {
+	if fsyncSkipped() {
+		return nil
+	}
 	d, err := os.Open(dir)
 	if err != nil {
 		return err
@@ -27,6 +50,10 @@ var syncDir = func(dir string) error {
 	defer func() { _ = d.Close() }()
 	return d.Sync()
 }
+
+// syncDir is the rename durability hook AtomicWriteFile calls. It is a package
+// variable so tests can observe or stub it.
+var syncDir = SyncDir
 
 // AtomicWriteFile writes data to a file atomically using a temporary file and rename.
 // This prevents data corruption if the write is interrupted (e.g., power loss, crash).
@@ -68,7 +95,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	}
 
 	// Sync to ensure data is on disk before rename
-	if err := tmp.Sync(); err != nil {
+	if err := SyncFile(tmp); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("failed to sync temp file: %w", err)
 	}

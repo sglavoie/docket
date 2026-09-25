@@ -94,19 +94,8 @@ func NewJournal(dir string, roots []string, machineID string) *Journal {
 		mkdirAll:  os.MkdirAll,
 		rename:    os.Rename,
 		remove:    os.Remove,
-		syncDir:   fsyncDir,
+		syncDir:   util.SyncDir,
 	}
-}
-
-// fsyncDir fsyncs a directory so a create, rename, or removal within it is
-// durably recorded, surviving a crash immediately after the operation returns.
-func fsyncDir(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = d.Close() }()
-	return d.Sync()
 }
 
 // ManifestPath returns the durable path of the manifest for a transaction id.

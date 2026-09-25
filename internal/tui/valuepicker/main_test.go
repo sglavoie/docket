@@ -3,6 +3,8 @@ package valuepicker
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the valuepicker package. The
@@ -11,6 +13,7 @@ import (
 // ~/.tt/runtime/<workspace-id>/machine.json cannot write into the developer's
 // real home directory.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-valuepicker-home-*")
 	if err != nil {
 		panic(err)

@@ -3,6 +3,8 @@ package conflict
 import (
 	"os"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the conflict package. Nothing here
@@ -11,6 +13,7 @@ import (
 // on purpose, because narrowing it to the packages that need it has to guess and
 // a guess that guesses wrong writes into the developer's own ~/.tt.
 func TestMain(m *testing.M) {
+	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-conflict-home-*")
 	if err != nil {
 		panic(err)

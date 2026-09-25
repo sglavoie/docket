@@ -86,7 +86,7 @@ func writeLockOwner(f *os.File) error {
 	if _, err := f.WriteAt([]byte(body), 0); err != nil {
 		return fmt.Errorf("write lock file: %w", err)
 	}
-	if err := f.Sync(); err != nil {
+	if err := SyncFile(f); err != nil {
 		return fmt.Errorf("sync lock file: %w", err)
 	}
 	return nil
