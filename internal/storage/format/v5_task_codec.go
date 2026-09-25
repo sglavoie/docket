@@ -81,12 +81,12 @@ func WriteV5TaskMetadata(task V5TaskRecord) (string, error) {
 // ParseV5TaskMetadata strictly parses a canonical v5 metadata comment. It does
 // not recognize legacy fields, task types, or catalog metadata.
 func ParseV5TaskMetadata(comment string) (V5TaskRecord, error) {
-	match := MetadataRegex().FindStringSubmatch(strings.TrimSpace(comment))
-	if match == nil {
+	body, ok := MetadataBody(strings.TrimSpace(comment))
+	if !ok {
 		return V5TaskRecord{}, fmt.Errorf("invalid v5 task metadata comment")
 	}
 	values := make(map[string]string)
-	for _, pair := range strings.Split(match[1], ", ") {
+	for _, pair := range strings.Split(body, ", ") {
 		key, value, ok := strings.Cut(pair, ":")
 		if !ok {
 			return V5TaskRecord{}, fmt.Errorf("invalid v5 metadata pair %q", pair)

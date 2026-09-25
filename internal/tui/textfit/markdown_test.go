@@ -1,6 +1,7 @@
 package textfit
 
 import (
+	"container/list"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -126,5 +127,41 @@ func TestBoundToWidthPreservesANSIStyling(t *testing.T) {
 	assertWidthBounded(t, got, 12)
 	if !strings.Contains(got, "\x1b[") {
 		t.Fatalf("expected ANSI escape codes preserved after wrapping, got: %q", got)
+	}
+}
+
+func TestRenderMarkdownMemoKeysOnThemeAndWidth(t *testing.T) {
+	const text = "a **bold** word in a sentence long enough to wrap at a narrow width"
+	wide := RenderMarkdown(text, 80)
+	narrow := RenderMarkdown(text, 20)
+	if wide == narrow {
+		t.Fatalf("width is not part of the memo key: both widths rendered %q", wide)
+	}
+	if again := RenderMarkdown(text, 80); again != wide {
+		t.Fatalf("a memoized render differs from the first: %q vs %q", again, wide)
+	}
+	if uncached := renderMarkdown(text, 20); uncached != narrow {
+		t.Fatalf("the memo returned %q where a fresh render gives %q", narrow, uncached)
+	}
+}
+
+func TestMarkdownMemoEvictsTheLeastRecentlyUsed(t *testing.T) {
+	memo := &markdownLRU{order: list.New(), entries: map[markdownKey]*list.Element{}}
+	first := markdownKeyFor("", 0, "first")
+	memo.put(first, "1")
+	for index := range markdownMemoCapacity {
+		if index == markdownMemoCapacity/2 {
+			memo.get(first)
+		}
+		memo.put(markdownKeyFor("", index+1, ""), "x")
+	}
+	if memo.order.Len() != markdownMemoCapacity {
+		t.Fatalf("memo holds %d entries, want %d", memo.order.Len(), markdownMemoCapacity)
+	}
+	if _, ok := memo.get(first); !ok {
+		t.Fatal("a recently read entry was evicted ahead of older ones")
+	}
+	if _, ok := memo.get(markdownKeyFor("", 1, "")); ok {
+		t.Fatal("the least recently used entry survived past capacity")
 	}
 }

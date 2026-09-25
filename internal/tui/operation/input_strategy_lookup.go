@@ -17,6 +17,18 @@ func (registry *OperationRegistry) InputStrategy(id InputStrategyID) (InputStrat
 	return cloneInputStrategy(strategy), true
 }
 
+// storedInputStrategy is the registered strategy itself, for the registry's own
+// read-only projections. They run on every frame and keypress and never retain
+// or mutate a slice of it, so the defensive copy InputStrategy makes for callers
+// outside the package would be spent on nothing.
+func (registry *OperationRegistry) storedInputStrategy(id InputStrategyID) (InputStrategy, bool) {
+	if registry == nil {
+		return InputStrategy{}, false
+	}
+	strategy, ok := registry.inputStrategies[id]
+	return strategy, ok
+}
+
 // InputBindingForSequence resolves one key path through the selected strategy
 // and active operation context. A direct key is a length-1 path, so this is the
 // only resolution seam: it reports whether the path ends a binding, waits for
@@ -69,7 +81,7 @@ func (registry *OperationRegistry) InputPrefixRefusedOnChecklistRow(
 	id InputStrategyID,
 	sequence []string,
 ) bool {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return false
 	}
@@ -103,7 +115,7 @@ func (registry *OperationRegistry) InputCategoryForPrefix(
 	id InputStrategyID,
 	sequence []string,
 ) (OperationCategory, bool) {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return "", false
 	}
@@ -142,7 +154,7 @@ func (registry *OperationRegistry) ChordGroupLabelForPrefix(
 	id InputStrategyID,
 	sequence []string,
 ) (string, bool) {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok || len(sequence) < 2 {
 		return "", false
 	}

@@ -199,7 +199,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 }
 
 // scenarioShard reads TT_TUI_SCENARIO_SHARD, "i/n" with 0 <= i < n, which
-// scripts/test_tui_sharded.sh sets so each of its n processes replays a disjoint
+// scripts/test_sharded.sh sets so each of its n processes replays a disjoint
 // slice of the corpus. Unset means the whole corpus, as one shard of one.
 func scenarioShard(t *testing.T) (index, count int) {
 	t.Helper()

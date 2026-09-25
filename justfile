@@ -41,7 +41,7 @@ test-fast:
 
 # Run one package's tests with the race detector, e.g. `just test-pkg ./cmd`
 test-pkg PKG:
-    go test -race {{ PKG }}
+    GORACE="atexit_sleep_ms=0" go test -race {{ PKG }}
 
 # Run tests with coverage report and enforce the coverage thresholds
 coverage:

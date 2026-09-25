@@ -32,7 +32,7 @@ func (registry *OperationRegistry) InputStrategyOperations(
 	id InputStrategyID,
 	ctx CommandContext,
 ) []OperationDescriptor {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
 ) []HelpItem {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 // HandledKeysForInputStrategy returns every physical key the grammar consumes
 // exactly once, including the keys that only appear inside a chord.
 func (registry *OperationRegistry) HandledKeysForInputStrategy(id InputStrategyID) []string {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
 	}
@@ -112,7 +112,7 @@ func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
 ) []chrome.GuidanceHint {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
 	}
@@ -182,7 +182,7 @@ func (registry *OperationRegistry) InputShortcutForOperation(
 	id InputStrategyID,
 	operationID OperationID,
 ) string {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return ""
 	}
@@ -237,7 +237,7 @@ func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 	ctx CommandContext,
 	decorate ChordHintDecorator,
 ) []ChordHint {
-	strategy, ok := registry.InputStrategy(id)
+	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
 	}

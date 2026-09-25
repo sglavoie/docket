@@ -175,12 +175,12 @@ var v6RequiredMetadataKeys = []string{"id", "short_id", "state", "priority", "cr
 // key/value pairs. schema names the schema in every error so a later schema
 // reusing this kernel reports its own version.
 func parseTaskMetadataFields(schema, comment string, allowed map[string]bool, required []string) (map[string]string, error) {
-	match := MetadataRegex().FindStringSubmatch(strings.TrimSpace(comment))
-	if match == nil {
+	body, ok := MetadataBody(strings.TrimSpace(comment))
+	if !ok {
 		return nil, fmt.Errorf("invalid %s task metadata comment", schema)
 	}
 	values := make(map[string]string)
-	for _, pair := range strings.Split(match[1], ", ") {
+	for _, pair := range strings.Split(body, ", ") {
 		key, value, ok := strings.Cut(pair, ":")
 		if !ok {
 			return nil, fmt.Errorf("invalid %s metadata pair %q", schema, pair)
