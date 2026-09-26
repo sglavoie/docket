@@ -578,8 +578,10 @@ func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial str
 // search scope and nothing else: completion must never load a wider catalog than
 // the query it is completing can match against. Within that scope the partial
 // ranks the same way every other dynamic value does, over both the accepted
-// value and the human-readable name, so a project the dropdown's five rows would
-// otherwise hide is reachable by typing either one.
+// value and the human-readable name, so a project the dropdown's bounded rows —
+// at most outlinerSearchSuggestionLimit, fewer once searchAutocompleteRowBudget
+// shrinks the pane on a short terminal — would otherwise hide is reachable by
+// typing either one.
 func (m *OutlinerModel) searchProjectSuggestions(
 	definition textgrammar.Definition,
 	partial string,

@@ -75,7 +75,7 @@
 
     { "type": "key", "label": "the fixture's due-soon task is twelve hours out, so the clock decides its bucket", "key": "G" },
     { "type": "key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Due soon: renew certificate" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Due soon: renew certificate" },
     { "type": "key", "label": "type the date, because the preset the cursor opens on is the task's current one", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
     { "type": "text", "text": "today" },

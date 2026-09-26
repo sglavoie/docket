@@ -92,6 +92,38 @@ func TestConflictListAndShow(t *testing.T) {
 	}
 }
 
+// TestConflictListJSONIsAnEmptyArrayWithoutConflicts keeps a clean workspace
+// iterable by a script: no conflicts is [], never null.
+func TestConflictListJSONIsAnEmptyArrayWithoutConflicts(t *testing.T) {
+	setupConflictTest(t)
+	conflictListJSON = true
+	t.Cleanup(func() { conflictListJSON = false })
+
+	stdout, _, err := captureDoctorOutput(t, func() error { return runConflictList(conflictListCmd, nil) })
+	if err != nil {
+		t.Fatalf("runConflictList --json: %v", err)
+	}
+	if got := strings.TrimSpace(stdout); got != "[]" {
+		t.Fatalf("conflict list --json with no conflicts = %q, want []", got)
+	}
+}
+
+// TestConflictShowUnknownIDNamesTheListCommand points an unmatched id at the
+// command that prints the real ones.
+func TestConflictShowUnknownIDNamesTheListCommand(t *testing.T) {
+	setupConflictTest(t)
+
+	err := runConflictShow(conflictShowCmd, []string{"ffffffff"})
+	if err == nil {
+		t.Fatal("expected an error for an unknown conflict id")
+	}
+	for _, want := range []string{`no conflict matches "ffffffff"`, "run 'tt conflict list' to see IDs"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q lacks %q", err, want)
+		}
+	}
+}
+
 // TestConflictResolveUseLocal verifies the resolve command commits the local
 // edits and clears the conflict.
 func TestConflictResolveUseLocal(t *testing.T) {

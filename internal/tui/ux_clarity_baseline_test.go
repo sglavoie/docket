@@ -211,8 +211,9 @@ func TestUXClarityDiscardPromptStandsOnTheOpenComposer(t *testing.T) {
 		t.Fatalf("the composer left the stack under the prompt: %q", obs.ViewStack)
 	}
 	// The prompt draws its own question in its own box, which is what keeps the
-	// discard question out of the shell's guidance contract.
-	for _, required := range []string{"Discard unsaved changes?", "y confirm · n/Esc cancel"} {
+	// discard question out of the shell's guidance contract. Its answer line is
+	// the footer's, since "no" here keeps editing rather than canceling.
+	for _, required := range []string{"Discard unsaved changes?", "Y discard · N/Esc keep editing"} {
 		if !strings.Contains(plain, required) {
 			t.Fatalf("the confirmation box does not draw %q:\n%s", required, plain)
 		}

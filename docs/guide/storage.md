@@ -90,7 +90,10 @@ sibling of `projects/`. Nothing in it is read back: an export is a document for
 you, so deleting one costs nothing but the file. Logs are not in the workspace
 at all. They are machine-local, under `~/.tt/logs` as timestamped `.log`
 files, and any older than 30 days are removed the next time a command logs.
-`tt workspace location` prints every one of these paths.
+`tt workspace location` prints the data directory, its `workspace.json`
+catalog, whether the location is local or synced, the machine-local
+active-workspace pointer, and the logs, `backups/`, `exports/`, and
+`conflicts/` paths.
 
 Project task files use strict schema-19 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the

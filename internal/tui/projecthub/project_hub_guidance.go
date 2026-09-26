@@ -56,13 +56,14 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanc
 	return &keymap.KeyMap{Entries: []keymap.Entry{
 		keymap.Bind("j", "Move selection", "Navigation",
 			keymap.WithGate(browseList), keymap.WithFooter(20, "navigate", false),
-			keymap.WithFooterKey("j/k")),
+			keymap.WithFooterKey("j/k"), keymap.WithHelpKey("j/k")),
 		keymap.Bind("ctrl+j", "Move search selection", "Navigation",
 			keymap.WithGate(searchEditing), keymap.WithFooter(20, "navigate", false),
-			keymap.WithFooterKey("↑/↓ or Ctrl+J/K")),
+			keymap.WithFooterKey("↑/↓ or Ctrl+J/K"), keymap.WithHelpKey("Ctrl+J/K")),
 		keymap.Bind("ctrl+d", "Move half page", "Navigation",
 			keymap.WithGate(func() bool { return browseList() || searchEditing() }),
-			keymap.WithFooter(30, "half page", false), keymap.WithFooterKey("Ctrl+D/U")),
+			keymap.WithFooter(30, "half page", false), keymap.WithFooterKey("Ctrl+D/U"),
+			keymap.WithHelpKey("Ctrl+D/U")),
 		// Ranked just below Ctrl+D so the pane's own paging is the first navigation
 		// hint the single footer row drops: the list cursor is what the surface is
 		// for, and the preview follows it.
@@ -71,11 +72,13 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanc
 			keymap.WithFooter(31, "task page", false), keymap.WithFooterKey("Ctrl+F/B")),
 		// Ranked below both paging hints: moving the divider is an occasional
 		// adjustment, not something the pane is read for.
-		// Gated off the query, where < and > are literal characters.
+		// Gated off the query, where < and > are literal characters. Its help
+		// spelling is the bare key, so `?` keeps the registry's two directional rows
+		// and the merge drops this footer-only pair instead of listing it a third
+		// time.
 		keymap.Bind("<", "Move pane split", "Navigation",
 			keymap.WithGate(func() bool { return !searchEditing() && m.previewPaneVisible() }),
-			keymap.WithFooter(32, "split", false), keymap.WithFooterKey("</>"),
-			keymap.WithHelpKey("</>")),
+			keymap.WithFooter(32, "split", false), keymap.WithFooterKey("</>")),
 		// Unranked, like `?` and the ledger keys below: the Hub's ranked bindings
 		// are the project acts it exists for. Each row is spelled as the whole path
 		// the strategy binds — the gg chord and its Home alias, G and End — so the
@@ -107,7 +110,7 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanc
 		keymap.Bind("u", "Undo workspace change", "System",
 			keymap.WithGate(func() bool { return !searchEditing() })),
 		keymap.Bind("ctrl+r", "Redo workspace change", "System",
-			keymap.WithGate(func() bool { return !searchEditing() })),
+			keymap.WithGate(func() bool { return !searchEditing() }), keymap.WithHelpKey("Ctrl+R")),
 	}}
 }
 

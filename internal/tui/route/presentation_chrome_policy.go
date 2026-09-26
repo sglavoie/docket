@@ -85,23 +85,6 @@ func (o ActiveGuidanceOwner) SuppressesShellGuidance() bool {
 	}
 }
 
-func (o ActiveGuidanceOwner) String() string {
-	switch o {
-	case GuidanceOwnerShell:
-		return "shell"
-	case GuidanceOwnerPendingChord:
-		return "pending chord"
-	case GuidanceOwnerConfirmation:
-		return "confirmation"
-	case GuidanceOwnerModal:
-		return "modal"
-	case GuidanceOwnerPresentation:
-		return "presentation"
-	default:
-		return "unknown"
-	}
-}
-
 func (p PresentationChromePolicy) valid() bool {
 	switch p.kind {
 	case presentationChromeFullscreen:

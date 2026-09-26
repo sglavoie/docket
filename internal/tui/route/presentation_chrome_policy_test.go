@@ -100,9 +100,6 @@ func TestActiveGuidanceOwnerSuppressionIsAClosedTable(t *testing.T) {
 		if got := owner.SuppressesShellGuidance(); got != want.suppresses {
 			t.Errorf("%s SuppressesShellGuidance() = %t, want %t", want.name, got, want.suppresses)
 		}
-		if got := owner.String(); got != want.name {
-			t.Errorf("owner %d String() = %q, want %q", owner, got, want.name)
-		}
 	}
 
 	// The zero value is the shell, so a resolver that forgot to write an owner

@@ -48,6 +48,21 @@ func (m *ProjectHubModel) SetProjectFocus(projectID string) {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
+// SeatCursorOnProject moves the list cursor to a project's row, reporting
+// whether the current matches hold one. Creating a project from the Hub lands
+// the cursor on the row it made, so the next key acts on that project rather
+// than on whichever row the cursor happened to be resting on.
+func (m *ProjectHubModel) SeatCursorOnProject(projectID string) bool {
+	if m.surface == nil || projectID == "" {
+		return false
+	}
+	if !m.surface.SetCursorToID(listsurface.ListItemID(projectHubItemPrefix + projectID)) {
+		return false
+	}
+	m.preview.invalidate()
+	return true
+}
+
 func (m *ProjectHubModel) SetTaskCounts(counts map[string]ProjectTaskTally) {
 	if len(counts) == 0 {
 		m.taskCounts = nil

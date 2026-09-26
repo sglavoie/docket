@@ -24,6 +24,32 @@ func TestNoTabsInLongHelp(t *testing.T) {
 	}
 }
 
+// TestExamplesLiveInTheExampleField keeps examples where cobra renders them,
+// under one "Examples:" heading, and holds every root example to a command
+// line that runs.
+func TestExamplesLiveInTheExampleField(t *testing.T) {
+	visit(rootCmd, func(c *cobra.Command) {
+		for _, heading := range []string{"Examples:", "EXAMPLES"} {
+			if strings.Contains(c.Long, heading) {
+				t.Errorf("%s keeps examples in Long help; move them to Example", c.CommandPath())
+			}
+		}
+	})
+	for _, c := range []*cobra.Command{rootCmd, doctorCmd, conflictResolveCmd, workspaceMoveCmd, projectExportCmd} {
+		if strings.TrimSpace(c.Example) == "" {
+			t.Errorf("%s has no Example", c.CommandPath())
+		}
+	}
+	for _, line := range strings.Split(rootCmd.Example, "\n") {
+		if strings.TrimSpace(line) == "tt project export" {
+			t.Errorf("root example %q fails without a slug or --all", line)
+		}
+	}
+	if completionCmd.Use != "completion {bash|zsh|fish}" {
+		t.Errorf("completion Use = %q, want its shell argument marked required", completionCmd.Use)
+	}
+}
+
 func visit(c *cobra.Command, fn func(*cobra.Command)) {
 	fn(c)
 	for _, sub := range c.Commands() {

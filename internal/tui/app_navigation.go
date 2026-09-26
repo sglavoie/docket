@@ -158,23 +158,15 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	// when a primary secondary-tool child is stacked above the
 	// root or a transient overlay is open.
 	if !m.viewNav.atRoot() {
-		closingView := m.currentView()
-		// Capture the view label for the Esc undo hint before any state changes.
-		var closingLabel string
-		if view := m.viewNav.views.Get(closingView); view != nil {
+		// Leaving is not an outcome worth a status line: the view underneath is
+		// what the press reveals, and announcing "Closed …" would replace the
+		// feedback the closed view left behind — an undo offer included.
+		if view := m.viewNav.views.Get(m.currentView()); view != nil {
 			if resetter, ok := view.(route.ViewExitResetter); ok {
 				resetter.OnExit()
 			}
-			if labeler, ok := view.(route.StatusBarLabeler); ok {
-				closingLabel = labeler.StatusBarLabel()
-			}
 		}
-		cmd := m.popView()
-		if closingLabel != "" {
-			m.setInfoStatus("Closed " + closingLabel)
-			return true, tea.Batch(cmd, status.DefaultStatusTimeout())
-		}
-		return true, cmd
+		return true, m.popView()
 	}
 	return false, nil
 }

@@ -305,7 +305,12 @@ row stays quiet; only an arrived, undeferred schedule adds `review today` or
 On a project header — the group header a cross-project mode draws above each
 project's tasks, and the single header a project-scoped or focused view leads
 with — the same key opens the same pane over the project instead. It leads with the
-project's full name, then its description, its tags, and every
+project's full name, then a task summary such as
+`Tasks: 12 · Doing 2 · Backlog 7 · Done 3` — every stored task, children and
+finished work included, counted by lifecycle section and the same whatever mode,
+search, or folds you are in; an empty project says `0 · no sections`, and one
+whose tasks have not been read yet says `Not loaded` rather than zero — then its
+description, its tags, and every
 comment it has, newest first, each under a `[2026-03-03 09:30] 6 days ago` stamp.
 A project with no comments yet says `No comments yet. Press C to add one.` rather than showing
 nothing, so the key always answers on a header. Everything is shown whole and the

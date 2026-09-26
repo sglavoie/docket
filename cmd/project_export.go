@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -31,11 +32,8 @@ var projectExportCmd = &cobra.Command{
 Name the project by slug or ID, or pass --all to export every project,
 archived ones included, as one <slug>.md file each.
 Use --file to write one project to an arbitrary path, or --file - to print it.
-Use --dir with --all to write somewhere other than exports/.
-
-EXAMPLES
-
-  tt project export my-project
+Use --dir with --all to write somewhere other than exports/.`,
+	Example: `  tt project export my-project
   tt project export my-project --file /tmp/my-project.md
   tt project export my-project --file -
   tt project export --all
@@ -60,8 +58,11 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 		return runProjectExportAll(cmd)
 	}
 
-	project, workspace, err := LoadRuntimeProjectOrCurrent(args)
+	project, workspace, err := LoadRuntimeProject(args[0])
 	if err != nil {
+		if errors.Is(err, tterrors.ErrProjectNotFound) {
+			return fmt.Errorf("%w; name a project by its slug or ID, or pass --all to export every project", err)
+		}
 		return err
 	}
 	related := projectExportRelated(workspace)
@@ -81,7 +82,7 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintf(commandOut(cmd), "Exported %q to %s\n", project.Name, destPath)
+	_, _ = fmt.Fprintf(commandOut(cmd), "Exported %q to %s\n", project.Name, config.DisplayPath(destPath))
 	return nil
 }
 
@@ -129,7 +130,7 @@ func runProjectExportAll(cmd *cobra.Command) error {
 		if exportErr != nil {
 			return fmt.Errorf("export %q: %w", project.Slug, exportErr)
 		}
-		_, _ = fmt.Fprintf(out, "Exported %q to %s\n", project.Name, destPath)
+		_, _ = fmt.Fprintf(out, "Exported %q to %s\n", project.Name, config.DisplayPath(destPath))
 	}
 	return nil
 }

@@ -12,10 +12,11 @@ import (
 var workspaceLocationCmd = &cobra.Command{
 	Use:   "location",
 	Short: "Show the current workspace data directory",
-	Long: `Show where the current workspace stores its data, which config file backs
-it, whether that location is local or synced, the machine-local
-active-workspace pointer (if one has been set by 'tt workspace move'), and
-where logs, migration backups, project exports, and merge conflicts live.`,
+	Long: `Show where the current workspace stores its data, the workspace catalog
+(.tt/workspace.json) inside it, whether that location is local or synced, the
+machine-local active-workspace pointer (if one has been set by 'tt workspace
+move'), and where logs, migration backups, project exports, and merge
+conflicts live.`,
 	Args: cobra.NoArgs,
 	RunE: runWorkspaceLocation,
 }
@@ -26,7 +27,7 @@ func runWorkspaceLocation(_ *cobra.Command, _ []string) error {
 	workspaceDir := config.WorkspaceRootFromConfigPath(configPath)
 
 	fmt.Printf("Workspace data directory: %s\n", config.DisplayPath(workspaceDir))
-	fmt.Printf("Config file:              %s\n", config.DisplayPath(configPath))
+	fmt.Printf("Catalog:                  %s\n", config.DisplayPath(config.WorkspaceCatalogPath(workspaceDir)))
 	fmt.Printf("Storage:                  %s\n", config.StorageLocationLabel(workspaceDir))
 
 	if ptr, ok := config.ReadActiveWorkspacePointer(); ok {

@@ -120,7 +120,7 @@ func (m *AppModel) newOperationValuePicker(
 		return valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
-			"Set Due or Defer",
+			"Set Due, Defer, or Check-In",
 			subtitle,
 			valuepicker.OperationDateListSource(deferRefusalReason(refs)),
 			false,

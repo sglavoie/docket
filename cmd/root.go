@@ -91,14 +91,12 @@ Startup validates schema-%d catalogs and schema-%d task Markdown before loading,
 and migrates any supported older workspace forward through the whole chain of
 immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
 your workspace before a version jump. Run 'tt doctor' for read-only integrity
-and migration-snapshot diagnostics.
-
-Examples:
-  tt
+and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
+	Example: `  tt
   tt doctor
   tt conflict list
   tt workspace location
-  tt project export`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
+  tt project export --all`,
 	// No subcommand defines its own PersistentPreRunE: cobra runs only the
 	// nearest one, so a child's would shadow this hook and skip logging.
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -10,6 +11,11 @@ import (
 )
 
 var workspaceMoveForce bool
+
+// errWorkspaceMoveNotConfirmed is a declined or unanswered prompt. It is an
+// error rather than a quiet success so a script that piped no answer learns
+// the workspace did not move.
+var errWorkspaceMoveNotConfirmed = errors.New("move not confirmed; re-run with --force to skip the prompt")
 
 var workspaceMoveCmd = &cobra.Command{
 	Use:   "move <destination>",
@@ -25,6 +31,8 @@ Machine-local runtime state (logs, locks) is not moved.
 Close any tt TUI using either the source or destination before relocating. An
 active TUI blocks the move. --force skips only the confirmation prompt; it does
 not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
+	Example: `  tt workspace move ~/Documents/tt
+  tt workspace move /Volumes/Backup/tt --force`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWorkspaceMove,
 }
@@ -42,10 +50,15 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 	manager := config.NewManager(resolveConfigPath())
 	src := config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
 
+	// A pair no move could accept is refused before the prompt, so declining
+	// is never the only way to learn the destination was wrong.
+	if err = config.ValidateWorkspaceMovePaths(src, dest); err != nil {
+		return err
+	}
+
 	fmt.Printf("Move workspace:\n  from: %s\n  to:   %s\n", config.DisplayPath(src), config.DisplayPath(dest))
 	if !ConfirmYN("Proceed? The source is retained as a backup. [y/N]: ", workspaceMoveForce) {
-		fmt.Println("Aborted.")
-		return nil
+		return errWorkspaceMoveNotConfirmed
 	}
 	// Moving is a live current-schema operation. Activate or bootstrap the source
 	// workspace before inventory so no legacy live config is copied forward.

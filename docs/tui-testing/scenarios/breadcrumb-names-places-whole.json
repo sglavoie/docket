@@ -1,0 +1,13 @@
+{
+  "name": "breadcrumb-names-places-whole",
+  "fixture": "multi-project",
+  "size": "110x34",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "key", "label": "and create a project from it", "key": "a" },
+    { "type": "assert", "label": "each segment names a place whole; the Outliner's scope stays on its own title row", "assert": "contains", "value": "Triage: Outliner > Projects > New Project" },
+    { "type": "assert", "label": "rather than a scope cut mid-word at the segment cap", "assert": "not_contains", "value": "Outliner · Acti" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

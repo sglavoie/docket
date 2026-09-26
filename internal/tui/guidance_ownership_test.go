@@ -153,7 +153,7 @@ func TestShellModalsOwnGuidanceAndKeepTheHostRows(t *testing.T) {
 			)
 			testCase.arm(app)
 			if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerModal {
-				t.Fatalf("%s resolves to owner %s rather than modal", testCase.name, owner)
+				t.Fatalf("%s resolves to owner %d rather than modal", testCase.name, owner)
 			}
 		})
 	}
@@ -196,7 +196,7 @@ func TestShellConfirmationsOwnGuidanceAndKeepTheHostRows(t *testing.T) {
 			)
 			testCase.arm(app)
 			if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerConfirmation {
-				t.Fatalf("%s resolves to owner %s rather than confirmation", testCase.name, owner)
+				t.Fatalf("%s resolves to owner %d rather than confirmation", testCase.name, owner)
 			}
 		})
 	}
@@ -213,7 +213,7 @@ func TestPendingChordOutranksTheSurfaceButNotAnOverlay(t *testing.T) {
 
 	owner, spec := app.activeGuidance()
 	if owner != route.GuidanceOwnerPendingChord {
-		t.Fatalf("a pending chord over the Outliner resolves to owner %s", owner)
+		t.Fatalf("a pending chord over the Outliner resolves to owner %d", owner)
 	}
 	if len(spec.Hints) == 0 {
 		t.Fatal("the resolved chord owner carries no hints to render")
@@ -225,7 +225,7 @@ func TestPendingChordOutranksTheSurfaceButNotAnOverlay(t *testing.T) {
 
 	app.operations.ValuePicker = newSemanticTagPickerForTest(t, nil, true)
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerModal {
-		t.Fatalf("a chord pending under a mounted picker resolves to owner %s rather than modal", owner)
+		t.Fatalf("a chord pending under a mounted picker resolves to owner %d rather than modal", owner)
 	}
 	covered := ansi.Strip(app.renderStatusBar())
 	for _, hint := range spec.Hints {
@@ -265,7 +265,7 @@ func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
 
 	uxClarityPress(t, driver, uxClarityKeys("a")...)
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerShell {
-		t.Fatalf("the compact capture panel resolves to owner %s; the shell is its voice", owner)
+		t.Fatalf("the compact capture panel resolves to owner %d; the shell is its voice", owner)
 	}
 	compact := ansi.Strip(app.renderStatusBar())
 	if !strings.Contains(compact, "Enter create") {
@@ -274,7 +274,7 @@ func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
 
 	uxClarityPress(t, driver, uxClarityKeys("ctrl+f")...)
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerPresentation {
-		t.Fatalf("the expanded form resolves to owner %s rather than presentation", owner)
+		t.Fatalf("the expanded form resolves to owner %d rather than presentation", owner)
 	}
 	// The divider is chrome and stays; what must go is every word under it, so
 	// the assertion is that the bar carries no label text at all rather than that
@@ -302,7 +302,7 @@ func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
 func TestAFullscreenSurfaceKeepsTheFooterItReplacedTheHostFor(t *testing.T) {
 	app := guidanceOwnershipApp(t)
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerShell {
-		t.Fatalf("the resting Outliner resolves to owner %s rather than shell", owner)
+		t.Fatalf("the resting Outliner resolves to owner %d rather than shell", owner)
 	}
 	if !app.activePresentationPublishesToShell() {
 		t.Fatal("the Outliner is fullscreen, so the footer must still be its voice")
@@ -324,7 +324,7 @@ func TestAFullscreenSurfaceKeepsTheFooterItReplacedTheHostFor(t *testing.T) {
 		t.Fatal("the Comments panel is fullscreen, so the shell still owes it a breadcrumb row")
 	}
 	if owner, _ := live.activeGuidance(); owner != route.GuidanceOwnerShell {
-		t.Fatalf("the Comments panel resolves to owner %s rather than shell", owner)
+		t.Fatalf("the Comments panel resolves to owner %d rather than shell", owner)
 	}
 	frame := ansi.Strip(live.renderStatusBar())
 	if !strings.Contains(frame, "? help") {
@@ -357,7 +357,7 @@ func TestViewLocalModalsKeepSoleOwnershipThroughTheirSurface(t *testing.T) {
 		t.Fatalf("the open menu bar left the footer empty rather than naming its own keys:\n%q", covered)
 	}
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerShell {
-		t.Fatalf("a view-local modal resolves to owner %s; the surface is still the one publishing", owner)
+		t.Fatalf("a view-local modal resolves to owner %d; the surface is still the one publishing", owner)
 	}
 
 	app.crossOutliner.MenuBar.Open = false

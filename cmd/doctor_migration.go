@@ -7,6 +7,10 @@ import (
 )
 
 func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults) {
+	// The "clean schema-N" notes explain why an early boundary left no snapshot
+	// beside later ones that did. A workspace that never migrated has nothing to
+	// explain, so a fresh one stays quiet about history it never had.
+	migrated := migrationHistoryRecorded(dataDir)
 	v5Inspection, err := config.InspectPreSimplificationV5Snapshots(dataDir)
 	if err != nil {
 		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{
@@ -40,7 +44,7 @@ func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults)
 			project: "Migration",
 			detail:  fmt.Sprintf("%s recorded", Pluralize(len(v6Inspection.Pairs), "pre-v6 snapshot pair", "pre-v6 snapshot pairs")),
 		})
-	} else if schema >= config.V6ConfigSchemaVersion {
+	} else if migrated && schema >= config.V6ConfigSchemaVersion {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-6 workspace; no pre-v6 snapshot recorded"})
 	}
 	v7Inspection, err := config.InspectPreScopeV7Snapshots(dataDir)
@@ -56,10 +60,35 @@ func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults)
 			project: "Migration",
 			detail:  fmt.Sprintf("%s recorded", Pluralize(len(v7Inspection.Pairs), "pre-v7 snapshot pair", "pre-v7 snapshot pairs")),
 		})
-	} else if schema >= config.V7ConfigSchemaVersion {
+	} else if migrated && schema >= config.V7ConfigSchemaVersion {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-7 workspace; no pre-v7 snapshot recorded"})
 	}
 	checkLaterMigrationSnapshots(dataDir, results)
+}
+
+// migrationHistoryRecorded reports whether any migration boundary published a
+// snapshot in this workspace. An inspection that fails counts as no history
+// here; checkMigrationSnapshots reports that failure itself.
+func migrationHistoryRecorded(dataDir string) bool {
+	if inspection, err := config.InspectPreSimplificationV5Snapshots(dataDir); err == nil && inspection.HasArtifacts {
+		return true
+	}
+	if inspection, err := config.InspectPreConsolidationV6Snapshots(dataDir); err == nil && inspection.HasArtifacts {
+		return true
+	}
+	if inspection, err := config.InspectPreScopeV7Snapshots(dataDir); err == nil && inspection.HasArtifacts {
+		return true
+	}
+	inspections, err := config.InspectMigrationSnapshots(dataDir)
+	if err != nil {
+		return false
+	}
+	for _, inspection := range inspections {
+		if inspection.HasArtifacts {
+			return true
+		}
+	}
+	return false
 }
 
 // checkLaterMigrationSnapshots covers every boundary from schema 8 on. The v5,

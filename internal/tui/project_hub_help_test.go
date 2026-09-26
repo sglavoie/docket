@@ -34,6 +34,38 @@ func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
 	}
 }
 
+// TestProjectHubHelpSpellsEachKeyOnce holds the merged `?` rows to the
+// spelling every other help row uses: a key pair is named whole and capitalized,
+// and the split's footer-only pair does not repeat the registry's two
+// directional rows.
+func TestProjectHubHelpSpellsEachKeyOnce(t *testing.T) {
+	hub := openProjectHub(t, projectHubApp(t))
+	hub.SetSize(120, 40)
+	documented := map[string]string{}
+	for _, item := range hub.GetHelpItems() {
+		if previous, dup := documented[item.Key]; dup {
+			t.Fatalf("help lists %q twice: %q and %q", item.Key, previous, item.Description)
+		}
+		documented[item.Key] = item.Description
+	}
+	for key, want := range map[string]string{
+		"j/k":      "Move selection",
+		"Ctrl+D/U": "Move half page",
+		"<":        "Move pane split left",
+		">":        "Move pane split right",
+		"Ctrl+R":   "Redo workspace change",
+	} {
+		if got := documented[key]; got != want {
+			t.Errorf("help row %q = %q, want %q (rows: %v)", key, got, want, documented)
+		}
+	}
+	for _, stale := range []string{"j", "ctrl+d", "ctrl+r", "</>"} {
+		if description, listed := documented[stale]; listed {
+			t.Errorf("help still spells %q (%q)", stale, description)
+		}
+	}
+}
+
 // TestProjectHubHelpKeyRaisesTheHubGrammar holds `?` to the surface it was
 // pressed on. The core help descriptor hardcodes the Outliner, so dispatching it
 // through the executor would answer a Hub press with the Outliner's grammar; the

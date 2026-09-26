@@ -22,13 +22,14 @@ Captured on Friday 28 August 2026, that lands in the Today lane of project
 `web` as:
 
 ```text
- □ ◉ fix login redirect #auth ⊡ Sep 4
+ □ ◉ fix login redirect  ⊡ Sep 4
 ```
 
 - `!1` set High priority, drawn as the `◉` badge after the state badge.
 - `@friday` resolved to the *next* Friday, never today, so the due chip reads
   `⊡ Sep 4`.
-- `#auth` minted the tag if it did not exist and set it, chip color and all.
+- `#auth` set the tag, minting it if it did not exist. Rows draw no tags, so
+  it shows in Peek (`b`), not on the row.
 - `%web` routed the task into the `web` project instead of wherever the cursor
   was.
 - `$today` planned it for today.
@@ -63,7 +64,7 @@ straight to one. All is the home view, and it lays its sections out in this
 order:
 
 ```text
-Pinned, Today, Doing, Review, Stale, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 ## Install and start
@@ -167,9 +168,11 @@ descriptors that dispatch the keys, for whichever surface you are on.
 
 ```text
 tt
-tt doctor [--fix]
-tt conflict list|show|resolve
-tt workspace [location|move]
+tt doctor [--fix] [--json]
+tt conflict list|show [--json]
+tt conflict resolve <id> --use local|remote|file [--file PATH]
+tt workspace [location]
+tt workspace move <destination> [--force]
 tt completion bash|zsh|fish
 tt project export <slug-or-id> [--file PATH|-]
 tt project export --all [--dir DIR]

@@ -47,6 +47,61 @@ func (e *PartialDomainStateError) Error() string {
 
 func (e *PartialDomainStateError) Unwrap() error { return ErrPartialDomainState }
 
+// ErrCorruptWorkspaceCatalog is returned when the synced workspace catalog
+// exists but its bytes do not decode as a domain envelope.
+var ErrCorruptWorkspaceCatalog = errors.New("config: workspace catalog is not valid JSON")
+
+// CorruptWorkspaceCatalogError names the catalog that failed to decode and
+// where a good copy may be found. It is reported before the migration chain
+// runs, so the failure names the file rather than whichever schema boundary
+// happened to read it first.
+type CorruptWorkspaceCatalogError struct {
+	Path string
+	// BackupPath is the catalog's .bak sidecar when one exists, else empty.
+	BackupPath string
+	// BackupsDir holds the workspace's migration snapshots.
+	BackupsDir string
+	Err        error
+}
+
+func (e *CorruptWorkspaceCatalogError) Error() string {
+	restore := fmt.Sprintf("restore it from a snapshot under %s", DisplayPath(e.BackupsDir))
+	if e.BackupPath != "" {
+		restore = fmt.Sprintf("restore it from its last good copy %s or from a snapshot under %s",
+			DisplayPath(e.BackupPath), DisplayPath(e.BackupsDir))
+	}
+	return fmt.Sprintf("workspace catalog %s is not valid JSON (%v); %s, then run 'tt doctor'",
+		DisplayPath(e.Path), e.Err, restore)
+}
+
+func (e *CorruptWorkspaceCatalogError) Unwrap() []error {
+	return []error{ErrCorruptWorkspaceCatalog, e.Err}
+}
+
+// checkWorkspaceCatalogDecodes refuses a catalog whose bytes are not a domain
+// envelope. An absent or unreadable file is left to the paths that already
+// report it, and nothing is read from or written to the .bak sidecar: choosing
+// which copy is the truth stays the operator's decision.
+func checkWorkspaceCatalogDecodes(dataDir string) error {
+	path := WorkspaceCatalogPath(dataDir)
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return nil //nolint:nilerr // an unreadable catalog is reported by the load path that needs it
+	}
+	if _, decErr := decodeEnvelope(data); decErr != nil {
+		corrupt := &CorruptWorkspaceCatalogError{
+			Path:       path,
+			BackupsDir: PreScopeV7BackupsDir(dataDir),
+			Err:        decErr,
+		}
+		if info, statErr := os.Stat(path + ".bak"); statErr == nil && info.Mode().IsRegular() {
+			corrupt.BackupPath = path + ".bak"
+		}
+		return corrupt
+	}
+	return nil
+}
+
 type domainStateKind int
 
 const (
@@ -194,6 +249,9 @@ func (m *Manager) RecoverWorkspace() error {
 	// complete split-domain workspace is eligible; partial state remains the
 	// load path's explicit corruption error.
 	if state, _ := m.classifyDomainState(store); state == domainStateComplete {
+		if err := checkWorkspaceCatalogDecodes(dataDir); err != nil {
+			return err
+		}
 		if err := m.MigrateWorkspaceToV12(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v12: %w", err)
 		}

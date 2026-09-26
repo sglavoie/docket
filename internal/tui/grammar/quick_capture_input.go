@@ -165,12 +165,18 @@ func (q *QuickCaptureInput) AutocompleteLiteralComplete() bool {
 }
 
 // UpdateInput updates the textarea and refreshes autocomplete/preview state.
+// Suggestions are re-derived only when the draft text changed: the textarea
+// also receives cursor blinks and other non-editing messages, and refreshing
+// on those would reopen a dropdown Esc just closed over the same token.
 func (q *QuickCaptureInput) UpdateInput(msg tea.Msg) tea.Cmd {
+	before := q.Input.Value()
 	var cmd tea.Cmd
 	q.Input, cmd = q.Input.Update(msg)
 
 	q.UpdatePreview()
-	q.RefreshAutocomplete()
+	if q.Input.Value() != before {
+		q.RefreshAutocomplete()
+	}
 
 	return cmd
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 // resetProjectExportFlags restores the export flag globals after a test.
@@ -183,5 +185,35 @@ func TestRunProjectExportRefusesConflictingFlags(t *testing.T) {
 				t.Fatalf("error = %v, want one containing %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestRunProjectExportUnknownProjectNamesTheNextStep(t *testing.T) {
+	newExportFixtureWorkspace(t)
+	resetProjectExportFlags(t)
+
+	err := runProjectExport(nil, []string{"nope"})
+	if !errors.Is(err, tterrors.ErrProjectNotFound) {
+		t.Fatalf("error = %v, want ErrProjectNotFound", err)
+	}
+	for _, want := range []string{`project not found: "nope"`, "slug or ID", "--all"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q lacks %q", err, want)
+		}
+	}
+}
+
+func TestRunProjectExportPrintsTheDestinationAsADisplayPath(t *testing.T) {
+	newExportFixtureWorkspace(t)
+	resetProjectExportFlags(t)
+	projectExportFile = filepath.Join(os.Getenv("HOME"), "alpha.md")
+
+	stdout, _, err := captureDoctorOutput(t, func() error { return runProjectExport(nil, []string{"alpha"}) })
+	if err != nil {
+		t.Fatalf("export alpha: %v", err)
+	}
+	want := `Exported "Alpha" to ~` + string(filepath.Separator) + "alpha.md"
+	if !strings.Contains(stdout, want) {
+		t.Errorf("stdout = %q, want it to contain %q", stdout, want)
 	}
 }

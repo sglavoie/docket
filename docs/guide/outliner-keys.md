@@ -103,7 +103,7 @@ while you are typing anywhere they are ordinary text.
 the same categories the operations declare, with a **Capture & Edit Grammar**
 section holding the sigils — `@@defer` among them — that no key spells. `\`
 jumps to a section, `/` filters the rows, and the filter reads vocabulary the
-labels hide: `defer` finds `@` **Set Due or Defer** and `hidden` finds `f@`
+labels hide: `defer` finds `@` **Set Due, Defer, or Check-In** and `hidden` finds `f@`
 **Filter by Due or Deferred**, each row naming the word that matched it.
 
 

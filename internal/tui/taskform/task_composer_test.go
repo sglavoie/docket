@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -185,6 +186,40 @@ func TestTaskComposerAutocompleteSuppressesUsedSingletonsPerLine(t *testing.T) {
 	}
 }
 
+// Esc closes the dropdown over the token it was showing, and the textarea's own
+// traffic — cursor blinks and other non-editing messages — must not reopen it.
+// Editing the draft again is what brings suggestions back.
+func TestTaskComposerEscDismissalSurvivesNonEditingMessages(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	for _, r := range "Fix $tod" {
+		composer.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if !composer.IsAutocompleteActive() {
+		t.Fatal("destination autocomplete did not open for a partial $ token")
+	}
+
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if composer.IsAutocompleteActive() {
+		t.Fatal("Esc did not close the suggestions")
+	}
+	if composer.ConfirmDiscard {
+		t.Fatal("Esc over open suggestions raised the discard question instead of closing them")
+	}
+
+	composer.Update(struct{}{})
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if composer.IsAutocompleteActive() {
+		t.Fatal("a non-editing message reopened the suggestions Esc closed")
+	}
+
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	composer.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	if !composer.IsAutocompleteActive() {
+		t.Fatal("editing the token again did not bring the suggestions back")
+	}
+}
+
 func TestTaskComposerAutocompleteKeepsUnusedTagsRepeatable(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
@@ -312,6 +347,34 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 	}
 	if got := composer.HostedPanelLayout(80, 30).HostRows; got != 30-composerPanelMaxRows {
 		t.Fatalf("host kept %d rows under a capped panel, want %d", got, 30-composerPanelMaxRows)
+	}
+}
+
+// TestTaskComposerPastedBatchShowsEveryLine pins the growth seam a paste
+// crosses: the batch arrives while the input is one row tall, so the cursor
+// lands on the last line with the input scrolled to it, and the panel only then
+// grows to fit the draft. The grown input must start at the first line rather
+// than keep the offset it took while short and draw blank rows under the last.
+func TestTaskComposerPastedBatchShowsEveryLine(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(100, 35)
+	_ = composer.View()
+
+	lines := make([]string, 8)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("pasted task %d", i+1)
+	}
+	composer.Update(tea.PasteMsg{Content: strings.Join(lines, "\n")})
+
+	rendered := ansi.Strip(composer.View().Content)
+	for _, line := range lines {
+		if !strings.Contains(rendered, line) {
+			t.Fatalf("pasted batch hid %q behind the offset it took while short:\n%s", line, rendered)
+		}
+	}
+	if composer.Input.Line() != len(lines)-1 {
+		t.Fatalf("re-seating the scroll moved the cursor to line %d, want the last line", composer.Input.Line())
 	}
 }
 

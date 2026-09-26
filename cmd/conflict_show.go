@@ -19,7 +19,7 @@ var conflictShowCmd = &cobra.Command{
 
 func init() {
 	conflictCmd.AddCommand(conflictShowCmd)
-	conflictShowCmd.Flags().BoolVar(&conflictShowJSON, "json", false, "output as JSON")
+	conflictShowCmd.Flags().BoolVar(&conflictShowJSON, "json", false, "print the result as JSON")
 }
 
 func runConflictShow(_ *cobra.Command, args []string) error {

@@ -7,7 +7,7 @@
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
     { "type": "key", "label": "open the date picker with its direct key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

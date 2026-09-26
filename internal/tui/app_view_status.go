@@ -567,6 +567,13 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 				if idx := strings.Index(label, " ["); idx > 0 {
 					label = label[:idx]
 				}
+				// A segment names a place, not its state: the Outliner's scope and
+				// task count already lead its own title row, and cutting them at
+				// the length cap below left "Outliner · Acti…" on the widest
+				// terminal.
+				if idx := strings.Index(label, " · "); idx > 0 {
+					label = label[:idx]
+				}
 				if lipgloss.Width(label) > maxProjectLen {
 					label = textfit.TruncateToVisualWidth(label, maxProjectLen)
 				}

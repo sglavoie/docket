@@ -202,8 +202,12 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if m.taskComposer != nil {
 			m.taskComposer.Update(msg)
 		}
+		planningRefreshed := msg.PlanningChanged && m.refreshRuntime()
 		for _, result := range msg.Results {
 			m.reloadProjectByID(result.ProjectID)
+		}
+		if planningRefreshed {
+			m.rebuildPlanningFromRuntime()
 		}
 		return true, m.handleSaveComplete(status.SaveCompleteMsg{})
 	case coordinator.TransactionResultMsg:
