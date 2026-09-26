@@ -76,6 +76,31 @@ func TestBuildRecentModeSectionsBucketsByCalendarDayAndDropsStaleActivity(t *tes
 	}
 }
 
+// TestBuildRecentModeSectionsReadsStoredInstantsInLocalDays pins the day a
+// UTC-loaded touch belongs to: 01:00 UTC is still the previous evening west of
+// Greenwich, so it is Yesterday there and never Today.
+func TestBuildRecentModeSectionsReadsStoredInstantsInLocalDays(t *testing.T) {
+	west := time.FixedZone("UTC-4", -4*60*60)
+	now := time.Date(2026, time.September, 26, 10, 0, 0, 0, west)
+	lastEvening := recentTask("last-evening", models.StateBacklog, 0)
+	lastEvening.UpdatedAt = time.Date(2026, time.September, 26, 1, 0, 0, 0, time.UTC)
+	thisMorning := recentTask("this-morning", models.StateBacklog, 0)
+	thisMorning.UpdatedAt = time.Date(2026, time.September, 26, 13, 0, 0, 0, time.UTC)
+	project := primaryRowsProject("alpha", lastEvening, thisMorning)
+
+	sections := BuildRecentModeSections(OutlinerModeInput{
+		Projects: []*models.Project{project},
+		Now:      now,
+	})
+
+	if got := recentSectionTaskIDs(sections, "Today"); !slices.Equal(got, []string{thisMorning.ID}) {
+		t.Errorf("Today rows = %v, want only %q", got, thisMorning.ID)
+	}
+	if got := recentSectionTaskIDs(sections, "Yesterday"); !slices.Equal(got, []string{lastEvening.ID}) {
+		t.Errorf("Yesterday rows = %v, want %q", got, lastEvening.ID)
+	}
+}
+
 func TestBuildRecentModeSectionsAdmitsTerminalAndDeferredWork(t *testing.T) {
 	open := recentTask("open", models.StateBacklog, 0)
 	done := recentTask("done", models.StateDone, 0)

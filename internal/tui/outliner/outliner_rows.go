@@ -416,7 +416,9 @@ func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
 		if !isComputedOpenWork(task, in) {
 			continue
 		}
-		key := in.recencyKey(task, candidate.row.Project)
+		// Stored instants load in UTC, and DaysBetween compares calendar dates,
+		// so the key is read in now's location before the day is taken.
+		key := in.recencyKey(task, candidate.row.Project).In(now.Location())
 		age := util.DaysBetween(key, now)
 		if age > recentModeCutoffDays {
 			continue
