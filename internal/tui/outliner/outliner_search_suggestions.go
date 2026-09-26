@@ -14,7 +14,6 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
@@ -258,11 +257,10 @@ func (m *OutlinerModel) searchCandidateContextNames() []string {
 // Everything else falls through on purpose, Enter above all: it still reaches the
 // ordinary result landing rather than becoming a second acceptance.
 //
-// The two axes are deliberately split. Up/Down and Ctrl+N/P move the suggestion
-// cursor, and j/k move the result cursor behind the pane, so the query can be
-// completed and the results walked without either one borrowing the other's keys.
-// j and k are ordinary characters, so this claim lasts exactly as long as the
-// pane does: one Esc closes it and gives both letters back to the query.
+// Up/Down, Ctrl+N/P, and Ctrl+J/K move the suggestion cursor, the same family
+// capture's pane answers to. No printable key is claimed: the pane opens exactly
+// while a sigil value is being typed, which is when j and k are most likely to be
+// letters of it, so a claim here would turn "#junk" into "#unk".
 func (m *OutlinerModel) HandleSearchAutocompleteKey(key string) bool {
 	if m == nil || !m.Search.Autocomplete.Active() {
 		return false
@@ -276,30 +274,11 @@ func (m *OutlinerModel) HandleSearchAutocompleteKey(key string) bool {
 		// cascade below and clears or restores the projection.
 		m.Search.Autocomplete.clear()
 		return true
-	case "up", "ctrl+p", "down", "ctrl+n":
+	case "up", "ctrl+p", "ctrl+k", "down", "ctrl+n", "ctrl+j":
 		return m.Search.Autocomplete.Ac.HandleKey(key, nil)
-	case "j", "k":
-		m.moveSearchResultCursor(key)
-		return true
 	default:
 		return false
 	}
-}
-
-// moveSearchResultCursor steps the result cursor under an open suggestion pane.
-// It reuses the shared list navigation and the Outliner's own non-navigable-row
-// skip, so a group header is stepped over here exactly as it is outside search,
-// and it touches neither the query nor the suggestion cursor. j and k move one
-// row, which is the one navigation case HandleListNavigation arms no flash for,
-// so there is no command to lose on the way back through the key handler.
-func (m *OutlinerModel) moveSearchResultCursor(key string) {
-	previous := m.Cursor
-	handled, _ := listsurface.HandleListNavigation(key, &m.Cursor, len(m.Rows), m.ContentHeight(), &m.CursorFlash)
-	if !handled {
-		return
-	}
-	m.CrossSkipNonNavigableRows(previous, nil)
-	m.UpdateRangeSelection()
 }
 
 // acceptSearchSuggestion replaces the token under the caret and preserves
@@ -357,7 +336,7 @@ func (m *OutlinerModel) searchAutocompleteGuidance() chrome.GuidanceSpec {
 	return chrome.GuidanceSpec{
 		Hints: append(
 			chrome.RequiredGuidanceHints("Tab accept", "Esc close suggestions"),
-			chrome.OptionalGuidanceHints(10, "↑/↓ or Ctrl+N/P select", "j/k results", "Enter apply search")...,
+			chrome.OptionalGuidanceHints(10, "↑/↓ or Ctrl+J/K select", "Enter apply search")...,
 		),
 		Rows: 2,
 	}

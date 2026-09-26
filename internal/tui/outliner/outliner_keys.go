@@ -49,7 +49,7 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.HandleQueryReadoutKey(key)
 	}
 
-	// An open suggestion pane claims Tab, Esc, and the four navigation keys before
+	// An open suggestion pane claims Tab, Esc, and its navigation keys before
 	// the search cascade below sees them, which is what makes the first Esc close
 	// the pane and the next one clear or restore the search.
 	if m.IsSearchMode() && m.HandleSearchAutocompleteKey(key) {
