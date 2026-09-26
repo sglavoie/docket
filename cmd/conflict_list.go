@@ -22,7 +22,7 @@ var conflictListCmd = &cobra.Command{
 
 func init() {
 	conflictCmd.AddCommand(conflictListCmd)
-	conflictListCmd.Flags().BoolVar(&conflictListJSON, "json", false, "output as JSON")
+	conflictListCmd.Flags().BoolVar(&conflictListJSON, "json", false, "print the result as JSON")
 }
 
 func runConflictList(_ *cobra.Command, _ []string) error {

@@ -30,13 +30,16 @@ nothing else.
 
 Exit status: 0 when every check passes, 2 when doctor ran and found issues,
 and 1 when doctor could not run or a repair failed.`,
+	Example: `  tt doctor
+  tt doctor --fix
+  tt doctor --json`,
 	Args: cobra.NoArgs,
 	RunE: runDoctor,
 }
 
 func init() {
-	doctorCmd.Flags().Bool("fix", false, "Automatically fix issues where possible")
-	doctorCmd.Flags().Bool("json", false, "Print the report as JSON")
+	doctorCmd.Flags().Bool("fix", false, "automatically fix issues where possible")
+	doctorCmd.Flags().Bool("json", false, "print the result as JSON")
 	rootCmd.AddCommand(doctorCmd)
 }
 

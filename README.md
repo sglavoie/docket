@@ -168,9 +168,11 @@ descriptors that dispatch the keys, for whichever surface you are on.
 
 ```text
 tt
-tt doctor [--fix]
-tt conflict list|show|resolve
-tt workspace [location|move]
+tt doctor [--fix] [--json]
+tt conflict list|show [--json]
+tt conflict resolve <id> --use local|remote|file [--file PATH]
+tt workspace [location]
+tt workspace move <destination> [--force]
 tt completion bash|zsh|fish
 tt project export <slug-or-id> [--file PATH|-]
 tt project export --all [--dir DIR]

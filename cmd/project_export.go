@@ -32,11 +32,8 @@ var projectExportCmd = &cobra.Command{
 Name the project by slug or ID, or pass --all to export every project,
 archived ones included, as one <slug>.md file each.
 Use --file to write one project to an arbitrary path, or --file - to print it.
-Use --dir with --all to write somewhere other than exports/.
-
-EXAMPLES
-
-  tt project export my-project
+Use --dir with --all to write somewhere other than exports/.`,
+	Example: `  tt project export my-project
   tt project export my-project --file /tmp/my-project.md
   tt project export my-project --file -
   tt project export --all

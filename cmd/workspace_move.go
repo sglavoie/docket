@@ -31,6 +31,8 @@ Machine-local runtime state (logs, locks) is not moved.
 Close any tt TUI using either the source or destination before relocating. An
 active TUI blocks the move. --force skips only the confirmation prompt; it does
 not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
+	Example: `  tt workspace move ~/Documents/tt
+  tt workspace move /Volumes/Backup/tt --force`,
 	Args: cobra.ExactArgs(1),
 	RunE: runWorkspaceMove,
 }

@@ -38,6 +38,9 @@ cannot safely replay only its project document. In that case local and file
 resolution fail closed: adopt remote to clear the record, then retry the original
 operation so every project, configuration artifact, and attachment is rebuilt in
 one transaction.`,
+	Example: `  tt conflict resolve 1a2b3c4d --use local
+  tt conflict resolve 1a2b3c4d --use remote
+  tt conflict resolve 1a2b3c4d --use file --file merged.md`,
 	Args:              cobra.ExactArgs(1),
 	RunE:              runConflictResolve,
 	ValidArgsFunction: completeConflictIDs,
