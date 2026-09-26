@@ -19,7 +19,7 @@ func TestTaskFormGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 
 	composer := &TaskComposerModel{Errors: []grammar.LineError{{Line: 1, Message: "invalid capture"}}}
 	spec, ok := composer.ContextualGuidance()
-	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter retry", "Esc cancel")
+	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter create", "Esc cancel")
 }
 
 func TestTaskFormGuidanceFitsNarrowBudgets(t *testing.T) {

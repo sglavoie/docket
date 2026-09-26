@@ -123,9 +123,27 @@ func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 		return len(m.AC.Items)
 	case m.nonblankLineCount() > 1:
 		return 1
+	case m.previewRepeatsRefusal():
+		return 0
 	default:
 		return m.PreviewBlockRows()
 	}
+}
+
+// previewRepeatsRefusal reports whether the live preview would only restate a
+// refusal the panel already leads with. After a refused Enter the same parse
+// error is both a line error and the preview's error, and drawing it twice
+// spends a row to say nothing new.
+func (m *TaskComposerModel) previewRepeatsRefusal() bool {
+	if m.PreviewErr == "" {
+		return false
+	}
+	for _, lineErr := range m.Errors {
+		if lineErr.Message == m.PreviewErr {
+			return true
+		}
+	}
+	return false
 }
 
 // composerInputRows splits the panel's body between the draft and what the
@@ -313,7 +331,7 @@ func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 	if count := m.nonblankLineCount(); count > 1 {
 		return theme.MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
 	}
-	if m.PreviewErr == "" && m.Preview == nil {
+	if (m.PreviewErr == "" && m.Preview == nil) || m.previewRepeatsRefusal() {
 		return ""
 	}
 	return m.ComposeBoundedPreviewBlock(rows)

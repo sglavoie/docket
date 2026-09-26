@@ -214,9 +214,8 @@ func (m *ProjectCreatorModel) guidanceSpec() chrome.GuidanceSpec {
 	if m.ConfirmDiscard {
 		return chrome.DiscardGuidanceSpec()
 	}
-	spec := chrome.RequiredExitGuidanceSpec("Enter create", chrome.DraftEscapeHint(m.hasDraft()))
-	spec.Supplemental = "Create Project"
-	return spec
+	// No supplemental: the title row already says Create Project.
+	return chrome.RequiredExitGuidanceSpec("Enter create", chrome.DraftEscapeHint(m.hasDraft()))
 }
 
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }
