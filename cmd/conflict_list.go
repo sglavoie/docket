@@ -13,11 +13,12 @@ import (
 var conflictListJSON bool
 
 var conflictListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List unresolved merge conflicts",
-	Long:  `List every persisted merge conflict with its project, conflict count, and age.`,
-	Args:  cobra.NoArgs,
-	RunE:  runConflictList,
+	Use:               "list",
+	Short:             "List unresolved merge conflicts",
+	Long:              `List every persisted merge conflict with its project, conflict count, and age.`,
+	Args:              noArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runConflictList,
 }
 
 func init() {

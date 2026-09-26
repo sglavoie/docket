@@ -87,6 +87,23 @@ func TestManagerLegacyOnlyStateRequiresMigrationBeforeEffects(t *testing.T) {
 	}
 }
 
+// TestManagerDataDirThatIsAFileIsNamed refuses a workspace root that is a
+// regular file by naming it, rather than failing on the first path beneath it
+// with ENOTDIR.
+func TestManagerDataDirThatIsAFileIsNamed(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	file := filepath.Join(t.TempDir(), "afile")
+	if err := os.WriteFile(file, []byte("x"), FilePermissions); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	_, err := NewManager(ConfigPathForDataDir(file)).LoadOrCreateDomains()
+	want := "workspace data directory " + file + " is not a directory"
+	if err == nil || err.Error() != want {
+		t.Fatalf("LoadOrCreateDomains error = %v, want %q", err, want)
+	}
+}
+
 func TestManagerCompleteSplitStateWinsOverStaleLegacyConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

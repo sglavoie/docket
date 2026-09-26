@@ -41,7 +41,7 @@ one transaction.`,
 	Example: `  tt conflict resolve 1a2b3c4d --use local
   tt conflict resolve 1a2b3c4d --use remote
   tt conflict resolve 1a2b3c4d --use file --file merged.md`,
-	Args:              cobra.ExactArgs(1),
+	Args:              exactlyOneArg("conflict ID"),
 	RunE:              runConflictResolve,
 	ValidArgsFunction: completeConflictIDs,
 }
@@ -61,6 +61,11 @@ func runConflictResolve(_ *cobra.Command, args []string) error {
 	}
 	if resolution == storage.ResolveUseFile && conflictResolveFile == "" {
 		return fmt.Errorf("--use file requires --file <path>")
+	}
+	// A --file beside another strategy would be silently ignored, so the
+	// resolution the operator asked for is not the one they would get.
+	if resolution != storage.ResolveUseFile && conflictResolveFile != "" {
+		return fmt.Errorf("--file only applies with --use file")
 	}
 
 	store, commit, err := conflictWorkspace()

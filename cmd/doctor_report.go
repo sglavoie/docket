@@ -43,14 +43,24 @@ func doctorSections(results *doctorResults) []doctorSection {
 	}
 }
 
-func printResults(results *doctorResults) {
+// printResults writes the text report. An empty section says nothing a reader
+// needs, so it is skipped; the verdict line runDoctor prints afterwards is what
+// states a clean run. The JSON report still carries every section. It reports
+// whether it printed anything, so the verdict knows whether to set itself off.
+func printResults(results *doctorResults) bool {
+	printed := false
 	for _, section := range doctorSections(results) {
+		if len(section.issues) == 0 {
+			continue
+		}
+		printed = true
 		if section.info {
 			printInfoSection(section.title, section.issues)
 		} else {
 			printSection(section.title, section.issues)
 		}
 	}
+	return printed
 }
 
 func printSection(name string, issues []doctorIssue) {

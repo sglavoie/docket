@@ -246,3 +246,24 @@ func TestConflictResolveRequiresUse(t *testing.T) {
 		t.Fatal("expected an error for an unknown --use value")
 	}
 }
+
+// TestConflictResolveRefusesFileWithoutUseFile keeps --file from being silently
+// ignored beside another strategy, and leaves the conflict recorded.
+func TestConflictResolveRefusesFileWithoutUseFile(t *testing.T) {
+	store, project := setupConflictTest(t)
+	id := recordCLIConflict(t, store, project)
+
+	for _, use := range []string{"local", "remote"} {
+		conflictResolveUse = use
+		conflictResolveFile = "merged.md"
+		t.Cleanup(func() { conflictResolveUse = ""; conflictResolveFile = "" })
+
+		err := runConflictResolve(conflictResolveCmd, []string{id})
+		if err == nil || err.Error() != "--file only applies with --use file" {
+			t.Fatalf("--use %s --file error = %v, want the --file refusal", use, err)
+		}
+	}
+	if _, err := store.Load(id); err != nil {
+		t.Fatalf("a refused resolution removed the conflict: %v", err)
+	}
+}

@@ -17,11 +17,15 @@ var workspaceLocationCmd = &cobra.Command{
 machine-local active-workspace pointer (if one has been set by 'tt workspace
 move'), and where logs, migration backups, project exports, and merge
 conflicts live.`,
-	Args: cobra.NoArgs,
-	RunE: runWorkspaceLocation,
+	Args:              noArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runWorkspaceLocation,
 }
 
 func runWorkspaceLocation(_ *cobra.Command, _ []string) error {
+	if err := checkDataDirOverride(); err != nil {
+		return err
+	}
 	manager := config.NewManager(resolveConfigPath())
 	configPath := manager.GetConfigPath()
 	workspaceDir := config.WorkspaceRootFromConfigPath(configPath)
@@ -30,11 +34,18 @@ func runWorkspaceLocation(_ *cobra.Command, _ []string) error {
 	fmt.Printf("Catalog:                  %s\n", config.DisplayPath(config.WorkspaceCatalogPath(workspaceDir)))
 	fmt.Printf("Storage:                  %s\n", config.StorageLocationLabel(workspaceDir))
 
+	// An explicit --data-dir or TT_DATA_DIR wins over the pointer, so the line
+	// says so rather than imply the pointer or the default chose this workspace.
+	pointer := "(none — using default resolution)"
 	if ptr, ok := config.ReadActiveWorkspacePointer(); ok {
-		fmt.Printf("Active workspace pointer: %s\n", config.DisplayPath(ptr))
-	} else {
-		fmt.Println("Active workspace pointer: (none — using default resolution)")
+		pointer = config.DisplayPath(ptr)
+	} else if GetDataDir() != "" {
+		pointer = "(none)"
 	}
+	if GetDataDir() != "" {
+		pointer += fmt.Sprintf(" (overridden by %s)", dataDirOverrideSource())
+	}
+	fmt.Printf("Active workspace pointer: %s\n", pointer)
 
 	if logsDir, err := logging.Dir(); err == nil {
 		fmt.Printf("Logs:                     %s (machine-local)\n", config.DisplayPath(logsDir))

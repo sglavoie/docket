@@ -222,6 +222,11 @@ func (m *Manager) rejectLegacyOnlyState(store *DomainFileStore) error {
 	if state != domainStateAbsent {
 		return nil
 	}
+	// A data directory that is a file makes every path beneath it fail with
+	// ENOTDIR; name the directory itself instead of the first child probed.
+	if info, err := os.Stat(m.workspaceDataDir()); err == nil && !info.IsDir() {
+		return fmt.Errorf("workspace data directory %s is not a directory", absoluteArtifactPath(m.workspaceDataDir()))
+	}
 	if _, err := os.Stat(m.configPath); err == nil {
 		return &LegacyConfigRequiresMigrationError{Path: m.configPath}
 	} else if !errors.Is(err, os.ErrNotExist) {

@@ -12,10 +12,14 @@ import (
 
 var workspaceMoveForce bool
 
-// errWorkspaceMoveNotConfirmed is a declined or unanswered prompt. It is an
-// error rather than a quiet success so a script that piped no answer learns
-// the workspace did not move.
-var errWorkspaceMoveNotConfirmed = errors.New("move not confirmed; re-run with --force to skip the prompt")
+// errWorkspaceMoveNotConfirmed is an unanswered prompt: stdin closed or not a
+// terminal. It is an error rather than a quiet success so a script that piped
+// no answer learns the workspace did not move. An explicit "no" is the
+// operator's own choice and is not an error; see workspaceMoveCanceled.
+var errWorkspaceMoveNotConfirmed = errors.New("move not confirmed: no answer was read; re-run with --force to skip the prompt")
+
+// workspaceMoveCanceled is what a declined prompt prints before exiting 0.
+const workspaceMoveCanceled = "Move canceled; nothing changed."
 
 var workspaceMoveCmd = &cobra.Command{
 	Use:   "move <destination>",
@@ -33,7 +37,7 @@ active TUI blocks the move. --force skips only the confirmation prompt; it does
 not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
 	Example: `  tt workspace move ~/Documents/tt
   tt workspace move /Volumes/Backup/tt --force`,
-	Args: cobra.ExactArgs(1),
+	Args: exactlyOneArg("destination directory"),
 	RunE: runWorkspaceMove,
 }
 
@@ -47,6 +51,9 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid destination %q: %w", args[0], err)
 	}
 
+	if err = checkDataDirOverride(); err != nil {
+		return err
+	}
 	manager := config.NewManager(resolveConfigPath())
 	src := config.WorkspaceRootFromConfigPath(manager.GetConfigPath())
 
@@ -57,8 +64,13 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Move workspace:\n  from: %s\n  to:   %s\n", config.DisplayPath(src), config.DisplayPath(dest))
-	if !ConfirmYN("Proceed? The source is retained as a backup. [y/N]: ", workspaceMoveForce) {
+	switch confirmPrompt("Proceed? The source is retained as a backup. [y/N]: ", workspaceMoveForce) {
+	case confirmNoAnswer:
 		return errWorkspaceMoveNotConfirmed
+	case confirmDeclined:
+		fmt.Println(workspaceMoveCanceled)
+		return nil
+	case confirmAccepted:
 	}
 	// Moving is a live current-schema operation. Activate or bootstrap the source
 	// workspace before inventory so no legacy live config is copied forward.

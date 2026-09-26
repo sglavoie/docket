@@ -134,3 +134,60 @@ func TestRemovedCommandsFailAsUnknown(t *testing.T) {
 		})
 	}
 }
+
+// TestStrayArgumentsAreRefusedByName keeps a mistyped subcommand suggesting
+// the real one, a stray word on a leaf command naming that command, and every
+// such refusal short: no usage dump, one pointer to --help.
+func TestStrayArgumentsAreRefusedByName(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want []string
+	}{
+		{[]string{"doctr"}, []string{`unknown command "doctr" for "tt"`, "Did you mean this?", "\tdoctor", "Run 'tt --help' for usage"}},
+		{[]string{"conflict", "lis"}, []string{`unknown command "lis" for "tt conflict"`, "\tlist", "Run 'tt conflict --help' for usage"}},
+		{[]string{"doctor", "extra"}, []string{`tt doctor takes no arguments; got "extra"`, "Run 'tt doctor --help' for usage"}},
+		{[]string{"conflict", "list", "extra"}, []string{`tt conflict list takes no arguments; got "extra"`}},
+		{[]string{"workspace", "location", "extra"}, []string{`tt workspace location takes no arguments; got "extra"`}},
+		{[]string{"conflict", "show"}, []string{"tt conflict show requires a conflict ID"}},
+		{[]string{"doctor", "--bogus"}, []string{"unknown flag: --bogus", "Run 'tt doctor --help' for usage"}},
+	} {
+		t.Run(strings.Join(tc.args, "_"), func(t *testing.T) {
+			var out strings.Builder
+			rootCmd.SetArgs(tc.args)
+			rootCmd.SetOut(&out)
+			rootCmd.SetErr(&out)
+			t.Cleanup(func() {
+				rootCmd.SetArgs(nil)
+				rootCmd.SetOut(nil)
+				rootCmd.SetErr(nil)
+			})
+
+			err := executeCommand(rootCmd)
+			if err == nil {
+				t.Fatalf("tt %s was accepted", strings.Join(tc.args, " "))
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q lacks %q", err, want)
+				}
+			}
+			if strings.Contains(out.String(), "Usage:") {
+				t.Errorf("refusal printed the usage block:\n%s", out.String())
+			}
+		})
+	}
+}
+
+// TestNoArgLeafCommandsCompleteNoFiles keeps Tab from offering file names to a
+// command that takes no arguments.
+func TestNoArgLeafCommandsCompleteNoFiles(t *testing.T) {
+	for _, command := range []*cobra.Command{doctorCmd, conflictListCmd, workspaceLocationCmd} {
+		if command.ValidArgsFunction == nil {
+			t.Errorf("%s has no ValidArgsFunction", command.CommandPath())
+			continue
+		}
+		if _, directive := command.ValidArgsFunction(command, nil, ""); directive != cobra.ShellCompDirectiveNoFileComp {
+			t.Errorf("%s completion directive = %v, want NoFileComp", command.CommandPath(), directive)
+		}
+	}
+}
