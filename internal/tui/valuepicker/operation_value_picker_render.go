@@ -160,7 +160,11 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		)
 	}
 	if model.provider.DateEntry() && model.dateAdder.AddDateMode {
-		content := model.dateAdder.AddDateInput.View() + "\n\n" +
+		// An input with no width draws one cell of its placeholder, which reads
+		// as a typed "e"; a render-local copy takes the box's width instead.
+		input := model.dateAdder.AddDateInput
+		input.SetWidth(max(innerWidth-4-lipgloss.Width(input.Prompt), 1))
+		content := input.View() + "\n\n" +
 			theme.MutedStyle.Render(strings.Join(model.dateAdder.DateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {
 			content += "\n\n" + theme.BoldStyle.Foreground(theme.ColorError).Render(model.dateAdder.AddDateError)
