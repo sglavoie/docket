@@ -55,6 +55,13 @@ func (a CompletionActivity) CompletedToday() int {
 // archived and parked projects. A median is used instead of a trimmed mean so
 // isolated high-output days cannot dominate the reference-class rate.
 func (s *Service) CompletionActivity() (CompletionActivity, error) {
+	if source, ok := s.repo.(CompletionActivitySource); ok {
+		projects, err := source.CompletionActivityProjects()
+		if err != nil {
+			return CompletionActivity{}, err
+		}
+		return completionActivityFromProjects(projects, s.clock.Now()), nil
+	}
 	snapshot, err := s.repo.Snapshot()
 	if err != nil {
 		return CompletionActivity{}, err
@@ -62,7 +69,33 @@ func (s *Service) CompletionActivity() (CompletionActivity, error) {
 	return completionActivityFromSnapshot(snapshot, s.clock.Now()), nil
 }
 
+// CompletionActivitySource is an optional repository capability: a read-only
+// load of the task workspace — archived and parked projects already excluded —
+// cheap enough to repeat after every commit. A full Snapshot re-reads and
+// re-parses every project, and the count is refreshed on the interface's own
+// goroutine, so a repository that can serve unchanged projects from a cache
+// offers this instead. The projects are only read, never mutated.
+type CompletionActivitySource interface {
+	CompletionActivityProjects() ([]*models.Project, error)
+}
+
 func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) CompletionActivity {
+	var projects []*models.Project
+	if snapshot != nil {
+		for _, project := range snapshot.Projects() {
+			if project == nil || project.Archived || models.ProjectTagsParked(project.Tags) {
+				continue
+			}
+			projects = append(projects, project)
+		}
+	}
+	return completionActivityFromProjects(projects, now)
+}
+
+// completionActivityFromProjects counts over an already-selected population;
+// choosing it is the caller's job, so a cached project's stale catalog metadata
+// is never consulted here.
+func completionActivityFromProjects(projects []*models.Project, now time.Time) CompletionActivity {
 	calendarAnchor := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, now.Location())
 	activityDays := make([]time.Time, 0, completionActivityWindowDays)
 	activityDaySet := make(map[time.Time]struct{}, completionActivityWindowDays)
@@ -74,21 +107,19 @@ func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) Completion
 	today := activityDays[len(activityDays)-1]
 	daily := make(map[time.Time]int)
 
-	if snapshot != nil {
-		for _, project := range snapshot.Projects() {
-			if project == nil || project.Archived || models.ProjectTagsParked(project.Tags) {
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil || task.WorkflowState != models.StateDone || task.CompletedAt == nil {
 				continue
 			}
-			for _, task := range project.Tasks {
-				if task == nil || task.WorkflowState != models.StateDone || task.CompletedAt == nil {
-					continue
-				}
-				completedDay := util.StartOfDay(task.CompletedAt.In(now.Location()))
-				if _, ok := activityDaySet[completedDay]; !ok {
-					continue
-				}
-				daily[completedDay]++
+			completedDay := util.StartOfDay(task.CompletedAt.In(now.Location()))
+			if _, ok := activityDaySet[completedDay]; !ok {
+				continue
 			}
+			daily[completedDay]++
 		}
 	}
 

@@ -105,7 +105,7 @@ func TestPlanningWorkspacePulseDoesNotBleedAcrossDuplicateTaskIDs(t *testing.T) 
 	defer func() { storage.DefaultRepository = oldRepo }()
 
 	runtime := testConfigWithProjects(alpha, beta)
-	pulse := outliner.ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{alphaID: true}, time.Now())
+	pulse := outliner.ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{alphaID: true}, time.Now(), nil)
 	if pulse.Today != 1 {
 		t.Fatalf("Today workspace pulse = %d, want only alpha's qualified task", pulse.Today)
 	}

@@ -41,6 +41,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/app_init.go:NewAppModel":                                         "lifecycle: a restored current project that was archived is dropped",
 	"internal/tui/app_projects.go:activeProjectByID":                               "availability: shell cache lookup admits parked projects",
 	"internal/tui/app_projects.go:ensureSystemUnfiledProject":                      "lifecycle: bootstrap repair un-archives protected Unfiled",
+	"internal/tui/domain_controller.go:CompletionActivityProjects":                 "availability: completion activity mirrors the base task workspace population, excluding archived and parked owners before the cached read",
 	"internal/tui/domain_controller.go:readWorkspaceCensus":                        "availability: the general census admits parked owners; the explicit active-only setup census excludes them, and both exclude archived owners",
 	"internal/tui/grammar/dependency_autocomplete.go:DependencyAdditionCandidates": "availability: a ~ completion offers open work in parked projects too",
 	"internal/tui/query/filters_project.go:ProjectLifecycleAdmits":                 "lifecycle: the archived population axis decides exclude, include, or only",

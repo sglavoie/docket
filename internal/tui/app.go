@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // AppModel is the main TUI model.
@@ -128,6 +129,10 @@ type AppModel struct {
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
 	workspacePulse pulse.WorkspacePulse
+	// pulseLoader is the pulse's own retained snapshot loader. It is read only
+	// from Update, never from a command goroutine, which is what lets it outlive
+	// one recount without sharing the Outliner's loader across goroutines.
+	pulseLoader *workspace.Loader
 	// completionActivity is refreshed through the application query alongside
 	// other operational title state, then injected into the Outliner before paint.
 	// Keeping the snapshot out of View avoids render-time filesystem reads.
