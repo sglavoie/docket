@@ -350,6 +350,34 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 	}
 }
 
+// TestTaskComposerPastedBatchShowsEveryLine pins the growth seam a paste
+// crosses: the batch arrives while the input is one row tall, so the cursor
+// lands on the last line with the input scrolled to it, and the panel only then
+// grows to fit the draft. The grown input must start at the first line rather
+// than keep the offset it took while short and draw blank rows under the last.
+func TestTaskComposerPastedBatchShowsEveryLine(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	composer.SetSize(100, 35)
+	_ = composer.View()
+
+	lines := make([]string, 8)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("pasted task %d", i+1)
+	}
+	composer.Update(tea.PasteMsg{Content: strings.Join(lines, "\n")})
+
+	rendered := ansi.Strip(composer.View().Content)
+	for _, line := range lines {
+		if !strings.Contains(rendered, line) {
+			t.Fatalf("pasted batch hid %q behind the offset it took while short:\n%s", line, rendered)
+		}
+	}
+	if composer.Input.Line() != len(lines)-1 {
+		t.Fatalf("re-seating the scroll moved the cursor to line %d, want the last line", composer.Input.Line())
+	}
+}
+
 // TestTaskComposerPanelKeepsRefusalsOverDraftRows states the one priority
 // inside the panel's body: a refusal names work the typist has to do, while the
 // line it refuses is still scrollable inside the input.

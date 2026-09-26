@@ -149,7 +149,28 @@ func (m *TaskComposerModel) syncInputHeight() {
 		m.composerInputContentRows(),
 		panelBlockRows(m.composerPanelErrorBlock(width)),
 	)
+	m.setInputHeight(rows)
+}
+
+// setInputHeight resizes the input and re-seats its scroll. The textarea only
+// ever scrolls to keep the cursor visible, so an offset taken while it was short
+// survives it growing: a pasted batch lands with the cursor on its last line, the
+// panel then grows to fit every line, and the input would still start at the
+// last one with blank rows beneath it. When the offset leaves rows unused below
+// the draft, the cursor is walked back from the top, which scrolls exactly as far
+// as keeping it visible needs.
+func (m *TaskComposerModel) setInputHeight(rows int) {
 	m.Input.SetHeight(rows)
+	offset := m.Input.ScrollYOffset()
+	if offset == 0 || offset+m.Input.Height() <= m.composerInputContentRows() {
+		return
+	}
+	row, col := m.Input.Line(), m.Input.Column()
+	m.Input.MoveToBegin()
+	for guard := m.composerInputContentRows(); m.Input.Line() < row && guard > 0; guard-- {
+		m.Input.CursorDown()
+	}
+	m.Input.SetCursorColumn(col)
 }
 
 // compactPanelRows is the height this panel renders to: the share the layout
@@ -186,7 +207,7 @@ func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetric
 func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	width := max(m.width, 1)
 	errors := m.composerPanelErrorBlock(width)
-	m.Input.SetHeight(composerInputRows(rows, m.composerInputContentRows(), panelBlockRows(errors)))
+	m.setInputHeight(composerInputRows(rows, m.composerInputContentRows(), panelBlockRows(errors)))
 
 	var b strings.Builder
 	b.WriteString(chrome.RenderLabeledDivider(m.Preset.label(), width))
