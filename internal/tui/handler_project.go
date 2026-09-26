@@ -35,6 +35,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		projectName := "project"
 		if msg.Project != nil {
 			projectName = msg.Project.Name
+			m.project.SeatProjectHubCursor(m, msg.Project.ID)
 		}
 		feedbackCmd := m.setRecoveryFeedback("Created "+projectName, msg.TransactionID, false)
 		return true, tea.Batch(popCmd, reloadCmd, notesCmd, feedbackCmd)

@@ -93,6 +93,13 @@ func (c *Controller) RefreshProjectHubIfActive(shell Shell) {
 	}
 }
 
+// SeatProjectHubCursor lands an open Hub's cursor on one project's row.
+func (c *Controller) SeatProjectHubCursor(shell Shell, projectID string) {
+	if hub := c.activeProjectHub(shell); hub != nil {
+		hub.SeatCursorOnProject(projectID)
+	}
+}
+
 // ProjectHubTaskCounts counts tasks for every cataloged project, not just the
 // base workspace the Outliner loads, so the Hub can report parked and archived
 // rows on a real number instead of an unknown. The projects the Outliner already

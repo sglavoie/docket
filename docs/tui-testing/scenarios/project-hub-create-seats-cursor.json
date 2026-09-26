@@ -1,0 +1,17 @@
+{
+  "name": "project-hub-create-seats-cursor",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "key", "label": "create a project from the list", "key": "a" },
+    { "type": "text", "text": "Garden" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the cursor lands on the row the creation made, so the next key acts on it", "assert": "contains", "value": "› [ ] Garden" },
+    { "type": "assert", "label": "and the preview names it", "assert": "contains", "value": "slug garden" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
