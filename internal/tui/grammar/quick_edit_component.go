@@ -250,6 +250,9 @@ func (q *QuickEditComponent) Handle(msg tea.Msg) (quickEditTransition, *QuickEdi
 			q.Exit()
 			return QuickEditCancel, nil, nil
 		}
+		if key == "enter" && q.autocompleteTokenComplete() {
+			q.AC.Clear()
+		}
 		if q.AC.HandleKey(key, q.AcceptSuggestion) {
 			q.RefreshDraft()
 			return QuickEditContinue, nil, nil

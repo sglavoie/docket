@@ -39,6 +39,25 @@ func (q *QuickEditComponent) refreshAutocomplete() {
 	q.AC.UpdateSuggestions(mode, pos, q.suggestions(mode, pos, partial, parsedPrefix))
 }
 
+// autocompleteTokenComplete reports whether the token under the caret is
+// already complete as typed, so Enter saves the edit rather than accepting a
+// suggestion that would only restate it. A tag removal completes only to a tag
+// the task carries, which is what its suggestions offer.
+func (q *QuickEditComponent) autocompleteTokenComplete() bool {
+	if !q.AC.IsActive() {
+		return false
+	}
+	value := q.Input.Value()
+	mode, _, partial, _, removeTag := detectQuickEditTrigger(value[:q.cursorByteOffset()], q.triggers)
+	if mode != q.AC.Mode || partial == "" {
+		return false
+	}
+	if q.AC.OffersExactly(partial) {
+		return true
+	}
+	return !removeTag && literalTokenComplete(mode, partial, textgrammar.SurfaceEdit)
+}
+
 func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, parsedPrefix textgrammar.Result) []ACSuggestion {
 	switch mode {
 	case ACModeTag:
