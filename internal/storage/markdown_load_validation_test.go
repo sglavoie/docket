@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,18 @@ func TestLoadProjectRejectsBrokenHierarchyRatherThanRepairing(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "references missing project-local parent") {
 		t.Fatalf("load error %q does not name the broken reference", err)
+	}
+	// The reader is told which file to open and which schema it must satisfy,
+	// never a schema the chain retired long ago.
+	wantFile := filepath.Join(project.Path, "tasks.md")
+	wantSchema := fmt.Sprintf("schema-%d task document", CurrentTaskSchemaVersion)
+	for _, want := range []string{wantFile, wantSchema} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("load error %q does not name %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), "schema-v6") {
+		t.Errorf("load error %q names the retired schema-v6", err)
 	}
 }
 

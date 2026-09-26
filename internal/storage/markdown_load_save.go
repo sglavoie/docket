@@ -149,7 +149,8 @@ func loadMissingProject(project *models.Project) error {
 func loadProjectContent(project *models.Project, content []byte) error {
 	document, err := ParseProjectDocument(string(content))
 	if err != nil {
-		return fmt.Errorf("%w: schema-v6 task document required: %w", tterrors.ErrParseError, err)
+		return fmt.Errorf("%w: %s is not a valid schema-%d task document: %w",
+			tterrors.ErrParseError, loadedTasksFileLabel(project), CurrentTaskSchemaVersion, err)
 	}
 	project.Tasks = document.Tasks
 	project.Comments = document.Comments
@@ -162,6 +163,15 @@ func loadProjectContent(project *models.Project, content []byte) error {
 	project.NextShortID = maxShortID + 1
 	project.BuildTaskTree()
 	return auditLoadedProject(project)
+}
+
+// loadedTasksFileLabel names the file a load failure came from, so the reader
+// can open it; a project with no directory still gets a noun.
+func loadedTasksFileLabel(project *models.Project) string {
+	if project == nil || strings.TrimSpace(project.Path) == "" {
+		return tasksFileName
+	}
+	return tasksFilePath(project.Path)
 }
 
 func auditLoadedProject(project *models.Project) error {
@@ -207,11 +217,11 @@ func SaveProject(project *models.Project) error {
 	tasksPath := tasksFilePath(project.Path)
 	document, err := CanonicalProjectDocument(project, nil)
 	if err != nil {
-		return fmt.Errorf("failed to render schema-v6 tasks file: %w", err)
+		return fmt.Errorf("failed to render tasks file: %w", err)
 	}
 	content, err := document.WriteCurrent()
 	if err != nil {
-		return fmt.Errorf("failed to render schema-v6 tasks file: %w", err)
+		return fmt.Errorf("failed to render tasks file: %w", err)
 	}
 	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
