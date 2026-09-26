@@ -1,0 +1,20 @@
+{
+  "name": "capture-multiline-today-pulse",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "nothing is planned for today yet", "assert": "not_contains", "value": "today " },
+    { "type": "key", "label": "capture from the outliner", "key": "a" },
+    { "type": "text", "label": "one Today task in the first project", "text": "Draft the kickoff agenda %client-alpha $today " },
+    { "type": "key", "key": "shift+enter" },
+    { "type": "text", "label": "and one in another project, in the same batch", "text": "Confirm the rollout window %client-beta $today " },
+    { "type": "key", "label": "commit both lines as one capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Draft the kickoff agenda" },
+    { "type": "assert", "assert": "contains", "value": "Confirm the rollout window" },
+    { "type": "assert", "label": "the pulse counts the second project's Today task too, not just the first result's", "assert": "contains", "value": "today 2" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

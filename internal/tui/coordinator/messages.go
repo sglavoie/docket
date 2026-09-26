@@ -29,8 +29,13 @@ type TaskCreatedMsg struct {
 	OpenContent     bool            // open description editor after creation
 }
 
-// TasksCapturedMsg refreshes a successful subset while the composer retains invalid lines.
-type TasksCapturedMsg struct{ Results []app.TaskResult }
+// TasksCapturedMsg refreshes a successful subset while the composer retains
+// invalid lines. PlanningChanged is TaskCreatedMsg's: the committed subset added
+// Today/Next membership, so the runtime planning snapshot must be refreshed.
+type TasksCapturedMsg struct {
+	Results         []app.TaskResult
+	PlanningChanged bool
+}
 
 // TaskClipboardProjectedMsg carries application-owned clipboard text back to
 // the TUI adapter, which performs the platform clipboard write. Hidden is how

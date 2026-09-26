@@ -63,8 +63,21 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	if msg.PlanningChanged {
 		planningRefreshed = m.refreshRuntime()
 	}
+	// A multi-line capture can span projects, and the planning rebuild below
+	// resolves membership against the loaded tasks, so every project the commit
+	// touched is reloaded before it, not just the first result's.
+	reloaded := make(map[string]bool, len(msg.Results)+1)
+	reload := func(projectID string) {
+		if projectID != "" && !reloaded[projectID] {
+			reloaded[projectID] = true
+			m.reloadProjectByID(projectID)
+		}
+	}
+	for _, result := range msg.Results {
+		reload(result.ProjectID)
+	}
 	if msg.Result != nil {
-		m.reloadProjectByID(msg.Result.ProjectID)
+		reload(msg.Result.ProjectID)
 		if project := m.projectByID(msg.Result.ProjectID); project != nil {
 			msg.Project = project
 			// OpenTaskID overrides the navigation/open target (task-form

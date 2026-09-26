@@ -227,7 +227,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			}
 			return msg
 		}
-		return TasksCapturedMsg{Results: results}
+		return TasksCapturedMsg{Results: results, PlanningChanged: captureRequestsChangePlanning(reqs)}
 	}
 }
 
