@@ -3,6 +3,8 @@ package chrome
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestConfirmDialog_Lifecycle(t *testing.T) {
@@ -150,5 +152,27 @@ func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
 	lines := strings.Split(rendered, "\n")
 	if len(lines) != 10 {
 		t.Errorf("expected 10 lines (no wrapping), got %d:\n%s", len(lines), rendered)
+	}
+}
+
+// TestConfirmDialog_DiscardAnswersLikeItsFooter holds the unsaved-draft box to
+// the line the footer under it draws: its "no" keeps editing rather than
+// cancelling, so the two must not offer the same keys under different words.
+func TestConfirmDialog_DiscardAnswersLikeItsFooter(t *testing.T) {
+	var state DiscardConfirmState
+	state.ConfirmDiscard = true
+	rendered := ansi.Strip(state.GetConfirmDialog().RenderOverlay(120))
+	if !strings.Contains(rendered, "Y discard") || !strings.Contains(rendered, "N/Esc keep editing") {
+		t.Fatalf("discard box does not answer like its footer:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "n/Esc cancel") {
+		t.Fatalf("discard box still offers the generic cancel:\n%s", rendered)
+	}
+
+	var destructive ConfirmDialog
+	destructive.Show("delete", "Delete this task?")
+	if rendered := ansi.Strip(destructive.RenderOverlay(120)); !strings.Contains(rendered, "y confirm") ||
+		!strings.Contains(rendered, "n/Esc cancel") {
+		t.Fatalf("a destructive confirmation lost its generic answers:\n%s", rendered)
 	}
 }

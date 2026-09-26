@@ -96,6 +96,17 @@ func (c *ConfirmDialog) Render() string {
 	return ""
 }
 
+// guidanceSpec is the answer line the box draws. The unsaved-draft question is
+// the one confirmation whose "no" keeps working rather than cancelling, and the
+// footer under it already says so, so the box spells that same line instead of
+// a second, generic one beside it.
+func (c *ConfirmDialog) guidanceSpec() GuidanceSpec {
+	if c.action == DiscardConfirmAction {
+		return DiscardGuidanceSpec()
+	}
+	return ConfirmationGuidanceSpec()
+}
+
 // RenderOverlay renders the confirm dialog as a floating bordered popup box.
 // Uses orange (ColorWarning) borders to distinguish from blue informational popups.
 func (c *ConfirmDialog) RenderOverlay(width int) string {
@@ -155,7 +166,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Title and footer text (computed early so we can size the box to fit)
 	titleStyle := lipgloss.NewStyle().Foreground(theme.ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
-	footerText := RenderGuidanceText(ConfirmationGuidanceSpec(), max(width-8, 1))
+	footerText := RenderGuidanceText(c.guidanceSpec(), max(width-8, 1))
 
 	// Minimum Width() value so titled borders fit (╭─ text ─…─╮ needs
 	// textWidth + 5 decoration chars + at least 1 dash = textWidth + 6).
@@ -183,6 +194,10 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	return RenderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
+// DiscardConfirmAction is the action every unsaved-draft question is shown
+// under, which is how the box knows to answer it with DiscardGuidanceSpec.
+const DiscardConfirmAction = "discard"
+
 // DiscardConfirmState bundles the ConfirmDiscard flag with a ConfirmDialog and
 // provides a standard GetConfirmDialog that shows "Discard unsaved changes?"
 // when ConfirmDiscard is true. Embed in view models to satisfy ConfirmDialogProvider.
@@ -193,7 +208,7 @@ type DiscardConfirmState struct {
 
 func (s *DiscardConfirmState) GetConfirmDialog() *ConfirmDialog {
 	if s.ConfirmDiscard {
-		s.ConfirmOverlay.Show("discard", "Discard unsaved changes?")
+		s.ConfirmOverlay.Show(DiscardConfirmAction, "Discard unsaved changes?")
 	} else {
 		s.ConfirmOverlay.Cancel()
 	}

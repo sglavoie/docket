@@ -349,7 +349,7 @@ func (m *NotesViewModel) SetSize(width, height int) {
 
 func (m *NotesViewModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	if m.confirmDiscard {
-		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+		m.confirmOverlay.Show(chrome.DiscardConfirmAction, "Discard unsaved changes?")
 		return &m.confirmOverlay
 	}
 	m.confirmOverlay.Cancel()
