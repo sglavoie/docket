@@ -746,10 +746,13 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testin
 	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
 		!strings.Contains(stdout, fmt.Sprintf("[Migration] workspace schema %d is current", config.CurrentConfigVersion)) ||
 		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
-		!strings.Contains(stdout, "[Migration] clean schema-6 workspace; no pre-v6 snapshot recorded") ||
-		!strings.Contains(stdout, "[Migration] clean schema-7 workspace; no pre-v7 snapshot recorded") ||
 		!strings.Contains(stdout, "All checks passed") {
 		t.Fatalf("doctor did not report a healthy fresh workspace:\n%s", stdout)
+	}
+	// A workspace created at the current schema crossed no boundary, so it has no
+	// missing early snapshot to explain.
+	if strings.Contains(stdout, "clean schema-") {
+		t.Fatalf("doctor narrated migration history a fresh workspace never had:\n%s", stdout)
 	}
 	if _, err := os.Lstat(config.PreSimplificationV5BackupsDir(dataDir)); !os.IsNotExist(err) {
 		t.Fatalf("doctor created or changed the migration backups directory: %v", err)
@@ -806,6 +809,43 @@ func TestCheckMigrationSnapshotsReportsIncompletePairWithoutMutation(t *testing.
 	auditPath := filepath.Join(backupsDir, "pre-simplification-v5-20260729T010203Z.audit.md")
 	if _, err := os.Lstat(auditPath); !os.IsNotExist(err) {
 		t.Fatalf("snapshot check recreated a missing audit report: %v", err)
+	}
+}
+
+// TestCheckMigrationSnapshotsExplainsMissingEarlySnapshotsOnlyAfterMigrating
+// keeps the "clean schema-N" notes for the workspace they describe: one whose
+// history shows a migration, so a missing early snapshot needs explaining.
+func TestCheckMigrationSnapshotsExplainsMissingEarlySnapshotsOnlyAfterMigrating(t *testing.T) {
+	fresh := &doctorResults{}
+	checkMigrationSnapshots(t.TempDir(), config.CurrentConfigVersion, fresh)
+	for _, note := range fresh.workspaceNotes {
+		if strings.Contains(note.detail, "clean schema-") {
+			t.Fatalf("never-migrated workspace notes = %+v", fresh.workspaceNotes)
+		}
+	}
+
+	dataDir := t.TempDir()
+	backupsDir := config.PreSimplificationV5BackupsDir(dataDir)
+	if err := os.MkdirAll(backupsDir, 0o700); err != nil {
+		t.Fatalf("create backups dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(backupsDir, "pre-simplification-v5-20260729T010203Z.tar.gz"), []byte("archive"), 0o400); err != nil {
+		t.Fatalf("write archive: %v", err)
+	}
+	migrated := &doctorResults{}
+	checkMigrationSnapshots(dataDir, config.CurrentConfigVersion, migrated)
+	var details []string
+	for _, note := range migrated.workspaceNotes {
+		details = append(details, note.detail)
+	}
+	joined := strings.Join(details, "\n")
+	for _, want := range []string{
+		"clean schema-6 workspace; no pre-v6 snapshot recorded",
+		"clean schema-7 workspace; no pre-v7 snapshot recorded",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("migrated workspace notes lack %q:\n%s", want, joined)
+		}
 	}
 }
 
