@@ -522,10 +522,15 @@ chips and never draws the name at all. `inlinePeekProjectNameLines` wraps it
 unbounded, so a long name is scrolled to rather than clipped. Its key travels in
 the fingerprint, which is what makes a rename a different document.
 
-Body order is the name, description, tags, then comments. The comment section is appended
-unconditionally rather than through the `add` helper the other two take: a
-project with nothing stored still owes the reader `No comments yet. Press C to add one.`, which is
-also what keeps every resolvable header's document non-empty. Bodies read newest
+Body order is the name, task total and lifecycle section counts, description,
+tags, then comments. Counts read the project's stored tasks, including children,
+Done, and Canceled, independent of the current mode or filter. An unloaded task
+list says so instead of claiming zero; an empty loaded project names zero tasks
+and no sections. Counts join the document fingerprint, so a changed total or
+section distribution resets its scroll position. The comment section is appended
+unconditionally rather than through the `add` helper the optional sections take: a
+project with no comments still owes the reader `No comments yet. Press C to add one.`
+Bodies read newest
 first, matching the `;` panel — storage keeps them oldest first because that
 order is canonical and byte-stable, and reversing for a reader touches nothing
 stored. Each entry is a muted `chrome.FormatTimestampBracket` stamp followed by

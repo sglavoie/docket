@@ -110,6 +110,55 @@ func TestProjectPeekNamesEveryStoredDetailInOrder(t *testing.T) {
 	}
 }
 
+func TestProjectPeekSummarizesTasksBySection(t *testing.T) {
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateDoing)
+	child.ParentID = &parent.ID
+	project := primaryRowsProject("alpha",
+		parent,
+		child,
+		primaryRowsTask("inbox", models.StateInbox),
+		primaryRowsTask("done", models.StateDone),
+		primaryRowsTask("canceled", models.StateCanceled),
+	)
+	project.Name = "Alpha Platform"
+	project.Description = "Planning the next release"
+	doc := peekProjectDocument(project, 80)
+	body := strings.Join(strings.Fields(peekDocumentText(doc)), " ")
+	for _, want := range []string{"Tasks: 5", "Doing 1", "Inbox 1", "Backlog 1", "Done 1", "Canceled 1"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("project summary omits %q:\n%s", want, body)
+		}
+	}
+	if firstIndexOf(t, body, "Tasks: 5", "task count") >= firstIndexOf(t, body, "Description:", "description") {
+		t.Fatal("task summary should precede project details")
+	}
+
+	base := doc.Fingerprint
+	child.WorkflowState = models.StateWaiting
+	if got := peekProjectDocument(project, 80).Fingerprint; got == base {
+		t.Fatal("changing a task's section left the project Peek fingerprint unchanged")
+	}
+	project.Tasks = append(project.Tasks, primaryRowsTask("another", models.StateBacklog))
+	if got := peekProjectDocument(project, 80).Fingerprint; got == base {
+		t.Fatal("adding a task left the project Peek fingerprint unchanged")
+	}
+}
+
+func TestProjectPeekDistinguishesEmptyAndUnloadedTaskLists(t *testing.T) {
+	project := primaryRowsProject("empty")
+	project.Tasks = []*models.Task{}
+	empty := strings.Join(strings.Fields(peekDocumentText(peekProjectDocument(project, 80))), " ")
+	if !strings.Contains(empty, "Tasks: 0 · no sections") {
+		t.Fatalf("empty project summary = %q", empty)
+	}
+	project.Tasks = nil
+	unloaded := strings.Join(strings.Fields(peekDocumentText(peekProjectDocument(project, 80))), " ")
+	if !strings.Contains(unloaded, "Tasks: Not loaded") || strings.Contains(unloaded, "Tasks: 0") {
+		t.Fatalf("unloaded project summary = %q", unloaded)
+	}
+}
+
 // TestProjectPeekSpendsOneRowPerVisualLine holds the document to its own row
 // accounting. The comment popup is the multiline TextEntry provider, so a stored
 // body can carry newlines of its own; a row hiding one would count as a single

@@ -1,6 +1,8 @@
 package outliner
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +38,8 @@ type inlinePeekProjectOptions struct {
 // inlinePeekProjectDocumentFor assembles the detail behind a project header. The
 // header row spends its width on the slug badge, the group size, and the
 // pressure chips, so everything below is what the row has no room to say: the
-// project's own name, then its description, its tags, and every stored comment
-// newest first. All four are body, so a long name pages like a long comment.
+// project's own name, task summary, description, tags, and every stored comment
+// newest first. All five are body, so a long name pages like a long comment.
 func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocument {
 	if opts.Project == nil || opts.Width <= 0 {
 		return inlinePeekDocument{}
@@ -63,10 +65,9 @@ func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocum
 
 // inlinePeekProjectBodySections is the project body's content order. The comment
 // section is appended unconditionally rather than through add, because a project
-// with nothing to say still owes the reader the sentence saying so — and that
-// keeps every project's document non-empty, so a header always has a Peek.
+// with no comments still owes the reader the sentence saying so.
 func inlinePeekProjectBodySections(project *models.Project, indent string, width int) []inlinePeekSection {
-	sections := make([]inlinePeekSection, 0, 4)
+	sections := make([]inlinePeekSection, 0, 6)
 	add := func(key string, lines []string) {
 		if len(lines) == 0 {
 			return
@@ -75,9 +76,56 @@ func inlinePeekProjectBodySections(project *models.Project, indent string, width
 	}
 
 	add("name:"+project.Name, inlinePeekProjectNameLines(project, indent, width))
+	tasks := inlinePeekProjectTaskSection(project, indent, width)
+	add(tasks.key, tasks.lines)
 	add("description:"+project.Description, inlinePeekDescriptionLines(project.Description, indent, width))
 	add("tags:"+strings.Join(project.Tags, ","), inlinePeekProjectTagLines(project.Tags, indent, width))
 	return append(sections, inlinePeekProjectCommentSection(project.Comments, indent, width))
+}
+
+// inlinePeekProjectTaskSection counts the project's stored tasks, including
+// children and completed work. The counts do not depend on the current mode,
+// search, or folds, so the same project has the same summary from either header.
+func inlinePeekProjectTaskSection(project *models.Project, indent string, width int) inlinePeekSection {
+	if !project.IsLoaded() {
+		return inlinePeekSection{
+			key:   "tasks:unloaded",
+			lines: inlinePeekEntryLines("Tasks: ", []string{"Not loaded"}, indent, width),
+		}
+	}
+
+	counts := make(map[models.WorkflowStateGroup]int)
+	total := 0
+	for _, task := range project.Tasks {
+		if task == nil {
+			continue
+		}
+		total++
+		counts[models.WorkflowStateGroupForState(task.State())]++
+	}
+	if total == 0 {
+		return inlinePeekSection{
+			key:   "tasks:0",
+			lines: inlinePeekEntryLines("Tasks: ", []string{"0 · no sections"}, indent, width),
+		}
+	}
+
+	order := append(models.AllModeWorkflowStateGroups(), models.StateGroupDone, models.StateGroupCanceled)
+	entries := make([]string, 0, len(counts))
+	for _, group := range order {
+		if group.IsSynthetic() || counts[group] == 0 {
+			continue
+		}
+		entries = append(entries, fmt.Sprintf("%s %d", group.Label(), counts[group]))
+	}
+	if counts[""] > 0 {
+		entries = append(entries, fmt.Sprintf("Other %d", counts[""]))
+	}
+	summary := strconv.Itoa(total) + " · " + strings.Join(entries, " · ")
+	return inlinePeekSection{
+		key:   "tasks:" + summary,
+		lines: inlinePeekEntryLines("Tasks: ", []string{summary}, indent, width),
+	}
 }
 
 // inlinePeekProjectNameLines is the project's name, leading its body the way a
