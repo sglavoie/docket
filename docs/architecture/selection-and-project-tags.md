@@ -210,20 +210,25 @@ parallel structure is deliberate: both publish the name and one-sentence summary
 every explaining surface reads, and neither carries an effect. The labels differ
 on purpose. A *behavioral* project tag decides something — `parked` removes a
 project from the base task workspace — while a *semantic* task tag only names a
-kind of work, touching no filter, sort, or workflow rule and no longer coloring
-the title either. The shapes
+kind of work, touching no filter, sort, or workflow rule and never coloring the
+title. The shapes
 differ for the same reason: `BehavioralProjectTags` is a map keyed by tag name
 because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `question` > `epic` > `story` > `feature` > `idea` precedence
-is part of what it publishes. That precedence now orders the listing and nothing
-else: nothing resolves a task's several semantic tags down to one, because no
-surface renders one winner. The `#` and `f#` pickers read the slice order to
-build their `SEMANTIC` section, and those rows and the explainer line beneath
-them resolve one color through `theme.SemanticTaskTitleStyle` — a per-role accent
-the vocabulary reserves, whose `...Title` palette keys are a historical name kept
-because the palette is published. The row wears the color the vocabulary gives
-that name, which is the strongest thing the row is about; it is not a preview of
-a title, because the title it would have painted is neutral text.
+is part of what it publishes. That precedence does two things. The `#` and `f#`
+pickers read the slice order to build their `SEMANTIC` section, and those rows
+and the explainer line beneath them resolve one color through
+`theme.SemanticTaskTitleStyle` — a per-role accent the vocabulary reserves, whose
+`...Title` palette keys are a historical name kept because the palette is
+published. The picker row wears the color the vocabulary gives that name, which
+is the strongest thing the row is about; it is not a preview of a title, because
+the title it would have painted is neutral text. And `theme.GetTaskStateBadge`
+resolves a task's several semantic tags down to one — the highest-precedence
+match, case-insensitive, regardless of storage order — and tints the state
+glyph's foreground with that same accent, keeping the workflow symbol and badge
+background; the capture preview borrows that badge, so a capture previews the
+glyph its row will wear. That glyph is the only single-winner surface: each tag
+still reaches Peek as its own chip, and a task row draws no tags.
 Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only

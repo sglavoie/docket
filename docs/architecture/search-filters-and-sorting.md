@@ -541,10 +541,13 @@ task with a long description.
 
 The fingerprint keys stored values alone — `id@RFC3339Nano:text` per comment —
 never the rendered stamp, whose relative half drifts on the minute tick and would
-otherwise throw a reader back to the top mid-page. A rename, a description or tag
-edit, and any comment addition, edit, deletion, or moved instant each change it
-and reset the window; a reload, a re-render, and a switch between the two header
-forms do not.
+otherwise throw a reader back to the top mid-page — and the task summary keys its
+own rendered string, `tasks:unloaded`, `tasks:0`, or `tasks:` plus the counts,
+since those are stored values too. A rename, a description or tag edit, a change
+in the task total or its section distribution, a task list loading, and any
+comment addition, edit, deletion, or moved instant each change it and reset the
+window; a reload that leaves the counts alone, a re-render, and a switch between
+the two header forms do not.
 
 The owner is the project's catalog identity, not the header's collapse key. All
 emits one header per state section, so one project can have several header rows

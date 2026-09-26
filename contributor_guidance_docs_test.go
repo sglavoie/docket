@@ -1369,8 +1369,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"references are `f~`, review is `f=`; states follow the chord to `fw`, and the " +
 			"letters `fp` and `fr` stay retired",
 		"`s`, `p`, and `t` fold the section, project, and task axes; `P` is Select Project",
-		"`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and `[`, " +
-			"which own no sigil",
+		"`>` and `<` are Set Parent and Adopt Children on task rows, and move the preview split " +
+			"in Select Project; indent and outdent are `]` and `[`, which own no sigil",
 		"`@` is the one date picker over Due, Defer, and Check-in; the cursor's Defer section, " +
 			"not a provider method, lets `+Nh` parse",
 		"`Tab` moves forward through those sections and wraps; `Shift+Tab` moves backward",

@@ -133,7 +133,7 @@ func (env *dueStepKeyEnv) step(t *testing.T, key string) {
 
 func (env *dueStepKeyEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
-	// A launch folds All's Backlog lane, so a miss opens every fold and walks again.
+	// A launch folds All's Backlog and Someday lanes, so a miss opens every fold and walks again.
 	for attempt := range 2 {
 		if attempt > 0 {
 			env.driver.App().crossOutliner.ClearAllFolds()

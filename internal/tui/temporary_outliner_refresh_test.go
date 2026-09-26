@@ -31,7 +31,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	if cross == nil {
 		t.Fatal("fixture did not open the cross-project Outliner")
 	}
-	// A launch folds All's Backlog lane; open it so every task stays drawn.
+	// A launch folds All's Backlog and Someday lanes; open them so every task stays drawn.
 	cross.ClearAllFolds()
 
 	var targetProject *models.Project

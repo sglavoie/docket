@@ -250,7 +250,7 @@ Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
 Outliner project-header sheet is Archive and Delete, and never Unarchive: that
 header is drawn from the active population.
 
-One key is one act on every entity surface:
+One key is one act on every entity surface, pane layout keys aside:
 
 | Keys | Act |
 | --- | --- |
@@ -685,8 +685,9 @@ Row and Peek budget:
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
 - Both project header forms Peek through `inlinePeekProjectDocumentFor` over the
-  row's own `ProjectID`, never the view's: name leading the body, then
-  description,
+  row's own `ProjectID`, never the view's: name leading the body, then a
+  `Tasks:` line counting every stored task by section, blind to mode, query,
+  and folds (`0 · no sections` empty, `Not loaded` unread), then description,
   tags, and every stored comment newest first, with `No comments yet. Press C to add one.` for none,
   so a header always has a document and an unresolved one has none.
   `projectPeekOwner` is that project identity, so All's several headers for one
@@ -872,8 +873,9 @@ spelling, so a picker mints no vocabulary of its own.
 `gp` forces All, not the origin mode, and its scope push must precede the mode
 switch, since the push captures the frame `Esc` restores.
 
-`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and
-`[`, which own no sigil. `*pin` is not a second route to `*`.
+`>` and `<` are Set Parent and Adopt Children on task rows, and move the
+preview split in Select Project; indent and outdent are `]` and `[`, which own
+no sigil. `*pin` is not a second route to `*`.
 
 An abandoned chord prefix warns, naming the path it left (`wq is not a workflow
 action`); an unbound root key is silent. A modifier or lock key pressed alone is
@@ -892,11 +894,11 @@ the same normalization so an unmintable persisted set fails closed.
 
 `models.BehavioralProjectTags` and `models.SemanticTaskTags` are effect-free
 metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
-`bug` > `question` > `epic` > `story` > `feature` > `idea` only orders the
-`SEMANTIC` picker rows, the one consumer of the accent
-`theme.SemanticTaskTitleStyle`, whose `...Title` palette keys are historical
-names. No renderer resolves several semantic tags to one; each reaches a row as
-its own chip.
+`bug` > `question` > `epic` > `story` > `feature` > `idea` orders the
+`SEMANTIC` picker rows and chooses the one accent a task's state glyph wears;
+`theme.SemanticTaskTitleStyle` serves both, and its `...Title` palette keys are
+historical names. Each tag still reaches Peek as its own chip; a row draws no
+tags.
 
 A task title is neutral text: priority, a deadline, an owed review, and a pin
 each reach the row through their own badge or segment, a semantic tag reaches
