@@ -84,9 +84,9 @@ func (e *CorruptWorkspaceCatalogError) Unwrap() []error {
 // which copy is the truth stays the operator's decision.
 func checkWorkspaceCatalogDecodes(dataDir string) error {
 	path := WorkspaceCatalogPath(dataDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		return nil //nolint:nilerr // an unreadable catalog is reported by the load path that needs it
 	}
 	if _, decErr := decodeEnvelope(data); decErr != nil {
 		corrupt := &CorruptWorkspaceCatalogError{

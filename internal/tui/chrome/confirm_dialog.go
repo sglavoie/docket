@@ -97,7 +97,7 @@ func (c *ConfirmDialog) Render() string {
 }
 
 // guidanceSpec is the answer line the box draws. The unsaved-draft question is
-// the one confirmation whose "no" keeps working rather than cancelling, and the
+// the one confirmation whose "no" keeps working rather than canceling, and the
 // footer under it already says so, so the box spells that same line instead of
 // a second, generic one beside it.
 func (c *ConfirmDialog) guidanceSpec() GuidanceSpec {

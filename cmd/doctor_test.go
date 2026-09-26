@@ -824,8 +824,8 @@ func TestCheckMigrationSnapshotsExplainsMissingEarlySnapshotsOnlyAfterMigrating(
 		}
 	}
 
-	dataDir := t.TempDir()
-	backupsDir := config.PreSimplificationV5BackupsDir(dataDir)
+	migratedDir := t.TempDir()
+	backupsDir := config.PreSimplificationV5BackupsDir(migratedDir)
 	if err := os.MkdirAll(backupsDir, 0o700); err != nil {
 		t.Fatalf("create backups dir: %v", err)
 	}
@@ -833,7 +833,7 @@ func TestCheckMigrationSnapshotsExplainsMissingEarlySnapshotsOnlyAfterMigrating(
 		t.Fatalf("write archive: %v", err)
 	}
 	migrated := &doctorResults{}
-	checkMigrationSnapshots(dataDir, config.CurrentConfigVersion, migrated)
+	checkMigrationSnapshots(migratedDir, config.CurrentConfigVersion, migrated)
 	var details []string
 	for _, note := range migrated.workspaceNotes {
 		details = append(details, note.detail)

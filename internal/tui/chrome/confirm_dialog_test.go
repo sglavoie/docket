@@ -157,7 +157,7 @@ func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
 
 // TestConfirmDialog_DiscardAnswersLikeItsFooter holds the unsaved-draft box to
 // the line the footer under it draws: its "no" keeps editing rather than
-// cancelling, so the two must not offer the same keys under different words.
+// canceling, so the two must not offer the same keys under different words.
 func TestConfirmDialog_DiscardAnswersLikeItsFooter(t *testing.T) {
 	var state DiscardConfirmState
 	state.ConfirmDiscard = true

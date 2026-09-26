@@ -52,7 +52,7 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 
 	// A pair no move could accept is refused before the prompt, so declining
 	// is never the only way to learn the destination was wrong.
-	if err := config.ValidateWorkspaceMovePaths(src, dest); err != nil {
+	if err = config.ValidateWorkspaceMovePaths(src, dest); err != nil {
 		return err
 	}
 
