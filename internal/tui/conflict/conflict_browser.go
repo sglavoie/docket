@@ -20,6 +20,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // The conflict browser is the read-only companion to the status strip's
@@ -219,7 +220,7 @@ func conflictDetailLines(record storage.ConflictRecord) []string {
 		lines = append(lines,
 			"  Retry:     required — adopt remote to clear this record, then retry the original operation")
 	}
-	lines = append(lines, "", fmt.Sprintf("%d conflict(s):", len(record.Conflicts)))
+	lines = append(lines, "", util.Count(len(record.Conflicts), "conflict")+":")
 	for i, conflict := range record.Conflicts {
 		header := fmt.Sprintf("  [%d] %s", i+1, conflict.Kind)
 		if conflict.TaskTitle != "" {

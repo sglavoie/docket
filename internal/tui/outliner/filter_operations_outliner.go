@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // rowFilterClauseEdit is one clause constructor per row facet. Each reads the
@@ -89,7 +90,7 @@ func (m *OutlinerModel) RowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 				models.QueryOperatorIs, name)
 		}
-		status := fmt.Sprintf("Filtering %d state(s)", len(names))
+		status := "Filtering " + util.Count(len(names), "state")
 		if len(names) == 0 {
 			status = "State filter cleared"
 		}
@@ -104,7 +105,7 @@ func (m *OutlinerModel) RowFilterClauseEdit(invocation operation.OperationInvoca
 			clauses = query.AppendFilterClause(clauses, models.QueryFieldTag,
 				models.QueryOperatorIs, name)
 		}
-		status := fmt.Sprintf("Filtering %d tag(s)", len(names))
+		status := "Filtering " + util.Count(len(names), "tag")
 		if len(names) == 0 {
 			status = "Tag filter cleared"
 		}
@@ -128,7 +129,7 @@ func (m *OutlinerModel) RowFilterClauseEdit(invocation operation.OperationInvoca
 		clauses := query.ProjectFilterClauses(slugs)
 		status := "Project filter cleared"
 		if len(clauses) > 0 {
-			status = fmt.Sprintf("Filtering %d project(s)", len(clauses))
+			status = "Filtering " + util.Count(len(clauses), "project")
 		}
 		return FilterClauseEdit{Clauses: clauses, Status: status}, nil
 	case operation.OperationFilterReview:

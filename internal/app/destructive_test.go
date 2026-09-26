@@ -245,13 +245,13 @@ func TestBulkTransitionUndoActionReflectsResolvedTargetCardinality(t *testing.T)
 			name:       "duplicate identifiers resolve to one task",
 			taskIDs:    []string{"a", "a"},
 			wantTasks:  1,
-			wantAction: "Change State",
+			wantAction: "Change Status",
 		},
 		{
 			name:       "two resolved tasks remain bulk",
 			taskIDs:    []string{"a", "b"},
 			wantTasks:  2,
-			wantAction: "Bulk Change State",
+			wantAction: "Bulk Change Status",
 		},
 	}
 

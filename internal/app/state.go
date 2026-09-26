@@ -52,13 +52,29 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change State", models.WorkflowStateGroupForState(target).Label())
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change Status", stateChangeUndoContext(ref, target))
 	if err != nil {
 		return TaskResult{}, err
 	}
 	keepMutation = true
 	return result, nil
 }
+
+// stateChangeUndoContext names the one task a status change moved and where it
+// went. The row often leaves the view it was changed from — a finished task
+// drops out of All — so the toast is the only place still saying which it was.
+// The title is capped so the route a check-in note appends beside it still fits
+// the footer.
+func stateChangeUndoContext(ref TaskRef, target models.WorkflowState) string {
+	title := []rune(ref.Task.Title)
+	if len(title) > stateChangeTitleRunes {
+		title = append(title[:stateChangeTitleRunes-1], '…')
+	}
+	return string(title) + " → " + models.WorkflowStateGroupForState(target).Label()
+}
+
+// stateChangeTitleRunes matches the width the check-in note gives a title.
+const stateChangeTitleRunes = 32
 
 // transitionPlanningArtifacts renders the planning reconciliation a single-task
 // transition implies through the caller-supplied builder, returning the checked

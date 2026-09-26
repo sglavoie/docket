@@ -113,7 +113,7 @@ func TestUXDailyUseIntegratedDailyLoopHoldsEveryChangeTogether(t *testing.T) {
 	uxDailyUseIntegratedSettle(t, driver)
 	uxDailyUseIntegratedRequireState(t, view, uxDailyUseIntegratedCapture, "doing")
 	footer := uxClarityFooter(driver)
-	if !strings.Contains(footer, "No check-in:") || !strings.Contains(footer, "Set up check-ins") {
+	if !strings.Contains(footer, "No check-in") || !strings.Contains(footer, "Set up check-ins") {
 		t.Fatalf("entering Doing left no note naming the unscheduled task and its route:\n%s", footer)
 	}
 	for _, interrupted := range []string{"Set Check-In", "Esc skips setup"} {

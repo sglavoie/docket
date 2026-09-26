@@ -38,12 +38,20 @@ func requireCheckInNote(t *testing.T, model *AppModel, want string) {
 	if model.operations.CheckInEditor != nil {
 		t.Fatal("feedback opened the scheduling editor")
 	}
-	if got := strings.Count(model.feedback.message, "No check-in:"); got != 1 {
+	if got := strings.Count(model.feedback.message, "No check-in"); got != 1 {
 		t.Fatalf("footer = %q, want exactly one note", model.feedback.message)
 	}
-	if !strings.Contains(model.feedback.message, want) {
-		t.Fatalf("footer = %q, want %q", model.feedback.message, want)
+	if strings.Contains(model.feedback.message, want) {
+		return
 	}
+	// A line that already names the one task carries the note without its title,
+	// so the task is still named exactly once on the footer.
+	title, single := strings.CutPrefix(want, "No check-in: ")
+	if single && strings.Contains(model.feedback.message, title) &&
+		strings.Contains(model.feedback.message, "No check-in · menu: Set up check-ins") {
+		return
+	}
+	t.Fatalf("footer = %q, want %q", model.feedback.message, want)
 }
 
 func requireNoCheckInNote(t *testing.T, model *AppModel) {
@@ -51,7 +59,7 @@ func requireNoCheckInNote(t *testing.T, model *AppModel) {
 	if model.operations.CheckInEditor != nil {
 		t.Fatal("feedback opened the scheduling editor")
 	}
-	if strings.Contains(model.feedback.message, "No check-in:") {
+	if strings.Contains(model.feedback.message, "No check-in") {
 		t.Fatalf("footer spoke for nothing: %q", model.feedback.message)
 	}
 }
@@ -318,7 +326,7 @@ func TestCheckInFeedbackUnderNestedOverlayStillSpeaks(t *testing.T) {
 	if model.operations.CheckInEditor != blocker {
 		t.Fatal("feedback replaced the mounted overlay")
 	}
-	if !strings.Contains(model.feedback.message, "No check-in: task") {
+	if !strings.Contains(model.feedback.message, "Change Status: task → Doing · No check-in · menu: Set up check-ins") {
 		t.Fatalf("footer under an overlay = %q", model.feedback.message)
 	}
 }

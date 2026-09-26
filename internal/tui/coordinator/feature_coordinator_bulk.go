@@ -1,7 +1,6 @@
 package coordinator
 
 import (
-	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // BulkCoordinator backs the bulk-edit / bulk-capture selection overlays.
@@ -57,7 +57,7 @@ func (c BulkCoordinator) DeleteLocators(locators []app.TaskLocator, artifacts ..
 		return BatchTransactionResultMsg{
 			Action:            "Bulk Delete",
 			TouchedProjectIDs: res.TouchedProjectIDs,
-			Summary:           fmt.Sprintf("Deleted %d task(s)", removedCount),
+			Summary:           "Deleted " + util.Count(removedCount, "task"),
 			TransactionID:     res.TransactionID,
 			DueEffect:         CommittedDueEffect{Removed: res.RemovedTaskLocators},
 		}
@@ -70,7 +70,7 @@ func (c BulkCoordinator) SetPriorityLocators(locators []app.TaskLocator, priorit
 		if err != nil {
 			return nil, "", "", err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), res.TransactionID, nil
+		return res.TouchedProjectIDs, "Set priority on " + util.Count(len(res.Tasks), "task"), res.TransactionID, nil
 	})
 }
 
@@ -88,7 +88,7 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 		if err != nil {
 			return nil, "", "", CommittedDueEffect{}, err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID,
+		return res.TouchedProjectIDs, "Set due date on " + util.Count(len(res.Tasks), "task"), res.TransactionID,
 			CommittedDueEffect{Edits: res.DueEdits}, nil
 	})
 }
@@ -99,7 +99,7 @@ func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cm
 		if err != nil {
 			return nil, "", "", CommittedDueEffect{}, err
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID,
+		return res.TouchedProjectIDs, "Cleared due date on " + util.Count(len(res.Tasks), "task"), res.TransactionID,
 			CommittedDueEffect{Edits: res.DueEdits}, nil
 	})
 }
@@ -114,7 +114,7 @@ func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.T
 		if until == nil {
 			verb = "Cleared defer on"
 		}
-		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
+		return res.TouchedProjectIDs, verb + " " + util.Count(len(res.Tasks), "task"), res.TransactionID, nil
 	})
 }
 
@@ -159,7 +159,7 @@ func (c BulkCoordinator) ApplyPlanningLocators(
 			return nil, "", "", err
 		}
 		if summary == "" {
-			summary = fmt.Sprintf("Updated %d task(s)", len(res.Tasks))
+			summary = "Updated " + util.Count(len(res.Tasks), "task")
 		}
 		return res.TouchedProjectIDs, summary, res.TransactionID, nil
 	})

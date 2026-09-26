@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DueStepGesture is one keypress worth of deadline stepping, frozen at the
@@ -347,5 +348,5 @@ func DueStepRefusal(err error, dropped int) error {
 	if err == nil || dropped <= 0 {
 		return err
 	}
-	return fmt.Errorf("%w · %d queued deadline step(s) not applied", err, dropped)
+	return fmt.Errorf("%w · %s not applied", err, util.Count(dropped, "queued deadline step"))
 }

@@ -13,7 +13,7 @@
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
 
     { "type": "key", "label": "one picker edits the whole selection", "key": "~" },
-    { "type": "assert", "assert": "contains", "value": "Set Dependencies: 2 selected task(s)" },
+    { "type": "assert", "assert": "contains", "value": "Set Dependencies: 2 selected tasks" },
     { "type": "assert", "label": "neither selected task is offered, since that reference is inside the selection", "assert": "not_contains", "value": "] Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "] Beta rollout checklist" },
     { "type": "assert", "label": "nothing is stored yet, so no row is checked or indeterminate", "assert": "contains", "value": "[ ] Renew passport" },

@@ -18,8 +18,8 @@
     { "type": "key", "label": "start it, so every open child of the story now sits in Doing", "key": "w" },
     { "type": "key", "key": "g" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
-    { "type": "assert", "label": "a subset started unscheduled is counted, not opened", "assert": "contains", "value": "No check-in:" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Add password validation → Doing" },
+    { "type": "assert", "label": "a subset started unscheduled is counted, not opened", "assert": "contains", "value": "No check-in" },
 
     { "type": "assert", "label": "the emptied parent counts the children placed elsewhere", "assert": "contains", "value": "User authentication  ›2" },
     { "type": "assert", "label": "the promoted children still name their hidden parent", "assert": "contains", "value": "Build login form  ‹" },

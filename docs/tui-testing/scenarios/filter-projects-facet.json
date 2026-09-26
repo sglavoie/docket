@@ -13,7 +13,7 @@
     { "type": "key", "key": "space" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Filtering 2 project(s)" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering 2 projects" },
     { "type": "assert", "label": "the chip spells the sigil the search would", "assert": "contains", "value": "%client-alpha %client-beta" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },

@@ -35,7 +35,7 @@
     { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
-    { "type": "assert", "label": "the draft committed in the same transaction as the task", "assert": "contains", "value": "1 attachment(s)" },
+    { "type": "assert", "label": "the draft committed in the same transaction as the task", "assert": "contains", "value": "1 attachment" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

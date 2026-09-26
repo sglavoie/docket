@@ -23,7 +23,7 @@
     { "type": "key", "label": "inspect the bundle", "key": "enter" },
     { "type": "assert", "label": "the detail pane is what tt conflict show prints", "assert": "contains", "value": "Revisions: base b0b0b0b0b0b0" },
     { "type": "assert", "assert": "contains", "value": "Retry:" },
-    { "type": "assert", "assert": "contains", "value": "2 conflict(s):" },
+    { "type": "assert", "assert": "contains", "value": "2 conflicts:" },
     { "type": "assert", "assert": "contains", "value": "[1] field_edit" },
     { "type": "assert", "assert": "contains", "value": "base:    Draft the release notes" },
     { "type": "assert", "assert": "contains", "value": "remote:  Publish the release notes" },

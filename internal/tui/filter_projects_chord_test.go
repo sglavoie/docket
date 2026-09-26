@@ -91,8 +91,8 @@ func TestFilterProjectsOperationUnionsExactSlugsAndClearsWithFx(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("project filter error: %v", result.Err)
 	}
-	if result.Status != "Filtering 2 project(s)" {
-		t.Errorf("Status = %q, want %q", result.Status, "Filtering 2 project(s)")
+	if result.Status != "Filtering 2 projects" {
+		t.Errorf("Status = %q, want %q", result.Status, "Filtering 2 projects")
 	}
 	visible := visibleOutlinerTaskIDs(out)
 	for _, id := range []string{"alpha-one", "alpha-two", "beta-one"} {

@@ -6,7 +6,7 @@
     {"type": "key", "key": "w"},
     {"type": "key", "key": "w"},
     {"type": "wait"},
-    {"type": "assert", "label": "blocking it interrupts nothing and names what it left unscheduled", "assert": "contains", "value": "No check-in:"},
+    {"type": "assert", "label": "blocking it interrupts nothing and names what it left unscheduled", "assert": "contains", "value": "No check-in"},
     {"type": "assert", "assert": "not_contains", "value": "Set Check-In"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "command", "label": "scheduling stays explicit, and is its own transaction", "command": "Set Check-In"},

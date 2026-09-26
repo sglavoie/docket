@@ -99,3 +99,11 @@ func TestNormalizePastedPathInputWindowsBackslashes(t *testing.T) {
 		t.Errorf("NormalizePastedPathInput(%q) = %q, want %q (escaped off Windows)", input, got, want)
 	}
 }
+
+func TestCountAgreesWithItsNumber(t *testing.T) {
+	for n, want := range map[int]string{0: "0 tasks", 1: "1 task", 2: "2 tasks"} {
+		if got := Count(n, "task"); got != want {
+			t.Errorf("Count(%d) = %q, want %q", n, got, want)
+		}
+	}
+}

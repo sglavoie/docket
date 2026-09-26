@@ -927,13 +927,13 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Change State: Doing"
+      "value": "Change Status: Chase the signed vendor addendum → Doing"
     },
     {
       "type": "assert",
       "label": "starting unscheduled work names the gap on the line already speaking",
       "assert": "contains",
-      "value": "No check-in:"
+      "value": "No check-in"
     },
     {
       "type": "assert",
@@ -960,7 +960,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Change State: Done"
+      "value": "Change Status: Chase the signed vendor addendum → Done"
     },
     {
       "type": "assert",

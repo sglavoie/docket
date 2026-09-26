@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // bulkMoveSource groups one source project with the canonical subtree roots the
@@ -126,7 +127,7 @@ func (s *Service) BulkMoveToProject(locators []TaskLocator, destProjectID string
 	outcome, err := s.commitProjects(
 		commits,
 		"Move to Project",
-		fmt.Sprintf("%d task(s) → %s", len(roots), destination.Slug),
+		fmt.Sprintf("%s → %s", util.Count(len(roots), "task"), destination.Slug),
 	)
 	if err != nil {
 		return BulkResult{}, err

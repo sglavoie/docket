@@ -196,7 +196,7 @@ func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
 
 	// The facet applies rather than refusing, which is the composition itself.
 	if status := applyFilterForComposition(t, outlinerView,
-		operation.OperationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state(s)" {
+		operation.OperationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state" {
 		t.Fatalf("fw Done status under search = %q, want the applied facet's own sentence", status)
 	}
 	if !outlinerView.AdmitsTerminalPopulation() {
