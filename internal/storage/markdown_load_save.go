@@ -84,10 +84,22 @@ func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) 
 	if ProjectReadWindowProbe != nil {
 		ProjectReadWindowProbe(project)
 	}
-	if err := loadProjectContent(project, content); err != nil {
+	document, err := ParseProjectDocument(string(content))
+	if err != nil {
+		return nil, loadParseError(project, err)
+	}
+	// The project takes deep copies rather than the document's own tasks: the
+	// document is the guarded base a commit is measured against, and the
+	// project is what the caller goes on to mutate. Copying is what lets one
+	// parse serve both, where a second parse of the same bytes used to.
+	tasks := make([]*models.Task, 0, len(document.Tasks))
+	for _, task := range document.Tasks {
+		tasks = append(tasks, models.CloneTaskDeep(task))
+	}
+	if err := loadProjectModels(project, tasks, models.CloneProjectComments(document.Comments)); err != nil {
 		return nil, err
 	}
-	return ParseProjectDocument(string(content))
+	return document, nil
 }
 
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to
@@ -147,13 +159,26 @@ func loadMissingProject(project *models.Project) error {
 }
 
 func loadProjectContent(project *models.Project, content []byte) error {
-	document, err := ParseProjectDocument(string(content))
+	// The project keeps the tasks and comments alone, so the revision a full
+	// ParseProjectDocument would compute is never read here.
+	document, err := parseProjectDocumentContent(string(content))
 	if err != nil {
-		return fmt.Errorf("%w: %s is not a valid schema-%d task document: %w",
-			tterrors.ErrParseError, loadedTasksFileLabel(project), CurrentTaskSchemaVersion, err)
+		return loadParseError(project, err)
 	}
-	project.Tasks = document.Tasks
-	project.Comments = document.Comments
+	return loadProjectModels(project, document.Tasks, document.Comments)
+}
+
+func loadParseError(project *models.Project, err error) error {
+	return fmt.Errorf("%w: %s is not a valid schema-%d task document: %w",
+		tterrors.ErrParseError, loadedTasksFileLabel(project), CurrentTaskSchemaVersion, err)
+}
+
+// loadProjectModels installs parsed tasks and comments on a project and
+// derives what a load owes beside them: the next ShortID, the task tree, and
+// the post-load audit.
+func loadProjectModels(project *models.Project, tasks []*models.Task, comments []*models.ProjectComment) error {
+	project.Tasks = tasks
+	project.Comments = comments
 	maxShortID := 0
 	for _, task := range project.Tasks {
 		if task.ShortID > maxShortID {

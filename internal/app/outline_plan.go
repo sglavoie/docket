@@ -165,10 +165,7 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 		return OutlinePlanResult{}, err
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return OutlinePlanResult{}, fmt.Errorf("capture outline rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

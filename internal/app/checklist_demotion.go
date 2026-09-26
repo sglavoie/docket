@@ -76,10 +76,7 @@ func (s *Service) MakeChecklistItem(req ChecklistDemotionRequest) (ChecklistDemo
 		return ChecklistDemotionResult{}, invalidInput("planning", "planning revision guard is unavailable")
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return ChecklistDemotionResult{}, err
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

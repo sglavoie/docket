@@ -73,10 +73,7 @@ func (s *Service) AttachFile(locator TaskLocator, sourcePath string) (AttachFile
 	if err != nil {
 		return AttachFileResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return AttachFileResult{}, fmt.Errorf("capture attachment rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	keepMutation := false
 	defer func() {
 		if !keepMutation {
@@ -126,10 +123,7 @@ func (s *Service) RemoveAttachment(locator TaskLocator, index int, deleteFile bo
 	if index < 0 || index >= len(ref.Task.Attachments) {
 		return RemoveAttachmentResult{}, invalidInput("attachment", fmt.Sprintf("index %d out of range", index))
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return RemoveAttachmentResult{}, fmt.Errorf("capture attachment rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	keepMutation := false
 	defer func() {
 		if !keepMutation {
@@ -183,10 +177,7 @@ func (s *Service) mutateAttachmentSelection(locator TaskLocator, undoAction, und
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture attachment rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	keepMutation := false
 	defer func() {
 		if !keepMutation {

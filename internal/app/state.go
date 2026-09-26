@@ -35,10 +35,7 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture transition rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	keepMutation := false
 	defer func() {
 		if !keepMutation {

@@ -29,6 +29,18 @@ type ProjectDocument struct {
 }
 
 func ParseProjectDocument(content string) (*ProjectDocument, error) {
+	doc, err := parseProjectDocumentContent(content)
+	if err != nil {
+		return nil, err
+	}
+	doc.Revision = doc.ComputeRevision()
+	return doc, nil
+}
+
+// parseProjectDocumentContent is ParseProjectDocument without the revision. The
+// revision re-renders and re-validates the whole document, about half the cost
+// of a parse, so a caller that keeps only the tasks and comments skips it.
+func parseProjectDocumentContent(content string) (*ProjectDocument, error) {
 	parsed, err := parseCurrentTaskProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
 	if err != nil {
 		return nil, err
@@ -41,12 +53,10 @@ func ParseProjectDocument(content string) (*ProjectDocument, error) {
 	if err != nil {
 		return nil, err
 	}
-	doc := &ProjectDocument{
+	return &ProjectDocument{
 		ProjectName: parsed.ProjectName, Tasks: tasks, Comments: comments,
 		SchemaVersion: CurrentTaskSchemaVersion,
-	}
-	doc.Revision = doc.ComputeRevision()
-	return doc, nil
+	}, nil
 }
 
 // ComputeRevision hashes the canonical rendering rather than the bytes a caller

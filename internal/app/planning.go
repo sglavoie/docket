@@ -152,10 +152,7 @@ func (s *Service) ApplyPlanningBulk(req PlanningBulkRequest) (BulkResult, error)
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return BulkResult{}, fmt.Errorf("capture bulk planning rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

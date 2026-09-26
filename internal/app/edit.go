@@ -34,10 +34,7 @@ func (s *Service) Edit(req EditRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture edit rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {
