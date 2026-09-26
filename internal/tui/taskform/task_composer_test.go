@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -182,6 +183,40 @@ func TestTaskComposerAutocompleteSuppressesUsedSingletonsPerLine(t *testing.T) {
 	composer.RefreshAutocomplete()
 	if !composer.AC.IsActive() || composer.AC.Mode != grammar.ACModeDestination {
 		t.Fatalf("singleton on another task line suppressed destination autocomplete: %+v", composer.AC)
+	}
+}
+
+// Esc closes the dropdown over the token it was showing, and the textarea's own
+// traffic — cursor blinks and other non-editing messages — must not reopen it.
+// Editing the draft again is what brings suggestions back.
+func TestTaskComposerEscDismissalSurvivesNonEditingMessages(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	for _, r := range "Fix $tod" {
+		composer.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if !composer.IsAutocompleteActive() {
+		t.Fatal("destination autocomplete did not open for a partial $ token")
+	}
+
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if composer.IsAutocompleteActive() {
+		t.Fatal("Esc did not close the suggestions")
+	}
+	if composer.ConfirmDiscard {
+		t.Fatal("Esc over open suggestions raised the discard question instead of closing them")
+	}
+
+	composer.Update(struct{}{})
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if composer.IsAutocompleteActive() {
+		t.Fatal("a non-editing message reopened the suggestions Esc closed")
+	}
+
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	composer.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	if !composer.IsAutocompleteActive() {
+		t.Fatal("editing the token again did not bring the suggestions back")
 	}
 }
 
