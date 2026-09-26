@@ -75,7 +75,7 @@ func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 		rowWidth int
 		want     string
 	}{
-		{"both counts fit", 60, "▾ [project] (4)  ! overdue 2 · ◷ today 3"},
+		{"both counts fit", 60, "▾ [project] (4)  ! overdue 2 · $today 3"},
 		{"today drops first", 30, "▾ [project] (4)  ! overdue 2"},
 		{"both drop", 20, "▾ [project] (4)"},
 	}
@@ -111,7 +111,7 @@ func TestProjectHeaderPressureCountsCarryTheirEmphasis(t *testing.T) {
 
 			suffix := appendProjectHeaderPressure(line, row, 60)
 			overdue := theme.ProjectPressureOverdueStyle.Render("! overdue 2")
-			today := theme.ProjectPressureTodayStyle.Render("◷ today 3")
+			today := theme.ProjectPressureTodayStyle.Render("$today 3")
 			if !strings.Contains(suffix, overdue) {
 				t.Errorf("header dropped the overdue count's emphasis: %q", suffix)
 			}

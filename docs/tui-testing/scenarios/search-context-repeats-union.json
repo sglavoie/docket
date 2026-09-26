@@ -13,7 +13,7 @@
     { "type": "key", "label": "a task carries one context, so two names union", "key": "/" },
     { "type": "text", "text": "##platform ##errand" },
     { "type": "assert", "label": "the rows a context selects are the witness now that the badge is Peek's", "assert": "contains", "value": "Add password validation" },
-    { "type": "assert", "label": "matched by its row, since the undo hint in the strip names the capture too; the ranked row leads with its project", "assert": "contains", "value": "□ [unfiled]      Book the venue" },
+    { "type": "assert", "label": "matched by its row, since the undo hint in the strip names the capture too; the ranked row leads with its project", "assert": "contains", "value": "◌ [unfiled]      Book the venue" },
     { "type": "assert", "assert": "not_contains", "value": "[platform]" },
     { "type": "assert", "label": "the repeat is a union, not a conflict to report", "assert": "not_contains", "value": "duplicate context" },
     { "type": "assert", "label": "a task carrying neither stays out", "assert": "not_contains", "value": "Triage support inbox" },

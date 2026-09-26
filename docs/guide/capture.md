@@ -172,7 +172,7 @@ whatever the outline can spare — it keeps its shape and shortens the preview
 instead of its chrome, and a refusal keeps its rows ahead of the draft's, so the
 message that says what went wrong is never the thing that scrolls away. Rather
 than show the first few labelled groups and silently drop the
-rest, it falls back to one wrapped run — `Panel capture · □ $inbox · !2 · #panel`
+rest, it falls back to one wrapped run — `Panel capture · ◌ $inbox · !2 · #panel`
 — so nothing the parser recognized goes unnamed. At the 60×20 floor the outline
 keeps enough rows to show the row the cursor is on; capture never hides it.
 

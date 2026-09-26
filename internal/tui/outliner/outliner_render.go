@@ -354,7 +354,9 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 // project group holds, so folding the group does not hide what is urgent in it.
 // The suffix degrades before the row is truncated — today drops first, then
 // overdue — because a clipped count reads as a different number. Each chip
-// carries a glyph so it cannot be mistaken for the bare group size beside it.
+// carries a mark so it cannot be mistaken for the bare group size beside it: the
+// Today count is spelled as its capture sigil, since Due mode heads its own
+// sections with ◷ and a clock there read as a deadline.
 // budget is the columns the content region has, which is the row width less the
 // gutter the cursor highlight owns.
 //
@@ -369,7 +371,7 @@ func appendProjectHeaderPressure(content string, row OutlinerRow, budget int) st
 		parts = append(parts, theme.ProjectPressureOverdueStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
 	}
 	if row.TodayCount > 0 {
-		parts = append(parts, theme.ProjectPressureTodayStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
+		parts = append(parts, theme.ProjectPressureTodayStyle.Render(fmt.Sprintf("$today %d", row.TodayCount)))
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
 		suffix := "  " + strings.Join(parts, theme.MutedStyle.Render(" · "))

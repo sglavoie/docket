@@ -291,12 +291,13 @@ different number.
 
 Three numbers can sit on one project header and they answer different
 questions. `(N)` is the group's size and always renders. `! overdue N` appears
-wherever the group holds a non-terminal task due before today. `◷ today N` is
+wherever the group holds a non-terminal task due before today. `$today N` is
 much narrower than it looks: All lifts Today rows into the Today section before
 the state groups are built, the Today section suppresses its own count, Next is
 mutually exclusive with Today, and Backlog clears planning, so it can only
-appear in Inbox, Due, and Recent. Both chips carry a glyph so neither reads as a
-second bare count.
+appear in Inbox, Due, and Recent. Both chips carry a mark so neither reads as a
+second bare count, and the Today one is its capture sigil rather than a clock,
+since Due mode heads its own sections with `◷`.
 
 Both also carry the due family's emphasis — `ProjectPressureOverdueStyle` and
 `ProjectPressureTodayStyle` are bold, so a folded group states its pressure at

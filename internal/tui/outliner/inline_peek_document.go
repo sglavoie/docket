@@ -340,7 +340,7 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
-		fields.add("priority", strconv.Itoa(task.Priority))
+		fields.add("priority", strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
 	}
 	if task.Pinned {
 		fields.flag("pinned")
@@ -428,7 +428,7 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 	}
 	var fields inlinePeekFields
 	if task.DueDate != nil {
-		fields.add("due", chrome.DueGrammarValue(task))
+		fields.add("due", chrome.DueGrammarValue(task)+" ("+chrome.DayGloss(*task.DueDate, now)+")")
 	}
 	// The pending half of the deferral alone. Its lapsed half is a wake that
 	// already happened, so it is history and is named there instead.
@@ -436,7 +436,7 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 		fields.add("defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		fields.add("check-in", task.NextCheckIn.Format(time.DateOnly))
+		fields.add("check-in", task.NextCheckIn.Format(time.DateOnly)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
 			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)
