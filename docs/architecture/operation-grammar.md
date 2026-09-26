@@ -197,7 +197,7 @@ category therefore gets a section for free and can never be silently swallowed.
 
 Two things reach `?` that the registry does not own. `HelpItem.Aliases` carries
 `OperationDescriptor.Aliases` through, so `/` filtering matches vocabulary a
-label hides — `defer` reaches **Set Due or Defer**, `hidden` reaches **Filter by
+label hides — `defer` reaches **Set Due, Defer, or Check-In**, `hidden` reaches **Filter by
 Due or Deferred** — and the row appends the aliases that earned it as a muted
 suffix, dropped whole rather than clipped when the description column has no
 room. Aliases feed matching only: their positions index into the alias, not into

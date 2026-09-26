@@ -19,7 +19,7 @@ func newDatePickerForTest(t *testing.T, deferReason string, selected ...listsurf
 	picker, err := NewOperationValuePickerModel(
 		operation.OperationExecutionRequest{ID: operation.OperationTaskSetDueDate},
 		operation.ValueProviderDate,
-		"Set Due or Defer",
+		"Set Due, Defer, or Check-In",
 		"Task",
 		OperationDateListSource(deferReason),
 		false,
@@ -318,7 +318,7 @@ func TestCheckInRowOpensTheTypedEditorRequestAndClaimsDateKeys(t *testing.T) {
 	picker, err := NewOperationValuePickerModel(
 		operation.OperationExecutionRequest{ID: operation.OperationTaskSetDueDate, Context: context},
 		operation.ValueProviderDate,
-		"Set Due or Defer",
+		"Set Due, Defer, or Check-In",
 		"Task",
 		OperationDateListSource(""),
 		false,

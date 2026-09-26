@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open the one date picker", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "label": "both fields, one picker", "assert": "contains", "value": "DEFER" },
     { "type": "assert", "assert": "contains", "value": "Tab switch field · a set due date · preset key pick" },
     { "type": "assert", "label": "opening writes nothing", "assert": "not_contains", "value": "⊡ Today" },

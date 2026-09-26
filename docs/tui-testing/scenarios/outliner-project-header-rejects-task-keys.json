@@ -17,7 +17,7 @@
     { "type": "key", "label": "Set Priority has no task here", "key": "1" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Set Due or Defer has no task here", "key": "@" },
+    { "type": "key", "label": "Set Due, Defer, or Check-In has no task here", "key": "@" },
     { "type": "assert", "label": "the date picker never opens", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 

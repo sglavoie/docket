@@ -9,7 +9,7 @@
     { "type": "assert", "label": "one date key earns a footer slot at the minimum width", "assert": "contains", "value": "@ date" },
     { "type": "assert", "label": "defer no longer holds a key of its own", "assert": "not_contains", "value": "d defer" },
     { "type": "key", "label": "open direct date values", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In" },
     { "type": "assert", "label": "the combined list is longer than the minimum height allows, so it scrolls", "assert": "contains", "value": "DUE" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
     { "type": "assert", "label": "the overflow is announced rather than silently clipped", "assert": "contains", "value": "more" },

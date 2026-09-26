@@ -20,7 +20,7 @@
     { "type": "key", "key": "j" },
 
     { "type": "key", "label": "the one date key still opens on a terminal task", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Design login mockup" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Design login mockup" },
     { "type": "assert", "label": "the defer section is refused on the row rather than hidden", "assert": "contains", "value": "cannot defer a done task" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -31,7 +31,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "the refusal is what Enter reports", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "cannot defer a done task" },
-    { "type": "assert", "label": "the picker stays open on the refused row", "assert": "contains", "value": "Set Due or Defer: Design login mockup" },
+    { "type": "assert", "label": "the picker stays open on the refused row", "assert": "contains", "value": "Set Due, Defer, or Check-In: Design login mockup" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "due is still reachable on the same task", "key": "home" },

@@ -6,14 +6,14 @@
     { "type": "assert", "label": "Tab is the Outliner's next-mode key before the picker borrows it", "assert": "contains", "value": "Active Projects · All" },
 
     { "type": "key", "label": "open the one date picker", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "label": "the picker opens in Due whatever the task defers to", "assert": "contains", "value": "a set due date" },
     { "type": "assert", "assert": "contains", "value": "Tab switch field" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cross into the defer section", "key": "tab" },
     { "type": "assert", "label": "the one typed-date key now writes the other field", "assert": "contains", "value": "a set defer date" },
-    { "type": "assert", "label": "switching is not choosing: the picker is still up", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "label": "switching is not choosing: the picker is still up", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "and back again", "key": "shift+tab" },
@@ -49,12 +49,12 @@
     { "type": "key", "label": "there is nowhere in Defer to go", "key": "tab" },
     { "type": "assert", "assert": "status_contains", "value": "No matching Defer values" },
     { "type": "assert", "label": "a refused switch leaves the cursor where it was", "assert": "contains", "value": "a set due date" },
-    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "leave the picker without writing a date", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "not_contains", "value": "Set Due or Defer" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due, Defer, or Check-In" },
     { "type": "assert", "label": "Tab never reached the Outliner, so the mode is untouched", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
