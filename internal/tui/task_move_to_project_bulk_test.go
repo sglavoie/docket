@@ -98,7 +98,7 @@ func TestBulkMoveToProjectCommitsASelectionSpanningSourceProjects(t *testing.T) 
 	if msg.Action != "Move to Project" {
 		t.Errorf("batch action = %q, want %q", msg.Action, "Move to Project")
 	}
-	if want := "Moved 3 task(s) to Client Beta"; msg.Summary != want {
+	if want := "Moved 3 tasks to Client Beta"; msg.Summary != want {
 		t.Errorf("batch summary = %q, want %q", msg.Summary, want)
 	}
 	if msg.TransactionID == "" {
@@ -166,7 +166,7 @@ func TestBulkMoveToProjectCommitsASelectionSpanningSourceProjects(t *testing.T) 
 
 	// The status strip reads the ledger entry the batch wrote, so the undo label
 	// names the move and its scale once for the whole selection.
-	wantStatus := fmt.Sprintf("Move to Project: 3 task(s) → %s · u undo", destination.Slug)
+	wantStatus := fmt.Sprintf("Move to Project: 3 tasks → %s · u undo", destination.Slug)
 	if m.feedback.message != wantStatus {
 		t.Errorf("status strip = %q, want %q", m.feedback.message, wantStatus)
 	}

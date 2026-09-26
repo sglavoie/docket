@@ -581,14 +581,6 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 		}
 	}
 
-	if label == "" {
-		return ""
-	}
-
-	// Prepend pipeline stage when the view belongs to a named stage.
-	if stage := pipelineStage(vt); stage != "" {
-		return stage + ": " + label
-	}
 	return label
 }
 

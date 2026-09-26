@@ -253,10 +253,12 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if len(m.Errors) > 0 && !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
 		// A refused capture is the state most likely to hold text the typist
 		// wants back, so the exit says what it will really raise rather than
-		// implying the line is already gone.
+		// implying the line is already gone. Enter keeps its ordinary name:
+		// resubmitting the same line is refused the same way, so "retry" would
+		// promise something only an edit can deliver.
 		spec = chrome.RequiredExitGuidanceSpec(
-			"Enter retry", chrome.DraftEscapeHint(m.HasDraft()),
-			"Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
+			"Enter create", chrome.DraftEscapeHint(m.HasDraft()),
+			"Ctrl+E create & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {

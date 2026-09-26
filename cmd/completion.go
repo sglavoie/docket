@@ -33,7 +33,7 @@ To load completions:
 
     # To load completions for each session:
     tt completion fish > ~/.config/fish/completions/tt.fish`,
-	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+	Args:      cobra.MatchAll(exactlyOneArg("shell (bash, zsh, or fish)"), argsRefusal(cobra.OnlyValidArgs)),
 	ValidArgs: []string{"bash", "zsh", "fish"},
 	RunE:      runCompletion,
 }

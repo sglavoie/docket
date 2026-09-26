@@ -30,7 +30,7 @@
     { "type": "key", "label": "a visual selection is the target, never the cursor", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
     { "type": "key", "key": "~" },
-    { "type": "assert", "label": "the picker addresses the selection and names its size", "assert": "contains", "value": "Set Dependencies: 1 selected task(s)" },
+    { "type": "assert", "label": "the picker addresses the selection and names its size", "assert": "contains", "value": "Set Dependencies: 1 selected task" },
     { "type": "assert", "label": "a stored reference nobody can read is still every selected task's to drop", "assert": "contains", "value": "unavailable" },
     { "type": "assert", "label": "and no selected task is offered as a row, since that is a relationship inside the selection", "assert": "not_contains", "value": "[ ] Alpha migration kickoff" },
     { "type": "assert", "assert": "no_layout_issues" },

@@ -130,8 +130,10 @@ so the row always names what it is asking for; inside the Review lane that bare
 word is left off, since the lane's heading already says it. `review` and
 `review today` share the teal of a due-today date, and a late `review +<age>`
 turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
-`ww` still asks for the deadline immediately; `Esc` there declines the date and
-the Waiting move still stands.
+`ww` opens nothing: the move commits, and when the task has no check-in the
+footer says so — `No check-in: <task> · menu: Set up check-ins` — naming the
+keyless menu entry that schedules one rather than asking for a date there and
+then.
 
 Waiting by itself is quiet. The badge says where the task is, and that is the
 whole signal: no background tint, no age competing for the eye, and nothing that
@@ -222,14 +224,16 @@ because the pin is real state that survives archiving, but `*` itself does not
 work there and the footer stops offering it: the marker shows the state, the key
 hides because the act is unavailable.
 
-`Enter` focuses the cursor task's descendants and `Esc` restores the exact
-parent cursor and scroll position. A leaf reports `No children to focus`. While
+`Enter` focuses the cursor task's descendants — Focus, in which that task is
+the unlisted focus root — and `Esc` restores the exact parent cursor
+and scroll position. A leaf reports `No children to focus`. While
 focused, `a` captures a direct child of the focus root rather than a root task
 elsewhere. Pressed on a result in the flat ranked list, `Enter` dismisses the
 query first and lands the ordinary projection on that task, so `Esc` unwinds onto
 its own row; a leaf still reports `No children to focus`, with the jump already
 made. A query that is only narrowing the mode's own lanes has nothing to leave,
 so `Enter` there is the ordinary zoom.
+
 `Enter` is that same zoom-in act on the two header rows. On a project sub-header
 it scopes the Outliner to that project — except on the `[slug]` header a focused
 project leads with, which names the scope you are already in and so takes no
@@ -244,12 +248,14 @@ sub-header inside a zoom scopes and drops the zoom, and the `Esc` that pops that
 scope brings the zoom back with it. An emptied zoom stays put and reports
 `No tasks are left in this section. Press Esc to return.` rather than unwinding
 under you.
+
 `Shift+Enter` widens in the other direction. Outside Focus it opens Focus on the
 cursor task's parent, so the task's own siblings come into view; a root task
 reports `No parent to focus`. Inside Focus it climbs one level from the focus
 root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
+
 `b` toggles a session-only Peek in a pane docked below the list, whether the
 cursor is on a task or on a project header. Its height is a share of the terminal
 — about a third of the outline's own room, never fewer than seven rows and never

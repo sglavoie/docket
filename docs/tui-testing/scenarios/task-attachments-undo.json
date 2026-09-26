@@ -10,20 +10,20 @@
     { "type": "key", "label": "attach a URL, which commits a workspace transaction", "key": "a" },
     { "type": "text", "text": "https://example.com/spec.pdf" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "1 attachment(s)" },
+    { "type": "assert", "assert": "contains", "value": "1 attachment" },
     { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
 
     { "type": "key", "label": "u undoes it without leaving the panel", "key": "u" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "label": "the strip names what moved rather than undoing silently", "assert": "status_contains", "value": "Undid: Attach URL: https://example.com/spec.pdf" },
     { "type": "assert", "label": "the panel rebuilt rather than keeping a stale row", "assert": "contains", "value": "No attachments yet. Press a to add one." },
-    { "type": "assert", "assert": "contains", "value": "0 attachment(s)" },
+    { "type": "assert", "assert": "contains", "value": "0 attachments" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+R replays it", "key": "ctrl+r" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "status_contains", "value": "Redo: Attach URL: https://example.com/spec.pdf" },
-    { "type": "assert", "assert": "contains", "value": "1 attachment(s)" },
+    { "type": "assert", "assert": "contains", "value": "1 attachment" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the panel's own help names both keys", "key": "?" },

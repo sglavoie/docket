@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func commandMessage(cmd tea.Cmd) tea.Msg {
@@ -129,18 +130,18 @@ func (m *AppModel) corePlanningOperation(
 	if len(locators) == 0 {
 		return nil
 	}
-	summary := fmt.Sprintf("Updated %d task(s)", len(locators))
+	summary := "Updated " + util.Count(len(locators), "task")
 	switch action {
 	case app.PlanningAddToday:
-		summary = fmt.Sprintf("Added %d task(s) to Today", len(locators))
+		summary = "Added " + util.Count(len(locators), "task") + " to Today"
 	case app.PlanningRemoveToday:
-		summary = fmt.Sprintf("Removed %d task(s) from Today", len(locators))
+		summary = "Removed " + util.Count(len(locators), "task") + " from Today"
 	case app.PlanningAddNext:
-		summary = fmt.Sprintf("Moved %d task(s) to Next", len(locators))
+		summary = "Moved " + util.Count(len(locators), "task") + " to Next"
 	case app.PlanningRemoveNext:
-		summary = fmt.Sprintf("Removed %d task(s) from Next", len(locators))
+		summary = "Removed " + util.Count(len(locators), "task") + " from Next"
 	case app.PlanningBacklog:
-		summary = fmt.Sprintf("Moved %d task(s) to Backlog", len(locators))
+		summary = "Moved " + util.Count(len(locators), "task") + " to Backlog"
 	}
 	return withOutlinerRelocationCapture(
 		m.secondaryFeatures.Bulk.ApplyPlanningLocators(locators, action, summary),

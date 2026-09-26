@@ -106,7 +106,7 @@ and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.Curre
 		}
 		return nil
 	},
-	Args: cobra.NoArgs,
+	Args: noArgs,
 	RunE: runRoot,
 }
 
@@ -121,9 +121,11 @@ func executeCommand(command *cobra.Command) error {
 	// package, as a test binary does, never creates a log file beneath the real
 	// $HOME. Close is a no-op when nothing opened.
 	defer closeLogging()
-	// SilenceUsage is enabled in PersistentPreRunE so usage is still printed
-	// when cobra itself rejects args (wrong count, unknown flags, etc.) but
-	// suppressed for errors that originate inside RunE.
+	// Nothing prints the whole usage block on a refusal. A refusal cobra raises
+	// before the command runs — a stray or missing argument, an unknown flag —
+	// goes through usageRefusal, which silences usage and ends the error with a
+	// pointer to --help; PersistentPreRunE silences usage for every error that
+	// originates inside RunE.
 	command.SilenceErrors = true
 	return command.Execute()
 }
@@ -151,6 +153,8 @@ func commandLogs(cmd *cobra.Command) bool {
 func init() {
 	cobra.OnInitialize(initNoColor)
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
+	// Every subcommand inherits the root's flag error function.
+	rootCmd.SetFlagErrorFunc(usageRefusal)
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")

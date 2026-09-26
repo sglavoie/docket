@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *CommentsModel) View() tea.View {
@@ -378,7 +379,7 @@ func recoveredDraftExcerpt(text string, width, maxRows int) []string {
 	}
 	tail := rows[len(rows)-(maxRows-headRows-1):]
 	excerpt := append([]string{}, rows[:headRows]...)
-	excerpt = append(excerpt, fmt.Sprintf("... %d more line(s) ...", len(rows)-headRows-len(tail)))
+	excerpt = append(excerpt, fmt.Sprintf("... %s more ...", util.Count(len(rows)-headRows-len(tail), "line")))
 	return append(excerpt, tail...)
 }
 
@@ -490,7 +491,7 @@ func (m *CommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *CommentsModel) renderCommentsSummary(b *strings.Builder) {
-	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.entries))))
+	b.WriteString(theme.MutedStyle.Render(util.Count(len(m.entries), "comment")))
 	b.WriteString("\n\n")
 }
 

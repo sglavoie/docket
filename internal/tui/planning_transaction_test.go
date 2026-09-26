@@ -344,7 +344,7 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		})
 		cmd := m.secondaryFeatures.TaskItem.CommitProject(
 			m.currentProject,
-			app.ProjectCommitOptions{UndoAction: "Change State", PlanningTaskIDs: []string{task.ID}},
+			app.ProjectCommitOptions{UndoAction: "Change Status", PlanningTaskIDs: []string{task.ID}},
 			"moved",
 		)
 		assertNotTransactionError(t, cmd())

@@ -13,7 +13,7 @@
     { "type": "assert", "label": "the removed line is listed, not just counted", "assert": "contains", "value": "#8 Triage support inbox" },
     { "type": "assert", "assert": "contains", "value": "1 task deleted" },
     { "type": "assert", "label": "the attachment consequence is spelled out", "assert": "contains", "value": "attachments: 0 stored" },
-    { "type": "assert", "assert": "contains", "value": "URL/code reference(s)" },
+    { "type": "assert", "assert": "contains", "value": "URL/code reference" },
     { "type": "assert", "label": "the deletion is reversible", "assert": "contains", "value": "Undo available (u)" },
     { "type": "assert", "label": "the Outliner stays underneath", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },

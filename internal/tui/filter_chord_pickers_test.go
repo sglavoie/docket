@@ -246,8 +246,8 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	if states.Err != nil {
 		t.Fatalf("states filter error: %v", states.Err)
 	}
-	if states.Status != "Filtering 2 state(s)" {
-		t.Errorf("Status = %q, want %q", states.Status, "Filtering 2 state(s)")
+	if states.Status != "Filtering 2 states" {
+		t.Errorf("Status = %q, want %q", states.Status, "Filtering 2 states")
 	}
 	if !filter.States.Contains(models.StateDone) || !filter.States.Contains(models.StateWaiting) {
 		t.Errorf("state filter = %v, want done+waiting", filter.States.Values())
@@ -288,8 +288,8 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	if tags.Err != nil {
 		t.Fatalf("tag filter error: %v", tags.Err)
 	}
-	if tags.Status != "Filtering 1 tag(s)" {
-		t.Errorf("Status = %q, want %q", tags.Status, "Filtering 1 tag(s)")
+	if tags.Status != "Filtering 1 tag" {
+		t.Errorf("Status = %q, want %q", tags.Status, "Filtering 1 tag")
 	}
 	if !filter.Tags["deep"] {
 		t.Errorf("tag filter = %v, want deep", filter.Tags)

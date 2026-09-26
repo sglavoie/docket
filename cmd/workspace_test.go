@@ -45,38 +45,65 @@ func TestWorkspaceMoveCommand_MovesAndSwitchesPointer(t *testing.T) {
 	}
 }
 
-// TestWorkspaceMoveCommandFailsWhenNotConfirmed keeps a declined or unanswered
-// prompt from reading as a successful move to a script checking the exit code.
-func TestWorkspaceMoveCommandFailsWhenNotConfirmed(t *testing.T) {
-	for _, tc := range []struct{ name, input string }{
-		{"declined", "n\n"},
-		{"eof", ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("HOME", t.TempDir())
-			src := filepath.Join(t.TempDir(), "src")
-			dst := filepath.Join(t.TempDir(), "dst")
-			if err := os.MkdirAll(src, 0o755); err != nil {
-				t.Fatalf("mkdir: %v", err)
-			}
-			setCommandDataDir(t, src)
-			workspaceMoveForce = false
-			previous := confirmInput
-			confirmInput = strings.NewReader(tc.input)
-			t.Cleanup(func() { confirmInput = previous })
+// TestWorkspaceMoveCommandFailsWhenUnanswered keeps an unanswered prompt — a
+// script that piped no answer — from reading as a successful move to a script
+// checking the exit code.
+func TestWorkspaceMoveCommandFailsWhenUnanswered(t *testing.T) {
+	dst := prepareUnconfirmedWorkspaceMove(t, "")
 
-			_, _, err := captureDoctorOutput(t, func() error { return runWorkspaceMove(nil, []string{dst}) })
-			if !errors.Is(err, errWorkspaceMoveNotConfirmed) {
-				t.Fatalf("runWorkspaceMove error = %v, want %v", err, errWorkspaceMoveNotConfirmed)
+	_, _, err := captureDoctorOutput(t, func() error { return runWorkspaceMove(nil, []string{dst}) })
+	if !errors.Is(err, errWorkspaceMoveNotConfirmed) {
+		t.Fatalf("runWorkspaceMove error = %v, want %v", err, errWorkspaceMoveNotConfirmed)
+	}
+	if !strings.Contains(err.Error(), "--force") {
+		t.Errorf("error %q does not name --force", err)
+	}
+	if _, statErr := os.Stat(dst); !os.IsNotExist(statErr) {
+		t.Errorf("unconfirmed move touched the destination: %v", statErr)
+	}
+}
+
+// TestWorkspaceMoveCommandDeclinedChangesNothing treats an explicit "no" as
+// the operator's choice: it says nothing changed, succeeds, and does not
+// suggest --force, which would only skip the prompt they just answered.
+func TestWorkspaceMoveCommandDeclinedChangesNothing(t *testing.T) {
+	for _, input := range []string{"n\n", "no\n", "\n"} {
+		t.Run(strings.TrimSpace(input), func(t *testing.T) {
+			dst := prepareUnconfirmedWorkspaceMove(t, input)
+
+			stdout, _, err := captureDoctorOutput(t, func() error { return runWorkspaceMove(nil, []string{dst}) })
+			if err != nil {
+				t.Fatalf("runWorkspaceMove error = %v, want nil for a declined prompt", err)
 			}
-			if !strings.Contains(err.Error(), "--force") {
-				t.Errorf("error %q does not name --force", err)
+			if !strings.Contains(stdout, workspaceMoveCanceled) {
+				t.Errorf("declined move output lacks %q:\n%s", workspaceMoveCanceled, stdout)
+			}
+			if strings.Contains(stdout, "--force") {
+				t.Errorf("declined move still suggests --force:\n%s", stdout)
 			}
 			if _, statErr := os.Stat(dst); !os.IsNotExist(statErr) {
-				t.Errorf("unconfirmed move touched the destination: %v", statErr)
+				t.Errorf("declined move touched the destination: %v", statErr)
 			}
 		})
 	}
+}
+
+// prepareUnconfirmedWorkspaceMove seeds a source workspace directory, answers
+// the prompt with input, and returns a destination that does not exist yet.
+func prepareUnconfirmedWorkspaceMove(t *testing.T, input string) string {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	src := filepath.Join(t.TempDir(), "src")
+	dst := filepath.Join(t.TempDir(), "dst")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	setCommandDataDir(t, src)
+	workspaceMoveForce = false
+	previous := confirmInput
+	confirmInput = strings.NewReader(input)
+	t.Cleanup(func() { confirmInput = previous })
+	return dst
 }
 
 // TestWorkspaceMoveCommandRefusesTheSameDirectoryBeforePrompting reads no
@@ -130,6 +157,11 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	}
 	if _, statErr := os.Stat(filepath.Join(home, ".tt", "logs")); !os.IsNotExist(statErr) {
 		t.Errorf("workspace location created the logs dir: %v", statErr)
+	}
+	// --data-dir is in effect here, so the pointer line must not claim the
+	// default resolution chose this workspace.
+	if !strings.Contains(stdout, "Active workspace pointer: (none) (overridden by --data-dir)") {
+		t.Errorf("workspace location does not say --data-dir overrides the pointer:\n%s", stdout)
 	}
 	// The retired aggregate config file never exists in a live workspace, so
 	// naming it would send the reader looking for nothing.

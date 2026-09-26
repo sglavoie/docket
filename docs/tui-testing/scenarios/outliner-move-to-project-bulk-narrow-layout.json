@@ -32,12 +32,12 @@
     { "type": "assert", "label": "the selection strip fits the minimum width", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open Move to Project over the selection", "key": "%" },
-    { "type": "assert", "assert": "contains", "value": "Move to Project: 2 selected task(s)" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: 2 selected tasks" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "choose Client Alpha", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Move to Project: 2 task(s) → client-alpha" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Project: 2 tasks → client-alpha" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },

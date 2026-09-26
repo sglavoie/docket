@@ -63,7 +63,7 @@ because the document it would commit is the unreadable one, and it says so by
 naming the schema that wrote it.
 
 
-## Schema 19 storage and migration
+## Storage layout and migration
 
 The live portable layout is deliberately small:
 
@@ -214,7 +214,7 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-context-v12-<UTC>.tar.gz` for v11→v12,
 `pre-defer-count-v13-<UTC>.tar.gz` for v12→v13,
 `pre-due-time-v14-<UTC>.tar.gz` for v13→v14,
-`pre-dependencies-v15-<UTC>.tar.gz` for v14→v15, and
+`pre-dependencies-v15-<UTC>.tar.gz` for v14→v15,
 `pre-portable-lenses-v16-<UTC>.tar.gz` for v15→v16,
 `pre-stored-review-v17-<UTC>.tar.gz` for v16→v17,
 `pre-resume-note-v18-<UTC>.tar.gz` for v17→v18,
@@ -309,7 +309,7 @@ the layout above is live state, including the ones that look like scratch space:
 | `.tt/transactions/` | A commit that was interrupted on the other machine can no longer be finished or cleaned up, which is the one exclusion that can leave a half-written file behind |
 | `.tt/undo/` | Undo history, which is per-workspace rather than per-machine |
 | `.tt/conflicts/` | Recorded conflict bundles, so the machine that has to resolve one may not be the machine that can see it |
-| `.tt/backups/` | The migration archives, which are the only route back to an older build |
+| `.tt/backups/` | The migration archives, the record of what each schema step replaced. They are not a backup to rely on: keep your own copy of the workspace before a version jump |
 
 **Do not run `tt` on two machines at the same time.** The safeguards are real —
 revision checks refuse a stale write, lens lists merge instead of overwriting,
@@ -350,8 +350,8 @@ Provider-specific notes:
   is a Syncthing archive, not `tt` state; restoring from it means copying a file
   back over the original by hand. Syncthing also does not synchronize clocks, and
   a machine whose clock is well behind the others will write timestamps that read
-  as older than they are — which is what the state clock, the check-back
-  interval, and the explicit Stale filter are all measured against.
+  as older than they are — which is what the state clock, the check-in
+  schedule, and the explicit Stale filter are all measured against.
 
 **After a sync problem, run `tt doctor`.** Its checks are ordered so the ones
 that block anything else come first: saved lenses, the transaction journal and

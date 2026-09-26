@@ -357,12 +357,12 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 		t.Fatal("delete confirmation omitted rich impact detail")
 	}
 	for _, want := range []string{
-		"1 selected root(s)",
-		"1 deduplicated descendant(s)",
-		"2 task(s) total",
+		"1 selected root",
+		"1 deduplicated descendant",
+		"2 tasks total",
 		"2 selected (1 visible · 1 hidden)",
-		"1 stored file(s) deleted",
-		"2 URL/code reference(s) removed",
+		"1 stored file deleted",
+		"2 URL/code references removed",
 	} {
 		if !strings.Contains(detail.CascadeNote, want) {
 			t.Errorf("delete impact %q omits %q", detail.CascadeNote, want)

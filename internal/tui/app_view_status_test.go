@@ -59,13 +59,13 @@ func TestOpenPickerTakesTheStatusBarAndGivesItBack(t *testing.T) {
 func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T) {
 	app := pickerStatusBarApp(t)
 	app.operations.ValuePicker = newSemanticTagPickerForTest(t, nil, true)
-	app.feedback.message = "Tagged 1 task(s)"
+	app.feedback.message = "Tagged 1 task"
 
 	statusBar := ansi.Strip(app.renderStatusBar())
 	if strings.Contains(statusBar, valuepicker.SemanticTaskTagExplainerSummary) {
 		t.Fatalf("picker explainer leaked into transient status row:\n%s", statusBar)
 	}
-	if !strings.Contains(statusBar, "Tagged 1 task(s)") {
+	if !strings.Contains(statusBar, "Tagged 1 task") {
 		t.Fatalf("expected transient status message, got:\n%s", statusBar)
 	}
 }

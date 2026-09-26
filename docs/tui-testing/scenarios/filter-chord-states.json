@@ -12,7 +12,7 @@
     { "type": "key", "label": "select the first state (Inbox)", "key": "space" },
     { "type": "key", "label": "apply the selection", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Filtering 1 state(s)" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering 1 state" },
     { "type": "assert", "label": "the state badge joins the title row", "assert": "contains", "value": "$inbox" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
     { "type": "assert", "label": "the Waiting bug is filtered out", "assert": "not_contains", "value": "Fix redirect loop after logout" },

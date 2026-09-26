@@ -17,7 +17,8 @@ row you searched for. A mode that cannot list the result falls back to All; a
 facet that still excludes it says `Task is hidden by the active facets` and
 focuses nothing.
 
-`or` is the other way to read the same query: it narrows the mode you were
+`or` — the `o` sort chord's `r`, offered only while a query is held — is the
+other way to read the same query: it narrows the mode you were
 already in, so that mode's lanes, grouping, folds, and order all keep deciding
 the rows and the query only decides which of them survive. A hit's ancestors come
 along so the row you found keeps the hierarchy it lives in. Narrowing is a
@@ -118,8 +119,8 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `?property` | Match a property computed from the workspace rather than stored on the task |
 | `-token` | Remove whatever the same token without the `-` would have matched |
 
-Search still hides terminal work, so `$done` and `$canceled` are the two tokens
-that relax the rule and reveal it. `$today` and `$next` read planning
+Search still hides terminal work unless a token names it: `$done`, `$canceled`,
+and `?completed` reveal it, alongside the other admissions listed above. `$today` and `$next` read planning
 membership rather than a state, so a planned task also answers `$backlog`.
 `%project` can only narrow the scope that is already loaded; it never reaches a
 project the current scope or Focus excluded.
@@ -509,10 +510,11 @@ A field key installs its order ascending, and pressing the same key again
 reverses it, so there is no separate reverse key. The active order joins the
 title row as a `Sort: <field> ↑` badge.
 
-Sorting is a session-only refinement, like a filter. It orders tasks inside the
-group they already belong to, so it never changes which project group comes
-first and never touches an order you built by hand: Pinned, Today, and Next keep
-their manual sequence whatever the axis says.
+Sorting is a session-only refinement, like a filter. Sections keep their fixed
+order, and inside each one — Pinned, Today, and Next included — the tasks and the
+project groups follow the chosen axis, a group ranking by its best task. An
+order you built by hand — manual sibling order, Today and Next planning order,
+pin order — only breaks ties.
 
 Today, Next, Due, and Recent each own their order — a plan you arranged, a due
 date, an activity clock — so a sort key there records your choice and reports

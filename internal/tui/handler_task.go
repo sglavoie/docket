@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
@@ -325,7 +326,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 
 	summary := fmt.Sprintf("Updated #%d %s", msg.Result.ShortID, msg.Result.Title)
 	if msg.Result.MovedDescendantCount > 0 {
-		summary = fmt.Sprintf("Updated #%d and moved %d descendant(s)", msg.Result.ShortID, msg.Result.MovedDescendantCount)
+		summary = fmt.Sprintf("Updated #%d and moved %s", msg.Result.ShortID, util.Count(msg.Result.MovedDescendantCount, "descendant"))
 	}
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(summary, msg.Result.TransactionID, recordedOrigin)

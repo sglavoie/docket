@@ -39,6 +39,19 @@ func (q *QuickEditComponent) refreshAutocomplete() {
 	q.AC.UpdateSuggestions(mode, pos, q.suggestions(mode, pos, partial, parsedPrefix))
 }
 
+// autocompleteTokenComplete reports whether the token under the caret already
+// spells one of the offered values, so Enter saves the edit rather than
+// accepting a suggestion that would only restate it. A partial token, tag
+// literals included, still takes the highlighted suggestion.
+func (q *QuickEditComponent) autocompleteTokenComplete() bool {
+	if !q.AC.IsActive() {
+		return false
+	}
+	value := q.Input.Value()
+	mode, _, partial, _, _ := detectQuickEditTrigger(value[:q.cursorByteOffset()], q.triggers)
+	return mode == q.AC.Mode && q.AC.OffersExactly(partial)
+}
+
 func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, parsedPrefix textgrammar.Result) []ACSuggestion {
 	switch mode {
 	case ACModeTag:

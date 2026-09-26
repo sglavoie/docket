@@ -27,7 +27,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "peel everything that is left", "key": "x" },
-    { "type": "assert", "assert": "contains", "value": "Peeled 2 narrowing(s)" },
+    { "type": "assert", "assert": "contains", "value": "Peeled 2 narrowings" },
     { "type": "assert", "assert": "contains", "value": "nothing: every axis is at its default" },
     { "type": "assert", "label": "peel-all returns the unnarrowed mode", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" },

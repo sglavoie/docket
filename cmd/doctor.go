@@ -33,8 +33,9 @@ and 1 when doctor could not run or a repair failed.`,
 	Example: `  tt doctor
   tt doctor --fix
   tt doctor --json`,
-	Args: cobra.NoArgs,
-	RunE: runDoctor,
+	Args:              noArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runDoctor,
 }
 
 func init() {
@@ -117,7 +118,7 @@ func (e *doctorIssuesError) Error() string {
 	if e.quiet {
 		return ""
 	}
-	return fmt.Sprintf("found %d issue(s)", e.count)
+	return "found " + Pluralize(e.count, "issue", "issues")
 }
 
 // ExitCode is the process status main reports for this error.
@@ -213,6 +214,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	fix, _ := cmd.Flags().GetBool("fix")
 	asJSON, _ := cmd.Flags().GetBool("json")
 
+	if err := requireExistingWorkspace(); err != nil {
+		return err
+	}
 	results, state, err := collectDoctorResults()
 	if err != nil {
 		return err
@@ -231,6 +235,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// verdictGap sets the closing verdict off from whatever printed above it,
+	// and is empty when nothing did.
+	verdictGap := ""
 	if asJSON {
 		if err := printJSON(newDoctorReport(results, fixed)); err != nil {
 			return err
@@ -239,7 +246,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		for _, line := range fixed {
 			fmt.Printf("  Fixed: %s\n", line)
 		}
-		printResults(results)
+		if printResults(results) || len(fixed) > 0 {
+			verdictGap = "\n"
+		}
 	}
 
 	if fixErr != nil {
@@ -248,9 +257,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if results.totalIssues() > 0 {
 		if !asJSON {
 			if !fix && results.fixableIssues() > 0 {
-				fmt.Println("\nRun 'tt doctor --fix' to automatically fix fixable issues.")
+				fmt.Println(verdictGap + "Run 'tt doctor --fix' to automatically fix fixable issues.")
 			} else {
-				fmt.Println("\nResolve the reported integrity issues, then re-run 'tt doctor'.")
+				fmt.Println(verdictGap + "Resolve the reported integrity issues, then re-run 'tt doctor'.")
 			}
 		}
 		return &doctorIssuesError{count: results.totalIssues(), quiet: asJSON}
@@ -258,9 +267,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	if !asJSON {
 		if results.informationalNotes() > 0 {
-			fmt.Println("\nAll checks passed (with informational notes above).")
+			fmt.Println(verdictGap + "All checks passed (with informational notes above).")
 		} else {
-			fmt.Println("\nAll checks passed.")
+			fmt.Println(verdictGap + "All checks passed.")
 		}
 	}
 	return nil

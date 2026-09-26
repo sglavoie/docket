@@ -26,7 +26,7 @@
 
     { "type": "key", "label": "wi sends it to Inbox", "key": "i" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Inbox" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Inbox" },
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
 
     { "type": "key", "label": "every destination is another lane, so the cursor stayed with the Backlog sweep rather than following the task", "key": "home" },
@@ -35,8 +35,8 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wg starts it", "key": "g" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
-    { "type": "assert", "label": "the start names what it left unscheduled", "assert": "contains", "value": "No check-in:" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Doing" },
+    { "type": "assert", "label": "the start names what it left unscheduled", "assert": "contains", "value": "No check-in" },
 
     { "type": "key", "label": "Doing leads it now", "key": "home" },
     { "type": "key", "key": "j" },
@@ -44,15 +44,15 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "ww blocks it and notes the missing schedule", "key": "w" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "No check-in:" },
+    { "type": "assert", "assert": "contains", "value": "No check-in" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Waiting" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Waiting" },
 
     { "type": "key", "label": "Waiting sorts below Backlog, so the last row is the one that moved", "key": "end" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wp parks it", "key": "p" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Paused" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Paused" },
 
     { "type": "key", "label": "Paused sorts above Backlog", "key": "home" },
     { "type": "key", "key": "j" },
@@ -60,7 +60,7 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wm shelves it", "key": "m" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Someday" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Someday" },
 
     { "type": "key", "label": "Someday is the last lane All draws", "key": "end" },
     { "type": "key", "label": "open it, since launch folds Someday", "key": "l" },
@@ -96,8 +96,8 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wc abandons it, which the live projection stops showing", "key": "c" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Canceled" },
-    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Canceled" },
+    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
 
     { "type": "key", "label": "back to the top of the Outliner", "key": "home" },
     { "type": "key", "label": "onto the project header", "key": "j" },
@@ -105,8 +105,8 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wd completes that one", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change State: Done" },
-    { "type": "assert", "assert": "not_contains", "value": "Design settings screen" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Design settings screen → Done" },
+    { "type": "assert", "label": "only the toast still names it: the row left All", "assert": "count_contains", "value": "Design settings screen", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -12,7 +12,7 @@ var conflictShowCmd = &cobra.Command{
 	Use:               "show <id>",
 	Short:             "Show the details of a merge conflict",
 	Long:              `Show the base, local, and remote revisions and every structured conflict for one recorded merge conflict.`,
-	Args:              cobra.ExactArgs(1),
+	Args:              exactlyOneArg("conflict ID"),
 	RunE:              runConflictShow,
 	ValidArgsFunction: completeConflictIDs,
 }
@@ -66,7 +66,7 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 	if rec.OperationRetryRequired() {
 		fmt.Printf("  Retry:     required — adopt remote to clear this record, then retry the original operation\n")
 	}
-	fmt.Printf("\n%d conflict(s):\n", len(rec.Conflicts))
+	fmt.Printf("\n%s:\n", Pluralize(len(rec.Conflicts), "conflict", "conflicts"))
 	for i, c := range rec.Conflicts {
 		fmt.Printf("\n  [%d] %s", i+1, c.Kind)
 		if c.TaskTitle != "" {

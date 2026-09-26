@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *AppModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*models.Task, *models.Project) {
@@ -75,7 +76,7 @@ func (m *AppModel) newOperationValuePicker(
 	task := refs[0].Task
 	subtitle := task.Title
 	if len(refs) > 1 || request.Context.Selection.Visual {
-		subtitle = fmt.Sprintf("%d selected task(s)", len(refs))
+		subtitle = util.Count(len(refs), "selected task")
 	}
 
 	switch provider {

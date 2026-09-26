@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operationhost"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *AppModel) executeTaskOperation(
@@ -112,7 +113,7 @@ func (m *AppModel) executeTaskTogglePinOperation(
 				Pinned:    pinned,
 			},
 			action,
-			fmt.Sprintf("%s %d task(s)", verb, len(locators)),
+			verb+" "+util.Count(len(locators), "task"),
 		), capture),
 	}}
 }
@@ -362,8 +363,8 @@ func applicationTaskOperationRequest(
 		}
 		request.Operation = app.TaskOperationSetState
 		request.State = state
-		return request, "Change State",
-			fmt.Sprintf("Change State · Changed %d task(s) to %s", count, state), true, nil
+		return request, "Change Status",
+			fmt.Sprintf("Change Status · Changed %s to %s", util.Count(count, "task"), state), true, nil
 
 	case operation.OperationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
@@ -373,7 +374,7 @@ func applicationTaskOperationRequest(
 		request.Operation = app.TaskOperationSetPriority
 		request.Priority = priority
 		return request, "Set Priority",
-			fmt.Sprintf("Set Priority · Set priority on %d task(s)", count), true, nil
+			"Set Priority · Set priority on " + util.Count(count, "task"), true, nil
 
 	case operation.OperationTaskSetDueDate:
 		return applicationDateOperationRequest(request, invocation.Value)
@@ -390,7 +391,7 @@ func applicationTaskOperationRequest(
 			verb = "Cleared check-in on"
 		}
 		return request, "Set Check-In",
-			fmt.Sprintf("Set Check-In · %s %d task(s)", verb, count), true, nil
+			fmt.Sprintf("Set Check-In · %s %s", verb, util.Count(count, "task")), true, nil
 
 	case operation.OperationTaskSetTags:
 		switch value := invocation.Value.(type) {
@@ -412,10 +413,10 @@ func applicationTaskOperationRequest(
 				verb = "Cleared context on"
 			}
 			return request, "Set Tags & Context",
-				fmt.Sprintf("Set Tags & Context · %s %d task(s)", verb, count), true, nil
+				fmt.Sprintf("Set Tags & Context · %s %s", verb, util.Count(count, "task")), true, nil
 		}
 		return request, "Set Tags",
-			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
+			"Set Tags · Tagged " + util.Count(count, "task"), true, nil
 
 	case operation.OperationTaskReferences:
 		// Cardinality chooses the transaction, not the meaning, exactly as it does
@@ -432,7 +433,7 @@ func applicationTaskOperationRequest(
 		request.Operation = app.TaskOperationSetDependencies
 		request.Dependencies = valuepicker.TaskReferenceBulkPatch(value)
 		return request, "Set Dependencies",
-			fmt.Sprintf("Set Dependencies · Updated %d task(s)", count), true, nil
+			"Set Dependencies · Updated " + util.Count(count, "task"), true, nil
 
 	case operation.OperationTaskCopyTitle:
 		request.Operation = app.TaskOperationCopyTitle
@@ -740,9 +741,9 @@ func countAttachmentImpact(tasks []*models.Task) (stored, linked int) {
 
 func attachmentImpactNote(stored, linked int) string {
 	return fmt.Sprintf(
-		"attachments: %d stored file(s) deleted · %d URL/code reference(s) removed",
-		stored,
-		linked,
+		"attachments: %s deleted · %s removed",
+		util.Count(stored, "stored file"),
+		util.Count(linked, "URL/code reference"),
 	)
 }
 
@@ -780,10 +781,10 @@ func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *c
 		Items:      items,
 		TotalCount: len(roots),
 		CascadeNote: fmt.Sprintf(
-			"%d selected root(s) · %d deduplicated descendant(s) · %d task(s) total · %d selected (%d visible · %d hidden) · %s",
-			impact.selectedRoots,
-			impact.descendants,
-			impact.totalTasks,
+			"%s · %s · %s total · %d selected (%d visible · %d hidden) · %s",
+			util.Count(impact.selectedRoots, "selected root"),
+			util.Count(impact.descendants, "deduplicated descendant"),
+			util.Count(impact.totalTasks, "task"),
 			impact.selection.Total,
 			impact.selection.Visible,
 			impact.selection.Hidden,
@@ -879,7 +880,7 @@ func applicationDateOperationRequest(request app.TaskOperationRequest, raw any) 
 			verb = "Cleared defer on"
 		}
 		return request, "Set Defer",
-			fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
+			fmt.Sprintf("Set Defer · %s %s", verb, util.Count(count, "task")), true, nil
 	}
 	request.Operation = app.TaskOperationSetDueDate
 	request.PlanForToday = coordinator.DueDateIsToday(value.Date)
@@ -888,5 +889,5 @@ func applicationDateOperationRequest(request app.TaskOperationRequest, raw any) 
 		verb = "Cleared due date on"
 	}
 	return request, "Set Due Date",
-		fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
+		fmt.Sprintf("Set Due Date · %s %s", verb, util.Count(count, "task")), true, nil
 }

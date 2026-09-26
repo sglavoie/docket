@@ -139,9 +139,10 @@ func (q *QuickCaptureInput) HandleAutocompleteKey(key string) bool {
 	})
 }
 
-// AutocompleteLiteralComplete reports whether the active tag/type token is
-// already valid as typed. The composer uses this to let Enter submit a complete
-// literal while Tab remains the explicit completion key.
+// AutocompleteLiteralComplete reports whether the active token is already
+// complete as typed: a tag or context literal the grammar accepts, or any token
+// that spells one of the offered values exactly. The composer uses this to let
+// Enter submit a complete token while Tab remains the explicit completion key.
 func (q *QuickCaptureInput) AutocompleteLiteralComplete() bool {
 	if !q.AC.IsActive() {
 		return false
@@ -150,18 +151,28 @@ func (q *QuickCaptureInput) AutocompleteLiteralComplete() bool {
 	if mode != q.AC.Mode || partial == "" {
 		return false
 	}
+	return q.AC.OffersExactly(partial) || literalTokenComplete(mode, partial, textgrammar.SurfaceCapture)
+}
+
+// literalTokenComplete reports whether a tag or context token parses whole as
+// typed. Both mint on the fly, so a literal the grammar accepts needs no
+// suggestion to be complete; every other field completes only to an offered
+// value.
+func literalTokenComplete(mode int, partial string, surface textgrammar.Surface) bool {
+	field := textgrammar.FieldTag
 	switch mode {
-	case ACModeTag, ACModeContext:
-		field := textgrammar.FieldTag
-		if mode == ACModeContext {
-			field = textgrammar.FieldContext
-		}
-		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, field)
-		parsed := textgrammar.Parse(definition.Trigger+partial, textgrammar.SurfaceCapture)
-		return parsed.Text == "" && len(parsed.TokensFor(field)) == 1
+	case ACModeTag:
+	case ACModeContext:
+		field = textgrammar.FieldContext
 	default:
 		return false
 	}
+	definition, ok := textgrammar.DefinitionFor(surface, field)
+	if !ok {
+		return false
+	}
+	parsed := textgrammar.Parse(definition.Trigger+partial, surface)
+	return parsed.Text == "" && len(parsed.TokensFor(field)) == 1
 }
 
 // UpdateInput updates the textarea and refreshes autocomplete/preview state.

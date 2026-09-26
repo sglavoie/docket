@@ -49,8 +49,10 @@ manual review flag raises it.
 
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `[slug] (count)` header, and its
-tasks sit one level beneath it without repeating the project's name; `p` or `h`
-folds the group down to that header. Focus a single project and those
+tasks sit one level beneath it without repeating the project's name; `h` folds
+the cursor's own group down to that header once nothing nearer — a checklist,
+children, a parent — is left to fold, and `p` folds or opens every project group
+at once. Focus a single project and those
 per-group headers give way to one `[slug]` header at the top
 of the projection. That one is context rather than a group: it carries no fold
 arrow and no count, `h` and `l` do nothing on it, and `Enter` has nowhere to go

@@ -26,7 +26,7 @@
     { "type": "key", "label": "past the project header onto the new row", "key": "j" },
     { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
-    { "type": "assert", "label": "the captured comment landed in the same transaction as the task", "assert": "contains", "value": "1 comment(s)" },
+    { "type": "assert", "label": "the captured comment landed in the same transaction as the task", "assert": "contains", "value": "1 comment" },
     { "type": "assert", "label": "the sigil inside the span is literal comment text", "assert": "contains", "value": "check the #auth flow" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

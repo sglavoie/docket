@@ -97,7 +97,7 @@ func TestConflictDetailLinesRenderTheCLIRecord(t *testing.T) {
 		"Recorded:  ",
 		"Revisions: base b0b0b0b0b0b0 · local 1oca11oca11o · remote <none>",
 		"Retry:     required",
-		"2 conflict(s):",
+		"2 conflicts:",
 		`[1] field_edit — "Ship the release notes"`,
 		"field:   title",
 		"base:    Draft the release notes",

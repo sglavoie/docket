@@ -47,7 +47,7 @@
     { "type": "assert", "assert": "contains", "value": "[x] backend-api" },
     { "type": "key", "label": "the ordinary accept still applies the filter", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Filtering 1 tag(s)" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering 1 tag" },
     { "type": "assert", "label": "the renamed spelling is what the view filters on", "assert": "contains", "value": "Filters: #backend-api" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" }

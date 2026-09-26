@@ -1,7 +1,7 @@
 # Retired keys
 
-Every key an earlier vocabulary used and the sigils replaced, inventoried in one
-place rather than left beside the surface that dropped it.
+The keys earlier vocabularies used, per surface, which of those letters came
+back with new acts, and what answers each retired act now.
 
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and the key rows of `?` help. Every key an earlier

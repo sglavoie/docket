@@ -254,7 +254,7 @@ func checkConflictBundles(runtime *config.RuntimeState, results *doctorResults) 
 	results.conflictNotes = append(results.conflictNotes, doctorIssue{
 		project: "Conflicts",
 		detail: fmt.Sprintf(
-			"%s outstanding in %s; resolve with 'tt conflict'",
+			"%s outstanding in %s; resolve with 'tt conflict list'",
 			Pluralize(len(records), "conflict bundle", "conflict bundles"),
 			store.Dir(),
 		),

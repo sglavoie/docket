@@ -356,6 +356,9 @@ func uxClarityStagedDriver(t *testing.T, frame string, width, height int) (*UITe
 		t.Fatalf("fixture: %v", err)
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
+	// Frames press y, and the real seam shells out to pbcopy or xclip, which a
+	// CI runner may not have.
+	withFakeClipboard(t, nil, nil)
 	view := driver.App().crossOutliner
 	if view == nil {
 		t.Fatal("the fixture app has no Outliner")

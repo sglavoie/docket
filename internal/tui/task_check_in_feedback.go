@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -107,7 +108,7 @@ func (m *AppModel) publishCheckInFeedback() tea.Cmd {
 	if len(results) == 0 {
 		return nil
 	}
-	note := checkInFeedbackNote(m.committedCheckInTitles(results))
+	note := checkInFeedbackNote(m.committedCheckInTitles(results), m.feedback.message)
 	if note == "" {
 		return nil
 	}
@@ -158,15 +159,36 @@ func (m *AppModel) committedCheckInTitles(results []app.TaskResult) []string {
 // have moved out from under it the moment it changed state. Set up check-ins
 // names its own population — unscheduled Doing and Waiting work — which always
 // contains whatever the sentence just counted.
-func checkInFeedbackNote(titles []string) string {
+//
+// spoken is the line the note will ride. When it already names the one task —
+// a status change says which task moved — the note does not repeat the title,
+// since a second copy is what would push the route off a narrow footer.
+func checkInFeedbackNote(titles []string, spoken string) string {
 	switch len(titles) {
 	case 0:
 		return ""
 	case 1:
+		if lineNamesTitle(spoken, titles[0]) {
+			return "No check-in · menu: Set up check-ins"
+		}
 		return "No check-in: " +
 			textfit.TruncateToVisualWidth(titles[0], checkInFeedbackTitleWidth) +
 			" · menu: Set up check-ins"
 	default:
 		return fmt.Sprintf("No check-in: %d tasks · menu: Set up check-ins", len(titles))
 	}
+}
+
+// lineNamesTitle reports whether spoken already names title, whole or cut to the
+// width a status change gives it, which keeps at least the title's first
+// checkInFeedbackTitleWidth-1 runes.
+func lineNamesTitle(spoken, title string) bool {
+	runes := []rune(title)
+	if len(runes) == 0 {
+		return false
+	}
+	if len(runes) >= checkInFeedbackTitleWidth {
+		runes = runes[:checkInFeedbackTitleWidth-1]
+	}
+	return strings.Contains(spoken, string(runes))
 }

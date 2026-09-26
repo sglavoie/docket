@@ -31,7 +31,8 @@ Captured on Friday 28 August 2026, that lands in the Today lane of project
 - `#auth` set the tag, minting it if it did not exist. Rows draw no tags, so
   it shows in Peek (`b`), not on the row.
 - `%web` routed the task into the `web` project instead of wherever the cursor
-  was.
+  was. It names a project that already exists — capture refuses an unknown
+  slug — so on a fresh workspace create `web` first with `P` then `a`.
 - `$today` planned it for today.
 
 The one non-obvious part is that last line: `$today` adds Today membership and
@@ -92,6 +93,12 @@ A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.
 
+Every run starts in Active Projects, All mode, with no restored search, filters,
+selection, or navigation. Active Projects is the base task workspace: every
+project you have not tagged `parked`. Press `a` to capture the first task. At
+Active Projects scope, capture routes to the protected Unfiled project with
+Inbox lifecycle; in a single-project scope, it routes to that project.
+
 ## Platform support
 
 `tt` is developed and used daily on macOS. The full test suite also runs on
@@ -118,12 +125,6 @@ migration-snapshot diagnostics, and `tt doctor --fix` for the explicitly
 supported repairs. [`docs/guide/storage.md`](docs/guide/storage.md) documents
 the archive names and the manual recovery path.
 
-Every run starts in Active Projects, All mode, with no restored search, filters,
-selection, or navigation. Active Projects is the base task workspace: every
-project you have not tagged `parked`. Press `a` to capture the first task. At
-Active Projects scope, capture routes to the protected Unfiled project with
-Inbox lifecycle; in a single-project scope, it routes to that project.
-
 ## Daily loop
 
 The Outliner is the only primary task presentation:
@@ -134,7 +135,10 @@ The Outliner is the only primary task presentation:
    sigil names.
 4. `wb`, `wn`, and `wt` organize work; `wg` starts it and `wd` completes it.
 5. Direct metadata keys handle priority, state, dates, tags, and pin.
-6. `Space` opens the occasional task tools.
+6. `/` searches for a task.
+7. `Space` opens the occasional task tools, Delete among them, which asks
+   before it removes anything.
+8. `u` undoes the last change and `Ctrl+R` redoes it.
 
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
@@ -149,7 +153,7 @@ and the rare.
 | `Tab` `g` `Enter` `Esc` | cycle modes · go to a mode · zoom in · unwind one rung |
 | `a` `A` `e` `E` `Ctrl+E` | capture · child · inline edit · description · external editor |
 | `w` | the workflow chord: `wi` `wb` `wn` `wt` `wg` `ww` `wp` `wm` `wd` `wc` |
-| `!` `@` `#` `*` | priority · due and defer · tags and context · pin |
+| `!` `@` `#` `*` | priority · due, defer, and check-in · tags and context · pin |
 | `-` `+` | step the deadline one day earlier · one day later |
 | `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |
@@ -158,7 +162,7 @@ and the rare.
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
 | `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |
 | `y`/`Y` `u`/`Ctrl+R` `Ctrl+N` `T` | copy · undo and redo · Notes · theme |
-| `Space` `?` | menu · the generated key reference for this surface |
+| `Space` `?` `Ctrl+C` | menu · the generated key reference for this surface · quit |
 
 `?` is always the honest answer: it is generated from the same operation
 descriptors that dispatch the keys, for whichever surface you are on.
@@ -197,7 +201,8 @@ things up in rather than read straight through:
 - [`docs/guide/projects-and-notes.md`](docs/guide/projects-and-notes.md) —
   project scope, Select Project, project tags including `parked`, All Notes.
 - [`docs/guide/storage.md`](docs/guide/storage.md) — the durable layout, the undo
-  ledger, conflict recovery, and the schema-19 migration chain.
+  ledger, conflict recovery, and the migration chain up to the schema-21
+  catalog and its schema-19 task files.
 - [`docs/guide/retired-keys.md`](docs/guide/retired-keys.md) — every retired key,
   per surface, and what answers it now.
 

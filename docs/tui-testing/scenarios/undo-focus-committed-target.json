@@ -10,13 +10,13 @@
     { "type": "key", "label": "complete that one task", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
     { "type": "key", "label": "undo the completion", "key": "u" },
     {
       "type": "assert",
       "label": "the restored task is drawn again, so the cursor follows it and Ctrl+O returns to where it stood",
       "assert": "status_contains",
-      "value": "Undid: Change State: Done · Ctrl+O origin"
+      "value": "Undid: Change Status: Sketch intake flow → Done · Ctrl+O origin"
     },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
@@ -25,10 +25,10 @@
       "type": "assert",
       "label": "the Done lane is not drawn here, so the restore names where the task went instead of rewriting the view",
       "assert": "status_contains",
-      "value": "Redo: Change State: Done · now in Workflow Project (Done)"
+      "value": "Redo: Change Status: Sketch intake flow → Done · now in Workflow Project (Done)"
     },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
     { "type": "key", "label": "undo back to the whole backlog", "key": "u" },
     { "type": "wait" },
     { "type": "key", "label": "select every visible task", "key": "ctrl+a" },
@@ -36,7 +36,7 @@
     { "type": "key", "key": "d" },
     { "type": "wait" },
     { "type": "key", "label": "undo the bulk completion", "key": "u" },
-    { "type": "assert", "assert": "status_contains", "value": "Undid: Bulk Change State: Done" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Bulk Change Status: Done" },
     { "type": "assert", "label": "the selection the user still holds survives the restore", "assert": "contains", "value": "MULTI-SELECT: 3 selected" },
     {
       "type": "assert",

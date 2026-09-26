@@ -163,7 +163,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 				NextCheckIn:       &checkIn,
 				CheckInRepeatDays: 7,
 			},
-			"due 2026-08-14 · defer " + chrome.FormatDeferDate(pending, now) + " · check-in 2026-08-12 · repeat 7d",
+			"due 2026-08-14 (Fri, in 4 days) · defer " + chrome.FormatDeferDate(pending, now) + " · check-in 2026-08-12 (Wed, in 2 days) · repeat 7d",
 		},
 		{
 			// The row carries no deferral now, so Peek names the pending one — and
@@ -180,7 +180,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 		{
 			"one-off check-in names repetition as off",
 			&models.Task{NextCheckIn: &checkIn},
-			"check-in 2026-08-12 · repeat off",
+			"check-in 2026-08-12 (Wed, in 2 days) · repeat off",
 		},
 		{
 			"spent instants never reach the schedule",
@@ -409,8 +409,10 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	order := []string{
 		"Rework the sync path",
 		"Parent: Launch platform",
-		"plan today · status doing 4h · priority 2 · pinned · review",
-		"due " + chrome.DueGrammarValue(task) + " · check-in " + checkIn.Format(time.DateOnly) + " · repeat off",
+		"plan today · status doing 4h · priority 2 medium · pinned · review",
+		"due " + chrome.DueGrammarValue(task) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
+			" · check-in " + checkIn.Format(time.DateOnly) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
+		"repeat off",
 		"Resume: Left mid-refactor",
 		"Description: Wrapped description content",
 		"Checklist: 1/2 done",
@@ -502,7 +504,7 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
 			"next",
-			"plan next · status paused · priority 1 · pinned · review",
+			"plan next · status paused · priority 1 high · pinned · review",
 		},
 	}
 	for _, tc := range cases {

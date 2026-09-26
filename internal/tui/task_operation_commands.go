@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // adoptChildrenCmd routes the picker's checked set through the same task-line
@@ -277,7 +278,7 @@ func (m *AppModel) moveTaskSelectionToProjectCmd(
 	destination := m.moveDestinationName(projectID)
 	m.domain.service.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager))
 	cmd := m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, projectID, func(moved int) string {
-		return fmt.Sprintf("Moved %d task(s) to %s", moved, destination)
+		return fmt.Sprintf("Moved %s to %s", util.Count(moved, "task"), destination)
 	})
 	return coordinator.FinalizeStaleSelectionBatchResult(withOutlinerRelocationCapture(cmd, relocation), locators)
 }
@@ -319,7 +320,7 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			locators,
 			state,
 			func(changed int) string {
-				return fmt.Sprintf("Changed %d task(s) to %s", changed, state)
+				return fmt.Sprintf("Changed %s to %s", util.Count(changed, "task"), state)
 			},
 		))
 	case operation.OperationTaskSetPriority:

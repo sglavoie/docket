@@ -59,3 +59,24 @@ func FormatDeferDate(deferredUntil, now time.Time) string {
 		return value.Format("Jan 2 15:04")
 	}
 }
+
+// DayGloss names a calendar day against now for a reader rather than a parser:
+// its weekday and how far it is, "Fri, in 6 days" or "Mon, 2 days ago". Peek
+// appends it to the grammar value, which stays exactly what `@` would accept.
+func DayGloss(day, now time.Time) string {
+	day = day.In(now.Location())
+	var distance string
+	switch days := util.DaysBetween(now, day); {
+	case days == 0:
+		distance = "today"
+	case days == 1:
+		distance = "tomorrow"
+	case days == -1:
+		distance = "yesterday"
+	case days > 1:
+		distance = "in " + util.Count(days, "day")
+	default:
+		distance = util.Count(-days, "day") + " ago"
+	}
+	return day.Format("Mon") + ", " + distance
+}

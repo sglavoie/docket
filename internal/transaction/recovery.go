@@ -80,7 +80,11 @@ func (r *RecoveryReport) Err() error {
 		return nil
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d transaction(s) require attention", len(r.Quarantined))
+	if len(r.Quarantined) == 1 {
+		b.WriteString("1 transaction requires attention")
+	} else {
+		fmt.Fprintf(&b, "%d transactions require attention", len(r.Quarantined))
+	}
 	for _, q := range r.Quarantined {
 		fmt.Fprintf(&b, "\n  - %s: %s (manifest at %s)", q.ID, q.Reason, q.Path)
 	}

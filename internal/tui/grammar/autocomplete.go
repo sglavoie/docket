@@ -99,6 +99,21 @@ func (ac *AutocompleteState) HandleKey(key string, onAccept func()) bool {
 	return false
 }
 
+// OffersExactly reports whether partial already spells one of the offered
+// values, so accepting a suggestion could only restate what was typed. Enter
+// submits in that case instead of spending a keypress on a no-op completion.
+func (ac *AutocompleteState) OffersExactly(partial string) bool {
+	if !ac.IsActive() || partial == "" {
+		return false
+	}
+	for _, item := range ac.Items {
+		if item.Value == partial {
+			return true
+		}
+	}
+	return false
+}
+
 // Selected returns the currently selected suggestion, or a zero value if none.
 func (ac *AutocompleteState) Selected() ACSuggestion {
 	if ac.Cursor < len(ac.Items) {

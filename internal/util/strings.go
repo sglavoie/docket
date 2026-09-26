@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 )
@@ -133,4 +134,13 @@ func containsUnescapedQuote(s string) bool {
 		}
 	}
 	return false
+}
+
+// Count renders n with a regular English noun in agreement: "1 task",
+// "2 tasks". It replaces the "task(s)" shorthand in user-facing counts.
+func Count(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }

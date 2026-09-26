@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
@@ -23,7 +24,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Attachments for #%d: ", m.Task.ShortID),
 		m.Task,
-		fmt.Sprintf("%d attachment(s)", len(m.Task.Attachments)),
+		util.Count(len(m.Task.Attachments), "attachment"),
 		m.CurrentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))

@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // The query readout answers one question: what is narrowing this view, and how
@@ -670,7 +671,7 @@ func (m *OutlinerModel) peelAllQueryReadoutRows() tea.Cmd {
 		m.SetTransientStatus("Nothing to peel")
 		return status.DefaultStatusTimeout()
 	}
-	summary := fmt.Sprintf("Peeled %d narrowing(s)", peeled)
+	summary := "Peeled " + util.Count(peeled, "narrowing")
 	if reload {
 		m.reseatQueryReadoutAfterPeel()
 		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: summary} }

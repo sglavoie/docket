@@ -341,7 +341,9 @@ func TestRunDoctorRepairsCorruptTaskBytesFromDisk(t *testing.T) {
 	if !errors.As(err, &issues) || issues.ExitCode() != 2 {
 		t.Fatalf("doctor error = %v, want an exit-2 issues error\n%s", err, stdout)
 	}
-	if !strings.Contains(stdout, "Project load failures: 0") ||
+	// An empty section is skipped in text mode, so a clean load prints no
+	// "Project load failures" header at all.
+	if strings.Contains(stdout, "Project load failures") ||
 		!strings.Contains(stdout, "Duplicate short IDs: 1") ||
 		!strings.Contains(stdout, "Broken parent refs: 1") ||
 		!strings.Contains(stdout, "Run 'tt doctor --fix'") {
@@ -490,7 +492,7 @@ func TestRunDoctorFixRepairsThenReportsTheCleanState(t *testing.T) {
 		t.Fatalf("doctor --fix stderr = %q, want empty", stderr)
 	}
 	if !strings.Contains(stdout, "Fixed: pruned 1 planning entry from Today and Next") ||
-		!strings.Contains(stdout, "Planning membership issues: 0") ||
+		strings.Contains(stdout, "Planning membership issues") ||
 		!strings.Contains(stdout, "All checks passed") {
 		t.Fatalf("doctor --fix did not report the post-fix state:\n%s", stdout)
 	}
@@ -535,7 +537,7 @@ func TestRunDoctorUnfixableIssueExitsTwo(t *testing.T) {
 	if !errors.As(err, &issues) {
 		t.Fatalf("doctor --fix error = %v, want doctorIssuesError\n%s", err, stdout)
 	}
-	if issues.ExitCode() != 2 || issues.count != 1 || err.Error() != "found 1 issue(s)" {
+	if issues.ExitCode() != 2 || issues.count != 1 || err.Error() != "found 1 issue" {
 		t.Fatalf("issues error = %+v (%q), want exit 2 for one issue", issues, err.Error())
 	}
 	if !strings.Contains(stdout, "Invalid completion timestamps: 1") ||
@@ -743,7 +745,8 @@ func TestRunDoctorFreshWorkspaceBootstrapsProtectedUnfiledIdempotently(t *testin
 	if stderr != "" {
 		t.Fatalf("doctor stderr = %q, want empty", stderr)
 	}
-	if !strings.Contains(stdout, "Workspace integrity issues: 0") ||
+	// Text mode skips empty sections, so no zero-count header may appear.
+	if strings.Contains(stdout, ": 0\n") ||
 		!strings.Contains(stdout, fmt.Sprintf("[Migration] workspace schema %d is current", config.CurrentConfigVersion)) ||
 		!strings.Contains(stdout, "[Undo] workspace ledger is valid (0 undo entries, 0 redo entries)") ||
 		!strings.Contains(stdout, "All checks passed") {
@@ -892,5 +895,79 @@ func TestCheckRetainedV5DomainsDoesNotCreateRetiredFiles(t *testing.T) {
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Fatalf("domain check recreated retired file %s: %v", path, err)
 		}
+	}
+}
+
+// TestRunDoctorRefusesAMissingWorkspaceWithoutCreatingOne keeps the read-only
+// diagnostic from bootstrapping a workspace it was pointed at by mistake: a
+// directory that does not exist, and one that exists but holds no workspace.
+func TestRunDoctorRefusesAMissingWorkspaceWithoutCreatingOne(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		create bool
+	}{
+		{"nonexistent", false},
+		{"empty", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			dir := filepath.Join(t.TempDir(), "workspace")
+			if tc.create {
+				if err := os.Mkdir(dir, 0o700); err != nil {
+					t.Fatalf("mkdir: %v", err)
+				}
+			}
+			setCommandDataDir(t, dir)
+
+			stdout, _, err := captureDoctorOutput(t, func() error {
+				return runDoctor(newDoctorCommand(t), nil)
+			})
+			if err == nil || !strings.Contains(err.Error(), "no tt workspace at "+dir) {
+				t.Fatalf("doctor error = %v, want a refusal naming %s\n%s", err, dir, stdout)
+			}
+			var issues *doctorIssuesError
+			if errors.As(err, &issues) {
+				t.Fatalf("a missing workspace is not an issues verdict: %v", err)
+			}
+			if strings.Contains(stdout, "All checks passed") {
+				t.Fatalf("doctor passed a workspace that does not exist:\n%s", stdout)
+			}
+			if tc.create {
+				entries, readErr := os.ReadDir(dir)
+				if readErr != nil || len(entries) != 0 {
+					t.Fatalf("doctor wrote into the empty directory: %v %v", entries, readErr)
+				}
+			} else if _, statErr := os.Stat(dir); !os.IsNotExist(statErr) {
+				t.Fatalf("doctor created the missing directory: %v", statErr)
+			}
+		})
+	}
+}
+
+// TestDataDirThatIsAFileIsRefusedByName names the override rather than the
+// first path beneath it that fails with ENOTDIR.
+func TestDataDirThatIsAFileIsRefusedByName(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	file := filepath.Join(t.TempDir(), "afile")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	setCommandDataDir(t, file)
+
+	for name, run := range map[string]func() error{
+		"doctor":             func() error { return runDoctor(newDoctorCommand(t), nil) },
+		"workspace location": func() error { return runWorkspaceLocation(nil, nil) },
+		"load":               func() error { _, err := LoadCLIWorkspace(); return err },
+	} {
+		_, _, err := captureDoctorOutput(t, run)
+		if err == nil || err.Error() != "--data-dir "+file+" is not a directory" {
+			t.Errorf("%s error = %v, want the --data-dir refusal", name, err)
+		}
+	}
+
+	setCommandDataDir(t, "")
+	t.Setenv("TT_DATA_DIR", file)
+	if _, err := LoadCLIWorkspace(); err == nil || err.Error() != "TT_DATA_DIR="+file+" is not a directory" {
+		t.Errorf("TT_DATA_DIR load error = %v, want the TT_DATA_DIR refusal", err)
 	}
 }

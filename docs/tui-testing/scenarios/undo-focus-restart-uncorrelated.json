@@ -9,11 +9,11 @@
     { "type": "key", "label": "complete that one task", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
     { "type": "restart", "label": "relaunch tt, which keeps the durable ledger and drops the session correlation" },
     { "type": "wait" },
     { "type": "key", "label": "undo the completion from the previous session", "key": "u" },
-    { "type": "assert", "assert": "status_contains", "value": "Undid: Change State: Done" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Change Status: Sketch intake flow → Done" },
     {
       "type": "assert",
       "label": "the restore still names its transaction, but nothing this session saw committed it",

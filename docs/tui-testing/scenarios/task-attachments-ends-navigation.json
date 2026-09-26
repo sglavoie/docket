@@ -14,7 +14,7 @@
     { "type": "text", "text": "https://example.com/two.pdf" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "2 attachment(s)" },
+    { "type": "assert", "assert": "contains", "value": "2 attachments" },
 
     { "type": "key", "label": "G reaches the last attachment", "key": "G" },
     { "type": "key", "label": "the sheet names the row under the cursor", "key": "space" },

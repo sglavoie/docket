@@ -175,7 +175,7 @@ func TestRunProjectExportRefusesConflictingFlags(t *testing.T) {
 		{"all with file", true, "/tmp/x.md", "", nil, "use --dir, not --file"},
 		{"all with stdout", true, "-", "", nil, "use --dir, not --file"},
 		{"dir without all", false, "", "/tmp/out", []string{"alpha"}, "--dir only applies with --all"},
-		{"no slug", false, "", "", nil, "project slug required"},
+		{"no slug", false, "", "", nil, "project slug or ID required"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetProjectExportFlags(t)

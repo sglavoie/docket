@@ -39,7 +39,7 @@ The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
 `project export` names one project, or takes `--all` to write every cataloged
 project, archived included, as `<slug>.md` into `--dir` (default `exports/`,
 created 0700); `--file -` prints one export to stdout instead. `--all` refuses a
-slug and `--file`, and naming nothing is refused as "project slug required".
+slug and `--file`, and naming nothing is refused as "project slug or ID required".
 Each file destination passes the migration-snapshot guard on its own. `project
 export`, `conflict show`, and `conflict resolve` complete slugs and short
 conflict IDs from a direct catalog and conflict-store read, never

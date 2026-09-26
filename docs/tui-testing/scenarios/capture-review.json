@@ -8,7 +8,7 @@
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "text", "label": "flag the task as it is created", "text": "Flagged task =review " },
     { "type": "assert", "label": "the content-sized panel grew to the grouped preview", "assert": "contains", "value": "Task     Flagged task" },
-    { "type": "assert", "label": "the preview still names the destination", "assert": "contains", "value": "Route    □ $inbox (default)" },
+    { "type": "assert", "label": "the preview still names the destination", "assert": "contains", "value": "Route    ◌ $inbox (default)" },
     { "type": "assert", "label": "the preview still names every recognized attribute", "assert": "contains", "value": "Review   =review" },
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },

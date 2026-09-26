@@ -100,7 +100,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 
 		env.completeSelection(t)
 
-		const want = "Change State: Done · u undo"
+		const want = "Change Status: First transition target → Done · u undo"
 		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}
@@ -120,7 +120,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 
 		env.completeSelection(t)
 
-		const want = "Bulk Change State: Done · u undo"
+		const want = "Bulk Change Status: Done · u undo"
 		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}

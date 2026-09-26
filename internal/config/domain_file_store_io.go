@@ -44,7 +44,7 @@ func (s *DomainFileStore) loadArtifact(kind domainKind, out any, recoverFromBack
 	env, decErr := decodeEnvelope(data)
 	if decErr != nil {
 		if !recoverFromBackup {
-			return rev, fmt.Errorf("failed to parse %s: %w", filepath.Base(path), decErr)
+			return rev, fmt.Errorf("failed to parse %s: %w; %s", absoluteArtifactPath(path), decErr, s.corruptArtifactNextStep(path))
 		}
 		recovered, recoveredData, recErr := s.recoverEnvelopeFromBackup(path, decErr)
 		if recErr != nil {
@@ -68,10 +68,10 @@ func (s *DomainFileStore) loadArtifact(kind domainKind, out any, recoverFromBack
 	decoder := json.NewDecoder(bytes.NewReader(env.Data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(out); err != nil {
-		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
+		return rev, fmt.Errorf("failed to parse %s payload: %w; %s", absoluteArtifactPath(path), err, s.corruptArtifactNextStep(path))
 	}
 	if err := requireJSONEOF(decoder); err != nil {
-		return rev, fmt.Errorf("failed to parse %s payload: %w", filepath.Base(path), err)
+		return rev, fmt.Errorf("failed to parse %s payload: %w; %s", absoluteArtifactPath(path), err, s.corruptArtifactNextStep(path))
 	}
 	if catalog, ok := out.(*WorkspaceCatalog); ok {
 		if catalog.WorkspaceID == "" {
@@ -84,17 +84,40 @@ func (s *DomainFileStore) loadArtifact(kind domainKind, out any, recoverFromBack
 	return rev, nil
 }
 
+// corruptArtifactNextStep is the recovery step every parse failure of a domain
+// artifact ends with, so the operator who cannot open the workspace learns what
+// to do next rather than only which file broke. A synced artifact sits beside
+// the migration archives in the internal .tt directory, so those are named as
+// one source of a copy; machine-local state has no archive to point at.
+func (s *DomainFileStore) corruptArtifactNextStep(path string) string {
+	if s.dataDir != "" && filepath.Dir(path) == InternalDir(s.dataDir) {
+		return fmt.Sprintf("fix the JSON in %s by hand, or restore it from a copy of the workspace "+
+			"(migration archives are kept in %s), then retry",
+			absoluteArtifactPath(path), absoluteArtifactPath(PreScopeV7BackupsDir(s.dataDir)))
+	}
+	return fmt.Sprintf("fix the JSON in %s by hand, then retry", absoluteArtifactPath(path))
+}
+
+// absoluteArtifactPath is path made absolute for an error message, so an
+// operator who passed a relative --data-dir is still told exactly which file.
+func absoluteArtifactPath(path string) string {
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
+}
+
 // recoverEnvelopeFromBackup restores an artifact from its .bak sidecar when the
 // primary is corrupted, re-persisting the recovered bytes so later loads do not
 // hit the corruption again.
 func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr error) (domainEnvelope, []byte, error) {
 	backupData, err := os.ReadFile(path + ".bak")
 	if err != nil {
-		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s (no backup available): %w", filepath.Base(path), primaryErr)
+		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s (no backup available): %w; %s", absoluteArtifactPath(path), primaryErr, s.corruptArtifactNextStep(path))
 	}
 	env, err := decodeEnvelope(backupData)
 	if err != nil {
-		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s and backup is also corrupted: %w", filepath.Base(path), primaryErr)
+		return domainEnvelope{}, nil, fmt.Errorf("failed to parse %s and its backup is also corrupted: %w; %s", absoluteArtifactPath(path), primaryErr, s.corruptArtifactNextStep(path))
 	}
 	if writeErr := util.AtomicWriteFile(path, backupData, FilePermissions); writeErr != nil {
 		return domainEnvelope{}, nil, fmt.Errorf("recovered %s from backup but failed to persist it: %w", filepath.Base(path), writeErr)

@@ -19,7 +19,7 @@ func TestCrossMachineHelperChangesCheckIn(t *testing.T) {
 	kind := helperEnv(t, helperMutationEnv)
 	action := "Set Check-In"
 	if kind == "done" || kind == "canceled" {
-		action = "Change State"
+		action = "Change Status"
 	}
 	defer helperHoldAtCommit(t, action, target.ProjectID, target.TaskID)()
 	var err error

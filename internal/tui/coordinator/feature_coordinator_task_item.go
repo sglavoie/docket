@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskItemCoordinator backs the single-task outliner mutation handlers, parallel
@@ -49,7 +50,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 		if summary == "" {
 			summary = action
 			if len(result.Tasks) > 1 {
-				summary = fmt.Sprintf("%s on %d task(s)", action, len(result.Tasks))
+				summary = action + " on " + util.Count(len(result.Tasks), "task")
 			}
 		}
 		return BatchTransactionResultMsg{
@@ -232,7 +233,7 @@ func (c TaskItemCoordinator) Transition(task taskref.TaskIdentity, target models
 			return TransactionErrorMsg{Err: err}
 		}
 		return TransactionResultMsg{
-			Action: "Change State", Result: res,
+			Action: "Change Status", Result: res,
 			PlanningChanged: true,
 		}
 	}

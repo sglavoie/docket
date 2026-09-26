@@ -216,7 +216,7 @@ func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T
 	}{
 		{name: "unsupported-schema", primary: unsupportedData, check: func(err error) bool { return strings.Contains(err.Error(), "not supported") }},
 		{name: "workspace-mismatch", primary: mismatchedData, check: func(err error) bool { return errors.Is(err, ErrWorkspaceIDMismatch) }},
-		{name: "invalid-payload", primary: invalidPayloadData, check: func(err error) bool { return strings.Contains(err.Error(), "failed to parse planning.json payload") }},
+		{name: "invalid-payload", primary: invalidPayloadData, check: func(err error) bool { return strings.Contains(err.Error(), "planning.json payload") }},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -242,6 +242,51 @@ func TestDomainFileStore_BackupDoesNotOverrideSemanticPrimaryErrors(t *testing.T
 			}
 			if !bytes.Equal(primaryAfter, tc.primary) {
 				t.Fatal("semantic primary error incorrectly triggered backup replacement")
+			}
+		})
+	}
+}
+
+// TestDomainFileStore_UnrecoverableParseFailureNamesThePathAndANextStep keeps
+// the error that stops a workspace from opening actionable: the whole path of
+// the broken file, and what to do about it, beside the parse failure itself.
+func TestDomainFileStore_UnrecoverableParseFailureNamesThePathAndANextStep(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		backup []byte
+		want   string
+	}{
+		{name: "no-backup", want: "(no backup available)"},
+		{name: "corrupt-backup", backup: []byte("{also broken"), want: "its backup is also corrupted"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dataDir := filepath.Join(t.TempDir(), "workspace")
+			path := PlanningStatePath(dataDir)
+			if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
+				t.Fatalf("mkdir domain dir: %v", err)
+			}
+			if err := os.WriteFile(path, []byte("{broken"), FilePermissions); err != nil {
+				t.Fatalf("write primary: %v", err)
+			}
+			if tc.backup != nil {
+				if err := os.WriteFile(path+".bak", tc.backup, FilePermissions); err != nil {
+					t.Fatalf("write backup: %v", err)
+				}
+			}
+
+			_, _, err := newBoundTestDomainFileStore(t, dataDir, testWorkspaceIDA).LoadPlanningChecked()
+			if err == nil {
+				t.Fatal("a corrupt planning.json with no usable backup loaded")
+			}
+			for _, want := range []string{
+				"failed to parse " + path,
+				tc.want,
+				"fix the JSON in " + path + " by hand",
+				PreScopeV7BackupsDir(dataDir),
+			} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q lacks %q", err, want)
+				}
 			}
 		})
 	}

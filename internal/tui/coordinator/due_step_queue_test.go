@@ -308,7 +308,7 @@ func TestDueStepRefusalCountsOnlyUnexecutedWork(t *testing.T) {
 	if !errors.Is(wrapped, refused) {
 		t.Fatalf("the refusal %v no longer carries the application layer's reason", wrapped)
 	}
-	if got, want := wrapped.Error(), refused.Error()+" · 2 queued deadline step(s) not applied"; got != want {
+	if got, want := wrapped.Error(), refused.Error()+" · 2 queued deadline steps not applied"; got != want {
 		t.Fatalf("refusal = %q, want %q", got, want)
 	}
 }

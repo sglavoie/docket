@@ -27,7 +27,8 @@ const projectExportStdout = "-"
 var projectExportCmd = &cobra.Command{
 	Use:   "export [slug-or-id]",
 	Short: "Export a project to clean Markdown",
-	Long: `Export a project to a human-readable Markdown file in the exports/ folder of your tt data directory.
+	Long: `Export a project to a human-readable Markdown file in the exports/ folder
+of your tt data directory.
 
 Name the project by slug or ID, or pass --all to export every project,
 archived ones included, as one <slug>.md file each.
@@ -38,7 +39,7 @@ Use --dir with --all to write somewhere other than exports/.`,
   tt project export my-project --file -
   tt project export --all
   tt project export --all --dir /tmp/tt-export`,
-	Args:              cobra.MaximumNArgs(1),
+	Args:              atMostOneArg("project slug or ID"),
 	RunE:              runProjectExport,
 	ValidArgsFunction: completeProjectSlugs,
 }
@@ -102,7 +103,7 @@ func validateProjectExportFlags(args []string) error {
 		return errors.New("--dir only applies with --all; use --file for one project")
 	}
 	if len(args) == 0 {
-		return errors.New("project slug required: name a project, or pass --all")
+		return errors.New("project slug or ID required: name a project, or pass --all")
 	}
 	return nil
 }
