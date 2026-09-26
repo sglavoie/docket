@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -35,6 +36,11 @@ func runConflictList(_ *cobra.Command, _ []string) error {
 	}
 
 	if conflictListJSON {
+		// An empty workspace is an empty list, not JSON null, so a script can
+		// iterate the result without special-casing the clean state.
+		if records == nil {
+			records = []storage.ConflictRecord{}
+		}
 		return printJSON(records)
 	}
 
@@ -90,8 +96,8 @@ func resolveConflictID(store *storage.ConflictStore, ref string) (string, error)
 	case 1:
 		return matches[0], nil
 	case 0:
-		return "", fmt.Errorf("no conflict matches %q", ref)
+		return "", fmt.Errorf("no conflict matches %q; run 'tt conflict list' to see IDs", ref)
 	default:
-		return "", fmt.Errorf("conflict id %q is ambiguous; candidates: %v", ref, matches)
+		return "", fmt.Errorf("conflict id %q is ambiguous; candidates: %s", ref, strings.Join(matches, ", "))
 	}
 }

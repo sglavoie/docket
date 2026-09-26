@@ -65,15 +65,29 @@ func MoveWorkspace(srcDataDir, dstDataDir string) (*MoveReport, error) {
 	return moveWorkspace(srcDataDir, dstDataDir, nil)
 }
 
-func moveWorkspace(srcDataDir, dstDataDir string, hooks workspaceMoveHooks) (*MoveReport, error) {
+// ValidateWorkspaceMovePaths refuses a source/destination pair no move could
+// ever accept — either path missing, the same directory, or one nested inside
+// the other — without touching either tree. MoveWorkspace runs it first; a
+// frontend runs it before asking for confirmation, so a pair that can only fail
+// never asks.
+func ValidateWorkspaceMovePaths(srcDataDir, dstDataDir string) error {
 	src := filepath.Clean(srcDataDir)
 	dst := filepath.Clean(dstDataDir)
 	if src == "" || src == "." || dst == "" || dst == "." {
-		return nil, fmt.Errorf("workspace move requires both a source and a destination data dir")
+		return fmt.Errorf("workspace move requires both a source and a destination data dir")
 	}
 	if src == dst {
-		return nil, fmt.Errorf("workspace move: source and destination are the same directory: %s", src)
+		return fmt.Errorf("workspace move: source and destination are the same directory: %s", src)
 	}
+	return ensureNotNested(src, dst)
+}
+
+func moveWorkspace(srcDataDir, dstDataDir string, hooks workspaceMoveHooks) (*MoveReport, error) {
+	if err := ValidateWorkspaceMovePaths(srcDataDir, dstDataDir); err != nil {
+		return nil, err
+	}
+	src := filepath.Clean(srcDataDir)
+	dst := filepath.Clean(dstDataDir)
 
 	srcInfo, statErr := os.Stat(src)
 	if statErr != nil {
@@ -81,9 +95,6 @@ func moveWorkspace(srcDataDir, dstDataDir string, hooks workspaceMoveHooks) (*Mo
 	}
 	if !srcInfo.IsDir() {
 		return nil, fmt.Errorf("workspace move: source data dir %s is not a directory", src)
-	}
-	if err := ensureNotNested(src, dst); err != nil {
-		return nil, err
 	}
 
 	var report *MoveReport

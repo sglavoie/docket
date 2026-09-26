@@ -27,7 +27,7 @@ func loadCLIWorkspace() (*CLIWorkspace, error) {
 	manager := config.NewManager(resolveConfigPath())
 	_, err := manager.LoadOrCreateDomains()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, fmt.Errorf("failed to load workspace: %w", err)
 	}
 	runtime, err := manager.LoadRuntimeState()
 	if err != nil {
@@ -39,21 +39,16 @@ func loadCLIWorkspace() (*CLIWorkspace, error) {
 	}, nil
 }
 
-// LoadRuntimeProjectOrCurrent resolves an explicit project argument or the
-// machine-local current project from the cached runtime domains.
-func LoadRuntimeProjectOrCurrent(args []string) (*models.Project, *CLIWorkspace, error) {
+// LoadRuntimeProject resolves one project by slug or ID from the cached runtime
+// domains.
+func LoadRuntimeProject(ref string) (*models.Project, *CLIWorkspace, error) {
 	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return nil, nil, err
 	}
-	var project *models.Project
-	if len(args) > 0 {
-		project = workspace.Runtime.GetProject(args[0])
-		if project == nil {
-			return nil, nil, tterrors.NewProjectNotFoundError(args[0])
-		}
-	} else {
-		return nil, nil, NoCurrentProjectError()
+	project := workspace.Runtime.GetProject(ref)
+	if project == nil {
+		return nil, nil, tterrors.NewProjectNotFoundError(ref)
 	}
 	return project, workspace, nil
 }
