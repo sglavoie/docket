@@ -16,11 +16,19 @@ import (
 // sealProjectDirectory makes a project's directory unwritable for the rest of the
 // test, which is how a refused save is produced without stubbing the repository:
 // the transaction fails where a real one would, in the filesystem. It returns the
-// unseal so a test can prove the retry succeeds afterwards.
+// unseal so a test can prove the retry succeeds afterwards. A process that
+// ignores directory permissions, root above all, cannot produce the refusal, so
+// the test skips rather than fail on a save that was never refused.
 func sealProjectDirectory(t *testing.T, path string) func() {
 	t.Helper()
 	if err := os.Chmod(path, 0o555); err != nil {
 		t.Fatalf("seal %s: %v", path, err)
+	}
+	if probe, err := os.CreateTemp(path, "seal-probe-*"); err == nil {
+		_ = probe.Close()
+		_ = os.Remove(probe.Name())
+		_ = os.Chmod(path, 0o755)
+		t.Skip("the sealed directory stayed writable (running as root?); the refusal path is untested here")
 	}
 	unsealed := false
 	unseal := func() {

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -298,10 +297,7 @@ func TestAddCommentSurvivesARefusedSaveAndRetries(t *testing.T) {
 	seatCursorOnTaskTitled(t, view, checklistFixturePlainTitle)
 
 	directory := filepath.Join(workspace.DataDir, "projects", "checklist-delivery")
-	if err := os.Chmod(directory, 0o555); err != nil {
-		t.Fatalf("seal the project directory: %v", err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(directory, 0o755) })
+	unseal := sealProjectDirectory(t, directory)
 
 	runChecklistActions(t, driver, []UITestAction{
 		{Type: UITestActionKey, Key: "C"},
@@ -321,9 +317,7 @@ func TestAddCommentSurvivesARefusedSaveAndRetries(t *testing.T) {
 		t.Error("the reopened popup did not say why the save was refused")
 	}
 
-	if err := os.Chmod(directory, 0o755); err != nil {
-		t.Fatalf("unseal the project directory: %v", err)
-	}
+	unseal()
 	runChecklistActions(t, driver, []UITestAction{
 		{Type: UITestActionKey, Key: "ctrl+s"},
 		{Type: UITestActionWait},
