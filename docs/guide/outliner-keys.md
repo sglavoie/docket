@@ -7,7 +7,7 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project, `gP` the immediate parent task (or a checklist item's owner task), `g~` a task the cursor task references, `gc` the read-only merge-conflict browser; `1`–`7` are the same seven jumps in `Tab`-cycle order — `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent — and `0` resets the view to the launch view |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous block — a section, a project group, or a folded group's summary — wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; a task with no checklist, no children, and no parent left to step to folds its own project group, and `l` on the summary that replaces it puts the cursor back on the task the fold covered, or on the group's first task when there is none; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `gP` reveals the parent task and leaves the cursor on its row, stepping out of Focus when that parent is its hidden root; on a checklist item it jumps to the owner task; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `b` opens and closes Peek's docked pane below the list, from any row, and `Ctrl+D`/`Ctrl+U` scroll an open one two rows at a time while `Ctrl+F`/`Ctrl+B` page it; all four belong to the open dock, and `PgUp`/`PgDn` keep moving the outline regardless |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous block — a section, a project group, or a folded group's summary — wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root — the task `Enter` zoomed into, whose descendants Focus lists (see [`outliner-rows.md`](outliner-rows.md)) — steps out of that Focus frame onto the root; a task with no checklist, no children, and no parent left to step to folds its own project group, and `l` on the summary that replaces it puts the cursor back on the task the fold covered, or on the group's first task when there is none; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `gP` reveals the parent task and leaves the cursor on its row, stepping out of Focus when that parent is its hidden root; on a checklist item it jumps to the owner task; `g~` picks one of the cursor task's references and opens that task the same way, and `Esc` walks the hops back one at a time; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `b` opens and closes Peek's docked pane below the list, from any row, and `Ctrl+D`/`Ctrl+U` scroll an open one two rows at a time while `Ctrl+F`/`Ctrl+B` page it; all four belong to the open dock, and `PgUp`/`PgDn` keep moving the outline regardless |
 | Capture and edit | `a` capture, `A` child, `c` add a checklist item to the cursor's task, `S` turn a checklist item into a child task or a child task back into a checklist item in its current parent, `D` repeat the cursor task as a new draft, `e` edits whatever the cursor names — the task inline, the checklist item, or the project a group header names — `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `w` opens the workflow chord over the ten destinations the `$destination` capture sigil names, under the two headings that say which kind of act each one is — Plan: `wn` toggle Next, `wt` toggle Today; Status: `wi` Inbox, `wb` Backlog, `wg` Doing, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled. A plan is the collection you committed the task to and a status is the lifecycle state it holds, so planning a task for Today leaves it in Backlog and Peek says `plan today · status backlog`; entering Doing or Waiting without a schedule interrupts nothing and says so in the footer — `No check-in: <task> · menu: Set up check-ins` — naming the menu entry rather than a key, since the task it names may no longer be under the cursor. The chord is the one place the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; `-` and `+` step the deadline one day earlier and one day later; `#` tags and context; `*` pin — those two read the cursor, so on a project group header they set that project's tags and toggle its pin; `=` toggles the review flag and `R` marks the cursor task reviewed and moves to the next candidate, and both name a task only |
@@ -31,19 +31,23 @@ date, when a selection disagrees about it, or when it is a date no preset
 reproduces — on DUE's own Clear row. A deferral never moves that cursor, so a
 selection sharing a deadline but not a hide-until still opens on the deadline
 they share. Opening the picker writes nothing either way.
+
 `Tab` moves Due → Defer → Check-in and wraps; `Shift+Tab` moves backward. Each
 lands on the adjacent section's first row that
 the current search left on screen; when the search left it none, the cursor and
 the query stay put and the status says which section could not be reached. The
 footer names the field you are in — `a set due date` or `a set defer date` —
 which is the field `a` types into and the one `Enter` commits.
+
 Tomorrow morning is 09:00 on the local wall clock, on daylight-saving transition
 days too. A preset is highlighted as the current value only when it is
 reproducible from the clock alone, so the three hour rows never highlight. On a
 terminal task the defer rows are disabled and say so rather than disappearing,
 and the due rows stay reachable beside them; `Tab` still crosses onto those
 disabled rows, which is how their reason gets read, and they keep refusing `a`
-and `Enter`. Entering Doing or Waiting without a schedule commits the state
+and `Enter`.
+
+Entering Doing or Waiting without a schedule commits the state
 change and opens nothing; the footer names what it left unscheduled and the
 keyless `Set up check-ins` entry that schedules it. That entry, and the
 `Set Check-In` entry on one task's `Space` menu, open the same editor: type a
@@ -320,8 +324,11 @@ check-in date alone keeps any manual review flag and the previous review time.
 Deferral hides scheduled reminders until wake; completion or cancellation clears
 the schedule, so reopening retains review history without restarting it.
 
-To schedule existing active work, open `Ctrl+M` → **Task** → **Set up check-ins**.
-The action also appears in `?` help. It walks unscheduled Doing and Waiting tasks
+To schedule existing active work, press `Ctrl+M` and choose **Task** → **Set up
+check-ins**. `M` only keeps the bar on screen; `Ctrl+M` is the key that opens a
+menu, so on a terminal that sends `Ctrl+M` as `Enter` (see
+[`outliner-chrome.md`](outliner-chrome.md)) the menu cannot be opened from the
+keyboard. The action also appears in `?` help. It walks unscheduled Doing and Waiting tasks
 across every unparked, unarchived project, including tasks hidden by the current
 lens, query, scope, or folds. Projects sort by slug and tasks by local number;
 the initial list stays fixed for the pass. Each editor shows the project, task,

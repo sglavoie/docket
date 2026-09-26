@@ -7,10 +7,10 @@ project tag decides, and the workspace-wide Notes manager.
 
 The Outliner opens on Active Projects, and scope is session-only. `Ctrl+P`
 opens Select Pinned Project with only pinned non-archived projects, including
-parked ones. It keeps the full Project Hub's search, open-task filter, previews,
-selection, and actions; `Enter` focuses the selected project. With no active
-pins it explains that `Esc` returns to the Outliner, where `P` still opens the
-full Hub.
+parked ones. It keeps the search, open-task filter, previews, selection, and
+actions of the full Select Project surface below — the Project Hub, or Hub for
+short; `Enter` focuses the selected project. With no active pins it explains
+that `Esc` returns to the Outliner, where `P` still opens the full Hub.
 
 `P` opens Select Project on a live cursor, browsing active and archived
 projects. Each row carries its open task count beside its total and its tag
@@ -48,8 +48,9 @@ characters. Below the two-pane minimum width the pane is gone and the paging and
 split keys go quiet with it.
 
 Those acts also reach a project from the Outliner itself: `Space` on a project
-group header opens Project Actions, so editing, archiving, or deleting a project
-no longer needs a trip through Select Project. Archiving is one-way
+group header opens Project Actions, whose sheet holds Archive and Delete, and
+`e` on that same header edits the project, so none of the three needs a trip
+through Select Project. Archiving is one-way
 from there — an Outliner header is only ever drawn for an active project — so
 Unarchive stays here, where an archived project is visible.
 

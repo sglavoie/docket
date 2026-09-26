@@ -9,18 +9,6 @@ project at once.
 One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
-Creating work in Doing or Waiting without a check-in interrupts nothing. The
-footer says so once the creation commits — `No check-in: <task> · menu: Set up
-check-ins`, or `No check-in: N tasks` when one capture committed several — and
-the route it names is the keyless **Set up check-ins** menu entry, not a key,
-because the new task may not be under the cursor. A creation that already
-supplies a schedule is never counted. When create-and-open is used, the content
-editor keeps its own screen and the note follows the edit it commits. The same
-note follows committed line or outline edits that enter either state, and it
-rides whatever message that path was already showing rather than replacing it.
-Scheduling stays your own act, through `@`, the `Space` menu's **Set Check-In**,
-or that workspace entry, and each save is a separate undoable transaction.
-
 ```text
 !1-3  #tag  ##context  @date  @@defer  $destination  *pin  =review  %project  >parent  <child  ~task  &link  ;comment;
 ```
@@ -30,7 +18,7 @@ or that workspace entry, and each save is a separate undoable transaction.
   canonicalized (`#Needs / Review` becomes `needs-review`). A tag decides
   nothing about the Review lane; `=review` does.
 - `##context` sets one optional task-level context, normalized by the same rules
-  as a tag. It is distinct from the retired v4 project-level context. `##0`
+  as a tag. `##0`
   clears the value on the edit surfaces only; outline editing clears it by
   omission. Therefore `"0"` is permanently reserved as a context name, unlike
   the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`. Expanding
@@ -102,6 +90,18 @@ or that workspace entry, and each save is a separate undoable transaction.
   files one comment mentioning `#auth` and creates no tag at all. It is
   capture-only on the same terms as `&link`, and the panel the refusals name is
   the Comments one.
+
+Creating work in Doing or Waiting without a check-in interrupts nothing. The
+footer says so once the creation commits — `No check-in: <task> · menu: Set up
+check-ins`, or `No check-in: N tasks` when one capture committed several — and
+the route it names is the keyless **Set up check-ins** menu entry, not a key,
+because the new task may not be under the cursor. A creation that already
+supplies a schedule is never counted. When create-and-open is used, the content
+editor keeps its own screen and the note follows the edit it commits. The same
+note follows committed line or outline edits that enter either state, and it
+rides whatever message that path was already showing rather than replacing it.
+Scheduling stays your own act, through `@`, the `Space` menu's **Set Check-In**,
+or that workspace entry, and each save is a separate undoable transaction.
 
 The syntax guide teaches the sigils in a different order from the one the parser
 peels them in. `;comment;` has to be recognized first, or a sigil written inside
@@ -294,8 +294,10 @@ complete set.
 ```
 
 The `[[tt:...]]` markers identify tasks that already exist. Keep one and the
-task is updated in place, wherever you moved it; drop it, or write a new line
-without one, and a new task is created. Delete a line and the task is deleted:
+task is updated in place, wherever you moved it; write a new line without one
+and a new task is created. Dropping the marker from an existing line does both
+halves at once: the line becomes a new task, and the task the marker named is
+deleted, since nothing in the buffer names it any more. Delete a line and the task is deleted:
 the buffer is the project's whole tree, so absence is how you remove work and
 there is no `$delete` sigil. Before anything is applied, `tt` names the tasks
 that would go and the attachments that would go with them and asks you to

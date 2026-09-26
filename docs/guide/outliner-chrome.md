@@ -163,7 +163,7 @@ was: no message and no cursor ever moves it.
 Surfaces that draw their own footer — Help, Notes, the Hub, the project editor,
 the comments panel, expanded capture — keep it. The message is placed directly
 above that footer's divider rather than over its keys, and the frame stays
-exactly as tall as the terminal. Zen mode shows neither.
+exactly as tall as the terminal.
 
 The Outliner's own feedback — a focus notice, or a line such as
 `Latest activity: …` — renders in a status strip pinned directly above the
@@ -275,7 +275,9 @@ reliably that one color; it never tells you what that color means. Six chip
 colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
 share one, and nothing in `tt` ever decides anything from a chip color. A `bug`,
 `question`, `epic`, `story`, `feature`, or `idea` tag is a tag like any other:
-it wears its chip in Peek and the pickers and nothing else. The task title stays ordinary text
+it wears its chip in Peek and the pickers, and the strongest one present — by
+the precedence `bug`, `question`, `epic`, `story`, `feature`, `idea` — also
+tints the task's state glyph. The task title stays ordinary text
 whatever a task is tagged, how urgent it is, or when it is due.
 
 A task row shows no chips at all. Its columns go to the title, and Peek names
