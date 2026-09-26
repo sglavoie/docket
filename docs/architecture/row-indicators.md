@@ -140,12 +140,11 @@ priority.
 `theme.TaskTitleStyleFor` is the single title-style authority and answers
 lifecycle alone: muted or disabled, canceled, cursor-selected, otherwise ordinary
 text. No signal in the ladder reaches a title. `theme.SemanticTaskTitleStyle`
-survives as the six-name vocabulary's reserved accent with the `SEMANTIC` picker
-rows as its one consumer; its `...Title` palette keys are historical names kept
-because the palette is a published surface. The state glyph does not wear it
-either: `theme.GetTaskStateBadge` is the state's own badge, since a tag accent
-beside the priority badge read as a second priority, and the capture preview
-borrows that same badge.
+resolves the six-name vocabulary's reserved accent for `SEMANTIC` picker rows
+and task state glyphs; its `...Title` palette keys are historical names kept
+because the palette is a published surface. `theme.GetTaskStateBadge` keeps the
+workflow-state symbol and badge background, tinting its foreground with the
+highest-precedence semantic tag. The capture preview borrows that same badge.
 
 Repeated deferral starts at `DeferCount >= 3` and is Peek's alone:
 `inlinePeekHistoryLine` appends `deferred ×N` — avoidance is something the task

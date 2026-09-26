@@ -224,8 +224,9 @@ names the project, rather than refusing. `A` is
 unchanged and still means a child of the cursor task, one level deeper.
 
 Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`
-tags name a kind of work. They wear their own chip on a row like any other tag
-and leave the title and the state glyph alone; the order above is the order they are listed in.
+tags name a kind of work. They wear their own chip like any other tag and tint
+the task's state glyph, including in the capture preview. The title remains
+ordinary text. The order above sets precedence when several semantic tags appear.
 Namespaced values such as
 `type:bug` and partial matches remain ordinary tags and add no prefix or marker
 icon. Both tag pickers group those six under a `SEMANTIC` section above the rest:
