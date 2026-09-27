@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectHubModel) View() tea.View {
@@ -123,7 +124,7 @@ func (m *ProjectHubModel) renderSearchBar() string {
 	if m.SearchQuery() == "" {
 		return ""
 	}
-	return "/" + m.SearchQuery() + theme.MutedStyle.Render(fmt.Sprintf("  (%d matches)", len(m.surface.Matches())))
+	return "/" + m.SearchQuery() + theme.MutedStyle.Render("  ("+util.CountPlural(len(m.surface.Matches()), "match", "matches")+")")
 }
 
 // HasTextInput reports the action sheet as text input because it owns the Hub's

@@ -515,7 +515,7 @@ var workModeCycleOrder = func() []chrome.OutlinerModeID {
 	return ids
 }()
 
-const recentStaleFilterClearedStatus = "Stale filter cleared: Recent only includes the last 30 days"
+var recentStaleFilterClearedStatus = fmt.Sprintf("Stale filter cleared: Recent only includes the last %d days", recentModeCutoffDays)
 
 // clearStaleForRecentMode enforces the facet contract at every path that can
 // activate Recent, including restoration of a captured project-scope frame.
@@ -665,7 +665,7 @@ func (m *OutlinerModel) FocusLatestActivity() tea.Cmd {
 	task, project, sectionKey, ok := m.recentActivityLead()
 	if !ok {
 		if !staleWasCleared {
-			m.SetTransientStatus("No activity in the last 30 days")
+			m.SetTransientStatus(fmt.Sprintf("No activity in the last %d days", recentModeCutoffDays))
 		}
 		return nil
 	}

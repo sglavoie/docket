@@ -98,7 +98,7 @@ func TestFeedbackStandsBesideGuidanceAndAChordReplacesIt(t *testing.T) {
 	}
 
 	app.feedback.err = errors.New("storage failed")
-	assertStandsBeside("error", "storage failed")
+	assertStandsBeside("error", "Storage failed")
 	app.feedback.err = nil
 
 	app.feedback.message = "task saved"

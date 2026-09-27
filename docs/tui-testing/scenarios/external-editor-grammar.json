@@ -6,7 +6,7 @@
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
 
     { "type": "command", "label": "return a reopened buffer the user saved without fixing", "command": "external editor refusal" },
-    { "type": "assert", "label": "the refusal that reopened the buffer is reported", "assert": "contains", "value": "invalid destination: $invalid" },
+    { "type": "assert", "label": "the refusal that reopened the buffer is reported", "assert": "contains", "value": "Invalid destination: $invalid" },
     { "type": "assert", "label": "the refused title was never stored", "assert": "not_contains", "value": "Harness edited title" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },

@@ -22,7 +22,7 @@
     { "type": "key", "label": "leave the composer without capturing", "key": "esc" },
     { "type": "key", "label": "a project has no task to parent a child under", "key": "A" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+    { "type": "assert", "assert": "contains", "value": "Move the cursor to a task to use this action" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

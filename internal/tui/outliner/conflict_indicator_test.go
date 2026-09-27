@@ -16,10 +16,10 @@ func TestConflictIndicatorTextRendersNothingBelowOne(t *testing.T) {
 			t.Fatalf("indicator text for %d = %q, want empty", count, got)
 		}
 	}
-	if got := conflictIndicatorText(1); got != "1 unresolved merge conflict — review with tt conflict list" {
+	if got := conflictIndicatorText(1); got != "1 unresolved merge conflict — gc to review" {
 		t.Fatalf("singular indicator text = %q", got)
 	}
-	if got := conflictIndicatorText(4); got != "4 unresolved merge conflicts — review with tt conflict list" {
+	if got := conflictIndicatorText(4); got != "4 unresolved merge conflicts — gc to review" {
 		t.Fatalf("plural indicator text = %q", got)
 	}
 }

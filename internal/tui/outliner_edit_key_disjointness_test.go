@@ -148,7 +148,7 @@ func assertEditKeyOpensNoEditor(t *testing.T, driver *UITestDriver) {
 		{Type: UITestActionKey, Key: "e"},
 		{Type: UITestActionWait},
 		{Type: UITestActionAssert, Assert: "view", Value: "CrossProjectOutliner"},
-		{Type: UITestActionAssert, Assert: "contains", Value: "move the cursor to a task to use this action"},
+		{Type: UITestActionAssert, Assert: "contains", Value: "Move the cursor to a task to use this action"},
 	})
 	if got := driver.App().crossOutliner.Cursor; got != before {
 		t.Fatalf("a refused e moved the cursor from %d to %d", before, got)

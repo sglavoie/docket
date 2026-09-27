@@ -767,7 +767,7 @@ func (m *CommentsModel) copyCommentText() {
 			m.SetStatus(err.Error())
 			return
 		}
-		m.Err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		m.Err = fmt.Errorf("couldn't copy to clipboard: %w", err)
 		return
 	}
 
@@ -789,7 +789,7 @@ func (m *CommentsModel) CopyAllCommentsText() {
 			m.SetStatus(err.Error())
 			return
 		}
-		m.Err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		m.Err = fmt.Errorf("couldn't copy to clipboard: %w", err)
 		return
 	}
 

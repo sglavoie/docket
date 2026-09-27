@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -196,7 +198,7 @@ func (m *AppModel) footerChromeContent() string {
 func (m *AppModel) footerFeedbackLine() string {
 	switch {
 	case m.feedback.err != nil:
-		return m.renderFooterMessageRow(theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.feedback.err.Error()))
+		return m.renderFooterMessageRow(theme.ErrorStatusStyle.Render(icons.Get("error") + " " + sentenceCaseFeedback(m.feedback.err.Error())))
 	case m.feedback.message == "":
 		return ""
 	case m.feedback.info:
@@ -204,6 +206,21 @@ func (m *AppModel) footerFeedbackLine() string {
 	default:
 		return m.renderFooterMessageRow(theme.SuccessStyle.Render(icons.Get("success") + " " + m.feedback.message))
 	}
+}
+
+// sentenceCaseFeedback capitalizes an error's first rune so it reads beside the
+// sentence-case successes. A first word carrying a sigil, a digit, a slash, or a
+// dot is a slug, key, path, or value and is left exactly as spelled.
+func sentenceCaseFeedback(text string) string {
+	first, _, _ := strings.Cut(text, " ")
+	if first == "" || strings.ContainsAny(first, "0123456789/.!#@$*=%<>~&;?-_") {
+		return text
+	}
+	r, size := utf8.DecodeRuneInString(text)
+	if !unicode.IsLower(r) {
+		return text
+	}
+	return string(unicode.ToUpper(r)) + text[size:]
 }
 
 // renderFooterMessageRow left-aligns one status line and fills the rest of the

@@ -356,7 +356,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// assembled every task's text, so there is no state in which part of a
 		// selection reached the clipboard and part of it did not.
 		if err := external.CopyText(msg.Projection.Text); err != nil {
-			return true, status.ErrorCmd("copy failed: %w", err)
+			return true, status.ErrorCmd("couldn't copy to clipboard: %w", err)
 		}
 		copied := TaskCopiedMsg{Count: msg.Projection.TaskCount, Hidden: msg.Hidden}
 		switch msg.Projection.Operation {
@@ -366,7 +366,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case app.TaskOperationCopyTitleDescription:
 			copied.TitleAndDesc = true
 		default:
-			return true, status.ErrorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
+			return true, status.ErrorCmd("couldn't copy to clipboard: unknown projection %q", msg.Projection.Operation)
 		}
 		return true, func() tea.Msg { return copied }
 

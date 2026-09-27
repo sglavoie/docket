@@ -117,7 +117,7 @@ func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea
 		lens.NamedLensActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
 			Host:         listsurface.ContextActionHostLensPicker,
-			Title:        "Lens actions",
+			Title:        "Lens Actions",
 			Subtitle:     msg.Name,
 			ItemIDPrefix: "lens-action:",
 			SecondaryFor: operation.ActionSecondaryText,

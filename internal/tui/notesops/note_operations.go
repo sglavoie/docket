@@ -182,7 +182,7 @@ func (c *Controller) noteOperationResult(shell Shell,
 // strip is what confirms the copy on every host that lists a note row.
 func copyNoteValue(value string, status string) operation.OperationHandlerResult {
 	if err := external.CopyText(value); err != nil {
-		return operation.OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("couldn't copy to clipboard: %w", err)}
 	}
 	return operation.OperationHandlerResult{Status: status}
 }

@@ -296,7 +296,7 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	return tea.ExecProcess(external.EditorCommand(editor, path), func(execErr error) tea.Msg {
 		edited := OutlineEditedMsg{Project: project, Revision: revision, ScopeTaskIDs: scopeTaskIDs, Path: path}
 		if execErr != nil {
-			edited.Err = execErr
+			edited.Err = fmt.Errorf("editor exited with an error (%w) · outline not applied", execErr)
 			return edited
 		}
 		content, readErr := os.ReadFile(path) //nolint:gosec // Path is the temp file this command just wrote.

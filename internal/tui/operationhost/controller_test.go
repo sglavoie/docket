@@ -228,7 +228,7 @@ func TestOperationConfirmationIsModalWhileArmed(t *testing.T) {
 		t.Errorf("unarmed answer = %v, want the key left to the view beneath", answer)
 	}
 
-	controller.ArmConfirm(request, "Delete 2 targets?")
+	controller.ArmConfirm(request, "Delete · 2 selected?")
 	if _, armed := controller.ConfirmOverlay(120); !armed {
 		t.Fatal("an armed prompt renders its overlay")
 	}
@@ -245,7 +245,7 @@ func TestOperationConfirmationIsModalWhileArmed(t *testing.T) {
 		t.Errorf("second take = %+v, want the request released by the first", taken)
 	}
 
-	controller.ArmConfirm(request, "Delete 2 targets?")
+	controller.ArmConfirm(request, "Delete · 2 selected?")
 	if answer := controller.ResolveConfirmKey("esc"); answer != chrome.ConfirmAnswerCanceled {
 		t.Fatalf("esc = %v, want canceled", answer)
 	}

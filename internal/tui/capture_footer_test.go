@@ -136,7 +136,7 @@ func TestCaptureFooterKeepsControlsBesideAnError(t *testing.T) {
 	app.feedback.err = errors.New("save refused: title is required")
 	footer := ansi.Strip(app.renderStatusBar())
 
-	if !strings.Contains(footer, "save refused: title is required") {
+	if !strings.Contains(footer, "Save refused: title is required") {
 		t.Fatalf("expected the error on the feedback row, got:\n%s", footer)
 	}
 	if strings.Contains(footer, "task saved") {

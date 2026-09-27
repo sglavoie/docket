@@ -282,7 +282,7 @@ func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T
 	if failed.Err == nil {
 		t.Fatalf("a refusing clipboard emitted %#v, want an error", failed.Message)
 	}
-	if !strings.Contains(failed.Err.Error(), "copy failed") {
+	if !strings.Contains(failed.Err.Error(), "couldn't copy to clipboard") {
 		t.Fatalf("clipboard failure = %v, want it named as a copy failure", failed.Err)
 	}
 }

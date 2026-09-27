@@ -77,7 +77,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 		t.Fatal("the sheet's Delete row was not executed")
 	}
 	spec, ok = view.ContextualGuidance()
-	assertRequiredGuidance(t, "notes delete", spec, ok, "Y delete", "N/Esc cancel")
+	assertRequiredGuidance(t, "notes delete", spec, ok, "y delete", "n/Esc cancel")
 }
 
 func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.T) {

@@ -24,7 +24,7 @@ func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	case m.Confirm.IsActive():
 		return chrome.GuidanceSpec{
-			Hints: chrome.RequiredGuidanceHints("Y delete", "N/Esc cancel"),
+			Hints: chrome.RequiredGuidanceHints("y delete", "n/Esc cancel"),
 			Rows:  2,
 		}, true
 	case m.renaming:

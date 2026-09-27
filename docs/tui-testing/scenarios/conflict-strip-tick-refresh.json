@@ -12,7 +12,7 @@
 
     { "type": "wait", "duration": "61s", "label": "the 60s periodic tick is what recounts the directory" },
     { "type": "assert", "label": "the count leads the strip once the tick fires", "assert": "contains", "value": "1 unresolved merge conflict" },
-    { "type": "assert", "assert": "contains", "value": "tt conflict" },
+    { "type": "assert", "label": "the strip names the in-app key that browses them", "assert": "contains", "value": "gc to review" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "gc browses the bundles the count named", "key": "g" },

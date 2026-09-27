@@ -342,7 +342,7 @@ func TestCopySelectionFailureReportsNothingCopied(t *testing.T) {
 		t.Fatalf("a failed copy still reported success: %+v", msg)
 	}
 	text := fmt.Sprint(msg)
-	if !strings.Contains(text, "copy failed") || !strings.Contains(text, "pbcopy exploded") {
+	if !strings.Contains(text, "couldn't copy to clipboard") || !strings.Contains(text, "pbcopy exploded") {
 		t.Errorf("failure message = %q, want the wrapped clipboard error", text)
 	}
 	if fixture.model.feedback.message != "" {

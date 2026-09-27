@@ -15,7 +15,7 @@
     { "type": "key", "label": "leave search keeping the filter", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "/rprj" },
-    { "type": "assert", "assert": "contains", "value": "matches" },
+    { "type": "assert", "assert": "contains", "value": "(1 match)" },
     { "type": "key", "label": "re-enter search with the query intact", "key": "/" },
     { "type": "assert", "assert": "contains", "value": "> rprj" },
     { "type": "key", "label": "select the search result immediately", "key": "enter" },

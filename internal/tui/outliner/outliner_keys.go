@@ -595,7 +595,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// describes keys the stack is currently refusing.
 		return m.queryReadoutGuidance(), true
 	case m.Confirm.IsActive():
-		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Y confirm", "N/Esc cancel"), Rows: 2}, true
+		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("y confirm", "n/Esc cancel"), Rows: 2}, true
 	case m.QuickEdit.IsActive():
 		hints := chrome.RequiredGuidanceHints("Enter save", "Esc cancel")
 		if !m.QuickEdit.IsRenameOnly() {

@@ -90,9 +90,9 @@ func conflictIndicatorText(count int) string {
 	case count <= 0:
 		return ""
 	case count == 1:
-		return "1 unresolved merge conflict — review with tt conflict list"
+		return "1 unresolved merge conflict — gc to review"
 	default:
-		return fmt.Sprintf("%d unresolved merge conflicts — review with tt conflict list", count)
+		return fmt.Sprintf("%d unresolved merge conflicts — gc to review", count)
 	}
 }
 

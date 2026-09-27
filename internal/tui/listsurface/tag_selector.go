@@ -50,8 +50,8 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 
 	picker := NewListSurfaceAdapter(tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags in project · a add tag.",
-		NoMatchMessage: "No matching tags · a add tag.",
+		EmptyMessage:   "No tags in this project. Press a to add one.",
+		NoMatchMessage: "No matching tags. Press a to add one.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})

@@ -284,7 +284,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	if task == nil {
 		m.retireInteraction()
 		removeTaskContentBuffer(msg.Path)
-		return true, status.ErrorCmd("task edit context is unavailable")
+		return true, status.ErrorCmd("Task was deleted or moved while the editor was open · edit discarded")
 	}
 
 	baseline := msg.RejectedTitle

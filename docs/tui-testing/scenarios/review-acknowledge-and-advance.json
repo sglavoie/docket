@@ -12,7 +12,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "sitting still is not a review candidate", "key": "R" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "task has no review to acknowledge" },
+    { "type": "assert", "assert": "contains", "value": "Task has no review to acknowledge" },
     { "type": "assert", "label": "and the refusal moved nothing", "assert": "contains", "value": "Backlog  (3)" },
 
     { "type": "key", "label": "raise it deliberately instead", "key": "=" },
@@ -50,7 +50,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the source kept the cursor, and it is no longer a candidate", "key": "R" },
-    { "type": "assert", "assert": "contains", "value": "task has no review to acknowledge" },
+    { "type": "assert", "assert": "contains", "value": "Task has no review to acknowledge" },
     { "type": "assert", "assert": "contains", "value": "Revisit dormant launch checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew untouched vendor briefing" },
 

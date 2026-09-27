@@ -865,7 +865,7 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 			Label:      "filters",
 			Value:      strings.Join(parts, " "),
 			Row:        query.RenderFilterBadge(parts),
-			RowCompact: pulse.OperationalTitleBadge(theme.FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(parts))),
+			RowCompact: pulse.OperationalTitleBadge(theme.FilterBadgeStyle, "["+util.Count(len(parts), "filter")+"]"),
 		})
 	}
 	if field, ascending := m.effectiveSort(); field != query.SortByDefault {

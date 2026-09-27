@@ -275,7 +275,7 @@ func TestShellFrameFailedSaveKeepsTheDraftAndItsControls(t *testing.T) {
 	if !strings.Contains(plain, draft) {
 		t.Fatalf("the refusal cost the draft:\n%s", plain)
 	}
-	if !strings.Contains(plain, "save refused: title is required") {
+	if !strings.Contains(plain, "Save refused: title is required") {
 		t.Fatalf("the refusal is not on screen:\n%s", plain)
 	}
 	// "Esc discard" rather than "Esc cancel": the draft the refusal preserved is

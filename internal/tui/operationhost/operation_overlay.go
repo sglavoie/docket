@@ -111,7 +111,7 @@ func (c *Controller) ResumeRequest(shell Shell, request operation.OperationExecu
 func (c *Controller) ShowConfirmation(request operation.OperationConfirmationRequestMsg) {
 	prompt := request.Label + "?"
 	if count := len(request.Targets.Entities()); count > 1 {
-		prompt = fmt.Sprintf("%s · %d targets?", request.Label, count)
+		prompt = fmt.Sprintf("%s · %d selected?", request.Label, count)
 	}
 	c.ArmConfirm(request.Request, prompt)
 }

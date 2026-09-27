@@ -36,7 +36,7 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 		Width:  40,
 		Height: 3,
 	}).Render(model)
-	for _, want := range []string{"[x]", "disabled: read only", "↓ 2 more", "space toggle"} {
+	for _, want := range []string{"[x]", "disabled: read only", "↓ 2 more", "Space toggle"} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("compact rendering omitted %q:\n%s", want, rendered)
 		}

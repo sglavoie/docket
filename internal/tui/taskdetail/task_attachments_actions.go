@@ -184,7 +184,7 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 		return nil
 	}
 	if err := copyToClipboard(path); err != nil {
-		m.Err = err
+		m.Err = fmt.Errorf("couldn't copy to clipboard: %w", err)
 		return nil
 	}
 
@@ -199,7 +199,7 @@ func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
 		return nil
 	}
 	if err := copyToClipboard(path); err != nil {
-		m.Err = err
+		m.Err = fmt.Errorf("couldn't copy to clipboard: %w", err)
 		return nil
 	}
 
@@ -216,7 +216,7 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 
 	if att.IsURL {
 		if err := copyToClipboard(att.OriginalPath); err != nil {
-			m.Err = fmt.Errorf("failed to copy URL to clipboard: %w", err)
+			m.Err = fmt.Errorf("couldn't copy to clipboard: %w", err)
 			return nil
 		}
 		m.SetStatus("URL copied to clipboard")
@@ -351,7 +351,7 @@ func copyToClipboard(value string) error {
 	}
 	clipCmd.Stdin = strings.NewReader(value)
 	if err := clipCmd.Run(); err != nil {
-		return fmt.Errorf("failed to copy to clipboard: %w", err)
+		return err
 	}
 	return nil
 }

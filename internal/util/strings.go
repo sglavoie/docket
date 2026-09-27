@@ -144,3 +144,12 @@ func Count(n int, noun string) string {
 	}
 	return fmt.Sprintf("%d %ss", n, noun)
 }
+
+// CountPlural is Count for a noun whose plural is not a trailing s: "1 match",
+// "2 matches".
+func CountPlural(n int, one, many string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, one)
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}

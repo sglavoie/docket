@@ -489,9 +489,9 @@ func listSurfaceHelp(model *ListSurfaceModel, override string) string {
 		return override
 	}
 	if model != nil && model.Config().SelectionMode == ListSelectionMulti {
-		return "j/k navigate · space toggle · enter apply · / search · esc cancel"
+		return "j/k navigate · Space toggle · Enter apply · / search · Esc cancel"
 	}
-	return "j/k navigate · enter select · / search · esc cancel"
+	return "j/k navigate · Enter select · / search · Esc cancel"
 }
 
 func appendListSurfaceHelp(content, help string, width int) string {
