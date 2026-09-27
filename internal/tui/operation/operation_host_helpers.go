@@ -1,8 +1,6 @@
 package operation
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -57,7 +55,7 @@ func PendingPickedValueProvider(OperationInvocation) OperationValueProviderResul
 func ActionSecondaryText(descriptor OperationDescriptor) string {
 	switch {
 	case descriptor.ValueProviderID != "":
-		return "choose " + strings.ReplaceAll(string(descriptor.ValueProviderID), "-", " ")
+		return descriptor.ValueProviderID.Prompt()
 	case descriptor.Risk == OperationRiskDestructive:
 		return "confirmation required"
 	case descriptor.DirectKey != "":
