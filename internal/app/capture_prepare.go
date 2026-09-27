@@ -174,7 +174,7 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 		parentID := *req.ParentID
 		task.ParentID = &parentID
 	}
-	if err := s.initializeCreatedTask(task, prepared.destination.state); err != nil {
+	if err := s.initializeCreatedTask(task, prepared.destination.state, now); err != nil {
 		return nil, err
 	}
 	// The deferral is written after the state transition because entering a state

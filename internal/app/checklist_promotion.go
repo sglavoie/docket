@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -109,7 +110,7 @@ func (s *Service) PromoteChecklistItem(req ChecklistPromotionRequest) (Checklist
 	// timestamps come from the same service clock through the shared creation
 	// initialization, which is the only place a created task's clocks are set.
 	now := s.clock.Now()
-	child, err := s.buildPromotedChild(ref, item.Text, destination, req.Index)
+	child, err := s.buildPromotedChild(ref, item.Text, destination, req.Index, now)
 	if err != nil {
 		return ChecklistPromotionResult{}, err
 	}
@@ -209,7 +210,7 @@ func promotedChecklistDestination(done bool) (captureDestinationEffect, error) {
 // comment, or reference is inherited, because a checklist item carries none of
 // them.
 func (s *Service) buildPromotedChild(
-	ref TaskRef, title string, destination captureDestinationEffect, index int,
+	ref TaskRef, title string, destination captureDestinationEffect, index int, now time.Time,
 ) (*models.Task, error) {
 	child, err := newTaskForCreation(s.ids.NewID(), ref.Project.GetNextShortID(), title)
 	if err != nil {
@@ -218,7 +219,7 @@ func (s *Service) buildPromotedChild(
 	parentID := ref.Task.ID
 	child.ParentID = &parentID
 	child.ChecklistOrigin = &models.ChecklistOrigin{ProjectID: ref.Project.ID, TaskID: ref.Task.ID, Index: index}
-	if err := s.initializeCreatedTask(child, destination.state); err != nil {
+	if err := s.initializeCreatedTask(child, destination.state, now); err != nil {
 		return nil, err
 	}
 	return child, nil

@@ -275,6 +275,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		parent = resolved
 	}
 
+	now := s.clock.Now()
 	task, err := newTaskForCreation(s.ids.NewID(), project.GetNextShortID(), normalized.title)
 	if err != nil {
 		return TaskRef{}, "", invalidInput("title", err.Error())
@@ -285,7 +286,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	for _, tag := range normalized.tags {
 		task.AddTag(tag)
 	}
-	if err := s.initializeCreatedTask(task, normalized.state); err != nil {
+	if err := s.initializeCreatedTask(task, normalized.state, now); err != nil {
 		return TaskRef{}, "", err
 	}
 	if parent != nil {
@@ -308,14 +309,14 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		task.DueDate = cloneDueDatePtr(req.DueDate)
 	}
 	if !req.CheckIn.IsEmpty() {
-		if err := task.SetCheckIn(req.CheckIn, s.clock.Now()); err != nil {
+		if err := task.SetCheckIn(req.CheckIn, now); err != nil {
 			return TaskRef{}, "", invalidInput("check-in", err.Error())
 		}
 	}
 	if req.Pinned {
-		now := s.clock.Now()
+		pinnedAt := now
 		task.Pinned = true
-		task.PinnedAt = &now
+		task.PinnedAt = &pinnedAt
 	}
 	if req.Review {
 		task.Review = true
@@ -356,7 +357,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 			return FormCreateResult{}, invalidInput("title", buildErr.Error())
 		}
 		child.Priority = ref.Task.Priority
-		if stateErr := s.initializeCreatedTask(child, ref.Task.State()); stateErr != nil {
+		if stateErr := s.initializeCreatedTask(child, ref.Task.State(), s.clock.Now()); stateErr != nil {
 			return FormCreateResult{}, stateErr
 		}
 		for _, tag := range ref.Task.Tags {

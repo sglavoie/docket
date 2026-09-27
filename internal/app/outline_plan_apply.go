@@ -174,7 +174,7 @@ func (s *Service) applyOutlineDestination(project *models.Project, base *storage
 		if err != nil {
 			return PlanningReconcileTarget{}, err
 		}
-		if err := s.initializeCreatedTask(item.task, effect.state); err != nil {
+		if err := s.initializeCreatedTask(item.task, effect.state, now); err != nil {
 			return PlanningReconcileTarget{}, err
 		}
 		return effect.planningTarget(item.task.ID, project.ID), nil

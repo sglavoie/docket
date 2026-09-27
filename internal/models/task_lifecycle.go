@@ -92,6 +92,21 @@ func (t *Task) ApplyStateTransitionAt(state WorkflowState, now time.Time) error 
 	return nil
 }
 
+// InitializeLifecycleAt is the lifecycle half of creating a task: it stamps the
+// creation instant, the touch time, and the state clock from the one clock the
+// creating service reads, then enters state. A constructor's own wall-clock
+// reading is never kept, since a write later in the same creation — a deferral,
+// a check-in — stamps that caller's instant, and a state clock read after it
+// would leave the task changing state after it was last touched.
+func (t *Task) InitializeLifecycleAt(state WorkflowState, now time.Time) error {
+	if !state.IsValid() {
+		return fmt.Errorf("invalid workflow state %q", state)
+	}
+	t.CreatedAt = now
+	t.StateChangedAt = now
+	return t.ApplyStateTransitionAt(state, now)
+}
+
 // IsComplete returns true if the task is in a terminal workflow state (done or
 // canceled). It is a synonym for IsTerminalState, kept for the large existing
 // caller base.
