@@ -13,9 +13,11 @@ import (
 var conflictListJSON bool
 
 var conflictListCmd = &cobra.Command{
-	Use:               "list",
-	Short:             "List unresolved merge conflicts",
-	Long:              `List every persisted merge conflict with its project, conflict count, and age.`,
+	Use:   "list",
+	Short: "List unresolved merge conflicts",
+	Long:  `List every persisted merge conflict with its project, conflict count, and age.`,
+	Example: `  tt conflict list
+  tt conflict list --json`,
 	Args:              noArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runConflictList,
@@ -84,12 +86,20 @@ func resolveConflictID(store *storage.ConflictStore, ref string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	if len(ref) < 4 {
+		for _, r := range records {
+			if r.ID == ref {
+				return r.ID, nil
+			}
+		}
+		return "", fmt.Errorf("conflict ID prefix must be at least 4 characters, got %q; run 'tt conflict list' to see IDs", ref)
+	}
 	var matches []string
 	for _, r := range records {
 		if r.ID == ref {
 			return r.ID, nil // exact match wins outright
 		}
-		if len(ref) >= 4 && len(r.ID) >= len(ref) && r.ID[:len(ref)] == ref {
+		if len(r.ID) >= len(ref) && r.ID[:len(ref)] == ref {
 			matches = append(matches, r.ID)
 		}
 	}
@@ -99,6 +109,6 @@ func resolveConflictID(store *storage.ConflictStore, ref string) (string, error)
 	case 0:
 		return "", fmt.Errorf("no conflict matches %q; run 'tt conflict list' to see IDs", ref)
 	default:
-		return "", fmt.Errorf("conflict id %q is ambiguous; candidates: %s", ref, strings.Join(matches, ", "))
+		return "", fmt.Errorf("conflict ID %q is ambiguous; candidates: %s", ref, strings.Join(matches, ", "))
 	}
 }

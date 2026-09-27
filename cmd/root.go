@@ -157,9 +157,10 @@ func init() {
 	rootCmd.SetFlagErrorFunc(usageRefusal)
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
+	_ = rootCmd.MarkPersistentFlagDirname("data-dir")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().BoolVar(&noAdvisories, "no-advisories", false, "hide ambient advisory rows in the TUI (conflict count, load failures)")
-	rootCmd.Flags().Bool("version", false, "show version information")
+	rootCmd.Flags().Bool("version", false, "print the version and exit")
 }
 
 func initNoColor() {

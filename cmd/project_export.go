@@ -49,11 +49,12 @@ func init() {
 	projectExportCmd.Flags().StringVar(&projectExportFile, "file", "", "write to this path instead of the default exports/<slug>.md (- for stdout)")
 	projectExportCmd.Flags().BoolVar(&projectExportAll, "all", false, "export every project, archived included, one <slug>.md each")
 	projectExportCmd.Flags().StringVar(&projectExportDir, "dir", "", "directory for --all (default: the exports/ folder)")
+	_ = projectExportCmd.MarkFlagDirname("dir")
 }
 
 func runProjectExport(cmd *cobra.Command, args []string) error {
 	if err := validateProjectExportFlags(args); err != nil {
-		return err
+		return usageRefusal(cmd, err)
 	}
 	if projectExportAll {
 		return runProjectExportAll(cmd)

@@ -13,7 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/icons"
 )
 
-const defaultDataDirDisplay = "~/.tt (an existing iCloud Drive tt workspace is used if present)"
+const defaultDataDirDisplay = "~/.tt, or an existing iCloud Drive tt workspace"
 
 func successMsg(format string, args ...any) string {
 	return icons.Get("success") + " " + fmt.Sprintf(format, args...)

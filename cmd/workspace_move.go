@@ -39,6 +39,12 @@ not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
   tt workspace move /Volumes/Backup/tt --force`,
 	Args: exactlyOneArg("destination directory"),
 	RunE: runWorkspaceMove,
+	ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return nil, cobra.ShellCompDirectiveFilterDirs
+	},
 }
 
 func init() {

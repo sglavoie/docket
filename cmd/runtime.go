@@ -87,9 +87,10 @@ func checkDataDirOverride() error {
 	return nil
 }
 
-// requireExistingWorkspace refuses to diagnose a workspace that is not there.
-// Loading a workspace creates one, which a read-only diagnostic must never do,
-// so doctor asks this first and names the path it would otherwise have created.
+// requireExistingWorkspace refuses to inspect a workspace that is not there.
+// Loading a workspace creates one, which a command reading an existing one must
+// never do, so doctor and the conflict commands ask this first and name the path
+// they would otherwise have created.
 // The data directory alone proves nothing — the default ~/.tt also holds the
 // machine-local logs every command opens — so a workspace is its internal .tt
 // directory, which every schema since v4 keeps, or the legacy aggregate config
@@ -109,7 +110,7 @@ func requireExistingWorkspace() error {
 			return fmt.Errorf("failed to inspect workspace at %s: %w", absolutePath(dir), err)
 		}
 	}
-	return fmt.Errorf("no tt workspace at %s; doctor is read-only and never creates one: "+
+	return fmt.Errorf("no tt workspace at %s; this command never creates one: "+
 		"pass --data-dir with an existing workspace, or run 'tt' to create one there", absolutePath(dir))
 }
 

@@ -36,6 +36,9 @@ func init() {
 // service that shares its data directory, so resolutions commit through the same
 // transactional boundary as every other mutation.
 func conflictWorkspace() (*storage.ConflictStore, *storage.CommitService, error) {
+	if err := requireExistingWorkspace(); err != nil {
+		return nil, nil, err
+	}
 	workspace, err := LoadCLIWorkspace()
 	if err != nil {
 		return nil, nil, err

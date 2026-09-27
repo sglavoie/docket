@@ -22,9 +22,15 @@ func completionDataDir() string {
 
 // completeProjectSlugs offers every cataloged project's slug, archived
 // included, described by its name.
-func completeProjectSlugs(_ *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
+func completeProjectSlugs(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	// --all exports every project and refuses a named one, so offer none.
+	if cmd != nil {
+		if all, err := cmd.Flags().GetBool("all"); err == nil && all {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
 	}
 	catalog, err := config.NewDomainFileStore(completionDataDir()).LoadCatalogReadOnly()
 	if err != nil || catalog == nil {

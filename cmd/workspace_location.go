@@ -17,6 +17,8 @@ var workspaceLocationCmd = &cobra.Command{
 machine-local active-workspace pointer (if one has been set by 'tt workspace
 move'), and where logs, migration backups, project exports, and merge
 conflicts live.`,
+	Example: `  tt workspace location
+  tt --data-dir ~/Documents/tt workspace location`,
 	Args:              noArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runWorkspaceLocation,

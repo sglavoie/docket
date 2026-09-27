@@ -35,11 +35,19 @@ func TestExamplesLiveInTheExampleField(t *testing.T) {
 			}
 		}
 	})
-	for _, c := range []*cobra.Command{rootCmd, doctorCmd, conflictResolveCmd, workspaceMoveCmd, projectExportCmd} {
+	if strings.TrimSpace(rootCmd.Example) == "" {
+		t.Errorf("%s has no Example", rootCmd.CommandPath())
+	}
+	// Every runnable leaf carries one, so no command's help ends without showing
+	// how it is spelled.
+	visit(rootCmd, func(c *cobra.Command) {
+		if c.Hidden || c.Name() == "help" || !c.Runnable() || c.HasSubCommands() {
+			return
+		}
 		if strings.TrimSpace(c.Example) == "" {
 			t.Errorf("%s has no Example", c.CommandPath())
 		}
-	}
+	})
 	for _, line := range strings.Split(rootCmd.Example, "\n") {
 		if strings.TrimSpace(line) == "tt project export" {
 			t.Errorf("root example %q fails without a slug or --all", line)

@@ -259,11 +259,36 @@ func TestConflictResolveRefusesFileWithoutUseFile(t *testing.T) {
 		t.Cleanup(func() { conflictResolveUse = ""; conflictResolveFile = "" })
 
 		err := runConflictResolve(conflictResolveCmd, []string{id})
-		if err == nil || err.Error() != "--file only applies with --use file" {
+		if err == nil || !strings.HasPrefix(err.Error(), "--file only applies with --use file\nRun 'tt conflict resolve --help'") {
 			t.Fatalf("--use %s --file error = %v, want the --file refusal", use, err)
 		}
 	}
 	if _, err := store.Load(id); err != nil {
 		t.Fatalf("a refused resolution removed the conflict: %v", err)
+	}
+}
+
+// TestConflictListRefusesAMissingWorkspace holds a mistyped --data-dir to a
+// refusal rather than a freshly created workspace reporting no conflicts.
+func TestConflictListRefusesAMissingWorkspace(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := filepath.Join(t.TempDir(), "workspace")
+	setCommandDataDir(t, dir)
+
+	err := runConflictList(conflictListCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "no tt workspace at "+dir) {
+		t.Fatalf("conflict list error = %v, want a refusal naming %s", err, dir)
+	}
+	if _, statErr := os.Stat(dir); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("conflict list created %s: %v", dir, statErr)
+	}
+}
+
+func TestConflictShowRefusesAShortPrefix(t *testing.T) {
+	setupConflictTest(t)
+
+	err := runConflictShow(conflictShowCmd, []string{"ff"})
+	if err == nil || !strings.Contains(err.Error(), "conflict ID prefix must be at least 4 characters") {
+		t.Fatalf("short prefix error = %v", err)
 	}
 }

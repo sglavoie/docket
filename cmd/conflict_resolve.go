@@ -54,18 +54,18 @@ func init() {
 		[]cobra.Completion{"local", "remote", "file"}, cobra.ShellCompDirectiveNoFileComp))
 }
 
-func runConflictResolve(_ *cobra.Command, args []string) error {
+func runConflictResolve(cmd *cobra.Command, args []string) error {
 	resolution, err := parseResolution(conflictResolveUse)
 	if err != nil {
-		return err
+		return usageRefusal(cmd, err)
 	}
 	if resolution == storage.ResolveUseFile && conflictResolveFile == "" {
-		return fmt.Errorf("--use file requires --file <path>")
+		return usageRefusal(cmd, fmt.Errorf("--use file requires --file <path>"))
 	}
 	// A --file beside another strategy would be silently ignored, so the
 	// resolution the operator asked for is not the one they would get.
 	if resolution != storage.ResolveUseFile && conflictResolveFile != "" {
-		return fmt.Errorf("--file only applies with --use file")
+		return usageRefusal(cmd, fmt.Errorf("--file only applies with --use file"))
 	}
 
 	store, commit, err := conflictWorkspace()

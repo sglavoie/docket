@@ -180,9 +180,12 @@ func TestRunProjectExportRefusesConflictingFlags(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resetProjectExportFlags(t)
 			projectExportAll, projectExportFile, projectExportDir = tc.all, tc.file, tc.dir
-			err := runProjectExport(nil, tc.args)
+			err := runProjectExport(projectExportCmd, tc.args)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want one containing %q", err, tc.want)
+			}
+			if !strings.Contains(err.Error(), "Run 'tt project export --help' for usage") {
+				t.Fatalf("error = %v, want it to point at --help", err)
 			}
 		})
 	}

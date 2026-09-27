@@ -142,3 +142,16 @@ func TestCompletionFunctionsAreWired(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteProjectSlugsOffersNothingBesideAll(t *testing.T) {
+	newExportFixtureWorkspace(t)
+	resetProjectExportFlags(t)
+	if err := projectExportCmd.Flags().Set("all", "true"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = projectExportCmd.Flags().Set("all", "false") })
+
+	if values, _ := completeProjectSlugs(projectExportCmd, nil, ""); len(values) != 0 {
+		t.Fatalf("--all still completed slugs: %v", values)
+	}
+}
