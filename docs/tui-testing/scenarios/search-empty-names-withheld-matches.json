@@ -1,0 +1,29 @@
+{
+  "name": "search-empty-names-withheld-matches",
+  "fixture": "ux-acceptance",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open search", "key": "/" },
+    { "type": "text", "label": "a finished task's own words", "text": "retired staging" },
+    { "type": "assert", "label": "the done task is outside the open population", "assert": "not_contains", "value": "Close the retired staging cluster" },
+    { "type": "assert", "label": "the empty result says it withheld a finished match", "assert": "contains", "value": "1 finished task (add ?completed) does" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the longer sentence wraps at the minimum terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "add ?completed" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "text", "label": "take the hint", "text": " ?completed" },
+    { "type": "assert", "assert": "contains", "value": "Close the retired staging cluster" },
+
+    { "type": "key", "label": "clear the query", "key": "ctrl+u" },
+    { "type": "text", "label": "a deferred task's own words", "text": "storage cleanup" },
+    { "type": "assert", "assert": "not_contains", "value": "Hold the deferred storage cleanup" },
+    { "type": "assert", "label": "a pending deferral is named with its own sigil", "assert": "contains", "value": "1 deferred task (add ?deferred) does" },
+
+    { "type": "key", "label": "clear the query", "key": "ctrl+u" },
+    { "type": "text", "label": "words nothing holds", "text": "zzqx" },
+    { "type": "assert", "label": "a query nothing matches promises nothing", "assert": "contains", "value": "No tasks match search \"zzqx\"" },
+    { "type": "assert", "assert": "not_contains", "value": "add ?" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

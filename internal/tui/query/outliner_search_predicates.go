@@ -266,6 +266,21 @@ func (p *SearchPredicates) AllowsDeferred() bool {
 	return p != nil && p.admitsDeferred
 }
 
+// WithEveryPopulation is a copy of this gate that admits terminal and deferred
+// work alongside the base population, with every narrowing conjunct unchanged.
+// It is a question, not a gate: it counts what the population rule withheld
+// from an empty result so the empty state can name the sigil that shows it, and
+// it is never installed, since a population opens only when the query says so.
+func (p *SearchPredicates) WithEveryPopulation() *SearchPredicates {
+	if p == nil {
+		return nil
+	}
+	widened := *p
+	widened.admitsTerminal = true
+	widened.admitsDeferred = true
+	return &widened
+}
+
 // CompiledDestination names the one positive $destination the query compiled.
 // The second result is what distinguishes "no destination sigil" from one whose
 // zero value happens to be a legal destination, so a caller never has to read a
