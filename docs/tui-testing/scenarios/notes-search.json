@@ -15,7 +15,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
     { "type": "key", "label": "clear accepted search", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Search: \"authentication\"" },
-    { "type": "assert", "assert": "contains", "value": "2 notes across 3 owners" },
+    { "type": "assert", "assert": "contains", "value": "2 notes across 3 locations" },
     { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

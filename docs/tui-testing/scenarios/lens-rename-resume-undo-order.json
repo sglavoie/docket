@@ -76,7 +76,7 @@
     { "type": "assert", "assert": "contains", "value": "[ ] platform-api" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "u" },
-    { "type": "assert", "assert": "status_contains", "value": "Undid: Rename Tag: security → platform-api (1 tasks in 1 projects)" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Rename Tag: security → platform-api (1 task in 1 project)" },
     { "type": "key", "key": "f" },
     { "type": "key", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "[ ] security" },

@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // CaptureDestination is the unified creation destination accepted by every
@@ -275,7 +276,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 
 	planningBuilder := s.defaultedPlanningArtifacts(nil)
 
-	ctxTitle := fmt.Sprintf("%d tasks across %d projects", len(items), len(projectOrder))
+	ctxTitle := fmt.Sprintf("%d tasks across %s", len(items), util.Count(len(projectOrder), "project"))
 	if len(items) == 1 {
 		ctxTitle = fmt.Sprintf("#%d %s", items[0].task.ShortID, items[0].task.Title)
 	}

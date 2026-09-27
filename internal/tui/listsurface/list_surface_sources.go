@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // The concrete ListSource constructors. Each adapts one established picker
@@ -127,7 +128,7 @@ func ListSourceFromTags(tags []query.TagInfo) ListSource {
 			ID:            ListItemID("tag:" + tag.Name),
 			CategoryID:    category,
 			PrimaryText:   tag.Name,
-			SecondaryText: fmt.Sprintf("%d tasks", tag.TaskCount),
+			SecondaryText: util.Count(tag.TaskCount, "task"),
 			Aliases:       []string{tag.Name, "#" + tag.Name},
 			Preview: ListPreview{
 				Title: tag.Name,

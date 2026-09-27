@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectHubModel) rebuildProjectSurface(prefer listsurface.ListItemID) {
@@ -218,7 +219,7 @@ func (m *ProjectHubModel) projectTaskPhrase(project *models.Project) string {
 	case tally.Total == 0:
 		return "0 tasks"
 	default:
-		return fmt.Sprintf("%d open · %d tasks", tally.Open, tally.Total)
+		return fmt.Sprintf("%d open · %s", tally.Open, util.Count(tally.Total, "task"))
 	}
 }
 

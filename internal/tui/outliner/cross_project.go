@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workspace"
 )
 
@@ -481,7 +482,7 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 	if m.PrimaryMode != chrome.ModeAll {
 		label += ": " + m.ActiveOutlinerModeEntry().Label
 	}
-	return fmt.Sprintf("%s · %s · %d tasks", label, scopeName, taskCount)
+	return fmt.Sprintf("%s · %s · %s", label, scopeName, util.Count(taskCount, "task"))
 }
 
 // CrossScopeOpts controls which projects are selected and loaded by

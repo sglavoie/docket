@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DeleteRequest asks to permanently delete a task and its whole subtree.
@@ -140,7 +141,7 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 	}
 	artifacts = append(append([]storage.ArtifactChange(nil), artifacts...), planningArtifacts...)
 
-	touched, transactionID, err := s.deleteTasks(snap, roots, fmt.Sprintf("%d tasks", len(roots)), artifacts)
+	touched, transactionID, err := s.deleteTasks(snap, roots, taskCountUndoContext(roots), artifacts)
 	if err != nil {
 		return BulkDeleteResult{}, err
 	}
@@ -156,6 +157,16 @@ func (s *Service) BulkDelete(req BulkDeleteRequest, artifacts ...storage.Artifac
 // requested root in the same project. Deleting the ancestor carries that task
 // exactly once, so result root references, undo context, and removal planning
 // all describe the same canonical batch.
+// taskCountUndoContext names the tasks one gesture changed the way a
+// single-task mutation does, "#N title", when there is one, and counts them
+// otherwise, so the ledger and its toast never read "1 tasks".
+func taskCountUndoContext(refs []TaskRef) string {
+	if len(refs) == 1 && refs[0].Task != nil {
+		return fmt.Sprintf("#%d %s", refs[0].Task.ShortID, refs[0].Task.Title)
+	}
+	return util.Count(len(refs), "task")
+}
+
 func canonicalSubtreeRoots(refs []TaskRef) []TaskRef {
 	selected := make(map[TaskLocator]bool, len(refs))
 	for _, ref := range refs {

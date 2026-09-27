@@ -18,7 +18,7 @@
     { "type": "key", "label": "cancel move picker", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },
-    { "type": "assert", "assert": "contains", "value": "2 notes across 3 owners" },
+    { "type": "assert", "assert": "contains", "value": "2 notes across 3 locations" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

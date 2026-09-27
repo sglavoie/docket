@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *NotesViewModel) View() tea.View {
@@ -215,9 +216,9 @@ func (m *NotesViewModel) scopeCountLabel() string {
 			caseNote = " (case ignored)"
 		}
 		return fmt.Sprintf(
-			"%d of %d notes match %q%s in %s",
+			"%d of %s match %q%s in %s",
 			count,
-			m.scopedRowCount(),
+			util.Count(m.scopedRowCount(), "note"),
 			query,
 			caseNote,
 			m.scopeLabel(),
@@ -225,15 +226,15 @@ func (m *NotesViewModel) scopeCountLabel() string {
 	}
 	switch m.Scope.Kind {
 	case route.NotesScopeGlobal:
-		return fmt.Sprintf("%d Global notes", count)
+		return util.Count(count, "Global note")
 	case route.NotesScopeProject:
-		return fmt.Sprintf("%d notes in %s", count, m.scopeLabel())
+		return fmt.Sprintf("%s in %s", util.Count(count, "note"), m.scopeLabel())
 	default:
-		ownerCount := len(m.requestedLocations()) - len(m.collectionErrors)
-		if ownerCount < 0 {
-			ownerCount = 0
+		locationCount := len(m.requestedLocations()) - len(m.collectionErrors)
+		if locationCount < 0 {
+			locationCount = 0
 		}
-		return fmt.Sprintf("%d notes across %d owners", count, ownerCount)
+		return fmt.Sprintf("%s across %s", util.Count(count, "note"), util.Count(locationCount, "location"))
 	}
 }
 
