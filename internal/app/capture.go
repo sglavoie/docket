@@ -116,10 +116,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		return TaskResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID)
 	}
 	revision := snap.Revision(project.ID)
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {
@@ -217,10 +214,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		}
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return nil, fmt.Errorf("capture batch rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

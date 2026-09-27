@@ -4,14 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // domainController is the shell's domain commit and configuration cluster: the
@@ -281,6 +284,13 @@ type tuiAppRepository struct {
 	deps    *config.RuntimeDependencies
 	dataDir string
 	svc     *storage.CommitService
+
+	// activityLoader retains the completion-activity read across calls, so an
+	// unchanged project is not re-read and re-parsed after every commit. The
+	// loader is not safe for concurrent use and the repository is reachable from
+	// command goroutines, so activityMu owns it.
+	activityMu     sync.Mutex
+	activityLoader *workspace.Loader
 }
 
 // newTUIAppRepository builds the storage-backed application repository for the
@@ -317,13 +327,13 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 		if p == nil {
 			continue
 		}
-		if err := storage.LoadProject(p); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", p.Name, err)
-			continue
-		}
-		doc, err := tuiProjectDiskDocument(p)
+		// One read yields both the tasks and the guarded document, so a
+		// concurrent save is either wholly visible or wholly absent rather than
+		// pairing one version's tasks with the next version's revision. The
+		// warning goes to the log: stderr is the terminal the TUI is drawing on.
+		doc, err := storage.LoadProjectWithDocument(p)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping project %s document: %v\n", p.Name, err)
+			logging.Warn("skipping project %s: %v", p.Name, err)
 			continue
 		}
 		loaded = append(loaded, p)
@@ -331,6 +341,37 @@ func (r *tuiAppRepository) Snapshot() (app.Snapshot, error) {
 		documents[p.ID] = doc
 	}
 	return app.NewSnapshot(loaded, revisions, documents), nil
+}
+
+// CompletionActivityProjects implements app.CompletionActivitySource: the base
+// task workspace — neither archived nor parked, the population completion
+// activity counts — read through a retained loader. Selection reads the fresh
+// catalog before the loader is asked, because a cached project carries the
+// catalog metadata of the read that parsed it. A project that fails to load is
+// skipped with a warning, as Snapshot skips it. A test double's project has no
+// tasks.md to fingerprint, so the loader simply never caches it.
+func (r *tuiAppRepository) CompletionActivityProjects() ([]*models.Project, error) {
+	projects, err := r.deps.AvailableProjects(r.dataDir)
+	if err != nil {
+		return nil, err
+	}
+	selected := make([]*models.Project, 0, len(projects))
+	for _, project := range projects {
+		if project == nil || project.Archived || models.ProjectTagsParked(project.Tags) {
+			continue
+		}
+		selected = append(selected, project)
+	}
+	r.activityMu.Lock()
+	defer r.activityMu.Unlock()
+	if r.activityLoader == nil {
+		r.activityLoader = workspace.NewLoader()
+	}
+	snapshot := r.activityLoader.Build(selected)
+	for _, diagnostic := range snapshot.Diagnostics() {
+		logging.Warn("completion activity: skipping project %s: %s", diagnostic.ProjectName, diagnostic.Detail)
+	}
+	return snapshot.Projects(), nil
 }
 
 // WorkspaceCensus implements app.WorkspaceCensusSource: it reads every
@@ -386,24 +427,6 @@ func (r *tuiAppRepository) readWorkspaceCensus(activeOnly bool) (app.WorkspaceCe
 		})
 	}
 	return census, nil
-}
-
-// tuiProjectDiskDocument returns the exact lossless on-disk document whose
-// revision the commit service compares against ExpectedRevision. It reads the
-// disk document rather than the load-normalized in-memory project: a fresh
-// project's raw bytes can diverge from ToProjectDocument(loaded) after load-time
-// normalization, which would otherwise fail the first optimistic commit with a
-// phantom stale-revision conflict. Test doubles keep projects in memory with no
-// tasks.md, so the in-memory canonical revision is both correct and sufficient.
-func tuiProjectDiskDocument(p *models.Project) (*storage.ProjectDocument, error) {
-	if _, ok := storage.DefaultRepository.(*storage.FileSystemRepository); !ok {
-		return storage.CanonicalProjectDocument(p, nil)
-	}
-	doc, err := storage.LoadProjectDocument(p)
-	if err != nil {
-		return nil, err
-	}
-	return doc, nil
 }
 
 // Commit applies the changesets atomically. On the real filesystem it drives the

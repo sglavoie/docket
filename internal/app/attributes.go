@@ -241,10 +241,7 @@ func (s *Service) deferTask(locator TaskLocator, until *time.Time) (TaskResult, 
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture deferral rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

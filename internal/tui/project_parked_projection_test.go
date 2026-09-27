@@ -232,7 +232,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 
 	pulse := outliner.ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
 		taskref.For(parked.Tasks[0], parked): true,
-	}, time.Now())
+	}, time.Now(), nil)
 	if pulse.Inbox != 1 {
 		t.Fatalf("workspace pulse inbox = %d, want only the base workspace inbox task", pulse.Inbox)
 	}

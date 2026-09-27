@@ -37,14 +37,24 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 	}
 	cl := &ColumnLayout{}
 	hasTasks := false
+	// A badge's width depends only on its value, and a projection holds a
+	// handful of priorities and states over thousands of rows, so each distinct
+	// value is rendered and measured once per call rather than once per task.
+	priorityWidths := make(map[int]int, 4)
+	statusWidths := make(map[models.WorkflowState]int, 8)
+	projectWidths := make(map[string]int)
 	for _, task := range tasks {
 		if task == nil {
 			continue
 		}
 		hasTasks = true
 
-		badge := RenderPriorityBadge(task.Priority)
-		if w := lipgloss.Width(badge); w > 0 {
+		w, ok := priorityWidths[task.Priority]
+		if !ok {
+			w = lipgloss.Width(RenderPriorityBadge(task.Priority))
+			priorityWidths[task.Priority] = w
+		}
+		if w > 0 {
 			cl.HasPriority = true
 			if w > cl.PriorityWidth {
 				cl.PriorityWidth = w
@@ -52,8 +62,13 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 
 		if opts.IncludeStatus {
-			badge := theme.GetStateBadge(task.State())
-			if w := lipgloss.Width(badge); w > 0 {
+			state := task.State()
+			w, ok := statusWidths[state]
+			if !ok {
+				w = lipgloss.Width(theme.GetStateBadge(state))
+				statusWidths[state] = w
+			}
+			if w > 0 {
 				cl.HasStatus = true
 				if w > cl.StatusWidth {
 					cl.StatusWidth = w
@@ -64,12 +79,14 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		if opts.ProjectNameFor != nil {
 			name := opts.ProjectNameFor(task)
 			if name != "" {
-				truncated := textfit.TruncateToVisualWidth(name, maxProjLen)
-				badge := theme.MutedStyle.Render(fmt.Sprintf("[%s]", truncated))
-				if w := lipgloss.Width(badge); w > 0 {
-					if w > cl.ProjectWidth {
-						cl.ProjectWidth = w
-					}
+				w, ok := projectWidths[name]
+				if !ok {
+					truncated := textfit.TruncateToVisualWidth(name, maxProjLen)
+					w = lipgloss.Width(theme.MutedStyle.Render(fmt.Sprintf("[%s]", truncated)))
+					projectWidths[name] = w
+				}
+				if w > cl.ProjectWidth {
+					cl.ProjectWidth = w
 				}
 			}
 		}

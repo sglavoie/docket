@@ -69,7 +69,7 @@ func TestSharedEditorGuidanceFitsMinimumTerminal(t *testing.T) {
 		"editor save":       RequiredExitGuidanceSpec("Ctrl+S save", "Esc discard", "Ctrl+E external editor", "Shift+Enter new line"),
 		"editor cancel":     RequiredActionGuidanceSpec("Enter apply", "Tab next", "Shift+Tab previous"),
 		"prompt back":       RequiredExitGuidanceSpec("Enter apply", "Esc back"),
-		"form save":         RequiredExitGuidanceSpec("Ctrl+S save", "Esc discard", "[/] tabs", "Tab next", "Shift+Tab previous"),
+		"form save":         RequiredExitGuidanceSpec("Ctrl+S save", "Esc discard", "Shift+←/→ tabs", "Tab next", "Shift+Tab previous"),
 		"project form save": RequiredExitGuidanceSpec("Ctrl+S save", "Esc cancel", "Tab next", "Shift+Tab previous", "Enter next/save"),
 	}
 

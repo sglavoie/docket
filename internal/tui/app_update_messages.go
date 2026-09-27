@@ -24,6 +24,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
@@ -515,7 +516,10 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	m.workspacePulse = outliner.ComputeWorkspacePulse(m.domain.runtime, m.todayIDs, now)
+	if m.pulseLoader == nil {
+		m.pulseLoader = workspace.NewLoader()
+	}
+	m.workspacePulse = outliner.ComputeWorkspacePulse(m.domain.runtime, m.todayIDs, now, m.pulseLoader)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

@@ -11,13 +11,18 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// FormatTimestampBracket returns "[2006-01-02 15:04] 3 hours ago".
+// FormatTimestampBracket returns "[2006-01-02 15:04] 3 hours ago" in local time.
+// Stored instants load in UTC, so formatting t as found would show a comment's
+// wall clock shifting between the session that wrote it and the next launch.
 func FormatTimestampBracket(t time.Time) string {
+	t = t.Local()
 	return fmt.Sprintf("[%s] %s", t.Format("2006-01-02 15:04"), storage.FormatRelativeTime(t))
 }
 
-// FormatTimestampLabeled returns "Created: 2006-01-02 15:04 (3 hours ago)".
+// FormatTimestampLabeled returns "Created: 2006-01-02 15:04 (3 hours ago)" in
+// local time, for the same reason as FormatTimestampBracket.
 func FormatTimestampLabeled(label string, t time.Time) string {
+	t = t.Local()
 	return fmt.Sprintf("%s: %s (%s)", label, t.Format("2006-01-02 15:04"), storage.FormatRelativeTime(t))
 }
 

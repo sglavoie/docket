@@ -96,10 +96,7 @@ func (s *Service) PromoteChecklistItem(req ChecklistPromotionRequest) (Checklist
 		return ChecklistPromotionResult{}, err
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return ChecklistPromotionResult{}, fmt.Errorf("capture checklist promotion rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

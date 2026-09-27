@@ -80,7 +80,7 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 		{ProjectID: active.ID, TaskID: "stale"}:        true,
 		{ProjectID: parked.ID, TaskID: "parked-inbox"}: true,
 	}
-	pulse := outliner.ComputeWorkspacePulse(runtime, todayIDs, now)
+	pulse := outliner.ComputeWorkspacePulse(runtime, todayIDs, now, nil)
 
 	if pulse.Inbox != 2 {
 		t.Errorf("Inbox = %d, want parent and nested child exactly once", pulse.Inbox)
@@ -101,7 +101,7 @@ func TestWorkspacePulsePreservesPartialLoadResults(t *testing.T) {
 	base := installPulseRepository(t, loaded, failed)
 	storage.DefaultRepository = &selectivePulseRepository{MockRepository: base, failProjectID: failed.ID}
 
-	pulse := outliner.ComputeWorkspacePulse(runtime, nil, now)
+	pulse := outliner.ComputeWorkspacePulse(runtime, nil, now, nil)
 	if pulse.Inbox != 1 {
 		t.Fatalf("Inbox = %d, want the successfully loaded project to survive a peer load failure", pulse.Inbox)
 	}
@@ -109,7 +109,7 @@ func TestWorkspacePulsePreservesPartialLoadResults(t *testing.T) {
 
 func TestWorkspacePulseNilRuntimeAndRefreshSeam(t *testing.T) {
 	now := time.Date(2026, time.August, 6, 12, 0, 0, 0, time.UTC)
-	if zero := outliner.ComputeWorkspacePulse(nil, nil, now); zero != (pulse.WorkspacePulse{}) {
+	if zero := outliner.ComputeWorkspacePulse(nil, nil, now, nil); zero != (pulse.WorkspacePulse{}) {
 		t.Fatalf("nil runtime pulse = %+v, want zero", zero)
 	}
 

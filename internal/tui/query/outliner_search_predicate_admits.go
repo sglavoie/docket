@@ -242,7 +242,9 @@ func matchesSearchDefer(task *models.Task, predicate searchDeferPredicate, now t
 	case predicate.presence < 0:
 		return !task.IsDeferredAt(now)
 	case predicate.hasDay:
-		return task.DeferredUntil != nil && util.DaysBetween(predicate.day, *task.DeferredUntil) == 0
+		// A deferral is an instant, so its day is the one it falls on where the
+		// query's day is read, not wherever it happened to be written.
+		return task.DeferredUntil != nil && util.DaysBetween(predicate.day, task.DeferredUntil.In(predicate.day.Location())) == 0
 	default:
 		return true
 	}

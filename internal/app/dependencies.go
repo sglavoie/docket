@@ -338,10 +338,7 @@ func (s *Service) patchTaskDependencies(locator TaskLocator, patch DependencyPat
 		return TaskResult{}, err
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture dependency rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

@@ -1,7 +1,5 @@
 package app
 
-import "fmt"
-
 // mutateRichRecordSelection gives checklist and comment CRUD the same in-memory
 // atomicity as their storage commit. Repository snapshots can
 // retain caller-visible pointers, so a failed commit restores the complete
@@ -11,10 +9,7 @@ func (s *Service) mutateRichRecordSelection(locator TaskLocator, undoAction stri
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskResult{}, fmt.Errorf("capture rich-record rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	keepMutation := false
 	defer func() {
 		if !keepMutation {

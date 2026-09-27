@@ -106,12 +106,13 @@ func (m *AppModel) applyProjectScope(msg outliner.ApplyProjectScopeMsg) (bool, t
 	}
 	if !m.crossOutliner.ProjectIsLoaded(msg.ProjectID) {
 		// A parked project keeps its tasks on disk but contributes nothing to the
-		// base workspace, so opening it is an explicit lazy load rather than an
-		// error. The scope is pushed by the load result, not here.
+		// base workspace, and a new one may not be read yet, so opening either is an
+		// explicit lazy load rather than an error. The scope is pushed by the load
+		// result, not here.
 		if cmd, started := m.startParkedProjectFocus(msg.ProjectID); started {
 			return true, cmd
 		}
-		m.setInfoStatus("That project isn't loaded — restore it before scoping")
+		m.setInfoStatus("That project is archived or gone — it can't be opened")
 		return true, nil
 	}
 	m.crossOutliner.PushProjectScope(msg.ProjectID)
@@ -121,21 +122,20 @@ func (m *AppModel) applyProjectScope(msg outliner.ApplyProjectScopeMsg) (bool, t
 	return true, nil
 }
 
-// startParkedProjectFocus begins the lazy load that admits one parked project
-// into the snapshot. The requesting surface stays open while the load runs, so a
-// failure can report against the row the user chose instead of stranding them in
-// an Outliner that never gained the project.
+// startParkedProjectFocus begins the lazy load that admits one project into the
+// snapshot and scopes to it once it lands. A parked project is the usual reason,
+// but a base-workspace project can be missing too: one created from Select
+// Project, whose reload the covering surface deferred, or one a failed read left
+// out. The same load answers both, since it reads the base workspace as well and
+// records no exception for a project the base admits on its own. The requesting
+// surface stays open while the load runs, so a failure can report against the
+// row the user chose instead of stranding them in an Outliner that never gained
+// the project.
 func (m *AppModel) startParkedProjectFocus(projectID string) (tea.Cmd, bool) {
 	if m.domain.runtime == nil || projectID == "" {
 		return nil, false
 	}
-	project := m.domain.runtime.AvailableProject(projectID)
-	if project == nil {
-		return nil, false
-	}
-	if m.domain.runtime.TaskWorkspaceProject(projectID) != nil {
-		// In the base workspace but absent from the snapshot: a failed or stale
-		// load, not a parked project. Leave the existing guidance in place.
+	if m.domain.runtime.AvailableProject(projectID) == nil {
 		return nil, false
 	}
 	return m.crossOutliner.BeginParkedProjectFocus(projectID), true

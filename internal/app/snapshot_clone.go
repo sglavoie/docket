@@ -1,16 +1,13 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 // cloneSnapshot returns a detached copy suitable for rollback after an
 // in-memory mutation or a failed commit.
-func cloneSnapshot(source Snapshot) (Snapshot, error) {
+func cloneSnapshot(source Snapshot) Snapshot {
 	projects := source.Projects()
 	clones := make([]*models.Project, 0, len(projects))
 	revisions := make(map[string]string, len(projects))
@@ -34,32 +31,34 @@ func cloneSnapshot(source Snapshot) (Snapshot, error) {
 			if task == nil {
 				continue
 			}
-			data, err := json.Marshal(task)
-			if err != nil {
-				return nil, fmt.Errorf("clone task %s: %w", task.ID, err)
-			}
-			var copyTask models.Task
-			if err := json.Unmarshal(data, &copyTask); err != nil {
-				return nil, fmt.Errorf("clone task %s: %w", task.ID, err)
-			}
-			clone.Tasks = append(clone.Tasks, &copyTask)
+			clone.Tasks = append(clone.Tasks, models.CloneTaskDeep(task))
 		}
 		clone.BuildTaskTree()
 		clones = append(clones, &clone)
 		revisions[clone.ID] = source.Revision(clone.ID)
 		if document := source.Document(clone.ID); document != nil {
-			content, err := document.WriteCurrent()
-			if err != nil {
-				return nil, fmt.Errorf("render document for project %s: %w", clone.ID, err)
-			}
-			copyDocument, err := storage.ParseProjectDocument(content)
-			if err != nil {
-				return nil, fmt.Errorf("clone document for project %s: %w", clone.ID, err)
-			}
-			documents[clone.ID] = copyDocument
+			documents[clone.ID] = cloneProjectDocument(document)
 		}
 	}
-	return NewSnapshot(clones, revisions, documents), nil
+	return NewSnapshot(clones, revisions, documents)
+}
+
+// cloneProjectDocument detaches a repository document for rollback. The copy
+// must share no task with the source, because useRollbackDocuments hands its
+// tasks to a live project that later mutations edit in place. Copying the
+// fields directly keeps the document's own revision and costs a fraction of
+// rendering it and parsing the result, which this clone once did for every
+// project on every commit.
+func cloneProjectDocument(document *storage.ProjectDocument) *storage.ProjectDocument {
+	copied := *document
+	copied.Tasks = make([]*models.Task, 0, len(document.Tasks))
+	for _, task := range document.Tasks {
+		if task != nil {
+			copied.Tasks = append(copied.Tasks, models.CloneTaskDeep(task))
+		}
+	}
+	copied.Comments = models.CloneProjectComments(document.Comments)
+	return &copied
 }
 
 // useRollbackDocuments replaces each backup project's structured task state

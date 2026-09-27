@@ -575,7 +575,7 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 	return snap.Tasks(), projects, failed
 }
 
-// computeWorkspacePulse selects and loads the base task workspace, then hands
+// ComputeWorkspacePulse selects and loads the base task workspace, then hands
 // the loaded projects to the counting half in internal/tui/pulse.
 //
 // The split is what keeps that package at L0: the snapshot loader below is
@@ -583,11 +583,17 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 // than reaching up for it. Partial failure behavior is unchanged — a project
 // that fails to load is warned about here and is simply absent from the slice
 // the counter walks.
-func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time) pulse.WorkspacePulse {
+//
+// The loader is the caller's to retain. The pulse is recounted after every
+// commit, so a loader built per call re-read and re-parsed every project each
+// time; a retained one re-reads only the files that changed. It is not safe for
+// concurrent use, so it must be owned by the one goroutine that recounts the
+// pulse. A nil loader reads everything fresh.
+func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader) pulse.WorkspacePulse {
 	if rs == nil {
 		return pulse.WorkspacePulse{}
 	}
-	_, projects, failed := LoadCrossScopeSelection(rs.TaskWorkspaceProjects(), nil)
+	_, projects, failed := LoadCrossScopeSelection(rs.TaskWorkspaceProjects(), loader)
 	for _, failure := range failed {
 		logging.Warn("workspace pulse: %s", failure.Detail)
 	}

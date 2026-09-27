@@ -26,7 +26,9 @@ func FormatRelativeTime(t time.Time) string {
 		}
 		return fmt.Sprintf("%d hours ago", hours)
 	}
-	days := util.DaysBetween(t, time.Now())
+	// Both sides must be read in one location: DaysBetween compares calendar
+	// dates, and a UTC-loaded instant against a local now can be a day apart.
+	days := util.DaysBetween(t.Local(), time.Now())
 	if days == 1 {
 		return "yesterday"
 	}

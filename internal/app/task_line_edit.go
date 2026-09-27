@@ -116,10 +116,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		return TaskLineEditResult{}, err
 	}
 
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return TaskLineEditResult{}, fmt.Errorf("capture task-line edit rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

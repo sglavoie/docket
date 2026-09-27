@@ -24,10 +24,7 @@ func (s *Service) BulkTransition(locators []TaskLocator, target models.WorkflowS
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return BulkResult{}, fmt.Errorf("capture bulk transition rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

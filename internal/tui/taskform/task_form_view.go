@@ -164,7 +164,7 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 	if m.err != nil {
 		commit = "Ctrl+S retry"
 	}
-	optional := []string{"[/] tabs", "Tab next", "Shift+Tab previous"}
+	optional := []string{"Shift+←/→ tabs", "Tab next", "Shift+Tab previous"}
 	switch m.activeTab {
 	case formTabChildren:
 		optional = []string{"c checklist", "Ctrl+A add item", "Enter edit item", "Space toggle", "Ctrl+D delete", "Ctrl+J/K reorder"}

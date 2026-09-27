@@ -136,10 +136,7 @@ func (s *Service) BulkToggleTag(locators []TaskLocator, tag string) (BulkResult,
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before, err := cloneSnapshot(snap)
-	if err != nil {
-		return BulkResult{}, fmt.Errorf("capture bulk tag toggle rollback state: %w", err)
-	}
+	before := cloneSnapshot(snap)
 	useRollbackDocuments(before)
 	committed := false
 	defer func() {

@@ -1,0 +1,23 @@
+{
+  "name": "project-hub-create-then-open",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "key", "label": "create a project from the list", "key": "a" },
+    { "type": "text", "text": "Garden" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "› [ ] Garden" },
+    { "type": "key", "label": "open it straight away, before the Outliner has read it", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the new project opens rather than being refused as unloaded", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Garden · All" },
+    { "type": "assert", "assert": "contains", "value": "[garden]" },
+    { "type": "assert", "assert": "not_contains", "value": "isn't loaded" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leaving the scope returns to every active project", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" }
+  ]
+}
