@@ -680,6 +680,33 @@ type footerFlashProbe struct {
 	errText       string
 	view          presentation.PresentationID
 	viewStatusSeq uint64
+	// pathStamps is the generation every stamping view along the live path held,
+	// so a view this Update surfaced is compared against its own earlier stamp:
+	// closing capture onto the Outliner changes the view and the Outliner's
+	// status in one Update, and neither the capture's stamp nor none at all is
+	// the right thing to measure that status against.
+	pathStamps []viewStatusStamp
+}
+
+type viewStatusStamp struct {
+	view presentation.PresentationID
+	seq  uint64
+}
+
+// stampFor reports the generation view held when the probe was taken, and
+// whether it was on the path at all. A view's own stamp outranks the active
+// one, since a bottom panel such as capture is the active view without being
+// the presentation it stands over.
+func (p footerFlashProbe) stampFor(view presentation.PresentationID) (uint64, bool) {
+	for _, stamp := range p.pathStamps {
+		if stamp.view == view {
+			return stamp.seq, true
+		}
+	}
+	if view == p.view {
+		return p.viewStatusSeq, true
+	}
+	return 0, false
 }
 
 func (m *AppModel) captureFooterFlashProbe() footerFlashProbe {
@@ -692,6 +719,13 @@ func (m *AppModel) captureFooterFlashProbe() footerFlashProbe {
 	}
 	if stamper, ok := m.activeView().(statusStamper); ok {
 		probe.viewStatusSeq = stamper.StatusStamp()
+	}
+	if m.viewNav.views != nil {
+		for _, view := range m.statusStampingPath() {
+			if stamper, ok := m.viewNav.views.Get(view).(statusStamper); ok {
+				probe.pathStamps = append(probe.pathStamps, viewStatusStamp{view: view, seq: stamper.StatusStamp()})
+			}
+		}
 	}
 	return probe
 }
@@ -732,6 +766,15 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 	return footerFlashTick(m.feedback.armFlash(severity))
 }
 
+// statusStampingPath is every presentation whose own status line can be live:
+// the navigation path, or the Outliner a path-less launch stands on.
+func (m *AppModel) statusStampingPath() []presentation.PresentationID {
+	if path := m.presentationPath(); len(path) > 0 {
+		return path
+	}
+	return []presentation.PresentationID{m.currentView()}
+}
+
 // scheduleViewStatusExpiry arms the auto-clear for a view-owned status message
 // this Update introduced. It reads the same before/after comparison as the
 // flash, since a new message is what both observe, but it decides for itself: a
@@ -741,15 +784,25 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 // descriptor belongs on the context row rather than in the channel a piece of
 // feedback is about to want back.
 func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
-	after := m.captureFooterFlashProbe()
-	if after.view != before.view || after.viewStatusSeq == before.viewStatusSeq {
+	if m.viewNav.views == nil {
 		return nil
 	}
-	owner, ok := m.activeView().(viewStatusOwner)
-	if !ok || !owner.StatusIsTransient() {
-		return nil
+	// Every view on the path is asked, not just the one on top: a notice can be
+	// written onto the Outliner while capture or help stands over it, and its
+	// timer has to start when the notice does rather than when the cover lifts.
+	var expiries []tea.Cmd
+	for _, view := range m.statusStampingPath() {
+		owner, ok := m.viewNav.views.Get(view).(viewStatusOwner)
+		if !ok || !owner.StatusIsTransient() {
+			continue
+		}
+		seq := owner.StatusStamp()
+		if held, known := before.stampFor(view); known && held == seq {
+			continue
+		}
+		expiries = append(expiries, status.ViewStatusTimeout(view, seq))
 	}
-	return status.ViewStatusTimeout(after.view, after.viewStatusSeq)
+	return tea.Batch(expiries...)
 }
 
 // advanceFooterFlash steps one frame and reports the command that schedules the

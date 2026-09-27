@@ -3,6 +3,7 @@ package outliner
 import (
 	"fmt"
 	"slices"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -176,7 +177,33 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	// the task, so the shared reveal reads it off the rebuilt rows instead.
 	identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
 	if !m.expandFoldsRevealing(task, identity) {
-		m.SetTransientStatus("Task is hidden by current filters")
+		m.SetTransientStatus(m.hiddenTaskNotice(task, time.Now()))
+	}
+}
+
+// hiddenTaskNotice names why a task the cursor was sent to has no row, in the
+// order the projection itself hides one: a pending deferral before anything the
+// view narrows, since a deferred task is absent from every view that does not
+// ask for it and "filters" would send the reader to a key that shows nothing.
+func (m *OutlinerModel) hiddenTaskNotice(task *models.Task, now time.Time) string {
+	switch {
+	case task.DeferredUntil != nil && task.IsDeferredAt(now):
+		return fmt.Sprintf("Deferred until %s, so it stays hidden until then",
+			chrome.FormatDeferDate(*task.DeferredUntil, now))
+	case m.HasSearchProjection() && m.SearchQuery() != "":
+		return "Task is hidden by the current search"
+	case m.HasActiveLens():
+		return "Task is hidden by the active lens"
+	case query.HasActiveCommonFilters(&m.Filter.CommonFilterState):
+		return "Task is hidden by current filters"
+	case m.Focus.Active():
+		return "Task is outside the current Focus"
+	case m.PrimaryMode != chrome.ModeAll:
+		return fmt.Sprintf("Task is not part of %s", m.ActiveOutlinerModeEntry().Label)
+	case task.IsTerminalState():
+		return "Task is finished, so All no longer shows it"
+	default:
+		return "Task is hidden in this view"
 	}
 }
 
