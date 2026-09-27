@@ -57,4 +57,5 @@ type HelpViewModel struct {
 	categories        []string // Ordered list of categories derived from items
 	tabSearchMode     bool     // True when tab search input is active
 	tabSearchInput    textinput.Model
+	pendingG          bool // A lone g armed the gg chord
 }

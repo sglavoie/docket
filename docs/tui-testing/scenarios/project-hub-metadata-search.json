@@ -13,7 +13,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Mix Retired Pilot" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "leave the search input", "key": "esc" },
-    { "type": "key", "label": "leave the Hub, which is what resets the query", "key": "esc" },
+    { "type": "key", "label": "clear the query the browse kept", "key": "esc" },
+    { "type": "key", "label": "leave the Hub", "key": "esc" },
 
     { "type": "key", "key": "P" },
     { "type": "key", "label": "the archived tail answers its description too", "key": "/" },
@@ -21,6 +22,7 @@
     { "type": "assert", "assert": "contains", "value": "ARCHIVED PROJECTS" },
     { "type": "assert", "assert": "contains", "value": "Mix Retired Pilot" },
     { "type": "assert", "assert": "not_contains", "value": "Mix Active Delivery" },
+    { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
@@ -32,6 +34,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Mix Retired Pilot" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
 
     { "type": "key", "key": "P" },
     { "type": "key", "label": "the same tag spelled the way the row's own chip writes it", "key": "/" },
@@ -40,12 +43,14 @@
     { "type": "assert", "assert": "not_contains", "value": "Mix Finished Cleanup" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
 
     { "type": "key", "key": "P" },
     { "type": "key", "label": "a parked project keeps its descriptive tag reachable", "key": "/" },
     { "type": "text", "text": "#vendor" },
     { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "not_contains", "value": "Mix Quiet Planning" },
+    { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
@@ -57,12 +62,14 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
 
     { "type": "key", "key": "ctrl+p" },
     { "type": "key", "label": "an unpinned project's metadata cannot widen the pinned population", "key": "/" },
     { "type": "text", "text": "charter" },
     { "type": "assert", "assert": "contains", "value": "No pinned projects match this search." },
     { "type": "assert", "assert": "not_contains", "value": "Mix Quiet Planning" },
+    { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
@@ -73,11 +80,13 @@
     { "type": "assert", "assert": "not_contains", "value": "Mix Active Delivery" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
 
     { "type": "key", "key": "P" },
     { "type": "key", "key": "/" },
     { "type": "text", "text": "cleanup sweep" },
     { "type": "assert", "assert": "contains", "value": "No projects match this search." },
+    { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 
@@ -87,6 +96,7 @@
     { "type": "assert", "assert": "contains", "value": "No projects match this search." },
     { "type": "assert", "assert": "not_contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
 

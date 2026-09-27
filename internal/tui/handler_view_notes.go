@@ -54,6 +54,9 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		return true, tea.Batch(cmds...)
 
 	case notes.ProjectNoteLedgerErrorMsg:
+		if status.IsExhaustedHistory(msg.Err) {
+			return true, status.NothingToRestoreCmd(msg.Redo)
+		}
 		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
 		if nv := m.getActiveNotesView(); notes.NoteViewMatchesLocation(nv, location) {
 			nv.SetErrorStatus(msg.Err.Error())

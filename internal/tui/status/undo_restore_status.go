@@ -4,7 +4,24 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
 )
+
+// IsExhaustedHistory reports a restore refused only because the ledger holds
+// nothing further in that direction, which is an answer rather than a failure.
+func IsExhaustedHistory(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "history available")
+}
+
+// NothingToRestoreCmd is that answer, spoken quietly on every surface.
+func NothingToRestoreCmd(redo bool) tea.Cmd {
+	text := "Nothing to undo"
+	if redo {
+		text = "Nothing to redo"
+	}
+	return func() tea.Msg { return InfoStatusMsg(text) }
+}
 
 func FormatUndoRedoRestoreError(label string, err error) error {
 	if err == nil {

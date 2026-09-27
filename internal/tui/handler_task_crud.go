@@ -387,10 +387,10 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	}
 	entry, desc, err := restore(storage.GlobalScope())
 	if err != nil {
-		// An exhausted ledger is not an error: leave the key unhandled so the
-		// caller can fall back rather than toast a spurious failure.
-		if strings.Contains(err.Error(), "history available") {
-			return nil
+		// An exhausted ledger is not an error: say so quietly rather than toast
+		// a spurious failure.
+		if status.IsExhaustedHistory(err) {
+			return status.NothingToRestoreCmd(redo)
 		}
 		return status.ErrorCmd("%s", status.FormatUndoRedoRestoreError(label, err))
 	}

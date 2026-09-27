@@ -115,6 +115,9 @@ func (m *HelpViewModel) SetSize(width, height int) {
 
 	if !m.ready {
 		m.viewport = viewport.New(viewport.WithWidth(viewportWidth), viewport.WithHeight(viewportHeight))
+		// Update owns every scrolling key; the viewport's own bindings would
+		// scroll a second time and answer keys the footer never names.
+		m.viewport.KeyMap = viewport.KeyMap{}
 		m.viewport.YPosition = 0
 		m.ready = true
 	} else {
@@ -146,6 +149,9 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTabSearchMode(msg)
 		}
 
+		if msg.String() != "g" {
+			m.pendingG = false
+		}
 		switch msg.String() {
 		case "?":
 			return m, func() tea.Msg {
@@ -194,16 +200,31 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "up", "k":
 			m.viewport.ScrollUp(1)
+			return m, nil
 		case "down", "j":
 			m.viewport.ScrollDown(1)
+			return m, nil
 		case "g":
+			// Cursor-top is the gg chord everywhere else, so a lone g only arms it.
+			if m.pendingG {
+				m.pendingG = false
+				m.viewport.GotoTop()
+			} else {
+				m.pendingG = true
+			}
+			return m, nil
+		case "home":
 			m.viewport.GotoTop()
-		case "G":
+			return m, nil
+		case "G", "end":
 			m.viewport.GotoBottom()
+			return m, nil
 		case "pgup", "ctrl+u":
 			m.viewport.HalfPageUp()
+			return m, nil
 		case "pgdown", "ctrl+d":
 			m.viewport.HalfPageDown()
+			return m, nil
 		}
 	}
 

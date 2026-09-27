@@ -57,6 +57,7 @@ type ProjectNoteLedgerErrorMsg struct {
 	Location  app.NoteLocation
 	ProjectID string
 	Err       error
+	Redo      bool
 }
 
 // ProjectNoteEditorDoneMsg carries only copied note/editor data back from a

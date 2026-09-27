@@ -137,7 +137,7 @@ func (m *ProjectHubModel) HasTextInput() bool {
 // the query, then the selection. A selection rung exists because retiring `A`
 // left no other way to drop every checkbox at once.
 func (m *ProjectHubModel) ShouldCaptureEsc() bool {
-	return m.actions != nil || m.SearchShouldCaptureEsc() || m.selectionCount() > 0
+	return m.actions != nil || m.SearchShouldCaptureEsc() || m.SearchQuery() != "" || m.selectionCount() > 0
 }
 
 func (m *ProjectHubModel) IsFullHeight() bool { return true }

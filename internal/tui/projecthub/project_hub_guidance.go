@@ -95,6 +95,9 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanc
 		keymap.Bind("esc", "Browse the current matches", "Navigation",
 			keymap.WithGate(searchEditing),
 			keymap.WithFooter(1, "browse matches", true), keymap.WithFooterKey("Esc")),
+		keymap.Bind("esc", "Clear the query", "Navigation",
+			keymap.WithGate(func() bool { return !searchEditing() && m.SearchQuery() != "" }),
+			keymap.WithFooter(1, "clear query", true), keymap.WithFooterKey("Esc")),
 		// Gated off the query because `?` is a literal character there, and
 		// deliberately unranked: the shell strip already prints "? help" beside the
 		// breadcrumb, so a footer hint here would say it a second time. "System" is

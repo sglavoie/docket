@@ -199,6 +199,8 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+r": operation.OperationCoreRedo,
 		"?":      operation.OperationCoreHelp,
 		"esc":    operation.OperationCoreBack,
+		"pgdown": operation.OperationCoreCursorPageDown,
+		"pgup":   operation.OperationCoreCursorPageUp,
 	}
 
 	owners := assertStrategyOwnsEveryKeyOnce(t, projecthub.ProjectHubInputStrategy(), direct)

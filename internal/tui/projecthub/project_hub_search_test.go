@@ -55,10 +55,17 @@ func TestProjectHubEscLeavesSearchAndKeepsTheFilter(t *testing.T) {
 	if len(hub.surface.Matches()) != 1 {
 		t.Fatalf("Esc left %d matches, want the filter intact", len(hub.surface.Matches()))
 	}
-	// A filtered browse claims no further Esc, which is what hands the next one
-	// to the shell to close the Hub with.
+	// A filtered browse claims one more Esc, the one the empty state promises
+	// clears the query; only then does the shell get the next one to close with.
+	if !hub.ShouldCaptureEsc() {
+		t.Fatal("a filtered browse released Esc before clearing its query")
+	}
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if hub.SearchQuery() != "" || len(hub.surface.Matches()) < 2 {
+		t.Fatalf("second Esc left query=%q matches=%d, want every project", hub.SearchQuery(), len(hub.surface.Matches()))
+	}
 	if hub.ShouldCaptureEsc() {
-		t.Fatal("a filtered browse still claimed Esc")
+		t.Fatal("an unfiltered browse still claimed Esc")
 	}
 }
 
@@ -178,5 +185,20 @@ func TestProjectHubStaleProjectActionReportsTheExecutorError(t *testing.T) {
 	}
 	if hub.notice != "project beta is no longer available" {
 		t.Fatalf("stale project action notice = %q, want the executor error", hub.notice)
+	}
+}
+
+func TestProjectHubPageKeysMoveTheCursor(t *testing.T) {
+	hub := newProjectHubSearchFixture(t).open()
+	start, _ := hub.surface.CurrentItem()
+	hub.Update(syntheticSpecialKey(tea.KeyPgDown))
+	moved, _ := hub.surface.CurrentItem()
+	if moved.ID == start.ID {
+		t.Fatalf("PgDn left the cursor on %q", start.ID)
+	}
+	hub.Update(syntheticSpecialKey(tea.KeyPgUp))
+	back, _ := hub.surface.CurrentItem()
+	if back.ID != start.ID {
+		t.Fatalf("PgUp left the cursor on %q, want %q", back.ID, start.ID)
 	}
 }

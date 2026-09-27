@@ -40,10 +40,7 @@ func TestProjectHubGuidanceFollowsBrowseSearchSelectionAndActions(t *testing.T) 
 	hub.SetSearchQuery("alpha")
 	hub.applyProjectFilter()
 	spec, ok = hub.ContextualGuidance()
-	assertGuidanceContains(t, "project applied search", spec, ok, "/ search")
-	if strings.Contains(guidanceEntryText(spec), "Esc") {
-		t.Fatalf("applied-search guidance advertises Esc: %q", guidanceEntryText(spec))
-	}
+	assertGuidanceContains(t, "project applied search", spec, ok, "/ search", "Esc clear query")
 	if !strings.Contains(spec.Supplemental, "search: alpha") {
 		t.Fatalf("applied-search supplemental = %q", spec.Supplemental)
 	}

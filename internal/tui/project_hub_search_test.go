@@ -18,9 +18,9 @@ import (
 // closes the Hub, the scope a selection applies, and the production operation
 // system a mounted Hub dispatches through.
 
-// TestProjectHubEscKeepsFilterThenCloses holds the two Esc rungs apart. The Hub
-// answers the first one itself by leaving search; only the second reaches the
-// shell, and it closes the surface with the filter still standing.
+// TestProjectHubEscKeepsFilterThenCloses holds the three Esc rungs apart. The
+// Hub answers the first one itself by leaving search and the second by clearing
+// the query it kept; only the third closes the surface.
 func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
@@ -37,9 +37,18 @@ func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 		t.Fatalf("first Esc closed Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
 	}
 
+	// The Hub still claims the second Esc, so the shell leaves it to the view.
+	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape}); handled {
+		t.Fatal("the shell took the Esc that clears the Hub's query")
+	}
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if hub.SearchQuery() != "" || app.currentView() != presentation.ViewProjectHub {
+		t.Fatalf("filtered browse Esc left query=%q view=%s, want the query cleared in the Hub", hub.SearchQuery(), app.currentView())
+	}
+
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if !handled || app.CurrentRoute().ID() != route.TaskWorkspace {
-		t.Fatalf("filtered browse Esc handled=%v route=%s, want Outliner", handled, app.CurrentRoute().ID())
+		t.Fatalf("unfiltered browse Esc handled=%v route=%s, want Outliner", handled, app.CurrentRoute().ID())
 	}
 }
 
@@ -170,8 +179,9 @@ func TestProjectHubReopensInBrowseWithoutTheOldQuery(t *testing.T) {
 	if hub.HasActiveSearch() || hub.SearchQuery() != "a" {
 		t.Fatalf("Esc left search active=%v query=%q", hub.HasActiveSearch(), hub.SearchQuery())
 	}
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if !handled {
+	if !handled || app.currentView() == presentation.ViewProjectHub {
 		t.Fatal("browse Esc did not close Project Hub")
 	}
 
@@ -204,5 +214,26 @@ func TestProjectHubStaleDirectKeyUsesProductionExecutorError(t *testing.T) {
 	failure, ok := cmd().(status.ErrorMsg)
 	if !ok || failure.Err == nil || failure.Err.Error() != "project beta is no longer available" {
 		t.Fatalf("stale direct key emitted %#v, want the production executor error", cmd())
+	}
+}
+
+// TestEmptyWorkspaceHistoryAnswersQuietly holds an exhausted ledger to a quiet
+// info notice on the shared route every surface's u and Ctrl+R reach.
+func TestEmptyWorkspaceHistoryAnswersQuietly(t *testing.T) {
+	app := projectHubApp(t)
+	for _, tc := range []struct {
+		redo bool
+		want status.InfoStatusMsg
+	}{
+		{false, "Nothing to undo"},
+		{true, "Nothing to redo"},
+	} {
+		cmd := app.performGlobalTaskUndoRedoForProject(nil, tc.redo)
+		if cmd == nil {
+			t.Fatalf("redo=%v: an empty history said nothing", tc.redo)
+		}
+		if got, ok := cmd().(status.InfoStatusMsg); !ok || got != tc.want {
+			t.Fatalf("redo=%v emitted %#v, want %q", tc.redo, cmd(), tc.want)
+		}
 	}
 }

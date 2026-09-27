@@ -111,10 +111,10 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "ctrl+j":
 			m.surface.MoveCursor(1)
 			return m, nil
-		case "ctrl+d":
+		case "ctrl+d", "pgdown":
 			m.moveProjectHubHalfPage(1)
 			return m, nil
-		case "ctrl+u":
+		case "ctrl+u", "pgup":
 			m.moveProjectHubHalfPage(-1)
 			return m, nil
 		case "ctrl+f", "ctrl+b":
@@ -143,9 +143,9 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.surface.MoveCursorToStart()
 	case "G", "end":
 		m.surface.MoveCursorToEnd()
-	case "ctrl+d":
+	case "ctrl+d", "pgdown":
 		m.moveProjectHubHalfPage(1)
-	case "ctrl+u":
+	case "ctrl+u", "pgup":
 		m.moveProjectHubHalfPage(-1)
 	case "?":
 		// Below the search branch on purpose: `?` is a literal character in the
@@ -161,7 +161,13 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, status.WorkspaceUndoCmd(key.String() == "ctrl+r")
 	case "esc":
 		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
-		// is the selection rung of the unwind and never the close.
+		// is the query or selection rung of the unwind and never the close. A held
+		// query goes first, as it does in Notes.
+		if m.SearchQuery() != "" {
+			m.ClearSearch()
+			m.applyProjectFilter()
+			return m, nil
+		}
 		m.surface.ClearSelection()
 	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a", "ctrl+f", "ctrl+b", "<", ">":
 		return m, m.dispatchProjectHubKey(key.String())

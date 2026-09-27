@@ -425,7 +425,7 @@ func (m *AppModel) performGlobalTaskUndoRedoForProject(_ *models.Project, redo b
 	if m.workspaceLedgerRestoreIsNewest(redo) {
 		return m.handleLedgerTaskUndoRedo(redo)
 	}
-	return nil
+	return status.NothingToRestoreCmd(redo)
 }
 
 func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {

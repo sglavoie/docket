@@ -92,7 +92,7 @@ func noteLedgerRestoreCmd(ledger *storage.WorkspaceLedger, location app.NoteLoca
 		}
 		entry, action, err := restore(scope)
 		if err != nil {
-			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Err: err}
+			return ProjectNoteLedgerErrorMsg{Location: location, ProjectID: location.ProjectID, Err: err, Redo: redo}
 		}
 		return ProjectNoteLedgerResultMsg{Location: location, ProjectID: location.ProjectID, Entry: entry, Action: action, Redo: redo}
 	}
