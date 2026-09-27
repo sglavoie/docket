@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskNameNamespace names the one vocabulary a rename acts in. Tags and the
@@ -222,7 +223,7 @@ func (s *Service) ApplyTaskNameRename(preview RenameTaskNamePreview) (RenameTask
 // nobody asked for.
 func (s *Service) renameChangeSets(preview RenameTaskNamePreview, req RenameTaskNameRequest, changed map[string]bool) ([]storage.ChangeSet, []string) {
 	action := renameUndoAction(req.Namespace, preview.Merge)
-	context := fmt.Sprintf("%s → %s (%d tasks in %d projects)", req.From, req.To, len(preview.Tasks), len(preview.ProjectIDs))
+	context := fmt.Sprintf("%s → %s (%s in %s)", req.From, req.To, util.Count(len(preview.Tasks), "task"), util.Count(len(preview.ProjectIDs), "project"))
 
 	var changesets []storage.ChangeSet
 	var touched []string

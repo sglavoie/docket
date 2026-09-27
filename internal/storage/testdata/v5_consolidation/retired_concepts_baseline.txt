@@ -268,7 +268,7 @@ dependency	internal/tui/operation/filter_operation_ids.go	OperationFilterDepende
 dependency	internal/tui/operation/input_strategy_simplified.go	OperationFilterDependency	1
 dependency	internal/tui/operation/operation_value_payloads.go	DependencyFilterShortcutForToken	1
 dependency	internal/tui/operation/operation_value_payloads.go	ValueProviderFilterDependency	1
-dependency	internal/tui/operation/operation_value_provider_ids.go	ValueProviderFilterDependency	1
+dependency	internal/tui/operation/operation_value_provider_ids.go	ValueProviderFilterDependency	2
 dependency	internal/tui/operation_value_picker_factory.go	DependencyDetailProjects	1
 dependency	internal/tui/operation_value_picker_factory.go	NewFilterDependencyPicker	1
 dependency	internal/tui/operation_value_picker_factory.go	ValueProviderFilterDependency	1

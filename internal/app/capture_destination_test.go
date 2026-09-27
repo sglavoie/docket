@@ -173,3 +173,43 @@ func TestExpandedPlanningDestinationFailureRollsBackProject(t *testing.T) {
 		t.Fatalf("failed expanded destination was partial: tasks=%d nextShortID=%d commits=%d", len(project.Tasks), project.NextShortID, len(repo.commits))
 	}
 }
+
+// A deferral and a check-in are written after the lifecycle initialization, so
+// every clock a capture stamps must come from the one service instant: a state
+// clock read later than the touch time is what tt doctor reports as a task that
+// changed state after it was last touched.
+func TestCaptureStampsEveryCreationClockFromOneInstant(t *testing.T) {
+	wantNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	wake := wantNow.Add(72 * time.Hour)
+	checkIn := time.Date(2026, 7, 13, 0, 0, 0, 0, time.Local)
+	cases := map[string]app.CaptureRequest{
+		"deferred": {Title: "Deferred", DeferSet: true, Defer: &wake},
+		"check-in": {
+			Title:       "Checked in",
+			Destination: textgrammar.DestinationWaiting,
+			CheckIn:     models.CheckInSchedule{Next: &checkIn},
+		},
+		"backlog": {Title: "Plain", Destination: app.CaptureDestinationBacklog},
+	}
+	for name, req := range cases {
+		t.Run(name, func(t *testing.T) {
+			project := newProject("p1", "Alpha")
+			svc := newTestService(newFakeRepo(project))
+			req.ProjectID = project.ID
+			result, err := svc.Capture(req)
+			if err != nil {
+				t.Fatalf("Capture: %v", err)
+			}
+			task := project.GetTaskByID(result.TaskID)
+			for label, got := range map[string]time.Time{
+				"CreatedAt":      task.CreatedAt,
+				"StateChangedAt": task.StateChangedAt,
+				"UpdatedAt":      task.UpdatedAt,
+			} {
+				if !got.Equal(wantNow) {
+					t.Errorf("%s = %v, want %v", label, got, wantNow)
+				}
+			}
+		})
+	}
+}

@@ -88,20 +88,13 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		destinationLabel += " (default)"
 	}
 	// The glyph is the row's own state badge, so a capture previews the mark
-	// its row will wear; the label and the
-	// plan/status values wear the same inline badges as the composer's route row.
+	// its row will wear, and the label wears the same inline badge as the
+	// composer's route row. A planning sigil answers two questions with one
+	// token — `$today` is a membership in a collection and a Backlog status —
+	// but the route row directly above this preview already states that pair
+	// under its Plan and Status labels, so the preview names the token alone
+	// rather than saying the same two words a second time.
 	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
-	// A planning sigil answers two questions with one token: `$today` is a
-	// membership in a collection and a Backlog status, and the second half is
-	// nowhere in the word. The pair is stated exactly where the token leaves it
-	// unsaid — the eight lifecycle destinations spell their own status, so
-	// repeating it under a label there would be the same word twice.
-	if destination.IsPlanning() {
-		routeChunks = append(routeChunks,
-			chrome.PlanFieldLabel+": "+CapturePlanAccentStyle(destination).Render(chrome.PlanStatusValue(string(destination))),
-			chrome.StatusFieldLabel+": "+CaptureStatusAccentStyle(destination.WorkflowState()).Render(chrome.PlanStatusValue(destination.WorkflowState().String())),
-		)
-	}
 	if q.Preview.targetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.targetProject).Render(q.Preview.targetProjectName))
 	}

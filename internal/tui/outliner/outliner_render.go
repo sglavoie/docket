@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // View implements tea.Model. It renders the full outliner tree with connector
@@ -1093,6 +1094,28 @@ func (m *OutlinerModel) HasContentRows() bool {
 	return false
 }
 
+// withheldSearchHint names the finished and deferred tasks an empty ranked list
+// kept out, with the sigil that brings each population in. The ranked list
+// ignores the mode, so adding that sigil is exactly what shows them; a narrowed
+// mode would still hide them for its own reasons, so it is never promised there.
+func (m *OutlinerModel) withheldSearchHint() string {
+	if !m.ShowsRankedList() || !m.Search.withheld.any() {
+		return ""
+	}
+	var parts []string
+	if n := m.Search.withheld.completed; n > 0 {
+		parts = append(parts, fmt.Sprintf("%s (add ?completed)", util.Count(n, "finished task")))
+	}
+	if n := m.Search.withheld.deferred; n > 0 {
+		parts = append(parts, fmt.Sprintf("%s (add ?deferred)", util.Count(n, "deferred task")))
+	}
+	verb := "does"
+	if m.Search.withheld.completed+m.Search.withheld.deferred > 1 {
+		verb = "do"
+	}
+	return strings.Join(parts, " and ") + " " + verb
+}
+
 func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	switch m.ClassifyEmptyCause() {
 	case outlinerEmptyNoProjects:
@@ -1100,6 +1123,9 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	case outlinerEmptyProjectFiltered:
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:
+		if hint := m.withheldSearchHint(); hint != "" {
+			return fmt.Sprintf("No open tasks match search %q, but %s. Press %s.", m.SearchQuery(), hint, m.searchExitClause())
+		}
 		return fmt.Sprintf("No tasks match search %q. Press %s.", m.SearchQuery(), m.searchExitClause())
 	case OutlinerEmptySearchFiltered:
 		// The second exit is spelled out here rather than taken from the shared

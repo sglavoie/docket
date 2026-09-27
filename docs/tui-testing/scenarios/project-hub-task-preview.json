@@ -6,7 +6,7 @@
     { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
 
-    { "type": "assert", "label": "the preview header is one muted meta line, not five labelled fields", "assert": "contains", "value": "Active · 1 open · 1 tasks" },
+    { "type": "assert", "label": "the preview header is one muted meta line, not five labelled fields", "assert": "contains", "value": "Active · 1 open · 1 task" },
     { "type": "assert", "assert": "not_contains", "value": "Lifecycle:" },
     { "type": "assert", "assert": "not_contains", "value": "Pinned:" },
     { "type": "assert", "label": "the pane below it lists the cursor project's own tasks", "assert": "contains", "value": "Mix rollout plan" },

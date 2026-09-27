@@ -186,7 +186,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// them because a footer that sheds `? help` first leaves the narrowest
 			// terminal with no statement that the rest of the grammar exists.
 			{OperationID: OperationCoreHelp, Keys: []string{"?"}, DisplayKey: "?", FooterRank: 6, FooterLabel: "help"},
-			{OperationID: OperationCoreQuit, Keys: []string{"ctrl+c"}, DisplayKey: "Ctrl+C"},
+			// q is the key a terminal program is expected to quit on, and nothing
+			// on the Outliner reads it as a letter: text inputs, pending chords,
+			// and gated sub-states consume it before the root grammar sees it.
+			// Nothing is lost by leaving, since every change is already committed.
+			{OperationID: OperationCoreQuit, Keys: []string{"q", "ctrl+c"}, DisplayKey: "q/Ctrl+C"},
 			{OperationID: OperationCoreNextWorkMode, Keys: []string{"tab"}, DisplayKey: "Tab"},
 			{OperationID: OperationCorePreviousWorkMode, Keys: []string{"shift+tab"}, DisplayKey: "Shift+Tab"},
 			// The date axis opens the second tier of acts, the ones that change the

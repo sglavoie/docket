@@ -739,12 +739,18 @@ func countAttachmentImpact(tasks []*models.Task) (stored, linked int) {
 	return stored, linked
 }
 
-func attachmentImpactNote(stored, linked int) string {
-	return fmt.Sprintf(
-		"attachments: %s deleted · %s removed",
-		util.Count(stored, "stored file"),
-		util.Count(linked, "URL/code reference"),
-	)
+// attachmentImpactParts names what a deletion does to attachments, and nothing
+// when it touches none: a zero count warns about a consequence that is not
+// coming.
+func attachmentImpactParts(stored, linked int) []string {
+	var parts []string
+	if stored > 0 {
+		parts = append(parts, util.Count(stored, "stored file")+" deleted")
+	}
+	if linked > 0 {
+		parts = append(parts, util.Count(linked, "link")+" removed")
+	}
+	return parts
 }
 
 func taskDeleteRootAncestor(
@@ -776,22 +782,32 @@ func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *c
 		}
 		items = append(items, fmt.Sprintf("%s:#%d %s", root.Project.Slug, root.Task.ShortID, root.Task.Title))
 	}
-	attachmentImpact := attachmentImpactNote(impact.storedAttachments, impact.linkedAttachments)
 	return &chrome.ConfirmDetail{
-		Items:      items,
-		TotalCount: len(roots),
-		CascadeNote: fmt.Sprintf(
-			"%s · %s · %s total · %d selected (%d visible · %d hidden) · %s",
-			util.Count(impact.selectedRoots, "selected root"),
-			util.Count(impact.descendants, "deduplicated descendant"),
-			util.Count(impact.totalTasks, "task"),
-			impact.selection.Total,
-			impact.selection.Visible,
-			impact.selection.Hidden,
-			attachmentImpact,
-		),
-		UndoHint: true,
+		Items:       items,
+		TotalCount:  len(roots),
+		CascadeNote: taskDeleteCascadeNote(impact),
+		UndoHint:    true,
 	}
+}
+
+// taskDeleteCascadeNote warns about what the listed titles do not already say:
+// the subtasks going with them, the total when it differs from one, the
+// selected tasks the view is not drawing, and the attachments. A plain task
+// with none of those deletes with no warning line at all.
+func taskDeleteCascadeNote(impact taskDeleteImpact) string {
+	var parts []string
+	if impact.descendants > 0 {
+		parts = append(parts, util.Count(impact.descendants, "subtask")+" also deleted")
+	}
+	if impact.totalTasks > 1 {
+		parts = append(parts, util.Count(impact.totalTasks, "task")+" total")
+	}
+	if impact.selection.Hidden > 0 {
+		parts = append(parts, fmt.Sprintf("%d selected (%d visible · %d hidden)",
+			impact.selection.Total, impact.selection.Visible, impact.selection.Hidden))
+	}
+	parts = append(parts, attachmentImpactParts(impact.storedAttachments, impact.linkedAttachments)...)
+	return strings.Join(parts, " · ")
 }
 
 // taskDeletePrompt renders "Delete task #N?" for a single root or

@@ -157,7 +157,8 @@ the draft joins a planning collection it says so in its own half —
 plan and the status it implies is one the word does not spell. A draft with no
 `$destination` and no `%project` reads whatever it would default to, a draft
 whose lines disagree about an axis reads `Mixed` for that axis alone, and the
-preview repeats the pair under the same two words. Both wear the colors the
+preview beneath it echoes the `$today` token rather than repeating the pair.
+Both wear the colors the
 Outliner already uses: the project its own color, the plan and the status their
 section badges, the preview's state glyph the badge the new row will carry,
 and each tag its chip color; `Mixed`

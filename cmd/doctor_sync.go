@@ -439,13 +439,14 @@ func checkStateClocks(projects []*models.Project, results *doctorResults) {
 					detail:  fmt.Sprintf("task #%d %q has no touch time", task.ShortID, task.Title),
 				})
 			case task.StateChangedAt.After(task.UpdatedAt):
+				layout := doctorClockPairLayout(task.StateChangedAt, task.UpdatedAt)
 				results.stateClockIssues = append(results.stateClockIssues, doctorIssue{
 					project: project.Name,
 					detail: fmt.Sprintf(
 						"task #%d %q changed state at %s but was last touched at %s",
 						task.ShortID, task.Title,
-						task.StateChangedAt.Format(time.RFC3339),
-						task.UpdatedAt.Format(time.RFC3339),
+						task.StateChangedAt.Format(layout),
+						task.UpdatedAt.Format(layout),
 					),
 				})
 			}
@@ -460,4 +461,15 @@ func checkStateClocks(projects []*models.Project, results *doctorResults) {
 			}
 		}
 	}
+}
+
+// doctorClockPairLayout is the layout two compared instants print in: whole
+// seconds when they differ there, and full precision when they share a second,
+// since a report reading "changed state at T but was last touched at T" names
+// no difference the reader can see.
+func doctorClockPairLayout(a, b time.Time) string {
+	if a.Truncate(time.Second).Equal(b.Truncate(time.Second)) {
+		return time.RFC3339Nano
+	}
+	return time.RFC3339
 }

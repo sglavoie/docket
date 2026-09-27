@@ -248,9 +248,9 @@ func operationalPulseVariants(pulse WorkspacePulse) []string {
 func operationalPaceVariants(pace TodayPaceReadout) []string {
 	rate := strconv.FormatFloat(pace.MedianPerDay, 'f', -1, 64)
 	candidates := []string{
-		fmt.Sprintf("today %d · median %s/day (30d)", pace.OpenCount, rate),
-		fmt.Sprintf("today %d · median %s/day", pace.OpenCount, rate),
-		fmt.Sprintf("today %d · %s/day", pace.OpenCount, rate),
+		fmt.Sprintf("%d open · median %s done/day (30d)", pace.OpenCount, rate),
+		fmt.Sprintf("%d open · median %s done/day", pace.OpenCount, rate),
+		fmt.Sprintf("%d open · %s done/day", pace.OpenCount, rate),
 	}
 	variants := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {

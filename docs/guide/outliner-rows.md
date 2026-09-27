@@ -131,9 +131,9 @@ word is left off, since the lane's heading already says it. `review` and
 `review today` share the teal of a due-today date, and a late `review +<age>`
 turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
 `ww` opens nothing: the move commits, and when the task has no check-in the
-footer says so — `No check-in: <task> · menu: Set up check-ins` — naming the
-keyless menu entry that schedules one rather than asking for a date there and
-then.
+footer says so — `No check-in: <task> · Ctrl+M: Set up check-ins` — naming the
+keyless Task menu entry, which `Ctrl+M` opens, that schedules one rather than
+asking for a date there and then.
 
 Waiting by itself is quiet. The badge says where the task is, and that is the
 whole signal: no background tint, no age competing for the eye, and nothing that

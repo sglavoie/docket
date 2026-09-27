@@ -68,6 +68,11 @@ type searchState struct {
 	Gate        *query.SearchPredicates
 	caseRelaxed bool
 
+	// withheld counts the finished and deferred tasks the ranked list's query
+	// matches but its population rule kept out, recorded only when the list came
+	// back empty so the empty state can name the sigil that brings them in.
+	withheld searchWithheldMatches
+
 	// The input's own state. autocomplete is the suggestion pane, holding no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
 	// candidates, so a mutation or a scope change cannot leave a stale value behind.
@@ -254,6 +259,15 @@ func (s *searchState) setCompilation(remainder string, gate *query.SearchPredica
 	s.Gate = gate
 	s.caseRelaxed = relaxed
 }
+
+// searchWithheldMatches is what an empty ranked list would have shown had its
+// query opened the terminal or the deferred population.
+type searchWithheldMatches struct {
+	completed int
+	deferred  int
+}
+
+func (w searchWithheldMatches) any() bool { return w.completed > 0 || w.deferred > 0 }
 
 // setCaseRelaxed records the case reading alone, for the pass that lifts the
 // gate out first and only learns whether it had to relax after scoring under it.
@@ -695,6 +709,14 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates)
 		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
 		m.Search.setCaseRelaxed(len(matches) > 0 || len(notes) > 0)
+		matcher = relaxed
+	}
+	m.Search.withheld = searchWithheldMatches{}
+	if len(matches) == 0 && len(notes) == 0 && !predicates.Invalid() {
+		m.Search.withheld = countWithheldSearchMatches(
+			searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates.WithEveryPopulation()),
+			predicates,
+		)
 	}
 	m.sortSearchMatchesWithinTier(matches)
 
@@ -713,6 +735,28 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	m.appendSearchTaskRows(matches[:boundary])
 	m.appendSearchNoteRows(notes)
 	m.appendSearchTaskRows(matches[boundary:])
+}
+
+// countWithheldSearchMatches sorts the matches a widened gate found into the two
+// populations the live gate kept out, by the rule AdmitsPopulation reads:
+// terminal first, then a pending deferral.
+func countWithheldSearchMatches(matches []outlinerSearchMatch, gate *query.SearchPredicates) searchWithheldMatches {
+	var withheld searchWithheldMatches
+	for _, match := range matches {
+		if gate.AdmitsPopulation(match.task) {
+			continue
+		}
+		if match.task.IsTerminalState() {
+			// ?completed reads the completion instant, so a finished task
+			// carrying none is not one that sigil would bring back.
+			if match.task.CompletedAt != nil && !match.task.CompletedAt.IsZero() {
+				withheld.completed++
+			}
+		} else {
+			withheld.deferred++
+		}
+	}
+	return withheld
 }
 
 func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {

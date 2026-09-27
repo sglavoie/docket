@@ -144,7 +144,7 @@ func TestTaskTagListSourceKeepsDescriptiveRowsAlphabeticalWithCounts(t *testing.
 	assertRowIDs(t, taskTagRowIDs(source.Items, TagDescriptiveCategory), []string{
 		"tag:alpha", "tag:middle", "tag:zeta",
 	})
-	want := map[string]string{"alpha": "7 tasks", "middle": "2 tasks", "zeta": "1 tasks"}
+	want := map[string]string{"alpha": "7 tasks", "middle": "2 tasks", "zeta": "1 task"}
 	for _, item := range source.Items {
 		if item.CategoryID != TagDescriptiveCategory {
 			continue

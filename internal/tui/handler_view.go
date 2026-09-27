@@ -82,10 +82,13 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, nil
 
 	case status.ViewStatusClearMsg:
-		if m.currentView() != msg.View {
+		// The message names its view, so it clears that view's status even when
+		// something else is drawn over it by the time the tick lands; dropping
+		// it there would leave a transient message standing forever.
+		if m.viewNav.views == nil {
 			return true, nil
 		}
-		if owner, ok := m.activeView().(viewStatusOwner); ok && owner.StatusStamp() == msg.Seq {
+		if owner, ok := m.viewNav.views.Get(msg.View).(viewStatusOwner); ok && owner.StatusStamp() == msg.Seq {
 			owner.ClearStatus()
 		}
 		return true, nil

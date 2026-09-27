@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Rich Project" },
     { "type": "key", "label": "select Rich Project scope", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "Notes" },
-    { "type": "assert", "assert": "contains", "value": "1 notes in Rich Project" },
+    { "type": "assert", "assert": "contains", "value": "1 note in Rich Project" },
     { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
     { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
     { "type": "assert", "assert": "no_layout_issues" }

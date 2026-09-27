@@ -185,12 +185,12 @@ func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
 		{
 			name:          "full pace and pulse",
 			width:         lipgloss.Width(fullBase) + operationalTitlePulseGap + lipgloss.Width(fullPulse),
-			want:          "today 8 · median 1.5/day (30d)",
+			want:          "8 open · median 1.5 done/day (30d)",
 			wantWorkspace: true,
 		},
-		{name: "full pace after pulse", width: lipgloss.Width(fullBase), want: "today 8 · median 1.5/day (30d)", forbid: []string{"workspace:"}},
-		{name: "shorten window", width: lipgloss.Width(mediumBase), want: "today 8 · median 1.5/day", forbid: []string{"(30d)", "workspace:"}},
-		{name: "shorten label", width: lipgloss.Width(shortBase), want: "today 8 · 1.5/day", forbid: []string{"median", "workspace:"}},
+		{name: "full pace after pulse", width: lipgloss.Width(fullBase), want: "8 open · median 1.5 done/day (30d)", forbid: []string{"workspace:"}},
+		{name: "shorten window", width: lipgloss.Width(mediumBase), want: "8 open · median 1.5 done/day", forbid: []string{"(30d)", "workspace:"}},
+		{name: "shorten label", width: lipgloss.Width(shortBase), want: "8 open · 1.5 done/day", forbid: []string{"median", "workspace:"}},
 		{name: "omit pace", width: lipgloss.Width(identity), want: scopeLabel + " · Today", forbid: []string{"/day", "workspace:"}},
 	}
 
@@ -235,7 +235,7 @@ func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
 
 		hasPace := strings.Contains(plain, "/day")
 		hasPulse := strings.Contains(plain, "workspace:")
-		if hasPulse && !strings.Contains(plain, "median 1.5/day (30d)") {
+		if hasPulse && !strings.Contains(plain, "median 1.5 done/day (30d)") {
 			t.Fatalf("width %d kept the pulse beside a shortened or absent pace: %q", width, plain)
 		}
 		if hasPace && !hasPulse {

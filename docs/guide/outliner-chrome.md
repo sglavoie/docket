@@ -83,7 +83,7 @@ because the key that shows the bar is the one thing you cannot read off the bar
 once you have found it by accident.
 
 Today mode also compares its open load with the workspace's 30-day completion
-pace in the middle region, for example `today 9 · median 3/day (30d)`. A fresh
+pace in the middle region, for example `9 open · median 3 done/day (30d)`. A fresh
 workspace with no completion history shows no comparison. Under pressure the
 workspace pulse disappears first; the comparison then sheds `(30d)`, then
 `median`, and finally disappears before required interaction context shortens.

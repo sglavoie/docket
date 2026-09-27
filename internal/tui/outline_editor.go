@@ -20,6 +20,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // The outline editor is the bulk-restructuring escape hatch: one project's task
@@ -434,7 +435,7 @@ func outlineDeletePrompt(project *models.Project, deletions []*models.Task) stri
 	if len(deletions) == 1 {
 		return fmt.Sprintf("Delete task #%d from %s?", deletions[0].ShortID, project.Name)
 	}
-	return fmt.Sprintf("Delete %d tasks from %s?", len(deletions), project.Name)
+	return fmt.Sprintf("Delete %s from %s?", util.Count(len(deletions), "task"), project.Name)
 }
 
 // outlineDeleteConfirmDetail describes the removal the buffer asked for. It
@@ -449,14 +450,11 @@ func outlineDeleteConfirmDetail(deletions []*models.Task) *chrome.ConfirmDetail 
 		items = append(items, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	}
 	stored, linked := countAttachmentImpact(deletions)
-	noun := "tasks"
-	if len(deletions) == 1 {
-		noun = "task"
-	}
+	parts := append([]string{util.Count(len(deletions), "task") + " deleted"}, attachmentImpactParts(stored, linked)...)
 	return &chrome.ConfirmDetail{
 		Items:       items,
 		TotalCount:  len(deletions),
-		CascadeNote: fmt.Sprintf("%d %s deleted · %s", len(deletions), noun, attachmentImpactNote(stored, linked)),
+		CascadeNote: strings.Join(parts, " · "),
 		UndoHint:    true,
 	}
 }

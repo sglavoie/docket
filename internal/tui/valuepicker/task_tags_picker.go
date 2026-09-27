@@ -1,7 +1,6 @@
 package valuepicker
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const (
@@ -125,7 +125,7 @@ func TaskTagListSource(tags []query.TagInfo, seedUnused bool) listsurface.ListSo
 			ID:            listsurface.ListItemID("tag:" + tag.Name),
 			CategoryID:    category,
 			PrimaryText:   tag.Name,
-			SecondaryText: fmt.Sprintf("%d tasks", tag.TaskCount),
+			SecondaryText: util.Count(tag.TaskCount, "task"),
 			Aliases:       aliases,
 			PrimaryStyle:  &style,
 			Preview: listsurface.ListPreview{

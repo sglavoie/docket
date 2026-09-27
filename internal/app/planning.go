@@ -195,7 +195,7 @@ func (s *Service) ApplyPlanningBulk(req PlanningBulkRequest) (BulkResult, error)
 	outcome, err := s.commitProjects(
 		commits,
 		planningUndoAction(req.Action),
-		fmt.Sprintf("%d tasks", len(refs)),
+		taskCountUndoContext(refs),
 	)
 	if err != nil {
 		return BulkResult{}, err

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // partitionOutlineChanges splits the applied buffer into the tasks it created
@@ -133,7 +134,7 @@ func outlineDeletions(project *models.Project, req OutlinePlanRequest, prepared 
 		}
 	}
 	if len(deleted) > 0 && !req.ConfirmDeletions {
-		return nil, fmt.Errorf("%w: deleting %d tasks the buffer no longer holds", ErrDestructiveConfirmationRequired, len(deleted))
+		return nil, fmt.Errorf("%w: deleting %s the buffer no longer holds", ErrDestructiveConfirmationRequired, util.Count(len(deleted), "task"))
 	}
 	return deleted, nil
 }

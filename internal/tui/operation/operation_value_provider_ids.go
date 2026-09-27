@@ -1,5 +1,7 @@
 package operation
 
+import "strings"
+
 // ValueProviderID identifies the picker or other value source an operation
 // needs before execution. The empty value means no provider is required.
 type ValueProviderID string
@@ -146,6 +148,74 @@ func (id ValueProviderID) TagEntry() bool {
 // both date providers need the same escape hatch.
 func (id ValueProviderID) DateEntry() bool {
 	return id == ValueProviderDate || id == ValueProviderDueDate
+}
+
+// Prompt names what choosing an operation that needs this provider will ask
+// for, in the words a menu row can show beside the operation's own label. The
+// identifier is a registry key, not prose, so every provider declares its
+// phrase here rather than having one spelled from its hyphens.
+func (id ValueProviderID) Prompt() string {
+	switch id {
+	case ValueProviderState:
+		return "choose a status"
+	case ValueProviderPriority:
+		return "choose a priority"
+	case ValueProviderTags:
+		return "choose tags and context"
+	case ValueProviderNoteTitle:
+		return "name the note"
+	case ValueProviderTagName:
+		return "type the new name"
+	case ValueProviderDate:
+		return "choose a date"
+	case ValueProviderCheckIn:
+		return "choose a day and repeat"
+	case ValueProviderDueDate:
+		return "choose a due date"
+	case ValueProviderChecklistItem:
+		return "type the item"
+	case ValueProviderResumeNote:
+		return "type the note"
+	case ValueProviderComment, ValueProviderProjectComment:
+		return "type the comment"
+	case ValueProviderLensName:
+		return "name the lens"
+	case ValueProviderLensTemplate:
+		return "choose a template"
+	case ValueProviderParent:
+		return "choose the parent"
+	case ValueProviderChild:
+		return "choose the children"
+	case ValueProviderTaskReference:
+		return "choose dependencies"
+	case ValueProviderProject:
+		return "choose a project"
+	case ValueProviderProjectTags:
+		return "choose the project's tags"
+	case ValueProviderFilterPriority:
+		return "choose priorities"
+	case ValueProviderFilterStates:
+		return "choose statuses"
+	case ValueProviderFilterTags:
+		return "choose tags"
+	case ValueProviderFilterDue:
+		return "choose a date range"
+	case ValueProviderFilterCompletionAge:
+		return "choose an age"
+	case ValueProviderFilterHierarchy:
+		return "choose parents or leaves"
+	case ValueProviderFilterDependency:
+		return "choose a reference filter"
+	case ValueProviderFilterContexts:
+		return "choose contexts"
+	case ValueProviderFilterProjects:
+		return "choose projects"
+	case ValueProviderFilterProjectTags:
+		return "choose which projects load"
+	case ValueProviderProjectTagDestination:
+		return "choose the tag that inherits them"
+	}
+	return "choose " + strings.ReplaceAll(string(id), "-", " ")
 }
 
 // CheckInEntry reports whether the operation needs the reusable check-in form.

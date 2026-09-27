@@ -14,11 +14,11 @@
     { "type": "assert", "label": "one row was pointed at, so the prompt names that one task", "assert": "contains", "value": "Delete task #1?" },
     { "type": "key", "label": "confirm the deletion", "key": "y" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+    { "type": "assert", "label": "the row is gone; the toast may still name it", "assert": "not_contains", "value": "◉ Sketch intake flow" },
     { "type": "key", "label": "move the cursor away from where the deleted row stood", "key": "j" },
     { "type": "key", "label": "undo the deletion", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+    { "type": "assert", "assert": "contains", "value": "◉ Sketch intake flow" },
     { "type": "key", "label": "copy the cursor row's title", "key": "y" },
     {
       "type": "assert",

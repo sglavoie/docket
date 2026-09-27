@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // taskOperationManifest is the authoritative ordered single-task action list.
@@ -528,11 +529,11 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 		// sheet would act on a wider set than it lists.
 		context.Selection.EntityIdentities = operation.TaskEntityIdentities(context.Selection.Tasks)
 		context.Entity = context.Selection.Entities[0]
-		subtitle := fmt.Sprintf("%d tasks", len(refs))
+		subtitle := util.Count(len(refs), "task")
 		if context.Selection.VisibleCount+context.Selection.HiddenCount == len(refs) {
 			subtitle = fmt.Sprintf(
-				"%d tasks · %d visible · %d hidden",
-				len(refs),
+				"%s · %d visible · %d hidden",
+				util.Count(len(refs), "task"),
 				context.Selection.VisibleCount,
 				context.Selection.HiddenCount,
 			)

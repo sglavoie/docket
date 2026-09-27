@@ -44,7 +44,10 @@ query that is merely narrowing leaves them alone.
 Done, canceled, and deferred work is admitted when the query says so and never
 otherwise. `$done`, `$canceled`, `?completed`, `fa`, and the deferred forms
 `@@any`, `@@tomorrow`, and `f@`'s deferred row each open the population they
-name; nothing else does, in either presentation.
+name; nothing else does, in either presentation. When the flat list comes back
+empty but the query matches finished or deferred work, the empty state counts
+those tasks and names the sigil — `?completed` or `?deferred` — that brings
+them in, rather than reporting that nothing matched.
 
 | Keys | Effect |
 | --- | --- |
@@ -526,5 +529,7 @@ immediately, since that list is not the mode's order to begin with.
 For intentional cleanup, use `fa` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
 `Space` → Delete. Use `fw` afterwards to narrow to Done or Canceled alone.
-The confirmation freezes root, descendant, visible/hidden, and attachment counts;
-the entire deletion is one undoable transaction.
+The confirmation freezes the counts it warns about — subtasks going with the
+selection, the total, selected tasks the view hides, and attachments — and
+names only the ones that are not zero; the entire deletion is one undoable
+transaction.
