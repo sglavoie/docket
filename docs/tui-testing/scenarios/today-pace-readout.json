@@ -5,11 +5,11 @@
   "actions": [
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Today", "key": "t" },
-    { "type": "assert", "label": "wide Today chrome names the 30-day reference-class pace", "assert": "contains", "value": "today 0 · median 0/day (30d)" },
+    { "type": "assert", "label": "wide Today chrome names the 30-day reference-class pace", "assert": "contains", "value": "0 open · median 0 done/day (30d)" },
     { "type": "assert", "label": "the pace remains separate from the workspace pulse", "assert": "count_contains", "value": "workspace:", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "narrow Today chrome preserves the comparison before passive pulse state", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "today 0 · median 0/day (30d)" },
+    { "type": "assert", "assert": "contains", "value": "0 open · median 0 done/day (30d)" },
     { "type": "assert", "label": "the workspace pulse degrades before Today pace", "assert": "not_contains", "value": "workspace:" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
     { "type": "assert", "assert": "no_layout_issues" }

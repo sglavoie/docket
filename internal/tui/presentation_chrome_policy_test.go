@@ -79,7 +79,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 		outlinerView.PrimaryMode = mode.ID
 		plain := ansi.Strip(outlinerView.BuildOutlinerTitleLine(160))
 		if mode.ID == chrome.ModeToday {
-			if !strings.Contains(plain, "today 9 · median 0/day (30d)") {
+			if !strings.Contains(plain, "9 open · median 0 done/day (30d)") {
 				t.Fatalf("Today title missing pace readout: %q", plain)
 			}
 			if !strings.Contains(plain, "workspace:") {

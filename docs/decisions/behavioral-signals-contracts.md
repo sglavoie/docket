@@ -154,12 +154,14 @@ among those five sections is unchanged. The insertion point binds
 The Today-only middle-region wording is:
 
 ```text
-today <open-count> · median <completions-per-day>/day (30d)
+<open-count> open · median <completions-per-day> done/day (30d)
 ```
 
-For example: `today 9 · median 3/day (30d)`. `today` names the current Today
-load; `median` explicitly marks the outside-view statistic; and `(30d)` names
-the observation window. When there is no completion history, render no pace
+For example: `9 open · median 3 done/day (30d)`. It follows the Today mode label,
+so `open` names the current Today load without repeating the mode's name and
+without reading as a count of work finished today; `median` explicitly marks
+the outside-view statistic, `done/day` says what that statistic counts, and
+`(30d)` names the observation window. When there is no completion history, render no pace
 readout rather than a zero median. The readout belongs to the interaction/middle
 region, never inside `WorkspacePulse`; this binds the region model at
 `OperationalTitleSpec` in `internal/tui/pulse/operational_title.go`.
@@ -167,12 +169,12 @@ region, never inside `WorkspacePulse`; this binds the region model at
 Under width pressure, preserve identity and required interaction context, then
 use these pace candidates in order:
 
-1. `today 9 · median 3/day (30d)`
-2. `today 9 · median 3/day`
-3. `today 9 · 3/day`
+1. `9 open · median 3 done/day (30d)`
+2. `9 open · median 3 done/day`
+3. `9 open · 3 done/day`
 4. omit the whole pace readout
 
-Never render `today 9` alone: without the reference-class rate it is no longer
+Never render `9 open` alone: without the reference-class rate it is no longer
 the contracted comparison and duplicates pulse information. On Today, the pace
 candidate outranks the passive workspace pulse; exhaust the pulse ladder before
 shortening the pace candidate, then omit pace before truncating required

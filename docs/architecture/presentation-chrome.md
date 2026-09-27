@@ -57,7 +57,7 @@ hosted capture panel, charge the same row without a second arithmetic.
 height.
 
 Today mode adds a reference-class pace comparison to the middle region:
-`today 9 · median 3/day (30d)`. `ActivityCoordinator` refreshes one cached
+`9 open · median 3 done/day (30d)`. `ActivityCoordinator` refreshes one cached
 `app.CompletionActivity` snapshot alongside operational chrome updates; the
 shell injects that cache immediately before the Outliner paints, while the open
 count comes from the separately injected `WorkspacePulse`. No history means no
