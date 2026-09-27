@@ -18,7 +18,7 @@
     { "type": "assert", "label": "the notice names the deferral, not a filter nobody set", "assert": "contains", "value": "Deferred until" },
     { "type": "assert", "assert": "not_contains", "value": "hidden by current filters" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "wait", "label": "the notice is set as capture closes, and still expires", "duration": "3s" },
+    { "type": "wait", "label": "the notice is set as capture closes, and still expires once read", "duration": "6s" },
     { "type": "assert", "assert": "not_contains", "value": "Deferred until" },
 
     { "type": "key", "label": "open the filter chord", "key": "f" },

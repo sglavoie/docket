@@ -174,7 +174,8 @@ func (m *AppModel) requestProjectBulkTags(msg projecthub.ProjectBulkTagsMsg) tea
 		return status.ErrorCmd("%v", err)
 	}
 	if len(edit.Updates) == 0 {
-		return status.ErrorCmd("%s", projectBulkTagNoChange(edit))
+		text := projectBulkTagNoChange(edit)
+		return func() tea.Msg { return status.InfoStatusMsg(text) }
 	}
 	if len(edit.Parking) == 0 {
 		return m.commitProjectBulkTags(edit)
@@ -414,13 +415,13 @@ func projectBulkTagStatus(edit projectops.BulkTagEdit) string {
 func projectBulkTagNoChange(edit projectops.BulkTagEdit) string {
 	switch edit.Action {
 	case projecthub.ProjectBulkTagPark:
-		return "every selected project is already parked"
+		return "Every selected project is already parked"
 	case projecthub.ProjectBulkTagUnpark:
-		return "no selected project is parked"
+		return "No selected project is parked"
 	case projecthub.ProjectBulkTagRemove, projecthub.ProjectBulkTagRename:
-		return fmt.Sprintf("no selected project carries #%s", edit.Tag)
+		return fmt.Sprintf("No selected project carries #%s", edit.Tag)
 	default:
-		return fmt.Sprintf("every selected project already carries #%s", edit.Tag)
+		return fmt.Sprintf("Every selected project already carries #%s", edit.Tag)
 	}
 }
 

@@ -105,7 +105,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.clearStatus()
+		m.ClearStatus()
 		if m.completeNotesTopChord(key) {
 			return m, nil
 		}

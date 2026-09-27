@@ -46,6 +46,11 @@ func (s *InteractiveViewState) StatusStamp() uint64 {
 	return s.statusSeq
 }
 
+// StatusText is the live message, which is what its expiry is measured from.
+func (s *InteractiveViewState) StatusText() string {
+	return s.StatusMessage
+}
+
 // clearStatus clears the status message.
 func (s *InteractiveViewState) ClearStatus() {
 	s.StatusMessage = ""

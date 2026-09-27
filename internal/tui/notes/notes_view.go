@@ -102,6 +102,9 @@ type NotesViewModel struct {
 
 	StatusMessage string
 	StatusIsError bool
+	// statusSeq stamps each message so the shell's expiry timer clears only the
+	// generation it was armed for, as it does for every other view's notice.
+	statusSeq uint64
 
 	LocationPicker *notesLocationPicker
 	moveSource     *NoteMutationRef
@@ -299,14 +302,25 @@ func (m *NotesViewModel) noteLedgerScope() storage.LedgerScope {
 func (m *NotesViewModel) SetStatus(msg string) {
 	m.StatusMessage = msg
 	m.StatusIsError = false
+	m.statusSeq++
 }
 
 func (m *NotesViewModel) SetErrorStatus(msg string) {
 	m.StatusMessage = msg
 	m.StatusIsError = true
+	m.statusSeq++
 }
 
-func (m *NotesViewModel) clearStatus() {
+// StatusStamp, StatusIsTransient, StatusText, and ClearStatus put the manager's
+// notice on the shell's expiry timer, so it leaves on the same terms as every
+// other view's rather than standing until the next key.
+func (m *NotesViewModel) StatusStamp() uint64 { return m.statusSeq }
+
+func (m *NotesViewModel) StatusIsTransient() bool { return m.StatusMessage != "" }
+
+func (m *NotesViewModel) StatusText() string { return m.StatusMessage }
+
+func (m *NotesViewModel) ClearStatus() {
 	m.StatusMessage = ""
 	m.StatusIsError = false
 }

@@ -2,6 +2,7 @@ package status
 
 import (
 	"time"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -89,10 +90,24 @@ func DefaultStatusTimeout() tea.Cmd {
 	return StatusTimeout(StatusUpdateTimeout)
 }
 
+// Reading time a view-owned status is given: the default floor, a little more
+// per rune, and a ceiling so a long refusal still leaves.
+const (
+	viewStatusPerRune    = 40 * time.Millisecond
+	viewStatusMaxTimeout = 6 * time.Second
+)
+
+// ViewStatusDuration is how long a view-owned status of this text stays, so an
+// error or a long refusal is not gone before it can be read.
+func ViewStatusDuration(text string) time.Duration {
+	d := StatusUpdateTimeout + time.Duration(utf8.RuneCountInString(text))*viewStatusPerRune
+	return min(d, viewStatusMaxTimeout)
+}
+
 // ViewStatusTimeout returns a command that clears one generation of a
-// view-owned status message after the default timeout.
-func ViewStatusTimeout(view presentation.PresentationID, seq uint64) tea.Cmd {
-	return TickCmd(StatusUpdateTimeout, func(time.Time) tea.Msg {
+// view-owned status message once its text has had time to be read.
+func ViewStatusTimeout(view presentation.PresentationID, seq uint64, text string) tea.Cmd {
+	return TickCmd(ViewStatusDuration(text), func(time.Time) tea.Msg {
 		return ViewStatusClearMsg{View: view, Seq: seq}
 	})
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -664,12 +665,17 @@ type statusStamper interface {
 type viewStatusOwner interface {
 	statusStamper
 	StatusIsTransient() bool
+	StatusText() string
 	ClearStatus()
 }
 
 // The Outliner is the view this interface exists for, so its conformance is
 // asserted at compile time rather than discovered as a dead type switch.
 var _ viewStatusOwner = (*outliner.OutlinerModel)(nil)
+
+// Notes keeps its own status line and error styling, so it answers the same
+// interface directly rather than through InteractiveViewState.
+var _ viewStatusOwner = (*notes.NotesViewModel)(nil)
 
 // footerFlashProbe is the status identity compared across one Update. The
 // shell's own message carries a sequence, but the error beside it has ~87
@@ -800,7 +806,7 @@ func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
 		if held, known := before.stampFor(view); known && held == seq {
 			continue
 		}
-		expiries = append(expiries, status.ViewStatusTimeout(view, seq))
+		expiries = append(expiries, status.ViewStatusTimeout(view, seq, owner.StatusText()))
 	}
 	return tea.Batch(expiries...)
 }

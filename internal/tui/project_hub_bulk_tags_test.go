@@ -78,8 +78,8 @@ func TestProjectBulkTagNoChangeReportsInsteadOfWriting(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a no-op bulk edit reported nothing")
 	}
-	msg, ok := cmd().(status.ErrorMsg)
-	if !ok || !strings.Contains(msg.Err.Error(), "no selected project is parked") {
+	msg, ok := cmd().(status.InfoStatusMsg)
+	if !ok || string(msg) != "No selected project is parked" {
 		t.Fatalf("no-op bulk edit emitted %#v", cmd())
 	}
 	if app.feedback.message != "" {
