@@ -162,7 +162,7 @@ and the rare.
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
 | `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |
 | `y`/`Y` `u`/`Ctrl+R` `Ctrl+N` `T` | copy · undo and redo · Notes · theme |
-| `Space` `?` `Ctrl+C` | menu · the generated key reference for this surface · quit |
+| `Space` `?` `q`/`Ctrl+C` | menu · the generated key reference for this surface · quit |
 
 `?` is always the honest answer: it is generated from the same operation
 descriptors that dispatch the keys, for whichever surface you are on.

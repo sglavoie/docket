@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
@@ -117,9 +118,9 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	// s and t are absent: the three-toggle fold family took both back, s for
 	// section headers and t for task subtrees. b is absent too, because Peek
-	// answers to it now, and R because Mark Reviewed does.
+	// answers to it now, R because Mark Reviewed does, and q because it quits.
 	for _, retired := range []string{
-		"q", "i", "|", "ctrl+x",
+		"i", "|", "ctrl+x",
 		":", "ctrl+esc", "m", ",",
 	} {
 		key, err := parseUITestKey(retired)
@@ -132,10 +133,28 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 		}
 	}
 
+	quit, err := parseUITestKey("q")
+	if err != nil {
+		t.Fatalf("parse q: %v", err)
+	}
+	handled, cmd := app.handleGlobalKeyPress(quit)
+	if !handled || cmd == nil {
+		t.Fatalf("root q = handled %v, cmd %v; want the quit operation", handled, cmd)
+	}
+	if msg := cmd(); msg == nil {
+		t.Fatal("root q emitted no message, want QuitMsg")
+	} else if _, ok := msg.(status.QuitMsg); !ok {
+		t.Fatalf("root q emitted %T, want QuitMsg", msg)
+	}
+
 	app.crossOutliner.ActivateSearch()
-	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	if handled || cmd != nil {
 		t.Fatalf("search input a = handled %v, cmd %v; want delegated to inline input", handled, cmd)
+	}
+	handled, cmd = app.handleGlobalKeyPress(quit)
+	if handled || cmd != nil {
+		t.Fatalf("search input q = handled %v, cmd %v; want typed into the query, not quit", handled, cmd)
 	}
 }
 
@@ -147,7 +166,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 		keys[item.Key] = true
 	}
 	for _, retired := range []string{
-		"q", "i", "x", "|", "Ctrl+X",
+		"i", "x", "|", "Ctrl+X",
 		":", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {
