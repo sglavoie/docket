@@ -171,9 +171,10 @@ descriptors that dispatch the keys, for whichever surface you are on.
 ## Maintenance CLI
 
 ```text
-tt
+tt [--no-advisories]
 tt doctor [--fix] [--json]
-tt conflict list|show [--json]
+tt conflict list [--json]
+tt conflict show <id> [--json]
 tt conflict resolve <id> --use local|remote|file [--file PATH]
 tt workspace [location]
 tt workspace move <destination> [--force]
