@@ -158,7 +158,9 @@ func (m *AppModel) committedCheckInTitles(results []app.TaskResult) []string {
 // and the row menu operate on the cursor, and the task this note is about may
 // have moved out from under it the moment it changed state. Set up check-ins
 // names its own population — unscheduled Doing and Waiting work — which always
-// contains whatever the sentence just counted.
+// contains whatever the sentence just counted. The note does name Ctrl+M, the
+// key that opens the Task menu holding that entry, since "menu" alone does not
+// say which one or how to reach it, and opening a menu reads no cursor.
 //
 // spoken is the line the note will ride. When it already names the one task —
 // a status change says which task moved — the note does not repeat the title,
@@ -169,13 +171,13 @@ func checkInFeedbackNote(titles []string, spoken string) string {
 		return ""
 	case 1:
 		if lineNamesTitle(spoken, titles[0]) {
-			return "No check-in · menu: Set up check-ins"
+			return "No check-in · Ctrl+M: Set up check-ins"
 		}
 		return "No check-in: " +
 			textfit.TruncateToVisualWidth(titles[0], checkInFeedbackTitleWidth) +
-			" · menu: Set up check-ins"
+			" · Ctrl+M: Set up check-ins"
 	default:
-		return fmt.Sprintf("No check-in: %d tasks · menu: Set up check-ins", len(titles))
+		return fmt.Sprintf("No check-in: %d tasks · Ctrl+M: Set up check-ins", len(titles))
 	}
 }
 

@@ -939,7 +939,7 @@
       "type": "assert",
       "label": "and routes it to the keyless menu entry rather than interrupting",
       "assert": "contains",
-      "value": "menu: Set up check-ins"
+      "value": "Ctrl+M: Set up check-ins"
     },
     {
       "type": "assert",
