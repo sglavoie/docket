@@ -526,5 +526,7 @@ immediately, since that list is not the mode's order to begin with.
 For intentional cleanup, use `fa` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
 `Space` → Delete. Use `fw` afterwards to narrow to Done or Canceled alone.
-The confirmation freezes root, descendant, visible/hidden, and attachment counts;
-the entire deletion is one undoable transaction.
+The confirmation freezes the counts it warns about — subtasks going with the
+selection, the total, selected tasks the view hides, and attachments — and
+names only the ones that are not zero; the entire deletion is one undoable
+transaction.

@@ -450,14 +450,11 @@ func outlineDeleteConfirmDetail(deletions []*models.Task) *chrome.ConfirmDetail 
 		items = append(items, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	}
 	stored, linked := countAttachmentImpact(deletions)
-	noun := "tasks"
-	if len(deletions) == 1 {
-		noun = "task"
-	}
+	parts := append([]string{util.Count(len(deletions), "task") + " deleted"}, attachmentImpactParts(stored, linked)...)
 	return &chrome.ConfirmDetail{
 		Items:       items,
 		TotalCount:  len(deletions),
-		CascadeNote: fmt.Sprintf("%d %s deleted · %s", len(deletions), noun, attachmentImpactNote(stored, linked)),
+		CascadeNote: strings.Join(parts, " · "),
 		UndoHint:    true,
 	}
 }

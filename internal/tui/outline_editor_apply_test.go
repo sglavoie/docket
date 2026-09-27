@@ -93,8 +93,8 @@ func TestOutlineEditedArmsTheDeleteConfirmBeforeApplying(t *testing.T) {
 	if !strings.Contains(detail.CascadeNote, "1 task deleted") {
 		t.Errorf("cascade note = %q, want the deletion count", detail.CascadeNote)
 	}
-	if !strings.Contains(detail.CascadeNote, "attachments:") {
-		t.Errorf("cascade note = %q, want the attachment consequence", detail.CascadeNote)
+	if strings.Contains(detail.CascadeNote, "0 stored") || strings.Contains(detail.CascadeNote, "0 links") {
+		t.Errorf("cascade note = %q, want no attachment clause for a task carrying none", detail.CascadeNote)
 	}
 }
 

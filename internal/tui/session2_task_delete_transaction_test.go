@@ -357,12 +357,11 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 		t.Fatal("delete confirmation omitted rich impact detail")
 	}
 	for _, want := range []string{
-		"1 selected root",
-		"1 deduplicated descendant",
+		"1 subtask also deleted",
 		"2 tasks total",
 		"2 selected (1 visible · 1 hidden)",
 		"1 stored file deleted",
-		"2 URL/code references removed",
+		"2 links removed",
 	} {
 		if !strings.Contains(detail.CascadeNote, want) {
 			t.Errorf("delete impact %q omits %q", detail.CascadeNote, want)
@@ -373,6 +372,30 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 	}
 	if rendered := ansi.Strip(m.taskMutation.deleteConfirm.RenderOverlay(180)); !strings.Contains(rendered, "Undo available (u)") {
 		t.Errorf("rendered delete confirmation omitted undo hint:\n%s", rendered)
+	}
+}
+
+// TestTaskDeleteConfirmationOfOnePlainTaskWarnsAboutNothing pins the other half
+// of the impact note: a lone task with no subtasks, no hidden selection, and no
+// attachments has no consequence beyond the title the prompt already lists, so
+// the dialog draws no warning line of zero counts.
+func TestTaskDeleteConfirmationOfOnePlainTaskWarnsAboutNothing(t *testing.T) {
+	e := newTaskDeleteEnv(t)
+	m := e.appModel()
+
+	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
+		Refs:      []TaskProjectRef{{Task: e.sibling, Project: e.alpha}},
+		Selection: listsurface.SelectionCounts{Total: 1, Visible: 1},
+	})
+	detail := m.taskMutation.deleteConfirm.Detail
+	if detail == nil {
+		t.Fatal("delete confirmation omitted its detail")
+	}
+	if detail.CascadeNote != "" {
+		t.Errorf("plain delete warns %q, want no cascade note", detail.CascadeNote)
+	}
+	if len(detail.Items) != 1 || !detail.UndoHint {
+		t.Errorf("plain delete detail = %+v, want the one title and the undo hint", detail)
 	}
 }
 
