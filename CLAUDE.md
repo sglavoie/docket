@@ -176,9 +176,9 @@ gated keymap where modal sub-states narrow a key.
 Plan and Status are one vocabulary `internal/tui/chrome` owns: a plan is the
 collection a task was committed to, a status is the lifecycle state it holds,
 and no surface mints a third word. The `w` chord heads its two runs with them,
-Plan first; capture's route row and preview name the pair only for a planning
-destination, since the eight lifecycle ones spell their own status; Peek leads
-its summary with it. That division is `HintGroup`/`GuidanceHint.Group` metadata
+Plan first; capture's route row names the pair only for a planning
+destination, since the eight lifecycle ones spell their own status, and the
+preview leaves it to that row; Peek leads its summary with it. That division is `HintGroup`/`GuidanceHint.Group` metadata
 over the one binding, changing no sequence and no dispatch, and a heading rides
 its run's first entry rather than standing alone, so the packer cannot strand
 one over members it shed.

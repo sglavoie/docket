@@ -163,9 +163,9 @@ capture that agrees about the project and disagrees about the destination says
 spell their own status and a `Plan:` label over nothing would claim a membership
 the capture does not create. The row names words alone, no icon and no `$` token,
 since an axis that can read `Mixed` is one no sigil can spell; the preview keeps
-the sigil echo, and `quick_capture_preview.go` appends the same two labelled
-chunks to its Route group under the same `IsPlanning` gate. Both spellings come
-from `chrome.PlanFieldLabel`/`StatusFieldLabel` through `chrome.PlanStatusValue`,
+the sigil echo alone, since it is only ever drawn beneath this row and a second
+copy of the pair would say the same two words twice. The spellings come from
+`chrome.PlanFieldLabel`/`StatusFieldLabel` through `chrome.PlanStatusValue`,
 which is the one place a canonical lowercase token is capitalized.
 
 `ComposeBoundedPreviewBlock` is the preview's form of the same bound. Where

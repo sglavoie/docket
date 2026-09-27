@@ -28,7 +28,8 @@
 
     { "type": "text", "label": "one planning sigil answers two questions", "text": "$today " },
     { "type": "assert", "label": "so the route row states the collection and the state apart", "assert": "contains", "value": "Plan: Today · Status: Backlog" },
-    { "type": "assert", "label": "and the preview says the same under the token that left the status unsaid", "assert": "contains", "value": "$today" },
+    { "type": "assert", "label": "and the preview names the token beneath it", "assert": "contains", "value": "$today" },
+    { "type": "assert", "label": "without stating the pair a second time", "assert": "count_contains", "value": "Plan: Today", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the expanded form is the composer's other presentation", "key": "ctrl+f" },
