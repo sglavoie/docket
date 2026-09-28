@@ -8,7 +8,9 @@ import UniformTypeIdentifiers
 protocol GhosttyAppDelegate: AnyObject {
     /// Returns whether the action was performed.
     func ghosttyApp(_ app: Ghostty.App, perform action: ghostty_action_s, target: ghostty_target_s) -> Bool
-    func ghosttyApp(_ app: Ghostty.App, closeSurface host: GhosttySurfaceHost?, processAlive: Bool)
+    /// `needsConfirm` is Ghostty's "would closing need confirmation", which
+    /// upstream calls processAlive; it is not whether the process is alive.
+    func ghosttyApp(_ app: Ghostty.App, closeSurface host: GhosttySurfaceHost?, needsConfirm: Bool)
 }
 
 extension Ghostty {
@@ -57,7 +59,7 @@ extension Ghostty {
                 write_clipboard_cb: { userdata, loc, content, len, confirm in
                     App.writeClipboard(userdata, location: loc, content: content, len: len, confirm: confirm)
                 },
-                close_surface_cb: { userdata, processAlive in App.closeSurface(userdata, processAlive: processAlive) }
+                close_surface_cb: { userdata, needsConfirm in App.closeSurface(userdata, needsConfirm: needsConfirm) }
             )
 
             guard let app = ghostty_app_new(&runtime, cfg) else {
@@ -241,14 +243,14 @@ extension Ghostty {
             return true
         }
 
-        static func closeSurface(_ userdata: UnsafeMutableRawPointer?, processAlive: Bool) {
+        static func closeSurface(_ userdata: UnsafeMutableRawPointer?, needsConfirm: Bool) {
             let host = Ghostty.surfaceHost(from: userdata)
             guard let surface = host?.surface,
                   let app = ghostty_surface_app(surface),
                   let state = appState(from: app) else {
                 return
             }
-            state.delegate?.ghosttyApp(state, closeSurface: host, processAlive: processAlive)
+            state.delegate?.ghosttyApp(state, closeSurface: host, needsConfirm: needsConfirm)
         }
 
         // MARK: Clipboard

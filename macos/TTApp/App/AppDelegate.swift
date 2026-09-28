@@ -2,9 +2,12 @@ import AppKit
 import GhosttyKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
+    /// The launch-error window, when tt could not start.
     private var window: NSWindow?
     private(set) var ghostty: Ghostty.App?
-    private(set) var surfaceView: Ghostty.SurfaceView?
+    private(set) var terminal: TerminalWindowController?
+    private var preferencesController: PreferencesWindowController?
+    private var preferences: NSWindow? { preferencesController?.window }
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -39,7 +42,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         }
         NSLog("tt: running %@ (%@)", binary.url.path, String(describing: binary.source))
 
-        let overrides = Ghostty.ConfigOverrides(command: binary.url, environment: environment.commandEnvironment)
+        guard let launcher = Bundle.main.url(forResource: "tt-launch", withExtension: nil) else {
+            showLaunchError(title: "tt.app is incomplete.", message: "Its tt-launch helper is missing from Resources.")
+            return
+        }
+        let statusFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tt-app-\(ProcessInfo.processInfo.processIdentifier).status")
+        let overrides = Ghostty.ConfigOverrides(
+            command: launcher,
+            arguments: [statusFile.path, binary.url.path],
+            environment: environment.commandEnvironment,
+            waitAfterCommand: true
+        )
         let ghostty = Ghostty.App { Ghostty.Config(overrides: overrides) }
         guard ghostty.readiness == .ready else {
             showLaunchError(
@@ -51,34 +65,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         ghostty.delegate = self
         self.ghostty = ghostty
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 960, height: 640),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "tt"
-        window.isReleasedWhenClosed = false
-        window.tabbingMode = .disallowed
-
-        guard let app = ghostty.app else { return }
-        let surfaceView = Ghostty.SurfaceView(app: app)
-        surfaceView.onTitleChange = { [weak window] title in
-            window?.title = title.isEmpty ? "tt" : title
-        }
-        window.contentView = surfaceView
-        window.initialFirstResponder = surfaceView
-        self.surfaceView = surfaceView
-
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(surfaceView)
-        self.window = window
-        NSApp.activate(ignoringOtherApps: true)
+        let controller = TerminalWindowController(ghostty: ghostty, statusFile: statusFile)
+        terminal = controller
+        controller.show()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        // Closing the window hides it; only Quit ends tt.app.
+        false
+    }
+
+    /// A Dock click shows the window, starting a fresh tt if the last one exited.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        terminal?.show()
+        return false
+    }
+
+    /// Switching to tt.app (Cmd+Tab, the Dock) brings its window back.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        guard let terminal, !terminal.window.isVisible, !(preferences?.isVisible ?? false) else { return }
+        terminal.show()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // tt gets SIGHUP from the freed surface, like a closed terminal.
+        terminal?.teardown()
+    }
+
+    @objc func showPreferences(_ sender: Any?) {
+        let controller = preferencesController ?? PreferencesWindowController()
+        preferencesController = controller
+        controller.show()
+    }
+
+    @objc func showAbout(_ sender: Any?) {
+        let notice = Bundle.main.url(forResource: "NOTICE-ghostty", withExtension: nil)
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .credits: MainMenu.aboutCredits(ghosttyVersion: Ghostty.versionDescription, notice: notice),
+        ])
     }
 
     private func showLaunchError(title: String, message: String) {
@@ -96,15 +122,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
             guard let ptr = action.action.set_title.title else { return false }
             let title = String(cString: ptr)
             // The callback may run off the main thread; AppKit may not.
-            DispatchQueue.main.async { [weak self] in self?.surfaceView?.setTitle(title) }
+            DispatchQueue.main.async { [weak self] in self?.terminal?.surfaceView?.setTitle(title) }
             return true
         case GHOSTTY_ACTION_MOUSE_SHAPE:
             let shape = action.action.mouse_shape
-            onMain { [weak self] in self?.surfaceView?.setCursorShape(shape) }
+            onMain { [weak self] in self?.terminal?.surfaceView?.setCursorShape(shape) }
             return true
         case GHOSTTY_ACTION_MOUSE_VISIBILITY:
             let visible = action.action.mouse_visibility == GHOSTTY_MOUSE_VISIBLE
-            onMain { [weak self] in self?.surfaceView?.setCursorVisibility(visible) }
+            onMain { [weak self] in self?.terminal?.surfaceView?.setCursorVisibility(visible) }
             return true
         case GHOSTTY_ACTION_RENDERER_HEALTH:
             if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {
@@ -112,7 +138,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
             }
             return true
         case GHOSTTY_ACTION_CLOSE_WINDOW:
-            window?.performClose(nil)
+            onMain { [weak self] in self?.terminal?.hide() }
+            return true
+        case GHOSTTY_ACTION_SHOW_CHILD_EXITED:
+            // Handled even with the window hidden: returning true tells Ghostty
+            // the host shows the exit, so it writes nothing into the terminal.
+            let surface = target.tag == GHOSTTY_TARGET_SURFACE ? target.target.surface : nil
+            onMain { [weak self] in self?.terminal?.childExited(surface: surface) }
             return true
         default:
             // The surface view owns the rest once it exists.
@@ -130,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         }
     }
 
-    func ghosttyApp(_ app: Ghostty.App, closeSurface host: GhosttySurfaceHost?, processAlive: Bool) {
-        window?.performClose(nil)
+    func ghosttyApp(_ app: Ghostty.App, closeSurface host: GhosttySurfaceHost?, needsConfirm: Bool) {
+        onMain { [weak self] in self?.terminal?.closeRequested(host: host) }
     }
 }

@@ -43,7 +43,44 @@ final class GhosttyConfigTests: XCTestCase {
 
     func testCommandWithSpacesIsShellQuoted() {
         let url = URL(fileURLWithPath: "/Users/some one/it's/tt")
-        XCTAssertEqual(Ghostty.ConfigOverrides.commandValue(for: url), #"shell:exec '/Users/some one/it'\''s/tt'"#)
+        XCTAssertEqual(Ghostty.ConfigOverrides.commandValue(for: url), #"shell:'/Users/some one/it'\''s/tt'"#)
+    }
+
+    func testArgumentsFollowTheCommandAndAnySpaceQuotesEveryWord() {
+        let launcher = URL(fileURLWithPath: "/Applications/tt.app/Contents/Resources/tt-launch")
+        XCTAssertEqual(
+            Ghostty.ConfigOverrides.commandValue(for: launcher, arguments: ["/tmp/s", "/usr/local/bin/tt"]),
+            "direct:/Applications/tt.app/Contents/Resources/tt-launch /tmp/s /usr/local/bin/tt"
+        )
+        XCTAssertEqual(
+            Ghostty.ConfigOverrides.commandValue(for: launcher, arguments: ["/tmp/s", "/Users/a b/tt"]),
+            "shell:'/Applications/tt.app/Contents/Resources/tt-launch' '/tmp/s' '/Users/a b/tt'"
+        )
+    }
+
+    /// Ghostty runs a `shell:` command as `bash -c "exec -l <value>"`.
+    func testShellFormRunsUnderGhosttysExecPrefix() throws {
+        let value = Ghostty.ConfigOverrides.commandValue(
+            for: URL(fileURLWithPath: "/bin/echo"), arguments: ["it's", "a b"]
+        )
+        let body = try XCTUnwrap(value.split(separator: ":", maxSplits: 1).last)
+        let bash = Process()
+        bash.executableURL = URL(fileURLWithPath: "/bin/bash")
+        bash.arguments = ["--noprofile", "--norc", "-c", "exec -l \(body)"]
+        let out = Pipe()
+        bash.standardOutput = out
+        try bash.run()
+        bash.waitUntilExit()
+        XCTAssertEqual(bash.terminationStatus, 0)
+        XCTAssertEqual(String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self), "it's a b\n")
+    }
+
+    func testWaitAfterCommandIsAnOverride() {
+        var o = overrides
+        o.waitAfterCommand = true
+        XCTAssertTrue(o.lines.contains("wait-after-command = true"))
+        let config = Ghostty.Config(userConfig: dir.appendingPathComponent("missing.conf"), overrides: o)
+        XCTAssertEqual(config.bool("wait-after-command"), true)
     }
 
     func testMultilineEnvironmentValuesAreDropped() {

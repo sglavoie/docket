@@ -6,17 +6,23 @@ extension Ghostty {
     /// Settings tt.app forces on every configuration, applied after the user's
     /// file so no user value can override them.
     struct ConfigOverrides: Equatable {
-        /// The resolved `tt` binary the surface runs.
+        /// The program the surface runs: the resolved `tt`, or tt.app's
+        /// launcher wrapping it.
         var command: URL
+        /// Arguments after the program.
+        var arguments: [String] = []
         /// Variables handed to the command, e.g. a login-shell `PATH`. TERM and
         /// COLORTERM are deliberately absent: Ghostty sets them itself.
         var environment: [String: String] = [:]
+        /// Keeps an exited surface open, so its host decides what happens to it
+        /// and its last output stays readable.
+        var waitAfterCommand = false
 
         /// The override file's lines, in the order Ghostty reads them.
         var lines: [String] {
             var lines = [
-                "command = \(Self.commandValue(for: command))",
-                "wait-after-command = false",
+                "command = \(Self.commandValue(for: command, arguments: arguments))",
+                "wait-after-command = \(waitAfterCommand)",
                 "confirm-close-surface = false",
             ]
             for key in environment.keys.sorted() {
@@ -28,15 +34,19 @@ extension Ghostty {
             return lines
         }
 
-        /// `direct:` skips the `/bin/sh -c` round trip, but it splits naively
-        /// on spaces, so a path with whitespace goes through a quoted shell exec.
-        static func commandValue(for url: URL) -> String {
-            let path = url.path
-            if path.rangeOfCharacter(from: .whitespacesAndNewlines) == nil {
-                return "direct:\(path)"
+        /// `direct:` skips the shell round trip, but it splits naively on
+        /// spaces, so any word with whitespace sends the whole command through
+        /// `shell:`, quoted. Ghostty itself prefixes `exec -l` there.
+        static func commandValue(for url: URL, arguments: [String] = []) -> String {
+            let words = [url.path] + arguments
+            if words.allSatisfy({ $0.rangeOfCharacter(from: .whitespacesAndNewlines) == nil }) {
+                return "direct:" + words.joined(separator: " ")
             }
-            let quoted = "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
-            return "shell:exec \(quoted)"
+            return "shell:" + words.map(shellQuoted).joined(separator: " ")
+        }
+
+        private static func shellQuoted(_ word: String) -> String {
+            "'" + word.replacingOccurrences(of: "'", with: "'\\''") + "'"
         }
 
         private static func isSingleLine(_ s: String) -> Bool {

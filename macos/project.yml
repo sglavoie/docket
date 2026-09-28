@@ -19,6 +19,14 @@ targets:
     platform: macOS
     sources:
       - path: TTApp
+        excludes:
+          - Resources/tt-launch
+      # The launcher tt runs under, copied executable into Resources.
+      - path: TTApp/Resources/tt-launch
+        buildPhase: resources
+      # Shown in the About panel.
+      - path: NOTICE-ghostty
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: tt
