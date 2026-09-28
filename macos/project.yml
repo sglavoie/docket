@@ -57,3 +57,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.tests
     dependencies:
       - target: tt
+      # For `import GhosttyKit` in tests. The hosting app already links the
+      # static library, so linking it again would duplicate its symbols.
+      - framework: Vendor/GhosttyKit.xcframework
+        link: false
+        embed: false
