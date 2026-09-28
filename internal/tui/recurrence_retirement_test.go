@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 func TestRecurrenceVocabularyIsConfinedToMigrationAndRejectedInput(t *testing.T) {
@@ -40,7 +42,7 @@ func TestRecurrenceVocabularyIsConfinedToMigrationAndRejectedInput(t *testing.T)
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" {
+			if path != repositoryRoot && gotree.Ignored(entry.Name()) {
 				return filepath.SkipDir
 			}
 			return nil

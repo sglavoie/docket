@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 // This is a deliberate copy of internal/tui/source_anchor_test.go, made when
@@ -57,7 +59,7 @@ func walkTUIProductionSourcesFrom(t *testing.T, sourceFile string, visit func(pa
 			return walkErr
 		}
 		if entry.IsDir() {
-			if path != root && skipsTUISourceDir(entry.Name()) {
+			if path != root && gotree.Ignored(entry.Name()) {
 				return fs.SkipDir
 			}
 			return nil
@@ -72,14 +74,4 @@ func walkTUIProductionSourcesFrom(t *testing.T, sourceFile string, visit func(pa
 		}
 		return visit(path, filepath.ToSlash(relative), entry)
 	})
-}
-
-// skipsTUISourceDir reports directories the Go tool itself never compiles, so
-// no production source can hide in one: dot and underscore directories, plus
-// testdata. That is also what keeps the walk out of the git-tracked .tt/ test
-// residue under internal/tui. Never skip an ordinary directory name here — a
-// sub-package must not be able to opt out of an audit by being called
-// something.
-func skipsTUISourceDir(name string) bool {
-	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || name == "testdata"
 }

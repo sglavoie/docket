@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 const (
@@ -213,7 +215,7 @@ func tuiPackageFileCounts(t *testing.T, root string) map[string]int {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if skipsPackageDir(entry.Name()) && path != subtree {
+			if gotree.Ignored(entry.Name()) && path != subtree {
 				return filepath.SkipDir
 			}
 			return nil
@@ -247,7 +249,7 @@ func tuiPackageDirs(t *testing.T, root string) map[string]bool {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if skipsPackageDir(entry.Name()) && path != subtree {
+			if gotree.Ignored(entry.Name()) && path != subtree {
 				return filepath.SkipDir
 			}
 			return nil
@@ -369,7 +371,7 @@ func readTUIImportEdges(t *testing.T, root string) []tuiImportEdge {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if skipsPackageDir(entry.Name()) && path != subtree {
+			if gotree.Ignored(entry.Name()) && path != subtree {
 				return filepath.SkipDir
 			}
 			return nil

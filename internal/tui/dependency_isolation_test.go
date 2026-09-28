@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 // TestDependencyIsolationPresentationVocabulary is the negative half of the
@@ -118,7 +120,7 @@ func TestDependencyIsolationPresentationVocabulary(t *testing.T) {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "vendor" {
+			if path != repositoryRoot && (gotree.Ignored(entry.Name()) || entry.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil

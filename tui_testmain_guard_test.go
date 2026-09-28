@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 // tuiSubtree is the directory the package split fans out under. Every package
@@ -104,7 +106,7 @@ func testBearingPackageDirs(t *testing.T, root string) []string {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if skipsPackageDir(entry.Name()) && path != root {
+			if gotree.Ignored(entry.Name()) && path != root {
 				return filepath.SkipDir
 			}
 			return nil
@@ -124,14 +126,6 @@ func testBearingPackageDirs(t *testing.T, root string) []string {
 	}
 	slices.Sort(dirs)
 	return dirs
-}
-
-// skipsPackageDir names the directories the Go tool itself never compiles, plus
-// the git-tracked test residue under internal/tui. Never add an ordinary
-// directory name here: a package could then opt out of this guard by being
-// named, which is the same failure the guard exists to prevent.
-func skipsPackageDir(name string) bool {
-	return strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || name == "testdata"
 }
 
 // findHomeIsolation parses every test file in one directory looking for

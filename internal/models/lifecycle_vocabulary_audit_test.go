@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 // TestRuntimeLifecycleVocabularyIsCanonical prevents retired task lifecycle
@@ -52,7 +54,7 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "vendor" {
+			if path != root && (gotree.Ignored(entry.Name()) || entry.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil

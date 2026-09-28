@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/testutil/gotree"
 )
 
 // projectPopulationInventory classifies every production caller of a runtime
@@ -82,12 +84,13 @@ func TestProjectPopulationCallersAreClassified(t *testing.T) {
 	observed := make(map[string]bool)
 	var retired []string
 	fset := token.NewFileSet()
-	err := filepath.WalkDir(repositoryRootForInventory(t), func(path string, entry fs.DirEntry, walkErr error) error {
+	root := repositoryRootForInventory(t)
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "vendor" {
+			if path != root && (gotree.Ignored(entry.Name()) || entry.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil

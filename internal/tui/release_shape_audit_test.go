@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/testutil/gotree"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -255,7 +257,7 @@ func scanProductionSources(t *testing.T, inspect func(relativePath string, file 
 			return walkErr
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" || entry.Name() == "vendor" {
+			if path != repositoryRoot && (gotree.Ignored(entry.Name()) || entry.Name() == "vendor") {
 				return filepath.SkipDir
 			}
 			return nil
