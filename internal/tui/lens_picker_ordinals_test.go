@@ -14,6 +14,43 @@ import (
 	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
+func TestLensPickerSearchEditsInPlaceAndKeepsCaretVisible(t *testing.T) {
+	model := lensPickerApp(t)
+	pressLens(t, model, "/")
+	typeLens(t, model, "Wating")
+	pressLens(t, model, "home", "right", "right")
+	typeLens(t, model, "i")
+	picker := model.lenses.Picker()
+	if picker.Query != "Waiting" || picker.Listed != 1 {
+		t.Fatalf("edited search = %q, listed = %d", picker.Query, picker.Listed)
+	}
+	guidance := ansi.Strip(chrome.RenderGuidanceText(picker.GuidanceSpec(), 160))
+	if strings.Contains(guidance, "j/k") || !strings.Contains(guidance, "↑/↓") {
+		t.Fatalf("search guidance = %q", guidance)
+	}
+	pressLens(t, model, "enter")
+	if picker.Searching || picker.Query != "Waiting" {
+		t.Fatal("Enter did not retain the edited search")
+	}
+	pressLens(t, model, "/", "end")
+	typeLens(t, model, strings.Repeat("界", 50)+"TAIL")
+	for _, width := range []int{100, 60, 80} {
+		view := picker.RenderWithin(width, 20)
+		if lipgloss.Width(view) > width || lipgloss.Height(view) > 20 || !strings.Contains(ansi.Strip(view), "TAIL") {
+			t.Fatalf("width %d lost the query tail or overflowed: %s", width, view)
+		}
+	}
+	pressLens(t, model, "esc")
+	typeLens(t, model, "jk")
+	if picker.Query != "jk" {
+		t.Fatalf("j/k did not type after clearing: %q", picker.Query)
+	}
+	pressLens(t, model, "esc", "esc", "esc")
+	if model.lenses.Picker() != nil {
+		t.Fatal("Esc cascade did not close the picker")
+	}
+}
+
 // lensPickerOrdinalSlots returns the fixed-width number column of every row, in
 // display order. The slot is read off PrimaryMarker rather than off the rendered
 // line because that is the seam the marker column is charged to: whatever the

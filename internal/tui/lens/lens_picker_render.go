@@ -42,21 +42,18 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 		))
 	}
 	if model.Searching || model.Query != "" {
-		cursor := ""
-		if model.Searching {
-			cursor = "▏"
-		}
-		header = append(header, theme.MutedStyle.Render("Search: "+model.Query+cursor))
+		header = append(header, model.searchInput.View(model.Query, model.Searching, contentWidth))
 	}
 	if state := model.StateLine(); state != "" {
 		header = append(header, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(state, contentWidth)))
 	}
 
+	guidance := chrome.RenderGuidanceText(model.GuidanceSpec(), contentWidth)
 	listHeight := min(max(len(model.Surface.Rows()), 4), 14)
 	if height > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
-		// consume nine rows before any header line of its own.
-		reserved := 9 + len(header)
+		// consume eight rows plus the measured footer and header lines.
+		reserved := 8 + lipgloss.Height(guidance) + len(header)
 		listHeight = min(listHeight, max(height-reserved, 1))
 	}
 	content := listsurface.RenderCompactListSurface(model.Surface, contentWidth, listHeight)
@@ -65,12 +62,11 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	}
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Named Lenses")
-	guidance := model.GuidanceSpec()
 	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
+		guidance,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
@@ -96,6 +92,10 @@ func (model *NamedLensPickerModel) GuidanceSpec() chrome.GuidanceSpec {
 		return chrome.GuidanceSpec{}
 	}
 	searching := model.Searching
+	navigationKeys := "j/k or ↑/↓"
+	if searching {
+		navigationKeys = "↑/↓"
+	}
 	onLens := func() bool {
 		_, ok := model.CurrentLens()
 		return ok
@@ -119,9 +119,8 @@ func (model *NamedLensPickerModel) GuidanceSpec() chrome.GuidanceSpec {
 		}
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
-		keymap.Bind("j", "Move selection", "Navigation",
-			keymap.WithGate(func() bool { return !searching }),
-			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
+		keymap.Bind("up", "Move selection", "Navigation",
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey(navigationKeys)),
 		keymap.Bind("enter", "Apply the current row", "Actions",
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
 		keymap.Bind("1", "Apply the numbered lens", "Actions",

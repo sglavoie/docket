@@ -3,7 +3,6 @@ package outliner
 import (
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -101,6 +100,7 @@ type relationPickerState struct {
 	Candidates   []relationCandidate
 	Query        string
 	Searching    bool
+	SearchInput  listsurface.PickerSearchInput
 	Notice       string
 }
 
@@ -304,19 +304,12 @@ func (m *OutlinerModel) handleRelationPickerKey(msg tea.KeyPressMsg) (tea.Model,
 			state.Searching = false
 		case "enter":
 			state.Searching = false
-		case "backspace":
-			if state.Query != "" {
-				_, size := utf8.DecodeLastRuneInString(state.Query)
-				state.setQuery(state.Query[:len(state.Query)-size])
-			}
 		case "up":
 			state.Surface.MoveCursor(-1)
 		case "down":
 			state.Surface.MoveCursor(1)
 		default:
-			if msg.Text != "" {
-				state.setQuery(state.Query + msg.Text)
-			}
+			state.setQuery(state.SearchInput.HandleKey(state.Query, msg))
 		}
 		return m, nil
 	}

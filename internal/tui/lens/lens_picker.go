@@ -115,10 +115,11 @@ type NamedLensPickerModel struct {
 	// capped at nine. It is rebuilt by items() in the same pass that counts
 	// listed, which is what keeps a printed digit and the row under it from ever
 	// naming different lenses.
-	Ordinals  []string
-	Query     string
-	Searching bool
-	notice    string
+	Ordinals    []string
+	Query       string
+	Searching   bool
+	searchInput listsurface.PickerSearchInput
+	notice      string
 }
 
 // NewNamedLensPickerModel builds the picker over one machine-state snapshot.

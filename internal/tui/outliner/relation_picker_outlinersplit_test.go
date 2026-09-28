@@ -5,11 +5,43 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
+
+func TestRelationPickerSearchEditsInPlaceAndScrolls(t *testing.T) {
+	alpha, beta := relationFixture(t)
+	view := scopeTestOutliner(alpha, beta)
+	relationPickerOver(t, view, "proj-a", "source")
+	for _, key := range []tea.KeyPressMsg{
+		{Code: '/', Text: "/"},
+		{Code: 'c', Text: "contrct"},
+		{Code: tea.KeyLeft},
+		{Code: tea.KeyLeft},
+		{Code: 'a', Text: "a"},
+	} {
+		view.HandleKeyMsg(key)
+	}
+	if got := view.RelationPicker.Query; got != "contract" || len(view.RelationPicker.Surface.Matches()) != 2 {
+		t.Fatalf("search = %q, rows = %v", got, relationRowLabels(view))
+	}
+	guidance := ansi.Strip(chrome.RenderGuidanceText(view.relationPickerGuidance(), 160))
+	if strings.Contains(guidance, "j/k") || !strings.Contains(guidance, "↑/↓") {
+		t.Fatalf("search guidance = %q", guidance)
+	}
+	view.HandleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEnd})
+	view.HandleKeyMsg(tea.KeyPressMsg{Code: 'x', Text: strings.Repeat("界", 50) + "TAIL"})
+	for _, width := range []int{100, 60, 80} {
+		popup := view.renderRelationPicker(width)
+		if lipgloss.Width(popup) > width || !strings.Contains(ansi.Strip(popup), "TAIL") {
+			t.Fatalf("width %d lost the query tail or overflowed: %s", width, popup)
+		}
+	}
+}
 
 // relationFixture seeds the whole reference shape the picker has to describe:
 // a same-project target, a cross-project one, a locator into a project nothing

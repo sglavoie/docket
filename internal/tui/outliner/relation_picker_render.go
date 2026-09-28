@@ -39,23 +39,18 @@ func (m *OutlinerModel) renderRelationPicker(width int) string {
 		))
 	}
 	if state.Searching || state.Query != "" {
-		cursor := ""
-		if state.Searching {
-			cursor = "▏"
-		}
-		header = append(header, theme.MutedStyle.Render(
-			textfit.TruncateToVisualWidth("Search: "+state.Query+cursor, contentWidth),
-		))
+		header = append(header, state.SearchInput.View(state.Query, state.Searching, contentWidth))
 	}
 
+	guidance := chrome.RenderGuidanceText(m.relationPickerGuidance(), contentWidth)
 	listHeight := min(max(len(state.Surface.Rows()), 4), 14)
 	if budget := m.outlinerModalBudget(width); budget > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
-		// consume nine rows before any header line of its own, so a minimum-supported
+		// consume eight rows plus the measured footer and header lines. A short
 		// terminal drops list rows rather than the search line or the footer. The
 		// budget is the compositor's, so the box is built at the height it is drawn
 		// at and FitOverlayPopupHeight never has to take the middle out of it.
-		listHeight = min(listHeight, max(budget-9-len(header), 1))
+		listHeight = min(listHeight, max(budget-8-lipgloss.Height(guidance)-len(header), 1))
 	}
 	content := listsurface.RenderCompactListSurface(state.Surface, contentWidth, listHeight)
 	if len(header) > 0 {
@@ -69,7 +64,7 @@ func (m *OutlinerModel) renderRelationPicker(width int) string {
 		content,
 		innerWidth,
 		title,
-		chrome.RenderGuidanceText(m.relationPickerGuidance(), max(innerWidth-4, 1)),
+		guidance,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
@@ -84,6 +79,10 @@ func (m *OutlinerModel) relationPickerGuidance() chrome.GuidanceSpec {
 	}
 	state := &m.RelationPicker
 	searching := state.Searching
+	navigationKeys := "j/k or ↑/↓"
+	if searching {
+		navigationKeys = "↑/↓"
+	}
 	enterLabel := "go to task"
 	escapeLabel := "close"
 	if searching {
@@ -94,9 +93,8 @@ func (m *OutlinerModel) relationPickerGuidance() chrome.GuidanceSpec {
 		}
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
-		keymap.Bind("j", "Move selection", "Navigation",
-			keymap.WithGate(func() bool { return !searching }),
-			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
+		keymap.Bind("up", "Move selection", "Navigation",
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey(navigationKeys)),
 		keymap.Bind("enter", "Go to the related task", "Navigation",
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
 		keymap.Bind("/", "Search the listed relationships", "Filters",

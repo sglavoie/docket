@@ -2,7 +2,6 @@ package valuepicker
 
 import (
 	"time"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -22,13 +21,14 @@ const (
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface   *listsurface.ListSurfaceModel
-	request   operation.OperationExecutionRequest
-	provider  operation.ValueProviderID
-	title     string
-	subtitle  string
-	multi     bool
-	searching bool
+	surface     *listsurface.ListSurfaceModel
+	request     operation.OperationExecutionRequest
+	provider    operation.ValueProviderID
+	title       string
+	subtitle    string
+	multi       bool
+	searching   bool
+	searchInput listsurface.PickerSearchInput
 	// membershipInitial and membershipCurrent are the tri-state editor's two
 	// halves: what the selection agreed on when the picker opened, and what it
 	// says now. Both the tag picker and the reference picker read them, because
@@ -156,16 +156,10 @@ func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		case "enter":
 			model.searching = false
 			return nil, false, nil
-		case "backspace":
-			query := model.surface.Query().Raw
-			if query != "" {
-				_, size := utf8.DecodeLastRuneInString(query)
-				model.surface.SetQuery(query[:len(query)-size])
-			}
-			return nil, false, nil
 		default:
-			if msg.Text != "" {
-				model.surface.SetQuery(model.surface.Query().Raw + msg.Text)
+			raw := model.surface.Query().Raw
+			if edited := model.searchInput.HandleKey(raw, msg); edited != raw {
+				model.surface.SetQuery(edited)
 			}
 			return nil, false, nil
 		}

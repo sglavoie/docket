@@ -2,7 +2,6 @@ package lens
 
 import (
 	"fmt"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -34,12 +33,6 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		case "enter":
 			model.Searching = false
 			return nil, false, nil
-		case "backspace":
-			if model.Query != "" {
-				_, size := utf8.DecodeLastRuneInString(model.Query)
-				model.setQuery(model.Query[:len(model.Query)-size])
-			}
-			return nil, false, nil
 		case "up":
 			model.Surface.MoveCursor(-1)
 			return nil, false, nil
@@ -47,9 +40,7 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 			model.Surface.MoveCursor(1)
 			return nil, false, nil
 		default:
-			if msg.Text != "" {
-				model.setQuery(model.Query + msg.Text)
-			}
+			model.setQuery(model.searchInput.HandleKey(model.Query, msg))
 			return nil, false, nil
 		}
 	}

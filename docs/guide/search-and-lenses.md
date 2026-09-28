@@ -6,6 +6,13 @@ projections that write all of them at once.
 
 ## Filters and search
 
+In value, named-lens, and relationship pickers, `/` opens an editable search
+field. Left/right and Home/End move the text cursor; Backspace/Delete edit at
+that position. Long queries scroll horizontally to keep the cursor visible.
+While typing, up/down move between results and `j`/`k` enter text; the footer
+shows the arrow keys until you leave search editing. `Enter` accepts the search.
+`Esc` clears typed text, then leaves search editing on the next press.
+
 Filters are session-only refinements of ordinary mode rows, and a slash query is
 one more of them. Slash reads that query as one flat list in relevance order,
 with no lanes, no headers, and no folds, over the whole project scope rather than

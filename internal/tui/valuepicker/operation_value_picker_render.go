@@ -50,6 +50,10 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 	}
 	count := len(model.surface.Matches())
 	searching := model.searching
+	navigationKeys := "j/k or ↑/↓"
+	if searching {
+		navigationKeys = "↑/↓"
+	}
 	enterLabel := "choose"
 	if model.multi {
 		enterLabel = "apply"
@@ -65,9 +69,9 @@ func (model *OperationValuePickerModel) GuidanceSpec() (chrome.GuidanceSpec, boo
 		}
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
-		keymap.Bind("j", "Move selection", "Navigation",
+		keymap.Bind("up", "Move selection", "Navigation",
 			keymap.WithGate(func() bool { return count > 0 }),
-			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey(navigationKeys)),
 		keymap.Bind("/", "Search values", "Filters",
 			keymap.WithGate(func() bool { return !searching }), keymap.WithFooter(20, "search", false)),
 		keymap.Bind("enter", "Apply current state", "Actions",
@@ -217,15 +221,11 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	query := model.surface.Query().Raw
 	search := ""
 	if model.searching || query != "" {
-		cursor := ""
-		if model.searching {
-			cursor = "▏"
-		}
-		search = "Search: " + query + cursor
+		search = model.searchInput.View(query, model.searching, innerWidth-4)
 	}
 	content := listsurface.RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 	if search != "" {
-		content = theme.MutedStyle.Render(search) + "\n\n" + content
+		content = search + "\n\n" + content
 	}
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock
