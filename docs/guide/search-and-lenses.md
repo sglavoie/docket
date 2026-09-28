@@ -445,8 +445,8 @@ replace, and delete reach them like any other record, and deleting every lens is
 durable rather than a request to reseed.
 
 Those three starters are the only ones seeded for you, but they are three of a
-catalog of nine. `Add built-in view` opens `Add Built-in View`, the gallery of
-all nine, in alphabetical order with the projection each one installs:
+catalog of ten. `Add built-in view` opens `Add Built-in View`, the gallery of
+all ten, in alphabetical order with the projection each one installs:
 
 | Built-in view | Projection |
 | --- | --- |
@@ -454,6 +454,7 @@ all nine, in alphabetical order with the projection each one installs:
 | `Cleanup 90d` | All · states: done,canceled · done: 90d · sort: updated ↑ |
 | `Deferred` | All · deferred · sort: updated ↑ |
 | `High Priority` | All · !1 · sort: priority ↑ |
+| `Needs Review` | All · ?review |
 | `Overdue` | Due · due: overdue |
 | `Parked Work` | All · parked: only |
 | `Review Queue` | All · review · sort: updated ↑ |

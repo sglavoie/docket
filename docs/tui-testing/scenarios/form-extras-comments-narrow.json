@@ -56,7 +56,7 @@
 
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "one undo takes back the task, its attachment, and its comments", "key": "u" },
-    { "type": "wait" },
+    { "type": "wait", "label": "let outcome feedback expire before checking the remaining rows", "duration": "6s" },
     { "type": "assert", "assert": "not_contains", "value": "Wire the Comments section" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

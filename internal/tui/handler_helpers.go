@@ -146,6 +146,12 @@ func (m *AppModel) setWarningStatus(msg string) {
 	m.feedback.recordSeverity(flashWarning)
 }
 
+// statusReadingTimeout gives ordinary shell feedback the same reading time as
+// view-owned feedback. Undo toasts keep their dedicated deadline and timer.
+func (m *AppModel) statusReadingTimeout() tea.Cmd {
+	return status.StatusTimeout(status.StatusDuration(m.feedback.message))
+}
+
 // UndoToastTimeout is how long a transient undo-available toast remains
 // dismissible by the inline `u` key before it auto-clears.
 const UndoToastTimeout = 6 * time.Second
@@ -157,7 +163,7 @@ const UndoToastTimeout = 6 * time.Second
 // Returns a tea.Cmd that clears the toast after the timeout.
 //
 // A nil undoCb is treated as a programming error and degrades to a plain
-// info status with the default 2s timeout — otherwise the "u to undo"
+// info status with a text-sized timeout — otherwise the "u to undo"
 // affordance on screen would be a lie (the `u` key handler short-circuits
 // on a nil callback) and the 6s window would mis-suppress an unrelated
 // StatusClearMsg that arrives in the meantime.
@@ -165,7 +171,7 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	if undoCb == nil {
 		logging.Warn("setUndoableStatus called with nil undoCb; degrading to plain info status: %q", msg)
 		m.setInfoStatus(msg)
-		return status.DefaultStatusTimeout()
+		return m.statusReadingTimeout()
 	}
 	m.setInfoStatus(msg)
 	m.feedback.armUndo(undoCb, time.Now().Add(UndoToastTimeout))
@@ -176,7 +182,7 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 
 // setRecoveryFeedback installs the canonical recovery feedback only when the
 // just-committed transaction is still the newest global ledger entry. Missing,
-// unreadable, or superseded correlation degrades to the ordinary two-second
+// unreadable, or superseded correlation degrades to the ordinary text-sized
 // success status without leaving an undo callback armed.
 func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, originRecorded bool) tea.Cmd {
 	return m.setRecoveryFeedbackWithContext(successMessage, transactionID, "", originRecorded)
@@ -194,12 +200,12 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 	transactionID = strings.TrimSpace(transactionID)
 	if transactionID == "" {
 		m.setSuccessStatus(successMessage)
-		return status.DefaultStatusTimeout()
+		return m.statusReadingTimeout()
 	}
 	entry, ok, err := workspaceLedgerFromConfig(m.domain.runtime).SelectNewestUndo(storage.GlobalScope())
 	if err != nil || !ok || entry.TransactionID != transactionID {
 		m.setSuccessStatus(successMessage)
-		return status.DefaultStatusTimeout()
+		return m.statusReadingTimeout()
 	}
 	context := entry.Context
 	if override := strings.TrimSpace(contextOverride); override != "" {
@@ -387,7 +393,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			summary = fmt.Sprintf("%s · %d hidden", summary, msg.Hidden)
 		}
 		m.setSuccessStatus(summary)
-		return true, status.DefaultStatusTimeout()
+		return true, m.statusReadingTimeout()
 	}
 	return false, nil
 }

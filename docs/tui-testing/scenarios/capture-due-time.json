@@ -15,7 +15,7 @@
     { "type": "assert", "label": "the committed row shows the clock time on its due badge", "assert": "contains", "value": "15:30" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "undo the capture", "key": "u" },
-    { "type": "wait" },
+    { "type": "wait", "label": "let outcome feedback expire before checking the remaining rows", "duration": "6s" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Deploy the release" },
     { "type": "assert", "assert": "no_layout_issues" }

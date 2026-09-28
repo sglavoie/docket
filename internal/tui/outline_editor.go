@@ -374,7 +374,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	})
 	if errors.Is(err, storage.ErrStaleRevision) {
 		m.setWarningStatus("Workspace changed while the editor was open · buffer kept at " + pending.path)
-		return status.DefaultStatusTimeout()
+		return m.statusReadingTimeout()
 	}
 	if err != nil {
 		m.showView(presentation.ViewOutlineErrors, outliner.NewOutlineErrorsViewModel(pending.project.Name, pending.path, []grammar.LineError{outlineApplyError(err)}))
@@ -402,7 +402,7 @@ func (m *AppModel) handleOutlineDeleteConfirmKey(key string) (bool, tea.Cmd) {
 		// landed would leave the user guessing which half. The file stays, so the
 		// same edits can be resubmitted after the removals are put back.
 		m.setWarningStatus("Outline not applied · buffer kept at " + m.taskMutation.takeOutlineApply().path)
-		return true, status.DefaultStatusTimeout()
+		return true, m.statusReadingTimeout()
 	case chrome.ConfirmAnswerSwallowed:
 		return true, nil
 	case chrome.ConfirmAnswerUnarmed:

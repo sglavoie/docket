@@ -93,11 +93,15 @@ A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.
 
-Every run starts in Active Projects, All mode, with no restored search, filters,
-selection, or navigation. Active Projects is the base task workspace: every
-project you have not tagged `parked`. Press `a` to capture the first task. At
-Active Projects scope, capture routes to the protected Unfiled project with
-Inbox lifecycle; in a single-project scope, it routes to that project.
+A launch starts in Active Projects, All mode, then reapplies the saved view of
+any lens you left active on this machine: its mode, query, filters, sort, and
+project scope. Selection and navigation are never restored. Press `Esc` to leave
+a restored lens and return to Active Projects, All.
+
+Active Projects is the base task workspace: every project you have not tagged
+`parked`. Press `a` to capture the first task. At Active Projects scope, capture
+routes to the protected Unfiled project with Inbox lifecycle; in a single-project
+scope, it routes to that project.
 
 ## Platform support
 

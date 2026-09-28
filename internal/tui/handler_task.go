@@ -293,7 +293,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 	m.dueClocks.ObserveCommit(msg.Result.TransactionID, lineEditEffect)
 	if !msg.Result.Changed {
 		m.setInfoStatus("Task unchanged")
-		return status.DefaultStatusTimeout()
+		return m.statusReadingTimeout()
 	}
 	// A row edit names both halves outright: the identity the editor was opened on
 	// and the address the commit left the task at, which a `%project` token can

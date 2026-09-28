@@ -421,7 +421,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	m.setSuccessStatus(appendRestoreDetail(fmt.Sprintf("%s: %s", verb, desc), detail))
 	m.refreshProjectHubIfActive()
 	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, focusCmd, m.refreshActiveNotesManager(), status.DefaultStatusTimeout())
+	cmds = append(cmds, focusCmd, m.refreshActiveNotesManager(), m.statusReadingTimeout())
 	return tea.Batch(cmds...)
 }
 

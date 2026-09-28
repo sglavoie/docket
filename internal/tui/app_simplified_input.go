@@ -139,7 +139,7 @@ func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequenc
 		return nil
 	}
 	m.setWarningStatus(strings.Join(sequence, "") + " is not a " + label + " action")
-	return status.DefaultStatusTimeout()
+	return m.statusReadingTimeout()
 }
 
 // executeSimplifiedGlobalKey routes a grammar-owned global key through the same

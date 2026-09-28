@@ -288,7 +288,7 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 	return operation.OperationHandlerResult{
 		Message: commandMessage(tea.Batch(
 			listsurface.FlashIfJumped(previous, out.Cursor, &out.CursorFlash),
-			status.DefaultStatusTimeout(),
+			m.statusReadingTimeout(),
 		)),
 	}
 }

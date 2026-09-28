@@ -170,7 +170,9 @@ The Outliner's own feedback — a focus notice, or a line such as
 footer, introduced by a dim thin divider. The strip never floats mid-screen on a
 short list and never leaves blank padding under itself: it takes its rows from
 the task list, and in a narrow terminal it wraps rather than pushing the footer
-off screen. It clears itself after a couple of seconds, and immediately on a
+off screen. Ordinary shell and view feedback stays for two to six seconds,
+depending on text length; undo feedback keeps its six-second window. The strip
+clears on a
 mode change, so a message naming a mode can never misreport the one you switched
 to. A live visual selection is no exception, because the strip never carries one
 in the first place: the selection states itself on the second header row, once,

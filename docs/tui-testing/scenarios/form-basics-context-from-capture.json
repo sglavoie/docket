@@ -39,7 +39,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "one undo takes back the task and its context together", "key": "u" },
-    { "type": "wait" },
+    { "type": "wait", "label": "let outcome feedback expire before checking the remaining rows", "duration": "6s" },
     { "type": "assert", "assert": "not_contains", "value": "Ship the launch" },
     { "type": "assert", "assert": "not_contains", "value": "[acme-eu]" },
     { "type": "assert", "assert": "no_layout_issues" }

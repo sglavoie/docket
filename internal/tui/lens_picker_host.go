@@ -195,19 +195,19 @@ func (m *AppModel) openConflictBrowser() tea.Msg {
 	records, err := store.List()
 	if err != nil {
 		m.feedback.err = err
-		return commandMessage(status.DefaultStatusTimeout())
+		return commandMessage(m.statusReadingTimeout())
 	}
 	// The strip and this overlay count the same directory, so one listing settles
 	// both rather than leaving the strip a tick behind what the user just read.
 	m.feedback.outstandingConflicts = len(records)
 	if len(records) == 0 {
 		m.setInfoStatus(conflict.ConflictBrowserEmptyStatus)
-		return commandMessage(status.DefaultStatusTimeout())
+		return commandMessage(m.statusReadingTimeout())
 	}
 	browser, err := conflict.NewConflictBrowserModel(records, store.Load)
 	if err != nil {
 		m.feedback.err = err
-		return commandMessage(status.DefaultStatusTimeout())
+		return commandMessage(m.statusReadingTimeout())
 	}
 	m.conflictBrowser = browser
 	return nil

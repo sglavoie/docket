@@ -118,10 +118,10 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		switch {
 		case refusal != "":
 			m.setWarningStatus(refusal)
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		case project == nil:
 			m.setWarningStatus("No project under the cursor to outline")
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		default:
 			message = OpenOutlineEditorMsg{Project: project}
 		}
@@ -149,7 +149,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreActions:
 		if actionErr := m.openTaskActionSheet(invocation.Context); actionErr != nil {
 			m.setInfoStatus(actionErr.Error())
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		}
 	case operation.OperationCoreCursorDown:
 		message = commandMessage(m.coreMoveCursor("j"))
@@ -348,17 +348,17 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreToggleTheme:
 		err = m.coreToggleTheme()
 		if err == nil {
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		}
 	case operation.OperationCoreToggleMenuBar:
 		err = m.coreToggleMenuBar()
 		if err == nil {
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		}
 	case operation.OperationCoreToggleAdvisories:
 		err = m.coreToggleAdvisories()
 		if err == nil {
-			message = commandMessage(status.DefaultStatusTimeout())
+			message = commandMessage(m.statusReadingTimeout())
 		}
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()

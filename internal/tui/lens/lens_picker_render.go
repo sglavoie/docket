@@ -36,11 +36,6 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	contentWidth := max(innerWidth-4, 12)
 
 	header := make([]string, 0, 2)
-	if model.notice != "" {
-		header = append(header, theme.ErrorStatusStyle.Render(
-			textfit.TruncateToVisualWidth(model.notice, contentWidth),
-		))
-	}
 	if model.Searching || model.Query != "" {
 		header = append(header, model.searchInput.View(model.Query, model.Searching, contentWidth))
 	}
@@ -49,16 +44,35 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	}
 
 	guidance := chrome.RenderGuidanceText(model.GuidanceSpec(), contentWidth)
+	if model.notice != "" {
+		lines := textfit.WrapText(model.notice, contentWidth)
+		if height > 0 {
+			// Reserve the chrome, other header lines, and one list row before
+			// giving a refusal the remaining space. Only an oversized notice
+			// is shortened; ordinary refusals wrap in full.
+			budget := max(height-8-lipgloss.Height(guidance)-len(header)-1, 1)
+			if len(lines) > budget {
+				lines = lines[:budget]
+				lines[budget-1] = textfit.TruncateToVisualWidth(lines[budget-1]+"…", contentWidth)
+			}
+		}
+		header = append([]string{theme.ErrorStatusStyle.Render(strings.Join(lines, "\n"))}, header...)
+	}
+	headerText := strings.Join(header, "\n")
 	listHeight := min(max(len(model.Surface.Rows()), 4), 14)
 	if height > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
 		// consume eight rows plus the measured footer and header lines.
-		reserved := 8 + lipgloss.Height(guidance) + len(header)
+		headerHeight := 0
+		if headerText != "" {
+			headerHeight = lipgloss.Height(headerText)
+		}
+		reserved := 8 + lipgloss.Height(guidance) + headerHeight
 		listHeight = min(listHeight, max(height-reserved, 1))
 	}
 	content := listsurface.RenderCompactListSurface(model.Surface, contentWidth, listHeight)
 	if len(header) > 0 {
-		content = strings.Join(header, "\n") + "\n\n" + content
+		content = headerText + "\n\n" + content
 	}
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Named Lenses")

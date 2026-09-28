@@ -71,7 +71,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		if m.feedback.stale(msg.ScheduledAt) {
 			return true, nil
 		}
-		// A 2s plain-status tick may arrive after a newer setUndoableStatus
+		// An earlier plain-status tick may arrive after a newer setUndoableStatus
 		// has installed a still-live toast (6s window). Don't dismiss a toast
 		// that hasn't reached its own deadline yet — its dedicated
 		// UndoToastTimeoutMsg will clear it on time.
@@ -116,11 +116,11 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 
 	case status.StatusMsg:
 		m.setSuccessStatus(string(msg))
-		return true, status.DefaultStatusTimeout()
+		return true, m.statusReadingTimeout()
 
 	case status.InfoStatusMsg:
 		m.setInfoStatus(string(msg))
-		return true, status.DefaultStatusTimeout()
+		return true, m.statusReadingTimeout()
 
 	case outliner.OutlinerPlanningReorderMsg:
 		return true, m.handleOutlinerPlanningReorder(msg)

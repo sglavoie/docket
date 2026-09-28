@@ -104,7 +104,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 	// cursor advances before the next render, without waiting for an async reload.
 	m.refreshLoadedTaskWorkspace()
 	cmds := m.refreshTaskViewsAfterPlanningMutation()
-	cmds = append(cmds, status.DefaultStatusTimeout())
+	cmds = append(cmds, m.statusReadingTimeout())
 	return tea.Batch(cmds...)
 }
 

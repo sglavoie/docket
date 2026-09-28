@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
@@ -118,7 +117,7 @@ func (m *AppModel) publishCheckInFeedback() tea.Cmd {
 		return nil
 	}
 	m.setInfoStatus(note)
-	return status.DefaultStatusTimeout()
+	return m.statusReadingTimeout()
 }
 
 // committedCheckInTitles re-resolves this commit's own subset and nothing else.

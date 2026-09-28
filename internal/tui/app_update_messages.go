@@ -464,7 +464,7 @@ func (m *AppModel) handleSaveComplete(msg status.SaveCompleteMsg) tea.Cmd {
 		m.setSuccessStatus(msg.SuccessMessage)
 	}
 	saveCmds := m.refreshTaskViewsAfterSave()
-	saveCmds = append(saveCmds, status.DefaultStatusTimeout())
+	saveCmds = append(saveCmds, m.statusReadingTimeout())
 	return tea.Batch(saveCmds...)
 }
 

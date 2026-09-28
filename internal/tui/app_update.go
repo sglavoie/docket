@@ -410,7 +410,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, cmd
 	}
 	if handled, cmd := m.validateCurrentProject(); handled {
-		return true, tea.Batch(cmd, status.DefaultStatusTimeout())
+		return true, tea.Batch(cmd, m.statusReadingTimeout())
 	}
 	if handled, cmd := m.handleSimplifiedInputKey(msg); handled {
 		return true, cmd

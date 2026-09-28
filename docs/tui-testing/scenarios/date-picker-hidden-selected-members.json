@@ -31,7 +31,7 @@
     { "type": "assert", "assert": "contains", "value": "today 5" },
     { "type": "assert", "assert": "count_contains", "value": "⊡ Today", "count": 5 },
     { "type": "key", "label": "one entry covers the whole batch", "key": "u" },
-    { "type": "wait" },
+    { "type": "wait", "label": "let outcome feedback expire before checking the remaining rows", "duration": "6s" },
     { "type": "assert", "assert": "not_contains", "value": "today " },
     { "type": "assert", "assert": "not_contains", "value": "⊡ Today" },
     { "type": "resize", "width": 60, "height": 20 },

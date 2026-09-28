@@ -90,24 +90,24 @@ func DefaultStatusTimeout() tea.Cmd {
 	return StatusTimeout(StatusUpdateTimeout)
 }
 
-// Reading time a view-owned status is given: the default floor, a little more
-// per rune, and a ceiling so a long refusal still leaves.
+// Reading time ordinary shell and view-owned feedback are given: the default
+// floor, a little more per rune, and a ceiling so a long refusal still leaves.
 const (
-	viewStatusPerRune    = 40 * time.Millisecond
-	viewStatusMaxTimeout = 6 * time.Second
+	statusPerRune    = 40 * time.Millisecond
+	statusMaxTimeout = 6 * time.Second
 )
 
-// ViewStatusDuration is how long a view-owned status of this text stays, so an
+// StatusDuration is how long ordinary feedback of this text stays, so an
 // error or a long refusal is not gone before it can be read.
-func ViewStatusDuration(text string) time.Duration {
-	d := StatusUpdateTimeout + time.Duration(utf8.RuneCountInString(text))*viewStatusPerRune
-	return min(d, viewStatusMaxTimeout)
+func StatusDuration(text string) time.Duration {
+	d := StatusUpdateTimeout + time.Duration(utf8.RuneCountInString(text))*statusPerRune
+	return min(d, statusMaxTimeout)
 }
 
 // ViewStatusTimeout returns a command that clears one generation of a
 // view-owned status message once its text has had time to be read.
 func ViewStatusTimeout(view presentation.PresentationID, seq uint64, text string) tea.Cmd {
-	return TickCmd(ViewStatusDuration(text), func(time.Time) tea.Msg {
+	return TickCmd(StatusDuration(text), func(time.Time) tea.Msg {
 		return ViewStatusClearMsg{View: view, Seq: seq}
 	})
 }

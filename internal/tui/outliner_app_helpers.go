@@ -389,7 +389,7 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 		) operation.OperationHandlerResult {
 			if err := m.openProjectActionSheet(invocation.Context); err != nil {
 				m.setInfoStatus(err.Error())
-				return operation.OperationHandlerResult{Message: commandMessage(status.DefaultStatusTimeout())}
+				return operation.OperationHandlerResult{Message: commandMessage(m.statusReadingTimeout())}
 			}
 			return operation.OperationHandlerResult{}
 		},
