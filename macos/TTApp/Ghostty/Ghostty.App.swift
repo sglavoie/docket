@@ -24,6 +24,8 @@ extension Ghostty {
 
         private(set) var config: Config
 
+        private var appearanceObserver: NSKeyValueObservation?
+
         /// Rebuilds the layered config, so a reload re-applies the overrides.
         private let makeConfig: () -> Config
 
@@ -77,11 +79,20 @@ extension Ghostty {
                 self, selector: #selector(applicationDidResignActive),
                 name: NSApplication.didResignActiveNotification, object: nil)
 
+            // Conditional themes and color-scheme queries follow the system
+            // appearance, reported once now and on every change.
+            appearanceObserver = NSApplication.shared.observe(\.effectiveAppearance, options: [.initial, .new]) {
+                [weak self] application, _ in
+                guard let app = self?.app else { return }
+                ghostty_app_set_color_scheme(app, Ghostty.colorScheme(for: application.effectiveAppearance))
+            }
+
             readiness = .ready
         }
 
         deinit {
             NotificationCenter.default.removeObserver(self)
+            appearanceObserver = nil
             app = nil
         }
 

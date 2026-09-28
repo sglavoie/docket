@@ -4,6 +4,12 @@ import GhosttyKit
 final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
     private var window: NSWindow?
     private(set) var ghostty: Ghostty.App?
+    private(set) var surfaceView: Ghostty.SurfaceView?
+
+    /// A hosted test bundle launches this app too; it must not spawn tt.
+    private static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // A regular app: its own Dock icon and menu bar.
@@ -19,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
             showLaunchError(title: "Ghostty failed to initialize.", message: "ghostty_init returned an error.")
             return
         }
+        guard !Self.isRunningTests else { return }
 
         let environment = LaunchEnvironment.current()
         let binary: TTBinaryResolver.Resolution
@@ -52,8 +59,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         )
         window.title = "tt"
         window.isReleasedWhenClosed = false
+        window.tabbingMode = .disallowed
+
+        guard let app = ghostty.app else { return }
+        let surfaceView = Ghostty.SurfaceView(app: app)
+        surfaceView.onTitleChange = { [weak window] title in
+            window?.title = title.isEmpty ? "tt" : title
+        }
+        window.contentView = surfaceView
+        window.initialFirstResponder = surfaceView
+        self.surfaceView = surfaceView
+
         window.center()
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(surfaceView)
         self.window = window
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -74,7 +93,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
     func ghosttyApp(_ app: Ghostty.App, perform action: ghostty_action_s, target: ghostty_target_s) -> Bool {
         switch action.tag {
         case GHOSTTY_ACTION_SET_TITLE:
-            // tt's window keeps its own name; the surface title is not shown yet.
+            guard let ptr = action.action.set_title.title else { return false }
+            let title = String(cString: ptr)
+            // The callback may run off the main thread; AppKit may not.
+            DispatchQueue.main.async { [weak self] in self?.surfaceView?.setTitle(title) }
+            return true
+        case GHOSTTY_ACTION_RENDERER_HEALTH:
+            if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {
+                NSLog("tt: renderer reported unhealthy")
+            }
             return true
         case GHOSTTY_ACTION_CLOSE_WINDOW:
             window?.performClose(nil)
