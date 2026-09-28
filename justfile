@@ -101,6 +101,10 @@ tui-scenarios:
 cross-machine:
     ./scripts/cross_machine_gate.sh
 
+# Build and vendor the pinned GhosttyKit.xcframework for the macOS app (outside `just ci`)
+mac-ghosttykit:
+    ./macos/scripts/build-ghosttykit.sh
+
 # Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:
     @echo "Running code quality checks..."
