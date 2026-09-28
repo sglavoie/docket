@@ -105,6 +105,10 @@ cross-machine:
 mac-ghosttykit:
     ./macos/scripts/build-ghosttykit.sh
 
+# Build macos/build/tt.app (Debug or Release; outside `just ci`)
+mac-app configuration="Debug":
+    ./macos/scripts/build-app.sh {{configuration}}
+
 # Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:
     @echo "Running code quality checks..."
