@@ -120,6 +120,27 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertFalse(config.diagnostics.isEmpty)
     }
 
+    /// A standard theme resolves from the resources tt.app bundles, with no
+    /// Ghostty install or user theme behind it.
+    func testBundledThemeSuppliesItsColors() throws {
+        if ProcessInfo.processInfo.environment["GHOSTTY_RESOURCES_DIR"] != nil {
+            throw XCTSkip("GHOSTTY_RESOURCES_DIR points libghostty away from the bundle")
+        }
+        let resources = try XCTUnwrap(Bundle.main.resourceURL)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: resources.appendingPathComponent("terminfo/78/xterm-ghostty").path))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: resources.appendingPathComponent("ghostty/themes/Catppuccin Mocha").path))
+
+        let user = try writeUserConfig("theme = Catppuccin Mocha\n")
+        let config = Ghostty.Config(userConfig: user, overrides: overrides)
+        XCTAssertEqual(config.diagnostics, [])
+        let background = try XCTUnwrap(config.get("background", as: ghostty_config_color_s.self, initial: .init()))
+        XCTAssertEqual([background.r, background.g, background.b], [0x1E, 0x1E, 0x2E])
+        let foreground = try XCTUnwrap(config.get("foreground", as: ghostty_config_color_s.self, initial: .init()))
+        XCTAssertEqual([foreground.r, foreground.g, foreground.b], [0xCD, 0xD6, 0xF4])
+    }
+
     func testAppCreatesGhosttyAppObject() {
         let app = Ghostty.App { Ghostty.Config(userConfig: nil, overrides: self.overrides) }
         XCTAssertEqual(app.readiness, .ready)

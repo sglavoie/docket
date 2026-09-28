@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 #
 # Build GhosttyKit.xcframework from the Ghostty tag pinned in
-# macos/GHOSTTY_VERSION and vendor it, with ghostty.h, into macos/Vendor/.
+# macos/GHOSTTY_VERSION and vendor it, with ghostty.h and the resources tt.app
+# bundles (themes, shell integration, terminfo), into macos/Vendor/.
 # Idempotent: a matching stamp in Vendor/ skips the whole build.
 #
 # Environment:
@@ -54,6 +55,7 @@ stamp_file="$vendor_dir/.stamp"
 if [ "${GHOSTTYKIT_FORCE:-0}" != 1 ] &&
 	[ -d "$vendor_dir/GhosttyKit.xcframework" ] &&
 	[ -f "$vendor_dir/ghostty.h" ] &&
+	[ -f "$vendor_dir/resources/terminfo/78/xterm-ghostty" ] &&
 	[ -f "$stamp_file" ] &&
 	[ "$(cat "$stamp_file")" = "$stamp" ]; then
 	echo "GhosttyKit up to date ($stamp)"
@@ -261,16 +263,24 @@ echo "Building GhosttyKit.xcframework ($target)..."
 
 built="$src_dir/macos/GhosttyKit.xcframework"
 header="$src_dir/include/ghostty.h"
-if [ ! -d "$built" ] || [ ! -f "$header" ]; then
-	echo "build finished without $built or $header" >&2
+share="$src_dir/zig-out/share"
+if [ ! -d "$built" ] || [ ! -f "$header" ] || [ ! -f "$share/terminfo/78/xterm-ghostty" ]; then
+	echo "build finished without $built, $header, or $share/terminfo" >&2
 	exit 1
 fi
 
 # --- Vendor ------------------------------------------------------------------
 
 mkdir -p "$vendor_dir"
-rm -rf "$vendor_dir/GhosttyKit.xcframework" "$vendor_dir/ghostty.h" "$stamp_file"
+rm -rf "$vendor_dir/GhosttyKit.xcframework" "$vendor_dir/ghostty.h" "$vendor_dir/resources" "$stamp_file"
 cp -R "$built" "$vendor_dir/GhosttyKit.xcframework"
 cp "$header" "$vendor_dir/ghostty.h"
+
+# libghostty finds its resources beside the terminfo sentinel under the app's
+# Contents/Resources, so tt.app bundles both directories as Ghostty.app does.
+# The man pages and HTML docs are Ghostty.app's alone.
+mkdir -p "$vendor_dir/resources/ghostty"
+cp -R "$share/terminfo" "$vendor_dir/resources/terminfo"
+cp -R "$share/ghostty/themes" "$share/ghostty/shell-integration" "$vendor_dir/resources/ghostty/"
 printf '%s\n' "$stamp" >"$stamp_file"
 echo "Vendored GhosttyKit into $vendor_dir ($stamp)"

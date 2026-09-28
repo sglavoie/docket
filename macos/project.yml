@@ -27,6 +27,14 @@ targets:
       # Shown in the About panel.
       - path: NOTICE-ghostty
         buildPhase: resources
+      # Ghostty's themes, shell integration, and terminfo, found by libghostty
+      # beside the terminfo sentinel; vendored by build-ghosttykit.sh.
+      - path: Vendor/resources/ghostty
+        type: folder
+        buildPhase: resources
+      - path: Vendor/resources/terminfo
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: tt

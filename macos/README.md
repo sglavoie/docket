@@ -121,6 +121,10 @@ Preferences has Open and Reload for it. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 tt runs in.
 
+Ghostty's standard themes ship inside the app, so `theme = Catppuccin Mocha`
+works without Ghostty.app installed; `build-ghosttykit.sh` vendors them, with
+Ghostty's terminfo and shell integration, into `Vendor/resources/`.
+
 ## Layout
 
 ```text
@@ -135,7 +139,7 @@ TTApp/Ghostty/              runtime glue, config, surface view (ported, trimmed)
 TTApp/Shell/                window, status item, hotkey, preferences, tt resolution
 TTApp/Resources/            Info.plist, tt-launch, Assets.xcassets
 TTAppTests/                 XCTest
-NOTICE-ghostty              upstream MIT notice for the ported sources
+NOTICE-ghostty              upstream MIT notices for the ported sources and themes
 ```
 
 The icons are drawn by `scripts/make-icons.swift` and committed: rerun
