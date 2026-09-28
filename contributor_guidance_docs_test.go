@@ -1265,7 +1265,14 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// operation is unreachable. The mechanism lives in
 	// docs/architecture/operation-grammar.md. No rule elsewhere was trimmed to
 	// pay for it.
-	const budget = 74200
+	// Sixty-sixth raise, 74200 to 74334, for the macOS app's recipes. 134 bytes
+	// buy one rule: `just mac-test` and `just mac-install` stay outside `just
+	// ci`, as `just cross-machine` does, because they need Xcode and Zig. A
+	// contributor who reads only the build list would otherwise fold them into
+	// the gate and make `just ci` unrunnable on Linux and on any Mac without
+	// Xcode. How the app builds lives in macos/README.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 74334
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

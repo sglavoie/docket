@@ -27,6 +27,8 @@ just cross-machine
 Go accepts packages, not files, as test targets. `just cross-machine` stays
 outside `just ci`: it forks two processes under different `HOME`s and builds a
 tagged older binary, which one in-process test cannot do.
+`just mac-test` and `just mac-install` build the macOS app in `macos/` and stay
+outside `just ci` too, since they need Xcode and Zig.
 
 ## Architecture
 

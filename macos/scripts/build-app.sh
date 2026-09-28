@@ -1,13 +1,17 @@
 #!/usr/bin/env sh
 #
-# Build tt.app: vendor GhosttyKit (a no-op when current), ensure the pinned
-# XcodeGen, generate macos/tt.xcodeproj from macos/project.yml, build it, and
-# copy the product to macos/build/tt.app.
+# Build tt.app: generate macos/tt.xcodeproj (generate-project.sh), build it,
+# copy the product to macos/build/tt.app, bundle tt, and sign (sign.sh).
 #
 # Usage: build-app.sh [Debug|Release]   (default Debug)
 #
 # Environment:
+#   TT_BINARY               tt to bundle at Contents/Resources/bin/tt; required
+#                           for Release (`just mac-app Release` builds it with
+#                           the `just build` ldflags), optional for Debug, which
+#                           otherwise resolves ~/.local/bin/tt then PATH
 #   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   TT_CODESIGN_IDENTITY    see sign.sh (default ad-hoc)
 
 set -eu
 
@@ -30,71 +34,18 @@ Debug | Release) ;;
 	;;
 esac
 
-if [ "$(uname -s)" != Darwin ]; then
-	echo "tt.app builds on macOS only" >&2
+tt_binary="${TT_BINARY:-}"
+if [ "$configuration" = Release ] && [ -z "$tt_binary" ]; then
+	echo "a Release build bundles tt: set TT_BINARY, or run \`just mac-app Release\`" >&2
+	exit 1
+fi
+if [ -n "$tt_binary" ] && [ ! -x "$tt_binary" ]; then
+	echo "TT_BINARY is not an executable file: $tt_binary" >&2
 	exit 1
 fi
 
-require_tool xcodebuild
-require_tool curl
-require_tool shasum
-require_tool unzip
+"$script_dir/generate-project.sh"
 require_tool ditto
-
-# shellcheck disable=SC1091
-. "$macos_dir/XCODEGEN_VERSION"
-: "${XCODEGEN_VERSION:?missing in XCODEGEN_VERSION}"
-: "${XCODEGEN_SHA256:?missing in XCODEGEN_VERSION}"
-
-cache_root="${TT_MACOS_CACHE:-$macos_dir/.cache}"
-mkdir -p "$cache_root"
-
-"$script_dir/build-ghosttykit.sh"
-
-# --- XcodeGen ------------------------------------------------------------------
-#
-# A PATH copy is used only when it reports the pinned version; otherwise the
-# checksummed release zip is unpacked into the cache. It keeps its share/
-# directory beside bin/, which XcodeGen reads its templates from.
-
-xcodegen_matches() {
-	[ -n "$1" ] && [ "$("$1" --version 2>/dev/null || true)" = "Version: $XCODEGEN_VERSION" ]
-}
-
-resolve_xcodegen() {
-	if xcodegen_matches "$(command -v xcodegen 2>/dev/null || true)"; then
-		command -v xcodegen
-		return
-	fi
-	xcodegen_dir="$cache_root/xcodegen-$XCODEGEN_VERSION"
-	if xcodegen_matches "$xcodegen_dir/bin/xcodegen"; then
-		echo "$xcodegen_dir/bin/xcodegen"
-		return
-	fi
-	archive="$cache_root/xcodegen-$XCODEGEN_VERSION.zip"
-	echo "Downloading XcodeGen $XCODEGEN_VERSION..." >&2
-	curl -fL --retry 3 -o "$archive.part" \
-		"https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip" >&2
-	actual=$(shasum -a 256 "$archive.part" | awk '{print $1}')
-	if [ "$actual" != "$XCODEGEN_SHA256" ]; then
-		rm -f "$archive.part"
-		echo "xcodegen checksum mismatch: expected $XCODEGEN_SHA256, got $actual" >&2
-		exit 1
-	fi
-	unpack="$cache_root/xcodegen-unpack"
-	rm -rf "$unpack" "$xcodegen_dir"
-	unzip -q "$archive.part" -d "$unpack"
-	mv "$unpack/xcodegen" "$xcodegen_dir"
-	rm -rf "$unpack" "$archive.part"
-	if ! xcodegen_matches "$xcodegen_dir/bin/xcodegen"; then
-		echo "unpacked xcodegen at $xcodegen_dir does not report $XCODEGEN_VERSION" >&2
-		exit 1
-	fi
-	echo "$xcodegen_dir/bin/xcodegen"
-}
-
-xcodegen=$(resolve_xcodegen)
-"$xcodegen" generate --quiet --spec "$macos_dir/project.yml" --project "$macos_dir"
 
 # --- Build -----------------------------------------------------------------------
 
@@ -117,4 +68,17 @@ out="$macos_dir/build/tt.app"
 mkdir -p "$macos_dir/build"
 rm -rf "$out"
 ditto "$product" "$out"
+
+# --- Bundle tt and sign ----------------------------------------------------------
+#
+# Copying tt in breaks the seal xcodebuild wrote, so the bundle is always
+# re-signed afterwards, inside out.
+
+if [ -n "$tt_binary" ]; then
+	mkdir -p "$out/Contents/Resources/bin"
+	cp "$tt_binary" "$out/Contents/Resources/bin/tt"
+	chmod 755 "$out/Contents/Resources/bin/tt"
+fi
+"$script_dir/sign.sh" "$out"
+
 echo "Built $out ($configuration)"

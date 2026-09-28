@@ -56,11 +56,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem.statusBar?.removeStatusItem(statusItem)
     }
 
-    /// A template image, so the menu bar tints it for light and dark.
+    /// The StatusIcon asset as a template image, so the menu bar tints it
+    /// for light and dark. `make-icons.swift` draws it.
     static func icon() -> NSImage {
-        let image = NSImage(systemSymbolName: "terminal", accessibilityDescription: "tt")
+        // A copy, since resizing the shared named image would leak to others.
+        let image = (NSImage(named: "StatusIcon")?.copy() as? NSImage)
+            ?? NSImage(systemSymbolName: "terminal", accessibilityDescription: "tt")
             ?? NSImage(size: NSSize(width: 18, height: 18))
+        image.size = NSSize(width: 18, height: 18)
         image.isTemplate = true
+        image.accessibilityDescription = "tt"
         return image
     }
 

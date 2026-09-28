@@ -105,9 +105,23 @@ cross-machine:
 mac-ghosttykit:
     ./macos/scripts/build-ghosttykit.sh
 
-# Build macos/build/tt.app (Debug or Release; outside `just ci`)
+# Build macos/build/tt.app (Debug, or Release bundling `just build`'s tt; outside `just ci`)
 mac-app configuration="Debug":
-    ./macos/scripts/build-app.sh {{configuration}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{ configuration }}" = Release ]; then
+        just build
+        export TT_BINARY="$PWD/{{ binary_name }}"
+    fi
+    ./macos/scripts/build-app.sh {{ configuration }}
+
+# Run the tt.app XCTest suite with xcodebuild test (outside `just ci`)
+mac-test:
+    ./macos/scripts/test-app.sh
+
+# Build the Release tt.app and install it to /Applications (outside `just ci`)
+mac-install: (mac-app "Release")
+    ./macos/scripts/install-app.sh
 
 # Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:
