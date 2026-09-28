@@ -29,6 +29,29 @@ extension Ghostty {
 
         private var appliedColorScheme: ghostty_color_scheme_e?
 
+        // MARK: Input state (see SurfaceView+Input.swift)
+
+        /// The input method's uncommitted composition, mirrored to the
+        /// surface as preedit.
+        var markedText = NSMutableAttributedString()
+
+        /// Non-nil only inside `keyDown`, collecting what `insertText`
+        /// commits so the key event carries it rather than a bare paste.
+        var keyTextAccumulator: [String]?
+
+        /// The timestamp of a Cmd or Ctrl key equivalent handed back to AppKit
+        /// unhandled; see `performKeyEquivalent`.
+        var lastPerformKeyEvent: TimeInterval?
+
+        /// Set when a click only focused the surface, so its release is not
+        /// reported without a press.
+        var suppressNextLeftMouseUp = false
+
+        /// The pointer the terminal last asked for.
+        var pointerCursor: NSCursor = .iBeam
+
+        private var eventMonitor: Any?
+
         override var acceptsFirstResponder: Bool { true }
 
         init(app: ghostty_app_t) {
@@ -63,6 +86,16 @@ extension Ghostty {
             // inherits the configured one.
             config.font_size = 0
             config.context = GHOSTTY_SURFACE_CONTEXT_WINDOW
+            // Command key-ups skip the responder chain, and a click that
+            // only focuses the window must not reach the terminal; upstream
+            // watches both locally rather than taking acceptsFirstMouse.
+            eventMonitor = NSEvent.addLocalMonitorForEvents(
+                matching: [.keyUp, .leftMouseDown]
+            ) { [weak self] event in
+                guard let self else { return event }
+                return self.localEventHandler(event)
+            }
+
             guard let surface = ghostty_surface_new(app, &config) else {
                 Ghostty.logger.critical("ghostty_surface_new failed")
                 return
@@ -70,6 +103,7 @@ extension Ghostty {
             self.surface = surface
             sizeDidChange(frame.size)
             syncColorScheme()
+            updateTrackingAreas()
         }
 
         required init?(coder: NSCoder) {
@@ -78,6 +112,9 @@ extension Ghostty {
 
         deinit {
             NotificationCenter.default.removeObserver(self)
+            if let eventMonitor {
+                NSEvent.removeMonitor(eventMonitor)
+            }
             if let surface {
                 ghostty_surface_free(surface)
             }

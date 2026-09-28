@@ -98,6 +98,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
             // The callback may run off the main thread; AppKit may not.
             DispatchQueue.main.async { [weak self] in self?.surfaceView?.setTitle(title) }
             return true
+        case GHOSTTY_ACTION_MOUSE_SHAPE:
+            let shape = action.action.mouse_shape
+            onMain { [weak self] in self?.surfaceView?.setCursorShape(shape) }
+            return true
+        case GHOSTTY_ACTION_MOUSE_VISIBILITY:
+            let visible = action.action.mouse_visibility == GHOSTTY_MOUSE_VISIBLE
+            onMain { [weak self] in self?.surfaceView?.setCursorVisibility(visible) }
+            return true
         case GHOSTTY_ACTION_RENDERER_HEALTH:
             if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {
                 NSLog("tt: renderer reported unhealthy")
@@ -109,6 +117,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         default:
             // The surface view owns the rest once it exists.
             return false
+        }
+    }
+
+    /// Actions arrive from `ghostty_app_tick` on the main thread; anything
+    /// else is hopped there, since AppKit is main-thread only.
+    private func onMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
         }
     }
 

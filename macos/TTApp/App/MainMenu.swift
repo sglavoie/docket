@@ -1,7 +1,9 @@
 import AppKit
 
-/// The programmatic main menu: the app menu and the Window menu, so Quit, Hide,
-/// and Minimize keep their standard shortcuts without a nib.
+/// The programmatic main menu: the app, Edit, and Window menus, so Quit, Hide,
+/// Copy, Paste, and Minimize keep their standard shortcuts without a nib. The
+/// Edit items target the first responder, the terminal surface; its key
+/// equivalents reach the surface's Ghostty bindings before the menu.
 enum MainMenu {
     static func make() -> NSMenu {
         let main = NSMenu()
@@ -24,6 +26,15 @@ enum MainMenu {
         appMenu.addItem(withTitle: "Quit tt", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
+
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+        main.addItem(editItem)
 
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
