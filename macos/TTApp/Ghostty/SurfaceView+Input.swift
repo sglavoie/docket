@@ -134,7 +134,8 @@ extension Ghostty.SurfaceView {
     }
 
     /// Cmd and Ctrl chords reach here before `keyDown`. A Ghostty binding
-    /// (Cmd+C, Cmd+V, Cmd+Q, ...) is performed by the surface; Ctrl+Return and
+    /// (Cmd+C, Cmd+V, Cmd+Q, ...) runs the main menu item owning the same
+    /// shortcut, else is performed by the surface; Ctrl+Return and
     /// Ctrl+/ are encoded rather than left to AppKit's context menu and beep;
     /// any other chord goes back to AppKit once, so the main menu can claim
     /// it, and if nothing does `doCommand` sends it round to `keyDown`.
@@ -151,6 +152,17 @@ extension Ghostty.SurfaceView {
             return ghostty_surface_key_is_binding(surface, keyEvent, &flags)
         }
         if isBinding {
+            // A consumed binding the main menu also owns is the menu's, as
+            // upstream arbitrates it: Cmd+, is Ghostty's open_config and tt's
+            // Preferences. `all` and `performable` bindings stay the surface's.
+            let consumed = flags.rawValue & GHOSTTY_BINDING_FLAGS_CONSUMED.rawValue != 0
+            let surfaceOwned = flags.rawValue
+                & (GHOSTTY_BINDING_FLAGS_ALL.rawValue | GHOSTTY_BINDING_FLAGS_PERFORMABLE.rawValue) != 0
+            if consumed, !surfaceOwned,
+               let menu = NSApp.mainMenu,
+               MainMenu.performShortcut(for: event, in: menu) {
+                return true
+            }
             keyDown(with: event)
             return true
         }

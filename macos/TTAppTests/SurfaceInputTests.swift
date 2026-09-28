@@ -254,6 +254,44 @@ final class SurfaceInputTests: XCTestCase {
         XCTAssertEqual(dumped(), before)
     }
 
+    // MARK: Menu shortcuts
+
+    private final class MenuRecorder: NSObject {
+        var fired: [String] = []
+        @objc func preferences(_ sender: Any?) { fired.append("preferences") }
+    }
+
+    func testMenuShortcutWinsOverTheConsumedBindingItShares() throws {
+        try requireUSLayout()
+        try startByteDump()
+        let recorder = MenuRecorder()
+        let appMenu = NSMenu()
+        let preferences = appMenu.addItem(withTitle: "Preferences…", action: #selector(MenuRecorder.preferences(_:)), keyEquivalent: ",")
+        preferences.target = recorder
+        let main = NSMenu()
+        let appItem = NSMenuItem()
+        appItem.submenu = appMenu
+        main.addItem(appItem)
+        let previousMenu = NSApp.mainMenu
+        NSApp.mainMenu = main
+        defer { NSApp.mainMenu = previousMenu }
+
+        // Cmd+, is Ghostty's open_config; with the terminal focused the
+        // Preferences item takes it and the surface never sees it.
+        let before = dumped()
+        XCTAssertTrue(view.performKeyEquivalent(with: try key(0x2B, ",", mods: .command)))
+        XCTAssertEqual(recorder.fired, ["preferences"])
+
+        // A binding no item owns stays the surface's.
+        XCTAssertNil(MainMenu.item(in: main, matching: try key(0x2B, "<", mods: [.command, .shift])))
+
+        // A Ctrl chord is no binding, so the menu is never asked and it
+        // still reaches the program.
+        XCTAssertFalse(view.performKeyEquivalent(with: try key(Self.kVKM, "\r", ignoring: "m", mods: .control)))
+        XCTAssertEqual(recorder.fired, ["preferences"])
+        XCTAssertEqual(dumped(), before)
+    }
+
     // MARK: Mouse
 
     private func mouse(_ type: NSEvent.EventType, x: CGFloat, fromTop y: CGFloat) throws -> NSEvent {
