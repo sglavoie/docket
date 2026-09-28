@@ -132,7 +132,12 @@ extension Ghostty {
                     return
                 }
             }
-            NSWorkspace.shared.open(url)
+            // A .conf file often has no default app; TextEdit always can.
+            if NSWorkspace.shared.urlForApplication(toOpen: url) != nil {
+                NSWorkspace.shared.open(url)
+            } else if let textEdit = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.TextEdit") {
+                NSWorkspace.shared.open([url], withApplicationAt: textEdit, configuration: NSWorkspace.OpenConfiguration())
+            }
         }
 
         static func logDiagnostics(_ config: Config) {

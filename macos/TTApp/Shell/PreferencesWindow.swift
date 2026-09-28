@@ -1,71 +1,317 @@
 import AppKit
+import SwiftUI
 
-/// A small preferences window holding what tt.app lets you configure today:
-/// what happens when tt exits cleanly. Each change is saved as it is made.
-final class PreferencesWindowController: NSObject {
-    private let defaults: UserDefaults
-    private(set) lazy var window: NSWindow = makeWindow()
-    private let exitPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+/// Everything Preferences edits. Each change is saved to `UserDefaults` as it
+/// is made; the app delegate applies the live ones through the callbacks.
+final class PreferencesModel: ObservableObject {
+    let defaults: UserDefaults
+
+    @Published var exitBehavior: TTExitBehavior {
+        didSet {
+            guard exitBehavior != oldValue else { return }
+            exitBehavior.save(to: defaults)
+        }
+    }
+
+    @Published var activationPolicy: TTActivationPolicy {
+        didSet {
+            guard activationPolicy != oldValue else { return }
+            activationPolicy.save(to: defaults)
+            onActivationPolicyChange?(activationPolicy)
+        }
+    }
+
+    /// nil is turned off.
+    @Published var hotKey: HotKeyCombo? {
+        didSet {
+            guard hotKey != oldValue else { return }
+            TTHotKeyPreference.save(hotKey, to: defaults)
+            onHotKeyChange?(hotKey)
+        }
+    }
+
+    /// Set by whoever registers the shortcut: why it is not working, or what
+    /// it collides with.
+    @Published var hotKeyProblem: String?
+
+    @Published var binaryOverride: String {
+        didSet {
+            let trimmed = binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                defaults.removeObject(forKey: TTBinaryResolver.overrideDefaultsKey)
+            } else {
+                defaults.set(trimmed, forKey: TTBinaryResolver.overrideDefaultsKey)
+            }
+        }
+    }
+
+    @Published private(set) var launchAtLogin = false
+    @Published private(set) var launchAtLoginNote: String?
+
+    var onActivationPolicyChange: ((TTActivationPolicy) -> Void)?
+    var onHotKeyChange: ((HotKeyCombo?) -> Void)?
+    /// True while the recorder listens, so the live shortcut can step aside
+    /// and be recorded like any other key.
+    var onRecordingChange: ((Bool) -> Void)?
+    var onOpenGhosttyConfig: (() -> Void)?
+    var onReloadGhosttyConfig: (() -> Void)?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        exitBehavior = .load(from: defaults)
+        activationPolicy = .load(from: defaults)
+        hotKey = TTHotKeyPreference.load(from: defaults)
+        binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
+    }
+
+    /// Re-reads what may have changed elsewhere, e.g. the login item in System
+    /// Settings or a `defaults write`.
+    func refresh() {
+        exitBehavior = .load(from: defaults)
+        let stored = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
+        if stored != binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines) {
+            binaryOverride = stored
+        }
+        refreshLoginItem()
+    }
+
+    func refreshLoginItem() {
+        launchAtLogin = LoginItem.isEnabled
+        launchAtLoginNote = LoginItem.note
+    }
+
+    /// Returns the failure, which the note also shows.
+    @discardableResult
+    func setLaunchAtLogin(_ enabled: Bool) -> String? {
+        do {
+            try LoginItem.setEnabled(enabled)
+            refreshLoginItem()
+            return nil
+        } catch {
+            refreshLoginItem()
+            let message = "Launch at Login could not be changed: \(error.localizedDescription)"
+            launchAtLoginNote = message
+            return message
+        }
+    }
+
+    /// Why the override will not work, when it is set; checked the way the
+    /// resolver checks it.
+    var binaryOverrideProblem: String? {
+        let trimmed = binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let path = (trimmed as NSString).expandingTildeInPath
+        return TTBinaryResolver.isExecutableRegularFile(path) ? nil : "Not an executable file."
+    }
+}
+
+/// The SwiftUI Preferences window.
+final class PreferencesWindowController: NSObject, NSWindowDelegate {
+    let model: PreferencesModel
+    let recorder = HotKeyRecorder()
+    private(set) lazy var window: NSWindow = makeWindow()
+
+    init(model: PreferencesModel) {
+        self.model = model
         super.init()
     }
 
     func show() {
-        exitPopup.selectItem(at: TTExitBehavior.allCases.firstIndex(of: .load(from: defaults)) ?? 0)
+        model.refresh()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 120),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
+        let window = NSWindow(contentViewController: NSHostingController(
+            rootView: PreferencesView(model: model, recorder: recorder)
+        ))
         window.title = "tt Preferences"
+        window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
-
-        exitPopup.addItems(withTitles: TTExitBehavior.allCases.map(\.label))
-        exitPopup.target = self
-        exitPopup.action = #selector(exitBehaviorChanged(_:))
-
-        let label = NSTextField(labelWithString: "When tt exits:")
-        let note = NSTextField(wrappingLabelWithString:
-            "A crash or a non-zero exit always keeps tt's last output on screen with a Relaunch button.")
-        note.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        note.textColor = .secondaryLabelColor
-
-        let row = NSStackView(views: [label, exitPopup])
-        row.orientation = .horizontal
-        row.spacing = 8
-
-        let stack = NSStackView(views: [row, note])
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 10
-        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        let content = NSView()
-        content.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: content.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            note.widthAnchor.constraint(equalToConstant: 400),
-        ])
-        window.contentView = content
+        window.delegate = self
         window.center()
         return window
     }
 
-    @objc private func exitBehaviorChanged(_ sender: NSPopUpButton) {
-        let index = sender.indexOfSelectedItem
-        guard TTExitBehavior.allCases.indices.contains(index) else { return }
-        TTExitBehavior.allCases[index].save(to: defaults)
+    /// A closed window records nothing.
+    func windowWillClose(_ notification: Notification) {
+        recorder.stop()
     }
+}
+
+struct PreferencesView: View {
+    @ObservedObject var model: PreferencesModel
+    @ObservedObject var recorder: HotKeyRecorder
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Show and hide tt") {
+                    HotKeyRecorderView(model: model, recorder: recorder)
+                }
+                if let problem = model.hotKeyProblem {
+                    note(problem, warning: true)
+                }
+                note("Works from any app. Pressing it while tt is in front hides tt. "
+                    + "A Karabiner rule can send this same shortcut.")
+            }
+
+            Section {
+                Picker("Show tt in", selection: $model.activationPolicy) {
+                    ForEach(TTActivationPolicy.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { model.launchAtLogin },
+                    set: { model.setLaunchAtLogin($0) }
+                ))
+                if let loginNote = model.launchAtLoginNote {
+                    note(loginNote, warning: true)
+                }
+            }
+
+            Section {
+                Picker("When tt exits", selection: $model.exitBehavior) {
+                    ForEach(TTExitBehavior.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                note("A crash or a non-zero exit always keeps tt's last output on screen with a Relaunch button.")
+            }
+
+            Section {
+                LabeledContent("tt binary") {
+                    HStack {
+                        TextField("", text: $model.binaryOverride, prompt: Text("Automatic"))
+                            .labelsHidden()
+                            .frame(minWidth: 200)
+                        Button("Choose…", action: chooseBinary)
+                    }
+                }
+                if let problem = model.binaryOverrideProblem {
+                    note(problem, warning: true)
+                }
+                note("Leave empty to use the bundled tt, ~/.local/bin/tt, then PATH. "
+                    + "Takes effect the next time tt.app starts.")
+            }
+
+            Section {
+                LabeledContent("Ghostty config") {
+                    HStack {
+                        Button("Open") { model.onOpenGhosttyConfig?() }
+                        Button("Reload") { model.onReloadGhosttyConfig?() }
+                    }
+                }
+                note(Ghostty.Config.userConfigURL().path
+                    .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func note(_ text: String, warning: Bool = false) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(warning ? Color.orange : Color.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func chooseBinary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.treatsFilePackagesAsDirectories = true
+        panel.message = "Choose the tt binary tt.app runs."
+        if panel.runModal() == .OK, let url = panel.url {
+            model.binaryOverride = url.path
+        }
+    }
+}
+
+/// A button that records the next shortcut typed. Esc cancels; the shortcut
+/// must use Control, Option, or Command, unless it is a function key.
+struct HotKeyRecorderView: View {
+    @ObservedObject var model: PreferencesModel
+    @ObservedObject var recorder: HotKeyRecorder
+
+    var body: some View {
+        HStack {
+            Button(action: toggleRecording) {
+                Text(label)
+                    .frame(minWidth: 140)
+                    .foregroundStyle(recorder.isRecording ? Color.accentColor : Color.primary)
+            }
+            if model.hotKey != nil, !recorder.isRecording {
+                Button("Clear") { model.hotKey = nil }
+            }
+        }
+        .onDisappear { recorder.stop() }
+    }
+
+    private var label: String {
+        if recorder.isRecording {
+            return recorder.hint ?? "Type a shortcut…"
+        }
+        return model.hotKey?.displayString ?? "Record Shortcut"
+    }
+
+    private func toggleRecording() {
+        if recorder.isRecording {
+            recorder.stop()
+            return
+        }
+        recorder.start(
+            onStateChange: { [weak model] recording in model?.onRecordingChange?(recording) },
+            onRecord: { [weak model] combo in model?.hotKey = combo }
+        )
+    }
+}
+
+final class HotKeyRecorder: ObservableObject {
+    @Published private(set) var isRecording = false
+    @Published private(set) var hint: String?
+    private var monitor: Any?
+    private var onStateChange: ((Bool) -> Void)?
+
+    func start(onStateChange: @escaping (Bool) -> Void, onRecord: @escaping (HotKeyCombo) -> Void) {
+        stop()
+        self.onStateChange = onStateChange
+        isRecording = true
+        hint = nil
+        onStateChange(true)
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            let chord = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if Int(event.keyCode) == HotKeyRecorder.escapeKeyCode, chord.isEmpty {
+                self.stop()
+            } else if let combo = HotKeyCombo(event: event) {
+                self.stop()
+                onRecord(combo)
+            } else {
+                self.hint = "Add ⌃, ⌥, or ⌘…"
+            }
+            return nil
+        }
+    }
+
+    func stop() {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
+        guard isRecording else { return }
+        isRecording = false
+        hint = nil
+        onStateChange?(false)
+        onStateChange = nil
+    }
+
+    deinit {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+
+    private static let escapeKeyCode = 0x35
 }

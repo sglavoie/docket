@@ -1,13 +1,16 @@
 import AppKit
 import GhosttyKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate {
     /// The launch-error window, when tt could not start.
     private var window: NSWindow?
     private(set) var ghostty: Ghostty.App?
     private(set) var terminal: TerminalWindowController?
+    let preferencesModel = PreferencesModel()
     private var preferencesController: PreferencesWindowController?
     private var preferences: NSWindow? { preferencesController?.window }
+    private(set) var statusItem: StatusItemController?
+    private(set) var hotKeys: HotKeyCenter?
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -15,8 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        // A regular app: its own Dock icon and menu bar.
-        NSApp.setActivationPolicy(.regular)
+        // A regular app with its own Dock icon, unless set to live in the
+        // menu bar alone.
+        NSApp.setActivationPolicy(preferencesModel.activationPolicy.appKitPolicy)
         NSApp.mainMenu = MainMenu.make()
     }
 
@@ -29,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
             return
         }
         guard !Self.isRunningTests else { return }
+        setUpShell()
 
         let environment = LaunchEnvironment.current()
         let binary: TTBinaryResolver.Resolution
@@ -93,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
     }
 
     @objc func showPreferences(_ sender: Any?) {
-        let controller = preferencesController ?? PreferencesWindowController()
+        let controller = preferencesController ?? PreferencesWindowController(model: preferencesModel)
         preferencesController = controller
         controller.show()
     }
@@ -105,6 +110,99 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [
             .credits: MainMenu.aboutCredits(ghosttyVersion: Ghostty.versionDescription, notice: notice),
         ])
+    }
+
+    // MARK: Shell: status item, global shortcut, preferences
+
+    /// The pieces that work even when tt itself could not start.
+    private func setUpShell() {
+        let model = preferencesModel
+        model.onActivationPolicyChange = { [weak self] in self?.applyActivationPolicy($0) }
+        model.onHotKeyChange = { [weak self] in self?.registerHotKey($0) }
+        model.onRecordingChange = { [weak self] recording in
+            guard let self else { return }
+            if recording {
+                self.hotKeys?.unregister()
+            } else {
+                self.registerHotKey(self.preferencesModel.hotKey)
+            }
+        }
+        model.onOpenGhosttyConfig = { Ghostty.App.openConfig() }
+        model.onReloadGhosttyConfig = { [weak self] in self?.ghostty?.reloadConfig() }
+
+        statusItem = StatusItemController(delegate: self)
+        let hotKeys = HotKeyCenter()
+        hotKeys.onPress = { [weak self] in self?.toggleTerminal() }
+        self.hotKeys = hotKeys
+        registerHotKey(model.hotKey)
+    }
+
+    private func registerHotKey(_ combo: HotKeyCombo?) {
+        guard let hotKeys else { return }
+        var problem = hotKeys.register(combo).problem
+        if problem == nil, let combo, SystemHotKeys.conflicts(with: combo) {
+            problem = "macOS also uses \(combo.displayString) (System Settings › Keyboard › Keyboard Shortcuts); "
+                + "turn it off there, or choose another shortcut."
+        }
+        if let problem {
+            NSLog("tt: hotkey: %@", problem)
+        }
+        preferencesModel.hotKeyProblem = problem
+    }
+
+    /// Switched live. Changing the policy can drop the app's activation, so
+    /// the window the change was made from is brought back.
+    private func applyActivationPolicy(_ policy: TTActivationPolicy) {
+        NSApp.setActivationPolicy(policy.appKitPolicy)
+        let front = [preferences, terminal?.window, window].compactMap { $0 }.first { $0.isVisible }
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            front?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    // MARK: StatusItemDelegate
+
+    var isTerminalFrontmost: Bool {
+        guard let terminal else { return false }
+        return TerminalToggle.action(
+            appIsActive: NSApp.isActive,
+            windowIsVisible: terminal.window.isVisible,
+            windowIsKey: terminal.window.isKeyWindow
+        ) == .hide
+    }
+
+    var canRelaunchTerminal: Bool { terminal != nil }
+
+    var isLaunchAtLoginEnabled: Bool { LoginItem.isEnabled }
+
+    /// The global shortcut and a left click on the status item: show and
+    /// focus tt, or hide it when it is already in front.
+    func toggleTerminal() {
+        guard let terminal else {
+            // tt could not start; its launch error is what there is to show.
+            NSApp.activate(ignoringOtherApps: true)
+            window?.makeKeyAndOrderFront(nil)
+            return
+        }
+        if isTerminalFrontmost {
+            terminal.hide()
+        } else {
+            terminal.show()
+        }
+    }
+
+    func relaunchTerminal() {
+        terminal?.relaunch()
+    }
+
+    func toggleLaunchAtLogin() {
+        guard let failure = preferencesModel.setLaunchAtLogin(!LoginItem.isEnabled) else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Launch at Login"
+        alert.informativeText = failure
+        alert.runModal()
     }
 
     private func showLaunchError(title: String, message: String) {
