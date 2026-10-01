@@ -2,6 +2,8 @@ package outliner
 
 import (
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -522,18 +524,49 @@ func inlinePeekHistoryKey(task *models.Task) string {
 // read, so a name too long for the pane wraps rather than joining an elided
 // tail, and the count says how many rows the section is worth scrolling for
 // before the first of them is read.
+//
+// A URL or a code reference also links its rows (OSC 8), each wrapped row on
+// its own, so a terminal that follows links opens the whole target from any
+// row of it — the full URL behind a shortened GitHub issue name included. A
+// stored file is the panel's to open, since its path needs the project.
 func inlinePeekAttachmentsLines(task *models.Task, indent string, width int) []string {
-	if task == nil || len(task.Attachments) == 0 {
+	if task == nil || len(task.Attachments) == 0 || width <= 0 {
 		return nil
 	}
-	entries := make([]string, 0, len(task.Attachments))
+	count := 0
 	for _, attachment := range task.Attachments {
-		if name := strings.TrimSpace(listsurface.AttachmentDisplayName(attachment)); name != "" {
-			entries = append(entries, name)
+		if strings.TrimSpace(listsurface.AttachmentDisplayName(attachment)) != "" {
+			count++
 		}
 	}
-	label := fmt.Sprintf("Attachments %d: ", len(entries))
-	return inlinePeekEntryLines(label, entries, indent, width)
+	label := fmt.Sprintf("Attachments %d: ", count)
+	bodyWidth := max(width-lipgloss.Width(label), 1)
+	chunks := make([]string, 0, count)
+	for _, attachment := range task.Attachments {
+		name := strings.TrimSpace(listsurface.AttachmentDisplayName(attachment))
+		if name == "" {
+			continue
+		}
+		target := attachmentLinkTarget(attachment)
+		for _, chunk := range textfit.WrapText(name, bodyWidth) {
+			chunks = append(chunks, textfit.Hyperlink(target, chunk))
+		}
+	}
+	return inlinePeekHangingLines(label, chunks, indent, width, inlinePeekMutedRow)
+}
+
+// attachmentLinkTarget is the URI an attachment's Peek rows link to: a URL as
+// stored, a code reference as a file URL to its absolute path, and nothing for
+// a stored file or a relative reference, which cannot be resolved here.
+func attachmentLinkTarget(attachment models.Attachment) string {
+	switch {
+	case attachment.IsURL:
+		return attachment.Filename
+	case attachment.IsCodeRef && filepath.IsAbs(attachment.OriginalPath):
+		return (&url.URL{Scheme: "file", Path: attachment.OriginalPath}).String()
+	default:
+		return ""
+	}
 }
 
 func inlinePeekAttachmentsKey(task *models.Task) string {

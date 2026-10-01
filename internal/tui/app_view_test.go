@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -225,5 +226,23 @@ func TestAppViewTaskComposerBudgetsForATallerFooter(t *testing.T) {
 	}
 	if got := lipgloss.Height(content); got != 24 {
 		t.Fatalf("composed frame height = %d, want 24", got)
+	}
+}
+
+// TestAppViewTitlesTheWindowWithThePulse: with no view naming a title, the
+// window title is the workspace pulse tt.app reads its Dock badge from, and the
+// closing frame clears it.
+func TestAppViewTitlesTheWindowWithThePulse(t *testing.T) {
+	app := newTestAppModel()
+	app.workspacePulse = pulse.WorkspacePulse{Today: 2, Overdue: 3}
+	if got := app.View().WindowTitle; got != "tt · today 2 · overdue 3" {
+		t.Fatalf("window title = %q, want the pulse", got)
+	}
+	if !app.View().ReportFocus {
+		t.Fatal("the app view does not ask for focus reports")
+	}
+	app.lifecycle.quitting = true
+	if got := app.View().WindowTitle; got != "" {
+		t.Fatalf("closing frame title = %q, want none", got)
 	}
 }

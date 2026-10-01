@@ -28,6 +28,14 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	defer func() {
 		result.AltScreen = true
 		result.KeyboardEnhancements.ReportEventTypes = true
+		// Focus reports are what let a long-lived session notice a workspace
+		// changed elsewhere while it sat in the background.
+		result.ReportFocus = true
+		// A view naming its own title keeps it; otherwise the title is the
+		// pulse, which tt.app reads back for its Dock badge.
+		if !m.lifecycle.quitting && result.WindowTitle == "" {
+			result.WindowTitle = pulse.WindowTitle(m.workspacePulse)
+		}
 		result.BackgroundColor = m.terminalBackground()
 		if r := recover(); r != nil {
 			stack := debug.Stack()

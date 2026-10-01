@@ -124,6 +124,8 @@ or Raycast rule that focused Ghostty for tt can go.
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
 opens its menu: Show/Hide, Relaunch tt, Preferences…, Launch at Login, Quit.
+Its tooltip is tt's window title, the workspace pulse
+(`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
 it. Preferences also chooses whether tt appears in the Dock and menu bar or
 the menu bar only (`ttActivationPolicy`: `regular` or `accessory`).
@@ -132,6 +134,30 @@ When `tt` exits cleanly (`q`), the window hides and the next show starts a
 fresh `tt`, or, if Preferences says so, the app quits (`ttExitBehavior`:
 `relaunch` or `quit`). A failed exit or a crash always stays on screen with
 its status and a Relaunch button.
+
+### Notifications and the Dock badge
+
+tt.app starts tt with `--notify`, so a check-in whose day comes, a timed
+deadline that passes, or a deferral that ends while tt runs becomes a
+Notification Center alert; clicking it brings tt forward. macOS asks for
+permission on the first one, and none is shown while tt is already in front.
+Preferences turns them off (`ttNotifications`): that silences the running tt at
+once, while turning them back on reaches the next tt, which reads its flags at
+start. tt.app passes the flag only to a tt whose `--help` lists it, since an
+older one would refuse it and never start; with such a tt there are no
+notifications until it is updated.
+
+The Dock icon carries the overdue count read from tt's title, and none at zero
+(`ttDockBadge`, also in Preferences):
+
+```bash
+defaults write io.github.sglavoie.tt ttNotifications -bool false
+defaults write io.github.sglavoie.tt ttDockBadge -bool false
+```
+
+A bell while tt.app is in the background bounces the Dock icon once rather
+than beeping. tt itself reloads the workspace when its window comes back if
+another machine's sync changed it meanwhile (see `docs/guide/outliner-chrome.md`).
 
 ### Terminal config
 
@@ -159,6 +185,14 @@ tt announces its theme background to the terminal (OSC 11), and the title bar
 takes that color, with light or dark title text to match, so the window reads
 as one surface. Before tt sets it, the title bar uses the Ghostty config's
 `background`.
+
+### Menus
+
+Edit has Copy, Paste, and Select All, and nothing else: tt owns every other
+edit, undo included, through its own keys. View names the zoom keys (Actual
+Size, Zoom In, Zoom Out), and Help › tt Guide opens the user guide on GitHub.
+The app menu also carries Relaunch tt. Peek's attachment links (OSC 8) open
+with `Cmd`-click.
 
 ### Default zoom
 

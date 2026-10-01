@@ -389,6 +389,22 @@ extension Ghostty.SurfaceView {
         performBindingAction("select_all")
     }
 
+    // MARK: View menu
+
+    /// Zooms the running session only; the default zoom is Preferences'.
+    @IBAction func zoomIn(_ sender: Any?) {
+        performBindingAction("increase_font_size:1")
+    }
+
+    @IBAction func zoomOut(_ sender: Any?) {
+        performBindingAction("decrease_font_size:1")
+    }
+
+    /// Back to the default zoom.
+    @IBAction func resetZoom(_ sender: Any?) {
+        performBindingAction("reset_font_size")
+    }
+
     /// Runs a Ghostty keybind action by name, as the menu's items do.
     @discardableResult
     func performBindingAction(_ action: String) -> Bool {

@@ -1,8 +1,8 @@
 import AppKit
 
-/// The programmatic main menu: the app, Edit, and Window menus, so About,
-/// Preferences, Hide, Quit, Copy, Paste, and Minimize keep their standard
-/// shortcuts without a nib. The Edit items target the first responder, the
+/// The programmatic main menu: the app, Edit, View, Window, and Help menus, so
+/// About, Preferences, Hide, Quit, Copy, Paste, Select All, the zoom keys, and
+/// Minimize keep their standard shortcuts, and are discoverable, without a nib. The Edit items target the first responder, the
 /// terminal surface. A shortcut both an item and a consumed Ghostty binding
 /// claim is the item's, so Cmd+, opens Preferences rather than Ghostty's
 /// config.
@@ -10,6 +10,10 @@ enum MainMenu {
     /// Sent up the responder chain to the app delegate.
     static let showPreferences = #selector(AppDelegate.showPreferences(_:))
     static let showAbout = #selector(AppDelegate.showAbout(_:))
+    static let showGuide = #selector(AppDelegate.showGuide(_:))
+    static let relaunch = #selector(AppDelegate.relaunchFromMenu(_:))
+    /// The user guide, read on GitHub: an installed app carries no docs tree.
+    static let guideURL = URL(string: "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")!
 
     static func make() -> NSMenu {
         let main = NSMenu()
@@ -19,6 +23,8 @@ enum MainMenu {
         appMenu.addItem(withTitle: "About tt", action: showAbout, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Preferences…", action: showPreferences, keyEquivalent: ",")
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Relaunch tt", action: relaunch, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide tt", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = appMenu.addItem(withTitle: "Hide Others",
@@ -33,13 +39,24 @@ enum MainMenu {
         appItem.submenu = appMenu
         main.addItem(appItem)
 
-        // Copy and paste only: tt owns every other edit through its own keys.
+        // The clipboard and the terminal selection only: tt owns every other
+        // edit, undo included, through its own keys.
         let editItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = editMenu
         main.addItem(editItem)
+
+        // The session's zoom; the default it resets to is Preferences'.
+        let viewItem = NSMenuItem()
+        let viewMenu = NSMenu(title: "View")
+        viewMenu.addItem(withTitle: "Actual Size", action: #selector(Ghostty.SurfaceView.resetZoom(_:)), keyEquivalent: "0")
+        viewMenu.addItem(withTitle: "Zoom In", action: #selector(Ghostty.SurfaceView.zoomIn(_:)), keyEquivalent: "=")
+        viewMenu.addItem(withTitle: "Zoom Out", action: #selector(Ghostty.SurfaceView.zoomOut(_:)), keyEquivalent: "-")
+        viewItem.submenu = viewMenu
+        main.addItem(viewItem)
 
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
@@ -48,6 +65,13 @@ enum MainMenu {
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
         NSApp.windowsMenu = windowMenu
+
+        let helpItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help")
+        helpMenu.addItem(withTitle: "tt Guide", action: showGuide, keyEquivalent: "")
+        helpItem.submenu = helpMenu
+        main.addItem(helpItem)
+        NSApp.helpMenu = helpMenu
 
         return main
     }

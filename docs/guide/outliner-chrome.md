@@ -197,6 +197,31 @@ to load all still speak, because none of them is ambient. The conflicts
 themselves are untouched: hiding the count resolves nothing, and `gc` and
 `tt conflict list` still find every bundle.
 
+### While tt is in the background
+
+tt names its window after the workspace pulse — `tt · inbox 2 · today 3 ·
+overdue 1`, nonzero counts only — so a terminal tab or title bar reads it
+without switching to tt; a view that names its own title keeps it, and quitting
+clears it.
+
+In a terminal that reports focus, tt notes the workspace on disk when it loses
+focus and compares on return. If another machine's sync, or another `tt`,
+changed it meanwhile, tt reloads the catalog, planning, and every project, and
+says `Reloaded: the workspace changed on disk`. It waits while you are inside a
+picker, an editor, a visual selection, a ranked search, or another view, and
+reloads on the next minute's tick after you leave it, so nothing you are acting
+on is renumbered under you. A reload writes nothing.
+
+`tt --notify` also sends a desktop notification (OSC 777) when work arrives
+while the session runs: a check-in whose day comes, a timed deadline that
+passes, or a deferral that ends. One arrival names its task; several are
+counted, `2 check-ins · 1 deferral ended`. It reports only what crossed over
+since the last minute's tick, so launching reports nothing already standing and
+waking from sleep reports the gap once. A date-only deadline is not an arrival:
+its day is the Today lane's and the overdue count's. It is opt-in because a
+terminal that honors the escape shows it whether or not tt is in view; tt.app
+passes it by default.
+
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, then an `Also in view` block for the axes nothing
 peels — your selection, the effective sort, a focus, a section zoom — with the

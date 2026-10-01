@@ -286,6 +286,10 @@ note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
 list, the task's context, its tags, and last of all a history line reading
 `created 12d · updated 2d · last review 3d · woke 1d · deferred ×3`.
+A URL or `path:line` attachment name is also a link (OSC 8) in a terminal that
+follows them — `Cmd`-click in Ghostty and tt.app — so a shortened
+`GH owner/repo#123` opens the issue, and every wrapped row of a long URL opens
+the whole URL. A stored file is opened from the `&` panel instead.
 The split is what the task still owes against what it has already spent: the
 schedule is the part you can act on, so it sits with the status line at the top,
 and the history is the part you consult afterwards, so it closes the document

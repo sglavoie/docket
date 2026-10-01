@@ -24,6 +24,8 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// Called just before a new tt starts, and after a session is gone.
     var onWillStartSession: (() -> Void)?
     var onSessionEnd: (() -> Void)?
+    /// Called on the main thread with each title the running tt sets.
+    var onTitleChange: ((String) -> Void)?
     /// Set once tt has exited on the current surface, so a later close request
     /// from that dead surface decides nothing.
     private(set) var exitAction: TTExitAction?
@@ -143,8 +145,9 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         window.title = "tt"
 
         let surfaceView = Ghostty.SurfaceView(app: app)
-        surfaceView.onTitleChange = { [weak window] title in
+        surfaceView.onTitleChange = { [weak self, weak window] title in
             window?.title = title.isEmpty ? "tt" : title
+            self?.onTitleChange?(title)
         }
         surfaceView.setContentHuggingPriority(.defaultLow, for: .vertical)
         surfaceView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)

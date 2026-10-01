@@ -819,3 +819,51 @@ func TestInlinePeekWrapsALongAttachmentNameInsteadOfEliding(t *testing.T) {
 		}
 	}
 }
+
+// TestInlinePeekLinksEachWrappedAttachmentRow pins the OSC 8 half: every row of
+// a wrapped URL opens and closes its own link to the whole URL, a shortened
+// GitHub name links to the issue, a code reference links its file, and a
+// stored file links nothing. The links change no width.
+func TestInlinePeekLinksEachWrappedAttachmentRow(t *testing.T) {
+	long := "https://example.com/" + strings.Repeat("segment/", 12)
+	task := &models.Task{
+		Attachments: []models.Attachment{
+			{Filename: long, IsURL: true},
+			{Filename: "https://github.com/acme/roadmap/issues/123", IsURL: true},
+			{OriginalPath: "/src/app/main.go", LineNumber: 12, IsCodeRef: true},
+			{Filename: "notes.md"},
+		},
+	}
+	const width = 40
+	lines := inlinePeekAttachmentsLines(task, "", width)
+	open := func(uri string) string { return ansi.SetHyperlink(uri) }
+	var urlRows int
+	for i, line := range lines {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("row %d width = %d, want <= %d", i, got, width)
+		}
+		plain := ansi.Strip(line)
+		switch {
+		case strings.Contains(plain, "GH acme/roadmap#123"):
+			if !strings.Contains(line, open("https://github.com/acme/roadmap/issues/123")) {
+				t.Fatalf("GitHub row %q does not link the issue", line)
+			}
+		case strings.Contains(plain, "main.go:12"):
+			if !strings.Contains(line, open("file:///src/app/main.go")) {
+				t.Fatalf("code reference row %q does not link its file", line)
+			}
+		case strings.Contains(plain, "notes.md"):
+			if strings.Contains(line, "\x1b]8;;h") || strings.Contains(line, "\x1b]8;;f") {
+				t.Fatalf("stored file row %q carries a link", line)
+			}
+		default:
+			urlRows++
+			if !strings.Contains(line, open(long)) || !strings.Contains(line, ansi.ResetHyperlink()) {
+				t.Fatalf("URL row %d %q does not open and close its own link", i, line)
+			}
+		}
+	}
+	if urlRows < 2 {
+		t.Fatalf("the long URL wrapped over %d rows, want several", urlRows)
+	}
+}

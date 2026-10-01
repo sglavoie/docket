@@ -329,6 +329,17 @@ that follows it — match the ones it does. Bubble Tea restores the terminal's
 own color on exit; `--no-color` and the closing frame name none, since that
 color is written outside the renderer's profile.
 
+The frame also titles the window `pulse.WindowTitle` (OSC 2) unless the view
+names its own, and asks for focus reports (mode 1004). The title's
+`overdue N` spelling is read back by tt.app for its Dock badge
+(`TTWindowTitle`), so it is a contract across the two languages. A blur stores
+`workspace.Fingerprint` — the stat identity of `.tt/*.json` and every catalog
+tasks.md, the signal `workspace.Loader` already trusts — and a focus that finds
+it moved owes a reload; `adoptExternalWorkspaceChange` pays it under the same
+guard as a time-driven invalidation plus the Outliner being the live route, or
+leaves it owed for the periodic tick. `--notify` reports `pulse.Arrivals` over
+`(since, now]` on that same tick, as one `tea.Raw` OSC 777.
+
 Success, informational, and view-owned text is quiet: it reaches the footer and
 the divider does not move for it. `footerFlashSeverity.animates()` is that
 closed table — `flashWarning` and `flashError` and nothing else — and it is read

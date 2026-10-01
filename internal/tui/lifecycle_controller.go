@@ -12,9 +12,12 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // periodicSaveInterval is the cadence of the one recurring app timer. It is the
@@ -127,12 +130,18 @@ type RunOptions struct {
 	// HideAdvisories suppresses every ambient advisory for this run without
 	// touching the machine-local setting. See advisories_shell.go.
 	HideAdvisories bool
+	// Notify sends a desktop notification escape when a check-in arrives, a
+	// timed deadline passes, or a deferral ends. See app_notifications.go.
+	Notify bool
 }
 
 // RunApp starts the TUI application.
 func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOptions, opts ...AppOption) error {
 	if runOpts.HideAdvisories {
 		opts = append(opts, WithHiddenAdvisories())
+	}
+	if runOpts.Notify {
+		opts = append(opts, WithNotifications())
 	}
 	if runOpts.DisableColor {
 		opts = append(opts, WithDisabledColor())
@@ -248,4 +257,139 @@ func pipelineNextHint(vt presentation.PresentationID) string {
 	default:
 	}
 	return ""
+}
+
+// =============================================================================
+// Attention while in the background: focus reload and --notify
+// =============================================================================
+
+// externalReloadState is the shell's memory of what the workspace looked like
+// on disk when the terminal last lost focus. A long-lived session — tt.app hides
+// its window rather than ending tt — otherwise never re-reads a workspace that
+// a synced machine changed underneath it, and learns of that change only when
+// its own next commit records a conflict.
+//
+// It needs a terminal that reports focus (mode 1004). Without one neither
+// message arrives and nothing here runs.
+type externalReloadState struct {
+	// blurFingerprint is the workspace fingerprint taken at the last blur; empty
+	// before the first blur, which is what keeps a launch from reloading.
+	blurFingerprint string
+	// owed records a detected change the shell could not yet adopt because the
+	// user was mid-interaction. The periodic tick and the next focus retry it.
+	owed bool
+}
+
+// workspaceFingerprint is workspace.Fingerprint over the runtime's data dir
+// and every catalog project, parked and archived included, since a reload
+// rereads them all.
+func (m *AppModel) workspaceFingerprint() string {
+	rs := m.domain.runtime
+	if rs == nil {
+		return ""
+	}
+	return workspace.Fingerprint(rs.DataDir(), rs.AllProjects())
+}
+
+// handleFocusMessage answers the terminal's focus reports. A blur records the
+// workspace as it stands; a focus compares against it and adopts whatever
+// changed on disk meanwhile.
+func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg.(type) {
+	case tea.BlurMsg:
+		m.externalReload.blurFingerprint = m.workspaceFingerprint()
+		return true, nil
+	case tea.FocusMsg:
+		before := m.externalReload.blurFingerprint
+		if before != "" && before != m.workspaceFingerprint() {
+			m.externalReload.owed = true
+		}
+		return true, m.adoptExternalWorkspaceChange()
+	default:
+		return false, nil
+	}
+}
+
+// safeToAdoptExternalChange is the time-driven invalidation's own guard plus
+// the Outliner being the live route: a reload rebinds every project pointer,
+// so it waits for the user to put down a picker, an editor, a selection, or a
+// child view rather than renumber what they are acting on.
+func (m *AppModel) safeToAdoptExternalChange() bool {
+	return m.currentView() == presentation.ViewCrossProjectOutliner &&
+		m.activeOutlinerRoute() &&
+		m.safeToInvalidateTimeDrivenRows()
+}
+
+// adoptExternalWorkspaceChange reloads the workspace from disk when a change is
+// owed and the shell can take it. It is the ledger restore's reload without the
+// restore: catalog and planning first, so a project another machine created is
+// present, then every project's tasks, then the planning collections resolved
+// against them. It writes nothing; reconciling planning is a commit's job.
+func (m *AppModel) adoptExternalWorkspaceChange() tea.Cmd {
+	if !m.externalReload.owed || !m.safeToAdoptExternalChange() {
+		return nil
+	}
+	m.externalReload.owed = false
+	m.refreshRuntime()
+	for id := range m.domain.projects {
+		m.reloadProjectByID(id)
+	}
+	m.rebuildPlanningFromRuntime()
+	m.refreshLoadedTaskWorkspace()
+	m.refreshOutstandingConflicts()
+	cmds := m.refreshTaskViews(true, true)
+	m.setInfoStatus("Reloaded: the workspace changed on disk")
+	cmds = append(cmds, m.statusReadingTimeout())
+	return tea.Batch(cmds...)
+}
+
+// notificationState is a --notify run's memory of the last instant it
+// reported on. Each periodic tick reports what arrived in (since, now] and
+// advances it, so a launch reports nothing already standing and a machine
+// waking from sleep reports the whole gap once.
+type notificationState struct {
+	enabled bool
+	since   time.Time
+}
+
+// WithNotifications marks a --notify run: the session sends a desktop
+// notification escape when work arrives while it runs. It is opt-in because a
+// terminal that honors the escape shows it whether or not tt is in view.
+func WithNotifications() AppOption {
+	return func(m *AppModel) {
+		m.notifications.enabled = true
+		m.notifications.since = time.Now()
+	}
+}
+
+// notifyArrivals answers one periodic tick for a --notify run. It reads the
+// base task workspace through the pulse's own loader, which reparses only
+// files that changed, so a quiet tick costs a stat per project.
+func (m *AppModel) notifyArrivals(now time.Time) tea.Cmd {
+	if !m.notifications.enabled || m.domain.runtime == nil {
+		return nil
+	}
+	since := m.notifications.since
+	m.notifications.since = now
+	if since.IsZero() || !now.After(since) {
+		return nil
+	}
+	_, projects, failed := outliner.LoadCrossScopeSelection(m.domain.runtime.TaskWorkspaceProjects(), m.ensurePulseLoader())
+	for _, failure := range failed {
+		logging.Warn("notifications: %s", failure.Detail)
+	}
+	arrivals := pulse.Arrivals(projects, since, now)
+	if len(arrivals) == 0 {
+		return nil
+	}
+	return tea.Raw(pulse.DesktopNotification(pulse.ArrivalNotification(arrivals)))
+}
+
+// ensurePulseLoader returns the shell's retained snapshot loader, creating it
+// on first use. Both readers run inside Update, never in a command goroutine.
+func (m *AppModel) ensurePulseLoader() *workspace.Loader {
+	if m.pulseLoader == nil {
+		m.pulseLoader = workspace.NewLoader()
+	}
+	return m.pulseLoader
 }

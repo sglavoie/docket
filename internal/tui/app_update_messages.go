@@ -24,7 +24,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/valuepicker"
-	"github.com/sglavoie/tt/internal/workspace"
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
@@ -32,6 +31,9 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, cmd
 	}
 	if handled, cmd := m.handleGlobalInputMessage(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleFocusMessage(msg); handled {
 		return true, cmd
 	}
 	if handled, cmd := m.handleGlobalLifecycleMessage(msg); handled {
@@ -196,7 +198,9 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// no local mutation can announce one; the periodic tick is what makes the
 		// indicator appear, and what clears it once the CLI resolves the last one.
 		m.refreshOutstandingConflicts()
-		return true, m.lifecycle.periodicSaveCmd()
+		// A change adopted on focus but refused mid-interaction is retried here,
+		// so putting the picker down is enough to see it.
+		return true, tea.Batch(m.lifecycle.periodicSaveCmd(), m.adoptExternalWorkspaceChange(), m.notifyArrivals(msg.At))
 	case status.SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
 	case coordinator.TasksCapturedMsg:
@@ -516,10 +520,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	if m.pulseLoader == nil {
-		m.pulseLoader = workspace.NewLoader()
-	}
-	m.workspacePulse = outliner.ComputeWorkspacePulse(m.domain.runtime, m.todayIDs, now, m.pulseLoader)
+	m.workspacePulse = outliner.ComputeWorkspacePulse(m.domain.runtime, m.todayIDs, now, m.ensurePulseLoader())
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

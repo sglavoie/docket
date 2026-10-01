@@ -232,7 +232,13 @@ extension Ghostty {
                 return true
 
             case GHOSTTY_ACTION_RING_BELL:
-                NSSound.beep()
+                // A bell from a hidden or background tt cannot be heard as
+                // tt's, so it bounces the Dock icon once instead.
+                if NSApp.isActive {
+                    NSSound.beep()
+                } else {
+                    NSApp.requestUserAttention(.informationalRequest)
+                }
                 return true
 
             default:

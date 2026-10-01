@@ -30,6 +30,23 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// tt runs with `--notify`; turning it off also silences the running one.
+    @Published var notificationsEnabled: Bool {
+        didSet {
+            guard notificationsEnabled != oldValue else { return }
+            TTNotificationsPreference.save(notificationsEnabled, to: defaults)
+        }
+    }
+
+    /// The Dock icon carries tt's overdue count.
+    @Published var dockBadge: Bool {
+        didSet {
+            guard dockBadge != oldValue else { return }
+            TTDockBadgePreference.save(dockBadge, to: defaults)
+            onDockBadgeChange?(dockBadge)
+        }
+    }
+
     /// The zoom tt.app launches at; nil leaves it to the Ghostty config.
     @Published var defaultFontSize: Float? {
         didSet {
@@ -102,6 +119,7 @@ final class PreferencesModel: ObservableObject {
     var onActivationPolicyChange: ((TTActivationPolicy) -> Void)?
     var onHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
+    var onDockBadgeChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcut can step aside
     /// and be recorded like any other key.
     var onRecordingChange: ((Bool) -> Void)?
@@ -116,6 +134,8 @@ final class PreferencesModel: ObservableObject {
         activationPolicy = .load(from: defaults)
         hotKey = TTHotKeyPreference.load(from: defaults)
         defaultFontSize = TTDefaultFontSize.load(from: defaults)
+        notificationsEnabled = TTNotificationsPreference.load(from: defaults)
+        dockBadge = TTDockBadgePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = TTEnvironmentOverrides.load(from: defaults)
     }
@@ -289,6 +309,13 @@ struct PreferencesView: View {
                     ? "The Ghostty config's font size. "
                     : "Overrides the Ghostty config's font-size. ")
                     + "⌘+ and ⌘− zoom until tt.app quits; each launch and ⌘0 return to this size.")
+            }
+
+            Section {
+                Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
+                note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
+                    + "while tt is not in front. Turning this on reaches tt the next time it starts.")
+                Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
             }
 
             Section {

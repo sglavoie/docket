@@ -21,6 +21,10 @@ var noColor bool
 // TUI, and no maintenance subcommand renders a status strip.
 var noAdvisories bool
 
+// notify belongs to the root command alone too: only the interactive TUI runs
+// long enough to see work arrive.
+var notify bool
+
 var (
 	openLogging  = logging.Init
 	closeLogging = logging.Close
@@ -160,6 +164,7 @@ func init() {
 	_ = rootCmd.MarkPersistentFlagDirname("data-dir")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().BoolVar(&noAdvisories, "no-advisories", false, "hide ambient advisory rows in the TUI (conflict count, load failures)")
+	rootCmd.Flags().BoolVar(&notify, "notify", false, "send a desktop notification (OSC 777) when a check-in arrives, a timed deadline passes, or a deferral ends")
 	rootCmd.Flags().Bool("version", false, "print the version and exit")
 }
 
@@ -216,6 +221,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{
 		DisableColor:   noColor,
 		HideAdvisories: noAdvisories,
+		Notify:         notify,
 	})
 }
 

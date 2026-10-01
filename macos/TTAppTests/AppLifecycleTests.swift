@@ -57,14 +57,37 @@ final class MainMenuTests: XCTestCase {
         (menu?.items ?? []).filter { !$0.isSeparatorItem }.map(\.title)
     }
 
-    func testAppMenuAndCopyPasteOnlyEditMenu() {
+    private func submenu(_ main: NSMenu, _ title: String) -> NSMenu? {
+        main.items.first { $0.submenu?.title == title }?.submenu
+    }
+
+    func testAppMenuAndClipboardOnlyEditMenu() {
         let main = MainMenu.make()
         let app = titles(main.items.first?.submenu)
-        for title in ["About tt", "Preferences…", "Hide tt", "Quit tt"] {
+        for title in ["About tt", "Preferences…", "Relaunch tt", "Hide tt", "Quit tt"] {
             XCTAssertTrue(app.contains(title), "\(title) missing from \(app)")
         }
-        let edit = main.items.first { $0.submenu?.title == "Edit" }?.submenu
-        XCTAssertEqual(titles(edit), ["Copy", "Paste"])
+        XCTAssertEqual(titles(submenu(main, "Edit")), ["Copy", "Paste", "Select All"])
+        XCTAssertEqual(main.items.compactMap { $0.submenu?.title }, ["", "Edit", "View", "Window", "Help"])
+    }
+
+    /// The zoom keys Ghostty already answers are named, so they can be found.
+    func testViewMenuNamesTheZoomKeys() throws {
+        let view = try XCTUnwrap(submenu(MainMenu.make(), "View"))
+        XCTAssertEqual(titles(view), ["Actual Size", "Zoom In", "Zoom Out"])
+        XCTAssertEqual(view.items.map(\.keyEquivalent), ["0", "=", "-"])
+        XCTAssertEqual(view.items.map(\.action), [
+            #selector(Ghostty.SurfaceView.resetZoom(_:)),
+            #selector(Ghostty.SurfaceView.zoomIn(_:)),
+            #selector(Ghostty.SurfaceView.zoomOut(_:)),
+        ])
+    }
+
+    func testHelpMenuOpensTheGuide() throws {
+        let help = try XCTUnwrap(submenu(MainMenu.make(), "Help"))
+        XCTAssertEqual(titles(help), ["tt Guide"])
+        XCTAssertEqual(MainMenu.guideURL.host, "github.com")
+        XCTAssertTrue(MainMenu.guideURL.path.hasSuffix("docs/guide/README.md"))
     }
 
     func testAboutCreditsNameTheGhosttyVersionAndNotice() {

@@ -37,7 +37,8 @@ extension Ghostty {
              GHOSTTY_ACTION_SECURE_INPUT,
              GHOSTTY_ACTION_SHOW_CHILD_EXITED,
              GHOSTTY_ACTION_CLOSE_WINDOW,
-             GHOSTTY_ACTION_TOGGLE_FULLSCREEN:
+             GHOSTTY_ACTION_TOGGLE_FULLSCREEN,
+             GHOSTTY_ACTION_DESKTOP_NOTIFICATION:
             return .surface
 
         // Tabs, splits, the quick terminal, and new windows: explicitly ignored.
@@ -69,7 +70,6 @@ extension Ghostty {
              GHOSTTY_ACTION_SHOW_GTK_INSPECTOR,
              GHOSTTY_ACTION_PROMPT_TITLE,
              GHOSTTY_ACTION_COPY_TITLE_TO_CLIPBOARD,
-             GHOSTTY_ACTION_DESKTOP_NOTIFICATION,
              GHOSTTY_ACTION_UNDO,
              GHOSTTY_ACTION_REDO,
              GHOSTTY_ACTION_CHECK_FOR_UPDATES,

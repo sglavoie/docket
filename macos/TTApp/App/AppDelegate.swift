@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var preferences: NSWindow? { preferencesController?.window }
     private(set) var statusItem: StatusItemController?
     private(set) var hotKeys: HotKeyCenter?
+    let notifications = NotificationPresenter()
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -56,9 +57,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         let statusFile = FileManager.default.temporaryDirectory
             .appendingPathComponent("tt-app-\(ProcessInfo.processInfo.processIdentifier).status")
+        let launchArguments = [statusFile.path, binary.url.path]
+        // Asked once: the binary is chosen at launch and fixed until tt.app restarts.
+        let notifySupported = TTVersion.supports(flag: TTNotificationsPreference.flag, binary: binary.url.path)
+        if !notifySupported {
+            NSLog("tt: %@ does not accept %@; notifications are off", binary.url.path, TTNotificationsPreference.flag)
+        }
         let overrides = Ghostty.ConfigOverrides(
             command: launcher,
-            arguments: [statusFile.path, binary.url.path],
+            arguments: launchArguments,
             environment: environment.commandEnvironment,
             waitAfterCommand: true
         )
@@ -68,6 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let ghostty = Ghostty.App {
             var current = overrides
             current.fontSize = model.defaultFontSize
+            current.arguments = launchArguments + TTNotificationsPreference.arguments(
+                enabled: model.notificationsEnabled, supported: notifySupported
+            )
             current.environment = detected.applying(model.environmentOverrides).commandEnvironment
             return Ghostty.Config(overrides: current)
         }
@@ -92,7 +102,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.flushEnvironmentReload()
             model?.sessionEnvironment = model?.effectiveEnvironment?.commandEnvironment
         }
-        controller.onSessionEnd = { [weak model] in model?.sessionEnvironment = nil }
+        controller.onSessionEnd = { [weak self, weak model] in
+            model?.sessionEnvironment = nil
+            self?.showTitle("")
+        }
+        controller.onTitleChange = { [weak self] title in self?.showTitle(title) }
+        model.onDockBadgeChange = { [weak self] _ in
+            self?.showTitle(self?.terminal?.surfaceView?.title ?? "")
+        }
         terminal = controller
         controller.show()
     }
@@ -125,6 +142,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         controller.show()
     }
 
+    @objc func showGuide(_ sender: Any?) {
+        NSWorkspace.shared.open(MainMenu.guideURL)
+    }
+
+    @objc func relaunchFromMenu(_ sender: Any?) {
+        relaunchTerminal()
+    }
+
+    /// tt's title is its pulse: the status item's tooltip carries it whole,
+    /// and the Dock badge its overdue count when Preferences asks for one.
+    private func showTitle(_ title: String) {
+        statusItem?.statusItem.button?.toolTip = title.isEmpty ? "tt" : title
+        NSApp.dockTile.badgeLabel = preferencesModel.dockBadge ? TTWindowTitle.badgeLabel(for: title) : nil
+    }
+
     @objc func showAbout(_ sender: Any?) {
         let notice = Bundle.main.url(forResource: "NOTICE-ghostty", withExtension: nil)
             .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
@@ -154,6 +186,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.ghostty?.reloadConfig()
             self?.refreshConfigFontSize()
         }
+
+        notifications.isEnabled = { [weak model] in model?.notificationsEnabled ?? false }
+        notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
+        notifications.onActivate = { [weak self] in self?.terminal?.show() }
 
         statusItem = StatusItemController(delegate: self)
         let hotKeys = HotKeyCenter()
@@ -298,6 +334,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {
                 NSLog("tt: renderer reported unhealthy")
             }
+            return true
+        case GHOSTTY_ACTION_DESKTOP_NOTIFICATION:
+            let note = action.action.desktop_notification
+            let title = note.title.map { String(cString: $0) } ?? ""
+            let body = note.body.map { String(cString: $0) } ?? ""
+            onMain { [weak self] in self?.notifications.post(title: title, body: body) }
             return true
         case GHOSTTY_ACTION_CLOSE_WINDOW:
             onMain { [weak self] in self?.terminal?.hide() }
