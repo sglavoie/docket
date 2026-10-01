@@ -240,8 +240,10 @@ fi
 
 # Patches in macos/patches/ghostty/ are written against GHOSTTY_TAG: each one
 # names why the pinned tag needs it and is dropped once an upstream tag does.
-# Tracked files are restored first so a changed patch set never stacks.
+# Tracked files are restored, and files a patch created are removed, first so a
+# changed patch set never stacks. Ignored build output survives the clean.
 git -C "$src_dir" checkout --quiet -- .
+git -C "$src_dir" clean --quiet -fd
 for patch in "$patch_dir"/*.patch; do
 	[ -f "$patch" ] || continue
 	echo "Applying $(basename "$patch")"

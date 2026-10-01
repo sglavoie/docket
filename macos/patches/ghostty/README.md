@@ -12,3 +12,11 @@ pin moves and delete the ones upstream absorbed.
 - `0002-skip-libghostty-vt-install.patch` removes `libghostty-vt` from the default
   install step. Its shared library compiles Zig's bundled libc++, which fails
   against the macOS 27 SDK (`INFINITY` undeclared), and the app never uses it.
+- `0003-modulemap-plain-header.patch` declares `ghostty.h` as a plain module
+  header instead of an umbrella. `include/` also carries `libghostty-vt`'s
+  headers, which `ghostty.h` never includes, so the umbrella form warns once per
+  vt header on every Swift compile that imports `GhosttyKit`.
+- `0004-dcimgui-unique-object-name.patch` renames dcimgui's `ext.cpp` to
+  `dcimgui_ext.cpp`. glslang also compiles an `ext.cpp`, so `libghostty.a` held
+  two `ext.o` members; `dsymutil` resolves `libghostty.a(ext.o)` to the first
+  one, misses dcimgui's symbols, and warns while writing the Release dSYM.
