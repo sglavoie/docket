@@ -2,7 +2,9 @@ import Foundation
 
 /// Finds the `tt` binary the surface runs, first match wins: the
 /// `UserDefaults` override, the copy bundled in `Contents/Resources/bin`,
-/// `~/.local/bin/tt` (where `just install` puts it), then `PATH`.
+/// `~/.local/bin/tt` (where `just install` puts it), then `PATH`. A
+/// `~/.local/bin/tt` built after the bundled copy runs instead of it, since the
+/// older one would refuse a workspace the newer one has already migrated.
 struct TTBinaryResolver {
     /// The `UserDefaults` key holding an explicit binary path.
     static let overrideDefaultsKey = "ttBinaryPath"
@@ -11,6 +13,8 @@ struct TTBinaryResolver {
         case userDefaultsOverride
         case bundled
         case localBin
+        /// `~/.local/bin/tt`, chosen over an older bundled copy.
+        case newerLocalBin
         case path
     }
 
@@ -52,6 +56,9 @@ struct TTBinaryResolver {
     /// A colon-separated search path, normally the login shell's `PATH`.
     var searchPath: String
     var isExecutableFile: (String) -> Bool = TTBinaryResolver.isExecutableRegularFile
+    /// When a binary was built; nil when unknown, which never displaces the
+    /// bundled copy.
+    var buildTime: (String) -> Date? = { _ in nil }
 
     /// The resolver for this process: its bundle and the standard defaults.
     static func live(searchPath: String, defaults: UserDefaults = .standard) -> TTBinaryResolver {
@@ -59,7 +66,8 @@ struct TTBinaryResolver {
             overridePath: defaults.string(forKey: overrideDefaultsKey),
             bundleResourcesURL: Bundle.main.resourceURL,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
-            searchPath: searchPath
+            searchPath: searchPath,
+            buildTime: { TTVersion.read(binary: $0)?.built }
         )
     }
 
@@ -76,7 +84,7 @@ struct TTBinaryResolver {
         if let bundleResourcesURL {
             candidates.append((bundleResourcesURL.appendingPathComponent("bin/tt").path, .bundled))
         }
-        candidates.append((homeDirectory.appendingPathComponent(".local/bin/tt").path, .localBin))
+        candidates.append((localBinPath, .localBin))
         for dir in searchPath.split(separator: ":") where !dir.isEmpty {
             candidates.append((URL(fileURLWithPath: expandingTilde(String(dir))).appendingPathComponent("tt").path, .path))
         }
@@ -85,10 +93,29 @@ struct TTBinaryResolver {
         for (path, source) in candidates where !tried.contains(path) {
             tried.append(path)
             if isExecutableFile(path) {
+                if source == .bundled, let newer = newerLocalBin(than: path) {
+                    return .success(Resolution(url: URL(fileURLWithPath: newer), source: .newerLocalBin))
+                }
                 return .success(Resolution(url: URL(fileURLWithPath: path), source: source))
             }
         }
         return .failure(NotFound(invalidOverride: nil, tried: tried))
+    }
+
+    /// `~/.local/bin/tt`, when it is executable and built after `bundled`.
+    private func newerLocalBin(than bundled: String) -> String? {
+        let local = localBinPath
+        guard isExecutableFile(local),
+              let localBuilt = buildTime(local),
+              let bundledBuilt = buildTime(bundled),
+              localBuilt > bundledBuilt else {
+            return nil
+        }
+        return local
+    }
+
+    var localBinPath: String {
+        homeDirectory.appendingPathComponent(".local/bin/tt").path
     }
 
     private func expandingTilde(_ path: String) -> String {

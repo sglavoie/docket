@@ -100,6 +100,43 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(TTDefaultFontSize.label(13.5), "13.5 pt")
     }
 
+    func testBinaryStatusNamesTheRunningVersionAndAnOlderCopy() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("tt-skew-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let bundled = dir.appendingPathComponent("bundled/tt")
+        let local = dir.appendingPathComponent("local/tt")
+        for url in [bundled, local] {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try "#!/bin/sh\n".write(to: url, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        }
+        let old = "tt version a (commit: a, built: 2026-01-01T00:00:00Z)"
+        let new = "tt version b (commit: b, built: 2026-02-01T00:00:00Z)"
+        let versions = [bundled.path: new, local.path: old]
+
+        let model = PreferencesModel(defaults: defaults)
+        model.bundledBinaryPath = bundled.path
+        model.localBinaryPath = local.path
+        model.readVersion = { versions[$0].flatMap(TTVersion.parse) }
+        model.refreshBinaryStatus()
+        XCTAssertNil(model.runningBinaryNote, "nothing runs yet")
+
+        model.runningBinary = .init(url: bundled, source: .bundled)
+        model.refreshBinaryStatus()
+        XCTAssertEqual(model.runningBinaryNote, "Running \(bundled.path): \(new)")
+        XCTAssertTrue(model.binarySkewNote?.contains("is older (\(old))") ?? false)
+
+        model.runningBinary = .init(url: local, source: .newerLocalBin)
+        model.readVersion = { [bundled.path: old, local.path: new][$0].flatMap(TTVersion.parse) }
+        model.refreshBinaryStatus()
+        XCTAssertTrue(model.binarySkewNote?.hasPrefix("Chosen over the older bundled copy") ?? false)
+
+        model.runningBinary = .init(url: bundled, source: .bundled)
+        model.readVersion = { _ in TTVersion.parse(new) }
+        model.refreshBinaryStatus()
+        XCTAssertNil(model.binarySkewNote, "matching copies say nothing")
+    }
+
     func testTheModelStartsFromTheDefaultsAndSavesEachChange() {
         let model = PreferencesModel(defaults: defaults)
         XCTAssertEqual(model.exitBehavior, .relaunchOnShow)

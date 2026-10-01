@@ -111,6 +111,7 @@ final class TerminalWindowControllerTests: XCTestCase {
         while read -r line; do
           case "$line" in
             exit*) exit "${line#exit }" ;;
+            bg*) printf '\\033]11;%s\\033\\\\' "${line#bg }" ;;
             *) printf 'GOT:%s:\\n' "$line" ;;
           esac
         done
@@ -143,8 +144,15 @@ final class TerminalWindowControllerTests: XCTestCase {
         weak var controller: TerminalWindowController?
 
         func ghosttyApp(_ app: Ghostty.App, perform action: ghostty_action_s, target: ghostty_target_s) -> Bool {
-            guard action.tag == GHOSTTY_ACTION_SHOW_CHILD_EXITED else { return false }
-            controller?.childExited(surface: target.target.surface)
+            switch action.tag {
+            case GHOSTTY_ACTION_SHOW_CHILD_EXITED:
+                controller?.childExited(surface: target.target.surface)
+            case GHOSTTY_ACTION_COLOR_CHANGE:
+                let change = action.action.color_change
+                DispatchQueue.main.async { [weak self] in self?.controller?.colorChanged(change) }
+            default:
+                return false
+            }
             return true
         }
 
@@ -194,6 +202,21 @@ final class TerminalWindowControllerTests: XCTestCase {
         let screen = screenText()
         let parts = try XCTUnwrap(screen.components(separatedBy: "READY:").last?.split(separator: ":").first)
         return try XCTUnwrap(pid_t(parts))
+    }
+
+    /// tt announces its theme background with OSC 11; the title bar follows,
+    /// with title text that reads on it.
+    func testTheWindowTakesTheBackgroundTheProgramSets() throws {
+        try start()
+        XCTAssertTrue(controller.window.titlebarAppearsTransparent)
+
+        type("bg #f6f6f0")
+        try wait("a light background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 0 > 0.9 }
+        XCTAssertEqual(controller.window.appearance?.name, .aqua)
+
+        type("bg #1a1b26")
+        try wait("a dark background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 1 < 0.2 }
+        XCTAssertEqual(controller.window.appearance?.name, .darkAqua)
     }
 
     func testHideAndShowKeepTheSameSession() throws {

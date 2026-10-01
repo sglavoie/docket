@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 type testViewWithMetadata struct{}
@@ -49,6 +50,37 @@ func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	}
 	if !strings.Contains(output.Content, "Subview content") {
 		t.Fatal("expected composed app content to contain the subview content")
+	}
+}
+
+// TestAppViewAnnouncesTheThemeBackground: the terminal's default background is
+// the theme's, so its padding and a host window match the painted cells, and
+// a --no-color run or the closing frame announces none.
+func TestAppViewAnnouncesTheThemeBackground(t *testing.T) {
+	saved := theme.ThemeBgColor
+	t.Cleanup(func() { theme.ThemeBgColor = saved })
+	theme.ThemeBgColor = "#1a1b26"
+
+	app := newTestAppModel()
+	if got := app.View().BackgroundColor; got != theme.ColorBackground {
+		t.Fatalf("background = %v, want the theme's %v", got, theme.ColorBackground)
+	}
+
+	theme.ThemeBgColor = ""
+	if got := app.View().BackgroundColor; got != nil {
+		t.Fatalf("unthemed background = %v, want none", got)
+	}
+	theme.ThemeBgColor = "#1a1b26"
+
+	app.lifecycle.colorDisabled = true
+	if got := app.View().BackgroundColor; got != nil {
+		t.Fatalf("--no-color background = %v, want none", got)
+	}
+
+	app.lifecycle.colorDisabled = false
+	app.lifecycle.quitting = true
+	if got := app.View().BackgroundColor; got != nil {
+		t.Fatalf("closing background = %v, want none", got)
 	}
 }
 

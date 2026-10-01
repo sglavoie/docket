@@ -1,5 +1,6 @@
 // Ported and trimmed from Ghostty's macOS app (MIT); see macos/NOTICE-ghostty.
 import Foundation
+import AppKit
 import GhosttyKit
 
 extension Ghostty {
@@ -120,6 +121,11 @@ extension Ghostty {
             return String(cString: ptr)
         }
 
+        /// The configured default background, before any program changes it.
+        var backgroundColor: NSColor? {
+            self.get("background", as: ghostty_config_color_s.self, initial: ghostty_config_color_s()).map(Ghostty.color)
+        }
+
         private static func load(userConfig: URL?, overrides: ConfigOverrides) -> ghostty_config_t? {
             // A new config already holds Ghostty's built-in defaults.
             guard let cfg = ghostty_config_new() else {
@@ -150,5 +156,11 @@ extension Ghostty {
             ghostty_config_finalize(cfg)
             return cfg
         }
+    }
+}
+
+extension Ghostty {
+    static func color(_ c: ghostty_config_color_s) -> NSColor {
+        NSColor(srgbRed: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: 1)
     }
 }

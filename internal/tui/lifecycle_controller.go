@@ -62,6 +62,17 @@ type lifecycleController struct {
 	// has already pressed a key owns the cursor and a load still on its way may
 	// not move it.
 	launchFocus bool
+
+	// colorDisabled is a --no-color run. The terminal background tt announces
+	// is written outside the renderer's color profile, so that run announces
+	// none rather than color the terminal behind a colorless frame.
+	colorDisabled bool
+}
+
+// WithDisabledColor marks a --no-color run. RunApp translates the flag into
+// this option; the renderer's own profile already strips the cells.
+func WithDisabledColor() AppOption {
+	return func(m *AppModel) { m.lifecycle.colorDisabled = true }
 }
 
 // armLaunchFocus declares that this session still owes the cursor its starting
@@ -122,6 +133,9 @@ type RunOptions struct {
 func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOptions, opts ...AppOption) error {
 	if runOpts.HideAdvisories {
 		opts = append(opts, WithHiddenAdvisories())
+	}
+	if runOpts.DisableColor {
+		opts = append(opts, WithDisabledColor())
 	}
 	if runtime == nil {
 		return fmt.Errorf("runtime state is required")

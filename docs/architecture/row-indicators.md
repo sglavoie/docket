@@ -322,6 +322,13 @@ ignores an inherited `NO_COLOR`, while the explicit `--no-color` flag still
 disables color; the moving heavy glyph segment keeps the flash visible even then.
 Non-interactive commands retain the inherited environment.
 
+Every frame also names the theme background as the terminal's default
+(`tea.View.BackgroundColor`, OSC 11), so the cells `applyBackground` does not
+reach — the terminal's padding, and a host window such as tt.app's title bar
+that follows it — match the ones it does. Bubble Tea restores the terminal's
+own color on exit; `--no-color` and the closing frame name none, since that
+color is written outside the renderer's profile.
+
 Success, informational, and view-owned text is quiet: it reaches the footer and
 the divider does not move for it. `footerFlashSeverity.animates()` is that
 closed table — `flashWarning` and `flashError` and nothing else — and it is read

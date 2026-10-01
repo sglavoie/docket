@@ -38,6 +38,26 @@ final class SurfaceViewTests: XCTestCase {
         ghostty_surface_size(try XCTUnwrap(view.surface))
     }
 
+    func testTheSurfaceAcceptsDroppedFilesURLsAndText() throws {
+        XCTAssertTrue(Set(view.registeredDraggedTypes).isSuperset(of: Ghostty.SurfaceView.dropTypes))
+
+        let pasteboard = NSPasteboard(name: .init("tt-drop-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        pasteboard.writeObjects([
+            URL(fileURLWithPath: "/tmp/Screen Shot (1).png") as NSURL,
+            URL(fileURLWithPath: "/tmp/b.txt") as NSURL,
+        ])
+        XCTAssertEqual(Ghostty.SurfaceView.dropText(from: pasteboard), "/tmp/Screen\\ Shot\\ \\(1\\).png /tmp/b.txt")
+
+        pasteboard.clearContents()
+        pasteboard.setString("https://example.com/x", forType: .string)
+        XCTAssertEqual(Ghostty.SurfaceView.dropText(from: pasteboard), "https://example.com/x")
+
+        pasteboard.clearContents()
+        XCTAssertNil(Ghostty.SurfaceView.dropText(from: pasteboard))
+    }
+
     /// A new default zoom reaches a zoomed surface only through the reset
     /// that follows the reload, which is how Preferences applies it.
     func testReloadedFontSizeAppliesToAZoomedSurfaceOnReset() throws {

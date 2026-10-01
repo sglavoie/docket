@@ -50,9 +50,21 @@ gitignored: edit the spec, not the project.
 
 The first executable of: the Preferences override (`ttBinaryPath`), the
 bundled `Contents/Resources/bin/tt`, `~/.local/bin/tt`, then `PATH`. A Release
-build always bundles one, so an installed app runs the `tt` it was built with;
-reinstall to update it. A Debug build bundles none and falls through to
-`just install`'s copy.
+build always bundles one, so an installed app runs the `tt` it was built with,
+with one exception: a `~/.local/bin/tt` whose `--version` reports a later
+`built:` time than the bundled copy's runs instead, since the older binary
+refuses a workspace the newer one has migrated. A Debug build bundles none and
+falls through to `just install`'s copy. Preferences names the binary running,
+its version, and an older copy of the pair when there is one.
+
+### Environment
+
+A Finder-launched app inherits almost no environment, so tt.app asks your
+login shell, interactively (`$SHELL -l -i`), for `PATH`, `EDITOR`, `VISUAL`,
+`TT_EDITOR`, and `TT_DATA_DIR`, and passes those to tt: `Ctrl+E` opens the
+editor your terminal would, and `TT_DATA_DIR` picks the same workspace. A
+shell that cannot run interactively within five seconds is asked again as a
+plain login shell.
 
 ### Signing and notarization
 
@@ -120,6 +132,20 @@ config-file = ~/.config/ghostty/config
 Preferences has Open and Reload for it. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 tt runs in.
+
+### Drag and drop
+
+Dropping files on the window types their paths, shell-escaped and
+space-separated, as a paste would; URLs and text drop as text. Type `&` in
+capture and drop a file to attach it, or drop one into the Attachments
+panel's add prompt.
+
+### Window background
+
+tt announces its theme background to the terminal (OSC 11), and the title bar
+takes that color, with light or dark title text to match, so the window reads
+as one surface. Before tt sets it, the title bar uses the Ghostty config's
+`background`.
 
 ### Default zoom
 

@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return
         }
         NSLog("tt: running %@ (%@)", binary.url.path, String(describing: binary.source))
+        preferencesModel.runningBinary = binary
 
         guard let launcher = Bundle.main.url(forResource: "tt-launch", withExtension: nil) else {
             showLaunchError(title: "tt.app is incomplete.", message: "Its tt-launch helper is missing from Resources.")
@@ -257,6 +258,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case GHOSTTY_ACTION_MOUSE_VISIBILITY:
             let visible = action.action.mouse_visibility == GHOSTTY_MOUSE_VISIBLE
             onMain { [weak self] in self?.terminal?.surfaceView?.setCursorVisibility(visible) }
+            return true
+        case GHOSTTY_ACTION_COLOR_CHANGE:
+            let change = action.action.color_change
+            onMain { [weak self] in self?.terminal?.colorChanged(change) }
             return true
         case GHOSTTY_ACTION_RENDERER_HEALTH:
             if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {

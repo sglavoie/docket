@@ -32,12 +32,13 @@ final class TTBinaryResolverTests: XCTestCase {
         return url
     }
 
-    private func resolver(override: String? = nil) -> TTBinaryResolver {
+    private func resolver(override: String? = nil, built: [URL: Date] = [:]) -> TTBinaryResolver {
         TTBinaryResolver(
             overridePath: override,
             bundleResourcesURL: resources,
             homeDirectory: home,
-            searchPath: "\(pathA.path)::\(pathB.path)"
+            searchPath: "\(pathA.path)::\(pathB.path)",
+            buildTime: { path in built[URL(fileURLWithPath: path)] }
         )
     }
 
@@ -80,6 +81,37 @@ final class TTBinaryResolverTests: XCTestCase {
         try makeBinary(localBin)
         try makeBinary(pathA.appendingPathComponent("tt"))
         XCTAssertEqual(try resolver().resolve().get(), .init(url: bundled, source: .bundled))
+    }
+
+    func testNewerLocalBinBeatsOlderBundled() throws {
+        try makeBinary(bundled)
+        try makeBinary(localBin)
+        let old = Date(timeIntervalSince1970: 1_000)
+        let new = Date(timeIntervalSince1970: 2_000)
+
+        XCTAssertEqual(try resolver(built: [bundled: old, localBin: new]).resolve().get(),
+                       .init(url: localBin, source: .newerLocalBin))
+        XCTAssertEqual(try resolver(built: [bundled: new, localBin: old]).resolve().get().source, .bundled)
+        XCTAssertEqual(try resolver(built: [bundled: old, localBin: old]).resolve().get().source, .bundled)
+        // An unknown build time on either side keeps the bundled copy.
+        XCTAssertEqual(try resolver(built: [localBin: new]).resolve().get().source, .bundled)
+        XCTAssertEqual(try resolver(built: [bundled: old]).resolve().get().source, .bundled)
+    }
+
+    func testOverrideBeatsNewerLocalBin() throws {
+        let custom = try makeBinary(root.appendingPathComponent("custom/tt"))
+        try makeBinary(bundled)
+        try makeBinary(localBin)
+        let r = resolver(override: custom.path, built: [bundled: .distantPast, localBin: .distantFuture])
+        XCTAssertEqual(try r.resolve().get().source, .userDefaultsOverride)
+    }
+
+    func testVersionParsing() {
+        let v = TTVersion.parse("tt version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)\n")
+        XCTAssertEqual(v?.line, "tt version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)")
+        XCTAssertEqual(v?.built, ISO8601DateFormatter().date(from: "2026-10-01T02:45:16Z"))
+        XCTAssertNil(TTVersion.parse("tt version dev (commit: unknown, built: unknown)")?.built)
+        XCTAssertNil(TTVersion.parse("Error: unknown flag"))
     }
 
     func testLocalBinBeatsPath() throws {
@@ -132,15 +164,32 @@ final class TTBinaryResolverTests: XCTestCase {
         return out
     }
 
-    func testLoginShellPathExtraction() {
-        let noisy = "welcome!\n__B__/a:/b__E__trailing"
-        XCTAssertEqual(LaunchEnvironment.extractPath(from: noisy, begin: "__B__", end: "__E__"), "/a:/b")
-        XCTAssertNil(LaunchEnvironment.extractPath(from: "no markers", begin: "__B__", end: "__E__"))
+    func testLoginShellReportExtraction() {
+        let noisy = "welcome!\n__B__PATH=/a:/b\0EDITOR=nvim -f\0VISUAL=\0X=a=b\0__E__trailing"
+        XCTAssertEqual(
+            LaunchEnvironment.extractReport(from: noisy, begin: "__B__", end: "__E__"),
+            ["PATH": "/a:/b", "EDITOR": "nvim -f", "X": "a=b"]
+        )
+        XCTAssertNil(LaunchEnvironment.extractReport(from: "no markers", begin: "__B__", end: "__E__"))
     }
 
-    func testLoginShellPathFromRealShell() {
-        let path = LaunchEnvironment.loginShellPath(shell: "/bin/sh")
-        XCTAssertNotNil(path)
-        XCTAssertTrue(path?.contains("/usr/bin") ?? false)
+    func testLoginShellEnvironmentFromRealShell() {
+        let report = LaunchEnvironment.loginShellEnvironment(shell: "/bin/sh", interactive: false)
+        XCTAssertTrue(report?["PATH"]?.contains("/usr/bin") ?? false)
+    }
+
+    func testCommandEnvironmentForwardsEditorsButKeepsHomeAndPath() {
+        let env = LaunchEnvironment(
+            home: "/Users/me",
+            path: "/bin",
+            forwarded: ["EDITOR": "nvim", "TT_DATA_DIR": "/data"]
+        )
+        XCTAssertEqual(env.commandEnvironment, ["HOME": "/Users/me", "PATH": "/bin", "EDITOR": "nvim", "TT_DATA_DIR": "/data"])
+    }
+
+    func testReportScriptNamesEveryForwardedVariable() {
+        for name in ["PATH"] + LaunchEnvironment.forwardedNames {
+            XCTAssertTrue(LaunchEnvironment.reportScript.contains("'\(name)' \"$\(name)\""), name)
+        }
     }
 }

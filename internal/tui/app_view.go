@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	defer func() {
 		result.AltScreen = true
 		result.KeyboardEnhancements.ReportEventTypes = true
+		result.BackgroundColor = m.terminalBackground()
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			logging.Warn("TUI panic in View: %v\n%s", r, stack)
@@ -234,6 +236,18 @@ func (m *AppModel) applyBackground(content string) string {
 		lines = append(lines, emptyLine)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// terminalBackground is the theme background announced to the terminal as its
+// default (OSC 11), so the terminal's padding — and a host window that follows
+// it, as tt.app's does — matches the cells applyBackground paints. Bubble Tea
+// restores the terminal's own color when the program exits, and nil, on the
+// way out or under --no-color, restores it at once.
+func (m *AppModel) terminalBackground() color.Color {
+	if m.lifecycle.quitting || m.lifecycle.colorDisabled || theme.ThemeBgColor == "" {
+		return nil
+	}
+	return theme.ColorBackground
 }
 
 // hexToBgEsc converts a #rrggbb hex color to an ANSI true-color background

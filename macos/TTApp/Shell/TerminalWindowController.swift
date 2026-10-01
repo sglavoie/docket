@@ -50,6 +50,13 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         window.tabbingMode = .disallowed
         window.delegate = self
 
+        // The title bar shows the window's background, which follows the
+        // terminal's; tt announces its theme's, so the window reads as one surface.
+        window.titlebarAppearsTransparent = true
+        if let background = ghostty.config.backgroundColor {
+            setTerminalBackground(background)
+        }
+
         container.orientation = .vertical
         container.spacing = 0
         container.distribution = .fill
@@ -98,6 +105,29 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// closed terminal would.
     func teardown() {
         endSession()
+    }
+
+    // MARK: Background
+
+    /// The terminal's default background changed: tt set its theme's (OSC 11),
+    /// or reset it on exit. The foreground and cursor colors matter to nothing
+    /// outside the terminal.
+    func colorChanged(_ change: ghostty_action_color_change_s) {
+        guard change.kind == GHOSTTY_ACTION_COLOR_KIND_BACKGROUND else { return }
+        setTerminalBackground(Ghostty.color(ghostty_config_color_s(r: change.r, g: change.g, b: change.b)))
+    }
+
+    /// The title bar takes the background, with the appearance whose title
+    /// text reads on it.
+    func setTerminalBackground(_ color: NSColor) {
+        window.backgroundColor = color
+        window.appearance = NSAppearance(named: Self.isDark(color) ? .darkAqua : .aqua)
+    }
+
+    static func isDark(_ color: NSColor) -> Bool {
+        guard let rgb = color.usingColorSpace(.sRGB) else { return true }
+        let luminance = 0.2126 * rgb.redComponent + 0.7152 * rgb.greenComponent + 0.0722 * rgb.blueComponent
+        return luminance < 0.5
     }
 
     // MARK: Session

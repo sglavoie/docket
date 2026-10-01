@@ -58,6 +58,18 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// The binary this session runs, set by the app delegate once resolved;
+    /// its notes are read when Preferences opens, not at launch.
+    var runningBinary: TTBinaryResolver.Resolution?
+    /// Which tt runs and its version.
+    @Published private(set) var runningBinaryNote: String?
+    /// A second copy that disagrees with the running one, and what to do.
+    @Published private(set) var binarySkewNote: String?
+    /// Where the bundled and `~/.local/bin` copies live; the app's own by default.
+    var bundledBinaryPath = Bundle.main.resourceURL?.appendingPathComponent("bin/tt").path
+    var localBinaryPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/tt").path
+    var readVersion: (String) -> TTVersion? = { TTVersion.read(binary: $0) }
+
     @Published private(set) var launchAtLogin = false
     @Published private(set) var launchAtLoginNote: String?
 
@@ -88,6 +100,44 @@ final class PreferencesModel: ObservableObject {
             binaryOverride = stored
         }
         refreshLoginItem()
+        refreshBinaryStatus()
+    }
+
+    /// Reads the running binary's version and, when it is one of the bundled
+    /// and `~/.local/bin` pair, how the other one compares.
+    func refreshBinaryStatus() {
+        guard let running = runningBinary else {
+            runningBinaryNote = nil
+            binarySkewNote = nil
+            return
+        }
+        let path = running.url.path
+        let version = readVersion(path)
+        runningBinaryNote = "Running \(Self.abbreviated(path)): \(version?.line ?? "version unknown")"
+
+        binarySkewNote = nil
+        let other: String?
+        switch running.source {
+        case .bundled: other = localBinaryPath
+        case .newerLocalBin: other = bundledBinaryPath
+        default: other = nil
+        }
+        guard let other, TTBinaryResolver.isExecutableRegularFile(other),
+              let otherVersion = readVersion(other), otherVersion.line != version?.line else {
+            return
+        }
+        if running.source == .newerLocalBin {
+            binarySkewNote = "Chosen over the older bundled copy (\(otherVersion.line)). "
+                + "Reinstall tt.app to update it."
+        } else if let built = otherVersion.built, let runningBuilt = version?.built, built < runningBuilt {
+            binarySkewNote = "\(Self.abbreviated(other)) is older (\(otherVersion.line)) "
+                + "and refuses a workspace this one migrates: `just install` updates it."
+        }
+    }
+
+    static func abbreviated(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
     }
 
     func refreshLoginItem() {
@@ -227,7 +277,14 @@ struct PreferencesView: View {
                 if let problem = model.binaryOverrideProblem {
                     note(problem, warning: true)
                 }
-                note("Leave empty to use the bundled tt, ~/.local/bin/tt, then PATH. "
+                if let running = model.runningBinaryNote {
+                    note(running)
+                }
+                if let skew = model.binarySkewNote {
+                    note(skew, warning: true)
+                }
+                note("Leave empty to use the bundled tt, ~/.local/bin/tt, then PATH; "
+                    + "a ~/.local/bin/tt built after the bundled one wins. "
                     + "Takes effect the next time tt.app starts.")
             }
 

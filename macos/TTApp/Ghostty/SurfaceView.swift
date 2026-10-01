@@ -101,6 +101,7 @@ extension Ghostty {
                 return
             }
             self.surface = surface
+            registerForDraggedTypes(Self.dropTypes)
             sizeDidChange(frame.size)
             syncColorScheme()
             updateTrackingAreas()
@@ -264,6 +265,34 @@ extension Ghostty {
             guard scheme != appliedColorScheme else { return }
             appliedColorScheme = scheme
             ghostty_surface_set_color_scheme(surface, scheme)
+        }
+
+        // MARK: Drag and drop
+
+        /// Files arrive as shell-escaped paths, which tt's `&link` and its
+        /// Attachments panel both read as one path; URLs and text as text.
+        static let dropTypes: [NSPasteboard.PasteboardType] = [.fileURL, .URL, .string]
+
+        /// What a drop types into tt: the same text a paste of that pasteboard would.
+        static func dropText(from pasteboard: NSPasteboard) -> String? {
+            Ghostty.App.stringContents(of: pasteboard).flatMap { $0.isEmpty ? nil : $0 }
+        }
+
+        override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+            Self.dropText(from: sender.draggingPasteboard) == nil ? [] : .copy
+        }
+
+        override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+            guard let surface, let text = Self.dropText(from: sender.draggingPasteboard) else { return false }
+            let len = text.utf8CString.count
+            text.withCString { ptr in
+                ghostty_surface_text(surface, ptr, UInt(len - 1))
+            }
+            // A drop from Finder leaves Finder in front; keep typing in tt.
+            NSApp.activate(ignoringOtherApps: true)
+            window?.makeKeyAndOrderFront(nil)
+            window?.makeFirstResponder(self)
+            return true
         }
 
         // MARK: Title
