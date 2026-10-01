@@ -100,6 +100,45 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(TTDefaultFontSize.label(13.5), "13.5 pt")
     }
 
+    func testEnvironmentOverridesKeepKnownSingleLineValuesOnly() {
+        TTEnvironmentOverrides.save([
+            "EDITOR": "  hx  ", "VISUAL": "", "PATH": "a\nb", "HOME": "/elsewhere", "TT_DATA_DIR": "~/tt",
+        ], to: defaults)
+        XCTAssertEqual(TTEnvironmentOverrides.load(from: defaults), ["EDITOR": "hx", "TT_DATA_DIR": "~/tt"])
+        TTEnvironmentOverrides.save([:], to: defaults)
+        XCTAssertNil(defaults.object(forKey: TTEnvironmentOverrides.defaultsKey))
+        XCTAssertEqual(TTEnvironmentOverrides.names.first, "PATH")
+    }
+
+    func testOverridesReplaceTheShellsValuesAndKeepTheRest() {
+        let shell = LaunchEnvironment(home: "/Users/me", path: "/bin", forwarded: ["EDITOR": "nvim", "VISUAL": "nvim"])
+        let applied = shell.applying(["PATH": "/opt/bin:/bin", "EDITOR": "hx", "TT_DATA_DIR": "/data", "HOME": "/x"])
+        XCTAssertEqual(applied.commandEnvironment, [
+            "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "EDITOR": "hx", "VISUAL": "nvim", "TT_DATA_DIR": "/data",
+        ])
+        XCTAssertEqual(applied.value(of: "PATH"), "/opt/bin:/bin")
+        XCTAssertNil(shell.value(of: "TT_EDITOR"))
+    }
+
+    func testAnEnvironmentEditAwaitsARelaunchOnlyWhileTheOldValuesRun() {
+        let model = PreferencesModel(defaults: defaults)
+        var changes = 0
+        model.onEnvironmentChange = { changes += 1 }
+        model.detectedEnvironment = LaunchEnvironment(home: "/h", path: "/bin", forwarded: ["EDITOR": "nvim"])
+        XCTAssertFalse(model.environmentAwaitsRelaunch, "no session runs")
+
+        model.sessionEnvironment = model.effectiveEnvironment?.commandEnvironment
+        XCTAssertFalse(model.environmentAwaitsRelaunch)
+
+        model.environmentOverrides = ["EDITOR": "hx"]
+        XCTAssertTrue(model.environmentAwaitsRelaunch)
+        XCTAssertEqual(changes, 1)
+        XCTAssertEqual(PreferencesModel(defaults: defaults).environmentOverrides, ["EDITOR": "hx"], "saved")
+
+        model.environmentOverrides = [:]
+        XCTAssertFalse(model.environmentAwaitsRelaunch, "back to what runs")
+    }
+
     func testBinaryStatusNamesTheRunningVersionAndAnOlderCopy() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("tt-skew-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }

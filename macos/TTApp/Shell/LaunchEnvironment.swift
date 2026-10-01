@@ -22,6 +22,24 @@ struct LaunchEnvironment: Equatable {
         forwarded.merging(["HOME": home, "PATH": path]) { _, fixed in fixed }
     }
 
+    /// The value tt receives for one of `PATH` and the forwarded names.
+    func value(of name: String) -> String? {
+        name == "PATH" ? path : forwarded[name]
+    }
+
+    /// This environment with Preferences' values in place of the shell's.
+    func applying(_ overrides: [String: String]) -> LaunchEnvironment {
+        var result = self
+        for (name, value) in TTEnvironmentOverrides.sanitized(overrides) {
+            if name == "PATH" {
+                result.path = value
+            } else {
+                result.forwarded[name] = value
+            }
+        }
+        return result
+    }
+
     static func current(processEnvironment: [String: String] = ProcessInfo.processInfo.environment) -> LaunchEnvironment {
         let home = processEnvironment["HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.path
         let fallbackPath = processEnvironment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"

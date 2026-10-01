@@ -66,6 +66,19 @@ editor your terminal would, and `TT_DATA_DIR` picks the same workspace. A
 shell that cannot run interactively within five seconds is asked again as a
 plain login shell.
 
+Preferences lists the five, each showing the shell's value in gray. Typing a
+value gives tt that instead, and clearing the field returns to the shell's.
+They are stored together as the `ttEnvironment` dictionary default:
+
+```bash
+defaults write io.github.sglavoie.tt ttEnvironment -dict EDITOR hx
+defaults delete io.github.sglavoie.tt ttEnvironment   # use the shell's for all
+```
+
+tt reads its environment when it starts, so an edit reaches the next tt:
+Preferences offers Relaunch tt while the running one has the old values. A
+`PATH` override also searches for `tt` itself, which happens when tt.app starts.
+
 ### Signing and notarization
 
 `scripts/sign.sh` signs the bundled `tt` and then the app. By default the

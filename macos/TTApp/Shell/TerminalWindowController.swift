@@ -21,6 +21,9 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     /// The live session's surface; nil between a clean exit and the next show.
     private(set) var surfaceView: Ghostty.SurfaceView?
+    /// Called just before a new tt starts, and after a session is gone.
+    var onWillStartSession: (() -> Void)?
+    var onSessionEnd: (() -> Void)?
     /// Set once tt has exited on the current surface, so a later close request
     /// from that dead surface decides nothing.
     private(set) var exitAction: TTExitAction?
@@ -134,6 +137,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     private func startSession() {
         guard let app = ghostty.app else { return }
+        onWillStartSession?()
         try? FileManager.default.removeItem(at: statusFile)
         exitAction = nil
         window.title = "tt"
@@ -156,7 +160,11 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
             surfaceView.removeFromSuperview()
         }
         // The view's deinit frees the surface, which stops tt.
+        let hadSession = surfaceView != nil
         surfaceView = nil
+        if hadSession {
+            onSessionEnd?()
+        }
         exitAction = nil
         try? FileManager.default.removeItem(at: statusFile)
     }

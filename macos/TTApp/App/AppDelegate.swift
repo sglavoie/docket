@@ -35,7 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         guard !Self.isRunningTests else { return }
         setUpShell()
 
-        let environment = LaunchEnvironment.current()
+        let detected = LaunchEnvironment.current()
+        preferencesModel.detectedEnvironment = detected
+        let environment = detected.applying(preferencesModel.environmentOverrides)
         let binary: TTBinaryResolver.Resolution
         switch TTBinaryResolver.live(searchPath: environment.path).resolve() {
         case .success(let resolution):
@@ -60,11 +62,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             environment: environment.commandEnvironment,
             waitAfterCommand: true
         )
-        // Read on every load, so a reload applies the current default zoom.
+        // Read on every load, so a reload applies the current default zoom and
+        // the environment Preferences sets.
         let model = preferencesModel
         let ghostty = Ghostty.App {
             var current = overrides
             current.fontSize = model.defaultFontSize
+            current.environment = detected.applying(model.environmentOverrides).commandEnvironment
             return Ghostty.Config(overrides: current)
         }
         guard ghostty.readiness == .ready else {
@@ -77,9 +81,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         ghostty.delegate = self
         self.ghostty = ghostty
         model.onDefaultFontSizeChange = { [weak self] _ in self?.applyDefaultFontSize() }
+        model.onEnvironmentChange = { [weak self] in self?.scheduleEnvironmentReload() }
+        model.onRelaunch = { [weak self] in self?.relaunchTerminal() }
         refreshConfigFontSize()
 
         let controller = TerminalWindowController(ghostty: ghostty, statusFile: statusFile)
+        // A new tt takes the config's environment, so a reload still waiting
+        // on the typing pause goes first.
+        controller.onWillStartSession = { [weak self, weak model] in
+            self?.flushEnvironmentReload()
+            model?.sessionEnvironment = model?.effectiveEnvironment?.commandEnvironment
+        }
+        controller.onSessionEnd = { [weak model] in model?.sessionEnvironment = nil }
         terminal = controller
         controller.show()
     }
@@ -180,6 +193,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         guard let ghostty, ghostty.reloadConfig() else { return }
         terminal?.surfaceView?.performBindingAction("reset_font_size")
         refreshConfigFontSize()
+    }
+
+    private var pendingEnvironmentReload: DispatchWorkItem?
+
+    /// Each keystroke in an environment field changes the overrides; the
+    /// config is reloaded once typing pauses rather than per key.
+    private func scheduleEnvironmentReload() {
+        pendingEnvironmentReload?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.flushEnvironmentReload() }
+        pendingEnvironmentReload = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
+    }
+
+    private func flushEnvironmentReload() {
+        guard let pending = pendingEnvironmentReload else { return }
+        pending.cancel()
+        pendingEnvironmentReload = nil
+        ghostty?.reloadConfig()
     }
 
     /// What Preferences shows while no default zoom is set. With one set the

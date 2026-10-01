@@ -58,6 +58,32 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// What the login shell reported at launch, set by the app delegate.
+    @Published var detectedEnvironment: LaunchEnvironment?
+
+    /// Values typed in Preferences in place of the shell's; blank uses the shell's.
+    @Published var environmentOverrides: [String: String] {
+        didSet {
+            guard environmentOverrides != oldValue else { return }
+            TTEnvironmentOverrides.save(environmentOverrides, to: defaults)
+            onEnvironmentChange?()
+        }
+    }
+
+    /// The environment the running tt started with; nil while none runs.
+    @Published var sessionEnvironment: [String: String]?
+
+    /// What the next tt starts with.
+    var effectiveEnvironment: LaunchEnvironment? {
+        detectedEnvironment?.applying(environmentOverrides)
+    }
+
+    /// The running tt started with other values than the next one would.
+    var environmentAwaitsRelaunch: Bool {
+        guard let session = sessionEnvironment, let next = effectiveEnvironment else { return false }
+        return next.commandEnvironment != session
+    }
+
     /// The binary this session runs, set by the app delegate once resolved;
     /// its notes are read when Preferences opens, not at launch.
     var runningBinary: TTBinaryResolver.Resolution?
@@ -81,6 +107,8 @@ final class PreferencesModel: ObservableObject {
     var onRecordingChange: ((Bool) -> Void)?
     var onOpenGhosttyConfig: (() -> Void)?
     var onReloadGhosttyConfig: (() -> Void)?
+    var onEnvironmentChange: (() -> Void)?
+    var onRelaunch: (() -> Void)?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -89,6 +117,7 @@ final class PreferencesModel: ObservableObject {
         hotKey = TTHotKeyPreference.load(from: defaults)
         defaultFontSize = TTDefaultFontSize.load(from: defaults)
         binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
+        environmentOverrides = TTEnvironmentOverrides.load(from: defaults)
     }
 
     /// Re-reads what may have changed elsewhere, e.g. the login item in System
@@ -98,6 +127,10 @@ final class PreferencesModel: ObservableObject {
         let stored = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
         if stored != binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines) {
             binaryOverride = stored
+        }
+        let storedEnvironment = TTEnvironmentOverrides.load(from: defaults)
+        if storedEnvironment != TTEnvironmentOverrides.sanitized(environmentOverrides) {
+            environmentOverrides = storedEnvironment
         }
         refreshLoginItem()
         refreshBinaryStatus()
@@ -289,6 +322,28 @@ struct PreferencesView: View {
             }
 
             Section {
+                ForEach(TTEnvironmentOverrides.names, id: \.self) { name in
+                    LabeledContent(name) {
+                        let detected = model.detectedEnvironment?.value(of: name)
+                        TextField("", text: environmentBinding(name), prompt: Text(detected ?? "not set"))
+                            .labelsHidden()
+                            .font(.system(.body, design: .monospaced))
+                            .frame(minWidth: 260)
+                            .help(detected.map { "From your login shell: \($0)" } ?? "Your login shell does not set \(name).")
+                    }
+                }
+                if model.environmentAwaitsRelaunch {
+                    HStack {
+                        note("The running tt started with the previous values.", warning: true)
+                        Spacer()
+                        Button("Relaunch tt") { model.onRelaunch?() }
+                    }
+                }
+                note("Gray values are what your login shell sets. Type one to give tt "
+                    + "another; clear it to go back. tt reads these each time it starts.")
+            }
+
+            Section {
                 LabeledContent("Ghostty config") {
                     HStack {
                         Button("Open") { model.onOpenGhosttyConfig?() }
@@ -309,6 +364,18 @@ struct PreferencesView: View {
             .font(.callout)
             .foregroundStyle(warning ? Color.orange : Color.secondary)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// One variable's override; an empty field removes it.
+    private func environmentBinding(_ name: String) -> Binding<String> {
+        Binding(
+            get: { model.environmentOverrides[name] ?? "" },
+            set: { value in
+                var overrides = model.environmentOverrides
+                overrides[name] = value.isEmpty ? nil : value
+                model.environmentOverrides = overrides
+            }
+        )
     }
 
     private func chooseBinary() {
