@@ -81,9 +81,20 @@ Preferences offers Relaunch tt while the running one has the old values. A
 
 ### Signing and notarization
 
-`scripts/sign.sh` signs the bundled `tt` and then the app. By default the
-signature is ad-hoc: the app runs on the Mac that built it, and Gatekeeper
-(`spctl`) rejects it anywhere else. To sign for distribution:
+`scripts/sign.sh` signs the bundled `tt` and then the app. By default it uses
+the first Apple Development identity in your keychain (Xcode › Settings ›
+Accounts creates one), else signs ad-hoc; either way the app runs on the Mac
+that built it, and Gatekeeper (`spctl`) rejects it anywhere else.
+`TT_CODESIGN_IDENTITY=-` forces ad-hoc.
+
+The certificate matters for privacy prompts. tt.app's login-shell probe runs
+your shell startup files, so a `~/.zshrc` that reads from `~/Documents` makes
+macOS ask whether tt.app may access Documents. A certificate-signed app keeps
+that answer across rebuilds; an ad-hoc one is identified by its hash, so every
+`just mac-install` is a new app to macOS and asks again. The first launch after
+switching from ad-hoc asks once more.
+
+To sign for distribution:
 
 ```bash
 export TT_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"

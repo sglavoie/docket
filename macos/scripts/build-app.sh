@@ -11,7 +11,7 @@
 #                           the `just build` ldflags), optional for Debug, which
 #                           otherwise resolves ~/.local/bin/tt then PATH
 #   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
-#   TT_CODESIGN_IDENTITY    see sign.sh (default ad-hoc)
+#   TT_CODESIGN_IDENTITY    see sign.sh (default Apple Development, else ad-hoc)
 
 set -eu
 
