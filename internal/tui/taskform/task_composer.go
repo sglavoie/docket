@@ -435,3 +435,17 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 	}
 	return reqs, true
 }
+
+// ParseCaptureText reads text exactly as the compact composer would on
+// submit — every nonblank line through the capture grammar and the preset's
+// defaults — without a composer on screen. A host capturing through the
+// control socket uses it, so a line refused here is one `a` would refuse too.
+func ParseCaptureText(preset TaskComposerPreset, runtime *config.RuntimeState, text string) ([]app.CaptureRequest, []grammar.LineError) {
+	composer := NewTaskComposerModel(preset, runtime)
+	composer.Input.SetValue(text)
+	reqs, ok := composer.ParseCompactLines()
+	if !ok {
+		return nil, composer.Errors
+	}
+	return reqs, nil
+}

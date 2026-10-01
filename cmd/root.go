@@ -25,6 +25,10 @@ var noAdvisories bool
 // long enough to see work arrive.
 var notify bool
 
+// controlSocket belongs to the root command alone as well: it is the running
+// TUI that answers a host on it.
+var controlSocket string
+
 var (
 	openLogging  = logging.Init
 	closeLogging = logging.Close
@@ -165,6 +169,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().BoolVar(&noAdvisories, "no-advisories", false, "hide ambient advisory rows in the TUI (conflict count, load failures)")
 	rootCmd.Flags().BoolVar(&notify, "notify", false, "send a desktop notification (OSC 777) when a check-in arrives, a timed deadline passes, or a deferral ends")
+	rootCmd.Flags().StringVar(&controlSocket, "control", "", "serve a control socket at this path for a host app such as tt.app")
+	_ = rootCmd.MarkFlagFilename("control")
 	rootCmd.Flags().Bool("version", false, "print the version and exit")
 }
 
@@ -222,6 +228,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		DisableColor:   noColor,
 		HideAdvisories: noAdvisories,
 		Notify:         notify,
+		ControlSocket:  controlSocket,
 	})
 }
 

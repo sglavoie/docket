@@ -8,6 +8,7 @@ protocol StatusItemDelegate: AnyObject {
     var isLaunchAtLoginEnabled: Bool { get }
     func toggleTerminal()
     func relaunchTerminal()
+    func showQuickCapture(_ sender: Any?)
     func showPreferences(_ sender: Any?)
     func toggleLaunchAtLogin()
 }
@@ -20,6 +21,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private weak var delegate: StatusItemDelegate?
 
     private let toggleItem = NSMenuItem(title: "Show tt", action: #selector(toggle(_:)), keyEquivalent: "")
+    private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
     private let relaunchItem = NSMenuItem(title: "Relaunch tt", action: #selector(relaunch(_:)), keyEquivalent: "")
     private let preferencesItem = NSMenuItem(title: "Preferences…", action: #selector(preferences(_:)), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(launchAtLogin(_:)), keyEquivalent: "")
@@ -30,10 +32,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem = statusBar.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
-        for item in [toggleItem, relaunchItem, preferencesItem, loginItem] {
+        for item in [toggleItem, captureItem, relaunchItem, preferencesItem, loginItem] {
             item.target = self
         }
         menu.addItem(toggleItem)
+        menu.addItem(captureItem)
         menu.addItem(relaunchItem)
         menu.addItem(.separator())
         menu.addItem(preferencesItem)
@@ -100,6 +103,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func toggle(_ sender: Any?) { delegate?.toggleTerminal() }
     @objc private func relaunch(_ sender: Any?) { delegate?.relaunchTerminal() }
+    @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }
     @objc private func preferences(_ sender: Any?) { delegate?.showPreferences(sender) }
     @objc private func launchAtLogin(_ sender: Any?) { delegate?.toggleLaunchAtLogin() }
 }

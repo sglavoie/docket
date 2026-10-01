@@ -43,9 +43,9 @@ func TestArrivalsReportOnlyWhatCrossedTheWindow(t *testing.T) {
 	project := &models.Project{ID: "p", Tasks: []*models.Task{checkIn, standing, deadline, dateOnly, woke, asleep, done}}
 	got := Arrivals([]*models.Project{project, nil}, since, now)
 	want := []Arrival{
-		{Kind: ArrivalCheckIn, Title: "check-in"},
-		{Kind: ArrivalDeadline, Title: "deadline"},
-		{Kind: ArrivalWake, Title: "woke"},
+		{Kind: ArrivalCheckIn, ProjectID: "p", TaskID: "check-in", Title: "check-in", Reviewable: true},
+		{Kind: ArrivalDeadline, ProjectID: "p", TaskID: "deadline", Title: "deadline"},
+		{Kind: ArrivalWake, ProjectID: "p", TaskID: "woke", Title: "woke"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("arrivals = %+v, want %+v", got, want)

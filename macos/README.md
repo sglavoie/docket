@@ -123,7 +123,8 @@ or Raycast rule that focused Ghostty for tt can go.
 ### Menu-bar icon and window
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
-opens its menu: Show/Hide, Relaunch tt, Preferences…, Launch at Login, Quit.
+opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Preferences…, Launch at
+Login, Quit. The Dock icon's menu has Quick Capture… and Relaunch tt.
 Its tooltip is tt's window title, the workspace pulse
 (`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
@@ -135,19 +136,50 @@ fresh `tt`, or, if Preferences says so, the app quits (`ttExitBehavior`:
 `relaunch` or `quit`). A failed exit or a crash always stays on screen with
 its status and a Relaunch button.
 
+### Talking to tt
+
+tt.app starts tt with `--control`, naming a socket in the app's temporary
+directory, and keeps one connection to it for the session. Over it tt reports
+its pulse and the work that arrives, and takes the requests below, each
+answered exactly as the key in tt would be: the same commit, the same undo
+entry, and a refusal while you are mid-way through something in tt rather than
+a change made under you. tt.app passes the flag only to a tt whose `--help`
+lists it, since an older one would refuse it and never start; with such a tt,
+the quick-capture panel names the binary and how to update it instead of
+sending anything, the notification actions are off, and notifications fall back
+to `--notify`. The binary and its flags are read when tt.app starts, so an
+updated tt is picked up by quitting and reopening the app, not by Relaunch tt.
+
+### Quick capture
+
+`Ctrl+Opt+Cmd+A` by default (after tt's own `a`) opens a capture field over
+whatever app is in front, without bringing tt forward. Type a line in the
+composer's grammar — `#tag`, `@date`, `%project`, `$state`, `!1` — and Enter
+sends it to tt, which captures it into Unfiled's Inbox unless the line says
+otherwise and offers `u undo` the next time you look. A line tt refuses stays in
+the field with tt's reason under it. Esc, or clicking elsewhere, puts the field
+away; the menu-bar and Dock menus also carry Quick Capture. If tt had exited, the
+capture starts it again first.
+
+The shortcut is set in Preferences beside the show/hide one, and stored as
+`ttCaptureHotKey`, spelled like `ttHotKey`:
+
+```bash
+defaults write io.github.sglavoie.tt ttCaptureHotKey 'ctrl+opt+n'
+defaults write io.github.sglavoie.tt ttCaptureHotKey ''    # off
+```
+
 ### Notifications and the Dock badge
 
-tt.app starts tt with `--notify`, so a check-in whose day comes, a timed
-deadline that passes, or a deferral that ends while tt runs becomes a
-Notification Center alert; clicking it brings tt forward. macOS asks for
-permission on the first one, and none is shown while tt is already in front.
-Preferences turns them off (`ttNotifications`): that silences the running tt at
-once, while turning them back on reaches the next tt, which reads its flags at
-start. tt.app passes the flag only to a tt whose `--help` lists it, since an
-older one would refuse it and never start; with such a tt there are no
-notifications until it is updated.
+A check-in whose day comes, a timed deadline that passes, or a deferral that
+ends while tt runs becomes a Notification Center alert. Up to three at once are
+one alert per task: clicking it shows tt with the cursor on that task, and its
+buttons act without leaving the app you are in — Acknowledge, offered only where
+`R` would accept it, and Defer 1 Hour. More arrive as one summary that brings tt
+forward. macOS asks for permission on the first one, and none is shown while tt
+is already in front. Preferences turns them off (`ttNotifications`), at once.
 
-The Dock icon carries the overdue count read from tt's title, and none at zero
+The Dock icon carries the overdue count from tt's pulse, and none at zero
 (`ttDockBadge`, also in Preferences):
 
 ```bash

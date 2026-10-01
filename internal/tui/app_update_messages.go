@@ -27,6 +27,11 @@ import (
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
+	// A host's request answers for itself whatever overlay is up: it refuses
+	// rather than reach an overlay that would mistake it for input.
+	if handled, cmd := m.handleControlMessage(msg); handled {
+		return true, cmd
+	}
 	if handled, cmd := m.handleOperationOverlayMessage(msg); handled {
 		return true, cmd
 	}

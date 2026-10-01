@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,13 +10,22 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/control"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskform"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workspace"
 )
@@ -131,8 +141,12 @@ type RunOptions struct {
 	// touching the machine-local setting. See advisories_shell.go.
 	HideAdvisories bool
 	// Notify sends a desktop notification escape when a check-in arrives, a
-	// timed deadline passes, or a deferral ends. See app_notifications.go.
+	// timed deadline passes, or a deferral ends. See notifyArrivals below.
 	Notify bool
+	// ControlSocket serves internal/control's socket at this path for the life
+	// of the session, so a host such as tt.app can ask it to act and hear its
+	// pulse and arrivals. See the control-socket section below.
+	ControlSocket string
 }
 
 // RunApp starts the TUI application.
@@ -173,6 +187,15 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOp
 	}
 
 	p := tea.NewProgram(model, tea.WithEnvironment(tuiEnvironment(os.Environ(), runOpts.DisableColor)))
+
+	if runOpts.ControlSocket != "" {
+		server, listenErr := control.Listen(runOpts.ControlSocket, controlDispatch(p.Send))
+		if listenErr != nil {
+			return listenErr
+		}
+		defer func() { _ = server.Close() }()
+		WithControlPublisher(server)(model)
+	}
 
 	// Recover from panics to restore terminal state before crashing.
 	defer func() {
@@ -273,7 +296,9 @@ func pipelineNextHint(vt presentation.PresentationID) string {
 // message arrives and nothing here runs.
 type externalReloadState struct {
 	// blurFingerprint is the workspace fingerprint taken at the last blur; empty
-	// before the first blur, which is what keeps a launch from reloading.
+	// while focused and before the first blur, which is what keeps a launch from
+	// reloading. A control-socket commit made while blurred advances it, since
+	// that change is tt's own.
 	blurFingerprint string
 	// owed records a detected change the shell could not yet adopt because the
 	// user was mid-interaction. The periodic tick and the next focus retry it.
@@ -301,12 +326,36 @@ func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	case tea.FocusMsg:
 		before := m.externalReload.blurFingerprint
+		m.externalReload.blurFingerprint = ""
 		if before != "" && before != m.workspaceFingerprint() {
 			m.externalReload.owed = true
 		}
 		return true, m.adoptExternalWorkspaceChange()
 	default:
 		return false, nil
+	}
+}
+
+// adoptBlurredWorkspaceChange is the focus check for a session acting while
+// blurred, as a control-socket request makes it: a change made elsewhere since
+// the blur is adopted before acting, so the act commits against a fresh read.
+func (m *AppModel) adoptBlurredWorkspaceChange() tea.Cmd {
+	before := m.externalReload.blurFingerprint
+	if before == "" {
+		return nil
+	}
+	if current := m.workspaceFingerprint(); before != current {
+		m.externalReload.owed = true
+		m.externalReload.blurFingerprint = current
+	}
+	return m.adoptExternalWorkspaceChange()
+}
+
+// recordBlurredWorkspace advances a blurred session's fingerprint over a commit
+// of its own.
+func (m *AppModel) recordBlurredWorkspace() {
+	if m.externalReload.blurFingerprint != "" {
+		m.externalReload.blurFingerprint = m.workspaceFingerprint()
 	}
 }
 
@@ -366,7 +415,7 @@ func WithNotifications() AppOption {
 // base task workspace through the pulse's own loader, which reparses only
 // files that changed, so a quiet tick costs a stat per project.
 func (m *AppModel) notifyArrivals(now time.Time) tea.Cmd {
-	if !m.notifications.enabled || m.domain.runtime == nil {
+	if (!m.notifications.enabled && !m.control.enabled()) || m.domain.runtime == nil {
 		return nil
 	}
 	since := m.notifications.since
@@ -382,6 +431,10 @@ func (m *AppModel) notifyArrivals(now time.Time) tea.Cmd {
 	if len(arrivals) == 0 {
 		return nil
 	}
+	m.publishControlArrivals(arrivals)
+	if !m.notifications.enabled {
+		return nil
+	}
 	return tea.Raw(pulse.DesktopNotification(pulse.ArrivalNotification(arrivals)))
 }
 
@@ -392,4 +445,335 @@ func (m *AppModel) ensurePulseLoader() *workspace.Loader {
 		m.pulseLoader = workspace.NewLoader()
 	}
 	return m.pulseLoader
+}
+
+// =============================================================================
+// The control socket: a host asking the running session to act
+// =============================================================================
+//
+// `tt --control PATH` serves internal/control's socket for a host such as
+// tt.app. Every request arrives here as a controlRequestMsg and is answered
+// from inside Update, so it reads the same state a keystroke would and commits
+// through the same coordinator, transaction, and undo ledger. A request is
+// refused, never queued, while the user is mid-interaction: the guard is the
+// external reload's, since a commit reloads the projects a picker, an editor, or
+// a selection is acting on.
+
+// controlPublisher is the socket's outbound half, as the shell sees it.
+type controlPublisher interface {
+	Publish(control.Event)
+}
+
+// controlState is the shell's link to the socket, nil-safe when tt runs
+// without one.
+type controlState struct {
+	publisher controlPublisher
+	// published is the last pulse sent, so an unchanged pulse is never resent.
+	published *pulse.WorkspacePulse
+}
+
+// WithControlPublisher connects the session to a control socket's events.
+// Arrivals are reported from launch on, as --notify reports them.
+func WithControlPublisher(publisher controlPublisher) AppOption {
+	return func(m *AppModel) {
+		m.control.publisher = publisher
+		if m.notifications.since.IsZero() {
+			m.notifications.since = time.Now()
+		}
+	}
+}
+
+func (c *controlState) enabled() bool { return c != nil && c.publisher != nil }
+
+// controlRequestMsg carries one request and the channel its reply goes to.
+// The channel is buffered, so answering never blocks Update.
+type controlRequestMsg struct {
+	request control.Request
+	reply   chan<- control.Reply
+}
+
+// controlDispatch is the socket's Dispatch for a running program: it hands the
+// request to Update and returns where the answer will arrive.
+func controlDispatch(send func(tea.Msg)) control.Dispatch {
+	return func(request control.Request) <-chan control.Reply {
+		replies := make(chan control.Reply, 1)
+		send(controlRequestMsg{request: request, reply: replies})
+		return replies
+	}
+}
+
+// controlCommittedMsg is a socket request's resolved commit: the coordinator's
+// own message, handled as the save pipeline handles it, plus the undo toast a
+// capture owes. A capture travels as TasksCapturedMsg rather than
+// TaskCreatedMsg, because that one pops the live view and the user was not in
+// a composer.
+type controlCommittedMsg struct {
+	inner    tea.Msg
+	feedback string
+	txID     string
+}
+
+func answer(reply chan<- control.Reply, ok bool, message string) {
+	reply <- control.Reply{OK: ok, Message: message}
+}
+
+// handleControlMessage answers the socket's requests and its own capture
+// results.
+func (m *AppModel) handleControlMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
+	case controlRequestMsg:
+		return true, m.answerControlRequest(msg.request, msg.reply)
+	case controlCommittedMsg:
+		return true, m.adoptControlCommit(msg)
+	default:
+		return false, nil
+	}
+}
+
+func (m *AppModel) answerControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
+	switch request.Op {
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture:
+	default:
+		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
+		return nil
+	}
+	if !m.safeToAdoptExternalChange() {
+		answer(reply, false, "tt is busy: finish what is open in tt first")
+		return nil
+	}
+	// A blurred session may be holding a workspace another machine changed;
+	// acting on it would commit against a stale read and record a conflict.
+	reload := m.adoptBlurredWorkspaceChange()
+
+	var cmd tea.Cmd
+	switch request.Op {
+	case control.OpCapture:
+		cmd = m.controlCapture(request.Text, reply)
+	default:
+		identity := taskref.TaskIdentity{ProjectID: request.Project, TaskID: request.Task}
+		task, project := m.taskAndProjectForIdentity(identity)
+		if task == nil || project == nil {
+			answer(reply, false, "that task is no longer in the workspace")
+			return reload
+		}
+		switch request.Op {
+		case control.OpReveal:
+			cmd = m.controlReveal(task, project, reply)
+		case control.OpAcknowledge:
+			cmd = m.controlAcknowledge(task, project, reply)
+		case control.OpDefer:
+			cmd = m.controlDefer(task, project, request.Minutes, reply)
+		}
+	}
+	return tea.Batch(reload, cmd)
+}
+
+// controlReveal seats the cursor on the task: in place when the current view
+// can show it, otherwise through the same scope-and-All recipe `gp` uses, so
+// Esc returns to the view the user left.
+func (m *AppModel) controlReveal(task *models.Task, project *models.Project, reply chan<- control.Reply) tea.Cmd {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		answer(reply, false, "the Outliner is not open")
+		return nil
+	}
+	// The user asked for this task; a launch still settling may not move it.
+	m.lifecycle.dropLaunchFocus()
+	identity := taskref.For(task, project)
+	previous := out.Cursor
+	out.NavigateToTaskInProject(task, project)
+	answer(reply, true, "Shown: "+task.Title)
+	if _, found := out.RowIndexForTask(identity); found {
+		return listsurface.FlashIfJumped(previous, out.Cursor, &out.CursorFlash)
+	}
+	targets := operation.ResolvedOperationTargets{Targets: []operation.OperationTarget{{Task: identity, ProjectID: project.ID}}}
+	if result, ok := m.coreGotoTaskProject(targets).Message.(operation.OperationCommandResultMsg); ok {
+		return result.Cmd
+	}
+	return nil
+}
+
+// controlAcknowledge reviews one task as R does, without the advance: the
+// cursor is not where the request came from.
+func (m *AppModel) controlAcknowledge(task *models.Task, project *models.Project, reply chan<- control.Reply) tea.Cmd {
+	if !models.TaskAllowsExplicitReview(task, time.Now()) {
+		answer(reply, false, "task has no review to acknowledge")
+		return nil
+	}
+	identity := taskref.For(task, project)
+	capture := m.captureOutlinerRelocationForLocators([]app.TaskLocator{identity.Locator()})
+	cmd := withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.MarkReviewed(identity), capture)
+	return replyWhenCommitted(cmd, reply, "Acknowledged: "+task.Title)
+}
+
+// controlDefer defers one task by minutes from now, through the request the
+// date picker's Defer section builds.
+func (m *AppModel) controlDefer(task *models.Task, project *models.Project, minutes int, reply chan<- control.Reply) tea.Cmd {
+	if minutes <= 0 {
+		answer(reply, false, "a deferral needs a positive number of minutes")
+		return nil
+	}
+	if refusal := app.DeferralRefusesState(task.WorkflowState); refusal != "" {
+		answer(reply, false, refusal)
+		return nil
+	}
+	until := time.Now().Add(time.Duration(minutes) * time.Minute)
+	locator := taskref.For(task, project).Locator()
+	request := app.TaskOperationRequest{
+		Operation: app.TaskOperationSetDefer,
+		Targets:   []app.TaskLocator{locator},
+		Date:      &until,
+	}
+	capture := m.captureOutlinerRelocationForLocators([]app.TaskLocator{locator})
+	cmd := withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(request, "Set Defer", ""), capture)
+	return replyWhenCommitted(cmd, reply, "Deferred until "+until.Format("15:04")+": "+task.Title)
+}
+
+// controlCapture reads text as the global `a` composer would and commits it as
+// one capture transaction.
+func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.Cmd {
+	preset, ok := m.captureComposerPreset(nil, nil, "")
+	if !ok {
+		answer(reply, false, "the Unfiled project is unavailable")
+		return nil
+	}
+	reqs, lineErrors := taskform.ParseCaptureText(preset, m.domain.runtime, text)
+	if len(lineErrors) > 0 {
+		answer(reply, false, controlLineErrors(lineErrors, strings.Count(strings.TrimSpace(text), "\n") > 0))
+		return nil
+	}
+	cmd := m.features.Capture.CaptureBulk(reqs, false)
+	return func() tea.Msg {
+		msg := cmd()
+		captured, ok := msg.(coordinator.TasksCapturedMsg)
+		if !ok || len(captured.Results) == 0 {
+			answer(reply, false, commitRefusal(msg))
+			return controlCommittedMsg{inner: msg}
+		}
+		summary := controlCapturedSummary(captured.Results)
+		answer(reply, true, summary)
+		return controlCommittedMsg{inner: captured, feedback: summary, txID: captured.Results[0].TransactionID}
+	}
+}
+
+// adoptControlCommit reloads what a socket request committed through the save
+// pipeline's own handler, then records the workspace a blurred session now
+// holds, so the next focus does not mistake tt's own commit for another
+// machine's.
+func (m *AppModel) adoptControlCommit(msg controlCommittedMsg) tea.Cmd {
+	_, refresh := m.handleGlobalSaveMessage(msg.inner)
+	m.recordBlurredWorkspace()
+	if msg.feedback == "" {
+		return refresh
+	}
+	return tea.Batch(refresh, m.setRecoveryFeedback(msg.feedback, msg.txID, false))
+}
+
+func controlCapturedSummary(results []app.TaskResult) string {
+	if len(results) == 1 {
+		return "Captured: " + results[0].Title
+	}
+	return "Captured " + util.Count(len(results), "task")
+}
+
+func controlLineErrors(lineErrors []grammar.LineError, multiline bool) string {
+	parts := make([]string, 0, len(lineErrors))
+	for _, lineError := range lineErrors {
+		if multiline {
+			parts = append(parts, fmt.Sprintf("line %d: %s", lineError.Line, lineError.Message))
+		} else {
+			parts = append(parts, lineError.Message)
+		}
+	}
+	return strings.Join(parts, "; ")
+}
+
+// replyWhenCommitted answers the socket once a coordinator command's commit
+// has resolved, and hands its message back to Update.
+func replyWhenCommitted(cmd tea.Cmd, reply chan<- control.Reply, success string) tea.Cmd {
+	if cmd == nil {
+		answer(reply, false, "nothing to do")
+		return nil
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		if refusal := commitRefusal(msg); refusal != "" {
+			answer(reply, false, refusal)
+		} else {
+			answer(reply, true, success)
+		}
+		return controlCommittedMsg{inner: msg}
+	}
+}
+
+// commitRefusal is the error a coordinator's message carries, or "" when it
+// committed.
+func commitRefusal(msg tea.Msg) string {
+	var err error
+	switch msg := msg.(type) {
+	case coordinator.TransactionErrorMsg:
+		err = msg.Err
+	case status.ErrorMsg:
+		err = msg.Err
+	case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg, coordinator.TasksCapturedMsg:
+		return ""
+	default:
+		err = errors.New("tt did not commit the change")
+	}
+	if err == nil {
+		return "tt did not commit the change"
+	}
+	return err.Error()
+}
+
+// =============================================================================
+// Events: the pulse and arrivals
+// =============================================================================
+
+// publishControlPulse sends the pulse when it changed since the last one sent.
+// It runs in Update's one deferred closure, after every refresh a message did.
+func (m *AppModel) publishControlPulse() {
+	if !m.control.enabled() {
+		return
+	}
+	current := m.workspacePulse
+	if m.control.published != nil && *m.control.published == current {
+		return
+	}
+	m.control.published = &current
+	m.control.publisher.Publish(control.Event{
+		Event: control.EventPulse,
+		Pulse: &control.Pulse{Inbox: current.Inbox, Today: current.Today, Overdue: current.Overdue, Done: current.Done},
+	})
+}
+
+// publishControlArrivals sends one tick's arrivals with each task's identity,
+// so the host can offer to act on it.
+func (m *AppModel) publishControlArrivals(arrivals []pulse.Arrival) {
+	if !m.control.enabled() || len(arrivals) == 0 {
+		return
+	}
+	title, body := pulse.ArrivalNotification(arrivals)
+	event := control.Event{Event: control.EventArrivals, Title: title, Body: body}
+	for _, arrival := range arrivals {
+		event.Arrivals = append(event.Arrivals, control.Arrival{
+			Kind:       controlArrivalKind(arrival.Kind),
+			Project:    arrival.ProjectID,
+			Task:       arrival.TaskID,
+			Title:      arrival.Title,
+			Reviewable: arrival.Reviewable,
+		})
+	}
+	m.control.publisher.Publish(event)
+}
+
+func controlArrivalKind(kind pulse.ArrivalKind) string {
+	switch kind {
+	case pulse.ArrivalCheckIn:
+		return control.ArrivalCheckIn
+	case pulse.ArrivalDeadline:
+		return control.ArrivalDeadline
+	default:
+		return control.ArrivalWake
+	}
 }

@@ -287,6 +287,7 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     var calls: [String] = []
     func toggleTerminal() { calls.append("toggle") }
     func relaunchTerminal() { calls.append("relaunch") }
+    func showQuickCapture(_ sender: Any?) { calls.append("capture") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
     func toggleLaunchAtLogin() { calls.append("login") }
 }
@@ -299,7 +300,7 @@ final class StatusItemTests: XCTestCase {
 
         controller.refreshMenu()
         let titles = controller.menu.items.filter { !$0.isSeparatorItem }.map(\.title)
-        XCTAssertEqual(titles, ["Show tt", "Relaunch tt", "Preferences…", "Launch at Login", "Quit tt"])
+        XCTAssertEqual(titles, ["Show tt", "Quick Capture…", "Relaunch tt", "Preferences…", "Launch at Login", "Quit tt"])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
 
         delegate.isTerminalFrontmost = true
@@ -307,14 +308,16 @@ final class StatusItemTests: XCTestCase {
         delegate.canRelaunchTerminal = false
         controller.refreshMenu()
         XCTAssertEqual(controller.menu.items[0].title, "Hide tt")
-        XCTAssertFalse(controller.menu.items[1].isEnabled)
+        // Always offered: the panel itself says when tt cannot take a capture.
+        XCTAssertTrue(controller.menu.item(withTitle: "Quick Capture…")?.isEnabled ?? false)
+        XCTAssertFalse(controller.menu.item(withTitle: "Relaunch tt")?.isEnabled ?? true)
         XCTAssertEqual(controller.menu.item(withTitle: "Launch at Login")?.state, .on)
 
-        for title in ["Hide tt", "Relaunch tt", "Preferences…", "Launch at Login"] {
+        for title in ["Hide tt", "Quick Capture…", "Relaunch tt", "Preferences…", "Launch at Login"] {
             let item = try XCTUnwrap(controller.menu.item(withTitle: title))
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
-        XCTAssertEqual(delegate.calls, ["toggle", "relaunch", "preferences", "login"])
+        XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login"])
     }
 
     func testRightAndControlClicksOpenTheMenu() throws {

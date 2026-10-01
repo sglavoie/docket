@@ -147,11 +147,15 @@ type AppModel struct {
 	feedback feedbackController
 
 	// externalReload is the workspace as it stood at the last focus loss, and
-	// whether a change made elsewhere is still owed. See app_external_reload.go.
+	// whether a change made elsewhere is still owed. See lifecycle_controller.go.
 	externalReload externalReloadState
 
-	// notifications is a --notify run's arrival reporting. See app_notifications.go.
+	// notifications is a --notify run's arrival reporting. See lifecycle_controller.go.
 	notifications notificationState
+
+	// control is the session's link to a host's control socket, when tt runs
+	// with one. See lifecycle_controller.go.
+	control controlState
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind

@@ -64,6 +64,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if expiry := m.scheduleViewStatusExpiry(statusBefore); expiry != nil {
 			outCmd = tea.Batch(outCmd, expiry)
 		}
+		// And the one place every refresh this update made has landed, so a
+		// host on the control socket hears each changed pulse exactly once.
+		m.publishControlPulse()
 	}()
 
 	if command, ok := msg.(originTaggedCommandMsg); ok {

@@ -17,10 +17,17 @@ const (
 	ArrivalWake
 )
 
-// Arrival is one task that crossed into needing attention, and why.
+// Arrival is one task that crossed into needing attention, and why. The two
+// IDs are stored identities, so a host acting on the arrival later names the
+// same task even after a rename or a renumbering.
 type Arrival struct {
-	Kind  ArrivalKind
-	Title string
+	Kind      ArrivalKind
+	ProjectID string
+	TaskID    string
+	Title     string
+	// Reviewable is whether acknowledging the task is allowed at now, so a
+	// notification offers that action only where tt would accept it.
+	Reviewable bool
 }
 
 // Arrivals lists the tasks that crossed into needing attention between two
@@ -40,15 +47,24 @@ func Arrivals(projects []*models.Project, since, now time.Time) []Arrival {
 			if task == nil || task.IsTerminalState() {
 				continue
 			}
+			arrival := Arrival{
+				ProjectID:  project.ID,
+				TaskID:     task.ID,
+				Title:      task.Title,
+				Reviewable: models.TaskAllowsExplicitReview(task, now),
+			}
 			switch {
 			case task.CheckInIsDueAt(now) && !task.CheckInIsDueAt(since):
-				arrivals = append(arrivals, Arrival{Kind: ArrivalCheckIn, Title: task.Title})
+				arrival.Kind = ArrivalCheckIn
 			case task.DueHasTime() && !task.IsDeferredAt(now) &&
 				TaskIsOverdueAt(task, now) && !TaskIsOverdueAt(task, since):
-				arrivals = append(arrivals, Arrival{Kind: ArrivalDeadline, Title: task.Title})
+				arrival.Kind = ArrivalDeadline
 			case task.DeferredUntil != nil && task.IsDeferredAt(since) && !task.IsDeferredAt(now):
-				arrivals = append(arrivals, Arrival{Kind: ArrivalWake, Title: task.Title})
+				arrival.Kind = ArrivalWake
+			default:
+				continue
 			}
+			arrivals = append(arrivals, arrival)
 		}
 	}
 	return arrivals

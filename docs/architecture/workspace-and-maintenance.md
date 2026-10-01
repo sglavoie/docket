@@ -79,10 +79,11 @@ exported document is not a live view and naming archived work beats emitting a
 bare locator. Computed dependents are never exported: they are an artifact of
 what happened to be loaded, and freezing them into a document would state as
 durable something that is not. Global flags
-are `--data-dir` and `--no-color`; `--no-advisories` and `--notify` are the
-launcher's own, declared on the root command rather than persistently, because
-each configures a TUI session: no maintenance command has ambient rows to hide
-or runs long enough to see work arrive. It has no task
+are `--data-dir` and `--no-color`; `--no-advisories`, `--notify`, and
+`--control` are the launcher's own, declared on the root command rather than
+persistently, because each configures a TUI session: no maintenance command has
+ambient rows to hide, runs long enough to see work arrive, or has a session for
+a host to talk to. It has no task
 mutation or undo/redo command.
 
 There are no release artifacts. Distribution is `go install

@@ -1,0 +1,238 @@
+package tui
+
+import (
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/control"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
+)
+
+// controlEnv is the R chain's environment with the Outliner as the live route,
+// which is where a host's requests are answered.
+func controlEnv(t *testing.T, tasks ...*models.Task) *reviewAsyncEnv {
+	t.Helper()
+	env := newReviewAsyncEnv(t, tasks)
+	env.model.features = coordinator.NewFeatureCoordinators(env.env.svc)
+	env.model.domain.runtime.Catalog().SystemUnfiledProjectID = env.env.projects[0].ID
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner)
+	return env
+}
+
+// request answers one request the way a socket would: the reply that arrives
+// at once, or the commit's, after the command resolves and its message is
+// handed back to the shell.
+func (e *reviewAsyncEnv) request(t *testing.T, request control.Request) control.Reply {
+	t.Helper()
+	replies := make(chan control.Reply, 1)
+	handled, cmd := e.model.handleControlMessage(controlRequestMsg{request: request, reply: replies})
+	if !handled {
+		t.Fatal("a control request was not handled")
+	}
+	select {
+	case reply := <-replies:
+		return reply
+	default:
+	}
+	committed, ok := findControlCommit(cmd)
+	if !ok {
+		t.Fatal("the request neither answered nor produced a commit")
+	}
+	if handled, _ := e.model.handleControlMessage(committed); !handled {
+		t.Fatal("the commit was not handled")
+	}
+	select {
+	case reply := <-replies:
+		return reply
+	default:
+		t.Fatal("the commit resolved without answering")
+		return control.Reply{}
+	}
+}
+
+func findControlCommit(cmd tea.Cmd) (controlCommittedMsg, bool) {
+	if cmd == nil {
+		return controlCommittedMsg{}, false
+	}
+	switch msg := cmd().(type) {
+	case controlCommittedMsg:
+		return msg, true
+	case tea.BatchMsg:
+		for _, nested := range msg {
+			if found, ok := findControlCommit(nested); ok {
+				return found, true
+			}
+		}
+	}
+	return controlCommittedMsg{}, false
+}
+
+func (e *reviewAsyncEnv) taskRequest(op string, task *models.Task) control.Request {
+	return control.Request{Op: op, Project: e.env.projects[0].ID, Task: task.ID}
+}
+
+func TestControlAcknowledgeReviewsTheNamedTask(t *testing.T) {
+	flagged := reviewCandidateTask(t, 1, "flagged")
+	env := controlEnv(t, flagged)
+
+	reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged))
+	if !reply.OK || reply.Message != "Acknowledged: flagged" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if env.storedTask(t, 1).Review {
+		t.Fatal("the review flag survived the acknowledgement")
+	}
+
+	// Nothing is left to acknowledge, and tt says so rather than commit.
+	if reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged)); reply.OK {
+		t.Fatalf("a settled task was acknowledged again: %+v", reply)
+	}
+}
+
+func TestControlDeferDefersByMinutesFromNow(t *testing.T) {
+	task := reviewSettledTask(t, 1, "later")
+	env := controlEnv(t, task)
+
+	before := time.Now()
+	request := env.taskRequest(control.OpDefer, task)
+	request.Minutes = 60
+	if reply := env.request(t, request); !reply.OK {
+		t.Fatalf("reply = %+v", reply)
+	}
+	stored := env.storedTask(t, 1)
+	if stored.DeferredUntil == nil || stored.DeferredUntil.Before(before.Add(59*time.Minute)) {
+		t.Fatalf("deferred until %v, want about an hour from %v", stored.DeferredUntil, before)
+	}
+
+	request.Minutes = 0
+	if reply := env.request(t, request); reply.OK {
+		t.Fatal("a zero-minute deferral was accepted")
+	}
+}
+
+func TestControlCaptureCommitsThroughTheComposerGrammar(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+
+	reply := env.request(t, control.Request{Op: control.OpCapture, Text: "Buy milk #errand !1"})
+	if !reply.OK || reply.Message != "Captured: Buy milk" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	var captured *models.Task
+	for _, task := range env.env.reload(t, 0).Tasks {
+		if task.Title == "Buy milk" {
+			captured = task
+		}
+	}
+	if captured == nil || captured.Priority != 1 || len(captured.Tags) != 1 || captured.Tags[0] != "errand" {
+		t.Fatalf("captured task = %+v", captured)
+	}
+
+	if reply := env.request(t, control.Request{Op: control.OpCapture, Text: "Pay $ready"}); reply.OK || reply.Message == "" {
+		t.Fatalf("a refused line answered %+v", reply)
+	}
+}
+
+// TestControlRefusesWhileTheUserIsMidInteraction: a request never reaches a
+// session whose live route is not the Outliner, and never commits there.
+func TestControlRefusesWhileTheUserIsMidInteraction(t *testing.T) {
+	flagged := reviewCandidateTask(t, 1, "flagged")
+	env := controlEnv(t, flagged)
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+
+	reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged))
+	if reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if !env.storedTask(t, 1).Review {
+		t.Fatal("a refused request committed")
+	}
+}
+
+func TestControlRefusesAnUnknownTaskOrOperation(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
+	if reply := env.request(t, control.Request{Op: control.OpReveal, Project: "gone", Task: "gone"}); reply.OK {
+		t.Fatalf("an unknown task answered %+v", reply)
+	}
+	if reply := env.request(t, control.Request{Op: "explode"}); reply.OK {
+		t.Fatalf("an unknown operation answered %+v", reply)
+	}
+}
+
+type recordingPublisher struct{ events []control.Event }
+
+func (r *recordingPublisher) Publish(event control.Event) { r.events = append(r.events, event) }
+
+func TestControlPublishesEachChangedPulseOnce(t *testing.T) {
+	app := typedTestApp(t)
+	publisher := &recordingPublisher{}
+	WithControlPublisher(publisher)(app)
+
+	app.workspacePulse = pulse.WorkspacePulse{Overdue: 2}
+	app.publishControlPulse()
+	app.publishControlPulse()
+	app.workspacePulse = pulse.WorkspacePulse{Overdue: 1}
+	app.publishControlPulse()
+
+	if len(publisher.events) != 2 {
+		t.Fatalf("published %d pulses, want 2", len(publisher.events))
+	}
+	if got := publisher.events[1].Pulse; got == nil || got.Overdue != 1 {
+		t.Fatalf("second pulse = %+v", got)
+	}
+}
+
+// TestControlArrivalsCarryIdentityWithoutNotify: a session on a control socket
+// reports arrivals as events and sends no OSC 777 unless --notify asked for it.
+func TestControlArrivalsCarryIdentityWithoutNotify(t *testing.T) {
+	app := typedTestApp(t)
+	publisher := &recordingPublisher{}
+	WithControlPublisher(publisher)(app)
+	app.publishControlArrivals([]pulse.Arrival{{Kind: pulse.ArrivalCheckIn, ProjectID: "p", TaskID: "t", Title: "Call", Reviewable: true}})
+
+	if len(publisher.events) != 1 {
+		t.Fatalf("events = %+v", publisher.events)
+	}
+	event := publisher.events[0]
+	if event.Event != control.EventArrivals || event.Title != "tt · check-in" || len(event.Arrivals) != 1 {
+		t.Fatalf("event = %+v", event)
+	}
+	if got := event.Arrivals[0]; got.Kind != control.ArrivalCheckIn || got.Task != "t" || !got.Reviewable {
+		t.Fatalf("arrival = %+v", got)
+	}
+	if app.notifications.enabled {
+		t.Fatal("a control socket turned --notify on")
+	}
+}
+
+// TestFocusClearsTheBlurAndOwnCommitsDoNotReload: a commit the session made
+// while blurred is recorded, so coming back does not announce a reload.
+func TestFocusClearsTheBlurAndOwnCommitsDoNotReload(t *testing.T) {
+	flagged := reviewCandidateTask(t, 1, "flagged")
+	env := controlEnv(t, flagged)
+	env.model.handleFocusMessage(tea.BlurMsg{})
+
+	if reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged)); !reply.OK {
+		t.Fatalf("reply = %+v", reply)
+	}
+	env.model.handleFocusMessage(tea.FocusMsg{})
+	if env.model.externalReload.owed || env.model.externalReload.blurFingerprint != "" {
+		t.Fatalf("own commit read as an external change: %+v", env.model.externalReload)
+	}
+}
+
+func TestControlRevealSeatsTheCursorOnTheTask(t *testing.T) {
+	first := reviewSettledTask(t, 1, "first")
+	second := reviewSettledTask(t, 2, "second")
+	env := controlEnv(t, first, second)
+	cursorToTaskRow(t, env.outliner, first.ID)
+
+	if reply := env.request(t, env.taskRequest(control.OpReveal, second)); !reply.OK || reply.Message != "Shown: second" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	requireCursorRow(t, env.outliner, second.ID)
+}

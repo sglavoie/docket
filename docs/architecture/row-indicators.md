@@ -340,6 +340,24 @@ guard as a time-driven invalidation plus the Outliner being the live route, or
 leaves it owed for the periodic tick. `--notify` reports `pulse.Arrivals` over
 `(since, now]` on that same tick, as one `tea.Raw` OSC 777.
 
+`--control PATH` is the inbound half: `internal/control` owns the socket, its
+newline-delimited JSON, and the connections, and touches no workspace. Its
+`Dispatch` is `p.Send` of a `controlRequestMsg`, so every request is answered
+inside `Update` by `handleControlMessage`, ahead of the overlays, behind
+`safeToAdoptExternalChange`, and through the coordinator a key would use:
+`ParseCaptureText` for capture (the composer's own `ParseCompactLines` over a
+throwaway model), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
+under a locator relocation capture, and `NavigateToTaskInProject` then
+`coreGotoTaskProject` for reveal. A commit's message returns wrapped in
+`controlCommittedMsg`, which `handleGlobalSaveMessage` handles unchanged and
+which advances a blurred session's fingerprint, so a focus does not read tt's
+own commit as another machine's. A capture travels as `TasksCapturedMsg`, never
+`TaskCreatedMsg`, whose pop would close a view the user never opened. Events
+carry stored project and task IDs, never a slug or ShortID: the pulse is
+published from `Update`'s one deferred closure when it changed, and arrivals
+from the same tick `--notify` reads, each with `TaskAllowsExplicitReview` at
+that instant so a host offers Acknowledge only where it would be accepted.
+
 Success, informational, and view-owned text is quiet: it reaches the footer and
 the divider does not move for it. `footerFlashSeverity.animates()` is that
 closed table — `flashWarning` and `flashError` and nothing else — and it is read

@@ -11,7 +11,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var preferences: NSWindow? { preferencesController?.window }
     private(set) var statusItem: StatusItemController?
     private(set) var hotKeys: HotKeyCenter?
+    private(set) var captureHotKeys: HotKeyCenter?
     let notifications = NotificationPresenter()
+    let quickCapture = QuickCapturePanel()
+    /// The running tt's control socket; nil when the tt is too old to serve one.
+    private(set) var control: TTControlClient?
+    /// Why quick capture cannot reach tt, said in its panel; nil once a tt with
+    /// a control socket is running.
+    private var captureUnavailableReason: String? = "tt is not running."
+    /// The last pulse tt reported over it; nil while none has arrived.
+    private var lastPulse: TTPulse?
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -59,8 +68,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             .appendingPathComponent("tt-app-\(ProcessInfo.processInfo.processIdentifier).status")
         let launchArguments = [statusFile.path, binary.url.path]
         // Asked once: the binary is chosen at launch and fixed until tt.app restarts.
-        let notifySupported = TTVersion.supports(flag: TTNotificationsPreference.flag, binary: binary.url.path)
-        if !notifySupported {
+        let supported = TTVersion.supported(
+            flags: [TTNotificationsPreference.flag, TTControlLaunch.flag], binary: binary.url.path
+        )
+        let notifySupported = supported.contains(TTNotificationsPreference.flag)
+        let controlPath = supported.contains(TTControlLaunch.flag) ? TTControlLaunch.socketPath() : nil
+        captureUnavailableReason = controlPath == nil
+            ? TTControlLaunch.unsupportedReason(binary: binary.url.path)
+            : nil
+        if controlPath == nil {
+            NSLog("tt: %@ does not accept %@; quick capture and notification actions are off",
+                  binary.url.path, TTControlLaunch.flag)
+        }
+        if controlPath == nil, !notifySupported {
             NSLog("tt: %@ does not accept %@; notifications are off", binary.url.path, TTNotificationsPreference.flag)
         }
         let overrides = Ghostty.ConfigOverrides(
@@ -75,8 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let ghostty = Ghostty.App {
             var current = overrides
             current.fontSize = model.defaultFontSize
-            current.arguments = launchArguments + TTNotificationsPreference.arguments(
-                enabled: model.notificationsEnabled, supported: notifySupported
+            current.arguments = launchArguments + TTControlLaunch.arguments(
+                controlPath: controlPath,
+                notificationsEnabled: model.notificationsEnabled,
+                notifySupported: notifySupported
             )
             current.environment = detected.applying(model.environmentOverrides).commandEnvironment
             return Ghostty.Config(overrides: current)
@@ -95,21 +117,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         model.onRelaunch = { [weak self] in self?.relaunchTerminal() }
         refreshConfigFontSize()
 
+        if let controlPath {
+            setUpControl(path: controlPath)
+        }
+
         let controller = TerminalWindowController(ghostty: ghostty, statusFile: statusFile)
         // A new tt takes the config's environment, so a reload still waiting
         // on the typing pause goes first.
         controller.onWillStartSession = { [weak self, weak model] in
             self?.flushEnvironmentReload()
             model?.sessionEnvironment = model?.effectiveEnvironment?.commandEnvironment
+            self?.control?.connect()
         }
         controller.onSessionEnd = { [weak self, weak model] in
             model?.sessionEnvironment = nil
+            self?.control?.disconnect()
+            self?.lastPulse = nil
             self?.showTitle("")
         }
         controller.onTitleChange = { [weak self] title in self?.showTitle(title) }
-        model.onDockBadgeChange = { [weak self] _ in
-            self?.showTitle(self?.terminal?.surfaceView?.title ?? "")
-        }
+        model.onDockBadgeChange = { [weak self] _ in self?.refreshBadge() }
         terminal = controller
         controller.show()
     }
@@ -133,7 +160,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     func applicationWillTerminate(_ notification: Notification) {
         // tt gets SIGHUP from the freed surface, like a closed terminal.
+        control?.disconnect()
         terminal?.teardown()
+        // tt removes its socket on a clean exit; a hangup may not give it one.
+        if let path = control?.path {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+    }
+
+    /// Right-clicking the Dock icon.
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let capture = menu.addItem(withTitle: "Quick Capture…", action: #selector(showQuickCapture(_:)), keyEquivalent: "")
+        capture.target = self
+        let relaunch = menu.addItem(withTitle: "Relaunch tt", action: #selector(relaunchFromMenu(_:)), keyEquivalent: "")
+        relaunch.target = self
+        return menu
     }
 
     @objc func showPreferences(_ sender: Any?) {
@@ -150,11 +192,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         relaunchTerminal()
     }
 
+    @objc func showQuickCapture(_ sender: Any?) {
+        toggleQuickCapture()
+    }
+
     /// tt's title is its pulse: the status item's tooltip carries it whole,
-    /// and the Dock badge its overdue count when Preferences asks for one.
+    /// and the Dock badge its overdue count when Preferences asks for one,
+    /// read from the control socket's pulse when tt reports one.
     private func showTitle(_ title: String) {
         statusItem?.statusItem.button?.toolTip = title.isEmpty ? "tt" : title
-        NSApp.dockTile.badgeLabel = preferencesModel.dockBadge ? TTWindowTitle.badgeLabel(for: title) : nil
+        let badge = lastPulse.map(TTPulseBadge.label(for:)) ?? TTWindowTitle.badgeLabel(for: title)
+        NSApp.dockTile.badgeLabel = preferencesModel.dockBadge ? badge : nil
+    }
+
+    private func refreshBadge() {
+        showTitle(terminal?.surfaceView?.title ?? "")
+    }
+
+    // MARK: Control socket
+
+    private func setUpControl(path: String) {
+        let client = TTControlClient(path: path)
+        client.onEvent = { [weak self] event in self?.handle(event) }
+        control = client
+
+        notifications.onReveal = { [weak self] task in self?.reveal(task) }
+        notifications.onAcknowledge = { [weak self] task in
+            self?.act(.acknowledge(task), failure: "tt could not acknowledge it")
+        }
+        notifications.onDefer = { [weak self] task in
+            self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
+        }
+        quickCapture.submit = { [weak self] text, done in self?.capture(text, done: done) }
+    }
+
+    private func handle(_ event: TTControlEvent) {
+        switch event {
+        case .pulse(let pulse):
+            lastPulse = pulse
+            refreshBadge()
+        case .arrivals(let arrivals, let title, let body):
+            notifications.post(arrivals: arrivals, title: title, body: body)
+        }
+    }
+
+    /// A notification naming a task was clicked: bring tt forward on it.
+    private func reveal(_ task: TTTaskID) {
+        terminal?.show()
+        control?.send(.reveal(task)) { reply in
+            if !reply.ok { NSLog("tt: reveal: %@", reply.message ?? "refused") }
+        }
+    }
+
+    /// A notification action: tt acts without coming forward, and says so
+    /// only when it refused.
+    private func act(_ request: TTControlRequest, failure: String) {
+        control?.send(request) { [weak self] reply in
+            guard !reply.ok else { return }
+            self?.notifications.postNotice(title: failure, body: reply.message ?? "")
+        }
+    }
+
+    private func capture(_ text: String, done: @escaping (Bool, String) -> Void) {
+        guard let control, let terminal else {
+            done(false, "This tt has no control socket. Update it (just install) to capture from here.")
+            return
+        }
+        // A tt that exited cleanly starts again; the request waits for it.
+        if terminal.surfaceView == nil {
+            terminal.show()
+        }
+        control.send(.capture(text)) { reply in done(reply.ok, reply.message ?? "") }
+    }
+
+    /// Always opens: when tt cannot take a capture, the panel says why.
+    private func toggleQuickCapture() {
+        quickCapture.toggle()
     }
 
     @objc func showAbout(_ sender: Any?) {
@@ -177,8 +290,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             guard let self else { return }
             if recording {
                 self.hotKeys?.unregister()
+                self.captureHotKeys?.unregister()
             } else {
                 self.registerHotKey(self.preferencesModel.hotKey)
+                self.registerCaptureHotKey(self.preferencesModel.captureHotKey)
             }
         }
         model.onOpenGhosttyConfig = { Ghostty.App.openConfig() }
@@ -190,17 +305,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isEnabled = { [weak model] in model?.notificationsEnabled ?? false }
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
+        quickCapture.unavailableReason = { [weak self] in self?.captureUnavailableReason }
 
         statusItem = StatusItemController(delegate: self)
         let hotKeys = HotKeyCenter()
         hotKeys.onPress = { [weak self] in self?.toggleTerminal() }
         self.hotKeys = hotKeys
         registerHotKey(model.hotKey)
+
+        let captureHotKeys = HotKeyCenter()
+        captureHotKeys.onPress = { [weak self] in self?.toggleQuickCapture() }
+        self.captureHotKeys = captureHotKeys
+        model.onCaptureHotKeyChange = { [weak self] in self?.registerCaptureHotKey($0) }
+        registerCaptureHotKey(model.captureHotKey)
     }
 
     private func registerHotKey(_ combo: HotKeyCombo?) {
         guard let hotKeys else { return }
-        var problem = hotKeys.register(combo).problem
+        preferencesModel.hotKeyProblem = Self.register(combo, on: hotKeys)
+    }
+
+    private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
+        guard let captureHotKeys else { return }
+        if let combo, combo == preferencesModel.hotKey {
+            captureHotKeys.unregister()
+            preferencesModel.captureHotKeyProblem = "\(combo.displayString) already shows and hides tt. Choose another shortcut."
+            return
+        }
+        preferencesModel.captureHotKeyProblem = Self.register(combo, on: captureHotKeys)
+    }
+
+    /// Registers `combo` and returns what Preferences should say about it.
+    private static func register(_ combo: HotKeyCombo?, on center: HotKeyCenter) -> String? {
+        var problem = center.register(combo).problem
         if problem == nil, let combo, SystemHotKeys.conflicts(with: combo) {
             problem = "macOS also uses \(combo.displayString) (System Settings › Keyboard › Keyboard Shortcuts); "
                 + "turn it off there, or choose another shortcut."
@@ -208,7 +345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         if let problem {
             NSLog("tt: hotkey: %@", problem)
         }
-        preferencesModel.hotKeyProblem = problem
+        return problem
     }
 
     /// Switched live. Changing the policy can drop the app's activation, so

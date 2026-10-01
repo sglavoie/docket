@@ -29,7 +29,13 @@ struct TTVersion: Equatable {
     /// Whether `binary --help` lists `flag`, so tt.app passes a flag only to a
     /// tt that knows it: an older one refuses an unknown flag and never starts.
     static func supports(flag: String, binary: String, timeout: TimeInterval = 2) -> Bool {
-        output(of: binary, arguments: ["--help"], timeout: timeout).map { helpLists(flag: flag, in: $0) } ?? false
+        supported(flags: [flag], binary: binary, timeout: timeout).contains(flag)
+    }
+
+    /// Which of `flags` `binary --help` lists, from one run of it.
+    static func supported(flags: [String], binary: String, timeout: TimeInterval = 2) -> Set<String> {
+        guard let help = output(of: binary, arguments: ["--help"], timeout: timeout) else { return [] }
+        return Set(flags.filter { helpLists(flag: $0, in: help) })
     }
 
     /// Whether a cobra help text declares `flag` as an option of its own,

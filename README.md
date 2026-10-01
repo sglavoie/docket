@@ -175,7 +175,7 @@ descriptors that dispatch the keys, for whichever surface you are on.
 ## Maintenance CLI
 
 ```text
-tt [--no-advisories] [--notify]
+tt [--no-advisories] [--notify] [--control PATH]
 tt doctor [--fix] [--json]
 tt conflict list [--json]
 tt conflict show <id> [--json]

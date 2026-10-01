@@ -219,8 +219,19 @@ counted, `2 check-ins · 1 deferral ended`. It reports only what crossed over
 since the last minute's tick, so launching reports nothing already standing and
 waking from sleep reports the gap once. A date-only deadline is not an arrival:
 its day is the Today lane's and the overdue count's. It is opt-in because a
-terminal that honors the escape shows it whether or not tt is in view; tt.app
-passes it by default.
+terminal that honors the escape shows it whether or not tt is in view.
+
+`tt --control PATH` serves a Unix socket at `PATH`, readable by your user
+alone, for a host app such as tt.app. Over it the session reports the pulse
+whenever it changes and each tick's arrivals with the identity of every task,
+and it takes four requests: show a task, acknowledge one as `R` does, defer one
+by some minutes, and capture a line as the `a` composer would read it, refusals
+included. Each is answered as though you had pressed the key in tt: through the
+same commit and the same undo entry, so `u` takes it back. A request is refused,
+never queued, while you are inside a picker, an editor, a selection, or another
+view, and a session that lost focus first adopts any change made on disk since,
+so what it commits is never against a stale read. tt.app starts tt this way, and
+falls back to `--notify` for a tt too old to have the flag.
 
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, then an `Also in view` block for the axes nothing

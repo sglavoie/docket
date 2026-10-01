@@ -132,6 +132,24 @@ struct HotKeyCombo: Equatable, Hashable {
 /// The global shortcut preference, `UserDefaults` key `ttHotKey`. Absent
 /// means the default combo; an empty string means turned off; anything
 /// unparseable reads as the default.
+/// The quick-capture shortcut: `ctrl+opt+cmd+a` by default, after tt's own
+/// capture key. Persisted in `UserDefaults` key `ttCaptureHotKey`, spelled and
+/// cleared like `ttHotKey`.
+enum TTCaptureHotKeyPreference {
+    static let defaultsKey = "ttCaptureHotKey"
+    static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+a")!
+
+    static func load(from defaults: UserDefaults = .standard) -> HotKeyCombo? {
+        guard let stored = defaults.string(forKey: defaultsKey) else { return Self.default }
+        if stored.isEmpty { return nil }
+        return HotKeyCombo(string: stored) ?? Self.default
+    }
+
+    static func save(_ combo: HotKeyCombo?, to defaults: UserDefaults = .standard) {
+        defaults.set(combo?.string ?? "", forKey: defaultsKey)
+    }
+}
+
 enum TTHotKeyPreference {
     static let defaultsKey = "ttHotKey"
     static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+t")!

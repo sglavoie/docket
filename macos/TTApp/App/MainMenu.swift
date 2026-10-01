@@ -12,6 +12,7 @@ enum MainMenu {
     static let showAbout = #selector(AppDelegate.showAbout(_:))
     static let showGuide = #selector(AppDelegate.showGuide(_:))
     static let relaunch = #selector(AppDelegate.relaunchFromMenu(_:))
+    static let quickCapture = #selector(AppDelegate.showQuickCapture(_:))
     /// The user guide, read on GitHub: an installed app carries no docs tree.
     static let guideURL = URL(string: "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")!
 
@@ -24,6 +25,7 @@ enum MainMenu {
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Preferences…", action: showPreferences, keyEquivalent: ",")
         appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Quick Capture…", action: quickCapture, keyEquivalent: "")
         appMenu.addItem(withTitle: "Relaunch tt", action: relaunch, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide tt", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")

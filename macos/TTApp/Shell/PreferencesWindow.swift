@@ -30,7 +30,16 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
-    /// tt runs with `--notify`; turning it off also silences the running one.
+    /// The quick-capture panel's shortcut; nil is turned off.
+    @Published var captureHotKey: HotKeyCombo? {
+        didSet {
+            guard captureHotKey != oldValue else { return }
+            TTCaptureHotKeyPreference.save(captureHotKey, to: defaults)
+            onCaptureHotKeyChange?(captureHotKey)
+        }
+    }
+
+    /// tt reports arrivals; turning it off also silences the running one.
     @Published var notificationsEnabled: Bool {
         didSet {
             guard notificationsEnabled != oldValue else { return }
@@ -63,6 +72,7 @@ final class PreferencesModel: ObservableObject {
     /// Set by whoever registers the shortcut: why it is not working, or what
     /// it collides with.
     @Published var hotKeyProblem: String?
+    @Published var captureHotKeyProblem: String?
 
     @Published var binaryOverride: String {
         didSet {
@@ -118,9 +128,10 @@ final class PreferencesModel: ObservableObject {
 
     var onActivationPolicyChange: ((TTActivationPolicy) -> Void)?
     var onHotKeyChange: ((HotKeyCombo?) -> Void)?
+    var onCaptureHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
-    /// True while the recorder listens, so the live shortcut can step aside
+    /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
     var onRecordingChange: ((Bool) -> Void)?
     var onOpenGhosttyConfig: (() -> Void)?
@@ -133,6 +144,7 @@ final class PreferencesModel: ObservableObject {
         exitBehavior = .load(from: defaults)
         activationPolicy = .load(from: defaults)
         hotKey = TTHotKeyPreference.load(from: defaults)
+        captureHotKey = TTCaptureHotKeyPreference.load(from: defaults)
         defaultFontSize = TTDefaultFontSize.load(from: defaults)
         notificationsEnabled = TTNotificationsPreference.load(from: defaults)
         dockBadge = TTDockBadgePreference.load(from: defaults)
@@ -227,6 +239,7 @@ final class PreferencesModel: ObservableObject {
 final class PreferencesWindowController: NSObject, NSWindowDelegate {
     let model: PreferencesModel
     let recorder = HotKeyRecorder()
+    let captureRecorder = HotKeyRecorder()
     private(set) lazy var window: NSWindow = makeWindow()
 
     init(model: PreferencesModel) {
@@ -242,7 +255,7 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let window = NSWindow(contentViewController: NSHostingController(
-            rootView: PreferencesView(model: model, recorder: recorder)
+            rootView: PreferencesView(model: model, recorder: recorder, captureRecorder: captureRecorder)
         ))
         window.title = "tt Preferences"
         window.styleMask = [.titled, .closable]
@@ -255,24 +268,34 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
     /// A closed window records nothing.
     func windowWillClose(_ notification: Notification) {
         recorder.stop()
+        captureRecorder.stop()
     }
 }
 
 struct PreferencesView: View {
     @ObservedObject var model: PreferencesModel
     @ObservedObject var recorder: HotKeyRecorder
+    @ObservedObject var captureRecorder: HotKeyRecorder
 
     var body: some View {
         Form {
             Section {
                 LabeledContent("Show and hide tt") {
-                    HotKeyRecorderView(model: model, recorder: recorder)
+                    HotKeyRecorderView(combo: $model.hotKey, model: model, recorder: recorder, other: captureRecorder)
                 }
                 if let problem = model.hotKeyProblem {
                     note(problem, warning: true)
                 }
                 note("Works from any app. Pressing it while tt is in front hides tt. "
                     + "A Karabiner rule can send this same shortcut.")
+                LabeledContent("Quick capture") {
+                    HotKeyRecorderView(combo: $model.captureHotKey, model: model, recorder: captureRecorder, other: recorder)
+                }
+                if let problem = model.captureHotKeyProblem {
+                    note(problem, warning: true)
+                }
+                note("Opens a capture field over any app. Enter sends the line to tt, "
+                    + "which reads it as the a composer would: #tag, @date, %project, $state.")
             }
 
             Section {
@@ -314,7 +337,8 @@ struct PreferencesView: View {
             Section {
                 Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
                 note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
-                    + "while tt is not in front. Turning this on reaches tt the next time it starts.")
+                    + "while tt is not in front. Click one to show its task; Acknowledge and Defer 1 Hour "
+                    + "act on it from the notification.")
                 Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
             }
 
@@ -421,8 +445,11 @@ struct PreferencesView: View {
 /// A button that records the next shortcut typed. Esc cancels; the shortcut
 /// must use Control, Option, or Command, unless it is a function key.
 struct HotKeyRecorderView: View {
+    @Binding var combo: HotKeyCombo?
     @ObservedObject var model: PreferencesModel
     @ObservedObject var recorder: HotKeyRecorder
+    /// The other shortcut's recorder, stopped when this one starts.
+    let other: HotKeyRecorder
 
     var body: some View {
         HStack {
@@ -431,8 +458,8 @@ struct HotKeyRecorderView: View {
                     .frame(minWidth: 140)
                     .foregroundStyle(recorder.isRecording ? Color.accentColor : Color.primary)
             }
-            if model.hotKey != nil, !recorder.isRecording {
-                Button("Clear") { model.hotKey = nil }
+            if combo != nil, !recorder.isRecording {
+                Button("Clear") { combo = nil }
             }
         }
         .onDisappear { recorder.stop() }
@@ -442,7 +469,7 @@ struct HotKeyRecorderView: View {
         if recorder.isRecording {
             return recorder.hint ?? "Type a shortcut…"
         }
-        return model.hotKey?.displayString ?? "Record Shortcut"
+        return combo?.displayString ?? "Record Shortcut"
     }
 
     private func toggleRecording() {
@@ -450,9 +477,11 @@ struct HotKeyRecorderView: View {
             recorder.stop()
             return
         }
+        other.stop()
+        let binding = $combo
         recorder.start(
             onStateChange: { [weak model] recording in model?.onRecordingChange?(recording) },
-            onRecord: { [weak model] combo in model?.hotKey = combo }
+            onRecord: { binding.wrappedValue = $0 }
         )
     }
 }
