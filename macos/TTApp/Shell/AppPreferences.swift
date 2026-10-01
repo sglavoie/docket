@@ -72,3 +72,36 @@ enum LoginItem {
         }
     }
 }
+
+/// The terminal's font size at launch, in points: the zoom tt.app opens at and
+/// the size Cmd+0 returns to. Zooming with Cmd+= and Cmd+- changes only the
+/// running session. Persisted in `UserDefaults` key `ttDefaultFontSize`; nil,
+/// stored or not, leaves the size to the Ghostty config.
+enum TTDefaultFontSize {
+    static let defaultsKey = "ttDefaultFontSize"
+    static let range: ClosedRange<Float> = 6...72
+
+    /// An absent, non-numeric, or out-of-range value reads as nil.
+    static func load(from defaults: UserDefaults = .standard) -> Float? {
+        guard let number = defaults.object(forKey: defaultsKey) as? NSNumber else { return nil }
+        let points = number.floatValue
+        return range.contains(points) ? points : nil
+    }
+
+    static func save(_ points: Float?, to defaults: UserDefaults = .standard) {
+        if let points {
+            defaults.set(clamped(points), forKey: defaultsKey)
+        } else {
+            defaults.removeObject(forKey: defaultsKey)
+        }
+    }
+
+    static func clamped(_ points: Float) -> Float {
+        min(max(points, range.lowerBound), range.upperBound)
+    }
+
+    /// "13 pt", or "13.5 pt" for a fractional size.
+    static func label(_ points: Float) -> String {
+        "\(Ghostty.ConfigOverrides.number(points)) pt"
+    }
+}

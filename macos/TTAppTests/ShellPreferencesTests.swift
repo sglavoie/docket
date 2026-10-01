@@ -84,6 +84,22 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(TTActivationPolicy.load(from: defaults), .menuBarOnly)
     }
 
+    func testDefaultFontSizeIsUnsetUntilSavedAndRefusesNonsense() {
+        XCTAssertNil(TTDefaultFontSize.load(from: defaults))
+        TTDefaultFontSize.save(15, to: defaults)
+        XCTAssertEqual(TTDefaultFontSize.load(from: defaults), 15)
+        TTDefaultFontSize.save(500, to: defaults)
+        XCTAssertEqual(TTDefaultFontSize.load(from: defaults), TTDefaultFontSize.range.upperBound)
+        for bad: Any in ["big", 2, 0, -4] {
+            defaults.set(bad, forKey: TTDefaultFontSize.defaultsKey)
+            XCTAssertNil(TTDefaultFontSize.load(from: defaults), "\(bad)")
+        }
+        TTDefaultFontSize.save(nil, to: defaults)
+        XCTAssertNil(defaults.object(forKey: TTDefaultFontSize.defaultsKey))
+        XCTAssertEqual(TTDefaultFontSize.label(14), "14 pt")
+        XCTAssertEqual(TTDefaultFontSize.label(13.5), "13.5 pt")
+    }
+
     func testTheModelStartsFromTheDefaultsAndSavesEachChange() {
         let model = PreferencesModel(defaults: defaults)
         XCTAssertEqual(model.exitBehavior, .relaunchOnShow)
@@ -91,11 +107,22 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(model.hotKey, TTHotKeyPreference.default)
         XCTAssertEqual(model.binaryOverride, "")
         XCTAssertNil(model.binaryOverrideProblem)
+        XCTAssertNil(model.defaultFontSize)
 
         var policies: [TTActivationPolicy] = []
         var hotKeys: [HotKeyCombo?] = []
+        var fontSizes: [Float?] = []
         model.onActivationPolicyChange = { policies.append($0) }
         model.onHotKeyChange = { hotKeys.append($0) }
+        model.onDefaultFontSizeChange = { fontSizes.append($0) }
+
+        model.defaultFontSize = 16
+        model.defaultFontSize = 16
+        XCTAssertEqual(TTDefaultFontSize.load(from: defaults), 16)
+        XCTAssertEqual(PreferencesModel(defaults: defaults).defaultFontSize, 16, "the next launch starts from it")
+        model.defaultFontSize = nil
+        XCTAssertEqual(fontSizes, [16, nil])
+        XCTAssertNil(defaults.object(forKey: TTDefaultFontSize.defaultsKey))
 
         model.activationPolicy = .menuBarOnly
         model.activationPolicy = .menuBarOnly

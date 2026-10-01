@@ -113,6 +113,22 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertEqual(config.string("confirm-close-surface"), "false")
     }
 
+    func testDefaultFontSizeOverridesTheUserFileOnlyWhenSet() throws {
+        let user = try writeUserConfig("font-size = 17\n")
+        var sized = overrides
+        sized.fontSize = 15
+        XCTAssertTrue(sized.lines.contains("font-size = 15"))
+        XCTAssertFalse(overrides.lines.contains { $0.hasPrefix("font-size") })
+        sized.fontSize = 12.5
+        XCTAssertTrue(sized.lines.contains("font-size = 12.5"))
+
+        let config = Ghostty.Config(userConfig: user, overrides: sized)
+        XCTAssertEqual(config.diagnostics, [])
+        XCTAssertEqual(config.get("font-size", as: Float.self, initial: 0), 12.5)
+        XCTAssertEqual(
+            Ghostty.Config(userConfig: user, overrides: overrides).get("font-size", as: Float.self, initial: 0), 17)
+    }
+
     func testUserConfigDiagnosticsAreReported() throws {
         let user = try writeUserConfig("not-a-real-ghostty-key = 1\n")
         let config = Ghostty.Config(userConfig: user, overrides: overrides)

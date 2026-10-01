@@ -30,6 +30,19 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// The zoom tt.app launches at; nil leaves it to the Ghostty config.
+    @Published var defaultFontSize: Float? {
+        didSet {
+            guard defaultFontSize != oldValue else { return }
+            TTDefaultFontSize.save(defaultFontSize, to: defaults)
+            onDefaultFontSizeChange?(defaultFontSize)
+        }
+    }
+
+    /// The size the terminal uses while `defaultFontSize` is nil: the Ghostty
+    /// config's, set by whoever loads it.
+    @Published var configFontSize: Float = 13
+
     /// Set by whoever registers the shortcut: why it is not working, or what
     /// it collides with.
     @Published var hotKeyProblem: String?
@@ -50,6 +63,7 @@ final class PreferencesModel: ObservableObject {
 
     var onActivationPolicyChange: ((TTActivationPolicy) -> Void)?
     var onHotKeyChange: ((HotKeyCombo?) -> Void)?
+    var onDefaultFontSizeChange: ((Float?) -> Void)?
     /// True while the recorder listens, so the live shortcut can step aside
     /// and be recorded like any other key.
     var onRecordingChange: ((Bool) -> Void)?
@@ -61,6 +75,7 @@ final class PreferencesModel: ObservableObject {
         exitBehavior = .load(from: defaults)
         activationPolicy = .load(from: defaults)
         hotKey = TTHotKeyPreference.load(from: defaults)
+        defaultFontSize = TTDefaultFontSize.load(from: defaults)
         binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
     }
 
@@ -168,6 +183,29 @@ struct PreferencesView: View {
                 if let loginNote = model.launchAtLoginNote {
                     note(loginNote, warning: true)
                 }
+            }
+
+            Section {
+                LabeledContent("Default zoom") {
+                    // Reset leads, so the trailing stepper holds still as it appears.
+                    HStack {
+                        if model.defaultFontSize != nil {
+                            Button("Reset") { model.defaultFontSize = nil }
+                        }
+                        Stepper(
+                            TTDefaultFontSize.label(model.defaultFontSize ?? model.configFontSize),
+                            value: Binding(
+                                get: { model.defaultFontSize ?? model.configFontSize },
+                                set: { model.defaultFontSize = $0.rounded() }
+                            ),
+                            in: TTDefaultFontSize.range
+                        )
+                    }
+                }
+                note((model.defaultFontSize == nil
+                    ? "The Ghostty config's font size. "
+                    : "Overrides the Ghostty config's font-size. ")
+                    + "⌘+ and ⌘− zoom until tt.app quits; each launch and ⌘0 return to this size.")
             }
 
             Section {

@@ -38,6 +38,38 @@ final class SurfaceViewTests: XCTestCase {
         ghostty_surface_size(try XCTUnwrap(view.surface))
     }
 
+    /// A new default zoom reaches a zoomed surface only through the reset
+    /// that follows the reload, which is how Preferences applies it.
+    func testReloadedFontSizeAppliesToAZoomedSurfaceOnReset() throws {
+        // The setUp surface goes before the app it belongs to.
+        window.contentView = nil
+        view = nil
+        var fontSize: Float? = nil
+        let overrides = Ghostty.ConfigOverrides(command: URL(fileURLWithPath: "/bin/cat"))
+        ghostty = Ghostty.App {
+            var current = overrides
+            current.fontSize = fontSize
+            return Ghostty.Config(userConfig: nil, overrides: current)
+        }
+        view = Ghostty.SurfaceView(app: try XCTUnwrap(ghostty.app))
+        window.contentView = view
+        let initial = try surfaceSize().cell_width_px
+
+        XCTAssertTrue(view.performBindingAction("increase_font_size:20"))
+        let zoomed = try surfaceSize().cell_width_px
+        XCTAssertGreaterThan(zoomed, initial)
+
+        fontSize = 20
+        XCTAssertTrue(ghostty.reloadConfig())
+        XCTAssertEqual(ghostty.config.get("font-size", as: Float.self, initial: 0), 20)
+        XCTAssertEqual(try surfaceSize().cell_width_px, zoomed, "a reload keeps a manual zoom")
+
+        XCTAssertTrue(view.performBindingAction("reset_font_size"))
+        let reset = try surfaceSize().cell_width_px
+        XCTAssertGreaterThan(reset, initial)
+        XCTAssertLessThan(reset, zoomed)
+    }
+
     func testSurfaceIsCreatedAndHostsItself() throws {
         let surface = try XCTUnwrap(view.surface)
         let host = Ghostty.surfaceHost(from: ghostty_surface_userdata(surface))

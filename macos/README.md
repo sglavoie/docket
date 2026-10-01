@@ -121,6 +121,19 @@ Preferences has Open and Reload for it. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 tt runs in.
 
+### Default zoom
+
+`Cmd+=` and `Cmd+-` zoom the terminal for the running session only; every
+launch, and `Cmd+0`, return to the default zoom. Preferences sets it as a font
+size in points, applied at once even over a zoomed window, and it overrides
+the config file's `font-size`; Reset hands the size back to the config. It is
+stored as the `ttDefaultFontSize` default, 6 to 72:
+
+```bash
+defaults write io.github.sglavoie.tt ttDefaultFontSize -float 15
+defaults delete io.github.sglavoie.tt ttDefaultFontSize   # use the config's
+```
+
 Ghostty's standard themes ship inside the app, so `theme = Catppuccin Mocha`
 works without Ghostty.app installed; `build-ghosttykit.sh` vendors them, with
 Ghostty's terminfo and shell integration, into `Vendor/resources/`.

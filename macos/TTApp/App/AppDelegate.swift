@@ -59,7 +59,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             environment: environment.commandEnvironment,
             waitAfterCommand: true
         )
-        let ghostty = Ghostty.App { Ghostty.Config(overrides: overrides) }
+        // Read on every load, so a reload applies the current default zoom.
+        let model = preferencesModel
+        let ghostty = Ghostty.App {
+            var current = overrides
+            current.fontSize = model.defaultFontSize
+            return Ghostty.Config(overrides: current)
+        }
         guard ghostty.readiness == .ready else {
             showLaunchError(
                 title: "Ghostty failed to start.",
@@ -69,6 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         ghostty.delegate = self
         self.ghostty = ghostty
+        model.onDefaultFontSizeChange = { [weak self] _ in self?.applyDefaultFontSize() }
+        refreshConfigFontSize()
 
         let controller = TerminalWindowController(ghostty: ghostty, statusFile: statusFile)
         terminal = controller
@@ -128,7 +136,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             }
         }
         model.onOpenGhosttyConfig = { Ghostty.App.openConfig() }
-        model.onReloadGhosttyConfig = { [weak self] in self?.ghostty?.reloadConfig() }
+        model.onReloadGhosttyConfig = { [weak self] in
+            self?.ghostty?.reloadConfig()
+            self?.refreshConfigFontSize()
+        }
 
         statusItem = StatusItemController(delegate: self)
         let hotKeys = HotKeyCenter()
@@ -159,6 +170,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             NSApp.activate(ignoringOtherApps: true)
             front?.makeKeyAndOrderFront(nil)
         }
+    }
+
+    /// Applies a changed default zoom now: the reload makes it the size Cmd+0
+    /// returns to, and resetting moves the running terminal there even when
+    /// it was zoomed, which a reload alone would preserve.
+    private func applyDefaultFontSize() {
+        guard let ghostty, ghostty.reloadConfig() else { return }
+        terminal?.surfaceView?.performBindingAction("reset_font_size")
+        refreshConfigFontSize()
+    }
+
+    /// What Preferences shows while no default zoom is set. With one set the
+    /// loaded config carries it, so the last config-only value is kept.
+    private func refreshConfigFontSize() {
+        guard preferencesModel.defaultFontSize == nil,
+              let size = ghostty?.config.get("font-size", as: Float.self, initial: 0), size > 0 else { return }
+        preferencesModel.configFontSize = size
     }
 
     // MARK: StatusItemDelegate

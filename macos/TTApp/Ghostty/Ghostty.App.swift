@@ -107,15 +107,21 @@ extension Ghostty {
 
         /// Reloads the layered config from disk and hands it to the app; the
         /// applied value comes back through `GHOSTTY_ACTION_CONFIG_CHANGE`.
-        func reloadConfig() {
-            guard let app else { return }
+        /// Every surface has taken it by the time this returns. Returns
+        /// whether the new config was applied.
+        @discardableResult
+        func reloadConfig() -> Bool {
+            guard let app else { return false }
             let fresh = makeConfig()
             Self.logDiagnostics(fresh)
             guard let cfg = fresh.config else {
                 Ghostty.logger.warning("config reload failed; keeping the current config")
-                return
+                return false
             }
+            // Ghostty clones what it keeps, so the old config can go.
             ghostty_app_update_config(app, cfg)
+            config = fresh
+            return true
         }
 
         /// Opens the tt-app config file, creating an empty one on first use.

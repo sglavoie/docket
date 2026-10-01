@@ -17,6 +17,8 @@ extension Ghostty {
         /// Keeps an exited surface open, so its host decides what happens to it
         /// and its last output stays readable.
         var waitAfterCommand = false
+        /// The font size in points, or nil to keep the user config's.
+        var fontSize: Float?
 
         /// The override file's lines, in the order Ghostty reads them.
         var lines: [String] {
@@ -25,6 +27,9 @@ extension Ghostty {
                 "wait-after-command = \(waitAfterCommand)",
                 "confirm-close-surface = false",
             ]
+            if let fontSize {
+                lines.append("font-size = \(Self.number(fontSize))")
+            }
             for key in environment.keys.sorted() {
                 guard let value = environment[key], Self.isSingleLine(key), Self.isSingleLine(value) else {
                     continue
@@ -43,6 +48,11 @@ extension Ghostty {
                 return "direct:" + words.joined(separator: " ")
             }
             return "shell:" + words.map(shellQuoted).joined(separator: " ")
+        }
+
+        /// A whole number without its ".0", so `14` rather than `14.0`.
+        static func number(_ value: Float) -> String {
+            value == value.rounded() ? String(Int(value)) : String(value)
         }
 
         private static func shellQuoted(_ word: String) -> String {
