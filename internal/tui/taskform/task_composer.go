@@ -451,6 +451,47 @@ func ParseCaptureText(preset TaskComposerPreset, runtime *config.RuntimeState, t
 	return reqs, nil
 }
 
+// CapturePreviewText describes a host's full draft through the composer's own
+// validation and route summary. Invalid drafts return no misleading route;
+// opening an empty field still describes the default destination.
+func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState, text string) (string, []grammar.LineError) {
+	composer := NewTaskComposerModel(preset, runtime)
+	composer.Input.SetValue(text)
+	var reqs []app.CaptureRequest
+	if strings.TrimSpace(text) != "" {
+		var ok bool
+		reqs, ok = composer.ParseCompactLines()
+		if !ok {
+			return "", composer.Errors
+		}
+	}
+	project, plan, state := composer.effectiveRouteHeader().strings()
+	parts := []string{"Project: " + project}
+	if plan != "" {
+		parts = append(parts, "Plan: "+plan)
+	}
+	parts = append(parts, "Status: "+state)
+	var due string
+	for i, req := range reqs {
+		value := ""
+		if req.Due != nil {
+			value = req.Due.Format("Mon, Jan 2 2006")
+			if clock := chrome.FormatDueClock(&models.Task{DueDate: req.Due}); clock != "" {
+				value += " " + clock
+			}
+		}
+		if i == 0 {
+			due = value
+		} else if due != value {
+			due = composerMixedValue
+		}
+	}
+	if due != "" {
+		parts = append(parts, "Due: "+due)
+	}
+	return strings.Join(parts, " · "), nil
+}
+
 // CaptureCompletion is one suggestion CaptureCompletions offers: Label is the
 // plain text a list shows and Insert the whole replacement for the token.
 type CaptureCompletion struct {

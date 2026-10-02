@@ -537,6 +537,9 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		// nothing, so there is nothing for an open picker or editor to lose.
 		m.controlComplete(request.Text, reply)
 		return nil
+	case control.OpPreview:
+		m.controlPreview(request.Text, reply)
+		return nil
 	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
@@ -637,7 +640,7 @@ func (m *AppModel) controlDefer(task *models.Task, project *models.Project, minu
 // controlCapture reads text as the global `a` composer would and commits it as
 // one capture transaction.
 func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.Cmd {
-	preset, ok := m.captureComposerPreset(nil, nil, "")
+	preset, ok := m.captureComposerPreset(nil, nil)
 	if !ok {
 		answer(reply, false, "the Unfiled project is unavailable")
 		return nil
@@ -665,7 +668,7 @@ func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.C
 // draft up to the host's caret. No suggestion is still a success: it is the
 // answer for a caret standing on prose.
 func (m *AppModel) controlComplete(text string, reply chan<- control.Reply) {
-	preset, ok := m.captureComposerPreset(nil, nil, "")
+	preset, ok := m.captureComposerPreset(nil, nil)
 	if !ok {
 		answer(reply, false, "the Unfiled project is unavailable")
 		return
@@ -680,6 +683,20 @@ func (m *AppModel) controlComplete(text string, reply chan<- control.Reply) {
 		result.Completion = completion
 	}
 	reply <- result
+}
+
+func (m *AppModel) controlPreview(text string, reply chan<- control.Reply) {
+	preset, ok := m.captureComposerPreset(nil, nil)
+	if !ok {
+		answer(reply, false, "the Unfiled project is unavailable")
+		return
+	}
+	preview, lineErrors := taskform.CapturePreviewText(preset, m.domain.runtime, text)
+	if len(lineErrors) > 0 {
+		answer(reply, false, controlLineErrors(lineErrors, strings.Contains(strings.TrimSpace(text), "\n")))
+		return
+	}
+	reply <- control.Reply{OK: true, Preview: preview}
 }
 
 // adoptControlCommit reloads what a socket request committed through the save

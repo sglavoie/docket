@@ -176,6 +176,15 @@ Esc closes the list first; with no list, Esc or clicking elsewhere puts the
 field away. The menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
+A live preview under the field names the project, plan (when present), status,
+and resolved deadline, including its weekday and any time. It reads the whole
+draft through the running tt's composer, so moving the caret to complete a
+token does not change the preview's meaning. Invalid drafts hide the preview;
+Enter reports the refusal and keeps the text. Refusals wrap in full and the
+panel grows to fit them. A preview never starts tt, and is simply absent with
+an older tt that does not support it. Reopening the panel cancels a previous
+capture's pending automatic dismissal.
+
 The shortcut is set in Preferences beside the show/hide one, and stored as
 `ttCaptureHotKey`, spelled like `ttHotKey`:
 

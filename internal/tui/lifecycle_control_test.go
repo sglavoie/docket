@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -170,6 +171,45 @@ func TestControlCompleteAnswersWhileTheUserIsMidInteraction(t *testing.T) {
 
 	if reply := env.request(t, control.Request{Op: control.OpComplete, Text: "Pay !"}); !reply.OK || reply.Completion == nil {
 		t.Fatalf("reply = %+v", reply)
+	}
+}
+
+func TestControlPreviewUsesCaptureRoutingWithoutCommitting(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	beforeUndo, beforeRedo := env.model.workspaceHistoryPreview()
+	project := env.env.projects[0]
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	for _, tc := range []struct {
+		text string
+		want []string
+	}{
+		{"", []string{"Project: " + project.Name, "Status: Inbox"}},
+		{"Buy milk %" + project.Slug + " $today @2099-01-02", []string{"Project: " + project.Name, "Plan: Today", "Status: Backlog", "Due: Fri, Jan 2 2099"}},
+		{"Buy milk @today", []string{"Plan: Today", "Status: Backlog", "Due: " + time.Now().Format("Mon, Jan 2 2006")}},
+		{"Buy milk $doing", []string{"Status: Doing"}},
+		{"Buy milk @@tomorrow", []string{"Status: Backlog"}},
+	} {
+		reply := env.request(t, control.Request{Op: control.OpPreview, Text: tc.text})
+		if !reply.OK {
+			t.Fatalf("preview %q refused: %+v", tc.text, reply)
+		}
+		for _, want := range tc.want {
+			if !strings.Contains(reply.Preview, want) {
+				t.Errorf("preview %q = %q, want %q", tc.text, reply.Preview, want)
+			}
+		}
+	}
+	for _, text := range []string{"Pay $ready", "Buy milk %missing-project"} {
+		reply := env.request(t, control.Request{Op: control.OpPreview, Text: text})
+		if reply.OK || reply.Preview != "" || reply.Message == "" {
+			t.Fatalf("invalid draft %q advertised a destination: %+v", text, reply)
+		}
+	}
+	if tasks := env.env.reload(t, 0).Tasks; len(tasks) != 1 || tasks[0].Title != "existing" {
+		t.Fatalf("preview changed stored tasks: %+v", tasks)
+	}
+	if undo, redo := env.model.workspaceHistoryPreview(); undo != beforeUndo || redo != beforeRedo {
+		t.Fatalf("preview wrote history: undo %q, redo %q", undo, redo)
 	}
 }
 

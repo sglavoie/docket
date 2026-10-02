@@ -44,7 +44,6 @@ func (m *AppModel) activeTaskComposer() bool {
 func (m *AppModel) captureComposerPreset(
 	project *models.Project,
 	allProjects []*models.Project,
-	suggestedTag string,
 ) (taskform.TaskComposerPreset, bool) {
 	contextual := project != nil
 	projects := m.availableProjects()
@@ -58,10 +57,6 @@ func (m *AppModel) captureComposerPreset(
 	if project == nil {
 		return taskform.TaskComposerPreset{}, false
 	}
-	parts := make([]string, 0, 2)
-	if suggestedTag != "" {
-		parts = append(parts, "#"+suggestedTag)
-	}
 	kind := taskform.ComposerProject
 	if !contextual {
 		kind = taskform.ComposerGlobal
@@ -71,14 +66,13 @@ func (m *AppModel) captureComposerPreset(
 		HeaderLabel:        "Capture",
 		Project:            project,
 		AllProjects:        projects,
-		InitialText:        strings.Join(parts, " "),
 		AllowProjectSwitch: true,
 		Shared:             taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, true
 }
 
 func (m *AppModel) captureComposerMessage(project *models.Project, allProjects []*models.Project) tea.Msg {
-	preset, ok := m.captureComposerPreset(project, allProjects, "")
+	preset, ok := m.captureComposerPreset(project, allProjects)
 	if !ok {
 		return nil
 	}

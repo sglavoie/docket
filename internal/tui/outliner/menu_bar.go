@@ -109,6 +109,9 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},
 				{OperationID: operation.OperationTaskCopyTitleDescription},
+				menuSeparator(),
+				{OperationID: operation.OperationCoreUndo},
+				{OperationID: operation.OperationCoreRedo},
 			},
 		},
 		{
@@ -347,6 +350,9 @@ type menuBarState struct {
 	// rows out from under them, never trusted identities.
 	MenuIndex int
 	ItemIndex int
+	// History descriptions are a snapshot read at open, not during rendering.
+	undoDescription string
+	redoDescription string
 }
 
 // openFirstMenu drops the first menu out of the bar. It always opens on the
@@ -434,6 +440,10 @@ func (msg MenuBarActivateMsg) String() string { return "menu bar activate" }
 func (m *OutlinerModel) OpenMenuBar() {
 	if m == nil {
 		return
+	}
+	m.MenuBar.undoDescription, m.MenuBar.redoDescription = "", ""
+	if m.HistoryPreview != nil {
+		m.MenuBar.undoDescription, m.MenuBar.redoDescription = m.HistoryPreview()
 	}
 	m.MenuBar.openFirstMenu()
 }
@@ -772,6 +782,29 @@ func (m *OutlinerModel) resolvedMenuBar() []ResolvedMenu {
 		// hold, so there is nothing here a render could report that validation did
 		// not. Drawing an empty band beats painting an error into the chrome.
 		return nil
+	}
+	for i := range menus {
+		entries := menus[i].Entries[:0]
+		for _, entry := range menus[i].Entries {
+			var description string
+			switch entry.OperationID { //nolint:exhaustive // Only undo and redo describe ledger entries.
+			case operation.OperationCoreUndo:
+				description = m.MenuBar.undoDescription
+				if m.HistoryPreview != nil && description == "" {
+					continue
+				}
+			case operation.OperationCoreRedo:
+				description = m.MenuBar.redoDescription
+				if m.HistoryPreview != nil && description == "" {
+					continue
+				}
+			}
+			if description != "" {
+				entry.Label += ": " + description
+			}
+			entries = append(entries, entry)
+		}
+		menus[i].Entries = collapseMenuSeparators(entries)
 	}
 	return menus
 }

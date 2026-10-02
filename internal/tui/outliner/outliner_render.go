@@ -692,6 +692,11 @@ func (m *OutlinerModel) statusStripSignals(width int) []string {
 	if m.StatusMessage != "" {
 		lines = append(lines, theme.MutedStyle.Width(width).Render(m.StatusMessage))
 	}
+	if m.HasContentRows() {
+		if hint := m.withheldSearchHint(); hint != "" {
+			lines = append(lines, theme.MutedStyle.Width(width).Render("Also matches: "+hint+"."))
+		}
+	}
 	return lines
 }
 
@@ -1094,7 +1099,7 @@ func (m *OutlinerModel) HasContentRows() bool {
 	return false
 }
 
-// withheldSearchHint names the finished and deferred tasks an empty ranked list
+// withheldSearchHint names the finished and deferred tasks a ranked list
 // kept out, with the sigil that brings each population in. The ranked list
 // ignores the mode, so adding that sigil is exactly what shows them; a narrowed
 // mode would still hide them for its own reasons, so it is never promised there.
@@ -1109,11 +1114,7 @@ func (m *OutlinerModel) withheldSearchHint() string {
 	if n := m.Search.withheld.deferred; n > 0 {
 		parts = append(parts, fmt.Sprintf("%s (add ?deferred)", util.Count(n, "deferred task")))
 	}
-	verb := "does"
-	if m.Search.withheld.completed+m.Search.withheld.deferred > 1 {
-		verb = "do"
-	}
-	return strings.Join(parts, " and ") + " " + verb
+	return strings.Join(parts, " and ")
 }
 
 func (m *OutlinerModel) OutlinerEmptyMessage() string {
@@ -1124,7 +1125,11 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:
 		if hint := m.withheldSearchHint(); hint != "" {
-			return fmt.Sprintf("No open tasks match search %q, but %s. Press %s.", m.SearchQuery(), hint, m.searchExitClause())
+			verb := "does"
+			if m.Search.withheld.completed+m.Search.withheld.deferred > 1 {
+				verb = "do"
+			}
+			return fmt.Sprintf("No open tasks match search %q, but %s %s. Press %s.", m.SearchQuery(), hint, verb, m.searchExitClause())
 		}
 		return fmt.Sprintf("No tasks match search %q. Press %s.", m.SearchQuery(), m.searchExitClause())
 	case OutlinerEmptySearchFiltered:

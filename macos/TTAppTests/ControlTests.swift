@@ -5,6 +5,16 @@ import UserNotifications
 /// The wire is `internal/control` in the Go tree; these pin the lines tt.app
 /// writes and reads.
 final class ControlWireTests: XCTestCase {
+    func testCapturePreviewWireFormat() throws {
+        let summary = "Project: Web · Plan: Today · Status: Backlog"
+        let line = #"{"reply":7,"ok":true,"preview":"Project: Web · Plan: Today · Status: Backlog"}"#
+        XCTAssertEqual(TTControlLine.decode(Data(line.utf8)),
+                       .reply(TTControlReply(reply: 7, ok: true, message: nil, preview: summary)))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.preview("Buy %web"))) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "preview")
+        XCTAssertEqual(object["text"] as? String, "Buy %web")
+    }
+
     func testRepliesAndEventsDecode() {
         XCTAssertEqual(
             TTControlLine.decode(Data(#"{"reply":3,"ok":true,"message":"Captured: Buy milk"}"#.utf8)),
@@ -240,6 +250,88 @@ final class ControlClientTests: XCTestCase {
 }
 
 final class QuickCapturePanelTests: XCTestCase {
+    func testPreviewUsesTheWholeDraftAndRejectsOldReplies() throws {
+        let panel = QuickCapturePanel()
+        var requests: [(String, (String?) -> Void)] = []
+        panel.preview = { text, done in requests.append((text, done)) }
+        panel.show()
+        defer { panel.close() }
+        XCTAssertEqual(requests.map(\.0), [""])
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.insertText("Buy milk %web $today", replacementRange: editor.selectedRange())
+        XCTAssertEqual(requests.last?.0, "Buy milk %web $today")
+        let current = try XCTUnwrap(requests.last).1
+        current("Project: Web · Plan: Today · Status: Backlog")
+        requests[0].1("Project: Unfiled · Status: Inbox")
+        let visible = panel.panel.contentView!.descendants(of: NSTextField.self).filter { !$0.isHidden }.map(\.stringValue)
+        XCTAssertTrue(visible.contains("Project: Web · Plan: Today · Status: Backlog"))
+        XCTAssertFalse(visible.contains("Project: Unfiled · Status: Inbox"))
+        // Moving the caret does not replace the full draft with its prefix.
+        let count = requests.count
+        editor.setSelectedRange(NSRange(location: 3, length: 0))
+        XCTAssertEqual(requests.count, count)
+        let previewHeight = panel.panel.frame.height
+        editor.insertText(" more", replacementRange: editor.selectedRange())
+        XCTAssertEqual(panel.panel.frame.height, previewHeight, accuracy: 1,
+                       "a pending preview keeps its rows instead of bouncing on every keystroke")
+        XCTAssertFalse(panel.panel.contentView!.descendants(of: NSTextField.self).contains {
+            $0.stringValue == "Project: Web · Plan: Today · Status: Backlog"
+        })
+        panel.close()
+        panel.show()
+        current("stale preview")
+        XCTAssertFalse(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue == "stale preview" })
+    }
+
+    func testAnOldDismissalCannotCloseAReopenedPanel() throws {
+        let panel = QuickCapturePanel()
+        var dismiss: (() -> Void)?
+        panel.scheduleDismissal = { dismiss = $0 }
+        panel.submit = { _, done in done(true, "Captured") }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        let oldDismissal = try XCTUnwrap(dismiss)
+        panel.close()
+        panel.show()
+        oldDismissal()
+        XCTAssertTrue(panel.isVisible)
+
+        field.stringValue = "Buy bread"
+        field.sendAction(field.action, to: field.target)
+        try XCTUnwrap(dismiss)()
+        XCTAssertFalse(panel.isVisible, "the current capture still dismisses normally")
+    }
+
+    func testLongRefusalsGrowThePanelAndTheNextOpeningShrinksIt() throws {
+        let panel = QuickCapturePanel()
+        let reason = String(repeating: "The selected project is unavailable; choose an existing project. ", count: 8)
+        panel.submit = { _, done in done(false, reason) }
+        panel.show()
+        defer { panel.close() }
+        let originalHeight = panel.panel.frame.height
+        let originalTop = panel.panel.frame.maxY
+        let fields = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
+        let field = try XCTUnwrap(fields.first { $0.isEditable })
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        panel.panel.contentView?.layoutSubtreeIfNeeded()
+        let feedback = try XCTUnwrap(fields.first { $0.stringValue == reason })
+        XCTAssertEqual(feedback.maximumNumberOfLines, 0)
+        XCTAssertEqual(feedback.lineBreakMode, .byWordWrapping)
+        XCTAssertGreaterThan(panel.panel.frame.height, originalHeight)
+        XCTAssertEqual(panel.panel.frame.maxY, originalTop, accuracy: 1)
+        XCTAssertGreaterThan(feedback.frame.height, 30)
+        XCTAssertEqual(field.stringValue, "Buy milk")
+
+        panel.close()
+        panel.show()
+        XCTAssertEqual(panel.panel.frame.height, originalHeight, accuracy: 1)
+    }
+
     /// A tt without a control socket still opens the panel, which names the
     /// binary and what to do instead of sending anything.
     func testAnUnavailableTtIsExplainedInThePanelAndNothingIsSent() throws {

@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete
+        case reveal, acknowledge, capture, complete, preview
         case deferTask = "defer"
     }
 
@@ -65,6 +65,10 @@ struct TTControlRequest: Encodable, Equatable {
     static func complete(_ text: String) -> Self {
         Self(op: .complete, text: text)
     }
+
+    static func preview(_ text: String) -> Self {
+        Self(op: .preview, text: text)
+    }
 }
 
 /// A task as tt names it on the wire: stored project and task IDs.
@@ -79,12 +83,14 @@ struct TTControlReply: Decodable, Equatable {
     let message: String?
     /// A `complete` reply's suggestions; nil when the caret stands on no sigil.
     let completion: TTCompletion?
+    let preview: String?
 
-    init(reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil) {
+    init(reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil) {
         self.reply = reply
         self.ok = ok
         self.message = message
         self.completion = completion
+        self.preview = preview
     }
 
     /// What the app says when it could not ask: no tt, or a dropped connection.
@@ -182,6 +188,7 @@ enum TTControlLine: Equatable {
         let ok: Bool?
         let message: String?
         let completion: TTCompletion?
+        let preview: String?
         let event: String?
         let pulse: TTPulse?
         let arrivals: [TTArrival]?
@@ -192,7 +199,7 @@ enum TTControlLine: Equatable {
     static func decode(_ data: Data) -> TTControlLine? {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
-            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion))
+            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview))
         }
         switch raw.event {
         case "pulse":

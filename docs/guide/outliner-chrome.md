@@ -57,6 +57,12 @@ Those keys keep working while the menu is up: pressing one the open menu does
 not list closes the menu and does what the key does, so nothing is trapped
 behind a dropdown.
 
+The Task menu also offers Undo and Redo with the next recorded action in their
+labels, such as `Undo: Set Priority: Ship release`. These describe the same
+workspace-wide history that `u` and `Ctrl+R` restore, including after a restart.
+The descriptions refresh each time the menu opens; reading them changes nothing.
+An action with no available history is omitted from the menu.
+
 A row with no key beside it has none anywhere, and the menu is the only place it
 exists. The View menu's **Clear All Folds** is the first of those: `s`, `p`, and
 `t` each toggle one fold axis and each reverses, so opening a tree that is folded
@@ -224,14 +230,15 @@ terminal that honors the escape shows it whether or not tt is in view.
 `tt --control PATH` serves a Unix socket at `PATH`, readable by your user
 alone, for a host app such as tt.app. Over it the session reports the pulse
 whenever it changes and each tick's arrivals with the identity of every task,
-and it takes five requests: show a task, acknowledge one as `R` does, defer one
+and it takes six requests: show a task, acknowledge one as `R` does, defer one
 by some minutes, capture a line as the `a` composer would read it, refusals
-included, and ask what that composer would suggest for a draft up to its caret.
+included, ask what that composer would suggest for a draft up to its caret,
+and preview the project, plan, status, and deadline of a full capture draft.
 Each is answered as though you had pressed the key in tt: through the same
 commit and the same undo entry, so `u` takes it back. A request that changes
 something is refused, never queued, while you are inside a picker, an editor, a
-selection, or another view — a completion changes nothing, so it is answered
-even then — and a session that lost focus first adopts any change made on disk since,
+selection, or another view — completions and previews change nothing, so they
+are answered even then — and a session that lost focus first adopts any change made on disk since,
 so what it commits is never against a stale read. tt.app starts tt this way, and
 falls back to `--notify` for a tt too old to have the flag.
 

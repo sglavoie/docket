@@ -69,8 +69,8 @@ type searchState struct {
 	caseRelaxed bool
 
 	// withheld counts the finished and deferred tasks the ranked list's query
-	// matches but its population rule kept out, recorded only when the list came
-	// back empty so the empty state can name the sigil that brings them in.
+	// matches but its population rule kept out, so search can name the sigil
+	// that brings them in even when other results are visible.
 	withheld searchWithheldMatches
 
 	// The input's own state. autocomplete is the suggestion pane, holding no cached
@@ -260,7 +260,7 @@ func (s *searchState) setCompilation(remainder string, gate *query.SearchPredica
 	s.caseRelaxed = relaxed
 }
 
-// searchWithheldMatches is what an empty ranked list would have shown had its
+// searchWithheldMatches is what a ranked list would also have shown had its
 // query opened the terminal or the deferred population.
 type searchWithheldMatches struct {
 	completed int
@@ -712,7 +712,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 		matcher = relaxed
 	}
 	m.Search.withheld = searchWithheldMatches{}
-	if len(matches) == 0 && len(notes) == 0 && !predicates.Invalid() {
+	if !predicates.Invalid() {
 		m.Search.withheld = countWithheldSearchMatches(
 			searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates.WithEveryPopulation()),
 			predicates,

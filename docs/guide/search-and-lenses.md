@@ -51,10 +51,12 @@ query that is merely narrowing leaves them alone.
 Done, canceled, and deferred work is admitted when the query says so and never
 otherwise. `$done`, `$canceled`, `?completed`, `fa`, and the deferred forms
 `@@any`, `@@tomorrow`, and `f@`'s deferred row each open the population they
-name; nothing else does, in either presentation. When the flat list comes back
-empty but the query matches finished or deferred work, the empty state counts
-those tasks and names the sigil — `?completed` or `?deferred` — that brings
-them in, rather than reporting that nothing matched.
+name; nothing else does, in either presentation. When the query also matches
+finished or deferred work, the flat list names those hidden matches and the
+sigil — `?completed` or `?deferred` — that brings them in. With visible results
+this is a quiet `Also matches` line above the footer; with no results it is
+part of the empty-state explanation. The counts respect the current scope,
+facets, and query, and disappear when nothing matching is withheld.
 
 | Keys | Effect |
 | --- | --- |

@@ -24,6 +24,20 @@
     { "type": "text", "label": "words nothing holds", "text": "zzqx" },
     { "type": "assert", "label": "a query nothing matches promises nothing", "assert": "contains", "value": "No tasks match search \"zzqx\"" },
     { "type": "assert", "assert": "not_contains", "value": "add ?" },
-    { "type": "assert", "assert": "no_layout_issues" }
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Investigate retired staging again" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "retired staging" },
+    { "type": "assert", "label": "visible matches still name the finished match", "assert": "contains", "value": "Also matches: 1 finished task (add ?completed)" },
+    { "type": "assert", "assert": "contains", "value": "Investigate retired staging again" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "key": "b" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "add ?completed" },
+    { "type": "assert", "label": "hidden matches share the row budget with Peek", "assert": "no_layout_issues" }
   ]
 }

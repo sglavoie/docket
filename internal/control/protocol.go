@@ -29,6 +29,8 @@ const (
 	// draft up to the caret. It reads and never writes, so tt answers it even
 	// while the user is mid-interaction.
 	OpComplete = "complete"
+	// OpPreview describes the full capture draft without writing anything.
+	OpPreview = "preview"
 )
 
 // The events tt reports.
@@ -62,11 +64,13 @@ type Request struct {
 // Reply answers the Request whose ID it carries. Message is what tt said: the
 // outcome on success, the refusal otherwise. Completion answers OpComplete
 // alone, and is absent when the caret stands on no sigil the grammar completes.
+// Preview answers OpPreview with the full draft's human-readable route and date.
 type Reply struct {
 	ID         int         `json:"reply"`
 	OK         bool        `json:"ok"`
 	Message    string      `json:"message,omitempty"`
 	Completion *Completion `json:"completion,omitempty"`
+	Preview    string      `json:"preview,omitempty"`
 }
 
 // Completion is what the composer would offer for the token ending at the

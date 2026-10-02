@@ -62,7 +62,8 @@ func removeEntryAt(stack []LedgerEntry, idx int) []LedgerEntry {
 	return out
 }
 
-func ledgerEntryDescription(entry LedgerEntry) string {
+// Description names a recorded mutation for both history previews and restores.
+func (entry LedgerEntry) Description() string {
 	if entry.Action == "" {
 		return entry.TransactionID
 	}

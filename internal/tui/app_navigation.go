@@ -277,6 +277,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 		return
 	}
 	outlinerView.OperationRegistry = m.operations.Registry
+	outlinerView.HistoryPreview = m.workspaceHistoryPreview
 	m.lenses.WireOutliner(outlinerView, m.commitActiveLensPointer)
 	outlinerView.SetOutstandingConflicts(m.feedback.outstandingConflictCount)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)

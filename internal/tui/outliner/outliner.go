@@ -205,6 +205,8 @@ type OutlinerModel struct {
 	// operationRegistry projects help, handled keys, and footer hints from the
 	// same operation metadata used by shell dispatch.
 	OperationRegistry *operation.OperationRegistry
+	// HistoryPreview is read once when a menu opens, never during rendering.
+	HistoryPreview func() (undo, redo string)
 }
 
 func (m *OutlinerModel) resetViewScrollOffset() {

@@ -119,7 +119,7 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 	if err != nil {
 		return LedgerEntry{}, "", err
 	}
-	return restored, ledgerEntryDescription(restored), nil
+	return restored, restored.Description(), nil
 }
 
 func pathWithinAnyDirectory(path string, dirs []string) bool {

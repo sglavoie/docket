@@ -16,9 +16,14 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     /// Asks tt what to suggest for the draft up to the caret and calls back
     /// with its answer, or nil when there is none to show.
     var complete: ((String, @escaping (TTCompletion?) -> Void) -> Void)?
+    /// Describes the full draft through tt's parser, independently of the caret.
+    var preview: ((String, @escaping (String?) -> Void) -> Void)?
     /// Why nothing can be captured right now, shown in place of the hint as
     /// soon as the panel opens; nil when tt can take a capture.
     var unavailableReason: () -> String? = { nil }
+    var scheduleDismissal: (@escaping () -> Void) -> Void = { action in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: action)
+    }
 
     static let hint = "Enter capture · Tab complete · Esc cancel · #tag  @date  %project  $state  !1"
 
@@ -30,10 +35,14 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private(set) lazy var panel: NSPanel = makePanel()
     private let field = NSTextField()
     private let status = NSTextField(labelWithString: QuickCapturePanel.hint)
+    private let routeLabel = NSTextField(wrappingLabelWithString: "")
     private let suggestionTable = NSTableView()
     private let suggestionScroll = NSScrollView()
     private var suggestionHeight: NSLayoutConstraint?
     private var sending = false
+    private var dismissalGeneration = 0
+    private var previewGeneration = 0
+    private var pendingPreviewHeight: CGFloat = 0
 
     /// What the list shows, and the caret it was asked for. A reply is kept only
     /// if neither the draft nor the caret has changed since it was asked.
@@ -58,6 +67,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     func show() {
+        dismissalGeneration += 1
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
         } else {
@@ -69,9 +79,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         observeSelection()
         // Select what a refusal left, so typing replaces it and arrows edit it.
         field.currentEditor()?.selectAll(nil)
+        requestPreview()
     }
 
     func close() {
+        dismissalGeneration += 1
+        clearPreview()
         stopObservingSelection()
         clearCompletion()
         panel.orderOut(nil)
@@ -136,7 +149,14 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
         status.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         status.textColor = .secondaryLabelColor
-        status.lineBreakMode = .byTruncatingTail
+        status.lineBreakMode = .byWordWrapping
+        status.maximumNumberOfLines = 0
+        status.preferredMaxLayoutWidth = 600
+
+        routeLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        routeLabel.textColor = .secondaryLabelColor
+        routeLabel.preferredMaxLayoutWidth = 600
+        routeLabel.isHidden = true
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("suggestion"))
         column.resizingMask = .autoresizingMask
@@ -161,7 +181,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         let suggestionHeight = suggestionScroll.heightAnchor.constraint(equalToConstant: 0)
         self.suggestionHeight = suggestionHeight
 
-        let stack = NSStackView(views: [field, suggestionScroll, status])
+        let stack = NSStackView(views: [field, routeLabel, suggestionScroll, status])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -175,6 +195,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             stack.bottomAnchor.constraint(equalTo: background.bottomAnchor),
             field.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
             status.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
+            routeLabel.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
             suggestionScroll.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
             suggestionHeight,
         ])
@@ -198,6 +219,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         status.stringValue = text
         status.textColor = error ? .systemRed : .secondaryLabelColor
         status.toolTip = error ? text : nil
+        fitToContent()
     }
 
     // MARK: Actions
@@ -210,6 +232,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             return
         }
         guard !sending, !text.isEmpty, let submit else { return }
+        let generation = dismissalGeneration
+        clearPreview()
         sending = true
         field.isEditable = false
         setStatus("Capturing…", error: false)
@@ -220,8 +244,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             if ok {
                 self.field.stringValue = ""
                 self.setStatus(message.isEmpty ? "Captured" : message, error: false)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-                    guard let self, !self.sending, self.field.stringValue.isEmpty else { return }
+                self.scheduleDismissal { [weak self] in
+                    guard let self, generation == self.dismissalGeneration,
+                          !self.sending, self.field.stringValue.isEmpty else { return }
                     self.close()
                 }
             } else {
@@ -265,7 +290,42 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     func controlTextDidChange(_ notification: Notification) {
+        dismissalGeneration += 1
         requestCompletion()
+        requestPreview()
+    }
+
+    private func clearPreview() {
+        previewGeneration += 1
+        pendingPreviewHeight = 0
+        routeLabel.stringValue = ""
+        routeLabel.isHidden = true
+        fitToContent()
+    }
+
+    private func requestPreview() {
+        previewGeneration += 1
+        let generation = previewGeneration
+        let text = field.stringValue
+        guard !sending, isVisible, let preview else {
+            clearPreview()
+            return
+        }
+        // Keep the occupied rows while tt answers, so every keystroke does not
+        // shrink and regrow the panel. The old draft's route is no longer shown.
+        if !routeLabel.isHidden {
+            pendingPreviewHeight = max(pendingPreviewHeight, wrappedHeight(routeLabel, width: panel.frame.width - 40))
+            routeLabel.stringValue = "Previewing…"
+            fitToContent()
+        }
+        preview(text) { [weak self] summary in
+            guard let self, generation == self.previewGeneration, self.isVisible,
+                  text == self.field.stringValue else { return }
+            self.pendingPreviewHeight = 0
+            self.routeLabel.stringValue = summary ?? ""
+            self.routeLabel.isHidden = summary?.isEmpty ?? true
+            self.fitToContent()
+        }
     }
 
     // MARK: Completion
@@ -305,7 +365,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             suggestionTable.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
             suggestionTable.scrollRowToVisible(0)
         }
-        fitToSuggestions()
+        fitToContent()
     }
 
     private func clearCompletion() {
@@ -354,20 +414,31 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         acceptSuggestion()
     }
 
-    /// Grows the panel downward for the list and back when it closes, keeping
-    /// its top edge where the user is looking.
-    private func fitToSuggestions() {
+    /// Measures the list and wrapped feedback together, keeping the top edge
+    /// fixed as either grows or shrinks.
+    private func fitToContent() {
+        var frame = panel.frame
         let rows = min(completion?.items.count ?? 0, Self.visibleSuggestions)
         let listHeight = CGFloat(rows) * Self.rowHeight
         suggestionScroll.isHidden = rows == 0
         suggestionHeight?.constant = listHeight
         // The stack spaces the list from its neighbors only while it shows.
-        let height = Self.baseHeight + (rows == 0 ? 0 : listHeight + 8)
-        var frame = panel.frame
+        let width = frame.width - 40
+        let lineHeight = ceil(status.font!.ascender - status.font!.descender + status.font!.leading)
+        let feedbackExtra = max(0, wrappedHeight(status, width: width) - lineHeight)
+        let previewHeight = routeLabel.isHidden ? 0 : max(pendingPreviewHeight, wrappedHeight(routeLabel, width: width)) + 8
+        let height = Self.baseHeight + feedbackExtra + previewHeight + (rows == 0 ? 0 : listHeight + 8)
         guard frame.height != height else { return }
         frame.origin.y += frame.height - height
         frame.size.height = height
         panel.setFrame(frame, display: panel.isVisible)
+    }
+
+    private func wrappedHeight(_ label: NSTextField, width: CGFloat) -> CGFloat {
+        ceil(label.attributedStringValue.boundingRect(
+            with: NSSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        ).height)
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {

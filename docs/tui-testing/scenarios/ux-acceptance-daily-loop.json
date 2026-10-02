@@ -782,7 +782,8 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Triage the duplicate support tickets"
+      "label": "the uncovered part of the host is still drawn beside the history labels",
+      "value": "Coordinate the platform migration window"
     },
     {
       "type": "assert",
@@ -792,6 +793,12 @@
       "type": "key",
       "label": "close the dropdown and give the borrowed row back",
       "key": "esc"
+    },
+    {
+      "type": "assert",
+      "label": "the task covered by the wider history menu returns unchanged",
+      "assert": "contains",
+      "value": "Triage the duplicate support tickets"
     },
     {
       "type": "assert",

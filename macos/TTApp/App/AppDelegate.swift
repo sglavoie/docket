@@ -225,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         quickCapture.submit = { [weak self] text, done in self?.capture(text, done: done) }
         quickCapture.complete = { [weak self] text, done in self?.complete(text, done: done) }
+        quickCapture.preview = { [weak self] text, done in self?.previewCapture(text, done: done) }
     }
 
     private func handle(_ event: TTControlEvent) {
@@ -275,6 +276,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return
         }
         control.send(.complete(text)) { reply in done(reply.ok ? reply.completion : nil) }
+    }
+
+    private func previewCapture(_ text: String, done: @escaping (String?) -> Void) {
+        guard let control, control.isConnected else {
+            done(nil)
+            return
+        }
+        control.send(.preview(text)) { reply in done(reply.ok ? reply.preview : nil) }
     }
 
     /// Always opens: when tt cannot take a capture, the panel says why.

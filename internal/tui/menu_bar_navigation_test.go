@@ -70,6 +70,30 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	}
 }
 
+func TestMenuHistoryLabelsFollowTheWorkspaceLedger(t *testing.T) {
+	driver, view := menuBarDriver(t)
+	pressMenuBarKey(t, driver, "!", "1")
+	undo, redo := driver.App().workspaceHistoryPreview()
+	if undo == "" || redo != "" {
+		t.Fatalf("after priority change: undo=%q redo=%q", undo, redo)
+	}
+	pressMenuBarKey(t, driver, "ctrl+m")
+	menu := menuWithID(t, openMenuBarMenusForTest(t, view), outliner.MenuIDTask)
+	if !menuHasLabel(menu, "Undo: "+undo) {
+		t.Fatalf("menu does not name the pending undo: %+v", menu.Entries)
+	}
+	pressMenuBarKey(t, driver, "esc", "u", "ctrl+m")
+	menu = menuWithID(t, openMenuBarMenusForTest(t, view), outliner.MenuIDTask)
+	if !menuHasLabel(menu, "Redo: "+undo) {
+		t.Fatalf("reopened menu does not name the pending redo: %+v", menu.Entries)
+	}
+	pressMenuBarKey(t, driver, "esc", "ctrl+r", "ctrl+m")
+	menu = menuWithID(t, openMenuBarMenusForTest(t, view), outliner.MenuIDTask)
+	if !menuHasLabel(menu, "Undo: "+undo) || menuHasLabel(menu, "Redo") {
+		t.Fatalf("menu retained stale history labels after redo: %+v", menu.Entries)
+	}
+}
+
 // The other half of the same rule: a menu opened out of a bar the machine asked
 // for leaves that bar up. Closing a menu restores the visibility the menu found,
 // which is the one fact both directions share — the dropdown is a sub-state and

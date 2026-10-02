@@ -363,6 +363,20 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 	return ledger.SelectNewestUndo(scope)
 }
 
+// workspaceHistoryPreview reads the same global entries the undo keys restore.
+// Missing or unreadable entries offer no menu action; the direct keys still
+// report the ledger's own refusal when invoked.
+func (m *AppModel) workspaceHistoryPreview() (undo, redo string) {
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	if entry, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), false); err == nil && ok {
+		undo = entry.Description()
+	}
+	if entry, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), true); err == nil && ok {
+		redo = entry.Description()
+	}
+	return undo, redo
+}
+
 // handleLedgerTaskUndoRedo restores the newest application-service workspace-ledger
 // transaction (undo when redo=false, redo when true). It reverses (or replays) the
 // entry, reloads every project the transaction touched, refreshes the runtime
