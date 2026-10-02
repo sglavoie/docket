@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -134,6 +135,41 @@ func TestControlCaptureCommitsThroughTheComposerGrammar(t *testing.T) {
 
 	if reply := env.request(t, control.Request{Op: control.OpCapture, Text: "Pay $ready"}); reply.OK || reply.Message == "" {
 		t.Fatalf("a refused line answered %+v", reply)
+	}
+}
+
+// TestControlCompleteOffersWhatTheComposerOffers: a completion names the token
+// ending at the caret and rewrites it as accepting it in the composer would,
+// and prose answers with no completion rather than a refusal.
+func TestControlCompleteOffersWhatTheComposerOffers(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	project := env.env.projects[0]
+
+	reply := env.request(t, control.Request{Op: control.OpComplete, Text: "Buy milk %" + project.Name[:3]})
+	if !reply.OK || reply.Completion == nil {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if got := reply.Completion.Token; got != "%"+project.Name[:3] {
+		t.Fatalf("token = %q", got)
+	}
+	want := control.CompletionItem{Label: "%" + project.Name, Insert: "%" + project.Slug + " "}
+	if !slices.Contains(reply.Completion.Items, want) {
+		t.Fatalf("items = %+v, want %+v among them", reply.Completion.Items, want)
+	}
+
+	if reply := env.request(t, control.Request{Op: control.OpComplete, Text: "Buy milk"}); !reply.OK || reply.Completion != nil {
+		t.Fatalf("prose answered %+v", reply)
+	}
+}
+
+// TestControlCompleteAnswersWhileTheUserIsMidInteraction: a completion commits
+// nothing, so the busy guard that refuses a capture does not refuse it.
+func TestControlCompleteAnswersWhileTheUserIsMidInteraction(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+
+	if reply := env.request(t, control.Request{Op: control.OpComplete, Text: "Pay !"}); !reply.OK || reply.Completion == nil {
+		t.Fatalf("reply = %+v", reply)
 	}
 }
 

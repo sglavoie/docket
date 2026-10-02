@@ -4,20 +4,43 @@ import AppKit
 /// global shortcut. Enter hands the line to the running tt, which parses it
 /// with the composer's grammar and commits it as one capture; a refusal keeps
 /// the line for fixing. Esc, or clicking elsewhere, puts it away unsent.
-final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
+///
+/// Typing a sigil asks tt what its composer would suggest there, and the
+/// answers list under the field: ↑/↓ choose, Tab accepts, Enter accepts unless
+/// the token already stands as typed, and Esc closes the list before the panel.
+final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
+    NSTableViewDataSource, NSTableViewDelegate {
     /// Sends one line to tt and calls back with whether it was captured and
     /// what tt said.
     var submit: ((String, @escaping (Bool, String) -> Void) -> Void)?
+    /// Asks tt what to suggest for the draft up to the caret and calls back
+    /// with its answer, or nil when there is none to show.
+    var complete: ((String, @escaping (TTCompletion?) -> Void) -> Void)?
     /// Why nothing can be captured right now, shown in place of the hint as
     /// soon as the panel opens; nil when tt can take a capture.
     var unavailableReason: () -> String? = { nil }
 
-    static let hint = "Enter capture · Esc cancel · #tag  @date  %project  $state  !1"
+    static let hint = "Enter capture · Tab complete · Esc cancel · #tag  @date  %project  $state  !1"
+
+    /// The most suggestion rows shown at once; the rest scroll.
+    static let visibleSuggestions = 7
+    private static let baseHeight: CGFloat = 86
+    private static let rowHeight: CGFloat = 22
 
     private(set) lazy var panel: NSPanel = makePanel()
     private let field = NSTextField()
     private let status = NSTextField(labelWithString: QuickCapturePanel.hint)
+    private let suggestionTable = NSTableView()
+    private let suggestionScroll = NSScrollView()
+    private var suggestionHeight: NSLayoutConstraint?
     private var sending = false
+
+    /// What the list shows, and the caret it was asked for. A reply is kept only
+    /// if no edit has happened since it was asked, so a slow answer never
+    /// replaces a newer one.
+    private(set) var completion: TTCompletion?
+    private var completionCaret = 0
+    private var completionGeneration = 0
 
     var isVisible: Bool { panel.isVisible }
 
@@ -43,6 +66,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     }
 
     func close() {
+        clearCompletion()
         panel.orderOut(nil)
     }
 
@@ -90,7 +114,30 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         status.textColor = .secondaryLabelColor
         status.lineBreakMode = .byTruncatingTail
 
-        let stack = NSStackView(views: [field, status])
+        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("suggestion"))
+        column.resizingMask = .autoresizingMask
+        suggestionTable.addTableColumn(column)
+        suggestionTable.headerView = nil
+        suggestionTable.rowHeight = Self.rowHeight
+        suggestionTable.intercellSpacing = NSSize(width: 0, height: 0)
+        suggestionTable.backgroundColor = .clear
+        suggestionTable.style = .plain
+        suggestionTable.refusesFirstResponder = true
+        suggestionTable.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        suggestionTable.dataSource = self
+        suggestionTable.delegate = self
+        suggestionTable.target = self
+        suggestionTable.action = #selector(clickSuggestion(_:))
+        suggestionScroll.documentView = suggestionTable
+        suggestionScroll.drawsBackground = false
+        suggestionScroll.hasVerticalScroller = true
+        suggestionScroll.autohidesScrollers = true
+        suggestionScroll.borderType = .noBorder
+        suggestionScroll.isHidden = true
+        let suggestionHeight = suggestionScroll.heightAnchor.constraint(equalToConstant: 0)
+        self.suggestionHeight = suggestionHeight
+
+        let stack = NSStackView(views: [field, suggestionScroll, status])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -104,6 +151,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
             stack.bottomAnchor.constraint(equalTo: background.bottomAnchor),
             field.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
             status.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
+            suggestionScroll.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40),
+            suggestionHeight,
         ])
         panel.contentView = background
         return panel
@@ -130,6 +179,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     // MARK: Actions
 
     @objc private func enter(_ sender: Any?) {
+        clearCompletion()
         let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
@@ -158,6 +208,28 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        if let completion, !completion.items.isEmpty {
+            switch selector {
+            case #selector(NSResponder.moveDown(_:)):
+                moveSuggestion(by: 1)
+                return true
+            case #selector(NSResponder.moveUp(_:)):
+                moveSuggestion(by: -1)
+                return true
+            case #selector(NSResponder.insertTab(_:)):
+                acceptSuggestion()
+                return true
+            case #selector(NSResponder.insertNewline(_:)) where !completion.exact:
+                acceptSuggestion()
+                return true
+            case #selector(NSResponder.cancelOperation(_:)):
+                // The list goes first, as it does in tt; the line stays.
+                clearCompletion()
+                return true
+            default:
+                break
+            }
+        }
         if selector == #selector(NSResponder.cancelOperation(_:)) {
             close()
             return true
@@ -165,10 +237,140 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         return false
     }
 
+    func controlTextDidChange(_ notification: Notification) {
+        requestCompletion()
+    }
+
+    // MARK: Completion
+
+    /// The draft up to the caret, in the field editor's UTF-16 units.
+    private func draftToCaret() -> (text: String, caret: Int)? {
+        guard let editor = field.currentEditor() else { return nil }
+        let selection = editor.selectedRange
+        guard selection.length == 0 else { return nil }
+        let value = editor.string as NSString
+        let caret = min(selection.location, value.length)
+        return (value.substring(to: caret), caret)
+    }
+
+    private func requestCompletion() {
+        completionGeneration += 1
+        let generation = completionGeneration
+        guard !sending, let complete, let draft = draftToCaret(), !draft.text.isEmpty else {
+            showCompletion(nil, caret: 0)
+            return
+        }
+        complete(draft.text) { [weak self] completion in
+            guard let self, generation == self.completionGeneration else { return }
+            self.showCompletion(completion, caret: draft.caret)
+        }
+    }
+
+    /// Shows tt's answer, or hides the list for none. An answer whose token is
+    /// not what the draft ends with at that caret is stale, and shows nothing.
+    func showCompletion(_ completion: TTCompletion?, caret: Int) {
+        var shown = completion
+        if let candidate = completion {
+            let token = candidate.token as NSString
+            let draft = (field.currentEditor()?.string ?? field.stringValue) as NSString
+            let start = caret - token.length
+            if candidate.items.isEmpty || start < 0 || caret > draft.length
+                || draft.substring(with: NSRange(location: start, length: token.length)) != candidate.token {
+                shown = nil
+            }
+        }
+        self.completion = shown
+        completionCaret = caret
+        suggestionTable.reloadData()
+        if shown != nil {
+            suggestionTable.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+            suggestionTable.scrollRowToVisible(0)
+        }
+        fitToSuggestions()
+    }
+
+    private func clearCompletion() {
+        completionGeneration += 1
+        guard completion != nil else { return }
+        showCompletion(nil, caret: 0)
+    }
+
+    private func moveSuggestion(by delta: Int) {
+        guard let count = completion?.items.count, count > 0 else { return }
+        let row = max(0, min(count - 1, suggestionTable.selectedRow + delta))
+        suggestionTable.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        suggestionTable.scrollRowToVisible(row)
+    }
+
+    /// Replaces the token with the chosen suggestion, keeping whatever follows
+    /// the caret, exactly as accepting it in tt's composer does.
+    func acceptSuggestion() {
+        guard let completion, let editor = field.currentEditor() as? NSTextView else { return }
+        let row = suggestionTable.selectedRow
+        guard completion.items.indices.contains(row) else { return }
+        let range = NSRange(location: completionCaret - (completion.token as NSString).length,
+                            length: (completion.token as NSString).length)
+        clearCompletion()
+        editor.insertText(completion.items[row].insert, replacementRange: range)
+    }
+
+    @objc private func clickSuggestion(_ sender: Any?) {
+        guard suggestionTable.clickedRow >= 0 else { return }
+        suggestionTable.selectRowIndexes(IndexSet(integer: suggestionTable.clickedRow), byExtendingSelection: false)
+        acceptSuggestion()
+    }
+
+    /// Grows the panel downward for the list and back when it closes, keeping
+    /// its top edge where the user is looking.
+    private func fitToSuggestions() {
+        let rows = min(completion?.items.count ?? 0, Self.visibleSuggestions)
+        let listHeight = CGFloat(rows) * Self.rowHeight
+        suggestionScroll.isHidden = rows == 0
+        suggestionHeight?.constant = listHeight
+        // The stack spaces the list from its neighbors only while it shows.
+        let height = Self.baseHeight + (rows == 0 ? 0 : listHeight + 8)
+        var frame = panel.frame
+        guard frame.height != height else { return }
+        frame.origin.y += frame.height - height
+        frame.size.height = height
+        panel.setFrame(frame, display: panel.isVisible)
+    }
+
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        completion?.items.count ?? 0
+    }
+
+    /// The list never takes the keyboard, so its selection is drawn as if it
+    /// had it: the field's arrows are what move it.
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        EmphasizedRowView()
+    }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+        let identifier = NSUserInterfaceItemIdentifier("suggestionCell")
+        let label = (tableView.makeView(withIdentifier: identifier, owner: nil) as? NSTextField)
+            ?? {
+                let label = NSTextField(labelWithString: "")
+                label.identifier = identifier
+                label.font = .systemFont(ofSize: NSFont.systemFontSize)
+                label.lineBreakMode = .byTruncatingTail
+                return label
+            }()
+        label.stringValue = completion?.items[row].label ?? ""
+        return label
+    }
+
     /// Clicking another app puts the panel away; the line stays for next time.
     func windowDidResignKey(_ notification: Notification) {
         guard !sending else { return }
         close()
+    }
+}
+
+private final class EmphasizedRowView: NSTableRowView {
+    override var isEmphasized: Bool {
+        get { true }
+        set {}
     }
 }
 

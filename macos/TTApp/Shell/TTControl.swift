@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture
+        case reveal, acknowledge, capture, complete
         case deferTask = "defer"
     }
 
@@ -60,6 +60,11 @@ struct TTControlRequest: Encodable, Equatable {
     static func capture(_ text: String) -> Self {
         Self(op: .capture, text: text)
     }
+
+    /// What the composer would suggest for `text`, the draft up to the caret.
+    static func complete(_ text: String) -> Self {
+        Self(op: .complete, text: text)
+    }
 }
 
 /// A task as tt names it on the wire: stored project and task IDs.
@@ -72,16 +77,49 @@ struct TTControlReply: Decodable, Equatable {
     let reply: Int
     let ok: Bool
     let message: String?
+    /// A `complete` reply's suggestions; nil when the caret stands on no sigil.
+    let completion: TTCompletion?
 
-    init(reply: Int, ok: Bool, message: String?) {
+    init(reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil) {
         self.reply = reply
         self.ok = ok
         self.message = message
+        self.completion = completion
     }
 
     /// What the app says when it could not ask: no tt, or a dropped connection.
     static func failure(_ message: String) -> Self {
         Self(reply: 0, ok: false, message: message)
+    }
+}
+
+/// What tt's composer offers for the token ending at the caret. `token` is that
+/// token as the app sent it, sigil included, and each item's `insert` replaces
+/// it whole. `exact` says the token already stands as typed, so Enter submits
+/// rather than accepting a suggestion.
+struct TTCompletion: Decodable, Equatable {
+    struct Item: Decodable, Equatable {
+        let label: String
+        let insert: String
+    }
+
+    let token: String
+    let items: [Item]
+    let exact: Bool
+
+    init(token: String, items: [Item], exact: Bool = false) {
+        self.token = token
+        self.items = items
+        self.exact = exact
+    }
+
+    enum CodingKeys: String, CodingKey { case token, items, exact }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        token = try c.decode(String.self, forKey: .token)
+        items = try c.decodeIfPresent([Item].self, forKey: .items) ?? []
+        exact = try c.decodeIfPresent(Bool.self, forKey: .exact) ?? false
     }
 }
 
@@ -143,6 +181,7 @@ enum TTControlLine: Equatable {
         let reply: Int?
         let ok: Bool?
         let message: String?
+        let completion: TTCompletion?
         let event: String?
         let pulse: TTPulse?
         let arrivals: [TTArrival]?
@@ -153,7 +192,7 @@ enum TTControlLine: Equatable {
     static func decode(_ data: Data) -> TTControlLine? {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
-            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message))
+            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion))
         }
         switch raw.event {
         case "pulse":

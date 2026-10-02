@@ -346,7 +346,9 @@ newline-delimited JSON, and the connections, and touches no workspace. Its
 inside `Update` by `handleControlMessage`, ahead of the overlays, behind
 `safeToAdoptExternalChange`, and through the coordinator a key would use:
 `ParseCaptureText` for capture (the composer's own `ParseCompactLines` over a
-throwaway model), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
+throwaway model), `CaptureCompletions` for complete (its `RefreshAutocomplete`
+over the same throwaway, answered ahead of that guard since it commits nothing,
+naming the token by its text so a host never counts Go's bytes), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
 under a locator relocation capture, and `NavigateToTaskInProject` then
 `coreGotoTaskProject` for reveal. A commit's message returns wrapped in
 `controlCommittedMsg`, which `handleGlobalSaveMessage` handles unchanged and

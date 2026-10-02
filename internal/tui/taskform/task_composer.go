@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
@@ -448,4 +449,54 @@ func ParseCaptureText(preset TaskComposerPreset, runtime *config.RuntimeState, t
 		return nil, composer.Errors
 	}
 	return reqs, nil
+}
+
+// CaptureCompletion is one suggestion CaptureCompletions offers: Label is the
+// plain text a list shows and Insert the whole replacement for the token.
+type CaptureCompletion struct {
+	Label  string
+	Insert string
+}
+
+// CaptureCompletionSet is what the compact composer would offer at a caret.
+// Token is the text being completed, sigil included, and empty when the caret
+// stands on no sigil the grammar completes. Exact is the composer's own test
+// for whether Enter submits instead of accepting.
+type CaptureCompletionSet struct {
+	Token string
+	Items []CaptureCompletion
+	Exact bool
+}
+
+// captureCompletionWidth is the width a headless composer truncates its task
+// titles at. A host draws its own list, so the budget is generous rather than a
+// terminal's, while still bounding a pathological title.
+const captureCompletionWidth = 120
+
+// CaptureCompletions reads text as the draft up to the caret and returns what
+// the compact composer would suggest there, each suggestion as accepting it
+// would rewrite the token. A host completing through the control socket uses
+// it, so it offers exactly what `a` offers.
+func CaptureCompletions(preset TaskComposerPreset, runtime *config.RuntimeState, text string) CaptureCompletionSet {
+	composer := NewTaskComposerModel(preset, runtime)
+	composer.SetSize(captureCompletionWidth, composer.height)
+	composer.Input.SetValue(text)
+	composer.RefreshAutocomplete()
+	value := composer.Input.Value()
+	if !composer.AC.IsActive() || composer.AC.TriggerPos > len(value) {
+		return CaptureCompletionSet{}
+	}
+	trigger := grammar.TriggerCharForMode(composer.AC.Mode, composer.Triggers)
+	set := CaptureCompletionSet{
+		Token: value[composer.AC.TriggerPos:],
+		Items: make([]CaptureCompletion, 0, len(composer.AC.Items)),
+		Exact: composer.AutocompleteLiteralComplete(),
+	}
+	for _, item := range composer.AC.Items {
+		set.Items = append(set.Items, CaptureCompletion{
+			Label:  ansi.Strip(item.Display),
+			Insert: trigger + item.Value + " ",
+		})
+	}
+	return set
 }

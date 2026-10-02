@@ -24,6 +24,26 @@ final class ControlWireTests: XCTestCase {
         )
     }
 
+    func testACompletionReplyDecodesAndTheRequestEncodes() throws {
+        let line = #"{"reply":4,"ok":true,"completion":{"token":"%cl","exact":true,"items":[{"label":"%Client Work","insert":"%client-work "}]}}"#
+        XCTAssertEqual(
+            TTControlLine.decode(Data(line.utf8)),
+            .reply(TTControlReply(reply: 4, ok: true, message: nil, completion: TTCompletion(
+                token: "%cl",
+                items: [.init(label: "%Client Work", insert: "%client-work ")],
+                exact: true
+            )))
+        )
+        // Prose answers with no completion at all.
+        XCTAssertEqual(
+            TTControlLine.decode(Data(#"{"reply":5,"ok":true}"#.utf8)),
+            .reply(TTControlReply(reply: 5, ok: true, message: nil))
+        )
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.complete("Buy %cl"))) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "complete")
+        XCTAssertEqual(object["text"] as? String, "Buy %cl")
+    }
+
     /// A later tt may add events; an older app skips what it does not know.
     func testUnknownLinesAreSkipped() {
         XCTAssertNil(TTControlLine.decode(Data(#"{"event":"something-new"}"#.utf8)))
@@ -239,6 +259,60 @@ final class QuickCapturePanelTests: XCTestCase {
         field.stringValue = "Buy milk"
         field.sendAction(field.action, to: field.target)
         XCTAssertFalse(sent)
+    }
+}
+
+final class QuickCapturePanelCompletionTests: XCTestCase {
+    private var panel: QuickCapturePanel!
+    private var asked: [String] = []
+    private var answer: TTCompletion?
+
+    override func setUp() {
+        panel = QuickCapturePanel()
+        asked = []
+        panel.complete = { [unowned self] text, done in
+            asked.append(text)
+            done(answer)
+        }
+        panel.show()
+    }
+
+    override func tearDown() {
+        panel.close()
+    }
+
+    private func editor() throws -> NSTextView {
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        return try XCTUnwrap(field.currentEditor() as? NSTextView)
+    }
+
+    private func type(_ text: String) throws {
+        let editor = try editor()
+        editor.insertText(text, replacementRange: editor.selectedRange())
+    }
+
+    /// Typing asks tt about the draft up to the caret, and accepting replaces
+    /// just the token, keeping what follows the caret.
+    func testTypingAsksAndAcceptingReplacesTheToken() throws {
+        try type("Buy milk tomorrow")
+        let editor = try editor()
+        editor.setSelectedRange(NSRange(location: 8, length: 0))
+        answer = TTCompletion(token: "%cl", items: [.init(label: "%Client Work", insert: "%client-work ")])
+        try type(" %cl")
+        XCTAssertEqual(asked.last, "Buy milk %cl")
+        XCTAssertEqual(panel.completion?.items.count, 1)
+
+        answer = nil
+        panel.acceptSuggestion()
+        XCTAssertEqual(editor.string, "Buy milk %client-work  tomorrow")
+        XCTAssertNil(panel.completion)
+    }
+
+    /// An answer for a token the draft no longer ends with is stale.
+    func testAStaleAnswerShowsNothing() throws {
+        try type("Buy %h")
+        panel.showCompletion(TTCompletion(token: "%cl", items: [.init(label: "%Client", insert: "%client ")]), caret: 6)
+        XCTAssertNil(panel.completion)
     }
 }
 

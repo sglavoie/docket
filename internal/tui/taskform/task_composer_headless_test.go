@@ -32,3 +32,37 @@ func TestParseCaptureTextReadsLinesAsTheComposerDoes(t *testing.T) {
 		t.Fatalf("blank text errors = %+v", errs)
 	}
 }
+
+func TestCaptureCompletionsRewriteTheTokenAtTheCaret(t *testing.T) {
+	home := &models.Project{ID: "p1", Slug: "home", Name: "Home", Tasks: []*models.Task{
+		{ID: "t1", ShortID: 1, Title: "Existing", Tags: []string{"urgent", "urgently"}},
+	}}
+	work := &models.Project{ID: "p2", Slug: "client-work", Name: "Client Work"}
+	preset := TaskComposerPreset{
+		Kind:               ComposerGlobal,
+		Project:            home,
+		AllProjects:        []*models.Project{home, work},
+		AllowProjectSwitch: true,
+		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+	}
+
+	set := CaptureCompletions(preset, nil, "Call bank %cli")
+	if set.Token != "%cli" || set.Exact {
+		t.Fatalf("set = %+v", set)
+	}
+	if len(set.Items) == 0 || set.Items[0] != (CaptureCompletion{Label: "%Client Work", Insert: "%client-work "}) {
+		t.Fatalf("items = %+v", set.Items)
+	}
+
+	// Only the last line is the one being typed.
+	if set := CaptureCompletions(preset, nil, "first %cli\nsecond !"); set.Token != "!" || len(set.Items) == 0 {
+		t.Fatalf("multiline set = %+v", set)
+	}
+	// A tag the grammar accepts as typed is complete, so Enter would submit it.
+	if set := CaptureCompletions(preset, nil, "Call bank #urgent"); set.Token != "#urgent" || !set.Exact || len(set.Items) != 2 {
+		t.Fatalf("a literal tag was not exact: %+v", set)
+	}
+	if set := CaptureCompletions(preset, nil, "Call bank"); set.Token != "" || set.Items != nil {
+		t.Fatalf("prose completed to %+v", set)
+	}
+}

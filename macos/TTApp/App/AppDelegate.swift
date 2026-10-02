@@ -224,6 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
         }
         quickCapture.submit = { [weak self] text, done in self?.capture(text, done: done) }
+        quickCapture.complete = { [weak self] text, done in self?.complete(text, done: done) }
     }
 
     private func handle(_ event: TTControlEvent) {
@@ -263,6 +264,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             terminal.show()
         }
         control.send(.capture(text)) { reply in done(reply.ok, reply.message ?? "") }
+    }
+
+    /// Asks the running tt what its composer would suggest. Unlike a capture it
+    /// never starts tt: with nothing connected there is simply nothing to offer,
+    /// and a tt too old to know the request refuses it, which reads the same.
+    private func complete(_ text: String, done: @escaping (TTCompletion?) -> Void) {
+        guard let control, control.isConnected else {
+            done(nil)
+            return
+        }
+        control.send(.complete(text)) { reply in done(reply.ok ? reply.completion : nil) }
     }
 
     /// Always opens: when tt cannot take a capture, the panel says why.

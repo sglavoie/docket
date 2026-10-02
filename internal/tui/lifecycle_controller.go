@@ -532,6 +532,11 @@ func (m *AppModel) handleControlMessage(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) answerControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
 	switch request.Op {
+	case control.OpComplete:
+		// Ahead of the busy guard: a completion reads the workspace and commits
+		// nothing, so there is nothing for an open picker or editor to lose.
+		m.controlComplete(request.Text, reply)
+		return nil
 	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
@@ -654,6 +659,27 @@ func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.C
 		answer(reply, true, summary)
 		return controlCommittedMsg{inner: captured, feedback: summary, txID: captured.Results[0].TransactionID}
 	}
+}
+
+// controlComplete answers what the global `a` composer would suggest for the
+// draft up to the host's caret. No suggestion is still a success: it is the
+// answer for a caret standing on prose.
+func (m *AppModel) controlComplete(text string, reply chan<- control.Reply) {
+	preset, ok := m.captureComposerPreset(nil, nil, "")
+	if !ok {
+		answer(reply, false, "the Unfiled project is unavailable")
+		return
+	}
+	set := taskform.CaptureCompletions(preset, m.domain.runtime, text)
+	result := control.Reply{OK: true}
+	if set.Token != "" {
+		completion := &control.Completion{Token: set.Token, Exact: set.Exact, Items: make([]control.CompletionItem, 0, len(set.Items))}
+		for _, suggestion := range set.Items {
+			completion.Items = append(completion.Items, control.CompletionItem{Label: suggestion.Label, Insert: suggestion.Insert})
+		}
+		result.Completion = completion
+	}
+	reply <- result
 }
 
 // adoptControlCommit reloads what a socket request committed through the save

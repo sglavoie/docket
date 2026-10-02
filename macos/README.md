@@ -168,9 +168,13 @@ whatever app is in front, without bringing tt forward. Type a line in the
 composer's grammar — `#tag`, `@date`, `%project`, `$state`, `!1` — and Enter
 sends it to tt, which captures it into Unfiled's Inbox unless the line says
 otherwise and offers `u undo` the next time you look. A line tt refuses stays in
-the field with tt's reason under it. Esc, or clicking elsewhere, puts the field
-away; the menu-bar and Dock menus also carry Quick Capture. If tt had exited, the
-capture starts it again first.
+the field with tt's reason under it. Typing a sigil lists what tt's composer
+would offer there — projects after `%`, tags after `#`, dates after `@`, and so
+on — read from the running tt as you type: ↑/↓ choose, Tab accepts, and Enter
+accepts too unless what you typed already stands on its own, as a new tag does.
+Esc closes the list first; with no list, Esc or clicking elsewhere puts the
+field away. The menu-bar and Dock menus also carry Quick Capture. If tt had
+exited, the capture starts it again first; a completion never does.
 
 The shortcut is set in Preferences beside the show/hide one, and stored as
 `ttCaptureHotKey`, spelled like `ttHotKey`:

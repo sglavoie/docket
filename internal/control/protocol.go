@@ -25,6 +25,10 @@ const (
 	OpDefer = "defer"
 	// OpCapture captures Text through the composer's grammar.
 	OpCapture = "capture"
+	// OpComplete asks what the composer would suggest for Text, read as the
+	// draft up to the caret. It reads and never writes, so tt answers it even
+	// while the user is mid-interaction.
+	OpComplete = "complete"
 )
 
 // The events tt reports.
@@ -56,11 +60,33 @@ type Request struct {
 }
 
 // Reply answers the Request whose ID it carries. Message is what tt said: the
-// outcome on success, the refusal otherwise.
+// outcome on success, the refusal otherwise. Completion answers OpComplete
+// alone, and is absent when the caret stands on no sigil the grammar completes.
 type Reply struct {
-	ID      int    `json:"reply"`
-	OK      bool   `json:"ok"`
-	Message string `json:"message,omitempty"`
+	ID         int         `json:"reply"`
+	OK         bool        `json:"ok"`
+	Message    string      `json:"message,omitempty"`
+	Completion *Completion `json:"completion,omitempty"`
+}
+
+// Completion is what the composer would offer for the token ending at the
+// caret. Token is that token as the host sent it, sigil included, so the host
+// replaces exactly the text it ends with and never counts bytes against its
+// own string encoding. Exact says the token already stands as typed — a value
+// on offer, or a tag or context the grammar accepts as written — so Enter
+// submits rather than accepting a suggestion, as it does in the composer.
+type Completion struct {
+	Token string           `json:"token"`
+	Items []CompletionItem `json:"items"`
+	Exact bool             `json:"exact,omitempty"`
+}
+
+// CompletionItem is one suggestion: Label is the plain text a list shows, and
+// Insert is the whole replacement for Token, sigil and trailing space
+// included, exactly what accepting it in the composer writes.
+type CompletionItem struct {
+	Label  string `json:"label"`
+	Insert string `json:"insert"`
 }
 
 // Pulse is the workspace pulse: actionable inbox, Today, and overdue counts,
