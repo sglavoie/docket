@@ -37,7 +37,9 @@ func TestCaptureCompletionsRewriteTheTokenAtTheCaret(t *testing.T) {
 	home := &models.Project{ID: "p1", Slug: "home", Name: "Home", Tasks: []*models.Task{
 		{ID: "t1", ShortID: 1, Title: "Existing", Tags: []string{"urgent", "urgently"}},
 	}}
-	work := &models.Project{ID: "p2", Slug: "client-work", Name: "Client Work"}
+	work := &models.Project{ID: "p2", Slug: "client-work", Name: "Client Work", Tasks: []*models.Task{
+		{ID: "t2", ShortID: 1, Title: "Invoice", Tags: []string{"billing"}},
+	}}
 	preset := TaskComposerPreset{
 		Kind:               ComposerGlobal,
 		Project:            home,
@@ -61,6 +63,11 @@ func TestCaptureCompletionsRewriteTheTokenAtTheCaret(t *testing.T) {
 	// A tag the grammar accepts as typed is complete, so Enter would submit it.
 	if set := CaptureCompletions(preset, nil, "Call bank #urgent"); set.Token != "#urgent" || !set.Exact || len(set.Items) != 2 {
 		t.Fatalf("a literal tag was not exact: %+v", set)
+	}
+	// A global capture starts in one project but offers every project's tags.
+	if set := CaptureCompletions(preset, nil, "Call bank #bil"); set.Token != "#bil" ||
+		len(set.Items) != 1 || set.Items[0] != (CaptureCompletion{Label: "#billing", Insert: "#billing "}) {
+		t.Fatalf("cross-project tag set = %+v", set)
 	}
 	if set := CaptureCompletions(preset, nil, "Call bank"); set.Token != "" || set.Items != nil {
 		t.Fatalf("prose completed to %+v", set)

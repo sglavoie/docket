@@ -15,8 +15,6 @@ import (
 // %project, which changes while the user types, so caching them here is what
 // made parent completion offer the source project's tasks after a route.
 func (q *QuickCaptureInput) InitCaches() {
-	// Cache all tags from the project
-	q.TagCache = CollectTagNamesForProject(q.Project)
 	q.contextCache = collectContextNamesForProject(q.Project)
 
 	// Cache non-archived projects for cross-project capture
@@ -28,6 +26,12 @@ func (q *QuickCaptureInput) InitCaches() {
 			}
 		}
 	}
+
+	// Tags come from every project a line may route to, not only the source
+	// one: a global capture starts in Unfiled, which would otherwise offer
+	// almost nothing. The source project is included even when no list was
+	// handed in, so a host without one still completes locally.
+	q.TagCache = collectTagNames(append([]*models.Project{q.Project}, q.projectCache...)...)
 }
 
 // ensureSyntaxViewport lazily constructs the syntax help viewport so callers can
