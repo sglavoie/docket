@@ -314,6 +314,46 @@ final class QuickCapturePanelCompletionTests: XCTestCase {
         panel.showCompletion(TTCompletion(token: "%cl", items: [.init(label: "%Client", insert: "%client ")]), caret: 6)
         XCTAssertNil(panel.completion)
     }
+
+    func testMovingTheCaretAndSelectingTextDismissSuggestions() throws {
+        answer = TTCompletion(token: "%cl", items: [.init(label: "%Client", insert: "%client ")])
+        try type("Buy %cl later")
+        let editor = try editor()
+        editor.setSelectedRange(NSRange(location: 7, length: 0))
+        XCTAssertEqual(asked.last, "Buy %cl")
+        XCTAssertNotNil(panel.completion)
+
+        editor.setSelectedRange(NSRange(location: 3, length: 0))
+        XCTAssertNil(panel.completion)
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        XCTAssertFalse(panel.control(field, textView: editor, doCommandBy: #selector(NSResponder.insertTab(_:))))
+        panel.acceptSuggestion()
+        XCTAssertEqual(editor.string, "Buy %cl later")
+
+        editor.setSelectedRange(NSRange(location: 7, length: 0))
+        XCTAssertNotNil(panel.completion)
+        editor.setSelectedRange(NSRange(location: 4, length: 3))
+        XCTAssertNil(panel.completion)
+        panel.acceptSuggestion()
+        XCTAssertEqual(editor.string, "Buy %cl later")
+    }
+
+    func testAReplyForAnEarlierCaretCannotAppearLater() throws {
+        var delayedReplies: [(TTCompletion?) -> Void] = []
+        panel.complete = { _, done in delayedReplies.append(done) }
+        try type("Buy %cl")
+        let editor = try editor()
+        XCTAssertEqual(delayedReplies.count, 1)
+
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        delayedReplies[0](TTCompletion(token: "%cl", items: [.init(label: "%Client", insert: "%client ")]))
+        XCTAssertNil(panel.completion)
+
+        editor.setSelectedRange(NSRange(location: 7, length: 0))
+        XCTAssertEqual(delayedReplies.count, 2)
+        delayedReplies[1](TTCompletion(token: "%cl", items: [.init(label: "%Client", insert: "%client ")]))
+        XCTAssertNotNil(panel.completion)
+    }
 }
 
 private extension NSView {

@@ -36,11 +36,16 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private var sending = false
 
     /// What the list shows, and the caret it was asked for. A reply is kept only
-    /// if no edit has happened since it was asked, so a slow answer never
-    /// replaces a newer one.
+    /// if neither the draft nor the caret has changed since it was asked.
     private(set) var completion: TTCompletion?
     private var completionCaret = 0
     private var completionGeneration = 0
+    private var requestedDraft: (text: String, caret: Int)?
+    private var selectionObserver: NSObjectProtocol?
+
+    deinit {
+        stopObservingSelection()
+    }
 
     var isVisible: Bool { panel.isVisible }
 
@@ -61,13 +66,32 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         position()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
+        observeSelection()
         // Select what a refusal left, so typing replaces it and arrows edit it.
         field.currentEditor()?.selectAll(nil)
     }
 
     func close() {
+        stopObservingSelection()
         clearCompletion()
         panel.orderOut(nil)
+    }
+
+    private func observeSelection() {
+        stopObservingSelection()
+        guard let editor = field.currentEditor() else { return }
+        selectionObserver = NotificationCenter.default.addObserver(
+            forName: NSTextView.didChangeSelectionNotification, object: editor, queue: .main
+        ) { [weak self] _ in
+            self?.requestCompletion()
+        }
+    }
+
+    private func stopObservingSelection() {
+        if let selectionObserver {
+            NotificationCenter.default.removeObserver(selectionObserver)
+            self.selectionObserver = nil
+        }
     }
 
     // MARK: Layout
@@ -208,6 +232,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        if let completion, !isCurrent(completion, caret: completionCaret) {
+            clearCompletion()
+        }
         if let completion, !completion.items.isEmpty {
             switch selector {
             case #selector(NSResponder.moveDown(_:)):
@@ -254,33 +281,25 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     private func requestCompletion() {
+        let draft = draftToCaret()
+        if let draft, let previous = requestedDraft,
+           draft.text == previous.text, draft.caret == previous.caret { return }
         completionGeneration += 1
         let generation = completionGeneration
-        guard !sending, let complete, let draft = draftToCaret(), !draft.text.isEmpty else {
-            showCompletion(nil, caret: 0)
-            return
-        }
+        requestedDraft = draft
+        showCompletion(nil, caret: 0)
+        guard !sending, let complete, let draft, !draft.text.isEmpty else { return }
         complete(draft.text) { [weak self] completion in
             guard let self, generation == self.completionGeneration else { return }
             self.showCompletion(completion, caret: draft.caret)
         }
     }
 
-    /// Shows tt's answer, or hides the list for none. An answer whose token is
-    /// not what the draft ends with at that caret is stale, and shows nothing.
+    /// Shows tt's answer only while the caret still follows the same token.
     func showCompletion(_ completion: TTCompletion?, caret: Int) {
-        var shown = completion
-        if let candidate = completion {
-            let token = candidate.token as NSString
-            let draft = (field.currentEditor()?.string ?? field.stringValue) as NSString
-            let start = caret - token.length
-            if candidate.items.isEmpty || start < 0 || caret > draft.length
-                || draft.substring(with: NSRange(location: start, length: token.length)) != candidate.token {
-                shown = nil
-            }
-        }
+        let shown = completion.flatMap { isCurrent($0, caret: caret) ? $0 : nil }
         self.completion = shown
-        completionCaret = caret
+        completionCaret = shown == nil ? 0 : caret
         suggestionTable.reloadData()
         if shown != nil {
             suggestionTable.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
@@ -291,8 +310,19 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     private func clearCompletion() {
         completionGeneration += 1
+        requestedDraft = nil
         guard completion != nil else { return }
         showCompletion(nil, caret: 0)
+    }
+
+    private func isCurrent(_ candidate: TTCompletion, caret: Int) -> Bool {
+        guard !candidate.items.isEmpty, let editor = field.currentEditor(),
+              editor.selectedRange == NSRange(location: caret, length: 0) else { return false }
+        let token = candidate.token as NSString
+        let draft = editor.string as NSString
+        let start = caret - token.length
+        return start >= 0 && caret <= draft.length
+            && draft.substring(with: NSRange(location: start, length: token.length)) == candidate.token
     }
 
     private func moveSuggestion(by delta: Int) {
@@ -306,6 +336,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     /// the caret, exactly as accepting it in tt's composer does.
     func acceptSuggestion() {
         guard let completion, let editor = field.currentEditor() as? NSTextView else { return }
+        guard isCurrent(completion, caret: completionCaret) else {
+            clearCompletion()
+            return
+        }
         let row = suggestionTable.selectedRow
         guard completion.items.indices.contains(row) else { return }
         let range = NSRange(location: completionCaret - (completion.token as NSString).length,

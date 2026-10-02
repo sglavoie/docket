@@ -85,8 +85,12 @@ go build -o tt .
 ./tt
 ```
 
-There are no prebuilt binaries and no package-manager recipes; `go install` is
-the whole distribution story.
+There are no prebuilt binaries and no package-manager recipes for the terminal
+program; `go install` is its distribution path.
+
+On macOS, [tt.app](macos/README.md) runs the same program in its own window and
+adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
+`just mac-install` to build and install it; this requires the full Xcode app.
 
 A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
 `tt workspace move` to select a different location. Moving into iCloud Drive or
