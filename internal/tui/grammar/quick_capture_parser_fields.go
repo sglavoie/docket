@@ -284,7 +284,11 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		targetProject := resolveProject(token.Value, p.allProjects)
 		if targetProject == nil {
-			if p.failf("project not found: '%s' (use an exact %%project-slug)", token.Value) {
+			hint := "use an exact %project-slug"
+			if suggestions := suggestProjectSlugs(token.Value, p.allProjects); len(suggestions) > 0 {
+				hint += "; did you mean " + strings.Join(suggestions, ", ") + "?"
+			}
+			if p.failf("project not found: '%s' (%s)", token.Value, hint) {
 				return
 			}
 			continue

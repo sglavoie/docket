@@ -173,7 +173,10 @@ would offer there — projects after `%`, tags after `#`, dates after `@`, and s
 on — read from the running tt as you type: ↑/↓ choose, Tab accepts, and Enter
 accepts too unless what you typed already stands on its own, as a new tag does.
 Esc closes the list first; with no list, Esc or clicking elsewhere puts the
-field away. The menu-bar and Dock menus also carry Quick Capture. If tt had
+field away. Reopening an unfinished capture restores its text and caret or
+selection, so typing resumes where you left off; Select All still replaces the
+whole draft. A successful capture clears the draft and its selection. The
+menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
 A live preview under the field names the project, plan (when present), status,

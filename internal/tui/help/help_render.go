@@ -110,8 +110,19 @@ func helpSectionsForCategories(categories []string) []string {
 // the grammar declared.
 func (m *HelpViewModel) renderBySectionContent() string {
 	if len(m.filteredItems) == 0 {
-		return theme.MutedStyle.Render("No matching help items.") + "\n" +
-			theme.MutedStyle.Render("Clear or change the search.")
+		message := "No matching help items.\nClear or change the search."
+		if m.activeTab > 0 && m.activeTab <= len(m.categories) {
+			message = fmt.Sprintf("No matches in %s.\nClear or change the search.", m.categories[m.activeTab-1])
+			if m.otherCategoryMatches > 0 {
+				noun := "matches"
+				if m.otherCategoryMatches == 1 {
+					noun = "match"
+				}
+				message = fmt.Sprintf("No matches in %s; %d %s in other categories.\nChoose the All tab to search every category.",
+					m.categories[m.activeTab-1], m.otherCategoryMatches, noun)
+			}
+		}
+		return theme.MutedStyle.Width(max(m.viewport.Width(), 1)).Render(message)
 	}
 
 	buckets := make(map[string][]filteredHelpItem)

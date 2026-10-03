@@ -51,6 +51,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private var completionGeneration = 0
     private var requestedDraft: (text: String, caret: Int)?
     private var selectionObserver: NSObjectProtocol?
+    private var savedSelection: (text: String, range: NSRange)?
 
     deinit {
         stopObservingSelection()
@@ -68,6 +69,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     func show() {
         dismissalGeneration += 1
+        let selection = savedSelection
+        stopObservingSelection()
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
         } else {
@@ -76,14 +79,23 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         position()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
+        if let editor = field.currentEditor() as? NSTextView {
+            let length = (editor.string as NSString).length
+            if let selection, selection.text == editor.string,
+               selection.range.location <= length,
+               selection.range.length <= length - selection.range.location {
+                editor.setSelectedRange(selection.range)
+            } else {
+                editor.setSelectedRange(NSRange(location: length, length: 0))
+            }
+        }
         observeSelection()
-        // Select what a refusal left, so typing replaces it and arrows edit it.
-        field.currentEditor()?.selectAll(nil)
         requestPreview()
     }
 
     func close() {
         dismissalGeneration += 1
+        rememberSelection()
         clearPreview()
         stopObservingSelection()
         clearCompletion()
@@ -96,8 +108,15 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         selectionObserver = NotificationCenter.default.addObserver(
             forName: NSTextView.didChangeSelectionNotification, object: editor, queue: .main
         ) { [weak self] _ in
+            self?.rememberSelection()
             self?.requestCompletion()
         }
+    }
+
+    private func rememberSelection() {
+        guard !field.stringValue.isEmpty,
+              let editor = field.currentEditor() as? NSTextView else { return }
+        savedSelection = (editor.string, editor.selectedRange())
     }
 
     private func stopObservingSelection() {
@@ -242,6 +261,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             self.sending = false
             self.field.isEditable = true
             if ok {
+                self.savedSelection = nil
                 self.field.stringValue = ""
                 self.setStatus(message.isEmpty ? "Captured" : message, error: false)
                 self.scheduleDismissal { [weak self] in
@@ -291,6 +311,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     func controlTextDidChange(_ notification: Notification) {
         dismissalGeneration += 1
+        rememberSelection()
         requestCompletion()
         requestPreview()
     }

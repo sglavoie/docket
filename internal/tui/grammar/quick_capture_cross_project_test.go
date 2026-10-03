@@ -1,11 +1,60 @@
 package grammar
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+func TestCaptureProjectTypoSuggestionsDoNotRoute(t *testing.T) {
+	projects := []*models.Project{{ID: "web-id", Slug: "web", Name: "Website"}}
+	for _, ref := range []string{"weeb", "we", "wet", "wbe", "WEB"} {
+		t.Run(ref, func(t *testing.T) {
+			input := "Fix login %" + ref
+			result, err := ParseQuickCapture(input, nil, projects, false)
+			if err == nil || !strings.Contains(err.Error(), "did you mean %web?") || result != nil {
+				t.Fatalf("capture = %+v, %v; want a suggestion and refusal", result, err)
+			}
+			preview, message := ParseQuickCaptureForPreview(input, nil, projects, false)
+			if !strings.Contains(message, "did you mean %web?") || preview.TargetProjectID != nil {
+				t.Fatalf("preview = %+v, %q; must not route a typo", preview, message)
+			}
+		})
+	}
+	result, err := ParseQuickCapture("Fix login %web", nil, projects, false)
+	if err != nil || result.TargetProjectID == nil || *result.TargetProjectID != "web-id" {
+		t.Fatalf("corrected capture = %+v, %v", result, err)
+	}
+	_, err = ParseQuickCapture("Fix login %unrelated", nil, projects, false)
+	if err == nil || strings.Contains(err.Error(), "did you mean") {
+		t.Fatalf("unrelated reference = %v; want the ordinary refusal", err)
+	}
+}
+
+func TestProjectSuggestionsAreBoundedAndOnlyNameAvailableSlugs(t *testing.T) {
+	projects := []*models.Project{
+		nil, {Slug: ""}, {Slug: "weeb", Archived: true},
+		{Slug: "web"}, {Slug: "web"}, {Slug: "weed"}, {Slug: "weel"}, {Slug: "week"},
+	}
+	want := []string{"%web", "%weed", "%week"}
+	if got := suggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
+		t.Fatalf("suggestions = %v, want %v", got, want)
+	}
+	slices.Reverse(projects)
+	if got := suggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
+		t.Fatalf("reversed suggestions = %v, want %v", got, want)
+	}
+	if got := suggestProjectSlugs("cafe", []*models.Project{{Slug: "café"}}); !slices.Equal(got, []string{"%café"}) {
+		t.Fatalf("Unicode suggestion = %v", got)
+	}
+	for _, ref := range []string{"", "w", "zzzz", "wxez"} {
+		if got := suggestProjectSlugs(ref, []*models.Project{{Slug: "web"}}); len(got) != 0 {
+			t.Errorf("%q suggested unrelated slugs: %v", ref, got)
+		}
+	}
+}
 
 func TestCrossProjectCapture(t *testing.T) {
 	currentProject := &models.Project{

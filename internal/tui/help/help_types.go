@@ -49,13 +49,14 @@ type HelpViewModel struct {
 	searchQuery   string
 	// searchCaseRelaxed records that the filtered items came from a
 	// case-insensitive retry after the query's smart-case reading matched nothing.
-	searchCaseRelaxed bool
-	width             int
-	viewName          string
-	ready             bool
-	activeTab         int      // Current tab (category) index
-	categories        []string // Ordered list of categories derived from items
-	tabSearchMode     bool     // True when tab search input is active
-	tabSearchInput    textinput.Model
-	pendingG          bool // A lone g armed the gg chord
+	searchCaseRelaxed    bool
+	otherCategoryMatches int // Matches available in All when this category has none.
+	width                int
+	viewName             string
+	ready                bool
+	activeTab            int      // Current tab (category) index
+	categories           []string // Ordered list of categories derived from items
+	tabSearchMode        bool     // True when tab search input is active
+	tabSearchInput       textinput.Model
+	pendingG             bool // A lone g armed the gg chord
 }

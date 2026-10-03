@@ -250,6 +250,54 @@ final class ControlClientTests: XCTestCase {
 }
 
 final class QuickCapturePanelTests: XCTestCase {
+    func testReopeningAnInterruptedDraftRestoresCaretAndSelection() throws {
+        let panel = QuickCapturePanel()
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        let draft = "Buy 🥛 milk"
+        let ranges = [NSRange(location: 7, length: 0), NSRange(location: 4, length: 2)]
+        for range in ranges {
+            field.stringValue = draft
+            let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+            editor.setSelectedRange(range)
+            // Exercise both explicit cancellation and losing focus.
+            if range.length == 0 {
+                panel.close()
+            } else {
+                panel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+            }
+            panel.show()
+            let reopened = try XCTUnwrap(field.currentEditor() as? NSTextView)
+            XCTAssertEqual(reopened.string, draft)
+            XCTAssertEqual(reopened.selectedRange(), range)
+            reopened.insertText("fresh", replacementRange: reopened.selectedRange())
+            XCTAssertEqual(field.stringValue, (draft as NSString).replacingCharacters(in: range, with: "fresh"))
+        }
+    }
+
+    func testSuccessfulCaptureClearsTheRememberedSelection() throws {
+        let panel = QuickCapturePanel()
+        panel.scheduleDismissal = { _ in }
+        panel.submit = { _, done in done(true, "Captured") }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "Buy milk"
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.setSelectedRange(NSRange(location: 4, length: 4))
+        panel.close()
+        panel.show()
+        field.sendAction(field.action, to: field.target)
+        panel.close()
+        panel.show()
+        let reopened = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        XCTAssertEqual(reopened.string, "")
+        XCTAssertEqual(reopened.selectedRange(), NSRange(location: 0, length: 0))
+        reopened.insertText("Next task", replacementRange: reopened.selectedRange())
+        XCTAssertEqual(field.stringValue, "Next task")
+    }
+
     func testPreviewUsesTheWholeDraftAndRejectsOldReplies() throws {
         let panel = QuickCapturePanel()
         var requests: [(String, (String?) -> Void)] = []

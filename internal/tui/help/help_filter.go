@@ -64,6 +64,7 @@ func (m *HelpViewModel) filterItems() {
 	}
 
 	m.searchCaseRelaxed = false
+	m.otherCategoryMatches = 0
 	if m.searchQuery == "" {
 		m.filteredItems = make([]filteredHelpItem, len(source))
 		for i, item := range source {
@@ -75,9 +76,9 @@ func (m *HelpViewModel) filterItems() {
 	// Aliases feed matching only. Their positions index into the alias, not into
 	// the rendered key or description, so adding them to a highlight array would
 	// paint the wrong columns.
-	match := func(matcher fuzzy.Matcher) []filteredHelpItem {
+	match := func(items []operation.HelpItem, matcher fuzzy.Matcher) []filteredHelpItem {
 		var filtered []filteredHelpItem
-		for _, item := range source {
+		for _, item := range items {
 			keyScore, keyPos := matcher.ScoreTermsWithPositions(item.Key, m.searchQuery)
 			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, m.searchQuery)
 			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, m.searchQuery)
@@ -102,10 +103,19 @@ func (m *HelpViewModel) filterItems() {
 	}
 
 	matcher := fuzzy.SmartCase(m.searchQuery)
-	filtered := match(matcher)
+	filtered := match(source, matcher)
 	if len(filtered) == 0 && matcher.CaseSensitive() {
-		filtered = match(fuzzy.NewMatcher(false))
+		filtered = match(source, fuzzy.NewMatcher(false))
 		m.searchCaseRelaxed = len(filtered) > 0
+	}
+	if len(filtered) == 0 && m.activeTab > 0 && m.activeTab <= len(m.categories) {
+		// Count exactly what switching to All would show, including its own
+		// smart-case fallback, without changing the selected tab or query.
+		otherMatches := match(m.items, matcher)
+		if len(otherMatches) == 0 && matcher.CaseSensitive() {
+			otherMatches = match(m.items, fuzzy.NewMatcher(false))
+		}
+		m.otherCategoryMatches = len(otherMatches)
 	}
 
 	m.filteredItems = filtered

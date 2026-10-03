@@ -2,10 +2,63 @@ package help
 
 import (
 	"slices"
+	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
+
+func TestHelpEmptyCategoryNamesMatchesAvailableInAll(t *testing.T) {
+	for _, query := range []string{"cursor", "CURSOR", "jump"} {
+		m := NewHelpViewModel([]operation.HelpItem{
+			{Key: "e", Description: "Edit task", Category: "Tasks"},
+			{Key: "gg", Description: "Cursor to start", Category: "Navigation", Aliases: []string{"jump"}},
+			{Key: "G", Description: "Cursor to end", Category: "Navigation", Aliases: []string{"jump"}},
+		}, "Outliner")
+		m.SetSize(60, 20)
+		m.activeTab = slices.Index(m.categories, "Tasks") + 1
+		m.searchQuery = query
+		m.filterItems()
+		if len(m.filteredItems) != 0 || m.otherCategoryMatches != 2 {
+			t.Fatalf("%q: visible = %v, elsewhere = %d", query, m.filteredItems, m.otherCategoryMatches)
+		}
+		rendered := ansi.Strip(m.renderContent())
+		if !strings.Contains(rendered, "No matches in Tasks; 2 matches in other categories.") || !strings.Contains(rendered, "Choose the All tab") {
+			t.Fatalf("missing category guidance:\n%s", rendered)
+		}
+		for _, line := range strings.Split(rendered, "\n") {
+			if lipgloss.Width(line) > m.viewport.Width() {
+				t.Fatalf("empty guidance overflows viewport: %q", line)
+			}
+		}
+		m.activeTab = 0
+		m.filterItems()
+		if len(m.filteredItems) != 2 || m.otherCategoryMatches != 0 || m.searchQuery != query {
+			t.Fatalf("All did not reveal the promised matches: %+v", m.filteredItems)
+		}
+	}
+}
+
+func TestHelpOtherCategoryCountClearsWhenSearchChanges(t *testing.T) {
+	m := helpSmartCaseModel()
+	m.SetSize(60, 20)
+	m.activeTab = slices.Index(m.categories, "Actions") + 1
+	m.searchQuery = "cursor"
+	m.filterItems()
+	if got := ansi.Strip(m.renderContent()); !strings.Contains(got, "1 match in other categories") {
+		t.Fatalf("singular guidance = %q", got)
+	}
+	for _, query := range []string{"remove", "zebra", ""} {
+		m.searchQuery = query
+		m.filterItems()
+		if m.otherCategoryMatches != 0 || strings.Contains(m.renderContent(), "Choose the All tab") {
+			t.Fatalf("%q left a stale other-category notice", query)
+		}
+	}
+}
 
 func helpSmartCaseModel() *HelpViewModel {
 	return NewHelpViewModel([]operation.HelpItem{

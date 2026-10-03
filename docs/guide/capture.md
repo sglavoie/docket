@@ -44,7 +44,10 @@ validated before one atomic transaction is committed.
   `=unreview` clears the flag on the edit and search surfaces alone — a new task
   starts unflagged, so capture refuses it by name. The `=` key toggles the same
   flag on an existing row, and the `f=` filter facet narrows by it.
-- `%project` overrides scope routing.
+- `%project` overrides scope routing and requires an exact project slug. A typo
+  offers up to three nearby non-archived slugs, for example `%weeb` suggests
+  `%web`. Correct the token and submit again; a suggestion never changes the
+  draft or chooses the project for you.
 - `>parent` resolves inside the selected project after project routing.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`
   stays singleton because a task has one parent, while a task can gain many
