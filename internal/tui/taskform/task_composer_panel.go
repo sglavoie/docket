@@ -108,9 +108,8 @@ func (m *TaskComposerModel) composerInputContentRows() int {
 
 // composerPanelPaneContentRows is what the open pane asks for. Autocomplete
 // wants one row per suggestion, since RenderDropdownWithLimit spends rows on
-// overflow hints only once the list no longer fits; a multiline draft wants the
-// one row its summary is; otherwise the preview wants the grouped block it
-// would render.
+// overflow hints only once the list no longer fits; a multiline draft adds
+// one summary row to the current line's preview.
 //
 // The syntax guide is not among them, in either direction: it is read over the
 // host rather than beside it, so the share stays whatever the pane it replaced
@@ -121,12 +120,15 @@ func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 	switch {
 	case m.IsAutocompleteActive():
 		return len(m.AC.Items)
-	case m.nonblankLineCount() > 1:
-		return 1
-	case m.previewRepeatsRefusal():
-		return 0
 	default:
-		return m.PreviewBlockRows()
+		rows := 0
+		if !m.previewRepeatsRefusal() {
+			rows = m.PreviewBlockRows()
+		}
+		if m.nonblankLineCount() > 1 {
+			rows++
+		}
+		return rows
 	}
 }
 
@@ -151,9 +153,14 @@ func (m *TaskComposerModel) previewRepeatsRefusal() bool {
 // else, since a capture with no line to type on is not a capture; the rows past
 // it yield to a refusal, because a validation message names work the typist has
 // to do and the line it refuses is still scrollable inside the input.
-func composerInputRows(panelRows, want, errorRows int) int {
+func (m *TaskComposerModel) composerInputRows(panelRows, want, errorRows int) int {
 	body := max(panelRows-composerPanelFixedRows, 1)
-	return max(min(want, body-errorRows), 1)
+	previewRows := 0
+	if m.nonblankLineCount() > 1 && !m.IsAutocompleteActive() {
+		// Keep the count and at least one preview row alongside a long batch.
+		previewRows = min(m.composerPanelPaneContentRows(), 2)
+	}
+	return max(min(want, body-errorRows-previewRows), 1)
 }
 
 // syncInputHeight sizes the input to what the current geometry leaves it. The
@@ -162,7 +169,7 @@ func composerInputRows(panelRows, want, errorRows int) int {
 // one answer at the seams that resize the panel without drawing it.
 func (m *TaskComposerModel) syncInputHeight() {
 	width := max(m.width, 1)
-	rows := composerInputRows(
+	rows := m.composerInputRows(
 		m.compactPanelRows(),
 		m.composerInputContentRows(),
 		panelBlockRows(m.composerPanelErrorBlock(width)),
@@ -225,7 +232,7 @@ func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetric
 func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	width := max(m.width, 1)
 	errors := m.composerPanelErrorBlock(width)
-	m.setInputHeight(composerInputRows(rows, m.composerInputContentRows(), panelBlockRows(errors)))
+	m.setInputHeight(m.composerInputRows(rows, m.composerInputContentRows(), panelBlockRows(errors)))
 
 	var b strings.Builder
 	b.WriteString(chrome.RenderLabeledDivider(m.Preset.label(), width))
@@ -329,7 +336,11 @@ func (m *TaskComposerModel) renderComposerPanelPane(rows int) string {
 
 func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 	if count := m.nonblankLineCount(); count > 1 {
-		return theme.MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
+		summary := theme.MutedStyle.Render(fmt.Sprintf("%d tasks · Line %d", count, m.Input.Line()+1))
+		if rows <= 1 || m.previewRepeatsRefusal() {
+			return summary
+		}
+		return joinPanelBlocks(summary, m.ComposeBoundedPreviewBlock(rows-1))
 	}
 	if (m.PreviewErr == "" && m.Preview == nil) || m.previewRepeatsRefusal() {
 		return ""

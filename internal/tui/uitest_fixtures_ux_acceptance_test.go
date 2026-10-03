@@ -86,7 +86,11 @@ func buildUXAcceptanceFixture(w *uitestWorkspace) error {
 		overdue = newFixtureTask(p, uxAcceptanceOverdueTitle)
 		overdue.Priority = 1
 		overdue.ApplyWorkflowState(models.StateBacklog)
-		setDue(overdue, -2*24*time.Hour)
+		// Keep the deadline label a fixed width: a single-digit day changes
+		// which title characters fit in the clipping and Peek scenarios.
+		now := time.Now()
+		due := time.Date(now.Year(), now.Month()-1, 28, 12, 0, 0, 0, now.Location())
+		overdue.DueDate = &due
 		overdue.Description = uxAcceptanceDescription
 		overdue.ResumeNote = uxAcceptanceResumeNote
 		overdue.Tags = []string{"billing", "audit"}

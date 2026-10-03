@@ -407,9 +407,12 @@ func TestUXDailyUseCapturePanelIsSizedByItsContent(t *testing.T) {
 				}
 			}
 
+			if !strings.Contains(screen, "3 tasks · Line 3") {
+				t.Fatalf("multiline capture lost its current-line summary:\n%s", screen)
+			}
 			full := uxDailyUseCaptureDividerRow(t, driver)
-			if grew := empty - full; grew != len(uxDailyUseDraftLines) {
-				t.Fatalf("a %d-line draft raised the divider from row %d to row %d, want one row per line",
+			if grew := empty - full; grew != len(uxDailyUseDraftLines)+2 {
+				t.Fatalf("a %d-line draft raised the divider from row %d to row %d, want draft rows plus the count and current-line preview",
 					len(uxDailyUseDraftLines), empty, full)
 			}
 

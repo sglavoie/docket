@@ -203,17 +203,15 @@ func TestTabReachesDisabledDeferRowsThatActivationStillRefuses(t *testing.T) {
 	}
 }
 
-// A switch that finds nowhere to go changes nothing and says which section it
-// could not reach.
-func TestTabExplainsAnUnreachableSectionWithoutMovingOrClearingTheQuery(t *testing.T) {
+// A single matching section keeps its exact cursor and query, quietly.
+func TestTabStaysInTheOnlyMatchingSection(t *testing.T) {
 	picker := newDatePickerForTest(t, "")
 	picker.Surface().SetQuery("today")
 	before := currentDateRowID(t, picker)
 
 	_, result := pressKey(picker, "tab")
-	message, ok := result.(status.StatusMsg)
-	if !ok || string(message) != "No matching Defer values" {
-		t.Fatalf("tab with no defer match = %#v, want a Defer refusal", result)
+	if result != nil {
+		t.Fatalf("tab with only one matching section = %#v, want no message", result)
 	}
 	if got := currentDateRowID(t, picker); got != before {
 		t.Fatalf("refused tab moved the cursor to %q, want it left on %q", got, before)
@@ -360,5 +358,26 @@ func TestDueOnlyPickerGuidanceKeepsThePlainDateNoun(t *testing.T) {
 	}
 	if strings.Contains(rendered, "switch field") {
 		t.Fatalf("due-only guidance advertises a section switch:\n%s", rendered)
+	}
+}
+
+func TestDateSectionSwitchSkipsFilteredSectionsBothWays(t *testing.T) {
+	picker := newDatePickerForTest(t, "")
+	picker.Surface().SetQuery("month")
+	for _, key := range []string{"shift+tab", "tab", "tab", "shift+tab"} {
+		before := currentDateRowID(t, picker)
+		if dismissed, result := pressKey(picker, key); dismissed || result != nil {
+			t.Fatalf("%s dismissed=%v, message=%#v", key, dismissed, result)
+		}
+		want := DateListItemID(true, "month")
+		if before == want {
+			want = DateListItemID(false, "month")
+		}
+		if got := currentDateRowID(t, picker); got != want {
+			t.Fatalf("%s landed on %s, want %s", key, got, want)
+		}
+		if picker.Surface().Query().Raw != "month" || len(picker.Surface().SelectedIDs()) != 0 {
+			t.Fatal("switch changed the query or selected a value")
+		}
 	}
 }

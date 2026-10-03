@@ -330,9 +330,9 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 			t.Fatalf("growth lost draft line %q:\n%s", line, multiline)
 		}
 	}
-	if got := lipgloss.Height(multiline); got != composerPanelMinRows+3 {
-		t.Fatalf("three draft lines and their summary took %d rows, want %d:\n%s",
-			got, composerPanelMinRows+3, multiline)
+	if got := lipgloss.Height(multiline); got != composerPanelMinRows+5 {
+		t.Fatalf("three draft lines, summary, and preview took %d rows, want %d:\n%s",
+			got, composerPanelMinRows+5, multiline)
 	}
 
 	// The ceiling holds whatever the draft says, and the host keeps its floor.
@@ -667,5 +667,56 @@ func TestTaskComposerRouteRowColorsEachAxis(t *testing.T) {
 	}
 	if got := ansi.Strip(row); got != "Project: Mixed · Status: Mixed" {
 		t.Fatalf("stripped mixed route row = %q", got)
+	}
+}
+
+func TestMultilineCapturePreviewFollowsCaretAndSurvivesResize(t *testing.T) {
+	project := &models.Project{ID: "p", Name: "Project", Slug: "proj"}
+	other := &models.Project{ID: "q", Name: "Other", Slug: "other"}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind: ComposerGlobal, Project: project, AllProjects: []*models.Project{project, other}, AllowProjectSwitch: true,
+	}, nil)
+	composer.SetSize(100, 35)
+	const draft = "First !1 @2030-01-02 %proj $today\n\nSecond !2 @2030-02-03 %other $next"
+	composer.Update(tea.PasteMsg{Content: draft})
+	composer.AC.Clear()
+	check := func(line int, wants, absent []string) {
+		t.Helper()
+		preview := ansi.Strip(composer.renderComposerPanelPreview(12))
+		for _, want := range append(wants, fmt.Sprintf("2 tasks · Line %d", line)) {
+			if !strings.Contains(preview, want) {
+				t.Fatalf("missing %q:\n%s", want, preview)
+			}
+		}
+		for _, unwanted := range absent {
+			if strings.Contains(preview, unwanted) {
+				t.Fatalf("preview borrowed %q from another line:\n%s", unwanted, preview)
+			}
+		}
+	}
+	check(3, []string{"Second", "!2", "Feb 3", "Other", "$next"}, []string{"First", "!1", "Jan 2", "$today"})
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	check(2, nil, []string{"First", "Second", "!1", "!2"})
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	check(1, []string{"First", "!1", "Jan 2", "Project", "$today"}, []string{"Second", "!2", "Feb 3", "$next"})
+	for _, size := range [][2]int{{60, 18}, {160, 48}, {100, 35}} {
+		composer.SetSize(size[0], size[1])
+		frame := composer.View().Content
+		if lipgloss.Height(frame) > composerPanelMaxRows {
+			t.Fatal("panel exceeded its ceiling")
+		}
+		for _, row := range strings.Split(frame, "\n") {
+			if lipgloss.Width(row) > size[0] {
+				t.Fatalf("row exceeds width: %q", row)
+			}
+		}
+		check(1, []string{"First", "!1"}, []string{"Second", "!2"})
+	}
+	if composer.Input.Value() != draft || composer.Input.Line() != 0 {
+		t.Fatal("preview or resize changed draft/caret")
+	}
+	reqs, ok := composer.ParseCompactLines()
+	if !ok || len(reqs) != 2 || reqs[0].Priority != 1 || reqs[1].Priority != 2 || reqs[1].ProjectID != other.ID {
+		t.Fatalf("preview changed capture semantics: %+v, %+v", reqs, composer.Errors)
 	}
 }

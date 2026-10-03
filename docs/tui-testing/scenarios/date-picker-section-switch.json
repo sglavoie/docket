@@ -35,6 +35,12 @@
     { "type": "assert", "label": "the query is the picker's, not the switch's, to clear", "assert": "contains", "value": "month" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "skip the Check-in section with no month matches", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "a set due date" },
+    { "type": "key", "label": "skip the empty section backward too", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "a set defer date" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "clear the search back to both whole sections", "key": "/" },
     { "type": "key", "key": "esc" },
     { "type": "key", "key": "esc" },
@@ -46,9 +52,8 @@
     { "type": "key", "key": "y" },
     { "type": "key", "key": "enter" },
     { "type": "key", "label": "start from the first surviving row", "key": "home" },
-    { "type": "key", "label": "there is nowhere in Defer to go", "key": "tab" },
-    { "type": "assert", "assert": "status_contains", "value": "No matching Defer values" },
-    { "type": "assert", "label": "a refused switch leaves the cursor where it was", "assert": "contains", "value": "a set due date" },
+    { "type": "key", "label": "only one section matches, so Tab stays put", "key": "tab" },
+    { "type": "assert", "label": "a single matching section keeps the cursor", "assert": "contains", "value": "a set due date" },
     { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 

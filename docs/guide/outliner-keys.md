@@ -33,9 +33,9 @@ selection sharing a deadline but not a hide-until still opens on the deadline
 they share. Opening the picker writes nothing either way.
 
 `Tab` moves Due → Defer → Check-in and wraps; `Shift+Tab` moves backward. Each
-lands on the adjacent section's first row that
-the current search left on screen; when the search left it none, the cursor and
-the query stay put and the status says which section could not be reached. The
+skips sections with no search matches and lands on the next section's first
+matching row. When only one section has matches, the cursor and query stay put
+without a message. The
 footer names the field you are in — `a set due date` or `a set defer date` —
 which is the field `a` types into and the one `Enter` commits.
 

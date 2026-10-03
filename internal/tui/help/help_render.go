@@ -18,6 +18,9 @@ import (
 // widest one is the review pair, "=review =unreview".
 const helpKeyColumnWidth = 17
 
+// Keep enough prose beside each key to read a short action without wrapping.
+const helpMinDescriptionWidth = 24
+
 // helpSectionOrder is the display order of `?` help sections. Its names are the
 // categories the projections actually emit: OperationCategoryLabel produces the
 // registry ones, the keymap-projected providers add View, Actions, and Filters,
@@ -137,7 +140,12 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	keyWidth := helpKeyColumnWidth
 	columnGap := 4
 	columnOverhead := keyWidth + 2
-	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)
+	columns := 2
+	descWidth := (contentWidth - 2*columnOverhead - columnGap) / 2
+	if descWidth < helpMinDescriptionWidth {
+		columns = 1
+		descWidth = max(contentWidth-columnOverhead, 1)
+	}
 	columnWidth := keyWidth + 2 + descWidth
 
 	keyStyle := lipgloss.NewStyle().
@@ -153,11 +161,11 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		} else {
 			renderedKey = keyStyle.Render(item.Key)
 		}
-		wrappedDesc := wrapDescriptionWithIndent(item.Description, descWidth, keyWidth+2)
-		descLines := strings.Split(wrappedDesc, "\n")
+		description := item.Description
 		if len(item.descPositions) > 0 {
-			descLines[0] = textfit.HighlightText(descLines[0], item.descPositions, theme.NormalStyle)
+			description = textfit.HighlightText(description, item.descPositions, theme.NormalStyle)
 		}
+		descLines := textfit.WrapStyled(description, descWidth)
 		if suffix := helpAliasSuffix(item.matchedAliases, item.Description, descWidth); suffix != "" {
 			descLines[0] += theme.MutedStyle.Render(suffix)
 		}
@@ -169,6 +177,7 @@ func (m *HelpViewModel) renderBySectionContent() string {
 				result.WriteString(line)
 			} else {
 				result.WriteString("\n")
+				result.WriteString(strings.Repeat(" ", columnOverhead))
 				result.WriteString(line)
 			}
 		}
@@ -188,13 +197,16 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		first = false
 		b.WriteString(theme.HelpCategoryStyle.Render(section))
 		b.WriteString("\n")
-		for j := 0; j < len(items); j += 2 {
+		for j := 0; j < len(items); j += columns {
 			col1 := columnStyle.Render(renderItem(items[j]))
 			var col2 string
-			if j+1 < len(items) {
+			if columns == 2 && j+1 < len(items) {
 				col2 = columnStyle.Render(renderItem(items[j+1]))
 			}
-			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
+			row := col1
+			if columns == 2 {
+				row = lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
+			}
 			b.WriteString(row)
 			b.WriteString("\n")
 		}
@@ -333,54 +345,4 @@ func (m *HelpViewModel) StatusBarLabel() string {
 // HandledKeys returns the keys handled by Help.
 func (m *HelpViewModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
-}
-
-// wrapDescriptionWithIndent wraps text to fit within width, indenting continuation
-// lines to align under the first line of text (after key + separator).
-func wrapDescriptionWithIndent(text string, width, indentWidth int) string {
-	if width <= 0 {
-		return text
-	}
-
-	indent := strings.Repeat(" ", indentWidth)
-	var lines []string
-	remaining := text
-
-	for len(remaining) > 0 {
-		// All lines use full width - indent is added as prefix, not subtracted from width
-		if len(remaining) <= width {
-			if len(lines) > 0 {
-				lines = append(lines, indent+remaining)
-			} else {
-				lines = append(lines, remaining)
-			}
-			break
-		}
-
-		// Find break point (last space within width)
-		breakPoint := width
-		for i := width; i > 0; i-- {
-			if remaining[i-1] == ' ' {
-				breakPoint = i - 1
-				break
-			}
-		}
-		// If no space found, force break at width
-		if breakPoint == width {
-			breakPoint = width
-		}
-
-		line := remaining[:breakPoint]
-		if len(lines) > 0 {
-			lines = append(lines, indent+line)
-		} else {
-			lines = append(lines, line)
-		}
-
-		// Skip past the break point and any leading spaces
-		remaining = remaining[breakPoint:]
-		remaining = strings.TrimLeft(remaining, " ")
-	}
-
-	return strings.Join(lines, "\n")
 }

@@ -374,6 +374,7 @@ func (m *TaskComposerModel) focusFirstCaptureError() {
 		m.Input.CursorDown()
 	}
 	m.Input.SetCursorColumn(0)
+	m.UpdatePreview()
 }
 
 func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {

@@ -167,7 +167,12 @@ section badges, the preview's state glyph the badge the new row will carry,
 and each tag its chip color; `Mixed`
 and `Unavailable` read muted. The deadline preview includes its resolved
 weekday and any clock time, adding the year when it differs from the current
-year. Autocomplete and `?` syntax help borrow
+year. With multiple tasks, the preview starts with the task count and source
+line number (`3 tasks · Line 2`) and shows only the line under the cursor.
+Moving between lines updates it; a blank line shows just the count and line
+number. The route row still summarizes the whole batch, including mixed routes.
+Long batches keep room for the count and a compact preview while the input
+scrolls; errors retain priority. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long
 as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,

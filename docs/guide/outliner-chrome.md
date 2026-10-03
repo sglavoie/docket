@@ -8,7 +8,9 @@ tag wears.
 In `?` help, `/` searches within the selected category tab. If that category has
 no matches but others do, the empty view names the category and counts the
 matches available elsewhere. Choose the All tab to see them with the same
-query; the search never switches categories on its own.
+query; the search never switches categories on its own. Help uses one column in narrow
+windows and two when each description has at least 24 columns of room. Search
+highlighting follows matches across wrapped description lines.
 
 Every full-screen presentation keeps one operational title row. It names the
 surface, scope, and mode once on the left, and reports the workspace pulse on the

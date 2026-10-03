@@ -564,8 +564,8 @@ cursor's Defer section, not a provider method, lets `+Nh` parse. The cursor name
 the section: read the row's typed payload, never a second section index.
 It opens in Due on the due field alone — a preset, else
 Due's Clear row — and opening writes nothing. `Tab` moves forward through those
-sections and wraps; `Shift+Tab` moves backward. Both land on the adjacent section's
-first match, including disabled rows; no match preserves cursor and query.
+sections and wraps; `Shift+Tab` moves backward. Both skip empty sections, reaching
+the next first match, disabled rows included. A sole section is inert.
 Both are consumed on every picker; a one-section picker is inert. A preset key
 is one `chrome` table read by field and preset ID, never a per-surface keyboard;
 the creation form borrows it and keeps its own order, labels, and arithmetic.

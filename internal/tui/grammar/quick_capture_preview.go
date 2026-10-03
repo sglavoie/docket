@@ -15,10 +15,11 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// UpdatePreview updates the live preview state.
+// UpdatePreview parses the logical line under the caret, never combining
+// attributes from separate tasks in a multiline draft.
 func (q *QuickCaptureInput) UpdatePreview() {
-	input := strings.ReplaceAll(q.Input.Value(), "\n", " ")
-	input = strings.TrimSpace(input)
+	lines := strings.Split(q.Input.Value(), "\n")
+	input := strings.TrimSpace(lines[min(q.Input.Line(), len(lines)-1)])
 	if input == "" {
 		q.Preview = nil
 		q.PreviewErr = ""

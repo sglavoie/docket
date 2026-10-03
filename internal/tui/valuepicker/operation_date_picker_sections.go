@@ -32,19 +32,6 @@ var datePickerSections = []datePickerSection{
 	datePickerSectionCheckIn,
 }
 
-func (section datePickerSection) label() string {
-	switch section {
-	case datePickerSectionDue:
-		return "Due"
-	case datePickerSectionDefer:
-		return "Defer"
-	case datePickerSectionCheckIn:
-		return "Check-in"
-	default:
-		return "Date"
-	}
-}
-
 // dateRowSection names which scheduling section owns a row. Eligibility stays
 // separate: a disabled defer row is still in Defer, and the editor-opening row
 // is a Check-in action rather than a disguised deadline value.
@@ -98,10 +85,9 @@ func (model *OperationValuePickerModel) sectionedDatePicker() bool {
 }
 
 // switchDateSection moves the cursor to the first matching row in the adjacent
-// section. Direction now matters because the picker has three sections: Tab
-// moves forward and Shift+Tab backward. It reads matches rather than all items,
-// accepts disabled rows on purpose, and leaves the query and cursor untouched
-// when the adjacent section is filtered out.
+// visible section, skipping sections the query emptied. Tab moves forward and
+// Shift+Tab backward. Disabled rows remain reachable; with only the current
+// section matching, the cursor and query stay untouched.
 func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg {
 	current, ok := model.dateSectionUnderCursor()
 	if !ok {
@@ -114,17 +100,19 @@ func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg
 			break
 		}
 	}
-	targetIndex := (currentIndex + direction + len(datePickerSections)) % len(datePickerSections)
-	target := datePickerSections[targetIndex]
-	for _, match := range model.surface.Matches() {
-		section, ok := dateRowSection(match.Item)
-		if !ok || section != target {
-			continue
+	for step := 1; step < len(datePickerSections); step++ {
+		targetIndex := (currentIndex + direction*step + len(datePickerSections)) % len(datePickerSections)
+		target := datePickerSections[targetIndex]
+		for _, match := range model.surface.Matches() {
+			section, ok := dateRowSection(match.Item)
+			if !ok || section != target {
+				continue
+			}
+			model.surface.SetCursorToID(match.Item.ID)
+			return nil
 		}
-		model.surface.SetCursorToID(match.Item.ID)
-		return nil
 	}
-	return status.StatusMsg(fmt.Sprintf("No matching %s values", target.label()))
+	return nil
 }
 
 // dateEntryNoun names the date field the cursor sits in, so the one `a` binding
