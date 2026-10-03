@@ -162,7 +162,9 @@ Both wear the colors the
 Outliner already uses: the project its own color, the plan and the status their
 section badges, the preview's state glyph the badge the new row will carry,
 and each tag its chip color; `Mixed`
-and `Unavailable` read muted. Autocomplete and `?` syntax help borrow
+and `Unavailable` read muted. The deadline preview includes its resolved
+weekday and any clock time, adding the year when it differs from the current
+year. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long
 as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,
@@ -173,6 +175,11 @@ where either can be changed before saving. A line carrying adopted children,
 a deferral, or dependencies cannot expand: the form has no fields for those
 values. It names the unsupported action and keeps the original draft intact;
 submit that line with `Enter` to keep all its attributes.
+
+A rejected submission moves the cursor to the start of the first invalid line
+and scrolls it into view, keeping the entire draft. After that attempt, editing
+refreshes the line errors without moving the cursor or submitting again;
+correcting the last error clears the refusal. Press `Enter` to retry the save.
 
 Once the panel is at its ceiling — or on a short terminal, where the ceiling is
 whatever the outline can spare — it keeps its shape and shortens the preview

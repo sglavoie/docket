@@ -4,12 +4,44 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
+
+func TestCaptureDuePreview(t *testing.T) {
+	now := time.Date(2026, 12, 31, 12, 0, 0, 0, time.Local)
+	for _, tc := range []struct {
+		name string
+		due  time.Time
+		want string
+	}{
+		{"date only", time.Date(2026, 12, 31, 0, 0, 0, 0, time.Local), "Thu, Dec 31"},
+		{"timed", time.Date(2026, 12, 31, 15, 30, 0, 0, time.Local), "Thu, Dec 31 15:30"},
+		{"next year", time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local), "Fri, Jan 1 2027"},
+		{"previous year timed", time.Date(2025, 12, 31, 9, 5, 0, 0, time.Local), "Wed, Dec 31 2025 09:05"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := captureDuePreview(tc.due, now); got != tc.want {
+				t.Fatalf("deadline = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCaptureTimedDeadlineSurvivesCompactPreview(t *testing.T) {
+	due := time.Date(2027, 1, 1, 15, 30, 0, 0, time.Local)
+	q := makePreviewInput(t, &QuickCaptureResult{Title: "Ship release", DueDate: &due}, "", 56)
+	for _, preview := range []string{q.renderPreview(), q.renderCompactPreview()} {
+		plain := ansi.Strip(preview)
+		if !strings.Contains(plain, "@Fri, Jan 1") || !strings.Contains(plain, "15:30") {
+			t.Fatalf("preview lost deadline details:\n%s", plain)
+		}
+	}
+}
 
 // TestCaptureDependencyPreviewNamesEveryReference is the preview half of the
 // dependency capture contract: every resolved reference is named in the Depends

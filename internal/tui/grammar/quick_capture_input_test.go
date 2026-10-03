@@ -168,7 +168,7 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	}{
 		{"Task", []string{"Ship release"}},
 		{"Route", []string{"$doing", "Web App"}},
-		{"Schedule", []string{"@Feb 15"}},
+		{"Schedule", []string{"@Sun, Feb 15"}},
 		{"Priority", []string{"!1"}},
 		{"Tags", []string{"#backend", "#urgent"}},
 	}

@@ -125,7 +125,7 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 
 	var scheduleChunks []string
 	if q.Preview.DueDate != nil {
-		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+q.Preview.DueDate.Format("Jan 2"))
+		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+captureDuePreview(*q.Preview.DueDate, time.Now()))
 	}
 	if q.Preview.DeferUntil != nil {
 		deferDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
@@ -175,6 +175,20 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 
 	return groups, true
+}
+
+// captureDuePreview keeps the resolved weekday and clock visible before save.
+// Only dates outside the current year need the extra year qualifier.
+func captureDuePreview(due, now time.Time) string {
+	layout := "Mon, Jan 2"
+	if due.Year() != now.Year() {
+		layout += " 2006"
+	}
+	value := due.Format(layout)
+	if clock := chrome.FormatDueClock(&models.Task{DueDate: &due}); clock != "" {
+		value += " " + clock
+	}
+	return value
 }
 
 // renderPreview formats the parsed preview for display. The output is chunked

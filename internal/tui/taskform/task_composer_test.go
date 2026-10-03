@@ -559,8 +559,70 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	if composer.Input.Value() != input {
 		t.Fatalf("failed batch changed Input: %q", composer.Input.Value())
 	}
+	if composer.Input.Line() != 2 || composer.Input.Column() != 0 {
+		t.Fatalf("cursor = %d:%d, want start of source line 3", composer.Input.Line(), composer.Input.Column())
+	}
 	if got := len(env.reload(t).Tasks); got != 0 {
 		t.Fatalf("atomic validation created %d tasks", got)
+	}
+}
+
+func TestTaskComposerFailedCaptureFocusesOffscreenWrappedLine(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Project: project}, nil)
+	composer.SetSize(60, 18) // The shell reserves the other two terminal rows.
+	lines := make([]string, 25)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("Task %d %s", i, strings.Repeat("wrapped text ", 8))
+	}
+	lines[12] = "!1"
+	draft := strings.Join(lines, "\n")
+	composer.Update(tea.PasteMsg{Content: draft})
+	if len(composer.Errors) != 0 {
+		t.Fatal("line validation ran before submission")
+	}
+	composer.AC.Clear()
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if composer.Input.Line() != 12 || composer.Input.Column() != 0 {
+		t.Fatalf("cursor = %d:%d, want start of line 13", composer.Input.Line(), composer.Input.Column())
+	}
+	if composer.Input.Value() != draft || composer.SubmissionInFlight {
+		t.Fatal("refused submission changed the draft or started a commit")
+	}
+	if view := ansi.Strip(composer.Input.View()); !strings.Contains(view, "!1") {
+		t.Fatalf("off-screen error was not revealed:\n%s", view)
+	}
+	composer.SetSize(100, 33)
+	if composer.Input.Line() != 12 || !strings.Contains(ansi.Strip(composer.Input.View()), "!1") {
+		t.Fatal("resize lost the error line")
+	}
+}
+
+func TestTaskComposerRefreshesErrorsWithoutMovingCaretOrCommitting(t *testing.T) {
+	project := &models.Project{ID: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{Project: project}, nil)
+	composer.Input.SetValue("!1\n\n!2")
+	composer.CreateCompact(false)
+	composer.Update(tea.PasteMsg{Content: "First "})
+	if len(composer.Errors) != 1 || composer.Errors[0].Line != 3 {
+		t.Fatalf("corrected line retained stale errors: %+v", composer.Errors)
+	}
+	if composer.Input.Line() != 0 || composer.Input.Column() != 6 {
+		t.Fatal("editing jumped to the next error")
+	}
+	composer.Input.MoveToEnd()
+	composer.Input.CursorStart()
+	composer.Update(tea.PasteMsg{Content: "Second "})
+	if len(composer.Errors) != 0 || composer.SubmissionInFlight {
+		t.Fatalf("corrected draft has errors or submitted: %+v", composer.Errors)
+	}
+	// Live validation remains active after a correction, including the newline
+	// branch that bypasses the textarea's usual UpdateInput path.
+	composer.Input.MoveToEnd()
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+	composer.Update(tea.PasteMsg{Content: "!3"})
+	if len(composer.Errors) != 1 || composer.Errors[0].Line != 4 || composer.Input.Column() != 2 {
+		t.Fatalf("new error did not follow the edited draft: %+v, col=%d", composer.Errors, composer.Input.Column())
 	}
 }
 

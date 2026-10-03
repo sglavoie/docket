@@ -140,6 +140,9 @@ type TaskComposerModel struct {
 	// draft or its preview to a footer that grew a row.
 	shellFrame         chrome.ShellFrameMetrics
 	SubmissionInFlight bool
+	// Once a submit has failed, edits keep its line diagnostics current without
+	// moving the caret or issuing another capture request.
+	validateOnEdit bool
 	chrome.DiscardConfirmState
 }
 
@@ -257,6 +260,8 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	defer m.refreshCaptureErrorsAfterEdit(m.Input.Value(), m.Preset.Project)
+
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		name := key.String()
 		if handled, cmd := m.handleComposerAutocompleteKey(name); handled {
@@ -316,6 +321,14 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, m.UpdateInput(msg)
 }
 
+func (m *TaskComposerModel) refreshCaptureErrorsAfterEdit(before string, projectBefore *models.Project) {
+	if m.Mode == ComposerCompact && m.validateOnEdit &&
+		(m.Input.Value() != before || m.Preset.Project != projectBefore) {
+		m.ParseCompactLines()
+		m.syncInputHeight()
+	}
+}
+
 func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, tea.Cmd) {
 	if name == "enter" && m.AutocompleteLiteralComplete() {
 		return true, m.CreateCompact(false)
@@ -332,6 +345,8 @@ func (m *TaskComposerModel) CreateCompact(openContent bool) tea.Cmd {
 	}
 	reqs, ok := m.ParseCompactLines()
 	if !ok {
+		m.validateOnEdit = true
+		m.focusFirstCaptureError()
 		return nil
 	}
 	var cmd tea.Cmd
@@ -344,6 +359,21 @@ func (m *TaskComposerModel) CreateCompact(openContent bool) tea.Cmd {
 		m.SubmissionInFlight = true
 	}
 	return cmd
+}
+
+// focusFirstCaptureError runs only after an explicit submit. Walking visual
+// rows also handles wrapped lines and scrolls an off-screen error into view.
+func (m *TaskComposerModel) focusFirstCaptureError() {
+	if len(m.Errors) == 0 {
+		return
+	}
+	m.syncInputHeight()
+	target := max(m.Errors[0].Line-1, 0)
+	m.Input.MoveToBegin()
+	for guard := m.composerInputContentRows(); m.Input.Line() < target && guard > 0; guard-- {
+		m.Input.CursorDown()
+	}
+	m.Input.SetCursorColumn(0)
 }
 
 func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
