@@ -41,20 +41,22 @@ func collectTagNames(projects ...*models.Project) []string {
 	return names
 }
 
-// collectContextNamesForProject returns the sorted unique task contexts used in
-// a project. Context has no project catalog, so task usage is its full vocabulary.
-func collectContextNamesForProject(project *models.Project) []string {
-	if project == nil {
-		return nil
-	}
+// collectContextNames returns the sorted unique task contexts used across the
+// projects. Context has no project catalog, so task usage is its full vocabulary.
+func collectContextNames(projects ...*models.Project) []string {
 	contexts := make(map[string]bool)
-	for _, task := range project.Tasks {
-		if task == nil || task.Context == "" {
+	for _, project := range projects {
+		if project == nil {
 			continue
 		}
-		normalized, err := models.NormalizeTaskContext(task.Context)
-		if err == nil {
-			contexts[normalized] = true
+		for _, task := range project.Tasks {
+			if task == nil || task.Context == "" {
+				continue
+			}
+			normalized, err := models.NormalizeTaskContext(task.Context)
+			if err == nil {
+				contexts[normalized] = true
+			}
 		}
 	}
 	result := maps.Keys(contexts)

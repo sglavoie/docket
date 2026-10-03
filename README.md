@@ -12,10 +12,28 @@ and the interface is the product.
 
 ## What using it looks like
 
-Press `a`, type one line, press `Enter`:
+### Your first five minutes
+
+Run `tt` after [installing it](#install-and-start). No project setup is needed:
+
+1. Press `a`, type `Try Terminal Tasks`, and press `Enter`. Your task lands in
+   Inbox under Unfiled.
+2. Move to its row with the arrow keys, then press `w` followed by `t` to plan
+   it for Today. Press `g` followed by `t` to open Today.
+3. With the task selected, press `w` followed by `d` to complete it. It leaves
+   Today; press `u` to undo and bring it back.
+4. Press `/`, type `Terminal`, and press `Enter` to search. Press `Esc` to
+   clear the search.
+
+Press `?` whenever you want the keys for the surface you are on.
+
+### Capture more in one line
+
+Once you want metadata, create a project with slug `web` using `P` then `a`.
+Press `a` in the Outliner, type this line, and press `Enter`:
 
 ```text
-a  fix login redirect !1 @friday #auth %web $today
+fix login redirect !1 @friday #auth %web $today
 ```
 
 Captured on Friday 28 August 2026, that lands in the Today lane of project

@@ -28,15 +28,13 @@ func (q *QuickCaptureInput) UpdatePreview() {
 	q.Preview, q.PreviewErr = ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.skipProjectSyntax)
 }
 
-// previewGroupLabelWidth is the padded width used for the leading group label
-// column ("Task", "Route", "Children", "Schedule", "Priority", "Tags"). Sized to
-// the longest label plus a trailing space so the body column lines up.
+// previewGroupLabelWidth fits the longest group label plus a trailing space
+// so the body column lines up.
 const previewGroupLabelWidth = 9
 
-// previewGroup is one labeled cluster of parsed attributes (Task, Route,
-// Children, Schedule, Priority, Tags). Both the full grouped preview and the
-// compact two-row fallback are built from the same groups so they can never
-// disagree about what the parser understood.
+// previewGroup is one labeled cluster of parsed attributes. Both the full
+// grouped preview and the compact two-row fallback use the same groups so they
+// can never disagree about what the parser understood.
 type previewGroup struct {
 	label  string
 	chunks []string
@@ -44,8 +42,7 @@ type previewGroup struct {
 
 // previewGroups builds the populated preview groups from the parsed result, or
 // reports ok=false when there is nothing to preview. It is the single source of
-// the recognized task, route, child, schedule, state, priority, tag, and project
-// information shown by both preview renderers.
+// recognized attributes shown by both preview renderers.
 func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.Preview == nil || q.Preview.Title == "" {
 		return nil, false
@@ -174,6 +171,10 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		}
 		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
 	}
+	if q.Preview.Context != "" {
+		contextDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
+		groups = append(groups, previewGroup{label: "Context", chunks: []string{contextDefinition.Trigger + q.Preview.Context}})
+	}
 
 	return groups, true
 }
@@ -192,10 +193,8 @@ func captureDuePreview(due, now time.Time) string {
 	return value
 }
 
-// renderPreview formats the parsed preview for display. The output is chunked
-// into labeled groups (Task / Route / Children / Schedule / Priority / Tags) so
-// the user can scan what the parser understood without parsing a
-// separator-soup. Only populated groups are shown.
+// renderPreview formats the parsed preview into labeled groups so the user can
+// scan what the parser understood. Only populated groups are shown.
 func (q *QuickCaptureInput) renderPreview() string {
 	if q.PreviewErr != "" {
 		return theme.ValidationErrorStyle.Render(q.PreviewErr)

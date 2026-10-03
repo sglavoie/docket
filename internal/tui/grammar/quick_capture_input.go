@@ -10,13 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-// InitCaches builds tag and project caches for autocomplete. Parent and child
-// candidates are deliberately absent: they follow the draft's effective
+// InitCaches builds tag, context, and project caches for autocomplete. Parent
+// and child candidates are deliberately absent: they follow the draft's effective
 // %project, which changes while the user types, so caching them here is what
 // made parent completion offer the source project's tasks after a route.
 func (q *QuickCaptureInput) InitCaches() {
-	q.contextCache = collectContextNamesForProject(q.Project)
-
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)
 	if q.allProjects != nil {
@@ -27,11 +25,13 @@ func (q *QuickCaptureInput) InitCaches() {
 		}
 	}
 
-	// Tags come from every project a line may route to, not only the source
-	// one: a global capture starts in Unfiled, which would otherwise offer
+	// Tags and contexts come from every project a line may route to, not only
+	// the source one: a global capture starts in Unfiled, which would otherwise offer
 	// almost nothing. The source project is included even when no list was
 	// handed in, so a host without one still completes locally.
-	q.TagCache = collectTagNames(append([]*models.Project{q.Project}, q.projectCache...)...)
+	projects := append([]*models.Project{q.Project}, q.projectCache...)
+	q.TagCache = collectTagNames(projects...)
+	q.contextCache = collectContextNames(projects...)
 }
 
 // ensureSyntaxViewport lazily constructs the syntax help viewport so callers can

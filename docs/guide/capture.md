@@ -25,6 +25,10 @@ validated before one atomic transaction is committed.
   the line into the full form carries the value onto the Basics tab's Context
   row, where you can keep it, change it, or empty the field to create the task
   without one.
+  Capture suggests existing contexts across the same available projects as
+  tags, including when capturing into Unfiled or routing with `%project`.
+  The preview shows the normalized value as `Context ##office`; the compact
+  preview carries the same `##office` token.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `@@defer` hides the task until an instant rather than a day, so it also
