@@ -670,19 +670,18 @@ Row and Peek budget:
   the geometry's `BodyRows` bounds visibility alone, a short document pads, and
   `positionLine` is a further row drawn for every document, `0 above · 0 below`
   included. Nothing sits outside that window and the document has no header:
-  body order is title, parent, status, schedule, resume, description, checklist
+  body order is title, parent, optional search excerpt, status, schedule, resume, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
   history; place a new section deliberately. Schedule is what is still owed —
-  deadline, pending deferral, check-in, repeat — and history what is already
-  spent — created, updated, last review, a lapsed wake, the avoidance count — so
-  the two never share a line and history closes the document. The deferral
-  instant keys both, since either half alone may be the one drawn. The whole title and the uncompacted ancestor
-  chain lead it, so a clipped row is recovered by scrolling and the row's `…`
-  never has a counterpart that reassembles it. Status spells plan first — the
-  collection, never a tenth state — then state with a Doing/Waiting age off
-  `StateChangedAt`, priority, pinned, and review, and keys on stored values so a
-  tick never resets the window.
+  deadline, pending deferral, check-in, repeat — and history records created,
+  updated, last review, a lapsed wake, and avoidance count on its own final line.
+  The deferral instant keys both. Title and ancestor chain are uncompacted.
+  Status spells plan (collection), state with Doing/Waiting age off
+  `StateChangedAt`, priority, pinned, and review; stored values key it, so ticks
+  never reset the window.
   Checklist and comments stay counts; their items are rows and their panel.
+  A search `Match:` excerpt may quote checklist/comments: use the projection's
+  source, remainder and case mode, mark elision, key on query and excerpt.
   A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
@@ -975,6 +974,8 @@ committing one transaction.
   disagree about order.
 - Children resolve only in the effective project, so `<child` never crosses a
   project boundary.
+- Expansion carries pin/review to Flags; adoption, deferral and dependencies
+  refuse by name, preserving the draft.
 - A terminal destination refuses an open adopted child on both surfaces.
 - `~task` is the one repeatable reference crossing a project boundary, and it is
   soft: readiness, ordering, ranking, and completion never read it, and

@@ -82,22 +82,25 @@ func (m *TaskComposerModel) ExpandSingle() tea.Cmd {
 		m.Errors = []grammar.LineError{{Line: 1, Message: "expanded mode requires exactly one nonblank task"}}
 		return nil
 	}
-	// The expanded form has no adoption channel, so expanding would drop the
-	// references silently rather than carry them.
-	if len(reqs[0].ChildIDs) > 0 {
-		m.Errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot adopt children; submit the line with Enter instead"}}
-		return nil
-	}
-	// The expanded form has no pin control, so expanding would drop the value
-	// silently rather than carry it.
-	if reqs[0].Pinned {
-		m.Errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot pin; submit the line with Enter instead"}}
-		return nil
-	}
 	return m.ExpandRequest(reqs[0])
 }
 
 func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
+	// Refuse values the form has no channel for before changing presentation.
+	// Keep this at the request boundary so typed callers receive the same guard.
+	var unsupported string
+	switch {
+	case len(req.ChildIDs) > 0:
+		unsupported = "adopt children"
+	case req.DeferSet || req.Defer != nil:
+		unsupported = "defer tasks"
+	case len(req.Dependencies) > 0:
+		unsupported = "set dependencies"
+	}
+	if unsupported != "" {
+		m.Errors = []grammar.LineError{{Line: max(req.SourceLine, 1), Message: "expanded mode cannot " + unsupported + "; submit the line with Enter instead"}}
+		return nil
+	}
 	project := m.projectByID(req.ProjectID)
 	if project == nil {
 		m.Errors = []grammar.LineError{{Line: 1, Message: "target project is unavailable"}}
@@ -108,6 +111,9 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
 	form.draft.context = req.Context
+	form.draft.pinned = req.Pinned
+	form.draft.review = req.Review
+	form.draft.desc = req.Description
 	destination := req.Destination
 	if destination == "" {
 		destination = m.Preset.defaultDestination(req.ParentID)
@@ -137,6 +143,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.SetSize(m.width, m.height)
 	m.Expanded = form
 	m.Mode = ComposerExpanded
+	m.Errors = nil
 	return form.Init()
 }
 

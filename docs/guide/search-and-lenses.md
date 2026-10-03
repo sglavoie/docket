@@ -104,6 +104,15 @@ whose title does not carry the match says where it came from with a muted
 `· attachment`, `· project`, or `· details` note. That note is the first thing a
 narrow row drops, so the title stays readable.
 
+Open Peek with `b` on a non-title result to read a `Match:` excerpt near the
+top, after the title and parent chain. It names the matching field and shows
+up to 160 characters around the first matched character, including comment or
+checklist text; `…` marks omitted context. The excerpt follows the same fuzzy
+and case rules as the results, wraps within the pane, and leaves the ordinary
+task details below it. Changing the query resets Peek's scroll position when
+an excerpt is shown. Clearing search removes the excerpt; title matches and
+queries made only of sigils need none.
+
 The search box speaks the capture and edit grammar. Sigil tokens are lifted out
 of the query and become an AND gate over the candidate set; whatever text is
 left keeps the ordinary fuzzy ranking. A query made only of sigils is a pure

@@ -327,8 +327,9 @@ nothing, so the key always answers on a header. Everything is shown whole and th
 same four keys page through it, exactly as on a task. A project shown under
 several headers at once — All draws one per state section — is one detail behind
 all of them, so where you scrolled to under one is where you are under the next.
-A task's Peek is unchanged: its comments stay a count, because `;` is the panel
-that reads them.
+A task's Peek keeps its comment count; `;` is the panel that reads the full
+conversation. During search, a matching comment can also appear in the short
+`Match:` excerpt below the title and parent chain.
 
 Both reference lists are read-only wherever Peek is open, and
 both carry their own count. `Dependencies` names what this task stores, in the
@@ -339,7 +340,7 @@ point back from there and no key edits it at all. Each entry takes a row of its
 own, reading as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
 `project-id:task-id` locator and reads `(unavailable)` rather than being dropped.
-Comments stay a count, because `;` is the panel that reads them, and the
+Comments stay a count below any search excerpt, because `;` is the panel that reads them, and the
 checklist stays a count because its items are already rows of their own beneath
 the task, where you tick, edit, and promote them. Nothing in Peek sits outside
 the pane: the whole title leads the detail, so a title the row had to clip

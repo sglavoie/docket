@@ -125,6 +125,9 @@ type inlinePeekOptions struct {
 	// are drawn in the same window.
 	Window     peekDockGeometry
 	Breadcrumb string
+	// SearchExcerpt explains a non-title search hit without replacing the detail.
+	SearchExcerpt    string
+	SearchExcerptKey string
 	// Planning is the task's planning membership, `today`, `next`, or empty. It
 	// arrives resolved for the same reason the two reference lists do: membership
 	// is an explicit project-qualified collection in the planning state and is
@@ -203,6 +206,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// rest of that title, so nothing precedes it.
 	add("title:"+task.Title, inlinePeekTitleLines(task, opts.Indent, width))
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
+	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
 
 	// The two summary lines follow, densest first: what the task is right now,
 	// then what it still owes. Both are `label value` pairs on one wrapped line
@@ -732,4 +736,21 @@ func inlinePeekHangingLines(label string, chunks []string, indent string, width 
 		lines = append(lines, indent+row)
 	}
 	return lines
+}
+
+// searchMatchExcerpt gives the first matched rune a little leading context.
+// Ellipses explicitly mark the excerpt; ordinary task detail stays below it.
+func searchMatchExcerpt(text string, firstMatch int) string {
+	const contextBefore, excerptRunes = 40, 160
+	runes := []rune(text)
+	start := max(firstMatch-contextBefore, 0)
+	end := min(start+excerptRunes, len(runes))
+	excerpt := strings.Join(strings.Fields(string(runes[start:end])), " ")
+	if start > 0 {
+		excerpt = "…" + excerpt
+	}
+	if end < len(runes) {
+		excerpt += "…"
+	}
+	return excerpt
 }

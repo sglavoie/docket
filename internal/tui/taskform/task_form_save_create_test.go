@@ -20,23 +20,6 @@ func scenarioCreateForm(t *testing.T, env *scenarioEnv) *TaskFormModel {
 	return m
 }
 
-// runCreate executes handleSave and returns the committed coordinator.TaskCreatedMsg.
-func runCreate(t *testing.T, m *TaskFormModel) coordinator.TaskCreatedMsg {
-	t.Helper()
-	cmd := m.handleSave()
-	if cmd == nil {
-		t.Fatalf("expected non-nil Cmd on successful create; err=%v", m.err)
-	}
-	msg, ok := cmd().(coordinator.TaskCreatedMsg)
-	if !ok {
-		t.Fatalf("expected coordinator.TaskCreatedMsg, got %T", cmd())
-	}
-	if msg.Result == nil {
-		t.Fatal("coordinator.TaskCreatedMsg.Result should be non-nil on the coordinator path")
-	}
-	return msg
-}
-
 // ── Create happy path ───────────────────────────────────────────────────────
 
 func TestTaskForm_Save_CreateHappyPath_CommitsThroughCoordinator(t *testing.T) {

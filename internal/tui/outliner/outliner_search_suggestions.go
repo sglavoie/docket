@@ -749,17 +749,7 @@ func scoreSearchProjectionTask(
 		return searchFieldRankProject, score, MatchSourceProject, true
 	}
 
-	details := strings.Join([]string{
-		task.Title,
-		task.Description,
-		task.ResumeNote,
-		checklistText,
-		commentText,
-		tagText,
-		task.Context,
-		attachmentText,
-		projectText,
-	}, " ")
+	details := searchMatchText(task, project, MatchSourceDetails)
 	if score := matcher.ScoreTerms(details, query); score > 0 {
 		return searchFieldRankDetails, score, MatchSourceDetails, true
 	}
@@ -1022,4 +1012,40 @@ func (m *OutlinerModel) applyRecalledSearchQuery(value string) {
 // decides if the search footer advertises the walk.
 func (m *OutlinerModel) hasSearchHistory() bool {
 	return m != nil && len(m.Search.history.entries) > 0
+}
+
+// searchMatchText uses the same field text as ranking, including its combined
+// details tier when separate query terms occur in different fields.
+func searchMatchText(task *models.Task, project *models.Project, source MatchSource) string {
+	switch source {
+	case MatchSourceTitle:
+		return task.Title
+	case MatchSourceDescription:
+		return task.Description
+	case MatchSourceResume:
+		return task.ResumeNote
+	case MatchSourceChecklist:
+		return searchChecklistText(task)
+	case MatchSourceComment:
+		return searchCommentText(task)
+	case MatchSourceTag:
+		return strings.Join(task.Tags, " ")
+	case MatchSourceContext:
+		return task.Context
+	case MatchSourceAttachment:
+		return searchAttachmentText(task)
+	case MatchSourceProject:
+		if project != nil {
+			return searchProjectText(task, project)
+		}
+		return ""
+	case MatchSourceDetails:
+		var fields []string
+		for field := MatchSourceTitle; field < MatchSourceDetails; field++ {
+			fields = append(fields, searchMatchText(task, project, field))
+		}
+		return strings.Join(fields, " ")
+	default:
+		return ""
+	}
 }

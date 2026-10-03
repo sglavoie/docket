@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -170,6 +171,20 @@ func TestSearchScoresEveryApprovedFieldAtItsDeclaredTier(t *testing.T) {
 			if match.fieldRank != tt.rank || match.source != tt.source {
 				t.Fatalf("query %q ranked %d/source %d, want %d/%d",
 					tt.query, match.fieldRank, match.source, tt.rank, tt.source)
+			}
+			outliner := scopeTestOutliner(project)
+			searchRankedList(outliner, tt.query)
+			excerpt := outliner.peekSearchExcerpt(outliner.Rows[0])
+			if tt.source == MatchSourceTitle {
+				if excerpt != "" {
+					t.Fatalf("title match gained a redundant excerpt: %q", excerpt)
+				}
+			} else {
+				for _, term := range strings.Fields(tt.query) {
+					if !strings.Contains(strings.ToLower(excerpt), term) {
+						t.Errorf("excerpt %q does not explain query term %q", excerpt, term)
+					}
+				}
 			}
 		})
 	}

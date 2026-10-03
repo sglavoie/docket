@@ -168,6 +168,12 @@ as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,
 the folds, and the Peek dock exactly as capture found them.
 
+Expansion carries `*pin` and `=review` into the Basics tab's Flags picker,
+where either can be changed before saving. A line carrying adopted children,
+a deferral, or dependencies cannot expand: the form has no fields for those
+values. It names the unsupported action and keeps the original draft intact;
+submit that line with `Enter` to keep all its attributes.
+
 Once the panel is at its ceiling — or on a short terminal, where the ceiling is
 whatever the outline can spare — it keeps its shape and shortens the preview
 instead of its chrome, and a refusal keeps its rows ahead of the draft's, so the

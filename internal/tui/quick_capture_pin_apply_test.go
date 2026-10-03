@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
-func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
+func TestTaskComposerExpandShowsCapturedPin(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
 		Kind:    taskform.ComposerProject,
@@ -15,14 +15,12 @@ func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
 	}, appModel.domain.runtime)
 	composer.Input.SetValue("Ship release *pin")
 
-	if cmd := composer.ExpandSingle(); cmd != nil {
-		t.Fatal("expand accepted a line carrying a pin")
+	composer.SetSize(100, 35)
+	composer.ExpandSingle()
+	if composer.Mode != taskform.ComposerExpanded || composer.Expanded == nil {
+		t.Fatalf("pinned capture did not expand: %+v", composer.Errors)
 	}
-	if composer.Mode != taskform.ComposerCompact || composer.Expanded != nil {
-		t.Fatal("composer entered expanded mode despite the refusal")
-	}
-	if len(composer.Errors) != 1 ||
-		!strings.Contains(composer.Errors[0].Message, "expanded mode cannot pin; submit the line with Enter instead") {
-		t.Fatalf("errors = %+v", composer.Errors)
+	if len(composer.Errors) != 0 || !strings.Contains(composer.View().Content, "Pinned") {
+		t.Fatalf("expanded form did not show its captured pin:\n%s", composer.View().Content)
 	}
 }

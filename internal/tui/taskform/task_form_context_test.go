@@ -205,7 +205,7 @@ func TestTaskComposerExpandCarriesCapturedContext(t *testing.T) {
 	}
 }
 
-func TestTaskComposerExpandStillRefusesPinAndAdoption(t *testing.T) {
+func TestTaskComposerExpandAcceptsPinAndRefusesMultiline(t *testing.T) {
 	runtime, project := newTestRuntimeWithProject()
 	newComposer := func(line string) *TaskComposerModel {
 		composer := NewTaskComposerModel(TaskComposerPreset{
@@ -219,9 +219,8 @@ func TestTaskComposerExpandStillRefusesPinAndAdoption(t *testing.T) {
 
 	pinned := newComposer("Ship it *pin")
 	pinned.ExpandSingle()
-	if pinned.Mode != ComposerCompact || len(pinned.Errors) != 1 ||
-		!strings.Contains(pinned.Errors[0].Message, "expanded mode cannot pin") {
-		t.Fatalf("pin refusal changed: mode=%v errors=%+v", pinned.Mode, pinned.Errors)
+	if pinned.Mode != ComposerExpanded || !pinned.Expanded.draft.pinned {
+		t.Fatalf("pin did not expand: mode=%v errors=%+v", pinned.Mode, pinned.Errors)
 	}
 
 	multiline := newComposer("One\nTwo")
