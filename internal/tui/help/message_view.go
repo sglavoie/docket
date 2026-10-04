@@ -37,6 +37,7 @@ type MessageView struct {
 type messageCopiedMsg struct {
 	err   error
 	index int
+	all   bool
 }
 
 // NewMessageView snapshots feedback in newest-first order.
@@ -68,7 +69,7 @@ func (m *MessageView) SetSize(width, height int) {
 func (m *MessageView) guidance() chrome.GuidanceSpec {
 	spec := chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Esc close"), Rows: 2}
 	if m.text != "" {
-		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "y copy")...)
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "y copy", "Y copy all")...)
 	}
 	if len(m.messages) > 1 {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "← older", "→ newer")...)
@@ -101,16 +102,23 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.copyNotice = "Copied message"
+		if msg.all {
+			m.copyNotice = "Copied message history"
+		}
 		if msg.err != nil {
 			m.copyNotice = fmt.Sprintf("Could not copy: %s", msg.err)
 		}
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "y":
+		case "y", "Y":
 			if m.text != "" {
 				text := m.text
+				all := msg.String() == "Y"
+				if all {
+					text = m.historyText()
+				}
 				index := m.index
-				return m, func() tea.Msg { return messageCopiedMsg{err: external.CopyText(text), index: index} }
+				return m, func() tea.Msg { return messageCopiedMsg{err: external.CopyText(text), index: index, all: all} }
 			}
 		case "left":
 			m.selectMessage(m.index + 1)
@@ -144,7 +152,7 @@ func (m *MessageView) View() tea.View {
 		subtitle = fmt.Sprintf("Message %d of %d", m.index+1, len(m.messages))
 		entry := m.messages[m.index]
 		if !entry.At.IsZero() {
-			subtitle += " · " + entry.At.Local().Format("15:04")
+			subtitle += " · " + messageTimeLabel(entry.At, time.Now())
 		}
 		if entry.Kind != "" {
 			subtitle += " · " + entry.Kind
@@ -153,6 +161,36 @@ func (m *MessageView) View() tea.View {
 	}
 	title := chrome.RenderFullscreenTitleWithPulse("Last message", subtitle, m.CurrentWorkspacePulse(), m.width)
 	return tea.NewView(chrome.FitBlockHeight(title+"\n\n"+body, max(m.height-lipgloss.Height(footer), 1)) + "\n" + footer)
+}
+
+func messageTimeLabel(at, now time.Time) string {
+	at, now = at.Local(), now.Local()
+	layout := "15:04"
+	if at.Format(time.DateOnly) != now.Format(time.DateOnly) {
+		layout = "2006-01-02 15:04"
+	}
+	return at.Format(layout)
+}
+
+// historyText exports the same newest-first snapshot the reader browses.
+// Full timestamps retain dates and UTC offsets when shared outside this session.
+func (m *MessageView) historyText() string {
+	entries := make([]string, 0, len(m.messages))
+	for _, entry := range m.messages {
+		var metadata []string
+		if !entry.At.IsZero() {
+			metadata = append(metadata, entry.At.Local().Format(time.RFC3339))
+		}
+		if entry.Kind != "" {
+			metadata = append(metadata, entry.Kind)
+		}
+		text := entry.Text
+		if len(metadata) > 0 {
+			text = strings.Join(metadata, " · ") + "\n" + text
+		}
+		entries = append(entries, text)
+	}
+	return strings.Join(entries, "\n\n")
 }
 
 func (m *MessageView) selectMessage(index int) {

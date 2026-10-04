@@ -180,6 +180,10 @@ If the parsed title exactly matches an unfinished task in the resolved project,
 the preview adds `Already exists: web#42` (and a count if more match). Matching
 is case-sensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally.
+The preview also checks other valid lines in a multiline draft for the same
+parsed title in the same resolved project. `Same task on line 2` names the first
+matching source line, counting blank lines too. This notice is advisory and can
+appear beside the existing-task hint; changing either line refreshes it.
 With multiple tasks, the preview starts with the task count and source
 line number (`3 tasks · Line 2`) and shows only the line under the cursor.
 Moving between lines updates it; a blank line keeps the batch summary without

@@ -1140,7 +1140,7 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 			exit = "Esc to restore the lens"
 		}
 		if m.ShowsRankedList() && m.Search.hiddenFilterHint != "" {
-			return fmt.Sprintf("%s Press fx to clear filters or %s.", m.Search.hiddenFilterHint, exit)
+			return fmt.Sprintf("%s Press Q to inspect individual filters, fx to clear filters or %s.", m.Search.hiddenFilterHint, exit)
 		}
 		return fmt.Sprintf(
 			"No tasks match search %q under the active filters. Press fx to clear filters or %s.",

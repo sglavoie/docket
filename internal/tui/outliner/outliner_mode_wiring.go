@@ -416,7 +416,12 @@ func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []Planning
 // matcher in scoreSearchProjectionTask, reached through compileActiveNarrowing,
 // so no second definition of "matches" exists to disagree with the tiers.
 func (m *OutlinerModel) FacetPredicateAt(now time.Time) func(*models.Task, *models.Project) bool {
-	query := m.rowPredicateQuery()
+	return m.facetPredicateForRowsAt(m.rowPredicateQuery(), now)
+}
+
+// facetPredicateForRowsAt also evaluates a diagnostic's detached row query,
+// preserving the live hierarchy and dependency restrictions.
+func (m *OutlinerModel) facetPredicateForRowsAt(query models.Query, now time.Time) func(*models.Task, *models.Project) bool {
 	narrows := len(query.Clauses) > 0
 	return func(t *models.Task, project *models.Project) bool {
 		if t == nil {

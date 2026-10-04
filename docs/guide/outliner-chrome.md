@@ -203,11 +203,14 @@ scrollable viewer, even after it has expired or a mode change has cleared it.
 The viewer keeps the latest 20 messages for this session, including operation
 errors and transient view feedback. Left visits older messages and Right returns
 to newer ones; `Message 2 of 8` identifies your position, with 1 the newest.
-Each entry shows its original local time (`14:32`) and whether it is feedback
-or an error. Adding details preserves that time. Up/down scroll the displayed
+Each entry shows its original local time (`14:32`), including the date when it
+is from another day, and whether it is feedback or an error. Adding details
+preserves that time. Up/down scroll the displayed
 message; browsing away and back restores its scroll position, clamped to the
-current window size. `y` copies the message text in full, and `Esc` returns
-to the outline. Ambient advisories and copy notices do not enter the history.
+current window size. `y` copies the message text in full; `Y` copies all retained
+messages newest first, with full local timestamps (including UTC offsets) and
+message kinds. `Esc` returns to the outline. Ambient advisories and copy notices
+do not enter the history.
 Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 

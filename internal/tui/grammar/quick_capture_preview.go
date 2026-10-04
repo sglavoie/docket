@@ -18,6 +18,7 @@ import (
 // UpdatePreview parses the logical line under the caret, never combining
 // attributes from separate tasks in a multiline draft.
 func (q *QuickCaptureInput) UpdatePreview() {
+	q.batchDuplicateHint = ""
 	lines := strings.Split(q.Input.Value(), "\n")
 	input := strings.TrimSpace(lines[min(q.Input.Line(), len(lines)-1)])
 	if input == "" {
@@ -26,6 +27,34 @@ func (q *QuickCaptureInput) UpdatePreview() {
 		return
 	}
 	q.Preview, q.PreviewErr = ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.skipProjectSyntax)
+	if q.Preview == nil || q.PreviewErr != "" || q.Preview.Title == "" {
+		return
+	}
+	project := q.capturePreviewProject(q.Preview)
+	if project == nil {
+		return
+	}
+	for i, line := range lines {
+		if i == q.Input.Line() || strings.TrimSpace(line) == "" {
+			continue
+		}
+		other, err := ParseQuickCapture(line, q.Project, q.allProjects, q.skipProjectSyntax)
+		if err != nil {
+			continue
+		}
+		otherProject := q.capturePreviewProject(other)
+		if otherProject != nil && otherProject.ID == project.ID && strings.TrimSpace(other.Title) == strings.TrimSpace(q.Preview.Title) {
+			q.batchDuplicateHint = fmt.Sprintf("Same task on line %d", i+1)
+			break
+		}
+	}
+}
+
+func (q *QuickCaptureInput) capturePreviewProject(result *QuickCaptureResult) *models.Project {
+	if result.targetProject != nil {
+		return result.targetProject
+	}
+	return q.Project
 }
 
 // previewGroupLabelWidth fits the longest group label plus a trailing space
@@ -79,6 +108,9 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	groups = append(groups, previewGroup{label: "Task", chunks: []string{taskTitle}})
 	if hint := q.duplicateCaptureHint(); hint != "" {
 		groups = append(groups, previewGroup{label: "Notice", chunks: []string{hint}})
+	}
+	if q.batchDuplicateHint != "" {
+		groups = append(groups, previewGroup{label: "Notice", chunks: []string{q.batchDuplicateHint}})
 	}
 
 	destinationLabel := destinationDefinition.Trigger + string(destination)

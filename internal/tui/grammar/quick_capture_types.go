@@ -129,8 +129,9 @@ type QuickCaptureInput struct {
 	Triggers     []ACTrigger // Active triggers (may exclude %project)
 
 	// Live preview
-	Preview    *QuickCaptureResult
-	PreviewErr string
+	Preview            *QuickCaptureResult
+	PreviewErr         string
+	batchDuplicateHint string // settled with the preview, never parsed during layout
 
 	// Context needed for parsing/preview
 	Project           *models.Project

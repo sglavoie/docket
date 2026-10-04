@@ -612,9 +612,14 @@ without that token, so later project routing and existing attributes count.
 Only text or caret changes refresh suggestions; idle messages never reopen them.
 Syntax help derives its initial group from the same caret and registry, and its
 scroll anchor from the wrapped renderer. Manual scrolling releases that anchor.
+Preview updates also compare other valid draft lines by parsed title and resolved
+project identity. The first matching line number is cached for both preview
+renderings; layout never reparses the batch for duplicate notices.
 
 Last message holds a bounded 20-event session history in the feedback controller.
 The existing post-update observation point records it; amendments of a status
 generation replace that entry, and expiry and ambient advisories record nothing.
 The viewer reads a detached newest-first snapshot. Copy notices stay local, and
 recalled recovery hints never reactivate an operation.
+Copy-all exports that snapshot with full timestamps and kinds through the same
+clipboard boundary as single-message copy; neither changes the retained events.

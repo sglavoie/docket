@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -78,5 +79,66 @@ func TestEmptySearchFilterHintPreservesFocusAndUpdatesAfterClearing(t *testing.T
 	out.CrossProjectRebuildRows()
 	if out.Search.hiddenFilterHint != "" || len(searchVisibleTaskIDs(out)) != 1 {
 		t.Fatal("clearing filter did not reveal exactly the focused match")
+	}
+}
+
+func TestEmptySearchExplainsIndependentFilterRemovals(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		text   string
+		tagged bool
+		high   bool
+		want   string
+	}{
+		{"priority alone obstructs", "needle", true, false, "Clearing your priority filter reveals 1 match."},
+		{"tag alone obstructs", "needle", false, true, "Clearing your tag filter reveals 1 match."},
+		{"both obstruct", "needle", false, false, ""},
+		{"typed gate retained", "needle #absent", true, false, ""},
+		{"case retry", "NEEDLE", true, false, "Clearing your priority filter reveals 1 match."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			task := primaryRowsTask("task", models.StateBacklog)
+			task.Title, task.Priority = "needle", models.PriorityLow
+			if tc.tagged {
+				task.Tags = []string{"keep"}
+			}
+			if tc.high {
+				task.Priority = models.PriorityHigh
+			}
+			out := scopeTestOutliner(primaryRowsProject("alpha", task))
+			out.Filter.Priority = models.PriorityHigh
+			out.Filter.Tags = map[string]bool{"keep": true}
+			adoptFilterCarriers(out)
+			before := out.FilterQuery.Fingerprint()
+			searchRankedList(out, tc.text)
+			if out.Search.hiddenFilterHint != tc.want {
+				t.Fatalf("hint = %q, want %q", out.Search.hiddenFilterHint, tc.want)
+			}
+			if len(searchVisibleTaskIDs(out)) != 0 || before != out.FilterQuery.Fingerprint() {
+				t.Fatal("diagnostic changed the projection or filters")
+			}
+		})
+	}
+}
+
+func TestEmptySearchFilterRemovalRetainsHierarchyAndListsAlternatives(t *testing.T) {
+	low := primaryRowsTask("low", models.StateBacklog)
+	low.Title, low.Priority, low.Tags = "needle", models.PriorityLow, []string{"keep"}
+	high := primaryRowsTask("high", models.StateBacklog)
+	high.Title, high.Priority = "needle", models.PriorityHigh
+	out := scopeTestOutliner(primaryRowsProject("alpha", low, high))
+	out.Filter.Priority, out.Filter.Tags = models.PriorityHigh, map[string]bool{"keep": true}
+	adoptFilterCarriers(out)
+	searchRankedList(out, "needle")
+	for _, field := range []string{"priority", "tag"} {
+		if !strings.Contains(out.Search.hiddenFilterHint, "Clearing your "+field+" filter reveals 1 match.") {
+			t.Fatal(out.Search.hiddenFilterHint)
+		}
+	}
+	out.Filter.Hierarchy = query.HierarchyChild
+	adoptFilterCarriers(out)
+	out.CrossProjectRebuildRows()
+	if out.Search.hiddenFilterHint != "" {
+		t.Fatal("diagnostic ignored hierarchy: " + out.Search.hiddenFilterHint)
 	}
 }

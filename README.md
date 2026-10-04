@@ -169,6 +169,17 @@ The Outliner is the only primary task presentation:
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
 
+### Useful once you know the basics
+
+Leave a [resume note](docs/guide/README.md#everyday-recipes) with `r` before
+pausing a task; Peek (`b`) shows where to restart. During review, `R`
+[acknowledges the task and advances](docs/guide/outliner-keys.md) to the next
+visible task needing attention. If a view seems unexpectedly narrow, `Q`
+[explains its active restrictions](docs/guide/search-and-lenses.md) and lets
+you remove them individually. Inside compact capture, `Ctrl+N`
+[saves and keeps capture open](docs/guide/capture.md) for another task or batch;
+in the Outliner, that same key opens Notes.
+
 ## Keys at a glance
 
 One key is one act, on every surface. `Space` is reserved for the destructive

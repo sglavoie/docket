@@ -724,7 +724,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	}
 	m.Search.hiddenFilterHint = ""
 	if len(matches) == 0 && len(notes) == 0 && !predicates.Invalid() {
-		m.Search.hiddenFilterHint = m.singleFilterSearchHint(projects)
+		m.Search.hiddenFilterHint = m.removableFilterSearchHint(projects)
 	}
 	m.sortSearchMatchesWithinTier(matches)
 
@@ -1017,23 +1017,10 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 	return matches
 }
 
-// Explain only a single ordinary facet, and only after a real counterfactual
-// search finds tasks. Scope, focus, sigils and default population exclusions
-// remain in force. No live filter, query or case state is changed by this pass.
-func (m *OutlinerModel) singleFilterSearchHint(projects []*models.Project) string {
-	if query.CommonFilterFacetCount(&m.Filter.CommonFilterState) != 1 {
-		return ""
-	}
-	clauses := m.rowPredicateQuery().Clauses
-	if len(clauses) == 0 {
-		return ""
-	}
-	field := clauses[0].Field
-	for _, clause := range clauses {
-		if clause.Field != field {
-			return ""
-		}
-	}
+// Explain only removals proven to reveal tasks. Each pass removes one ordinary
+// facet and retains every other facet, scope, focus, and typed query clause.
+func (m *OutlinerModel) removableFilterSearchHint(projects []*models.Project) string {
+	rows := m.rowPredicateQuery()
 	names := map[models.QueryField]string{
 		models.QueryFieldPriority: "priority", models.QueryFieldTag: "tag",
 		models.QueryFieldContext: "context", models.QueryFieldProject: "project",
@@ -1041,23 +1028,36 @@ func (m *OutlinerModel) singleFilterSearchHint(projects []*models.Project) strin
 		models.QueryFieldPinned: "pin", models.QueryFieldReview: "review",
 		models.QueryFieldStale: "staleness", models.QueryFieldDeferred: "deferral",
 	}
-	name := names[field]
-	if name == "" {
-		return ""
+	var hints []string
+	seen := make(map[models.QueryField]bool)
+	now := time.Now()
+	for _, clause := range rows.Clauses {
+		field := clause.Field
+		name := names[field]
+		if name == "" || seen[field] || (field == models.QueryFieldState && query.CompletionAgeOwnsTerminalStates(&m.Filter.CommonFilterState)) {
+			continue
+		}
+		seen[field] = true
+		cleared := query.WithoutFields(m.FilterQuery, field)
+		text, gate := query.CompileSearchQuery(m.SearchQuery(), projects, outlinerPlanningMembership{outliner: m}, cleared)
+		if gate.Invalid() {
+			continue
+		}
+		predicate := m.facetPredicateForRowsAt(query.WithoutFields(rows, field), now)
+		candidates := m.searchCandidateBoundary(projects, predicate)
+		matcher := fuzzy.SmartCase(text)
+		matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate)
+		if len(matches) == 0 && matcher.CaseSensitive() {
+			matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate)
+		}
+		if len(matches) == 0 {
+			continue
+		}
+		count := util.CountPlural(len(matches), "match", "matches")
+		if query.CommonFilterFacetCount(&m.Filter.CommonFilterState) == 1 {
+			return fmt.Sprintf("%s hidden by your %s filter.", count, name)
+		}
+		hints = append(hints, fmt.Sprintf("Clearing your %s filter reveals %s.", name, count))
 	}
-	cleared := query.WithoutFields(m.FilterQuery, field)
-	text, gate := query.CompileSearchQuery(m.SearchQuery(), projects, outlinerPlanningMembership{outliner: m}, cleared)
-	if gate.Invalid() {
-		return ""
-	}
-	candidates := m.searchCandidateBoundary(projects, nil)
-	matcher := fuzzy.SmartCase(text)
-	matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate)
-	if len(matches) == 0 && matcher.CaseSensitive() {
-		matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate)
-	}
-	if len(matches) == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%s hidden by your %s filter.", util.CountPlural(len(matches), "match", "matches"), name)
+	return strings.Join(hints, " ")
 }

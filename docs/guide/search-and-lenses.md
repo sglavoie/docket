@@ -203,13 +203,15 @@ relaxes case alone and never widens the sigil gate. The rule covers the
 Outliner's `/`, Notes search, and both help searches; the `project#42`
 shorthand, autocomplete, and pickers stay case-insensitive.
 
-When a ranked search is empty and one ordinary row filter is active, `tt`
-checks whether clearing that filter would reveal matching tasks. If so, the
-empty view names the count and filter, for example `4 matches hidden by your
-priority filter`, and offers `fx` to clear filters. The check retains project
-scope, Focus, query sigils, and the normal completed/deferred exclusions.
-Multiple filters, hierarchy/dependency filters, and cleanup filters keep the
-general explanation rather than attributing the result to one cause.
+When a ranked search is empty, `tt` checks each ordinary row filter separately
+to see whether clearing it would reveal matching tasks. With one filter, the
+empty view says, for example, `4 matches hidden by your priority filter`. With
+several, it says `Clearing your priority filter reveals 4 matches.` Only proven
+removals are listed; each count retains all other filters, project scope, Focus,
+query sigils, and the completed/deferred admission rules. Use `Q` to inspect and
+remove individual filters, or `fx` to clear them all. Hierarchy, dependency, and
+cleanup filters are retained during these checks, but are not suggested for
+removal. If no single removal reveals matches, the general explanation remains.
 
 The input remembers the queries you submitted. Inside the `/` box, `↑` walks
 back through them newest first and `↓` walks forward again, ending on whatever

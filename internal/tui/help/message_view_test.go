@@ -10,6 +10,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/external"
 )
 
 func TestMessageViewWrapsScrollsAndResizesWithoutLosingText(t *testing.T) {
@@ -93,7 +95,8 @@ func TestMessageViewBrowsesSnapshotWithoutReactivatingRecovery(t *testing.T) {
 }
 
 func TestMessageHistoryRetainsIndependentScrollAndMetadata(t *testing.T) {
-	at := time.Date(2026, 10, 4, 14, 32, 0, 0, time.Local)
+	now := time.Now()
+	at := time.Date(now.Year(), now.Month(), now.Day(), 14, 32, 0, 0, time.Local)
 	m := NewMessageView(RecalledMessage{Text: strings.Repeat("new detail\n", 80), At: at, Kind: "Error"}, RecalledMessage{Text: strings.Repeat("old detail\n", 40), At: at.Add(-time.Minute), Kind: "Feedback"})
 	m.SetSize(60, 18)
 	plain := ansi.Strip(m.View().Content)
@@ -118,5 +121,49 @@ func TestMessageHistoryRetainsIndependentScrollAndMetadata(t *testing.T) {
 	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	if m.offset != 0 {
 		t.Fatalf("restored scroll not clamped after resize: %d", m.offset)
+	}
+}
+
+func TestMessageHistoryCopyAllUsesSnapshotAndRetainsFeedbackOnFailure(t *testing.T) {
+	at := time.Date(2026, 10, 4, 14, 32, 17, 0, time.Local)
+	m := NewMessageView(RecalledMessage{Text: "Latest\nDetails", At: at, Kind: "Error"}, RecalledMessage{Text: "Older", At: at.Add(-24 * time.Hour), Kind: "Feedback"})
+	original := external.CopyText
+	t.Cleanup(func() { external.CopyText = original })
+	var copied string
+	external.CopyText = func(text string) error { copied = text; return nil }
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"})
+	if cmd == nil {
+		t.Fatal("copy-all unavailable")
+	}
+	m.Update(cmd())
+	want := at.Format(time.RFC3339) + " · Error\nLatest\nDetails\n\n" + at.Add(-24*time.Hour).Format(time.RFC3339) + " · Feedback\nOlder"
+	if copied != want || m.copyNotice != "Copied message history" || m.index != 1 || m.text != "Older" {
+		t.Fatalf("copy changed history or omitted content: %q / %+v", copied, m)
+	}
+	external.CopyText = func(string) error { return errors.New("clipboard unavailable") }
+	_, cmd = m.Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"})
+	m.Update(cmd())
+	if !strings.Contains(m.copyNotice, "clipboard unavailable") || m.historyText() != want {
+		t.Fatal("failed copy changed retained feedback")
+	}
+	if _, cmd := NewMessageView().Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"}); cmd != nil {
+		t.Fatal("empty history offered copy-all")
+	}
+}
+
+func TestMessageTimeLabelUsesLocalCalendarDate(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 5, 0, 0, time.Local)
+	for _, tc := range []struct {
+		at   time.Time
+		want string
+	}{
+		{now, "00:05"},
+		{now.Add(-10 * time.Minute), "2025-12-31 23:55"},
+		{now.UTC(), "00:05"},
+	} {
+		if got := messageTimeLabel(tc.at, now); got != tc.want {
+			t.Fatalf("label = %q, want %q", got, tc.want)
+		}
 	}
 }

@@ -184,3 +184,54 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 		})
 	}
 }
+
+func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T) {
+	home := &models.Project{ID: "home", Slug: "home", Name: "Home"}
+	web := &models.Project{ID: "web", Slug: "web", Name: "Web"}
+	for _, tc := range []struct{ name, draft, want string }{
+		{"metadata", "Fix login !1 %web\nFix login #auth %web", "Same task on line 2"},
+		{"blank lines", "Fix login\n\nFix login", "Same task on line 3"},
+		{"project override", "Fix login %home\nFix login", "Same task on line 2"},
+		{"different project", "Fix login %web\nFix login", ""},
+		{"different case", "Fix login\nfix login", ""},
+		{"invalid sibling", "Fix login\nFix login !9", ""},
+		{"invalid routing", "Fix login\nFix login %missing", ""},
+		{"invalid current", "Fix login !9\nFix login", ""},
+		{"blank current", "\nFix login\nFix login", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			q := draftedCaptureInput(t, tc.draft, home, []*models.Project{home, web}, false)
+			q.Input.MoveToBegin()
+			q.UpdatePreview()
+			if q.batchDuplicateHint != tc.want {
+				t.Fatalf("hint = %q, want %q", q.batchDuplicateHint, tc.want)
+			}
+			if tc.want != "" {
+				for _, rendered := range []string{q.renderPreview(), q.renderCompactPreview()} {
+					if !strings.Contains(ansi.Strip(rendered), tc.want) {
+						t.Fatalf("notice missing: %s", ansi.Strip(rendered))
+					}
+				}
+				for _, line := range strings.Split(tc.draft, "\n") {
+					if strings.TrimSpace(line) == "" {
+						continue
+					}
+					if _, err := ParseQuickCapture(line, home, []*models.Project{home, web}, false); err != nil {
+						t.Fatalf("advisory blocked valid capture: %v", err)
+					}
+				}
+			}
+		})
+	}
+	q := draftedCaptureInput(t, "Fix login\nFix login", home, nil, false)
+	q.Input.MoveToEnd()
+	q.UpdatePreview()
+	if q.batchDuplicateHint != "Same task on line 1" {
+		t.Fatal(q.batchDuplicateHint)
+	}
+	q.Input.SetValue("Fix login\nDifferent task")
+	q.UpdatePreview()
+	if q.batchDuplicateHint != "" {
+		t.Fatal("stale duplicate hint after editing")
+	}
+}

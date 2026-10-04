@@ -1,0 +1,33 @@
+{
+  "name": "search-filter-removal-hints",
+  "fixture": "fresh",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Refinement needle low !3 =review" },
+    { "type": "key", "key": "shift+enter" },
+    { "type": "text", "text": "Refinement needle high !1" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "key": "f" },
+    { "type": "key", "key": "!" },
+    { "type": "key", "key": "1" },
+    { "type": "key", "key": "f" },
+    { "type": "key", "key": "=" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "text": "Refinement needle" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Clearing your priority filter reveals 1 match." },
+    { "type": "assert", "assert": "contains", "value": "Clearing your review filter reveals 1 match." },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Clearing your priority filter reveals 1 match." },
+    { "type": "assert", "assert": "contains", "value": "review filter reveals 1 match." },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "remove only the review facet", "key": "f" },
+    { "type": "key", "key": "=" },
+    { "type": "assert", "assert": "contains", "value": "Refinement needle high" },
+    { "type": "assert", "assert": "not_contains", "value": "Refinement needle low" },
+    { "type": "assert", "assert": "not_contains", "value": "Clearing your" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
