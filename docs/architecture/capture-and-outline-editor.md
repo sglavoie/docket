@@ -602,3 +602,19 @@ be answering a different question. That check is also what makes the deletion
 counts safe to present: it is enforced inside `ApplyOutlinePlan` before a single
 title is overwritten, so nothing can change between the prompt the user answered
 and the write it authorized.
+
+## Caret context and feedback recall
+
+Capture completion uses the textarea's logical line and rune column, translated
+once to grammar byte offsets. It replaces the whole token at the caret and
+preserves the rest of the draft. Candidate context is the complete current line
+without that token, so later project routing and existing attributes count.
+Only text or caret changes refresh suggestions; idle messages never reopen them.
+Syntax help derives its initial group from the same caret and registry, and its
+scroll anchor from the wrapped renderer. Manual scrolling releases that anchor.
+
+Last message holds a bounded 20-event session history in the feedback controller.
+The existing post-update observation point records it; amendments of a status
+generation replace that entry, and expiry and ambient advisories record nothing.
+The viewer reads a detached newest-first snapshot. Copy notices stay local, and
+recalled recovery hints never reactivate an operation.

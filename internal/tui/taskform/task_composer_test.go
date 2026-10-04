@@ -188,7 +188,7 @@ func TestTaskComposerAutocompleteSuppressesUsedSingletonsPerLine(t *testing.T) {
 
 // Esc closes the dropdown over the token it was showing, and the textarea's own
 // traffic — cursor blinks and other non-editing messages — must not reopen it.
-// Editing the draft again is what brings suggestions back.
+// Editing the draft or moving its caret brings suggestions back.
 func TestTaskComposerEscDismissalSurvivesNonEditingMessages(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
@@ -208,11 +208,14 @@ func TestTaskComposerEscDismissalSurvivesNonEditingMessages(t *testing.T) {
 	}
 
 	composer.Update(struct{}{})
-	composer.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	if composer.IsAutocompleteActive() {
 		t.Fatal("a non-editing message reopened the suggestions Esc closed")
 	}
 
+	composer.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if !composer.IsAutocompleteActive() {
+		t.Fatal("moving the caret did not refresh suggestions")
+	}
 	composer.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
 	composer.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	if !composer.IsAutocompleteActive() {

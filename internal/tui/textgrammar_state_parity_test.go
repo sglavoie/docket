@@ -76,7 +76,7 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 		t.Fatalf("destination suggestions = %d, want %d", len(suggestions), len(captureDestinationNamesForTest()))
 	}
 
-	guide := q.RenderSyntaxGuide()
+	guide, _ := q.RenderSyntaxGuide()
 	for _, name := range captureDestinationNamesForTest() {
 		token := "$" + name
 		if !strings.Contains(guide, token) {

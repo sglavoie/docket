@@ -364,7 +364,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
 	case operation.OperationCoreLastMessage:
-		m.showView(presentation.ViewLastMessage, help.NewMessageView(m.feedback.lastMessage))
+		m.showView(presentation.ViewLastMessage, help.NewMessageView(m.feedback.feedbackSnapshot()...))
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:

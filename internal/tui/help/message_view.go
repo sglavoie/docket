@@ -18,14 +18,29 @@ import (
 type MessageView struct {
 	pulse.WorkspacePulseState
 	text                  string
+	messages              []string
+	index                 int
 	copyNotice            string
 	width, height, offset int
 }
 
-type messageCopiedMsg struct{ err error }
+type messageCopiedMsg struct {
+	err   error
+	index int
+}
 
-func NewMessageView(text string) *MessageView {
-	return &MessageView{text: text, width: 80, height: 24}
+// NewMessageView snapshots feedback in newest-first order.
+func NewMessageView(messages ...string) *MessageView {
+	m := &MessageView{width: 80, height: 24}
+	for _, text := range messages {
+		if text != "" {
+			m.messages = append(m.messages, text)
+		}
+	}
+	if len(m.messages) > 0 {
+		m.text = m.messages[0]
+	}
+	return m
 }
 
 func (m *MessageView) Init() tea.Cmd          { return nil }
@@ -43,6 +58,9 @@ func (m *MessageView) guidance() chrome.GuidanceSpec {
 	spec := chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Esc close"), Rows: 2}
 	if m.text != "" {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "y copy")...)
+	}
+	if len(m.messages) > 1 {
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "← older", "→ newer")...)
 	}
 	if len(m.lines()) > m.capacity() {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(2, "j/k scroll", "PgUp/PgDn page")...)
@@ -68,6 +86,9 @@ func (m *MessageView) clampOffset() {
 func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case messageCopiedMsg:
+		if msg.index != m.index {
+			return m, nil
+		}
 		m.copyNotice = "Copied message"
 		if msg.err != nil {
 			m.copyNotice = fmt.Sprintf("Could not copy: %s", msg.err)
@@ -77,8 +98,13 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "y":
 			if m.text != "" {
 				text := m.text
-				return m, func() tea.Msg { return messageCopiedMsg{err: external.CopyText(text)} }
+				index := m.index
+				return m, func() tea.Msg { return messageCopiedMsg{err: external.CopyText(text), index: index} }
 			}
+		case "left":
+			m.selectMessage(m.index + 1)
+		case "right":
+			m.selectMessage(m.index - 1)
 		case "up", "k":
 			m.offset--
 		case "down", "j":
@@ -102,6 +128,20 @@ func (m *MessageView) View() tea.View {
 	end := min(m.offset+m.capacity(), len(lines))
 	body := chrome.FitBlockHeight(strings.Join(lines[m.offset:end], "\n"), m.capacity())
 	footer := chrome.RenderGuidance(m.guidance(), m.width)
-	title := chrome.RenderFullscreenTitleWithPulse("Last message", "Read-only", m.CurrentWorkspacePulse(), m.width)
+	subtitle := "Read-only"
+	if len(m.messages) > 0 {
+		subtitle = fmt.Sprintf("Message %d of %d · Read-only", m.index+1, len(m.messages))
+	}
+	title := chrome.RenderFullscreenTitleWithPulse("Last message", subtitle, m.CurrentWorkspacePulse(), m.width)
 	return tea.NewView(chrome.FitBlockHeight(title+"\n\n"+body, max(m.height-lipgloss.Height(footer), 1)) + "\n" + footer)
+}
+
+func (m *MessageView) selectMessage(index int) {
+	if index < 0 || index >= len(m.messages) || index == m.index {
+		return
+	}
+	m.index = index
+	m.text = m.messages[index]
+	m.offset = 0
+	m.copyNotice = ""
 }

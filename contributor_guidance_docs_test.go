@@ -1272,7 +1272,9 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// the gate and make `just ci` unrunnable on Linux and on any Mac without
 	// Xcode. How the app builds lives in macos/README.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 74334
+	// Caret-aware capture/help and bounded feedback recall add two rules;
+	// their mechanisms remain in the architecture guide.
+	const budget = 74488
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

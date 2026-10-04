@@ -51,8 +51,7 @@ func (q *QuickCaptureInput) SetSyntaxViewportWidth(width int) {
 	q.ensureSyntaxViewport()
 	q.SyntaxVP.SetWidth(max(width, 1))
 	if q.HelpExpanded {
-		q.SyntaxVP.SetContent(q.RenderSyntaxGuide())
-		q.clampSyntaxOffset()
+		q.refreshSyntaxGuide()
 	}
 }
 
@@ -61,7 +60,7 @@ func (q *QuickCaptureInput) SetSyntaxViewportWidth(width int) {
 func (q *QuickCaptureInput) SetSyntaxViewportHeight(height int) {
 	q.ensureSyntaxViewport()
 	q.SyntaxVP.SetHeight(max(height, 1))
-	q.clampSyntaxOffset()
+	q.positionSyntaxAnchor()
 }
 
 // clampSyntaxOffset re-applies the current offset, which the viewport clamps to
@@ -71,24 +70,23 @@ func (q *QuickCaptureInput) clampSyntaxOffset() {
 	q.SyntaxVP.SetYOffset(q.SyntaxVP.YOffset())
 }
 
-// openHelp expands the syntax guide at the top. The offset resets to zero so the
-// guide always opens showing its first group (Basics), matching the reported
-// interaction model.
+// openHelp opens the complete guide at the current token's group, or its top.
 func (q *QuickCaptureInput) openHelp() {
 	q.HelpExpanded = true
 	q.ensureSyntaxViewport()
-	q.SyntaxVP.SetContent(q.RenderSyntaxGuide())
+	q.syntaxAnchor = q.syntaxGroupAtCaret()
 	q.SyntaxVP.GotoTop()
+	q.refreshSyntaxGuide()
 }
 
 // CloseHelp collapses the syntax guide. The offset is retained on the viewport
-// so re-opening via ToggleHelp still starts at the top (openHelp resets it),
+// so re-opening via ToggleHelp can choose a fresh context,
 // while autocomplete-driven hide/show preserves the mid-scroll position.
 func (q *QuickCaptureInput) CloseHelp() {
 	q.HelpExpanded = false
 }
 
-// ToggleHelp opens the guide at the top when closed, or closes it when open.
+// ToggleHelp opens contextual syntax help when closed, or closes it when open.
 func (q *QuickCaptureInput) ToggleHelp() {
 	if q.HelpExpanded {
 		q.CloseHelp()
@@ -99,6 +97,7 @@ func (q *QuickCaptureInput) ToggleHelp() {
 
 // SyntaxScrollLine scrolls the guide by delta lines (negative = up).
 func (q *QuickCaptureInput) SyntaxScrollLine(delta int) {
+	q.syntaxAnchor = ""
 	q.ensureSyntaxViewport()
 	if delta < 0 {
 		q.SyntaxVP.ScrollUp(-delta)
@@ -109,6 +108,7 @@ func (q *QuickCaptureInput) SyntaxScrollLine(delta int) {
 
 // SyntaxScrollPage scrolls the guide by delta full pages (negative = up).
 func (q *QuickCaptureInput) SyntaxScrollPage(delta int) {
+	q.syntaxAnchor = ""
 	q.ensureSyntaxViewport()
 	if delta < 0 {
 		q.SyntaxVP.PageUp()
@@ -138,8 +138,9 @@ func (q *QuickCaptureInput) SyntaxScrollPercent() int {
 // Returns true if the key was consumed.
 func (q *QuickCaptureInput) HandleAutocompleteKey(key string) bool {
 	return q.AC.HandleKey(key, func() {
-		q.acceptSuggestion()
-		q.UpdatePreview()
+		if q.acceptSuggestion() {
+			q.UpdatePreview()
+		}
 	})
 }
 
@@ -151,7 +152,7 @@ func (q *QuickCaptureInput) AutocompleteLiteralComplete() bool {
 	if !q.AC.IsActive() {
 		return false
 	}
-	mode, _, partial := DetectTrigger(q.Input.Value(), q.Triggers)
+	mode, _, partial := DetectTrigger(q.Input.Value()[:q.cursorByteOffset()], q.Triggers)
 	if mode != q.AC.Mode || partial == "" {
 		return false
 	}
@@ -180,16 +181,21 @@ func literalTokenComplete(mode int, partial string, surface textgrammar.Surface)
 }
 
 // UpdateInput updates the textarea and refreshes autocomplete/preview state.
-// Suggestions are re-derived only when the draft text changed: the textarea
+// Suggestions are re-derived only when the draft text or caret changed: the textarea
 // also receives cursor blinks and other non-editing messages, and refreshing
 // on those would reopen a dropdown Esc just closed over the same token.
 func (q *QuickCaptureInput) UpdateInput(msg tea.Msg) tea.Cmd {
 	before := q.Input.Value()
+	beforeCursor := q.cursorByteOffset()
 	var cmd tea.Cmd
 	q.Input, cmd = q.Input.Update(msg)
 
+	changed := q.Input.Value() != before || q.cursorByteOffset() != beforeCursor
+	if changed {
+		q.err = nil
+	}
 	q.UpdatePreview()
-	if q.Input.Value() != before {
+	if changed {
 		q.RefreshAutocomplete()
 	}
 
@@ -199,14 +205,20 @@ func (q *QuickCaptureInput) UpdateInput(msg tea.Msg) tea.Cmd {
 // RefreshAutocomplete detects triggers and updates suggestion list.
 func (q *QuickCaptureInput) RefreshAutocomplete() {
 	value := q.Input.Value()
-	mode, pos, partial := DetectTrigger(value, q.Triggers)
+	mode, pos, partial := DetectTrigger(value[:q.cursorByteOffset()], q.Triggers)
 	if mode == ACModeNone {
 		q.AC.Clear()
 		return
 	}
 
 	lineStart := strings.LastIndex(value[:pos], "\n") + 1
-	parsedLine := textgrammar.Parse(value[lineStart:pos], textgrammar.SurfaceCapture)
+	lineEnd := len(value)
+	if end := strings.IndexByte(value[pos:], '\n'); end >= 0 {
+		lineEnd = pos + end
+	}
+	// Read the complete logical line, excluding the token being completed.
+	// Routing and already-used attributes may appear on either side of it.
+	parsedLine := textgrammar.Parse(value[lineStart:pos]+value[q.captureTokenEnd():lineEnd], textgrammar.SurfaceCapture)
 	if field, singleton := autocompleteSingletonField(mode); singleton && len(parsedLine.TokensFor(field)) > 0 {
 		q.AC.Clear()
 		return

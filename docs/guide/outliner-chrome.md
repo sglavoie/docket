@@ -200,9 +200,12 @@ and the strip is left free for the feedback your next bulk gesture writes there.
 
 `Ctrl+M` → Help → Last message opens the latest feedback in a read-only,
 scrollable viewer, even after it has expired or a mode change has cleared it.
-`y` copies the complete message; `Esc` returns to the outline. The viewer keeps
-one message for this session only, including operation errors and transient
-view feedback. Ambient advisories do not replace it. Recovery hints in the
+The viewer keeps the latest 20 messages for this session, including operation
+errors and transient view feedback. Left visits older messages and Right returns
+to newer ones; `Message 2 of 8` identifies your position, with 1 the newest.
+Up/down scroll the displayed message, `y` copies it in full, and `Esc` returns
+to the outline. Ambient advisories and copy notices do not enter the history.
+Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 
 The strip carries one line that is not feedback at all: while the workspace

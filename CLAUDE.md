@@ -443,6 +443,9 @@ truncated group list reads as a complete one. `Ctrl+F` is the composer's other
 presentation and declares no layout, so the expanded form owns the whole content
 area.
 
+Capture completion and syntax help follow the caret; feedback recall holds 20
+session events. Details: `docs/architecture/capture-and-outline-editor.md`.
+
 The full task form windows rather than clips. `formBodyBuilder` records each
 focusable field once, where it starts, so its extent is the next declaration;
 `formViewportOffset` is the pure window authority, scrolling the focused field in

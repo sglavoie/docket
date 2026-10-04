@@ -162,7 +162,8 @@ func TestSyntaxGuideAdvertisesRepeatableChildPlacement(t *testing.T) {
 
 	for _, skipProject := range []bool{false, true} {
 		q := &QuickCaptureInput{Width: 120, skipProjectSyntax: skipProject}
-		rendered := ansi.Strip(q.RenderSyntaxGuide())
+		content, _ := q.RenderSyntaxGuide()
+		rendered := ansi.Strip(content)
 		if !strings.Contains(rendered, "<child") {
 			t.Errorf("syntax guide (skipProject=%v) omits <child:\n%s", skipProject, rendered)
 		}

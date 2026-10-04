@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -312,18 +313,31 @@ func (q *QuickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 }
 
 // acceptSuggestion inserts the selected suggestion into the input.
-func (q *QuickCaptureInput) acceptSuggestion() {
+func (q *QuickCaptureInput) acceptSuggestion() bool {
 	if !q.AC.IsActive() {
-		return
+		return false
 	}
 
 	triggerText := TriggerCharForMode(q.AC.Mode, q.Triggers)
-	newInput := q.AC.BuildAcceptedInput(q.Input.Value(), triggerText)
-
-	q.Input.SetValue(newInput)
-	// Move cursor to end
-	q.Input.CursorEnd()
+	value := q.Input.Value()
+	end := q.captureTokenEnd()
+	prefix := value[:q.AC.TriggerPos] + triggerText + q.AC.Items[q.AC.Cursor].Value
+	// Reuse an existing space; never consume a newline belonging to another task.
+	if end < len(value) && value[end] == ' ' {
+		end++
+	}
+	prefix += " "
+	accepted := q.AC.BuildAcceptedInputAt(value, end, triggerText)
+	if limit := q.Input.CharLimit; limit > 0 && utf8.RuneCountInString(accepted) > limit {
+		q.err = fmt.Errorf("completion exceeds the %d-character capture limit; shorten the draft first", limit)
+		q.AC.Clear()
+		return false
+	}
+	q.err = nil
+	q.Input.SetValue(accepted)
+	q.setCursorByteOffset(len(prefix))
 
 	// Reset autocomplete state
 	q.AC.Clear()
+	return true
 }

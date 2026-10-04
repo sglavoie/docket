@@ -994,11 +994,11 @@ func (m *AppModel) refreshOutstandingConflicts() {
 func (m *AppModel) rememberFeedbackSince(before footerFlashProbe) {
 	after := m.captureFooterFlashProbe()
 	if after.errText != "" && after.errText != before.errText {
-		m.feedback.lastMessage = after.errText
+		m.feedback.rememberFeedback(after.errText, "error", 0)
 		return
 	}
 	if m.feedback.message != "" && (after.statusSeq != before.statusSeq || after.statusText != before.statusText) {
-		m.feedback.lastMessage = m.feedback.message
+		m.feedback.rememberFeedback(m.feedback.message, "shell", after.statusSeq)
 		return
 	}
 	if m.viewNav.views == nil {
@@ -1012,6 +1012,6 @@ func (m *AppModel) rememberFeedbackSince(before footerFlashProbe) {
 		if held, known := before.stampFor(view); known && held == owner.StatusStamp() {
 			continue
 		}
-		m.feedback.lastMessage = owner.StatusText()
+		m.feedback.rememberFeedback(owner.StatusText(), fmt.Sprintf("view:%v:%p", view, owner), owner.StatusStamp())
 	}
 }

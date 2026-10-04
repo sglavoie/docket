@@ -144,9 +144,11 @@ type QuickCaptureInput struct {
 	// flag and scroll offset live in one place. HelpExpanded is the logical
 	// toggle; SyntaxVP holds the scrollable rendered guide and its offset, which
 	// is preserved across autocomplete activation and clamped on resize.
-	HelpExpanded bool
-	SyntaxVP     viewport.Model
-	syntaxReady  bool
+	HelpExpanded       bool
+	SyntaxVP           viewport.Model
+	syntaxReady        bool
+	syntaxAnchor       string // retained through resize until the reader scrolls
+	syntaxAnchorOffset int
 }
 
 // NewQuickCaptureInput creates a new QuickCaptureInput with default textarea settings.

@@ -68,6 +68,33 @@
       "value": "Add Task: #2 Capture loop second"
     },
     {
+      "type": "key",
+      "key": "left"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Capture loop first"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Message 2 of"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "right"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Add Task: #2 Capture loop second"
+    },
+    {
       "type": "assert",
       "assert": "no_layout_issues"
     },

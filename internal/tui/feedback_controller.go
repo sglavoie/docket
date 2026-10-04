@@ -44,10 +44,10 @@ type feedbackController struct {
 
 	// message is the transient status line, info its neutral surface, and
 	// updatedAt the stamp that guards it from a stale clear timer.
-	lastMessage string // session-only recall, independent of expiry
-	message     string
-	info        bool
-	updatedAt   time.Time
+	history   []recalledFeedback // session-only recall, independent of expiry
+	message   string
+	info      bool
+	updatedAt time.Time
 
 	// undoCb is the callback the inline `u` invokes while the toast is live, and
 	// expiresAt the deadline past which it is no longer offered.
@@ -268,4 +268,42 @@ func (c *feedbackController) outstandingConflictCount() int {
 		return 0
 	}
 	return c.outstandingConflicts
+}
+
+const feedbackHistoryLimit = 20
+
+type recalledFeedback struct {
+	text   string
+	source string
+	seq    uint64
+}
+
+// rememberFeedback amends a generation already in the ring, or records a new
+// event. Error text has no generation and must always be a separate event.
+func (c *feedbackController) rememberFeedback(text, source string, seq uint64) {
+	if text == "" {
+		return
+	}
+	if source != "error" {
+		for i := len(c.history) - 1; i >= 0; i-- {
+			if c.history[i].source == source && c.history[i].seq == seq {
+				c.history[i].text = text
+				return
+			}
+		}
+	}
+	c.history = append(c.history, recalledFeedback{text: text, source: source, seq: seq})
+	if len(c.history) > feedbackHistoryLimit {
+		copy(c.history, c.history[1:])
+		c.history = c.history[:feedbackHistoryLimit]
+	}
+}
+
+// feedbackSnapshot detaches the viewer from subsequent feedback, newest first.
+func (c *feedbackController) feedbackSnapshot() []string {
+	messages := make([]string, len(c.history))
+	for i, entry := range c.history {
+		messages[len(c.history)-1-i] = entry.text
+	}
+	return messages
 }

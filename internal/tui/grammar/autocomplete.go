@@ -184,18 +184,7 @@ func (ac *AutocompleteState) ClampCursor() {
 	}
 }
 
-// BuildAcceptedInput constructs the new input value after accepting a suggestion.
-// It replaces from the trigger position to the end of the input with
-// triggerText + selected.Value + " ".
-func (ac *AutocompleteState) BuildAcceptedInput(input, triggerText string) string {
-	if !ac.IsActive() {
-		return input
-	}
-	selected := ac.Selected()
-	return input[:ac.TriggerPos] + triggerText + selected.Value + " "
-}
-
-// BuildAcceptedInputAt is the cursor-aware form used by single-line editors.
+// BuildAcceptedInputAt replaces through a caller-chosen byte offset.
 // It replaces the active token only through cursorByte and preserves any text
 // after the cursor, so accepting a completion in the middle of a draft never
 // discards trailing tokens.

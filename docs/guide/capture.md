@@ -184,6 +184,20 @@ rejects: `3 tasks · Line 2 · 1 line needs attention`. This count updates as
 you edit, without moving the caret or showing submission refusals; Enter still
 validates the whole batch and focuses its first invalid line. Blank lines do
 not count as tasks or errors. The route row still summarizes the whole batch, including mixed routes.
+
+Autocomplete follows the caret too: move into an earlier line or token to complete
+it there. Accepting a suggestion replaces that token, preserves the remaining
+text and other tasks, and leaves the caret after the insertion. A `%project`
+anywhere on that line determines its parent, child, and dependency suggestions.
+Moving the caret refreshes suggestions; idle cursor blinks never reopen a list
+you dismissed with `Esc`.
+
+After closing suggestions with `Esc`, `?` opens the complete syntax guide at the
+section for the sigil touching the caret, or immediately before its trailing
+spaces. Ordinary prose opens the guide at the beginning. You can scroll through
+the whole reference, and closing it preserves your draft and caret. Resizing
+keeps the contextual section visible until you scroll the guide yourself.
+
 Long batches keep room for the count and a compact preview while the input
 scrolls; errors retain priority. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long

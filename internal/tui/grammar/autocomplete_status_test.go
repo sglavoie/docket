@@ -103,8 +103,8 @@ func TestAutocompleteAcceptsMultiByteTriggerText(t *testing.T) {
 		Items:      []ACSuggestion{{Value: "frontend"}},
 	}
 
-	if got, want := ac.BuildAcceptedInput("title ##fro", "##"), "title ##frontend "; got != want {
-		t.Fatalf("BuildAcceptedInput() = %q, want %q", got, want)
+	if got, want := ac.BuildAcceptedInputAt("title ##fro", len("title ##fro"), "##"), "title ##frontend "; got != want {
+		t.Fatalf("BuildAcceptedInputAt() = %q, want %q", got, want)
 	}
 }
 

@@ -90,7 +90,9 @@ const (
 //
 // All measurement uses ANSI-aware visual width, so the guide never overflows
 // q.width at narrow widths regardless of styling.
-func (q *QuickCaptureInput) RenderSyntaxGuide() string {
+// Group offsets come from the same layout that wraps the guide's text.
+func (q *QuickCaptureInput) RenderSyntaxGuide() (string, map[string]int) {
+	offsets := make(map[string]int)
 	groups := q.SyntaxGuideGroups()
 
 	// Compute aligned column widths across every entry so aligned rows line up
@@ -173,15 +175,46 @@ func (q *QuickCaptureInput) RenderSyntaxGuide() string {
 	lines = append(lines, theme.MutedStyle.Render(syntaxGuideTitle))
 	for _, g := range groups {
 		lines = append(lines, "")
+		offsets[g.name] = len(lines)
 		appendWrappedField(0, theme.SectionHeaderStyle, g.name)
 		for _, e := range g.Entries {
 			appendEntry(e)
 		}
 	}
-	return strings.Join(lines, "\n") + "\n"
+	return strings.Join(lines, "\n") + "\n", offsets
 }
 
 // IsAutocompleteActive returns whether autocomplete is currently showing.
 func (q *QuickCaptureInput) IsAutocompleteActive() bool {
 	return q.AC.IsActive()
+}
+
+// syntaxGroupAtCaret uses the grammar's group metadata rather than another
+// sigil-to-section table. A boundary after a token still refers to that token.
+func (q *QuickCaptureInput) syntaxGroupAtCaret() string {
+	prefix := strings.TrimRight(q.Input.Value()[:q.cursorByteOffset()], " \t")
+	mode, _, _ := DetectTrigger(prefix, q.Triggers)
+	if mode == ACModeNone {
+		return ""
+	}
+	for _, def := range textgrammar.GuideDefinitions(textgrammar.SurfaceCapture) {
+		if !def.Legacy && AutocompleteModeForField(def.Field) == mode {
+			return def.Group
+		}
+	}
+	return ""
+}
+
+func (q *QuickCaptureInput) refreshSyntaxGuide() {
+	content, offsets := q.RenderSyntaxGuide()
+	q.SyntaxVP.SetContent(content)
+	q.syntaxAnchorOffset = offsets[q.syntaxAnchor]
+	q.positionSyntaxAnchor()
+}
+
+func (q *QuickCaptureInput) positionSyntaxAnchor() {
+	if q.syntaxAnchor != "" {
+		q.SyntaxVP.SetYOffset(q.syntaxAnchorOffset)
+	}
+	q.clampSyntaxOffset()
 }
