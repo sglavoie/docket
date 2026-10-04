@@ -1,0 +1,22 @@
+{
+  "name": "capture-preview-advisories",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Alpha migration kickoff %client-alpha " },
+    { "type": "assert", "label": "an exact existing title is advisory", "assert": "contains", "value": "Already exists: client-alpha#1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Already exists: client-alpha#1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "shift+enter" },
+    { "type": "text", "text": "New intake " },
+    { "type": "assert", "label": "an omitted route remains visible before committing the batch", "assert": "contains", "value": "To: client-alpha 1 · unfiled 1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the repeated title does not block saving", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "New intake" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

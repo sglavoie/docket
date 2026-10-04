@@ -3,6 +3,7 @@ package help
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -13,12 +14,21 @@ import (
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
+// RecalledMessage is one session feedback event. At is the original event time,
+// retained when later details amend Text.
+type RecalledMessage struct {
+	Text string
+	At   time.Time
+	Kind string
+}
+
 // MessageView reads a snapshot of feedback. Copying it never replaces the
 // recalled message, and its displayed recovery hints are text, not actions.
 type MessageView struct {
 	pulse.WorkspacePulseState
 	text                  string
-	messages              []string
+	messages              []RecalledMessage
+	offsets               []int
 	index                 int
 	copyNotice            string
 	width, height, offset int
@@ -30,16 +40,17 @@ type messageCopiedMsg struct {
 }
 
 // NewMessageView snapshots feedback in newest-first order.
-func NewMessageView(messages ...string) *MessageView {
+func NewMessageView(messages ...RecalledMessage) *MessageView {
 	m := &MessageView{width: 80, height: 24}
-	for _, text := range messages {
-		if text != "" {
-			m.messages = append(m.messages, text)
+	for _, message := range messages {
+		if message.Text != "" {
+			m.messages = append(m.messages, message)
 		}
 	}
 	if len(m.messages) > 0 {
-		m.text = m.messages[0]
+		m.text = m.messages[0].Text
 	}
+	m.offsets = make([]int, len(m.messages))
 	return m
 }
 
@@ -130,7 +141,15 @@ func (m *MessageView) View() tea.View {
 	footer := chrome.RenderGuidance(m.guidance(), m.width)
 	subtitle := "Read-only"
 	if len(m.messages) > 0 {
-		subtitle = fmt.Sprintf("Message %d of %d · Read-only", m.index+1, len(m.messages))
+		subtitle = fmt.Sprintf("Message %d of %d", m.index+1, len(m.messages))
+		entry := m.messages[m.index]
+		if !entry.At.IsZero() {
+			subtitle += " · " + entry.At.Local().Format("15:04")
+		}
+		if entry.Kind != "" {
+			subtitle += " · " + entry.Kind
+		}
+		subtitle += " · Read-only"
 	}
 	title := chrome.RenderFullscreenTitleWithPulse("Last message", subtitle, m.CurrentWorkspacePulse(), m.width)
 	return tea.NewView(chrome.FitBlockHeight(title+"\n\n"+body, max(m.height-lipgloss.Height(footer), 1)) + "\n" + footer)
@@ -140,8 +159,9 @@ func (m *MessageView) selectMessage(index int) {
 	if index < 0 || index >= len(m.messages) || index == m.index {
 		return
 	}
+	m.offsets[m.index] = m.offset
 	m.index = index
-	m.text = m.messages[index]
-	m.offset = 0
+	m.text = m.messages[index].Text
+	m.offset = m.offsets[index]
 	m.copyNotice = ""
 }

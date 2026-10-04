@@ -154,3 +154,33 @@ func TestCapturePreviewMarksOnlyNewVocabulary(t *testing.T) {
 		t.Fatal("preview corrected the literal context")
 	}
 }
+
+func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
+	home := &models.Project{ID: "home", Slug: "home", Name: "Home"}
+	web := &models.Project{ID: "web", Slug: "web", Name: "Web", Tasks: []*models.Task{
+		{ID: "open", ShortID: 42, Title: "Fix login", WorkflowState: models.StateBacklog},
+		{ID: "done", ShortID: 1, Title: "Finished", WorkflowState: models.StateDone},
+		{ID: "canceled", ShortID: 2, Title: "Canceled", WorkflowState: models.StateCanceled},
+	}}
+	for _, tc := range []struct{ draft, want string }{
+		{"Fix login %web !1 #auth", "Already exists: web#42"},
+		{"Fix login", ""}, {"fix login %web", ""}, {"Fix login later %web", ""},
+		{"Finished %web", ""}, {"Canceled %web", ""}, {"Fix login %missing", ""},
+	} {
+		t.Run(tc.draft, func(t *testing.T) {
+			q := draftedCaptureInput(t, tc.draft, home, []*models.Project{home, web}, false)
+			q.UpdatePreview()
+			if got := q.duplicateCaptureHint(); got != tc.want {
+				t.Fatalf("hint = %q, want %q", got, tc.want)
+			}
+			if tc.want != "" {
+				if _, err := ParseQuickCapture(tc.draft, home, []*models.Project{home, web}, false); err != nil {
+					t.Fatalf("duplicate blocked capture: %v", err)
+				}
+				if !strings.Contains(ansi.Strip(q.renderPreview()), tc.want) || !strings.Contains(ansi.Strip(q.renderCompactPreview()), tc.want) {
+					t.Fatal("preview omitted duplicate hint")
+				}
+			}
+		})
+	}
+}

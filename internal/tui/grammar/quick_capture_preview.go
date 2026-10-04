@@ -77,6 +77,9 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.Preview.Title)
 	groups = append(groups, previewGroup{label: "Task", chunks: []string{taskTitle}})
+	if hint := q.duplicateCaptureHint(); hint != "" {
+		groups = append(groups, previewGroup{label: "Notice", chunks: []string{hint}})
+	}
 
 	destinationLabel := destinationDefinition.Trigger + string(destination)
 	switch {
@@ -372,4 +375,38 @@ func (q *QuickCaptureInput) renderPreviewLine(label, body string) string {
 		}
 	}
 	return strings.Join(wrapped, "\n")
+}
+
+// This is advisory only: a repeated title is legal. Compare the parsed title
+// within its resolved project, excluding completed and canceled work.
+func (q *QuickCaptureInput) duplicateCaptureHint() string {
+	if q.Preview == nil || q.PreviewErr != "" {
+		return ""
+	}
+	project := q.Project
+	if q.Preview.targetProject != nil {
+		project = q.Preview.targetProject
+	}
+	if project == nil {
+		return ""
+	}
+	var first *models.Task
+	count := 0
+	for _, task := range project.Tasks {
+		if task == nil || task.IsTerminalState() || strings.TrimSpace(task.Title) != strings.TrimSpace(q.Preview.Title) {
+			continue
+		}
+		count++
+		if first == nil || task.ShortID < first.ShortID {
+			first = task
+		}
+	}
+	if first == nil {
+		return ""
+	}
+	hint := fmt.Sprintf("Already exists: %s#%d", project.Slug, first.ShortID)
+	if count > 1 {
+		hint += fmt.Sprintf(" (+%d more)", count-1)
+	}
+	return hint
 }

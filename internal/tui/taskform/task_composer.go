@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -144,6 +145,7 @@ type TaskComposerModel struct {
 	// moving the caret or issuing another capture request.
 	validateOnEdit    bool
 	batchInvalidLines int
+	batchDestinations []string
 	chrome.DiscardConfirmState
 }
 
@@ -468,9 +470,26 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 // moving the caret. Rendering and layout only read the settled count.
 func (m *TaskComposerModel) refreshBatchDiagnostics() {
 	m.batchInvalidLines = 0
+	m.batchDestinations = nil
 	if m.nonblankLineCount() > 1 {
-		_, lineErrors := m.parseCompactLines()
+		requests, lineErrors := m.parseCompactLines()
 		m.batchInvalidLines = len(lineErrors)
+		counts := make(map[string]int)
+		var order []string
+		for _, request := range requests {
+			if counts[request.ProjectID] == 0 {
+				order = append(order, request.ProjectID)
+			}
+			counts[request.ProjectID]++
+		}
+		for _, id := range order {
+			project := m.projectByID(id)
+			name := project.Slug
+			if name == "" {
+				name = project.Name
+			}
+			m.batchDestinations = append(m.batchDestinations, fmt.Sprintf("%s %d", name, counts[id]))
+		}
 	}
 }
 

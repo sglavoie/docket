@@ -802,3 +802,43 @@ func TestTaskComposerNextProblemVisitsReasonsAndWraps(t *testing.T) {
 		t.Fatal("next problem retained corrected line")
 	}
 }
+
+func TestBatchCaptureDestinationSummaryFollowsDraftAndProject(t *testing.T) {
+	home := &models.Project{ID: "home", Slug: "unfiled", Name: "Unfiled"}
+	web := &models.Project{ID: "web", Slug: "web", Name: "Web"}
+	m := NewTaskComposerModel(TaskComposerPreset{Project: home, AllProjects: []*models.Project{home, web}, AllowProjectSwitch: true}, nil)
+	m.SetSize(60, 18)
+	m.Update(tea.PasteMsg{Content: "First %web\n\nSecond\nThird %web"})
+	m.AC.Clear()
+	preview := ansi.Strip(m.renderComposerPanelPreview(4))
+	if !strings.Contains(preview, "To: web 2 · unfiled 1") {
+		t.Fatalf("wrong destinations: %s", preview)
+	}
+	for _, line := range strings.Split(preview, "\n") {
+		if lipgloss.Width(line) > m.Width {
+			t.Fatalf("overflow: %q", line)
+		}
+	}
+	m.Update(syntheticCtrlKey('p'))
+	if got := m.batchDestinationSummary(); got != "To: web 3" {
+		t.Fatalf("project switch left stale summary: %q", got)
+	}
+	m.Update(tea.PasteMsg{Content: "\nInvalid %missing"})
+	m.AC.Clear()
+	if len(m.batchDestinations) != 0 || m.batchInvalidLines != 1 {
+		t.Fatalf("invalid batch claimed complete destinations: %v", m.batchDestinations)
+	}
+	if requests, ok := m.ParseCompactLines(); ok || requests != nil {
+		t.Fatal("invalid batch became partially submittable")
+	}
+}
+
+func TestBatchDestinationSummaryNamesOverflow(t *testing.T) {
+	m := NewTaskComposerModel(TaskComposerPreset{}, nil)
+	m.SetSize(60, 18)
+	m.batchDestinations = []string{strings.Repeat("x", 35) + " 1", "another-project 1", "third 2"}
+	text := m.batchDestinationSummary()
+	if !strings.Contains(text, "+2 projects") || lipgloss.Width(text) > m.Width {
+		t.Fatalf("unbounded or silent overflow: %q", text)
+	}
+}

@@ -129,6 +129,9 @@ func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 		if m.nonblankLineCount() > 1 {
 			rows++
 		}
+		if len(m.batchDestinations) > 0 {
+			rows++
+		}
 		return rows
 	}
 }
@@ -354,7 +357,11 @@ func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 		} else if m.batchInvalidLines > 1 {
 			summaryText += fmt.Sprintf(" · %d lines need attention", m.batchInvalidLines)
 		}
-		summary := theme.MutedStyle.Render(summaryText)
+		summary := theme.MutedStyle.Render(textfit.TruncateToVisualWidth(summaryText, m.Width))
+		if rows > 1 && len(m.batchDestinations) > 0 {
+			summary = joinPanelBlocks(summary, theme.MutedStyle.Render(m.batchDestinationSummary()))
+			rows--
+		}
 		if rows <= 1 || m.previewRepeatsRefusal() {
 			return summary
 		}
@@ -374,4 +381,19 @@ func joinPanelBlocks(above, below string) string {
 		return above
 	}
 	return above + "\n" + below
+}
+
+// Pack whole destinations, reserving space for an explicit overflow count.
+func (m *TaskComposerModel) batchDestinationSummary() string {
+	for shown := len(m.batchDestinations); shown >= 0; shown-- {
+		parts := append([]string(nil), m.batchDestinations[:shown]...)
+		if remaining := len(m.batchDestinations) - shown; remaining > 0 {
+			parts = append(parts, fmt.Sprintf("+%d projects", remaining))
+		}
+		text := "To: " + strings.Join(parts, " · ")
+		if lipgloss.Width(text) <= m.Width {
+			return text
+		}
+	}
+	return ""
 }

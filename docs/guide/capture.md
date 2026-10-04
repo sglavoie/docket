@@ -176,11 +176,19 @@ and `Unavailable` read muted. The deadline preview includes its resolved
 weekday and any clock time, adding the year when it differs from the current
 year. Date suggestions also show the resolved weekday and date before you
 accept them; accepting one inserts only the original date token.
+If the parsed title exactly matches an unfinished task in the resolved project,
+the preview adds `Already exists: web#42` (and a count if more match). Matching
+is case-sensitive, ignores leading and trailing whitespace, and excludes Done
+and Canceled tasks. This is a hint: Enter still saves normally.
 With multiple tasks, the preview starts with the task count and source
 line number (`3 tasks · Line 2`) and shows only the line under the cursor.
-Moving between lines updates it; a blank line shows just the count and line
-number. Before submission, the summary also counts lines the submit parser
-rejects: `3 tasks · Line 2 · 1 line needs attention`. This count updates as
+Moving between lines updates it; a blank line keeps the batch summary without
+a task preview. When every line parses, a second summary row counts destinations
+in first-appearance order, for example `To: web 2 · unfiled 1`. It follows
+`%project` overrides and `Ctrl+P` changes. Narrow panels keep whole destinations
+and name any overflow as `+N projects`; an invalid batch omits the destination
+counts until its errors are corrected. Before submission, the summary also
+counts lines the submit parser rejects: `3 tasks · Line 2 · 1 line needs attention`. This count updates as
 you edit, without moving the caret or showing submission refusals; Enter still
 validates the whole batch and focuses its first invalid line. Blank lines do
 not count as tasks or errors. The route row still summarizes the whole batch, including mixed routes.

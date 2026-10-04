@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -17,7 +18,7 @@ func TestMessageViewWrapsScrollsAndResizesWithoutLosingText(t *testing.T) {
 		lines = append(lines, fmt.Sprintf("Message line %d: %s", i, strings.Repeat("detail ", 15)))
 	}
 	original := strings.Join(lines, "\n")
-	m := NewMessageView(original)
+	m := NewMessageView(RecalledMessage{Text: original})
 	for _, size := range [][2]int{{60, 18}, {100, 33}, {60, 18}} {
 		m.SetSize(size[0], size[1])
 		view := ansi.Strip(m.View().Content)
@@ -45,7 +46,7 @@ func TestMessageViewWrapsScrollsAndResizesWithoutLosingText(t *testing.T) {
 }
 
 func TestMessageViewEmptySession(t *testing.T) {
-	m := NewMessageView("")
+	m := NewMessageView(RecalledMessage{})
 	if !strings.Contains(m.View().Content, "No feedback yet this session.") {
 		t.Fatal("missing empty state")
 	}
@@ -55,9 +56,9 @@ func TestMessageViewEmptySession(t *testing.T) {
 }
 
 func TestMessageViewBrowsesSnapshotWithoutReactivatingRecovery(t *testing.T) {
-	messages := []string{"Latest success", strings.Repeat("Older detail\n", 40) + "u undo"}
+	messages := []RecalledMessage{{Text: "Latest success"}, {Text: strings.Repeat("Older detail\n", 40) + "u undo"}}
 	m := NewMessageView(messages...)
-	messages[0] = "Changed externally"
+	messages[0].Text = "Changed externally"
 	m.SetSize(60, 18)
 	if m.text != "Latest success" || !strings.Contains(m.View().Content, "Message 1 of 2") {
 		t.Fatal("viewer did not take a newest-first snapshot")
@@ -88,5 +89,34 @@ func TestMessageViewBrowsesSnapshotWithoutReactivatingRecovery(t *testing.T) {
 	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	if m.index != 0 {
 		t.Fatal("navigation wrapped beyond newest message")
+	}
+}
+
+func TestMessageHistoryRetainsIndependentScrollAndMetadata(t *testing.T) {
+	at := time.Date(2026, 10, 4, 14, 32, 0, 0, time.Local)
+	m := NewMessageView(RecalledMessage{Text: strings.Repeat("new detail\n", 80), At: at, Kind: "Error"}, RecalledMessage{Text: strings.Repeat("old detail\n", 40), At: at.Add(-time.Minute), Kind: "Feedback"})
+	m.SetSize(60, 18)
+	plain := ansi.Strip(m.View().Content)
+	if !strings.Contains(plain, "14:32 · Error") {
+		t.Fatalf("metadata missing: %s", plain)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
+	first := m.offset
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+	second := m.offset
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if m.offset != first {
+		t.Fatalf("newest scroll = %d, want %d", m.offset, first)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if m.offset != second {
+		t.Fatalf("older scroll = %d, want %d", m.offset, second)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	m.SetSize(100, 100)
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if m.offset != 0 {
+		t.Fatalf("restored scroll not clamped after resize: %d", m.offset)
 	}
 }

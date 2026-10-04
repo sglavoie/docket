@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // searchState is the whole of the Outliner's slash search: the frame a query was
@@ -71,7 +73,8 @@ type searchState struct {
 	// withheld counts the finished and deferred tasks the ranked list's query
 	// matches but its population rule kept out, so search can name the sigil
 	// that brings them in even when other results are visible.
-	withheld searchWithheldMatches
+	withheld         searchWithheldMatches
+	hiddenFilterHint string
 
 	// The input's own state. autocomplete is the suggestion pane, holding no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
@@ -247,6 +250,7 @@ func (s *searchState) resetCompilation() {
 	s.Autocomplete.clear()
 	s.setCompilation("", nil, false)
 	s.clearNoteMatches()
+	s.hiddenFilterHint = ""
 }
 
 // setCompilation installs the reading of the query the visible result set was
@@ -718,6 +722,10 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 			predicates,
 		)
 	}
+	m.Search.hiddenFilterHint = ""
+	if len(matches) == 0 && len(notes) == 0 && !predicates.Invalid() {
+		m.Search.hiddenFilterHint = m.singleFilterSearchHint(projects)
+	}
 	m.sortSearchMatchesWithinTier(matches)
 
 	// The task matches arrive ordered by rank, so the notes tier is seated at the
@@ -830,14 +838,19 @@ func (m *OutlinerModel) SearchCandidateBoundary(projects []*models.Project) map[
 	if m == nil {
 		return nil
 	}
+	if !m.Focus.Active() && !query.HasActiveCommonFilters(&m.Filter.CommonFilterState) {
+		return nil
+	}
+	return m.searchCandidateBoundary(projects, m.FacetPredicateAt(time.Now()))
+}
+
+func (m *OutlinerModel) searchCandidateBoundary(projects []*models.Project, facets func(*models.Task, *models.Project) bool) map[string][]*models.Task {
 	focused := m.Focus.Active()
-	faceted := query.HasActiveCommonFilters(&m.Filter.CommonFilterState)
-	if !focused && !faceted {
+	if !focused && facets == nil {
 		return nil
 	}
 	// buildCanonicalModeRows populates the open-child census above the search
 	// branch, so the hierarchy half of the facet gate reads a live count here.
-	facets := m.FacetPredicateAt(time.Now())
 	candidates := make(map[string][]*models.Task, len(projects))
 	for _, project := range projects {
 		if project == nil {
@@ -849,7 +862,7 @@ func (m *OutlinerModel) SearchCandidateBoundary(projects []*models.Project) map[
 		}
 		admitted := make([]*models.Task, 0, len(tasks))
 		for _, task := range tasks {
-			if task != nil && facets(task, project) {
+			if task != nil && (facets == nil || facets(task, project)) {
 				admitted = append(admitted, task)
 			}
 		}
@@ -1002,4 +1015,49 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 		return left.sourceIndex < right.sourceIndex
 	})
 	return matches
+}
+
+// Explain only a single ordinary facet, and only after a real counterfactual
+// search finds tasks. Scope, focus, sigils and default population exclusions
+// remain in force. No live filter, query or case state is changed by this pass.
+func (m *OutlinerModel) singleFilterSearchHint(projects []*models.Project) string {
+	if query.CommonFilterFacetCount(&m.Filter.CommonFilterState) != 1 {
+		return ""
+	}
+	clauses := m.rowPredicateQuery().Clauses
+	if len(clauses) == 0 {
+		return ""
+	}
+	field := clauses[0].Field
+	for _, clause := range clauses {
+		if clause.Field != field {
+			return ""
+		}
+	}
+	names := map[models.QueryField]string{
+		models.QueryFieldPriority: "priority", models.QueryFieldTag: "tag",
+		models.QueryFieldContext: "context", models.QueryFieldProject: "project",
+		models.QueryFieldDue: "due date", models.QueryFieldState: "state",
+		models.QueryFieldPinned: "pin", models.QueryFieldReview: "review",
+		models.QueryFieldStale: "staleness", models.QueryFieldDeferred: "deferral",
+	}
+	name := names[field]
+	if name == "" {
+		return ""
+	}
+	cleared := query.WithoutFields(m.FilterQuery, field)
+	text, gate := query.CompileSearchQuery(m.SearchQuery(), projects, outlinerPlanningMembership{outliner: m}, cleared)
+	if gate.Invalid() {
+		return ""
+	}
+	candidates := m.searchCandidateBoundary(projects, nil)
+	matcher := fuzzy.SmartCase(text)
+	matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate)
+	if len(matches) == 0 && matcher.CaseSensitive() {
+		matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate)
+	}
+	if len(matches) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s hidden by your %s filter.", util.CountPlural(len(matches), "match", "matches"), name)
 }

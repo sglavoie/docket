@@ -1139,6 +1139,9 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		if m.HasSuspendedLens() {
 			exit = "Esc to restore the lens"
 		}
+		if m.ShowsRankedList() && m.Search.hiddenFilterHint != "" {
+			return fmt.Sprintf("%s Press fx to clear filters or %s.", m.Search.hiddenFilterHint, exit)
+		}
 		return fmt.Sprintf(
 			"No tasks match search %q under the active filters. Press fx to clear filters or %s.",
 			m.SearchQuery(), exit)

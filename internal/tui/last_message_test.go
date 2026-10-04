@@ -81,7 +81,7 @@ func TestLastMessageHistoryRetainsTwentyEventsAndAmendsDetails(t *testing.T) {
 		m.Update(status.InfoStatusMsg(fmt.Sprintf("Saved %d", i)))
 	}
 	messages := m.feedback.feedbackSnapshot()
-	if len(messages) != 20 || messages[0] != "Saved 24" || messages[19] != "Saved 5" {
+	if len(messages) != 20 || messages[0].Text != "Saved 24" || messages[19].Text != "Saved 5" {
 		t.Fatalf("unexpected retained history: %v", messages)
 	}
 	before := m.captureFooterFlashProbe()
@@ -90,7 +90,7 @@ func TestLastMessageHistoryRetainsTwentyEventsAndAmendsDetails(t *testing.T) {
 	if len(m.feedback.history) != 20 || m.feedback.latestMessage() != "Saved 24 · Check-in is unset" {
 		t.Fatalf("amendment created another event: %v", m.feedback.feedbackSnapshot())
 	}
-	if messages[0] != "Saved 24" {
+	if messages[0].Text != "Saved 24" {
 		t.Fatal("viewer snapshot changed with live feedback")
 	}
 	m.Update(status.StatusClearMsg{})
@@ -99,7 +99,7 @@ func TestLastMessageHistoryRetainsTwentyEventsAndAmendsDetails(t *testing.T) {
 		t.Fatal("expiry or redraw recorded feedback")
 	}
 	m.Update(status.InfoStatusMsg("Saved 24 · Check-in is unset"))
-	if m.feedback.feedbackSnapshot()[1] != m.feedback.latestMessage() {
+	if m.feedback.feedbackSnapshot()[1].Text != m.feedback.latestMessage() {
 		t.Fatal("distinct events with identical text were collapsed")
 	}
 	if len(newTestAppModel().feedback.feedbackSnapshot()) != 0 {
@@ -113,7 +113,7 @@ func TestLastMessageHistoryKeepsErrorAfterRoutineSuccess(t *testing.T) {
 	m.Update(status.StatusClearMsg{})
 	m.Update(status.InfoStatusMsg("Copied title"))
 	messages := m.feedback.feedbackSnapshot()
-	if len(messages) != 2 || messages[0] != "Copied title" || messages[1] != "Cannot save this task" {
+	if len(messages) != 2 || messages[0].Text != "Copied title" || messages[1].Text != "Cannot save this task" {
 		t.Fatalf("error was lost: %v", messages)
 	}
 }
@@ -122,5 +122,23 @@ func (c *feedbackController) latestMessage() string {
 	if len(c.history) == 0 {
 		return ""
 	}
-	return c.history[len(c.history)-1].text
+	return c.history[len(c.history)-1].Text
+}
+
+func TestFeedbackHistoryAmendmentPreservesOriginalTimestamp(t *testing.T) {
+	var feedback feedbackController
+	feedback.rememberFeedback("Saved", "shell", 1)
+	original := feedback.feedbackSnapshot()[0]
+	if original.At.IsZero() || original.Kind != "Feedback" {
+		t.Fatalf("missing metadata: %+v", original)
+	}
+	feedback.rememberFeedback("Saved · extra detail", "shell", 1)
+	amended := feedback.feedbackSnapshot()[0]
+	if !amended.At.Equal(original.At) || original.Text != "Saved" {
+		t.Fatal("amendment changed time or original snapshot")
+	}
+	feedback.rememberFeedback("Failed", "error", 0)
+	if got := feedback.feedbackSnapshot()[0]; got.Kind != "Error" || got.At.IsZero() {
+		t.Fatalf("error metadata: %+v", got)
+	}
 }

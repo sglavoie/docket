@@ -5,6 +5,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/tui/help"
 )
 
 // feedbackController is the shell's status and feedback cluster: the one line
@@ -273,7 +275,7 @@ func (c *feedbackController) outstandingConflictCount() int {
 const feedbackHistoryLimit = 20
 
 type recalledFeedback struct {
-	text   string
+	help.RecalledMessage
 	source string
 	seq    uint64
 }
@@ -287,12 +289,16 @@ func (c *feedbackController) rememberFeedback(text, source string, seq uint64) {
 	if source != "error" {
 		for i := len(c.history) - 1; i >= 0; i-- {
 			if c.history[i].source == source && c.history[i].seq == seq {
-				c.history[i].text = text
+				c.history[i].Text = text
 				return
 			}
 		}
 	}
-	c.history = append(c.history, recalledFeedback{text: text, source: source, seq: seq})
+	kind := "Feedback"
+	if source == "error" {
+		kind = "Error"
+	}
+	c.history = append(c.history, recalledFeedback{RecalledMessage: help.RecalledMessage{Text: text, At: time.Now(), Kind: kind}, source: source, seq: seq})
 	if len(c.history) > feedbackHistoryLimit {
 		copy(c.history, c.history[1:])
 		c.history = c.history[:feedbackHistoryLimit]
@@ -300,10 +306,10 @@ func (c *feedbackController) rememberFeedback(text, source string, seq uint64) {
 }
 
 // feedbackSnapshot detaches the viewer from subsequent feedback, newest first.
-func (c *feedbackController) feedbackSnapshot() []string {
-	messages := make([]string, len(c.history))
+func (c *feedbackController) feedbackSnapshot() []help.RecalledMessage {
+	messages := make([]help.RecalledMessage, len(c.history))
 	for i, entry := range c.history {
-		messages[len(c.history)-1-i] = entry.text
+		messages[len(c.history)-1-i] = entry.RecalledMessage
 	}
 	return messages
 }
