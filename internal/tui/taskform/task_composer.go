@@ -232,10 +232,36 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case coordinator.TaskCreatedMsg, coordinator.TasksCapturedMsg, status.ErrorMsg:
+// updateSubmission releases the pending save only on a result. While it is
+// pending, input stays frozen so success cannot erase text typed after submit.
+func (m *TaskComposerModel) updateSubmission(msg tea.Msg) bool {
+	switch result := msg.(type) {
+	case coordinator.TaskCreatedMsg:
+		if m.SubmissionInFlight && result.KeepComposerOpen {
+			m.Input.SetValue("")
+			m.Errors = nil
+			m.validateOnEdit = false
+			m.batchInvalidLines = 0
+			m.UpdatePreview()
+			m.syncInputHeight()
+		}
 		m.SubmissionInFlight = false
+	case coordinator.TasksCapturedMsg, status.ErrorMsg:
+		m.SubmissionInFlight = false
+	}
+	if m.SubmissionInFlight {
+		switch msg.(type) {
+		case tea.KeyPressMsg, tea.PasteMsg:
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.updateSubmission(msg) {
+		return m, nil
 	}
 
 	if m.Mode == ComposerExpanded {
@@ -267,6 +293,9 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		name := key.String()
 		if handled, cmd := m.handleComposerAutocompleteKey(name); handled {
+			return m, cmd
+		}
+		if handled, cmd := m.handleCaptureUtilityKey(name); handled {
 			return m, cmd
 		}
 		if m.HelpExpanded && !m.IsAutocompleteActive() {
@@ -323,6 +352,20 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, m.UpdateInput(msg)
 }
 
+func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd) {
+	if name != "ctrl+n" && name != "alt+n" {
+		return false, nil
+	}
+	if m.IsAutocompleteActive() || m.HelpExpanded {
+		return true, nil
+	}
+	if name == "ctrl+n" {
+		return true, m.createCompact(false, true)
+	}
+	m.focusNextCaptureError()
+	return true, nil
+}
+
 func (m *TaskComposerModel) refreshCaptureErrorsAfterEdit(before string, projectBefore *models.Project) {
 	if m.Mode == ComposerCompact &&
 		(m.Input.Value() != before || m.Preset.Project != projectBefore) {
@@ -345,6 +388,10 @@ func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, te
 }
 
 func (m *TaskComposerModel) CreateCompact(openContent bool) tea.Cmd {
+	return m.createCompact(openContent, false)
+}
+
+func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
 	if m.SubmissionInFlight {
 		return nil
 	}
@@ -362,6 +409,17 @@ func (m *TaskComposerModel) CreateCompact(openContent bool) tea.Cmd {
 	}
 	if cmd != nil {
 		m.SubmissionInFlight = true
+		if keepOpen {
+			capture := cmd
+			cmd = func() tea.Msg {
+				result := capture()
+				if created, ok := result.(coordinator.TaskCreatedMsg); ok {
+					created.KeepComposerOpen = true
+					return created
+				}
+				return result
+			}
+		}
 	}
 	return cmd
 }
@@ -372,8 +430,26 @@ func (m *TaskComposerModel) focusFirstCaptureError() {
 	if len(m.Errors) == 0 {
 		return
 	}
+	m.focusCaptureErrorLine(m.Errors[0].Line)
+}
+
+func (m *TaskComposerModel) focusNextCaptureError() {
+	if len(m.Errors) == 0 {
+		return
+	}
+	target := m.Errors[0].Line
+	for _, problem := range m.Errors {
+		if problem.Line > m.Input.Line()+1 {
+			target = problem.Line
+			break
+		}
+	}
+	m.focusCaptureErrorLine(target)
+}
+
+func (m *TaskComposerModel) focusCaptureErrorLine(line int) {
 	m.syncInputHeight()
-	target := max(m.Errors[0].Line-1, 0)
+	target := max(line-1, 0)
 	m.Input.MoveToBegin()
 	for guard := m.composerInputContentRows(); m.Input.Line() < target && guard > 0; guard-- {
 		m.Input.CursorDown()

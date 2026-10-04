@@ -5,7 +5,10 @@ pulse, the menu bar, contextual guidance, the status strip and the advisories it
 carries, the conflict browser, how the cursor row is marked, and the colors a
 tag wears.
 
-In `?` help, `/` searches within the selected category tab. While searching,
+In `?` help, `/` searches within the selected category tab. Each search word
+may match the key, description, category, or an alias of the same entry, so a
+category and an action can be searched together. Every word must match that
+entry; words never combine across different entries. While searching,
 each tab shows the number of matches selecting it would reveal, including its
 own case-insensitive fallback. If that category has
 no matches but others do, the empty view names the category and counts the
@@ -194,6 +197,13 @@ mode change, so a message naming a mode can never misreport the one you switched
 to. A live visual selection is no exception, because the strip never carries one
 in the first place: the selection states itself on the second header row, once,
 and the strip is left free for the feedback your next bulk gesture writes there.
+
+`Ctrl+M` → Help → Last message opens the latest feedback in a read-only,
+scrollable viewer, even after it has expired or a mode change has cleared it.
+`y` copies the complete message; `Esc` returns to the outline. The viewer keeps
+one message for this session only, including operation errors and transient
+view feedback. Ambient advisories do not replace it. Recovery hints in the
+recalled text are historical text, not controls in this viewer.
 
 The strip carries one line that is not feedback at all: while the workspace
 holds unresolved merge conflicts, an indicator counting them leads the strip and

@@ -19,14 +19,15 @@ import (
 // shared navigation/status logic, so the legacy Task/Project fields (still set by
 // the not-yet-migrated task form) and the coordinator path share one handler.
 type TaskCreatedMsg struct {
-	Results         []app.TaskResult
-	Task            *models.Task
-	Project         *models.Project // target project (for cross-project + open-after)
-	Result          *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
-	CreatedCount    int             // bulk composer count; zero means infer one from Task/Result
-	PlanningChanged bool            // commit added Today/Next membership; refresh the runtime planning snapshot
-	OpenTaskID      string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
-	OpenContent     bool            // open description editor after creation
+	Results          []app.TaskResult
+	Task             *models.Task
+	Project          *models.Project // target project (for cross-project + open-after)
+	Result           *app.TaskResult // committed capture-coordinator outcome (nil on the legacy path)
+	CreatedCount     int             // bulk composer count; zero means infer one from Task/Result
+	PlanningChanged  bool            // commit added Today/Next membership; refresh the runtime planning snapshot
+	OpenTaskID       string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
+	OpenContent      bool            // open description editor after creation
+	KeepComposerOpen bool            // clear the committed compact draft and capture another
 }
 
 // TasksCapturedMsg refreshes a successful subset while the composer retains

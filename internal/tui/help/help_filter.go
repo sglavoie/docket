@@ -1,6 +1,9 @@
 package help
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
@@ -92,24 +95,38 @@ func matchHelpItems(items []operation.HelpItem, query string) ([]filteredHelpIte
 	match := func(items []operation.HelpItem, matcher fuzzy.Matcher) []filteredHelpItem {
 		var filtered []filteredHelpItem
 		for _, item := range items {
-			keyScore, keyPos := matcher.ScoreTermsWithPositions(item.Key, query)
-			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, query)
-			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, query)
-
-			var matchedAliases []string
-			for _, alias := range item.Aliases {
-				if score, _ := matcher.ScoreTermsWithPositions(alias, query); score > 0 {
-					matchedAliases = append(matchedAliases, alias)
+			entry := filteredHelpItem{HelpItem: item}
+			matches := true
+			aliases := make(map[string]bool)
+			for _, term := range strings.Fields(query) {
+				keyScore, keyPos := matcher.ScoreWithPositions(item.Key, term)
+				descScore, descPos := matcher.ScoreWithPositions(item.Description, term)
+				found := keyScore > 0 || descScore > 0 || matcher.Score(item.Category, term) > 0
+				entry.keyPositions = append(entry.keyPositions, keyPos...)
+				entry.descPositions = append(entry.descPositions, descPos...)
+				for _, alias := range item.Aliases {
+					if matcher.Score(alias, term) > 0 {
+						aliases[alias] = true
+						found = true
+					}
+				}
+				if !found {
+					matches = false
+					break
 				}
 			}
-
-			if keyScore > 0 || descScore > 0 || catScore > 0 || len(matchedAliases) > 0 {
-				filtered = append(filtered, filteredHelpItem{
-					HelpItem:       item,
-					keyPositions:   keyPos,
-					descPositions:  descPos,
-					matchedAliases: matchedAliases,
-				})
+			if matches {
+				// Positions belong to their own field; aliases keep registry order.
+				slices.Sort(entry.keyPositions)
+				entry.keyPositions = slices.Compact(entry.keyPositions)
+				slices.Sort(entry.descPositions)
+				entry.descPositions = slices.Compact(entry.descPositions)
+				for _, alias := range item.Aliases {
+					if aliases[alias] {
+						entry.matchedAliases = append(entry.matchedAliases, alias)
+					}
+				}
+				filtered = append(filtered, entry)
 			}
 		}
 		return filtered

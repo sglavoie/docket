@@ -699,6 +699,7 @@ var _ viewStatusOwner = (*notes.NotesViewModel)(nil)
 // assignment sites and no clock, so it is compared by text. The view stamp is
 // only meaningful alongside the view it came from, hence the presentation ID.
 type footerFlashProbe struct {
+	statusText    string
 	statusSeq     uint64
 	errText       string
 	view          presentation.PresentationID
@@ -734,8 +735,9 @@ func (p footerFlashProbe) stampFor(view presentation.PresentationID) (uint64, bo
 
 func (m *AppModel) captureFooterFlashProbe() footerFlashProbe {
 	probe := footerFlashProbe{
-		statusSeq: m.feedback.seq,
-		view:      m.currentView(),
+		statusSeq:  m.feedback.seq,
+		statusText: m.feedback.message,
+		view:       m.currentView(),
 	}
 	if m.feedback.err != nil {
 		probe.errText = m.feedback.err.Error()
@@ -985,3 +987,31 @@ func (m *AppModel) refreshOutstandingConflicts() {
 
 // The count itself lives on the feedback cluster, which also supplies the
 // accessor injected into every Outliner; see feedback_controller.go.
+
+// rememberFeedbackSince follows the same generations as status expiry, keeping
+// the complete latest feedback after its display timer or navigation clears it.
+// Ambient advisory lines are not status messages and never enter this record.
+func (m *AppModel) rememberFeedbackSince(before footerFlashProbe) {
+	after := m.captureFooterFlashProbe()
+	if after.errText != "" && after.errText != before.errText {
+		m.feedback.lastMessage = after.errText
+		return
+	}
+	if m.feedback.message != "" && (after.statusSeq != before.statusSeq || after.statusText != before.statusText) {
+		m.feedback.lastMessage = m.feedback.message
+		return
+	}
+	if m.viewNav.views == nil {
+		return
+	}
+	for _, view := range m.statusStampingPath() {
+		owner, ok := m.viewNav.views.Get(view).(viewStatusOwner)
+		if !ok || !owner.StatusIsTransient() || owner.StatusText() == "" {
+			continue
+		}
+		if held, known := before.stampFor(view); known && held == owner.StatusStamp() {
+			continue
+		}
+		m.feedback.lastMessage = owner.StatusText()
+	}
+}

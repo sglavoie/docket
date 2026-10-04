@@ -26,4 +26,5 @@ const (
 	ViewTaskComposer
 	ViewProjectHub
 	ViewOutlineErrors
+	ViewLastMessage
 )

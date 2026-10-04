@@ -1,0 +1,182 @@
+{
+  "name": "capture-another-and-last-message",
+  "fixture": "ux-acceptance",
+  "size": "60x20",
+  "actions": [
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "text",
+      "text": "Capture loop first $today "
+    },
+    {
+      "type": "key",
+      "key": "ctrl+n"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "TaskComposer"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "text",
+      "text": "Capture loop second"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "wait",
+      "duration": "7s"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+m"
+    },
+    {
+      "type": "key",
+      "key": "left"
+    },
+    {
+      "type": "key",
+      "key": "down"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "LastMessage"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Add Task: #2 Capture loop second"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "resize",
+      "width": 100,
+      "height": 35
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "key",
+      "key": "u"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "text",
+      "text": "Capture loop"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Capture loop first"
+    },
+    {
+      "type": "wait",
+      "duration": "7s"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Capture loop second"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "text",
+      "text": "Bad !4"
+    },
+    {
+      "type": "key",
+      "key": "shift+enter"
+    },
+    {
+      "type": "text",
+      "text": "Other !5"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "resize",
+      "width": 60,
+      "height": 20
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Problem 1 of 2 \u00b7 Line 1"
+    },
+    {
+      "type": "key",
+      "key": "alt+n"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Problem 2 of 2 \u00b7 Line 2"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "key",
+      "key": "y"
+    }
+  ]
+}

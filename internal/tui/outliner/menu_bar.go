@@ -172,6 +172,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			Title: "Help",
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreHelp, Label: "Key Reference"},
+				{OperationID: operation.OperationCoreLastMessage},
 			},
 		},
 	}

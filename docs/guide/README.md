@@ -16,3 +16,27 @@ door. Mechanism lives in [`../architecture.md`](../architecture.md).
 | [`projects-and-notes.md`](projects-and-notes.md) | Project scope, Select Project, project tags including `parked`, and All Notes |
 | [`storage.md`](storage.md) | The durable layout, the undo ledger, conflict recovery, and the migration chain up to the schema-21 catalog and its schema-19 task files |
 | [`retired-keys.md`](retired-keys.md) | Every retired key, per surface, and what answers it now |
+
+## Everyday recipes
+
+**Waiting for someone.** Select the task and press `ww` to mark it Waiting.
+Press `@`, then `Tab` twice to reach Check-in, and `Enter` to open its editor.
+Choose a next check-in date, optionally a repeat interval, and save with
+`Ctrl+S`. When the task needs attention, `R` acknowledges it and advances to
+the next candidate. Waiting stays Waiting until you change its state.
+
+**Pause work with a useful restart point.** On the task, press `r`, write a
+short note such as “Next: reproduce the failure with an expired token,” and
+press `Enter`. Then press `wp` to pause it. Later, `b` shows the note in Peek;
+`wg` resumes Doing.
+
+**Keep a review view ready.** Press `/`, type `?review`, and press `Enter`.
+Open Named Lenses with `\`, choose `Save current view`, and name it
+“Weekly review.” Reopen that lens whenever you review your work; it shows
+flagged tasks and tasks whose check-in is due. Use `R` to acknowledge each
+candidate. The name is a reminder of your routine, not an automatic schedule.
+
+**Find completed work.** Press `/` and search `$done` followed by words from
+the task, for example `$done login redirect`. Adding `$done` admits completed
+tasks to search. Press `b` on a result to inspect its details, and `Esc` to
+unwind the view.

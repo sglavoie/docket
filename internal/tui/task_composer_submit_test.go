@@ -312,3 +312,90 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 		t.Fatalf("description edit pending operation = %+v", appModel.pendingTaskTextEdit)
 	}
 }
+
+func TestTaskComposerCreateAnotherCommitsOnceAndKeepsOriginalDefaults(t *testing.T) {
+	env := newScenarioEnv(t, "capture-another")
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
+		Kind: taskform.ComposerProject, Project: env.project,
+		Shared: taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+	}, nil)
+	composer.SetCaptureCoordinator(env.features.Capture)
+	composer.Input.SetValue("First !1 #temporary $doing")
+	_, cmd := composer.Update(syntheticCtrlKey('n'))
+	if cmd == nil {
+		t.Fatal("create another did not submit")
+	}
+	composer.Update(tea.PasteMsg{Content: "must not overwrite pending draft"})
+	if composer.Input.Value() != "First !1 #temporary $doing" {
+		t.Fatal("in-flight paste changed draft")
+	}
+	if _, duplicate := composer.Update(syntheticCtrlKey('n')); duplicate != nil {
+		t.Fatal("duplicate submission")
+	}
+	raw := cmd()
+	msg, ok := raw.(coordinator.TaskCreatedMsg)
+	if !ok || !msg.KeepComposerOpen {
+		t.Fatalf("result=%#v", raw)
+	}
+	composer.Update(msg)
+	if composer.Input.Value() != "" || composer.SubmissionInFlight {
+		t.Fatal("success did not reset draft")
+	}
+	composer.Input.SetValue("Second")
+	_, cmd = composer.Update(syntheticSpecialKey(tea.KeyEnter))
+	second, ok := cmd().(coordinator.TaskCreatedMsg)
+	if !ok || second.KeepComposerOpen {
+		t.Fatal("ordinary Enter inherited keep-open")
+	}
+	fresh := env.reload(t)
+	task := fresh.GetTaskByShortID(2)
+	if task == nil || task.State() != models.StateInbox || task.Priority != 0 || len(task.Tags) != 0 {
+		t.Fatalf("next draft inherited metadata: %+v", task)
+	}
+	env.undo(t)
+	if len(env.reload(t).Tasks) != 1 {
+		t.Fatal("captures did not have independent undo entries")
+	}
+}
+
+func TestTaskComposerCreateAnotherFailureRetainsDraft(t *testing.T) {
+	project := &models.Project{ID: "test", Name: "Test"}
+	stub := &stubMutator{err: errors.New("write refused")}
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, nil)
+	composer.SetCaptureCoordinator(coordinator.NewFeatureCoordinators(stub).Capture)
+	composer.Input.SetValue("Keep this draft")
+	_, cmd := composer.Update(syntheticCtrlKey('n'))
+	composer.Update(cmd())
+	if composer.Input.Value() != "Keep this draft" || composer.SubmissionInFlight {
+		t.Fatal("failed save lost draft or blocked retry")
+	}
+}
+
+func TestTaskComposerCreateAnotherKeepsPanelAndRefreshesOutline(t *testing.T) {
+	driver, _ := menuBarDriver(t)
+	for _, action := range []UITestAction{
+		{Type: UITestActionKey, Key: "a"},
+		{Type: UITestActionText, Text: "Capture another regression"},
+		{Type: UITestActionKey, Key: "ctrl+n"},
+	} {
+		if _, err := driver.ApplyAction(action, ObserveOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := driver.App()
+	if m.currentView() != presentation.ViewTaskComposer || m.taskComposer.Input.Value() != "" {
+		t.Fatal("capture another closed or retained submitted draft")
+	}
+	if !strings.Contains(m.feedback.message, "u undo") {
+		t.Fatalf("missing recovery feedback: %s", m.feedback.message)
+	}
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if m.currentView() != presentation.ViewCrossProjectOutliner {
+		t.Fatal("empty capture did not close")
+	}
+	if !strings.Contains(m.View().Content, "Capture another regression") {
+		t.Fatal("outline did not refresh committed task")
+	}
+}

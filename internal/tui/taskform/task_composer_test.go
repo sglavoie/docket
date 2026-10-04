@@ -767,3 +767,35 @@ func TestTaskComposerLiveBatchDiagnosticsPreserveDraftAndCaret(t *testing.T) {
 		t.Fatal("fixed batch retained its warning")
 	}
 }
+
+func TestTaskComposerNextProblemVisitsReasonsAndWraps(t *testing.T) {
+	project := &models.Project{ID: "test", Slug: "test", Name: "Test"}
+	m := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	m.SetSize(60, 18)
+	draft := "Valid\nBad !4\n\nAlso bad !5\nLast bad !4"
+	m.Input.SetValue(draft)
+	if cmd := m.CreateCompact(false); cmd != nil {
+		t.Fatal("invalid batch committed")
+	}
+	for i, line := range []int{2, 4, 5, 2} {
+		if i > 0 {
+			m.Update(tea.KeyPressMsg{Code: 'n', Mod: tea.ModAlt})
+		}
+		if m.Input.Line()+1 != line {
+			t.Fatalf("visit %d: line %d want %d", i, m.Input.Line()+1, line)
+		}
+		expected := fmt.Sprintf("Problem %d of 3 · Line %d", i%3+1, line)
+		if !strings.Contains(ansi.Strip(m.View().Content), expected) {
+			t.Fatalf("missing %q:\n%s", expected, ansi.Strip(m.View().Content))
+		}
+		if m.Input.Value() != draft || m.SubmissionInFlight {
+			t.Fatal("navigation altered the draft or submitted")
+		}
+	}
+	m.Input.SetValue("Valid\nFixed\n\nAlso bad !5\nLast bad !4")
+	m.refreshCaptureErrorsAfterEdit(draft, project)
+	m.focusNextCaptureError()
+	if m.Input.Line() != 3 || len(m.Errors) != 2 {
+		t.Fatal("next problem retained corrected line")
+	}
+}

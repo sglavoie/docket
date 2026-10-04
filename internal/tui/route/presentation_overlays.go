@@ -7,6 +7,8 @@ import "github.com/sglavoie/tt/internal/tui/presentation"
 // their typed route activation methods, never inferred from a renderer ID.
 func OverlayForPresentation(view presentation.PresentationID) (Overlay, bool, error) {
 	switch view {
+	case presentation.ViewLastMessage:
+		return referenceOverlayFor(ReferenceLastMessage)
 	case presentation.ViewHelp:
 		return referenceOverlayFor(ReferenceHelp)
 	case presentation.ViewOutlineErrors:

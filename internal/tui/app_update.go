@@ -53,6 +53,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		// Every branch above returns early, so this closure is also the one place
 		// a bottom panel's host can be resized exactly when the panel opened,
 		// moved, or closed rather than on every frame.
+		m.rememberFeedbackSince(statusBefore)
 		m.syncHostedPanelHost()
 		// And the one place the footer this update produced can be measured
 		// before it is drawn, so the surface underneath reserves the rows it

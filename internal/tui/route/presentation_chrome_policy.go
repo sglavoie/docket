@@ -105,6 +105,7 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 	case presentation.ViewProjectCreator,
 		presentation.ViewProjectEditor,
 		presentation.ViewHelp,
+		presentation.ViewLastMessage,
 		presentation.ViewTaskComments,
 		presentation.ViewTextEditor,
 		presentation.ViewTaskAttachments,

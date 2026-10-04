@@ -10,8 +10,8 @@ import (
 // exhaustiveness tests below walk it: production code always holds a
 // PresentationID it was handed rather than one it enumerated.
 func allPresentations() []presentation.PresentationID {
-	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewOutlineErrors))
-	for id := presentation.ViewProjectCreator; id <= presentation.ViewOutlineErrors; id++ {
+	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewLastMessage))
+	for id := presentation.ViewProjectCreator; id <= presentation.ViewLastMessage; id++ {
 		presentations = append(presentations, id)
 	}
 	return presentations

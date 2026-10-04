@@ -199,10 +199,20 @@ says `single task only` for a multiline batch. Pressing it still names the
 unsupported action and keeps the original draft intact;
 submit that line with `Enter` to keep all its attributes.
 
+In compact capture, `Ctrl+N` creates the current task or batch and keeps the
+panel open for another capture. The input clears only after a successful save;
+a refusal keeps it intact. The next draft keeps the composer's project and
+shared defaults, including a project selected with `Ctrl+P`, but inherits none
+of the submitted line's sigils. Each save is its own undo entry. Close any
+suggestions or syntax help first with `Esc`; `Enter` still creates and closes.
+
 A rejected submission moves the cursor to the start of the first invalid line
 and scrolls it into view, keeping the entire draft. After that attempt, editing
 refreshes the line errors without moving the cursor or submitting again;
-correcting the last error clears the refusal. Press `Enter` to retry the save.
+correcting the last error clears the refusal. `Alt+N` visits the next reported
+problem, wrapping to the first. With several problems, the panel names the
+current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
+changes no text and submits nothing. Press `Enter` to retry the save.
 
 Once the panel is at its ceiling — or on a short terminal, where the ceiling is
 whatever the outline can spare — it keeps its shape and shortens the preview

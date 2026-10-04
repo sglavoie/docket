@@ -93,9 +93,9 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 		m.rebuildPlanningFromRuntime()
 	}
 
-	refreshCmd := m.handleWithRefresh(true, true)
+	refreshCmd := m.handleWithRefresh(!msg.KeepComposerOpen, true)
 
-	if msg.Task != nil {
+	if msg.Task != nil && !msg.KeepComposerOpen {
 		project := msg.Project
 		if project == nil && msg.Result != nil {
 			project = m.projectByID(msg.Result.ProjectID)

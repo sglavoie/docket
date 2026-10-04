@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -302,7 +303,18 @@ func (m *TaskComposerModel) renderComposerPanelTail(rows int, errors string) str
 // of the wrapping would let those two disagree.
 func (m *TaskComposerModel) composerPanelErrorBlock(width int) string {
 	var block string
-	for _, lineErr := range m.Errors {
+	errors := m.Errors
+	// Put the caret's problem first so a bounded panel always shows its reason.
+	if len(errors) > 1 {
+		for index, problem := range errors {
+			if problem.Line == m.Input.Line()+1 {
+				block = theme.SubtitleStyle.Render(fmt.Sprintf("Problem %d of %d · Line %d", index+1, len(errors), problem.Line))
+				errors = append(append([]grammar.LineError{problem}, errors[:index]...), errors[index+1:]...)
+				break
+			}
+		}
+	}
+	for _, lineErr := range errors {
 		block = joinPanelBlocks(block, theme.ValidationErrorStyle.Width(width).
 			Render(fmt.Sprintf("Line %d: %s", lineErr.Line, lineErr.Message)))
 	}

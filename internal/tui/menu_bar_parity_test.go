@@ -96,7 +96,8 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		t.Fatalf("resolve menus: %v", err)
 	}
 	help := menuWithID(t, menus, outliner.MenuIDHelp)
-	if len(help.Entries) != 1 || help.Entries[0].Key != "F1" {
+	if len(help.Entries) != 2 || help.Entries[0].Key != "F1" ||
+		help.Entries[1].OperationID != operation.OperationCoreLastMessage || help.Entries[1].Key != "" {
 		t.Fatalf("help menu did not follow the rebinding: %+v", help.Entries)
 	}
 }

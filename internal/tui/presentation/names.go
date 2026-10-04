@@ -1,6 +1,7 @@
 package presentation
 
 var viewTypeNames = map[PresentationID]string{
+	ViewLastMessage:          "LastMessage",
 	ViewProjectCreator:       "ProjectCreator",
 	ViewProjectEditor:        "ProjectEditor",
 	ViewHelp:                 "Help",

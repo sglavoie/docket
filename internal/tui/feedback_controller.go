@@ -44,9 +44,10 @@ type feedbackController struct {
 
 	// message is the transient status line, info its neutral surface, and
 	// updatedAt the stamp that guards it from a stale clear timer.
-	message   string
-	info      bool
-	updatedAt time.Time
+	lastMessage string // session-only recall, independent of expiry
+	message     string
+	info        bool
+	updatedAt   time.Time
 
 	// undoCb is the callback the inline `u` invokes while the toast is live, and
 	// expiresAt the deadline past which it is no longer offered.

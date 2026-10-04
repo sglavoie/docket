@@ -180,3 +180,30 @@ func TestHelpCategoryCountsPredictEachTabIncludingCaseFallback(t *testing.T) {
 		t.Fatal("clearing search retained match counts")
 	}
 }
+
+func TestHelpSearchTermsCanSpanFieldsButNotEntries(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "e", Description: "Modify title", Category: "Tasks", Aliases: []string{"rename", "edit"}},
+		{Key: "x", Description: "Remove entry", Category: "Notes", Aliases: []string{"delete"}},
+	}
+	for _, query := range []string{"tasks modify", "e title", "tasks rename", "rename edit", "TASKS MODIFY"} {
+		matches, relaxed := matchHelpItems(items, query)
+		if len(matches) != 1 || matches[0].Key != "e" {
+			t.Fatalf("%q: %+v", query, matches)
+		}
+		if relaxed != (query == "TASKS MODIFY") {
+			t.Fatalf("%q: relaxed=%v", query, relaxed)
+		}
+	}
+	if matches, _ := matchHelpItems(items, "tasks delete"); len(matches) != 0 {
+		t.Fatalf("matched across entries: %+v", matches)
+	}
+	matches, _ := matchHelpItems(items, "e title title")
+	if !slices.Equal(matches[0].keyPositions, []int{0}) || !slices.Equal(matches[0].descPositions, []int{7, 8, 9, 10, 11}) {
+		t.Fatalf("field-relative highlights: %+v", matches[0])
+	}
+	matches, _ = matchHelpItems(items, "tasks rename edit")
+	if !slices.Equal(matches[0].matchedAliases, []string{"rename", "edit"}) {
+		t.Fatalf("aliases: %+v", matches[0])
+	}
+}

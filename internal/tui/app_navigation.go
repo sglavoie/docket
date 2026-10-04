@@ -379,6 +379,8 @@ func (m *AppModel) presentationForRoute(target route.Route) (presentation.Presen
 			return 0, false
 		}
 		switch params.Kind {
+		case route.ReferenceLastMessage:
+			return presentation.ViewLastMessage, true
 		case route.ReferenceHelp:
 			return presentation.ViewHelp, true
 		case route.ReferenceOutlineErrors:

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -362,6 +363,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
+	case operation.OperationCoreLastMessage:
+		m.showView(presentation.ViewLastMessage, help.NewMessageView(m.feedback.lastMessage))
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:
