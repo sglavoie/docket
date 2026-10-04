@@ -355,7 +355,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd) {
-	if name != "ctrl+n" && name != "alt+n" {
+	if name != "ctrl+n" && name != "alt+n" && name != "alt+p" {
 		return false, nil
 	}
 	if m.IsAutocompleteActive() || m.HelpExpanded {
@@ -364,7 +364,11 @@ func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd)
 	if name == "ctrl+n" {
 		return true, m.createCompact(false, true)
 	}
-	m.focusNextCaptureError()
+	if name == "alt+p" {
+		m.focusPreviousCaptureError()
+	} else {
+		m.focusNextCaptureError()
+	}
 	return true, nil
 }
 
@@ -443,6 +447,20 @@ func (m *TaskComposerModel) focusNextCaptureError() {
 	for _, problem := range m.Errors {
 		if problem.Line > m.Input.Line()+1 {
 			target = problem.Line
+			break
+		}
+	}
+	m.focusCaptureErrorLine(target)
+}
+
+func (m *TaskComposerModel) focusPreviousCaptureError() {
+	if len(m.Errors) == 0 {
+		return
+	}
+	target := m.Errors[len(m.Errors)-1].Line
+	for i := len(m.Errors) - 1; i >= 0; i-- {
+		if m.Errors[i].Line < m.Input.Line()+1 {
+			target = m.Errors[i].Line
 			break
 		}
 	}

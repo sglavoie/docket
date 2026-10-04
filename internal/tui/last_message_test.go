@@ -38,7 +38,7 @@ func TestLastMessageMenuOpensAndReturnsWithoutChangingOutline(t *testing.T) {
 	m.Update(status.InfoStatusMsg("Remember this explanation"))
 	m.Update(status.StatusClearMsg{})
 	cursor := out.Cursor
-	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Last message"}, ObserveOptions{}); err != nil {
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Recent messages"}, ObserveOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(m.View().Content, "Remember this explanation") {

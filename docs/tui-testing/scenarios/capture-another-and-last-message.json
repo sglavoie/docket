@@ -194,6 +194,24 @@
       "value": "Problem 2 of 2 \u00b7 Line 2"
     },
     {
+      "type": "key",
+      "key": "alt+p"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Problem 1 of 2 \u00b7 Line 1"
+    },
+    {
+      "type": "key",
+      "key": "alt+p"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Problem 2 of 2 \u00b7 Line 2"
+    },
+    {
       "type": "assert",
       "assert": "no_layout_issues"
     },

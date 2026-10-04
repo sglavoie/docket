@@ -193,7 +193,7 @@ func (p *quickEditParser) applyProject() bool {
 	}
 	target := resolveProject(tokens[0].Value, p.allProjects)
 	if target == nil {
-		return p.setError(fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value))
+		return p.setError(fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, p.allProjects)))
 	}
 	p.result.TargetProject = target
 	p.effectiveProject = target

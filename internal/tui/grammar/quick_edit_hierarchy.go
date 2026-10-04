@@ -56,9 +56,10 @@ func QuickEditParentCandidates(input string, task *models.Task, source *models.P
 	}
 	effective := source
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		projects := flattenProjectSets(source, [][]*models.Project{allProjects})
+		effective = resolveProject(tokens[0].Value, projects)
 		if effective == nil {
-			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
+			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, projects))
 		}
 	}
 	return ValidQuickEditParents(task, source, effective), ""
@@ -81,9 +82,10 @@ func QuickEditChildCandidates(input string, task *models.Task, source *models.Pr
 	effective := source
 	draft := &QuickEditResult{ParentMode: QuickEditParentPreserve}
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		projects := flattenProjectSets(source, [][]*models.Project{allProjects})
+		effective = resolveProject(tokens[0].Value, projects)
 		if effective == nil {
-			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
+			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, projects))
 		}
 		draft.ParentMode = QuickEditParentRoot
 	}

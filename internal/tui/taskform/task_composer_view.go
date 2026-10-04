@@ -259,7 +259,7 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// promise something only an edit can deliver.
 		spec = chrome.RequiredExitGuidanceSpec(
 			"Enter create", chrome.DraftEscapeHint(m.HasDraft()),
-			"Alt+N next problem", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax",
+			"Alt+N next problem", "Alt+P previous problem", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {

@@ -803,6 +803,60 @@ func TestTaskComposerNextProblemVisitsReasonsAndWraps(t *testing.T) {
 	}
 }
 
+func TestTaskComposerPreviousProblemPreservesDraftAndSkipsCorrectedLines(t *testing.T) {
+	project := &models.Project{ID: "test", Slug: "test", Name: "Test"}
+	m := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
+	m.SetSize(60, 18)
+	draft := "Valid\nBad !4\n\nAlso bad !5\nLast bad !4"
+	m.Input.SetValue(draft)
+	previous := tea.KeyPressMsg{Code: 'p', Mod: tea.ModAlt}
+	line, column := m.Input.Line(), m.Input.Column()
+	m.Update(previous)
+	if m.Input.Line() != line || m.Input.Column() != column || m.Input.Value() != draft {
+		t.Fatal("previous problem changed the draft before a refused submission")
+	}
+	if cmd := m.CreateCompact(false); cmd != nil {
+		t.Fatal("invalid batch committed")
+	}
+	for i, line := range []int{5, 4, 2, 5} {
+		if _, cmd := m.Update(previous); cmd != nil {
+			t.Fatal("problem navigation emitted a command")
+		}
+		if m.Input.Line()+1 != line || m.Input.Column() != 0 {
+			t.Fatalf("visit %d: line %d column %d, want line %d start", i, m.Input.Line()+1, m.Input.Column(), line)
+		}
+		problem := []int{3, 2, 1, 3}[i]
+		want := fmt.Sprintf("Problem %d of 3 · Line %d", problem, line)
+		if !strings.Contains(ansi.Strip(m.View().Content), want) {
+			t.Fatalf("missing %q in narrow view: %s", want, ansi.Strip(m.View().Content))
+		}
+		if m.Input.Value() != draft || m.SubmissionInFlight {
+			t.Fatal("navigation altered the draft or submitted")
+		}
+	}
+	m.HelpExpanded = true
+	m.Update(previous)
+	if m.Input.Line() != 4 {
+		t.Fatal("previous problem navigated underneath syntax help")
+	}
+	m.HelpExpanded = false
+	fixed := "Valid\nBad !4\n\nFixed\nLast bad !4"
+	m.Input.SetValue(fixed)
+	m.refreshCaptureErrorsAfterEdit(draft, project)
+	m.focusCaptureErrorLine(5)
+	m.Update(previous)
+	if m.Input.Line() != 1 || len(m.Errors) != 2 {
+		t.Fatal("previous problem retained the corrected line")
+	}
+	m.Input.SetValue("Valid\nFixed\n\nFixed\nLast bad !4")
+	m.refreshCaptureErrorsAfterEdit(fixed, project)
+	m.Update(previous)
+	m.Update(previous)
+	if m.Input.Line() != 4 || len(m.Errors) != 1 {
+		t.Fatal("previous problem did not wrap to the sole remaining error")
+	}
+}
+
 func TestBatchCaptureDestinationSummaryFollowsDraftAndProject(t *testing.T) {
 	home := &models.Project{ID: "home", Slug: "unfiled", Name: "Unfiled"}
 	web := &models.Project{ID: "web", Slug: "web", Name: "Web"}

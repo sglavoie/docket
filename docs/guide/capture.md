@@ -52,7 +52,8 @@ validated before one atomic transaction is committed.
   starts unflagged, so capture refuses it by name. The `=` key toggles the same
   flag on an existing row, and the `f=` filter facet narrows by it.
 - `%project` overrides scope routing and requires an exact project slug. A typo
-  offers up to three nearby non-archived slugs, for example `%weeb` suggests
+  offers up to three nearby non-archived slugs in capture and inline editing,
+  including parent and child completion errors. For example, `%weeb` suggests
   `%web`. Correct the token and submit again; a suggestion never changes the
   draft or chooses the project for you.
 - `>parent` resolves inside the selected project after project routing.
@@ -236,8 +237,8 @@ A rejected submission moves the cursor to the start of the first invalid line
 and scrolls it into view, keeping the entire draft. After that attempt, editing
 refreshes the line errors without moving the cursor or submitting again;
 correcting the last error clears the refusal. `Alt+N` visits the next reported
-problem, wrapping to the first. With several problems, the panel names the
-current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
+problem; `Alt+P` visits the previous one. Both wrap at the ends. With several
+problems, the panel names the current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
 changes no text and submits nothing. Press `Enter` to retry the save.
 
 Once the panel is at its ceiling — or on a short terminal, where the ceiling is

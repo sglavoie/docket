@@ -75,9 +75,17 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	return nil
 }
 
+func projectSlugHint(ref string, projects []*models.Project) string {
+	hint := "use an exact %project-slug"
+	if suggestions := suggestProjectSlugs(ref, projects); len(suggestions) > 0 {
+		hint += "; did you mean " + strings.Join(suggestions, ", ") + "?"
+	}
+	return hint
+}
+
 // suggestProjectSlugs offers up to three canonical slugs after a typo, without
 // resolving the reference. Sorting keeps ambiguous suggestions independent of
-// project load order. Archived projects cannot be capture destinations.
+// project load order. Archived projects cannot be capture or edit destinations.
 func suggestProjectSlugs(ref string, projects []*models.Project) []string {
 	var suggestions []string
 	seen := make(map[string]bool)

@@ -198,7 +198,7 @@ to. A live visual selection is no exception, because the strip never carries one
 in the first place: the selection states itself on the second header row, once,
 and the strip is left free for the feedback your next bulk gesture writes there.
 
-`Ctrl+M` → Help → Last message opens the latest feedback in a read-only,
+`Ctrl+M` → Help → Recent messages opens the latest feedback in a read-only,
 scrollable viewer, even after it has expired or a mode change has cleared it.
 The viewer keeps the latest 20 messages for this session, including operation
 errors and transient view feedback. Left visits older messages and Right returns

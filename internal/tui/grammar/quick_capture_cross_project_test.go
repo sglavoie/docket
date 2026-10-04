@@ -56,6 +56,42 @@ func TestProjectSuggestionsAreBoundedAndOnlyNameAvailableSlugs(t *testing.T) {
 	}
 }
 
+func TestEditProjectTypoSuggestionsDoNotRoute(t *testing.T) {
+	task := &models.Task{ID: "task", ShortID: 1, Title: "Fix login", WorkflowState: models.StateBacklog}
+	source := &models.Project{ID: "source", Slug: "source", Tasks: []*models.Task{task}}
+	web := &models.Project{ID: "web-id", Slug: "web", Name: "Website"}
+	projects := []*models.Project{source, web, {ID: "archived", Slug: "old", Archived: true}}
+	for _, ref := range []string{"weeb", "we", "wet", "wbe", "WEB", "sourc", "ol", "unrelated"} {
+		t.Run(ref, func(t *testing.T) {
+			input := "Fix login %" + ref
+			_, captureErr := ParseQuickCapture(input, source, projects, false)
+			result, err := ParseQuickEdit(input, task, source, projects)
+			if result != nil || err == nil || captureErr == nil {
+				t.Fatalf("invalid project was accepted: %+v, %v, %v", result, err, captureErr)
+			}
+			// Capture and edit retain their error prefixes but explain recovery alike.
+			want := captureErr.Error()[strings.Index(captureErr.Error(), "(use an exact"):]
+			preview, message := parseQuickEditForPreview(input, task, source, projects)
+			if preview.TargetProject != nil || !strings.Contains(message, want) || !strings.Contains(err.Error(), want) {
+				t.Fatalf("edit/preview lost suggestion or routed a typo: %+v, %q, %v", preview, message, err)
+			}
+			for _, candidates := range []func(string, *models.Task, *models.Project, []*models.Project) ([]*models.Task, string){QuickEditParentCandidates, QuickEditChildCandidates} {
+				items, reason := candidates(input, task, source, projects)
+				if len(items) != 0 || !strings.Contains(reason, want) {
+					t.Fatalf("completion = %v, %q; want refusal with %q", items, reason, want)
+				}
+			}
+		})
+	}
+	result, err := ParseQuickEdit("Fix login %web", task, source, projects)
+	if err != nil || result.TargetProject != web {
+		t.Fatalf("corrected edit = %+v, %v", result, err)
+	}
+	if task.Title != "Fix login" || source.Tasks[0] != task || len(web.Tasks) != 0 {
+		t.Fatal("parsing modified the source or destination")
+	}
+}
+
 func TestCrossProjectCapture(t *testing.T) {
 	currentProject := &models.Project{
 		ID:   "current-project",
