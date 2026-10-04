@@ -169,7 +169,7 @@ func (m *OutlinerModel) PublishLens(lens config.NamedLens, state LensState, proj
 	m.Lens.setActive(&activeLensFrame{
 		LensID:                      lens.ID,
 		Name:                        lens.Name,
-		SavedFingerprint:            saved.Fingerprint(),
+		SavedState:                  saved,
 		Origin:                      origin,
 		ProjectFacetsAwaitingLoad:   facetsAwaitingLoad,
 		loadedPopulationFingerprint: population,
@@ -296,7 +296,15 @@ func (m *OutlinerModel) LensModified() bool {
 	if m == nil || !m.Lens.hasActive() {
 		return false
 	}
-	return m.CaptureLensState().Fingerprint() != m.Lens.Active.SavedFingerprint
+	return m.CaptureLensState().Fingerprint() != m.Lens.Active.SavedState.Fingerprint()
+}
+
+// LensChangedAxes explains the same comparison the modified marker reads.
+func (m *OutlinerModel) LensChangedAxes() []string {
+	if m == nil || !m.Lens.hasActive() {
+		return nil
+	}
+	return m.CaptureLensState().ChangedAxes(m.Lens.Active.SavedState)
 }
 
 // activeLensLabel is the operational-title segment: the lens name, marked when

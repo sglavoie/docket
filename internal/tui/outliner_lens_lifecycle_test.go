@@ -242,7 +242,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 		t.Fatal("a scoped application must record its facets without loading")
 	}
 	frame := outlinerView.Lens.Active
-	savedFingerprint := frame.SavedFingerprint
+	savedFingerprint := frame.SavedState.Fingerprint()
 
 	// Replacing one project scope with another is not becoming unscoped.
 	outlinerView.PushProjectScope("beta")
@@ -304,7 +304,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if !outlinerView.HasActiveLens() || outlinerView.Lens.Active.Name != "Waiting" {
 		t.Fatal("the exit disturbed the active lens")
 	}
-	if outlinerView.Lens.Active.SavedFingerprint != savedFingerprint {
+	if outlinerView.Lens.Active.SavedState.Fingerprint() != savedFingerprint {
 		t.Fatal("the exit rewrote the saved definition the modified marker compares against")
 	}
 	// Scope is a lens-owned axis, so leaving one under a live lens is a genuine

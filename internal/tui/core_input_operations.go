@@ -365,6 +365,11 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		err = m.coreOpenMenuBar()
 	case operation.OperationCoreLastMessage:
 		m.showView(presentation.ViewLastMessage, help.NewMessageView(m.feedback.feedbackSnapshot()...))
+	case operation.OperationCoreClearSearchHistory:
+		err = m.coreClearSearchHistory()
+		if err == nil {
+			message = commandMessage(m.statusReadingTimeout())
+		}
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:
@@ -403,4 +408,15 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	}
 	return operation.OperationHandlerResult{Message: message, Err: err}
+}
+
+func (m *AppModel) coreClearSearchHistory() error {
+	if m.crossOutliner == nil {
+		return fmt.Errorf("the Outliner is unavailable")
+	}
+	if err := m.crossOutliner.ClearSearchHistory(); err != nil {
+		return fmt.Errorf("clear search history: %w", err)
+	}
+	m.setInfoStatus("Search history cleared")
+	return nil
 }

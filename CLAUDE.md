@@ -1052,21 +1052,22 @@ projects/<slug>/notes/
 projects/<slug>/.attachments/
 ```
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
-theme, the Outliner menu bar's visibility, advisory visibility, and the
-active-lens pointer, which is
-validated for shape alone and never referentially. Chrome follows the terminal,
-so a new chrome flag belongs here, carries `omitempty`, and is never seeded: the
-omitted key is the default. Only those four stay machine-local: lens
-definitions are portable,
-in `.tt/lenses.json`, six axes over one bounded canonical query and no filter
-carrier. A machine joins that home once, through an adoption merge
-keyed off machine-local state and run after the schema is already current, never
-inside the migration chain the synced catalog version guards. A lens mutation
-still opens no workspace transaction and records no undo ledger entry, so `u`
-never takes a lens back. Workspace paths derive below approved roots; preserve
-symlink-aware containment, checked revisions, deterministic locks, and recovery
-manifests.
+Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds theme,
+menu-bar and advisory visibility, submitted search history, and the active-lens
+pointer. Validate that pointer for shape alone, never referentially. Chrome
+flags carry `omitempty`; absence is the default, never seeded.
+
+History holds at most 50 distinct trimmed submitted queries, oldest first;
+omission means none. Never persist drafts, active queries, recall position, or
+caret. Save failure leaves search usable; clear commits before forgetting and
+changes no projection or lens.
+
+Lens definitions are portable in `.tt/lenses.json`: six axes over one bounded
+canonical query, no filter carrier. Machine-local adoption merges each machine's
+lenses once after schema migration, never inside the synced migration chain.
+Lens and history writes open no workspace transaction and record no undo entry.
+Preserve approved roots, symlink-aware containment, checked revisions,
+deterministic locks, and recovery manifests.
 
 Schema-21 catalogs hold schema-19 task Markdown. That pairing is descriptive,
 never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, v17

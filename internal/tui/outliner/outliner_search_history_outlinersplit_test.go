@@ -209,10 +209,10 @@ func TestSearchHistoryReopeningResetsThePositionButKeepsTheRing(t *testing.T) {
 	}
 }
 
-// The ring is session-only state on the model: a freshly constructed Outliner
+// Without an injected machine history, a freshly constructed Outliner
 // recalls nothing, which is what "discarded on exit" means for a process that
 // reads no file to rebuild it.
-func TestSearchHistoryIsSessionOnly(t *testing.T) {
+func TestSearchHistoryStartsEmptyWithoutPersistence(t *testing.T) {
 	outliner := searchHistoryOutliner()
 	submitSearchQuery(outliner, "alpha")
 

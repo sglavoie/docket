@@ -190,7 +190,7 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	out := model.crossOutliner
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
-	fingerprint := out.Lens.Active.SavedFingerprint
+	fingerprint := out.Lens.Active.SavedState.Fingerprint()
 	mode := out.PrimaryMode
 	query := out.Lens.Query
 
@@ -205,7 +205,7 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	if out.Lens.Active == nil || out.Lens.Active.Name != "Blocked" {
 		t.Fatalf("active label = %q, want the new name", out.ActiveLensLabel())
 	}
-	if out.Lens.Active.SavedFingerprint != fingerprint ||
+	if out.Lens.Active.SavedState.Fingerprint() != fingerprint ||
 		out.PrimaryMode != mode || out.Lens.Query != query {
 		t.Fatal("rename changed projection state")
 	}

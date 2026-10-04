@@ -111,14 +111,16 @@ func (m *OutlinerModel) QueryReadoutRows() []queryReadoutRow {
 	rows := make([]queryReadoutRow, 0, 8)
 	if m.HasActiveLens() {
 		value := m.Lens.Active.Name
+		note := "restores the view it opened on"
 		if m.LensModified() {
 			value += " (modified)"
+			note = "Changed: " + strings.Join(m.LensChangedAxes(), ", ") + " · " + note
 		}
 		rows = append(rows, queryReadoutRow{
 			Axis:  queryReadoutAxisLens,
 			Label: "lens",
 			value: value,
-			note:  "restores the view it opened on",
+			note:  note,
 		})
 	}
 	if m.IsProjectScoped() {

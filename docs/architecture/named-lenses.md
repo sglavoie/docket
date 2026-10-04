@@ -78,16 +78,17 @@ publication left them owed a load, and the explicit clear-scope route pays it:
 scope stands while that read runs, so replacing one project scope with another
 keeps the facets inert and a wholly failed read leaves scope, population, and
 lens exactly as they were. The frame itself is never rewritten by that exit: the
-identity, the saved fingerprint, and the pre-lens restoration point all belong to
+identity, the saved state, and the pre-lens restoration point all belong to
 the application that installed the lens.
 
 `activeLensFrame` is the one live lens; there is never a stack. It holds the
-installed identity, the fingerprint the modified marker compares the live view
-against, and the single restoration point `Esc` returns to. The fingerprint is
-the whole of what a comparison needs, so the frame keeps no second copy of the
-record: the definition itself lives in the lens domain. That fingerprint is taken
-from the definition with its scope axis replaced by the scope the view is
-actually in, because an unowned axis cannot be diverged from — which is also
+installed identity, the saved `LensState`, and the single restoration point
+`Esc` returns to. `LensModified` compares canonical fingerprints of that state
+and the live view; `LensChangedAxes` compares the same canonical saved axes to
+explain the difference in `Q`. The replacement confirmation compares the selected
+saved definition with the current view, even when that lens is not active.
+The installed state takes its scope from the view actually entered, because an
+unowned axis cannot be diverged from — which is also
 what makes a later scope push or pop a real divergence. `LensModified` carves
 scope out of "navigating" for exactly that reason: moving the cursor, folding,
 selecting, and opening Peek all leave an unmodified lens unmodified, while

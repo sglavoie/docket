@@ -113,6 +113,9 @@ func (c *Controller) ShowConfirmation(request operation.OperationConfirmationReq
 	if count := len(request.Targets.Entities()); count > 1 {
 		prompt = fmt.Sprintf("%s · %d selected?", request.Label, count)
 	}
+	if request.Details != "" {
+		prompt += "\n" + request.Details
+	}
 	c.ArmConfirm(request.Request, prompt)
 }
 

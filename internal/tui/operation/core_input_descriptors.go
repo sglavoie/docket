@@ -447,6 +447,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// other way in, so nothing here spends a root key on it.
 		core(OperationCoreToggleAdvisories, "Toggle Advisories", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "conflict count", "hide warnings"),
 		core(OperationCoreLastMessage, "Recent messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
+		core(OperationCoreClearSearchHistory, "Clear search history", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),
 		core(OperationCoreSetUpCheckIns, "Set up check-ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		core(OperationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),

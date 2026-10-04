@@ -43,7 +43,7 @@ func (q *QuickCaptureInput) UpdatePreview() {
 			continue
 		}
 		otherProject := q.capturePreviewProject(other)
-		if otherProject != nil && otherProject.ID == project.ID && strings.TrimSpace(other.Title) == strings.TrimSpace(q.Preview.Title) {
+		if otherProject != nil && otherProject.ID == project.ID && strings.EqualFold(strings.TrimSpace(other.Title), strings.TrimSpace(q.Preview.Title)) {
 			q.batchDuplicateHint = fmt.Sprintf("Same task on line %d", i+1)
 			break
 		}
@@ -425,7 +425,7 @@ func (q *QuickCaptureInput) duplicateCaptureHint() string {
 	var first *models.Task
 	count := 0
 	for _, task := range project.Tasks {
-		if task == nil || task.IsTerminalState() || strings.TrimSpace(task.Title) != strings.TrimSpace(q.Preview.Title) {
+		if task == nil || task.IsTerminalState() || !strings.EqualFold(strings.TrimSpace(task.Title), strings.TrimSpace(q.Preview.Title)) {
 			continue
 		}
 		count++

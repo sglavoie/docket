@@ -279,6 +279,9 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 	outlinerView.OperationRegistry = m.operations.Registry
 	outlinerView.HistoryPreview = m.workspaceHistoryPreview
 	m.lenses.WireOutliner(outlinerView, m.commitActiveLensPointer)
+	if machine := m.Machine(); machine != nil {
+		outlinerView.ConfigureSearchHistory(machine.SearchHistory, m.commitSearchHistory)
+	}
 	outlinerView.SetOutstandingConflicts(m.feedback.outstandingConflictCount)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
 }

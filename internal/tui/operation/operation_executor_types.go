@@ -69,6 +69,10 @@ type OperationBinding struct {
 	SingleHandler SingleOperationHandler
 	BulkHandler   BulkOperationHandler
 
+	// ConfirmationDetails describes the frozen targets before the shared
+	// confirmation gate. All adapters receive the same renderer-neutral text.
+	ConfirmationDetails func(OperationInvocation) (string, error)
+
 	DelegateTargetResolution bool
 	DelegateValueProvider    bool
 	DelegateConfirmation     bool
@@ -109,6 +113,7 @@ type OperationStatusReporter func(OperationStatusEvent)
 type OperationConfirmationRequestMsg struct {
 	Request OperationExecutionRequest
 	Label   string
+	Details string
 	Targets ResolvedOperationTargets
 }
 

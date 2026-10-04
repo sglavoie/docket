@@ -1,12 +1,18 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
+
+// SearchHistoryLimit bounds submitted queries retained on this machine.
+const SearchHistoryLimit = 50
 
 // MachineState contains the machine-local values retained by schema 6: the
 // dark/light theme, whether the Outliner draws its menu bar, whether it carries
-// ambient advisories, the named Outliner lens definitions, and the pointer to
-// the live one. Lens definitions also have
-// a portable home
+// ambient advisories, submitted search history, named Outliner lens definitions,
+// and the pointer to the live one. Lens definitions also have a portable home
 // (WorkspaceLensDefinitions); the copy here is the fallback a workspace that
 // defines none of its own still reads. Neither home enters a workspace
 // transaction or the undo ledger.
@@ -23,6 +29,9 @@ type MachineState struct {
 	// on the same terms as MenuBarVisible: machine-local, omitempty, never seeded,
 	// and the omitted key is the default, which is that advisories are shown.
 	AdvisoriesHidden bool `json:"advisories_hidden,omitempty"`
+	// SearchHistory holds submitted slash queries oldest first, per workspace.
+	// Drafts, the active query, and the recall position are never persisted.
+	SearchHistory []string `json:"search_history,omitempty"`
 	// NamedLenses carries no omitempty: an explicit empty array is the durable
 	// record of "every lens was deleted", and omitting the key instead would
 	// reseed the starters on the next load.
@@ -51,6 +60,16 @@ func NewMachineState() *MachineState {
 // pointer is checked for shape alone: referential integrity is deliberately not
 // a load-time rule, so one stale id can never refuse the whole machine file.
 func (m *MachineState) Validate() error {
+	if len(m.SearchHistory) > SearchHistoryLimit {
+		return fmt.Errorf("machine: search history exceeds %d entries", SearchHistoryLimit)
+	}
+	seen := make(map[string]bool, len(m.SearchHistory))
+	for _, query := range m.SearchHistory {
+		if query == "" || strings.TrimSpace(query) != query || seen[query] {
+			return fmt.Errorf("machine: search history must contain distinct, nonblank, trimmed queries")
+		}
+		seen[query] = true
+	}
 	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
 		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
 	}
@@ -121,5 +140,6 @@ func (m *MachineState) RemoveNamedLens(id string) bool {
 func (m *MachineState) Clone() *MachineState {
 	cp := *m
 	cp.NamedLenses = m.NamedLenses.Clone()
+	cp.SearchHistory = slices.Clone(m.SearchHistory)
 	return &cp
 }

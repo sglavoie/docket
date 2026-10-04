@@ -131,7 +131,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			if got := out.CaptureLensState().Fingerprint(); got != want.Fingerprint() {
 				t.Fatalf("live projection fingerprint = %q, want %q", got, want.Fingerprint())
 			}
-			if out.Lens.Active.SavedFingerprint != want.Fingerprint() {
+			if out.Lens.Active.SavedState.Fingerprint() != want.Fingerprint() {
 				t.Fatal("the frame recorded a definition the template never carried")
 			}
 			if out.LensModified() {

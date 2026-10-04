@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -76,8 +77,11 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Submitting is what retains a query, so an abandoned one never joins the
 	// ring. This runs before HandleSearchMode consumes the key, which is the only
 	// place the submitted text is still readable as input rather than as a query.
+	var historyCmd tea.Cmd
 	if m.IsSearchMode() && key == "enter" {
-		m.recordSearchHistoryEntry(m.SearchInputValue())
+		if err := m.recordSearchHistoryEntry(m.SearchInputValue()); err != nil {
+			historyCmd = status.ErrorCmd("Search works, but history could not be saved: %v", err)
+		}
 	}
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		// Typing ends the walk, so the next Up starts from the newest query again
@@ -88,7 +92,7 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// Recompute unconditionally rather than on value change alone: a bare caret
 		// move leaves the query identical while putting a different token under it.
 		m.RefreshSearchAutocomplete()
-		return model, cmd
+		return model, tea.Batch(cmd, historyCmd)
 	}
 
 	// Handle quick edit mode input first

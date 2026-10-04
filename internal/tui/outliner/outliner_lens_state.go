@@ -146,7 +146,7 @@ func (m *OutlinerModel) ApplyLensState(state LensState) bool {
 // Every axis is written with its canonical token rather than the empty
 // omitted-default rendering, so one state has exactly one spelling here; the
 // decoder still accepts the empty form config documents as that axis's default.
-// Comparison therefore belongs to fingerprint, never to two DTOs.
+// Comparison therefore belongs to canonical state, never to unnormalized DTOs.
 func (s LensState) NamedLens(id, name string) config.NamedLens {
 	return config.NamedLens{
 		ID:   id,
@@ -211,8 +211,28 @@ func (s LensState) Fingerprint() string {
 	}, "\x1f")
 }
 
+// ChangedAxes names the saved axes that differ, in reading order. Compare the
+// canonical saved query as a whole so equivalent facets and typed tokens agree.
+func (s LensState) ChangedAxes(saved LensState) []string {
+	live, baseline := s.NamedLens("", ""), saved.NamedLens("", "")
+	var changed []string
+	if live.Mode != baseline.Mode {
+		changed = append(changed, "mode")
+	}
+	if live.Query != baseline.Query {
+		changed = append(changed, "query / filters")
+	}
+	if live.Sort != baseline.Sort {
+		changed = append(changed, "sort")
+	}
+	if live.Scope != baseline.Scope {
+		changed = append(changed, "project scope")
+	}
+	return changed
+}
+
 // Applying a named lens is one atomic, reversible act. The frame below is what
-// makes it reversible: it holds the identity that was installed, the fingerprint
+// makes it reversible: it holds the identity that was installed, the saved state
 // the modified marker compares against, and the single restoration
 // point Esc returns to. Switching lenses replaces the identity and keeps that
 // restoration point, so one Esc always lands on the view the user actually left
@@ -223,11 +243,9 @@ type activeLensFrame struct {
 	LensID string
 	Name   string
 
-	// savedFingerprint is the canonical rendering of the definition as installed.
-	// The marker compares fingerprints rather than states so map iteration order
-	// can never report an unchanged lens as modified, and the fingerprint alone is
-	// what a comparison ever needs: the record itself lives in machine state.
-	SavedFingerprint string
+	// SavedState is the definition as installed, including an inherited scope.
+	// Both the modified marker and its explanation compare these same axes.
+	SavedState LensState
 
 	// origin is the view the first activation replaced. A switch carries it
 	// forward untouched; nothing else may write it.
@@ -395,11 +413,11 @@ func (s *outlinerLensState) RenameActive(id, name string) {
 // rebaseActive re-bases the live frame on a definition that was just overwritten
 // with the view, which is what clears the modified marker: the view and the
 // record now agree.
-func (s *outlinerLensState) RebaseActive(id, fingerprint string) {
+func (s *outlinerLensState) RebaseActive(id string, state LensState) {
 	if !s.ActiveIs(id) {
 		return
 	}
-	s.Active.SavedFingerprint = fingerprint
+	s.Active.SavedState = state
 }
 
 // hasPending reports that an application is still reading its population.

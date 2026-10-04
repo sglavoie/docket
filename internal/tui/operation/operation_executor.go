@@ -181,6 +181,12 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 			Label:   descriptor.Label,
 			Targets: targets,
 		}
+		if binding.ConfirmationDetails != nil {
+			confirmation.Details, err = binding.ConfirmationDetails(invocation)
+			if err != nil {
+				return executor.failure(err)
+			}
+		}
 		confirmation.Request.Confirmed = true
 		executor.report(OperationStatusEvent{})
 		return OperationExecutionResult{ConfirmationRequired: confirmation}

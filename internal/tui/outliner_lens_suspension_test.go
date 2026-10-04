@@ -24,7 +24,7 @@ func TestSlashSuspendsTheLensAndEscRestoresItUnchanged(t *testing.T) {
 
 	installedMode := outlinerView.ActiveOutlinerMode()
 	installedFilters := outlinerView.ActiveFilterCount()
-	installedFingerprint := outlinerView.Lens.Active.SavedFingerprint
+	installedFingerprint := outlinerView.Lens.Active.SavedState.Fingerprint()
 
 	outlinerView.ActivateSearch()
 	if outlinerView.HasActiveLens() {
@@ -64,7 +64,7 @@ func TestSlashSuspendsTheLensAndEscRestoresItUnchanged(t *testing.T) {
 	if got := outlinerView.ActiveFilterCount(); got != installedFilters {
 		t.Fatalf("restored facet count = %d, want %d", got, installedFilters)
 	}
-	if outlinerView.Lens.Active.SavedFingerprint != installedFingerprint {
+	if outlinerView.Lens.Active.SavedState.Fingerprint() != installedFingerprint {
 		t.Fatal("the suspension moved the fingerprint the modified marker is read against")
 	}
 	if outlinerView.LensModified() {
@@ -252,7 +252,7 @@ func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
 	saved := waitingLens(lensTestID(1), "Waiting", "needle")
 	applyLensOrFatal(t, outlinerView, saved)
 
-	installed := outlinerView.Lens.Active.SavedFingerprint
+	installed := outlinerView.Lens.Active.SavedState.Fingerprint()
 	if outlinerView.LensModified() {
 		t.Fatal("a freshly applied lens reported itself modified")
 	}
@@ -265,7 +265,7 @@ func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
 		t.Fatalf("frame identity = %q/%q, want %q/%q",
 			outlinerView.Lens.Active.LensID, outlinerView.Lens.Active.Name, saved.ID, saved.Name)
 	}
-	if outlinerView.Lens.Active.SavedFingerprint != installed {
+	if outlinerView.Lens.Active.SavedState.Fingerprint() != installed {
 		t.Fatal("the installed fingerprint absorbed a live edit")
 	}
 	if !outlinerView.LensModified() {

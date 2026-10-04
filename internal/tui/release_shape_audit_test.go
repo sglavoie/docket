@@ -73,6 +73,7 @@ var machineStateJSONTags = []string{
 	"lenses_adopted",
 	"menu_bar_visible",
 	"named_lenses",
+	"search_history",
 	"theme",
 }
 
@@ -80,7 +81,7 @@ var machineStateJSONTags = []string{
 // task identity, document fingerprint, and terminal size, none of which survive
 // a process; a page that reached disk would reopen stale against a document that
 // had moved underneath it. The audit is structural on both sides: the
-// machine-local file's key set is exactly the six chrome and lens keys, and no
+// machine-local file's key set names only chrome, lenses, and query history; no
 // persistence-layer identifier or literal names Peek at all.
 func TestReleasePersistsNoPeekState(t *testing.T) {
 	stateType := reflect.TypeOf(config.MachineState{})

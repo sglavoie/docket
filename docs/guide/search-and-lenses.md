@@ -223,8 +223,11 @@ browses every query. A prefix with no matches leaves the input unchanged.
 Each distinct query is held once however often you
 submit it, only a submitted query joins the ring — one abandoned with `Esc` does
 not — and typing ends the walk, so the next `↑` starts from the newest match for the edited prefix.
-The ring is session-only and written nowhere: it survives closing and reopening
-the input, and a relaunch starts empty. A query worth keeping is a lens. While
+The last 50 distinct submitted queries survive a restart on this machine,
+separately for each workspace. Launch still starts with no active search; drafts
+and caret positions are never saved. `View → Clear search history` forgets the
+retained queries without clearing the current search or changing any saved lens.
+If saving history fails, search still works and the footer reports the failure. While
 the suggestion pane is open — up to ten rows, fewer on a short terminal so the
 results below keep room — it owns `↑` and `↓` (and `Ctrl+J`/`Ctrl+K`, as in
 capture) for its own cursor, while every letter still types; one `Esc` closes it
@@ -415,7 +418,10 @@ failure on screen.
 
 An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
 as soon as the live view stops matching what was saved — a mode change, a
-filter, a sort, or a scope move. `Esc` restores the exact view the lens
+filter, a sort, or a scope move. Open `Q` to see which settings changed, such as
+`Changed: sort, project scope`. The confirmation for `Replace from current view`
+also names the settings that would change in the selected saved lens, even when
+that lens is not active. `Esc` restores the exact view the lens
 replaced, not an intermediate one: switching straight from one lens to another
 keeps the original restoration point, so a single `Esc` still lands where you
 left. Lenses never stack.

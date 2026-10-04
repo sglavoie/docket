@@ -217,7 +217,7 @@ func (c *Controller) replaceLensOperation(shell Shell, existing config.NamedLens
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	out.Lens.RebaseActive(replacement.ID, state.Fingerprint())
+	out.Lens.RebaseActive(replacement.ID, state)
 	return operation.OperationHandlerResult{Status: "Replaced lens: " + replacement.Name}
 }
 

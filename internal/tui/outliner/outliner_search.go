@@ -79,8 +79,8 @@ type searchState struct {
 	// The input's own state. autocomplete is the suggestion pane, holding no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
 	// candidates, so a mutation or a scope change cannot leave a stale value behind.
-	// history is the session-only ring of submitted queries, walked with Up and
-	// Down inside the input, never persisted, and unlike jump history not scoped to
+	// history holds submitted queries, persisted through the shell and walked with
+	// Up and Down inside the input. Unlike jump history it is not scoped to
 	// a projection: a query is worth recalling in whatever mode or scope the user
 	// reaches for it next.
 	Autocomplete outlinerSearchAutocomplete

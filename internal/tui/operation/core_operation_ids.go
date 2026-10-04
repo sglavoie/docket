@@ -63,6 +63,7 @@ const (
 	OperationCoreToggleMenuBar      OperationID = "tui.core.toggle-menu-bar"
 	OperationCoreOpenMenuBar        OperationID = "tui.core.open-menu-bar"
 	OperationCoreLastMessage        OperationID = "tui.core.last-message"
+	OperationCoreClearSearchHistory OperationID = "tui.core.clear-search-history"
 	OperationCoreSetUpCheckIns      OperationID = "tui.core.set-up-check-ins"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreUndo               OperationID = "tui.core.undo"

@@ -177,9 +177,9 @@ and `Unavailable` read muted. The deadline preview includes its resolved
 weekday and any clock time, adding the year when it differs from the current
 year. Date suggestions also show the resolved weekday and date before you
 accept them; accepting one inserts only the original date token.
-If the parsed title exactly matches an unfinished task in the resolved project,
+If the parsed title matches an unfinished task in the resolved project,
 the preview adds `Already exists: web#42` (and a count if more match). Matching
-is case-sensitive, ignores leading and trailing whitespace, and excludes Done
+is case-insensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally.
 The preview also checks other valid lines in a multiline draft for the same
 parsed title in the same resolved project. `Same task on line 2` names the first

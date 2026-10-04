@@ -164,7 +164,7 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 	}}
 	for _, tc := range []struct{ draft, want string }{
 		{"Fix login %web !1 #auth", "Already exists: web#42"},
-		{"Fix login", ""}, {"fix login %web", ""}, {"Fix login later %web", ""},
+		{"Fix login", ""}, {"fix login %web", "Already exists: web#42"}, {"Fix login later %web", ""},
 		{"Finished %web", ""}, {"Canceled %web", ""}, {"Fix login %missing", ""},
 	} {
 		t.Run(tc.draft, func(t *testing.T) {
@@ -193,7 +193,7 @@ func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T
 		{"blank lines", "Fix login\n\nFix login", "Same task on line 3"},
 		{"project override", "Fix login %home\nFix login", "Same task on line 2"},
 		{"different project", "Fix login %web\nFix login", ""},
-		{"different case", "Fix login\nfix login", ""},
+		{"different case", "Fix login\nfix login", "Same task on line 2"},
 		{"invalid sibling", "Fix login\nFix login !9", ""},
 		{"invalid routing", "Fix login\nFix login %missing", ""},
 		{"invalid current", "Fix login !9\nFix login", ""},

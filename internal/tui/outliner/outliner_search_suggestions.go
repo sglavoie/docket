@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -870,9 +871,9 @@ func projectSearchRefMatches(project *models.Project, ref string) bool {
 // outlinerSearchHistoryLimit bounds the ring. It is the same size as the undo
 // ledger for the same reason: far more than a working session reaches back for,
 // and small enough that the oldest entries are never worth walking to.
-const outlinerSearchHistoryLimit = 50
+const outlinerSearchHistoryLimit = config.SearchHistoryLimit
 
-// outlinerSearchHistory is the session-only ring of submitted slash queries.
+// outlinerSearchHistory is the bounded ring of submitted slash queries.
 //
 // entries is oldest first, so the newest query is the last element and Up walks
 // backward from the end. index is the recall position and index == len(entries)
@@ -881,6 +882,8 @@ const outlinerSearchHistoryLimit = 50
 // the text the user had typed when the walk started, so stepping back down past
 // the newest entry returns what they were writing rather than an empty input.
 type outlinerSearchHistory struct {
+	wired       bool
+	persist     func([]string) error
 	entries     []string
 	index       int
 	draft       string
@@ -967,11 +970,43 @@ func (h *outlinerSearchHistory) newer() (string, bool) {
 }
 
 // recordSearchHistoryEntry retains a query the user submitted with Enter.
-func (m *OutlinerModel) recordSearchHistoryEntry(query string) {
+func (m *OutlinerModel) recordSearchHistoryEntry(query string) error {
 	if m == nil {
-		return
+		return nil
 	}
 	m.Search.history.record(query)
+	if m.Search.history.persist != nil && strings.TrimSpace(query) != "" {
+		return m.Search.history.persist(slices.Clone(m.Search.history.entries))
+	}
+	return nil
+}
+
+// ConfigureSearchHistory loads once, even if the shell rewires this view later.
+// A nil persistence seam keeps standalone views usable without a runtime.
+func (m *OutlinerModel) ConfigureSearchHistory(entries []string, persist func([]string) error) {
+	h := &m.Search.history
+	if h.wired {
+		return
+	}
+	for _, query := range entries {
+		h.record(query)
+	}
+	h.resetRecall()
+	h.persist, h.wired = persist, true
+}
+
+// ClearSearchHistory publishes the clear before forgetting local entries. A
+// failed write leaves recall intact, and neither path changes the active query.
+func (m *OutlinerModel) ClearSearchHistory() error {
+	h := &m.Search.history
+	if h.persist != nil {
+		if err := h.persist(nil); err != nil {
+			return err
+		}
+	}
+	h.entries = nil
+	h.resetRecall()
+	return nil
 }
 
 // recallSearchHistory claims Up and Down inside the slash input, and only there.

@@ -40,3 +40,28 @@ candidate. The name is a reminder of your routine, not an automatic schedule.
 the task, for example `$done login redirect`. Adding `$done` admits completed
 tasks to search. Press `b` on a result to inspect its details, and `Esc` to
 unwind the view.
+
+**Triage several tasks together.** Press `gi` for Inbox. Move to each task and
+press `v` to include it, or use `Ctrl+A` for every visible task. Press `wn` to
+plan the selection for Next, or `%` to move it to a project. Read the selection
+count before acting: selected tasks hidden by a later filter still belong to
+the batch. Press `u` to undo the whole change. See
+[selection and bulk actions](outliner-rows.md#peek-and-multi-select).
+
+**Find work that seems to have disappeared.** Open `Q` to read the view's active
+restrictions. Press the digit beside one restriction to remove it, or `x` to
+peel them all. Search with `?completed` to include finished work or `?deferred`
+to include deferred tasks; read any `Also matches` hint for the population still
+hidden. See [filters and search](search-and-lenses.md#filters-and-search).
+
+**Recover a mistaken change.** Press `u` to undo or `Ctrl+R` to redo. If the
+restored task is visible, the cursor follows it; otherwise the feedback names
+where it went. For a visible single-task restoration, `Ctrl+O` returns to your
+previous position. Open `Help → Recent messages` to reread feedback that has
+expired. See [the Outliner chrome](outliner-chrome.md).
+
+**Update a saved view.** A `*` after a lens name means its settings have changed.
+Open `Q` to see which ones. Then open Named Lenses with `\`, select the lens,
+press `Space`, and choose `Replace from current view`. Check the change summary
+before confirming. This replaces the saved settings and cannot be undone with
+`u`. See [named lenses](search-and-lenses.md#named-lenses).

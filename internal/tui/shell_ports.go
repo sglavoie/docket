@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"slices"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -101,6 +102,21 @@ func (m *AppModel) CommitMachine(machine *config.MachineState) error {
 		return nil
 	}
 	return m.domain.runtime.CommitMachine(machine)
+}
+
+// commitSearchHistory uses the same machine-local domain as chrome preferences.
+// Only accepted queries cross this boundary, never a search draft or view state.
+func (m *AppModel) commitSearchHistory(entries []string) error {
+	machine := m.Machine()
+	if machine == nil {
+		return errors.New("machine-local search history is unavailable")
+	}
+	if slices.Equal(machine.SearchHistory, entries) {
+		return nil
+	}
+	next := machine.Clone()
+	next.SearchHistory = slices.Clone(entries)
+	return m.CommitMachine(next)
 }
 
 // registerFilterOperations, registerSortOperations, and registerLensOperations

@@ -214,6 +214,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		menuEntrySpec{OperationID: operation.OperationCoreClearFolds},
 		menuEntrySpec{OperationID: operation.OperationCorePeek, Label: "Peek"},
 		menuEntrySpec{OperationID: operation.OperationCoreQueryReadout},
+		menuEntrySpec{OperationID: operation.OperationCoreClearSearchHistory},
 		menuSeparator(),
 		menuEntrySpec{OperationID: operation.OperationCoreToggleTheme, Label: "Theme"},
 		menuEntrySpec{

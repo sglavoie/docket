@@ -9,7 +9,31 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
+
+// ReplacementDetails compares the selected saved lens with the view that will
+// replace it. It also works when the selected lens is not the active one.
+func (c *Controller) ReplacementDetails(shell Shell, targets operation.ResolvedOperationTargets) (string, error) {
+	entities := targets.Entities()
+	if len(entities) != 1 || shell.Outliner() == nil {
+		return "", fmt.Errorf("lens replacement needs one lens and the current view")
+	}
+	saved, err := c.ResolveLensTarget(shell, entities[0])
+	if err != nil {
+		return "", err
+	}
+	state, err := outliner.LensStateFromNamedLens(saved)
+	if err != nil {
+		return "", err
+	}
+	changed := shell.Outliner().CaptureLensState().ChangedAxes(state)
+	detail := "No saved settings change"
+	if len(changed) > 0 {
+		detail = "Changed: " + strings.Join(changed, ", ")
+	}
+	return saved.Name + "\n" + detail, nil
+}
 
 // Named lens definitions are portable: they live in the synced
 // .tt/lenses.json, and only the active-lens pointer stays machine-local. This
@@ -142,6 +166,11 @@ func (c *Controller) RegisterLensOperations(shell Shell) error {
 			// Machine-local state lives outside the synced workspace set, so no
 			// workspace transaction is opened for any of these.
 			DelegateTransaction: true,
+		}
+		if descriptor.ID == lens.OperationLensReplace {
+			binding.ConfirmationDetails = func(invocation operation.OperationInvocation) (string, error) {
+				return c.ReplacementDetails(shell, invocation.Targets)
+			}
 		}
 		if descriptor.TargetCardinality == operation.TargetCardinalityNone {
 			handler := c.zeroTargetLensHandler(shell, descriptor.ID)
