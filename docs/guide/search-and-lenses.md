@@ -206,9 +206,12 @@ shorthand, autocomplete, and pickers stay case-insensitive.
 The input remembers the queries you submitted. Inside the `/` box, `↑` walks
 back through them newest first and `↓` walks forward again, ending on whatever
 you had half-typed when the walk started, so reaching for an earlier query never
-costs the one in your hands. Each distinct query is held once however often you
+costs the one in your hands. When the box contains text, both arrows visit
+only queries beginning with that exact, case-sensitive prefix; an empty box
+browses every query. A prefix with no matches leaves the input unchanged.
+Each distinct query is held once however often you
 submit it, only a submitted query joins the ring — one abandoned with `Esc` does
-not — and typing ends the walk, so the next `↑` starts from the newest again.
+not — and typing ends the walk, so the next `↑` starts from the newest match for the edited prefix.
 The ring is session-only and written nowhere: it survives closing and reopening
 the input, and a relaunch starts empty. A query worth keeping is a lens. While
 the suggestion pane is open — up to ten rows, fewer on a short terminal so the

@@ -2,8 +2,11 @@ package status
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 func TestFormatUndoRedoRestoreErrorMessageExplainsFailureKind(t *testing.T) {
@@ -16,13 +19,13 @@ func TestFormatUndoRedoRestoreErrorMessageExplainsFailureKind(t *testing.T) {
 		{
 			name:     "empty undo history",
 			label:    "undo",
-			err:      errors.New("no undo history available"),
+			err:      storage.ErrNoUndoHistory,
 			contains: []string{"Undo failed", "no undo history"},
 		},
 		{
 			name:     "empty redo history",
 			label:    "redo",
-			err:      errors.New("no redo history available"),
+			err:      storage.ErrNoRedoHistory,
 			contains: []string{"Redo failed", "no redo history"},
 		},
 		{
@@ -48,5 +51,18 @@ func TestFormatUndoRedoRestoreErrorMessageExplainsFailureKind(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestExhaustedHistoryUsesErrorIdentity(t *testing.T) {
+	for _, err := range []error{storage.ErrNoUndoHistory, fmt.Errorf("restore refused: %w", storage.ErrNoRedoHistory)} {
+		if !IsExhaustedHistory(err) {
+			t.Fatalf("did not recognize exhausted history: %v", err)
+		}
+	}
+	for _, err := range []error{nil, errors.New("no undo history available"), errors.New("checking history available: disk failure")} {
+		if IsExhaustedHistory(err) {
+			t.Fatalf("classified unrelated failure as exhausted history: %v", err)
+		}
 	}
 }

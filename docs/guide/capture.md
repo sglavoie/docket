@@ -28,7 +28,10 @@ validated before one atomic transaction is committed.
   Capture suggests existing contexts across the same available projects as
   tags, including when capturing into Unfiled or routing with `%project`.
   The preview shows the normalized value as `Context ##office`; the compact
-  preview carries the same `##office` token.
+  preview carries the same `##office` token. Tags and contexts absent from
+  their autocomplete vocabulary carry a muted `(new)` marker in either preview,
+  such as `#billing (new)` or `##offcie (new)`. The marker is informational:
+  it neither corrects the value nor adds a confirmation step.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
 - `@@defer` hides the task until an instant rather than a day, so it also
@@ -176,7 +179,11 @@ accept them; accepting one inserts only the original date token.
 With multiple tasks, the preview starts with the task count and source
 line number (`3 tasks · Line 2`) and shows only the line under the cursor.
 Moving between lines updates it; a blank line shows just the count and line
-number. The route row still summarizes the whole batch, including mixed routes.
+number. Before submission, the summary also counts lines the submit parser
+rejects: `3 tasks · Line 2 · 1 line needs attention`. This count updates as
+you edit, without moving the caret or showing submission refusals; Enter still
+validates the whole batch and focuses its first invalid line. Blank lines do
+not count as tasks or errors. The route row still summarizes the whole batch, including mixed routes.
 Long batches keep room for the count and a compact preview while the input
 scrolls; errors retain priority. Autocomplete and `?` syntax help borrow
 those rows while they are open, and the guide takes the whole screen for as long

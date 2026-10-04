@@ -142,7 +142,8 @@ type TaskComposerModel struct {
 	SubmissionInFlight bool
 	// Once a submit has failed, edits keep its line diagnostics current without
 	// moving the caret or issuing another capture request.
-	validateOnEdit bool
+	validateOnEdit    bool
+	batchInvalidLines int
 	chrome.DiscardConfirmState
 }
 
@@ -182,6 +183,7 @@ func (m *TaskComposerModel) initCompactInput() {
 	// draft and refusals ask for: a seeded line and a preset with no project
 	// both open at the size they will be rendered at rather than at a literal
 	// the first frame would have to correct.
+	m.refreshBatchDiagnostics()
 	m.syncInputHeight()
 }
 
@@ -322,9 +324,12 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskComposerModel) refreshCaptureErrorsAfterEdit(before string, projectBefore *models.Project) {
-	if m.Mode == ComposerCompact && m.validateOnEdit &&
+	if m.Mode == ComposerCompact &&
 		(m.Input.Value() != before || m.Preset.Project != projectBefore) {
-		m.ParseCompactLines()
+		m.refreshBatchDiagnostics()
+		if m.validateOnEdit {
+			m.ParseCompactLines()
+		}
 		m.syncInputHeight()
 	}
 }
@@ -378,10 +383,26 @@ func (m *TaskComposerModel) focusFirstCaptureError() {
 }
 
 func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
-	m.Errors = nil
+	reqs, lineErrors := m.parseCompactLines()
+	m.Errors = lineErrors
+	return reqs, len(lineErrors) == 0
+}
+
+// Live batch feedback uses the submit parser without publishing refusals or
+// moving the caret. Rendering and layout only read the settled count.
+func (m *TaskComposerModel) refreshBatchDiagnostics() {
+	m.batchInvalidLines = 0
+	if m.nonblankLineCount() > 1 {
+		_, lineErrors := m.parseCompactLines()
+		m.batchInvalidLines = len(lineErrors)
+	}
+}
+
+func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []grammar.LineError) {
+	var lineErrors []grammar.LineError
 	if m.Preset.Project == nil {
-		m.Errors = []grammar.LineError{{Line: 1, Message: "project is unavailable"}}
-		return nil, false
+		lineErrors = []grammar.LineError{{Line: 1, Message: "project is unavailable"}}
+		return nil, lineErrors
 	}
 
 	lines := strings.Split(m.Input.Value(), "\n")
@@ -393,11 +414,11 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 		}
 		parsed, err := grammar.ParseQuickCapture(line, m.Preset.Project, m.Preset.AllProjects, !m.Preset.AllowProjectSwitch)
 		if err != nil {
-			m.Errors = append(m.Errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
+			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 			continue
 		}
 		if err := models.ValidateTaskTitle(parsed.Title); err != nil {
-			m.Errors = append(m.Errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
+			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 			continue
 		}
 
@@ -406,7 +427,7 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 			target = m.projectByID(*parsed.TargetProjectID)
 		}
 		if target == nil {
-			m.Errors = append(m.Errors, grammar.LineError{Line: idx + 1, Message: "target project is unavailable"})
+			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: "target project is unavailable"})
 			continue
 		}
 
@@ -452,20 +473,20 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 		}
 		if parentID != nil {
 			if err := validateComposerParent(target, *parentID); err != nil {
-				m.Errors = append(m.Errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
+				lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 				continue
 			}
 		}
 		reqs = append(reqs, req)
 	}
 
-	if len(reqs) == 0 && len(m.Errors) == 0 {
-		m.Errors = []grammar.LineError{{Line: 1, Message: "no tasks to create"}}
+	if len(reqs) == 0 && len(lineErrors) == 0 {
+		lineErrors = []grammar.LineError{{Line: 1, Message: "no tasks to create"}}
 	}
-	if len(m.Errors) > 0 {
-		return nil, false
+	if len(lineErrors) > 0 {
+		return nil, lineErrors
 	}
-	return reqs, true
+	return reqs, nil
 }
 
 // ParseCaptureText reads text exactly as the compact composer would on

@@ -117,11 +117,40 @@ func TestCapturePreviewGlyphIsTheRowsStateBadge(t *testing.T) {
 
 func TestCapturePreviewTagsWearTheirChips(t *testing.T) {
 	_, tags := previewRouteAndTags(t, "Tagged #alpha #beta")
-	want := theme.TagChipStyle("alpha").Render("#alpha") + " " + theme.TagChipStyle("beta").Render("#beta")
+	want := theme.TagChipStyle("alpha").Render("#alpha") + theme.MutedStyle.Render(" (new)") + " " + theme.TagChipStyle("beta").Render("#beta") + theme.MutedStyle.Render(" (new)")
 	if tags != want {
 		t.Fatalf("tags = %q, want %q", tags, want)
 	}
-	if ansi.Strip(tags) != "#alpha #beta" {
+	if ansi.Strip(tags) != "#alpha (new) #beta (new)" {
 		t.Fatalf("stripped tags = %q", ansi.Strip(tags))
+	}
+}
+
+func TestCapturePreviewMarksOnlyNewVocabulary(t *testing.T) {
+	home := &models.Project{ID: "home", Slug: "home", Name: "Home"}
+	work := &models.Project{ID: "work", Slug: "work", Name: "Work", Tasks: []*models.Task{
+		{Tags: []string{"Existing", "office"}, Context: "Office"},
+	}}
+	q := draftedCaptureInput(t, "Task #existing #fresh ##Office", home, []*models.Project{home, work}, false)
+	q.Width = 100
+	q.UpdatePreview()
+	for _, preview := range []string{q.renderPreview(), q.renderCompactPreview()} {
+		plain := ansi.Strip(preview)
+		if !strings.Contains(plain, "#fresh (new)") || strings.Contains(plain, "#existing (new)") || strings.Contains(plain, "##office (new)") {
+			t.Fatalf("incorrect vocabulary markers: %s", plain)
+		}
+	}
+	q.Input.SetValue("Task ##existing")
+	q.UpdatePreview()
+	if plain := ansi.Strip(q.renderPreview()); !strings.Contains(plain, "##existing (new)") {
+		t.Fatalf("a tag must not count as an existing context: %s", plain)
+	}
+	q.Input.SetValue("Task ##offcie")
+	q.UpdatePreview()
+	if plain := ansi.Strip(q.renderPreview()); !strings.Contains(plain, "##offcie (new)") {
+		t.Fatalf("misspelled context was not marked: %s", plain)
+	}
+	if q.Preview.Context != "offcie" {
+		t.Fatal("preview corrected the literal context")
 	}
 }

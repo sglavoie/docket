@@ -168,15 +168,26 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		tagStrs := make([]string, len(q.Preview.Tags))
 		for i, t := range q.Preview.Tags {
 			tagStrs[i] = theme.TagChipStyle(t).Render(tagDefinition.Trigger + t)
+			tagStrs[i] += captureVocabularyMarker(t, q.TagCache)
 		}
 		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
 	}
 	if q.Preview.Context != "" {
 		contextDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
-		groups = append(groups, previewGroup{label: "Context", chunks: []string{contextDefinition.Trigger + q.Preview.Context}})
+		groups = append(groups, previewGroup{label: "Context", chunks: []string{contextDefinition.Trigger + q.Preview.Context + captureVocabularyMarker(q.Preview.Context, q.contextCache)}})
 	}
 
 	return groups, true
+}
+
+// The marker uses the autocomplete vocabulary; tags and contexts remain separate.
+func captureVocabularyMarker(value string, vocabulary []string) string {
+	for _, existing := range vocabulary {
+		if strings.EqualFold(value, existing) {
+			return ""
+		}
+	}
+	return theme.MutedStyle.Render(" (new)")
 }
 
 // captureDuePreview keeps the resolved weekday and clock visible before save.

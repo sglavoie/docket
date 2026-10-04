@@ -925,7 +925,8 @@ func (h *outlinerSearchHistory) resetRecall() {
 }
 
 // older steps one entry back and reports the query to install. The first step of
-// a walk sets the caller's current text aside as the draft. The oldest entry is
+// a walk sets the caller's current text aside as both draft and exact prefix.
+// Only entries beginning with that prefix are visited in either direction. The oldest entry is
 // a floor: pressing Up there reports nothing rather than wrapping, because a
 // wrap would silently hand back the newest query as if it were older.
 func (h *outlinerSearchHistory) older(current string) (string, bool) {
@@ -936,11 +937,13 @@ func (h *outlinerSearchHistory) older(current string) (string, bool) {
 		h.draft = current
 		h.index = len(h.entries)
 	}
-	if h.index == 0 {
-		return "", false
+	for i := h.index - 1; i >= 0; i-- {
+		if strings.HasPrefix(h.entries[i], h.draft) {
+			h.index = i
+			return h.entries[i], true
+		}
 	}
-	h.index--
-	return h.entries[h.index], true
+	return "", false
 }
 
 // newer steps one entry forward, ending on the draft the walk set aside. Down
@@ -949,13 +952,15 @@ func (h *outlinerSearchHistory) newer() (string, bool) {
 	if h == nil || h.index >= len(h.entries) {
 		return "", false
 	}
-	h.index++
-	if h.index == len(h.entries) {
-		draft := h.draft
-		h.draft = ""
-		return draft, true
+	for i := h.index + 1; i < len(h.entries); i++ {
+		if strings.HasPrefix(h.entries[i], h.draft) {
+			h.index = i
+			return h.entries[i], true
+		}
 	}
-	return h.entries[h.index], true
+	draft := h.draft
+	h.resetRecall()
+	return draft, true
 }
 
 // recordSearchHistoryEntry retains a query the user submitted with Enter.

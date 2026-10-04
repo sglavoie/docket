@@ -24,10 +24,12 @@ func TestSearchHistoryRecallsSubmittedQueriesNewestFirst(t *testing.T) {
 	outliner := searchHistoryOutliner()
 	for _, query := range []string{"alpha", "beta", "gamma"} {
 		outliner.ActivateSearch()
+		outliner.SetSearchInputValue("")
 		submitSearchQuery(outliner, query)
 	}
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	for _, want := range []string{"gamma", "beta", "alpha"} {
 		pressSearchKey(outliner, tea.KeyUp)
 		if got := outliner.SearchInputValue(); got != want {
@@ -60,20 +62,21 @@ func TestSearchHistoryRestoresTheDraftAtTheNewestEnd(t *testing.T) {
 	submitSearchQuery(outliner, "alpha")
 
 	outliner.ActivateSearch()
-	outliner.SetSearchInputValue("half typ")
-	outliner.SetSearchInputCursor(len("half typ"))
+	outliner.SetSearchInputValue("")
+	outliner.SetSearchInputValue("al")
+	outliner.SetSearchInputCursor(len("al"))
 
 	pressSearchKey(outliner, tea.KeyUp)
 	if got := outliner.SearchInputValue(); got != "alpha" {
 		t.Fatalf("recalled %q, want alpha", got)
 	}
 	pressSearchKey(outliner, tea.KeyDown)
-	if got := outliner.SearchInputValue(); got != "half typ" {
-		t.Fatalf("draft restored as %q, want %q", got, "half typ")
+	if got := outliner.SearchInputValue(); got != "al" {
+		t.Fatalf("draft restored as %q, want %q", got, "al")
 	}
 	// Down outside a walk reports nothing, so it can never clear the input.
 	pressSearchKey(outliner, tea.KeyDown)
-	if got := outliner.SearchInputValue(); got != "half typ" {
+	if got := outliner.SearchInputValue(); got != "al" {
 		t.Fatalf("Down outside a walk changed the input to %q", got)
 	}
 }
@@ -85,6 +88,7 @@ func TestSearchHistoryRecordsOnlySubmittedQueries(t *testing.T) {
 	pressSearchKey(outliner, tea.KeyEscape)
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	pressSearchKey(outliner, tea.KeyUp)
 	if got := outliner.SearchInputValue(); got != "" {
 		t.Fatalf("an abandoned query was recalled as %q", got)
@@ -124,12 +128,14 @@ func TestSearchHistoryHoldsEachQueryOnceAndStaysBounded(t *testing.T) {
 // from wherever the abandoned walk had reached.
 func TestSearchHistoryTypingEndsTheWalk(t *testing.T) {
 	outliner := searchHistoryOutliner()
-	for _, query := range []string{"alpha", "beta"} {
+	for _, query := range []string{"alphax new", "alpha", "beta"} {
 		outliner.ActivateSearch()
+		outliner.SetSearchInputValue("")
 		submitSearchQuery(outliner, query)
 	}
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	pressSearchKey(outliner, tea.KeyUp)
 	pressSearchKey(outliner, tea.KeyUp)
 	if got := outliner.SearchInputValue(); got != "alpha" {
@@ -137,8 +143,8 @@ func TestSearchHistoryTypingEndsTheWalk(t *testing.T) {
 	}
 	outliner.HandleKeyMsg(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	pressSearchKey(outliner, tea.KeyUp)
-	if got := outliner.SearchInputValue(); got != "beta" {
-		t.Fatalf("after typing, Up recalled %q, want the newest query beta", got)
+	if got := outliner.SearchInputValue(); got != "alphax new" {
+		t.Fatalf("after typing, Up recalled %q, want the newest matching query alphax new", got)
 	}
 }
 
@@ -147,15 +153,18 @@ func TestSearchHistoryReopeningResetsThePositionButKeepsTheRing(t *testing.T) {
 	outliner := searchHistoryOutliner()
 	for _, query := range []string{"alpha", "beta"} {
 		outliner.ActivateSearch()
+		outliner.SetSearchInputValue("")
 		submitSearchQuery(outliner, query)
 	}
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	pressSearchKey(outliner, tea.KeyUp)
 	pressSearchKey(outliner, tea.KeyUp)
 	pressSearchKey(outliner, tea.KeyEscape)
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	pressSearchKey(outliner, tea.KeyUp)
 	if got := outliner.SearchInputValue(); got != "beta" {
 		t.Fatalf("reopened walk started at %q, want the newest query beta", got)
@@ -184,9 +193,10 @@ func TestSearchHistoryIsSessionOnly(t *testing.T) {
 // without either borrowing the other's keys.
 func TestSearchHistoryYieldsUpAndDownToAnOpenSuggestionPane(t *testing.T) {
 	outliner := searchHistoryOutliner()
-	submitSearchQuery(outliner, "alpha")
+	submitSearchQuery(outliner, "$doing")
 
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	outliner.SetSearchInputValue("$")
 	outliner.SetSearchInputCursor(1)
 	outliner.RefreshSearchAutocomplete()
@@ -204,8 +214,8 @@ func TestSearchHistoryYieldsUpAndDownToAnOpenSuggestionPane(t *testing.T) {
 		t.Fatal("Esc left the suggestion pane open")
 	}
 	pressSearchKey(outliner, tea.KeyUp)
-	if got := outliner.SearchInputValue(); got != "alpha" {
-		t.Fatalf("after the pane closed, Up recalled %q, want alpha", got)
+	if got := outliner.SearchInputValue(); got != "$doing" {
+		t.Fatalf("after the pane closed, Up recalled %q, want $doing", got)
 	}
 }
 
@@ -222,11 +232,42 @@ func TestSearchHistoryGuidanceAppearsOnlyWithEntries(t *testing.T) {
 
 	submitSearchQuery(outliner, "alpha")
 	outliner.ActivateSearch()
+	outliner.SetSearchInputValue("")
 	spec, ok = outliner.ContextualGuidance()
 	if !ok {
 		t.Fatal("search mode produced no guidance after a submission")
 	}
 	if labels := guidanceHintLabels(spec); !strings.Contains(labels, "↑/↓ recall query") {
 		t.Fatalf("recall is not advertised: %s", labels)
+	}
+}
+
+func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
+	var h outlinerSearchHistory
+	for _, query := range []string{"invoice old", "other", "invoice new", "Invoice upper", "unrelated"} {
+		h.record(query)
+	}
+	for _, want := range []string{"invoice new", "invoice old"} {
+		if got, ok := h.older("invoice"); !ok || got != want {
+			t.Fatalf("older = %q, %v; want %q", got, ok, want)
+		}
+	}
+	if _, ok := h.older("invoice old"); ok {
+		t.Fatal("walk wrapped past its oldest matching entry")
+	}
+	for _, want := range []string{"invoice new", "invoice"} {
+		if got, ok := h.newer(); !ok || got != want {
+			t.Fatalf("newer = %q, %v; want %q", got, ok, want)
+		}
+	}
+	if _, ok := h.older("missing"); ok {
+		t.Fatal("unmatched prefix recalled an unrelated query")
+	}
+	if _, ok := h.newer(); ok {
+		t.Fatal("Down changed a draft after an unmatched recall")
+	}
+	h.resetRecall()
+	if got, ok := h.older("Invoice"); !ok || got != "Invoice upper" {
+		t.Fatalf("case-sensitive recall = %q, %v", got, ok)
 	}
 }

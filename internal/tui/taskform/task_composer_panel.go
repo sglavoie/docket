@@ -336,7 +336,13 @@ func (m *TaskComposerModel) renderComposerPanelPane(rows int) string {
 
 func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 	if count := m.nonblankLineCount(); count > 1 {
-		summary := theme.MutedStyle.Render(fmt.Sprintf("%d tasks · Line %d", count, m.Input.Line()+1))
+		summaryText := fmt.Sprintf("%d tasks · Line %d", count, m.Input.Line()+1)
+		if m.batchInvalidLines == 1 {
+			summaryText += " · 1 line needs attention"
+		} else if m.batchInvalidLines > 1 {
+			summaryText += fmt.Sprintf(" · %d lines need attention", m.batchInvalidLines)
+		}
+		summary := theme.MutedStyle.Render(summaryText)
 		if rows <= 1 || m.previewRepeatsRefusal() {
 			return summary
 		}

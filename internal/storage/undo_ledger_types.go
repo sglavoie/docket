@@ -1,9 +1,16 @@
 package storage
 
 import (
+	"errors"
 	"time"
 
 	"github.com/sglavoie/tt/internal/transaction"
+)
+
+// Empty history is an ordinary outcome, distinct from an unreadable ledger.
+var (
+	ErrNoUndoHistory = errors.New("no undo history available")
+	ErrNoRedoHistory = errors.New("no redo history available")
 )
 
 // UndoLedgerSchemaVersion is stamped into every persisted ledger file. A file

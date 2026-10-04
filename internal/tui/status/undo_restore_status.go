@@ -6,12 +6,14 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // IsExhaustedHistory reports a restore refused only because the ledger holds
 // nothing further in that direction, which is an answer rather than a failure.
 func IsExhaustedHistory(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "history available")
+	return errors.Is(err, storage.ErrNoUndoHistory) || errors.Is(err, storage.ErrNoRedoHistory)
 }
 
 // NothingToRestoreCmd is that answer, spoken quietly on every surface.
@@ -35,7 +37,7 @@ func formatUndoRedoRestoreErrorMessage(label string, err error) string {
 	detail := strings.ToLower(err.Error())
 
 	switch {
-	case strings.Contains(detail, "no "+label+" history available"):
+	case IsExhaustedHistory(err):
 		return fmt.Sprintf("%s failed: no %s history is available for this workspace", action, label)
 	case strings.Contains(detail, "diverged") || strings.Contains(detail, "does not match"):
 		return fmt.Sprintf("%s failed: grouped history diverged; restore aborted: %s", action, err)

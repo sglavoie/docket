@@ -720,3 +720,50 @@ func TestMultilineCapturePreviewFollowsCaretAndSurvivesResize(t *testing.T) {
 		t.Fatalf("preview changed capture semantics: %+v, %+v", reqs, composer.Errors)
 	}
 }
+
+func TestTaskComposerLiveBatchDiagnosticsPreserveDraftAndCaret(t *testing.T) {
+	project := &models.Project{ID: "project", Slug: "project", Name: "Project"}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Project: project, AllowProjectSwitch: true,
+		InitialText: "First task\n\n!1\nLast task",
+	}, nil)
+	composer.SetSize(60, 18)
+	if got := ansi.Strip(composer.renderComposerPanelPreview(2)); !strings.Contains(got, "3 tasks · Line 4 · 1 line needs attention") {
+		t.Fatalf("missing live diagnosis: %s", got)
+	}
+	if len(composer.Errors) != 0 || composer.validateOnEdit || composer.SubmissionInFlight {
+		t.Fatal("live diagnosis published a submit refusal or submitted the draft")
+	}
+	before, line, column := composer.Input.Value(), composer.Input.Line(), composer.Input.Column()
+	composer.View()
+	if composer.Input.Value() != before || composer.Input.Line() != line || composer.Input.Column() != column {
+		t.Fatal("rendering live diagnostics changed the draft or caret")
+	}
+	// Editing another line adds a project-resolution error before any submit.
+	for _, r := range " %missing" {
+		composer.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if composer.batchInvalidLines != 2 {
+		t.Fatalf("live count = %d, want 2", composer.batchInvalidLines)
+	}
+	_, errs := composer.parseCompactLines()
+	if len(errs) != 2 || errs[0].Line != 3 || errs[1].Line != 4 {
+		t.Fatalf("submit diagnostics differ: %+v", errs)
+	}
+	for range len(" %missing") {
+		composer.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	}
+	if composer.batchInvalidLines != 1 {
+		t.Fatalf("correcting the draft left %d invalid lines", composer.batchInvalidLines)
+	}
+	composer.Input.MoveToBegin()
+	composer.Input.CursorDown()
+	composer.Input.CursorDown()
+	composer.Input.CursorEnd()
+	for _, r := range " Valid title" {
+		composer.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if composer.batchInvalidLines != 0 || strings.Contains(ansi.Strip(composer.renderComposerPanelPreview(2)), "needs attention") {
+		t.Fatal("fixed batch retained its warning")
+	}
+}

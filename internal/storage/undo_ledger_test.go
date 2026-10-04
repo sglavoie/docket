@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -277,5 +278,23 @@ func TestWorkspaceLedger_ArtifactRootScopeOutOfOrder(t *testing.T) {
 	}
 	if got := readFile(t, notePath); got != "note after" {
 		t.Fatalf("note after redo = %q, want note after", got)
+	}
+}
+
+func TestWorkspaceLedgerEmptyHistoryIdentityAcrossScopes(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	for _, scope := range []LedgerScope{
+		GlobalScope(), {ProjectID: "project"}, {ArtifactRoot: root}, {ProjectID: "project", ArtifactRoot: root},
+	} {
+		if _, err := ledger.Undo(scope); !errors.Is(err, ErrNoUndoHistory) {
+			t.Fatalf("Undo(%+v) = %v, want empty undo history", scope, err)
+		}
+		if _, err := ledger.Redo(scope); !errors.Is(err, ErrNoRedoHistory) {
+			t.Fatalf("Redo(%+v) = %v, want empty redo history", scope, err)
+		}
+	}
+	writeFile(t, ledger.ledgerPath(), "invalid JSON")
+	if _, err := ledger.Undo(GlobalScope()); err == nil || errors.Is(err, ErrNoUndoHistory) {
+		t.Fatalf("corrupt ledger should be a real failure, got %v", err)
 	}
 }

@@ -59,15 +59,19 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 		}
 		entry, idx, ok := selectNewest(source, scope)
 		if !ok {
+			historyErr := ErrNoUndoHistory
+			if redo {
+				historyErr = ErrNoRedoHistory
+			}
 			switch {
 			case scope.ProjectID != "" && scope.ArtifactRoot != "":
-				return fmt.Errorf("no %s history available for project %q under artifact root %q", label, scope.ProjectID, scope.ArtifactRoot)
+				return fmt.Errorf("%w for project %q under artifact root %q", historyErr, scope.ProjectID, scope.ArtifactRoot)
 			case scope.ProjectID != "":
-				return fmt.Errorf("no %s history available for project %q", label, scope.ProjectID)
+				return fmt.Errorf("%w for project %q", historyErr, scope.ProjectID)
 			case scope.ArtifactRoot != "":
-				return fmt.Errorf("no %s history available for artifact root %q", label, scope.ArtifactRoot)
+				return fmt.Errorf("%w for artifact root %q", historyErr, scope.ArtifactRoot)
 			}
-			return fmt.Errorf("no %s history available", label)
+			return historyErr
 		}
 
 		var directoryLockPaths []string
