@@ -58,7 +58,7 @@ func lensTemplateListSource(machine *config.MachineState) listsurface.ListSource
 	})
 	items := make([]listsurface.ListItem, 0, len(templates))
 	for _, template := range templates {
-		summary := lens.NamedLensSummary(template)
+		summary := lens.NamedLensSummary(template, nil)
 		item := listsurface.ListItem{
 			ID:            TemplateItemID(template.ID),
 			PrimaryText:   template.Name,

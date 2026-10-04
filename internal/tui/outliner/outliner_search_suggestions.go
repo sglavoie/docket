@@ -881,9 +881,10 @@ const outlinerSearchHistoryLimit = 50
 // the text the user had typed when the walk started, so stepping back down past
 // the newest entry returns what they were writing rather than an empty input.
 type outlinerSearchHistory struct {
-	entries []string
-	index   int
-	draft   string
+	entries     []string
+	index       int
+	draft       string
+	draftCursor int // rune position to restore when returning to the draft
 }
 
 // record appends a submitted query. An earlier identical entry is removed rather
@@ -922,6 +923,7 @@ func (h *outlinerSearchHistory) resetRecall() {
 	}
 	h.index = len(h.entries)
 	h.draft = ""
+	h.draftCursor = 0
 }
 
 // older steps one entry back and reports the query to install. The first step of
@@ -929,12 +931,13 @@ func (h *outlinerSearchHistory) resetRecall() {
 // Only entries beginning with that prefix are visited in either direction. The oldest entry is
 // a floor: pressing Up there reports nothing rather than wrapping, because a
 // wrap would silently hand back the newest query as if it were older.
-func (h *outlinerSearchHistory) older(current string) (string, bool) {
+func (h *outlinerSearchHistory) older(current string, cursor int) (string, bool) {
 	if h == nil || len(h.entries) == 0 {
 		return "", false
 	}
 	if h.index >= len(h.entries) {
 		h.draft = current
+		h.draftCursor = cursor
 		h.index = len(h.entries)
 	}
 	for i := h.index - 1; i >= 0; i-- {
@@ -984,9 +987,10 @@ func (m *OutlinerModel) recallSearchHistory(key string) bool {
 		value string
 		ok    bool
 	)
+	draftCursor := m.Search.history.draftCursor
 	switch key {
 	case "up":
-		value, ok = m.Search.history.older(m.SearchInputValue())
+		value, ok = m.Search.history.older(m.SearchInputValue(), m.SearchInputCursor())
 	case "down":
 		value, ok = m.Search.history.newer()
 	default:
@@ -996,6 +1000,9 @@ func (m *OutlinerModel) recallSearchHistory(key string) bool {
 		return false
 	}
 	m.applyRecalledSearchQuery(value)
+	if key == "down" && m.Search.history.index == len(m.Search.history.entries) {
+		m.SetSearchInputCursor(draftCursor)
+	}
 	return true
 }
 

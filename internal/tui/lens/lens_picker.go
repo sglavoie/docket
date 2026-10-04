@@ -2,6 +2,7 @@ package lens
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -96,6 +97,7 @@ type NamedLensActionsRequestMsg struct {
 // diverged, and a summary of the view the Save row would capture.
 type NamedLensPickerSnapshot struct {
 	Lenses         config.NamedLensList
+	ProjectSlugs   map[string]string // project ID to slug, including parked and archived projects
 	ActiveID       string
 	Modified       bool
 	CurrentSummary string
@@ -166,6 +168,7 @@ func (model *NamedLensPickerModel) Refresh(snapshot NamedLensPickerSnapshot) err
 func (model *NamedLensPickerModel) adopt(snapshot NamedLensPickerSnapshot) {
 	model.snapshot = NamedLensPickerSnapshot{
 		Lenses:         snapshot.Lenses.Clone(),
+		ProjectSlugs:   maps.Clone(snapshot.ProjectSlugs),
 		ActiveID:       snapshot.ActiveID,
 		Modified:       snapshot.Modified,
 		CurrentSummary: snapshot.CurrentSummary,

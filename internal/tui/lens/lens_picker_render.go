@@ -93,7 +93,10 @@ func (model *NamedLensPickerModel) StateLine() string {
 	case len(model.sorted) == 0:
 		return "No saved lenses yet — save this view or add a built-in."
 	case model.Listed == 0:
-		return "No matching lenses — Esc clears the search."
+		if model.Searching {
+			return "No matching lenses — Esc clears the search."
+		}
+		return "No matching lenses — / edits the search."
 	default:
 		return ""
 	}
@@ -154,13 +157,20 @@ func (model *NamedLensPickerModel) GuidanceSpec() chrome.GuidanceSpec {
 }
 
 // NamedLensSummary renders one saved definition as a single compact line: the
-// mode it opens, the canonical clauses it narrows with, whatever prose the
+// mode and project it opens, the canonical clauses it narrows with, whatever prose the
 // canonical vocabulary cannot spell, and the manual sort it restores. An axis
 // left at its default contributes nothing, because a summary that names every
 // axis names nothing.
-func NamedLensSummary(lens config.NamedLens) string {
+func NamedLensSummary(lens config.NamedLens, projectSlugs map[string]string) string {
 	parts := make([]string, 0, 12)
 	parts = append(parts, namedLensModeLabel(lens.Mode))
+	if lens.Scope != "" {
+		slug := projectSlugs[lens.Scope]
+		if slug == "" {
+			slug = lens.Scope + " (unavailable)"
+		}
+		parts = append(parts, "Project: "+slug)
+	}
 	facets, remainder := models.PartitionQueryString(lens.Query)
 	// The clauses are rendered by the shared chip renderer, so a saved lens and
 	// the live filter chips spell the same narrowing with the same characters.

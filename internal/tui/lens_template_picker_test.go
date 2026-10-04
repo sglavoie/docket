@@ -88,7 +88,7 @@ func TestLensTemplateGalleryListsEveryTemplateAlphabetically(t *testing.T) {
 	}
 	for _, template := range config.BuiltinNamedLensTemplates() {
 		row := galleryRow(t, picker, template.ID)
-		summary := lens.NamedLensSummary(template)
+		summary := lens.NamedLensSummary(template, nil)
 		if row.SecondaryText != summary {
 			t.Errorf("%s secondary = %q, want %q", template.Name, row.SecondaryText, summary)
 		}

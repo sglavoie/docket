@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
@@ -67,6 +69,47 @@ func TestLensPickerOpensOnTheActiveLensAndMarksIt(t *testing.T) {
 }
 
 // --- navigation -------------------------------------------------------------
+
+func TestLensPickerDisplaysAndSearchesProjectScope(t *testing.T) {
+	model := lensOperationApp(t)
+	model.domain.runtime = testConfigWithProjects(&models.Project{ID: "project-id", Slug: "web", Name: "Website"})
+	model.domain.runtime.Machine().NamedLenses = config.NamedLensList{
+		{ID: "scoped", Name: "Planning", Mode: config.LensModeAll, Scope: "project-id"},
+		{ID: "unscoped", Name: "Everywhere", Mode: config.LensModeAll},
+	}
+	model.openNamedLensPicker()
+	pressLens(t, model, "/")
+	typeLens(t, model, "web")
+	want := []string{lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel, "Planning"}
+	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
+		t.Fatalf("scope search rows = %v, want %v", got, want)
+	}
+	items := model.lenses.Picker().Surface.Items()
+	if got := items[2].SecondaryText; !strings.Contains(got, "Project: web") {
+		t.Fatalf("scoped lens summary = %q", got)
+	}
+}
+
+func TestLensPickerEmptySearchGuidanceFollowsEditingState(t *testing.T) {
+	model := lensPickerApp(t)
+	pressLens(t, model, "/")
+	typeLens(t, model, "zzzzzzzz")
+	if got := model.lenses.Picker().StateLine(); got != "No matching lenses — Esc clears the search." {
+		t.Fatalf("editing guidance = %q", got)
+	}
+	pressLens(t, model, "enter")
+	if got := model.lenses.Picker().StateLine(); got != "No matching lenses — / edits the search." {
+		t.Fatalf("browsing guidance = %q", got)
+	}
+	pressLens(t, model, "/", "esc")
+	if model.lenses.Picker().Query != "" || model.lenses.Picker().Listed == 0 {
+		t.Fatal("following the guidance did not restore the lens list")
+	}
+	pressLens(t, model, "enter", "esc")
+	if model.lenses.Picker() != nil {
+		t.Fatal("Esc in browse mode did not close the picker")
+	}
+}
 
 func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 	model := lensPickerApp(t)

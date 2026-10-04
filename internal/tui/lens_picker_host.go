@@ -29,12 +29,16 @@ func (m *AppModel) namedLensPickerSnapshot() lens.NamedLensPickerSnapshot {
 		return snapshot
 	}
 	if m.domain.runtime != nil {
+		snapshot.ProjectSlugs = make(map[string]string)
+		for _, project := range m.domain.runtime.AllProjects() {
+			snapshot.ProjectSlugs[project.ID] = project.Slug
+		}
 		if machine := m.domain.runtime.Machine(); machine != nil {
 			snapshot.Lenses = machine.NamedLenses.Clone()
 		}
 	}
 	if out := m.crossOutliner; out != nil {
-		snapshot.CurrentSummary = lens.NamedLensSummary(out.CaptureLensState().NamedLens("", ""))
+		snapshot.CurrentSummary = lens.NamedLensSummary(out.CaptureLensState().NamedLens("", ""), snapshot.ProjectSlugs)
 		snapshot.Modified = out.LensModified()
 		snapshot.ActiveID = out.Lens.ActiveID()
 	}

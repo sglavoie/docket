@@ -27,7 +27,7 @@ func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 	listed := 0
 	model.Ordinals = model.Ordinals[:0]
 	for _, lens := range model.sorted {
-		if !namedLensMatchesQuery(lens, model.Query) {
+		if !namedLensMatchesQuery(lens, model.Query, model.snapshot.ProjectSlugs) {
 			continue
 		}
 		listed++
@@ -99,7 +99,7 @@ func namedLensPickerItem(
 		ID:            lensPickerItemID(lens.ID),
 		PrimaryText:   lens.Name,
 		PrimaryMarker: marker,
-		SecondaryText: NamedLensSummary(lens),
+		SecondaryText: NamedLensSummary(lens, snapshot.ProjectSlugs),
 		OperationIDs:  append([]operation.OperationID{OperationLensApply}, NamedLensActionSheetOperations...),
 		Data:          lens,
 	}
@@ -121,10 +121,10 @@ func lensPickerItemID(id string) listsurface.ListItemID {
 // namedLensMatchesQuery scores a saved lens against the picker's own query. The
 // summary participates so a search for "waiting" finds a lens whose facets say
 // waiting even when its name does not.
-func namedLensMatchesQuery(lens config.NamedLens, query string) bool {
+func namedLensMatchesQuery(lens config.NamedLens, query string, projectSlugs map[string]string) bool {
 	normalized := strings.Join(strings.Fields(query), " ")
 	if normalized == "" {
 		return true
 	}
-	return fuzzy.ScoreTerms(lens.Name+" "+NamedLensSummary(lens), normalized) != 0
+	return fuzzy.ScoreTerms(lens.Name+" "+NamedLensSummary(lens, projectSlugs), normalized) != 0
 }

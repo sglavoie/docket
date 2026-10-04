@@ -104,6 +104,44 @@ func TestSearchHistoryRecordsOnlySubmittedQueries(t *testing.T) {
 	}
 }
 
+func TestSearchHistoryRestoresDraftCaret(t *testing.T) {
+	for _, draft := range []string{"invoice", "café東京"} {
+		t.Run(draft, func(t *testing.T) {
+			outliner := searchHistoryOutliner()
+			for _, suffix := range []string{" old", " new"} {
+				outliner.ActivateSearch()
+				submitSearchQuery(outliner, draft+suffix)
+			}
+			outliner.ActivateSearch()
+			outliner.SetSearchInputValue(draft)
+			cursor := len([]rune(draft)) - 1
+			outliner.SetSearchInputCursor(cursor)
+			for _, suffix := range []string{" new", " old"} {
+				pressSearchKey(outliner, tea.KeyUp)
+				if got := outliner.SearchInputCursor(); got != len([]rune(draft+suffix)) {
+					t.Fatalf("recalled query caret = %d, want end", got)
+				}
+			}
+			pressSearchKey(outliner, tea.KeyDown)
+			pressSearchKey(outliner, tea.KeyDown)
+			if outliner.SearchInputValue() != draft || outliner.SearchInputCursor() != cursor {
+				t.Fatalf("restored %q at %d, want %q at %d", outliner.SearchInputValue(), outliner.SearchInputCursor(), draft, cursor)
+			}
+			outliner.HandleKeyMsg(tea.KeyPressMsg{Code: 'x', Text: "x"})
+			runes := []rune(draft)
+			want := string(runes[:cursor]) + "x" + string(runes[cursor:])
+			if got := outliner.SearchInputValue(); got != want {
+				t.Fatalf("typing after restore = %q, want %q", got, want)
+			}
+			pressSearchKey(outliner, tea.KeyUp)
+			pressSearchKey(outliner, tea.KeyDown)
+			if outliner.SearchInputValue() != want || outliner.SearchInputCursor() != cursor+1 {
+				t.Fatal("unsuccessful recall moved the edited draft or its caret")
+			}
+		})
+	}
+}
+
 func TestSearchHistoryHoldsEachQueryOnceAndStaysBounded(t *testing.T) {
 	var history outlinerSearchHistory
 	history.record("alpha")
@@ -248,11 +286,11 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 		h.record(query)
 	}
 	for _, want := range []string{"invoice new", "invoice old"} {
-		if got, ok := h.older("invoice"); !ok || got != want {
+		if got, ok := h.older("invoice", 7); !ok || got != want {
 			t.Fatalf("older = %q, %v; want %q", got, ok, want)
 		}
 	}
-	if _, ok := h.older("invoice old"); ok {
+	if _, ok := h.older("invoice old", 11); ok {
 		t.Fatal("walk wrapped past its oldest matching entry")
 	}
 	for _, want := range []string{"invoice new", "invoice"} {
@@ -260,14 +298,14 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 			t.Fatalf("newer = %q, %v; want %q", got, ok, want)
 		}
 	}
-	if _, ok := h.older("missing"); ok {
+	if _, ok := h.older("missing", 7); ok {
 		t.Fatal("unmatched prefix recalled an unrelated query")
 	}
 	if _, ok := h.newer(); ok {
 		t.Fatal("Down changed a draft after an unmatched recall")
 	}
 	h.resetRecall()
-	if got, ok := h.older("Invoice"); !ok || got != "Invoice upper" {
+	if got, ok := h.older("Invoice", 7); !ok || got != "Invoice upper" {
 		t.Fatalf("case-sensitive recall = %q, %v", got, ok)
 	}
 }

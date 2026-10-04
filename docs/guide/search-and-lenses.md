@@ -215,7 +215,8 @@ removal. If no single removal reveals matches, the general explanation remains.
 
 The input remembers the queries you submitted. Inside the `/` box, `↑` walks
 back through them newest first and `↓` walks forward again, ending on whatever
-you had half-typed when the walk started, so reaching for an earlier query never
+you had half-typed when the walk started, with its caret restored to the same
+position, so reaching for an earlier query never
 costs the one in your hands. When the box contains text, both arrows visit
 only queries beginning with that exact, case-sensitive prefix; an empty box
 browses every query. A prefix with no matches leaves the input unchanged.
@@ -391,6 +392,9 @@ filter you rebuild.
 
 The list opens on two action rows — `Save current view` and, directly beneath
 it, `Add built-in view` — followed by every saved lens in alphabetical order.
+Scoped lens previews include `Project: web`, using the project's current slug;
+an unavailable project keeps its stored ID with an `unavailable` label. Lenses
+without a saved scope leave that label out because they keep the current scope.
 The built-in gallery includes both Review Queue, which preserves the stored
 `=review` flag meaning, and Needs Review, which uses `?review` with the ordinary
 default ordering.
@@ -400,7 +404,7 @@ default ordering.
 | `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
 | `1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would; the digit is drawn in a column ahead of the row it names. Both action rows are unnumbered, and a narrowed list renumbers from one, so a digit always counts the saved rows on screen. A tenth saved lens carries no digit |
 | `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete. On either action row it says which key that row answers to instead |
-| `/` | Narrow the saved list by name; both action rows stay put while the saved rows filter. `Esc` clears the typed query, then leaves the search, then closes the picker |
+| `/` | Narrow the saved list by name or summary, including project scope; both action rows stay put while the saved rows filter. While editing, `Esc` clears the typed query, then leaves the search, then closes the picker. After `Enter` accepts the search, `/` edits it again and `Esc` closes the picker |
 | `Esc` | Close the picker without changing the view |
 
 Applying, saving, renaming, replacing, and deleting write the lens list alone,
