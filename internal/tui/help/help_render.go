@@ -49,22 +49,6 @@ var helpSectionOrder = []string{
 // reads as one rather than as a peer.
 const helpSectionOther = "Other"
 
-// helpAliasSuffix names the aliases a query matched, so a row whose label does
-// not contain the typed word still says why it is here. It is dropped whole
-// rather than truncated when the description column has no room for it: the
-// description is the row's answer and the aliases are its justification, and a
-// clipped justification reads as a clipped answer.
-func helpAliasSuffix(aliases []string, description string, descWidth int) string {
-	if len(aliases) == 0 {
-		return ""
-	}
-	suffix := " · " + strings.Join(aliases, ", ")
-	if lipgloss.Width(description)+lipgloss.Width(suffix) > descWidth {
-		return ""
-	}
-	return suffix
-}
-
 // helpSectionForItem names the section an item renders under. An item carrying
 // no category is a remainder, not a section of its own.
 func helpSectionForItem(item operation.HelpItem) string {
@@ -165,10 +149,10 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		if len(item.descPositions) > 0 {
 			description = textfit.HighlightText(description, item.descPositions, theme.NormalStyle)
 		}
-		descLines := textfit.WrapStyled(description, descWidth)
-		if suffix := helpAliasSuffix(item.matchedAliases, item.Description, descWidth); suffix != "" {
-			descLines[0] += theme.MutedStyle.Render(suffix)
+		if len(item.matchedAliases) > 0 {
+			description += theme.MutedStyle.Render(" · " + strings.Join(item.matchedAliases, ", "))
 		}
+		descLines := textfit.WrapStyled(description, descWidth)
 		var result strings.Builder
 		for i, line := range descLines {
 			if i == 0 {
@@ -219,17 +203,17 @@ func (m *HelpViewModel) renderContent() string {
 	return m.renderBySectionContent()
 }
 
-// tabBarLines returns the number of visual lines the tab bar occupies.
-func (m *HelpViewModel) tabBarLines() int {
-	return lipgloss.Height(m.renderHelpTabBar())
-}
-
 func (m *HelpViewModel) renderHelpTabBar() string {
 	return m.renderFullHelpTabBar()
 }
 
 func (m *HelpViewModel) renderFullHelpTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
+	if m.searchQuery != "" && len(m.tabMatchCounts) == len(tabNames) {
+		for i, count := range m.tabMatchCounts {
+			tabNames[i] = fmt.Sprintf("%s (%d)", tabNames[i], count)
+		}
+	}
 	return chrome.RenderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 

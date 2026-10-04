@@ -1,7 +1,9 @@
 package taskform
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -71,5 +73,26 @@ func TestCaptureCompletionsRewriteTheTokenAtTheCaret(t *testing.T) {
 	}
 	if set := CaptureCompletions(preset, nil, "Call bank"); set.Token != "" || set.Items != nil {
 		t.Fatalf("prose completed to %+v", set)
+	}
+}
+
+func TestDateCompletionExplainsTheDateWithoutInsertingTheLabel(t *testing.T) {
+	project := &models.Project{ID: "p1", Slug: "home", Name: "Home"}
+	preset := TaskComposerPreset{Kind: ComposerProject, Project: project}
+	set := CaptureCompletions(preset, nil, "Ship @fri")
+	if len(set.Items) == 0 {
+		t.Fatal("missing Friday completion")
+	}
+	for _, item := range set.Items {
+		if !strings.HasPrefix(item.Label, strings.TrimSpace(item.Insert)+" · Fri, ") {
+			t.Fatalf("date suggestion does not explain Friday: %+v", item)
+		}
+		reqs, errs := ParseCaptureText(preset, nil, "Ship "+item.Insert)
+		if len(errs) != 0 || len(reqs) != 1 || reqs[0].Title != "Ship" || reqs[0].Due == nil {
+			t.Fatalf("completion changed capture semantics: %+v, %+v", reqs, errs)
+		}
+		if reqs[0].Due.Weekday() != time.Friday || !strings.Contains(item.Label, reqs[0].Due.Format("Mon, Jan 2")) {
+			t.Fatalf("suggestion and saved date disagree: %+v, %v", item, reqs[0].Due)
+		}
 	}
 }

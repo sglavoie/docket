@@ -12,7 +12,7 @@ walk a single ladder, so on a task holding both children and a checklist `l`
 opens the children first and then the items, and `h` closes the items first and
 then the children. `h` on a checklist row returns to the owning task rather than
 folding anything, since the item is one rung below it. Checklists start
-collapsed, and the task row keeps its `1/3` progress badge either way.
+collapsed; Peek (`b`) shows checklist progress, such as `1/3`, either way.
 
 A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of

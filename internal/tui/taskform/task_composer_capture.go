@@ -85,19 +85,24 @@ func (m *TaskComposerModel) ExpandSingle() tea.Cmd {
 	return m.ExpandRequest(reqs[0])
 }
 
+// unsupportedExpansion names the first value the expanded form cannot carry.
+// Both the live hint and the request boundary use the same precedence.
+func unsupportedExpansion(adopts, defers, dependencies bool) string {
+	switch {
+	case adopts:
+		return "adopt children"
+	case defers:
+		return "defer tasks"
+	case dependencies:
+		return "set dependencies"
+	}
+	return ""
+}
+
 func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	// Refuse values the form has no channel for before changing presentation.
 	// Keep this at the request boundary so typed callers receive the same guard.
-	var unsupported string
-	switch {
-	case len(req.ChildIDs) > 0:
-		unsupported = "adopt children"
-	case req.DeferSet || req.Defer != nil:
-		unsupported = "defer tasks"
-	case len(req.Dependencies) > 0:
-		unsupported = "set dependencies"
-	}
-	if unsupported != "" {
+	if unsupported := unsupportedExpansion(len(req.ChildIDs) > 0, req.DeferSet || req.Defer != nil, len(req.Dependencies) > 0); unsupported != "" {
 		m.Errors = []grammar.LineError{{Line: max(req.SourceLine, 1), Message: "expanded mode cannot " + unsupported + "; submit the line with Enter instead"}}
 		return nil
 	}

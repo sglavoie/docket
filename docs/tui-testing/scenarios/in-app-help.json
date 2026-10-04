@@ -61,6 +61,17 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "assert": "view", "value": "Help" },
 
+    { "type": "key", "label": "search with category counts at minimum size", "key": "/" },
+    { "type": "text", "text": "defer" },
+    { "type": "assert", "assert": "contains", "value": "All (" },
+    { "type": "assert", "assert": "contains", "value": "Tasks (" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "All (" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "close help", "key": "?" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
   ]

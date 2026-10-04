@@ -171,7 +171,9 @@ section badges, the preview's state glyph the badge the new row will carry,
 and each tag its chip color; `Mixed`
 and `Unavailable` read muted. The deadline preview includes its resolved
 weekday and any clock time, adding the year when it differs from the current
-year. With multiple tasks, the preview starts with the task count and source
+year. Date suggestions also show the resolved weekday and date before you
+accept them; accepting one inserts only the original date token.
+With multiple tasks, the preview starts with the task count and source
 line number (`3 tasks · Line 2`) and shows only the line under the cursor.
 Moving between lines updates it; a blank line shows just the count and line
 number. The route row still summarizes the whole batch, including mixed routes.
@@ -185,7 +187,9 @@ the folds, and the Peek dock exactly as capture found them.
 Expansion carries `*pin` and `=review` into the Basics tab's Flags picker,
 where either can be changed before saving. A line carrying adopted children,
 a deferral, or dependencies cannot expand: the form has no fields for those
-values. It names the unsupported action and keeps the original draft intact;
+values. The `Ctrl+F` hint names the unsupported action while you type, or
+says `single task only` for a multiline batch. Pressing it still names the
+unsupported action and keeps the original draft intact;
 submit that line with `Enter` to keep all its attributes.
 
 A rejected submission moves the cursor to the start of the first invalid line

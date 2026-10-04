@@ -9,6 +9,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
@@ -107,5 +109,37 @@ func TestComposerExpansionRefusesUnsupportedFieldsWithoutLosingDraft(t *testing.
 				t.Fatalf("corrected draft did not expand: %+v", composer.Errors)
 			}
 		})
+	}
+}
+
+func TestComposerExpansionGuidanceFollowsDraftWithoutValidatingIt(t *testing.T) {
+	runtime, project := newTestRuntimeWithProject()
+	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, runtime)
+	for _, tc := range []struct{ draft, hint string }{
+		{"Ship @@tomorrow", "Ctrl+F cannot defer tasks"},
+		{"Ship ~missing", "Ctrl+F cannot set dependencies"},
+		{"Ship <missing", "Ctrl+F cannot adopt children"},
+		{"One\nTwo", "Ctrl+F single task only"},
+		{"Ship ;discuss @@tomorrow and ~dependency;", "Ctrl+F expand"},
+		{"Ship *pin =review", "Ctrl+F expand"},
+		{"", "Ctrl+F expand"},
+	} {
+		composer.Input.SetValue(tc.draft)
+		composer.Errors = []grammar.LineError{{Line: 2, Message: "existing refusal"}}
+		line, column := composer.Input.Line(), composer.Input.Column()
+		spec, _ := composer.ContextualGuidance()
+		found := false
+		for _, hint := range spec.Hints {
+			if hint.Key == "Ctrl+F" {
+				found = chrome.GuidanceHintText(hint) == tc.hint
+			}
+		}
+		if !found {
+			t.Fatalf("draft %q: missing %q in %+v", tc.draft, tc.hint, spec)
+		}
+		if composer.Input.Value() != tc.draft || composer.Input.Line() != line || composer.Input.Column() != column ||
+			len(composer.Errors) != 1 || composer.Errors[0].Message != "existing refusal" {
+			t.Fatalf("guidance mutated the draft or validation: %+v", composer.Errors)
+		}
 	}
 }

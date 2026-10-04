@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -263,7 +264,7 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100,
-			"Shift+Enter new line", "Ctrl+F expand",
+			"Shift+Enter new line", m.expansionHint(),
 		)...)
 		if m.Preset.AllowProjectSwitch && len(m.Preset.AllProjects) > 1 {
 			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(102, "Ctrl+P project")...)
@@ -273,6 +274,24 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	// that label and the route row under it states the destination, so a footer
 	// repeating either spends the row capture's own keys are read from.
 	return spec, true
+}
+
+func (m *TaskComposerModel) expansionHint() string {
+	if m.nonblankLineCount() > 1 {
+		return "Ctrl+F single task only"
+	}
+	// Read tokens without resolving references or validating a submission: a
+	// hint must not change errors, move the caret, or consume the draft.
+	parsed := textgrammar.Parse(m.Input.Value(), textgrammar.SurfaceCapture)
+	unsupported := unsupportedExpansion(
+		len(parsed.TokensFor(textgrammar.FieldChild)) > 0,
+		len(parsed.TokensFor(textgrammar.FieldDefer)) > 0,
+		len(parsed.TokensFor(textgrammar.FieldDependency)) > 0,
+	)
+	if unsupported != "" {
+		return "Ctrl+F cannot " + unsupported
+	}
+	return "Ctrl+F expand"
 }
 
 func (m *TaskComposerModel) HandledKeys() []string {

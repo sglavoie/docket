@@ -8,6 +8,7 @@
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "text", "label": "the double sigil defers at capture time", "text": "Sigil deferred intake @@+2h " },
     { "type": "assert", "assert": "contains", "value": "Schedule" },
+    { "type": "assert", "label": "the expansion limit is explained before pressing Ctrl+F", "assert": "contains", "value": "Ctrl+F cannot defer tasks" },
     { "type": "assert", "assert": "contains", "value": "@@" },
     { "type": "assert", "label": "a deferral routes the capture to Backlog", "assert": "contains", "value": "$backlog (deferred)" },
     { "type": "assert", "assert": "no_layout_issues" },

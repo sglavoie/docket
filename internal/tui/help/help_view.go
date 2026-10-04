@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -88,30 +89,22 @@ func (m *HelpViewModel) innerWidth() int {
 // SetSize sets the view dimensions.
 func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
+	m.height = height
 
 	viewportWidth := m.innerWidth()
 	if viewportWidth < 1 {
 		viewportWidth = 1
 	}
 
-	searchHeight := 0
-	if m.searchMode || m.searchQuery != "" {
-		searchHeight = 2
-	}
-	tabSearchHeight := 0
-	if m.tabSearchMode {
-		tabSearchHeight = 2
-	}
-	titleHeight := 1
 	statusBarHeight := 3 // blank line + divider + one browse-guidance row
 	if m.searchMode || m.tabSearchMode {
 		statusBarHeight++ // active input may use the two-row guidance budget
 	}
-	tabBarHeight := m.tabBarLines()
-	viewportHeight := height - titleHeight - tabBarHeight - searchHeight - tabSearchHeight - statusBarHeight
-	if viewportHeight < 5 {
-		viewportHeight = 5
-	}
+	// Counts can wrap the tabs onto extra rows, and themed input labels can
+	// wrap too. Measure the rendered header, excluding its trailing newline,
+	// rather than assuming either search field always occupies two rows.
+	headerHeight := lipgloss.Height(m.renderHelpHeader(m.renderHelpTabBar())) - 1
+	viewportHeight := max(height-headerHeight-statusBarHeight, 1)
 
 	if !m.ready {
 		m.viewport = viewport.New(viewport.WithWidth(viewportWidth), viewport.WithHeight(viewportHeight))
@@ -141,6 +134,13 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		// Search edits and category changes can change the header height without
+		// a terminal resize. Reflow after the new query and counts are installed.
+		defer func() {
+			if m.ready {
+				m.SetSize(m.width, m.height)
+			}
+		}()
 		if m.searchMode {
 			return m.updateSearchMode(msg)
 		}

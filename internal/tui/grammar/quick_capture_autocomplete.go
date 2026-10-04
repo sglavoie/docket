@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -135,10 +136,15 @@ func (q *QuickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
+	now := time.Now()
 	for _, value := range def.Values {
 		if partial == "" || strings.Contains(value, partialLower) {
+			display := def.Trigger + value
+			if due, err := ParseDueDateValue(value); err == nil {
+				display += " · " + captureDuePreview(due, now)
+			}
 			suggestions = append(suggestions, ACSuggestion{
-				Display: def.Trigger + value,
+				Display: display,
 				Value:   value,
 			})
 		}

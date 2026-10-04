@@ -145,3 +145,38 @@ func TestHelpTabSearchFallsBackToCaseInsensitiveMatch(t *testing.T) {
 		t.Fatalf("unmatchable tab = %d, want the All tab", m.activeTab)
 	}
 }
+
+func TestHelpCategoryCountsPredictEachTabIncludingCaseFallback(t *testing.T) {
+	m := NewHelpViewModel([]operation.HelpItem{
+		{Key: "e", Description: "Edit API task", Category: "Tasks"},
+		{Key: "g", Description: "Navigate api", Category: "Navigation"},
+		{Key: "n", Description: "Open notes", Category: "Notes"},
+	}, "Outliner")
+	m.searchQuery = "API"
+	m.filterItems()
+	counts := slices.Clone(m.tabMatchCounts)
+	for tab, count := range counts {
+		m.activeTab = tab
+		m.filterItems()
+		if len(m.filteredItems) != count {
+			t.Fatalf("tab %d promised %d matches, found %d", tab, count, len(m.filteredItems))
+		}
+	}
+	m.activeTab = slices.Index(m.categories, "Tasks") + 1
+	m.filterItems()
+	m.SetSize(60, 20)
+	bar := ansi.Strip(m.renderHelpTabBar())
+	for _, label := range []string{"All (1)", "Tasks (1)", "Navigation (1)", "Notes (0)"} {
+		if !strings.Contains(bar, label) {
+			t.Fatalf("missing %q in %s", label, bar)
+		}
+	}
+	if m.searchQuery != "API" || len(m.filteredItems) != 1 || m.filteredItems[0].Key != "e" {
+		t.Fatal("counts changed the active query or category")
+	}
+	m.searchQuery = ""
+	m.filterItems()
+	if strings.Contains(m.renderHelpTabBar(), "(") {
+		t.Fatal("clearing search retained match counts")
+	}
+}

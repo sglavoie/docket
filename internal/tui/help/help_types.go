@@ -50,8 +50,10 @@ type HelpViewModel struct {
 	// searchCaseRelaxed records that the filtered items came from a
 	// case-insensitive retry after the query's smart-case reading matched nothing.
 	searchCaseRelaxed    bool
-	otherCategoryMatches int // Matches available in All when this category has none.
+	otherCategoryMatches int   // Matches available in All when this category has none.
+	tabMatchCounts       []int // Search result counts, indexed like the category tabs.
 	width                int
+	height               int
 	viewName             string
 	ready                bool
 	activeTab            int      // Current tab (category) index

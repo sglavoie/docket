@@ -36,7 +36,7 @@ func formatUndoRedoRestoreErrorMessage(label string, err error) string {
 
 	switch {
 	case strings.Contains(detail, "no "+label+" history available"):
-		return fmt.Sprintf("%s failed: no %s history is available for this project", action, label)
+		return fmt.Sprintf("%s failed: no %s history is available for this workspace", action, label)
 	case strings.Contains(detail, "diverged") || strings.Contains(detail, "does not match"):
 		return fmt.Sprintf("%s failed: grouped history diverged; restore aborted: %s", action, err)
 	case strings.Contains(detail, "missing project") ||

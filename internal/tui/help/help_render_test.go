@@ -144,3 +144,24 @@ func TestHelpHighlightsMatchesAfterWrappingUnicodeDescription(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpAliasExplanationSurvivesWrapping(t *testing.T) {
+	m := NewHelpViewModel([]operation.HelpItem{{
+		Key: "g", Category: "Navigation", Description: "Move the cursor to the beginning of the outline",
+		Aliases: []string{"jump to start"},
+	}}, "Outliner")
+	m.searchQuery = "jump"
+	m.filterItems()
+	for _, width := range []int{60, 100, 160} {
+		m.SetSize(width, 20)
+		content := ansi.Strip(m.renderContent())
+		if !strings.Contains(strings.Join(strings.Fields(content), " "), "· jump to start") {
+			t.Fatalf("width %d lost alias explanation:\n%s", width, content)
+		}
+		for _, line := range strings.Split(content, "\n") {
+			if lipgloss.Width(line) > m.viewport.Width() {
+				t.Fatalf("width %d overflows: %q", width, line)
+			}
+		}
+	}
+}

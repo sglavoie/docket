@@ -5,12 +5,16 @@ pulse, the menu bar, contextual guidance, the status strip and the advisories it
 carries, the conflict browser, how the cursor row is marked, and the colors a
 tag wears.
 
-In `?` help, `/` searches within the selected category tab. If that category has
+In `?` help, `/` searches within the selected category tab. While searching,
+each tab shows the number of matches selecting it would reveal, including its
+own case-insensitive fallback. If that category has
 no matches but others do, the empty view names the category and counts the
 matches available elsewhere. Choose the All tab to see them with the same
 query; the search never switches categories on its own. Help uses one column in narrow
 windows and two when each description has at least 24 columns of room. Search
-highlighting follows matches across wrapped description lines.
+highlighting follows matches across wrapped description lines. When a search
+matches an alias, that alias stays beside the description and wraps as needed
+so the reason for the match remains readable.
 
 Every full-screen presentation keeps one operational title row. It names the
 surface, scope, and mode once on the left, and reports the workspace pulse on the

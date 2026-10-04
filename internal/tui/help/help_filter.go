@@ -50,21 +50,18 @@ func (m *HelpViewModel) matchTab(query string) {
 }
 
 func (m *HelpViewModel) filterItems() {
-	// Start with all items or tab-filtered items
-	source := m.items
-	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
-		activeLabel := m.categories[m.activeTab-1]
-		source = nil
-		matches := func(item operation.HelpItem) bool { return helpSectionForItem(item) == activeLabel }
-		for _, item := range m.items {
-			if matches(item) {
-				source = append(source, item)
-			}
-		}
-	}
-
 	m.searchCaseRelaxed = false
 	m.otherCategoryMatches = 0
+	m.tabMatchCounts = nil
+	buckets := make(map[string][]operation.HelpItem)
+	for _, item := range m.items {
+		category := helpSectionForItem(item)
+		buckets[category] = append(buckets[category], item)
+	}
+	source := m.items
+	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
+		source = buckets[m.categories[m.activeTab-1]]
+	}
 	if m.searchQuery == "" {
 		m.filteredItems = make([]filteredHelpItem, len(source))
 		for i, item := range source {
@@ -73,19 +70,35 @@ func (m *HelpViewModel) filterItems() {
 		return
 	}
 
-	// Aliases feed matching only. Their positions index into the alias, not into
-	// the rendered key or description, so adding them to a highlight array would
-	// paint the wrong columns.
+	all, allRelaxed := matchHelpItems(m.items, m.searchQuery)
+	m.filteredItems, m.searchCaseRelaxed = all, allRelaxed
+	m.tabMatchCounts = []int{len(all)}
+	for i, category := range m.categories {
+		// Each count predicts selecting that tab, including its own smart-case
+		// retry; All can have a strict match while one category needs a retry.
+		matches, relaxed := matchHelpItems(buckets[category], m.searchQuery)
+		m.tabMatchCounts = append(m.tabMatchCounts, len(matches))
+		if m.activeTab == i+1 {
+			m.filteredItems, m.searchCaseRelaxed = matches, relaxed
+		}
+	}
+	if len(m.filteredItems) == 0 && m.activeTab > 0 && m.activeTab <= len(m.categories) {
+		m.otherCategoryMatches = len(all)
+	}
+}
+
+func matchHelpItems(items []operation.HelpItem, query string) ([]filteredHelpItem, bool) {
+	// Alias positions index the alias, never the rendered key or description.
 	match := func(items []operation.HelpItem, matcher fuzzy.Matcher) []filteredHelpItem {
 		var filtered []filteredHelpItem
 		for _, item := range items {
-			keyScore, keyPos := matcher.ScoreTermsWithPositions(item.Key, m.searchQuery)
-			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, m.searchQuery)
-			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, m.searchQuery)
+			keyScore, keyPos := matcher.ScoreTermsWithPositions(item.Key, query)
+			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, query)
+			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, query)
 
 			var matchedAliases []string
 			for _, alias := range item.Aliases {
-				if score, _ := matcher.ScoreTermsWithPositions(alias, m.searchQuery); score > 0 {
+				if score, _ := matcher.ScoreTermsWithPositions(alias, query); score > 0 {
 					matchedAliases = append(matchedAliases, alias)
 				}
 			}
@@ -102,21 +115,11 @@ func (m *HelpViewModel) filterItems() {
 		return filtered
 	}
 
-	matcher := fuzzy.SmartCase(m.searchQuery)
-	filtered := match(source, matcher)
+	matcher := fuzzy.SmartCase(query)
+	filtered := match(items, matcher)
 	if len(filtered) == 0 && matcher.CaseSensitive() {
-		filtered = match(source, fuzzy.NewMatcher(false))
-		m.searchCaseRelaxed = len(filtered) > 0
+		filtered = match(items, fuzzy.NewMatcher(false))
+		return filtered, len(filtered) > 0
 	}
-	if len(filtered) == 0 && m.activeTab > 0 && m.activeTab <= len(m.categories) {
-		// Count exactly what switching to All would show, including its own
-		// smart-case fallback, without changing the selected tab or query.
-		otherMatches := match(m.items, matcher)
-		if len(otherMatches) == 0 && matcher.CaseSensitive() {
-			otherMatches = match(m.items, fuzzy.NewMatcher(false))
-		}
-		m.otherCategoryMatches = len(otherMatches)
-	}
-
-	m.filteredItems = filtered
+	return filtered, false
 }
