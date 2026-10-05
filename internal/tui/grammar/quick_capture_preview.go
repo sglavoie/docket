@@ -440,5 +440,11 @@ func (q *QuickCaptureInput) duplicateCaptureHint() string {
 	if count > 1 {
 		hint += fmt.Sprintf(" (+%d more)", count-1)
 	}
+	hint += " · " + models.WorkflowStateGroupForState(first.WorkflowState).Label()
+	if first.ParentID != nil {
+		if parent := project.GetTaskByID(*first.ParentID); parent != nil {
+			hint += fmt.Sprintf(" · under #%d %s", parent.ShortID, parent.Title)
+		}
+	}
 	return hint
 }

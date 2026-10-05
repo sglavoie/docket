@@ -163,8 +163,8 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 		{ID: "canceled", ShortID: 2, Title: "Canceled", WorkflowState: models.StateCanceled},
 	}}
 	for _, tc := range []struct{ draft, want string }{
-		{"Fix login %web !1 #auth", "Already exists: web#42"},
-		{"Fix login", ""}, {"fix login %web", "Already exists: web#42"}, {"Fix login later %web", ""},
+		{"Fix login %web !1 #auth", "Already exists: web#42 · Backlog"},
+		{"Fix login", ""}, {"fix login %web", "Already exists: web#42 · Backlog"}, {"Fix login later %web", ""},
 		{"Finished %web", ""}, {"Canceled %web", ""}, {"Fix login %missing", ""},
 	} {
 		t.Run(tc.draft, func(t *testing.T) {
@@ -182,6 +182,35 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDuplicateCaptureContextFollowsReferencedTask(t *testing.T) {
+	parentID := "parent"
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{
+		{ID: "later", ShortID: 42, Title: "Fix login", WorkflowState: models.StateBacklog},
+		{ID: "first", ShortID: 12, Title: "Fix login", WorkflowState: models.StateWaiting, ParentID: &parentID},
+		{ID: parentID, ShortID: 7, Title: "Release prep 界 café", WorkflowState: models.StateDoing},
+	}}
+	q := draftedCaptureInput(t, "Fix login", project, nil, false)
+	q.UpdatePreview()
+	want := "Already exists: web#12 (+1 more) · Waiting · under #7 Release prep 界 café"
+	if got := q.duplicateCaptureHint(); got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	for _, width := range []int{40, 60, 100} {
+		q.Width = width
+		for _, view := range []string{q.renderPreview(), q.renderCompactPreview()} {
+			for _, line := range strings.Split(view, "\n") {
+				if ansi.StringWidth(line) > width {
+					t.Fatalf("width %d overflow: %q", width, line)
+				}
+			}
+		}
+	}
+	project.Tasks = project.Tasks[:2]
+	if got := q.duplicateCaptureHint(); got != "Already exists: web#12 (+1 more) · Waiting" {
+		t.Fatalf("missing parent should omit context: %q", got)
 	}
 }
 

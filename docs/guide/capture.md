@@ -178,7 +178,9 @@ weekday and any clock time, adding the year when it differs from the current
 year. Date suggestions also show the resolved weekday and date before you
 accept them; accepting one inserts only the original date token.
 If the parsed title matches an unfinished task in the resolved project,
-the preview adds `Already exists: web#42` (and a count if more match). Matching
+the preview adds `Already exists: web#42 · Backlog` (and a count if more match).
+It shows the referenced task's current status and, for a child, its parent as
+`under #7 Release prep`. Matching
 is case-insensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally.
 The preview also checks other valid lines in a multiline draft for the same

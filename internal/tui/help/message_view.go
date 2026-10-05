@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // RecalledMessage is one session feedback event. At is the original event time,
@@ -106,7 +107,7 @@ func (m *MessageView) guidance() chrome.GuidanceSpec {
 }
 
 func (m *MessageView) lines() []string {
-	text := m.text
+	text, _ := m.highlightedMessage()
 	if text == "" {
 		text = "No feedback yet this session."
 		if m.query != "" {
@@ -116,7 +117,31 @@ func (m *MessageView) lines() []string {
 	if m.copyNotice != "" {
 		text += "\n\n" + m.copyNotice
 	}
-	return textfit.WrapText(text, m.width)
+	return textfit.WrapStyled(text, m.width)
+}
+
+// Match the same combined fields as filtering, then map rune positions back to
+// each field. A query can match both the message text and its kind.
+func (m *MessageView) highlightedMessage() (string, string) {
+	if m.index < 0 || m.index >= len(m.messages) {
+		return m.text, ""
+	}
+	kind := m.messages[m.index].Kind
+	if strings.TrimSpace(m.query) == "" {
+		return m.text, kind
+	}
+	_, positions := fuzzy.NewMatcher(false).ScoreTermsWithPositions(m.text+" "+kind, m.query)
+	textLength := len([]rune(m.text))
+	var textPositions, kindPositions []int
+	for _, position := range positions {
+		if position < textLength {
+			textPositions = append(textPositions, position)
+		} else if position > textLength {
+			kindPositions = append(kindPositions, position-textLength-1)
+		}
+	}
+	return textfit.HighlightText(m.text, textPositions, lipgloss.NewStyle()),
+		textfit.HighlightText(kind, kindPositions, theme.MutedStyle)
 }
 func (m *MessageView) capacity() int {
 	rows := m.height - 5
@@ -217,7 +242,8 @@ func (m *MessageView) View() tea.View {
 			subtitle += " · " + messageTimeLabel(entry.At, time.Now())
 		}
 		if entry.Kind != "" {
-			subtitle += " · " + entry.Kind
+			_, kind := m.highlightedMessage()
+			subtitle += " · " + kind
 		}
 		subtitle += " · Read-only"
 	}

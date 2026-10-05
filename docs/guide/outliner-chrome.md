@@ -214,7 +214,9 @@ current window size. `y` copies the message text in full; `Y` copies all retaine
 messages newest first, with full local timestamps (including UTC offsets) and
 message kinds. `Esc` returns to the outline. Ambient advisories and copy notices
 do not enter the history.
-Press `/` to filter messages by text or kind, case-insensitively. `Enter` leaves
+Press `/` to filter messages by text or kind, case-insensitively. Matching
+characters are highlighted in the message and its kind; copied text stays plain.
+`Enter` leaves
 the input so Left/Right can browse just the matches. `Esc` clears the filter and
 restores the message and scroll position you started from; while typing, another
 `Esc` leaves the input. `Y` still copies the whole retained history, including

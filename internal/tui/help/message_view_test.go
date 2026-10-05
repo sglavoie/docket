@@ -6,12 +6,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestMessageViewWrapsScrollsAndResizesWithoutLosingText(t *testing.T) {
@@ -54,6 +56,46 @@ func TestMessageViewEmptySession(t *testing.T) {
 	}
 	if _, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"}); cmd != nil {
 		t.Fatal("empty message offered copy")
+	}
+}
+
+func TestMessageSearchHighlightsTextAndKindWithoutChangingContent(t *testing.T) {
+	previous := theme.HighlightStyle
+	theme.HighlightStyle = lipgloss.NewStyle().Underline(true)
+	t.Cleanup(func() { theme.HighlightStyle = previous })
+	original := "Read 界界 café details\n" + strings.Repeat("more detail ", 12) + "zebra"
+	m := NewMessageView(RecalledMessage{Text: original, Kind: "Error"})
+	m.query = "café zebra error"
+	m.filterMessages()
+	text, kind := m.highlightedMessage()
+	if ansi.Strip(text) != original || ansi.Strip(kind) != "Error" {
+		t.Fatal("highlighting changed message text or kind")
+	}
+	for _, char := range []string{"é", "z"} {
+		if !strings.Contains(text, theme.HighlightStyle.Render(char)) {
+			t.Fatalf("missing body highlight for %q", char)
+		}
+	}
+	if !strings.Contains(kind, theme.HighlightStyle.Render("E")) {
+		t.Fatal("missing kind highlight")
+	}
+	for _, size := range [][2]int{{60, 18}, {100, 33}, {60, 18}} {
+		m.SetSize(size[0], size[1])
+		view := m.View().Content
+		if !utf8.ValidString(view) || lipgloss.Width(view) > size[0] || lipgloss.Height(view) != size[1] {
+			t.Fatalf("invalid highlighted layout at %v: %q", size, view)
+		}
+		if !strings.Contains(view, theme.HighlightStyle.Render("z")) || !strings.Contains(view, theme.HighlightStyle.Render("E")) {
+			t.Fatal("rendering lost body or kind highlighting")
+		}
+	}
+	if m.text != original || m.messages[0].Text != original || strings.Contains(m.historyText(), "\x1b") {
+		t.Fatal("highlighting changed the plain snapshot used for copying")
+	}
+	m.clearSearch()
+	text, kind = m.highlightedMessage()
+	if text != original || kind != "Error" {
+		t.Fatal("clearing search retained highlight styling")
 	}
 }
 
