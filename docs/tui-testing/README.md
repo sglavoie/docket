@@ -408,6 +408,17 @@ characters fits every reviewed terminal while staying wholly readable in Peek.
 
 ## Observation contract
 
+The README image is an actual 100×32 application frame over fictional tasks.
+Regenerate it from the repository root (requires `uv` for the SVG exporter):
+
+```bash
+TT_README_SCREENSHOT_DIR=/tmp/tt-readme-review go test ./internal/tui -run '^TestReadmeScreenshot$' -count=1
+uv run scripts/render_terminal_svg.py /tmp/tt-readme-review/outliner.ansi docs/images/outliner.svg
+```
+
+The fixture never opens the user's workspace. Ordinary test runs export into a
+test temporary directory and leave the committed image alone.
+
 Each action observes:
 
 | Field | Meaning |

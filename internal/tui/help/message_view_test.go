@@ -167,3 +167,107 @@ func TestMessageTimeLabelUsesLocalCalendarDate(t *testing.T) {
 		}
 	}
 }
+
+func TestMessageSearchFiltersKindAndTextAndRestoresOriginalMessage(t *testing.T) {
+	at := time.Date(2026, 10, 4, 14, 32, 0, 0, time.Local)
+	m := NewMessageView(
+		RecalledMessage{Text: "Saved task", At: at, Kind: "Feedback"},
+		RecalledMessage{Text: strings.Repeat("Original detail\n", 40), At: at, Kind: "Feedback"},
+		RecalledMessage{Text: "Disk unavailable", At: at, Kind: "Error"},
+		RecalledMessage{Text: "Save refused", At: at, Kind: "Error"},
+	)
+	m.SetSize(60, 18)
+	m.Update(helpKeyPress("left"))
+	m.Update(helpKeyPress("end"))
+	originalOffset := m.offset
+	m.Update(helpKeyPress("/"))
+	for _, key := range []string{"e", "r", "r", "o", "r"} {
+		m.Update(helpKeyPress(key))
+	}
+	if !m.HasTextInput() || !m.ShouldCaptureEsc() || m.index != 2 || len(m.matches) != 2 {
+		t.Fatalf("search did not match message kinds: %+v", m)
+	}
+	m.Update(helpKeyPress("enter"))
+	m.Update(helpKeyPress("left"))
+	if m.index != 3 || !strings.Contains(ansi.Strip(m.View().Content), "14:32 · Error") {
+		t.Fatal("filtered navigation lost identity or metadata")
+	}
+	m.Update(helpKeyPress("esc"))
+	if m.index != 1 || m.offset != originalOffset || m.ShouldCaptureEsc() {
+		t.Fatalf("clear did not restore original message and scroll: index %d, offset %d", m.index, m.offset)
+	}
+	m.Update(helpKeyPress("/"))
+	for _, key := range []string{"d", "i", "s", "k"} {
+		m.Update(helpKeyPress(key))
+	}
+	if m.index != 2 || len(m.matches) != 1 {
+		t.Fatal("message text is not searchable")
+	}
+	for _, size := range [][2]int{{60, 18}, {100, 33}, {60, 18}} {
+		m.SetSize(size[0], size[1])
+		view := ansi.Strip(m.View().Content)
+		if lipgloss.Width(view) > size[0] || lipgloss.Height(view) != size[1] {
+			t.Fatalf("search frame overflows %v:\n%s", size, view)
+		}
+	}
+	m.Update(helpKeyPress("z"))
+	if !strings.Contains(m.View().Content, "No matching messages") {
+		t.Fatal("empty result has no recovery guidance")
+	}
+	if _, cmd := m.Update(messageCopiedMsg{index: 2}); cmd != nil || m.copyNotice != "" {
+		t.Fatal("late copy decorated an empty search")
+	}
+	m.Update(helpKeyPress("esc"))
+	if m.index != 1 || !m.searching || m.query != "" {
+		t.Fatal("first Esc failed to clear and restore")
+	}
+	m.Update(helpKeyPress("esc"))
+	if m.ShouldCaptureEsc() {
+		t.Fatal("second Esc did not leave input")
+	}
+}
+
+func TestMessageSearchCopyAndScrollKeepTheOriginalSnapshot(t *testing.T) {
+	m := NewMessageView(
+		RecalledMessage{Text: strings.Repeat("detail\n", 40) + "LAST LINE", Kind: "Error"},
+		RecalledMessage{Text: "Saved task", Kind: "Feedback"},
+	)
+	m.SetSize(60, 18)
+	original := external.CopyText
+	t.Cleanup(func() { external.CopyText = original })
+	var copied string
+	external.CopyText = func(text string) error { copied = text; return nil }
+	m.Update(helpKeyPress("/"))
+	for _, key := range []string{"e", "r", "r", "o", "r", "enter", "end"} {
+		m.Update(helpKeyPress(key))
+	}
+	if !strings.Contains(m.View().Content, "LAST LINE") {
+		t.Fatal("search chrome hid the last line of the message")
+	}
+	_, cmd := m.Update(helpKeyPress("y"))
+	if cmd == nil {
+		t.Fatal("filtered message cannot be copied")
+	}
+	m.Update(cmd())
+	if copied != m.messages[0].Text {
+		t.Fatal("copy included the query or omitted message text")
+	}
+	m.Update(helpKeyPress("esc"))
+	if m.index != 0 || m.offset != 0 {
+		t.Fatal("clear did not restore the original scroll when its message matched")
+	}
+	for _, key := range []string{"/", "z", "z", "z", "enter"} {
+		m.Update(helpKeyPress(key))
+	}
+	if _, emptyCopy := m.Update(helpKeyPress("y")); emptyCopy != nil {
+		t.Fatal("empty results offered to copy one message")
+	}
+	_, cmd = m.Update(helpKeyPress("Y"))
+	if cmd == nil {
+		t.Fatal("empty results prevented copying retained history")
+	}
+	m.Update(cmd())
+	if copied != m.historyText() || !strings.Contains(copied, "Saved task") {
+		t.Fatal("copy-all filtered or mutated the original snapshot")
+	}
+}

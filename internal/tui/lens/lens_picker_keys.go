@@ -19,6 +19,22 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		return nil, true, NamedLensPickerClosedMsg{}
 	}
 	key := msg.String()
+	itemBefore, _ := model.Surface.CurrentItem()
+	defer func() {
+		itemAfter, _ := model.Surface.CurrentItem()
+		if itemBefore.ID != itemAfter.ID {
+			model.detailOffset = 0
+		}
+	}()
+	// Detail paging belongs to the preview even while the search field is open.
+	if key == "ctrl+f" || key == "ctrl+b" {
+		delta := max(model.detailPageRows-1, 1)
+		if key == "ctrl+b" {
+			delta = -delta
+		}
+		model.detailOffset = min(max(min(model.detailOffset, model.detailMaxOffset)+delta, 0), model.detailMaxOffset)
+		return nil, false, nil
+	}
 	if model.Searching {
 		switch key {
 		case "esc":
@@ -65,7 +81,7 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	case "enter":
 		return model.activateCursor()
 	case "space":
-		return model.openActionsForCursor()
+		return nil, false, model.openActionsForCursor()
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		// Spelled out rather than reached through a default arm: a default would
 		// silently swallow every key this switch has not learned yet, and the search
@@ -147,10 +163,10 @@ func lensPickerActionOperation(id listsurface.ListItemID) (operation.OperationID
 
 // openActionsForCursor is Space: the management sheet nests above the picker
 // rather than replacing it, so canceling anything inside it lands back here.
-func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Msg) {
+func (model *NamedLensPickerModel) openActionsForCursor() tea.Msg {
 	item, ok := model.Surface.CurrentItem()
 	if !ok {
-		return nil, false, nil
+		return nil
 	}
 	lens, ok := item.Data.(config.NamedLens)
 	if !ok {
@@ -162,10 +178,10 @@ func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Ms
 		if item.ID == LensPickerAddTemplateItemID {
 			model.notice = LensPickerAddTemplateSpaceHint
 		}
-		return nil, false, status.StatusMsg(model.notice)
+		return status.StatusMsg(model.notice)
 	}
 	model.notice = ""
-	return nil, false, NamedLensActionsRequestMsg{
+	return NamedLensActionsRequestMsg{
 		Entity: operation.LensEntity(lens.ID),
 		Name:   lens.Name,
 	}

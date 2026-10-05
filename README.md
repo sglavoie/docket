@@ -10,6 +10,11 @@ There is no server, no sync service, and no web interface. There is also no
 recovery, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
+![Terminal Tasks showing Doing, Review, Inbox, Backlog, and Waiting lanes, with the selected task's resume note and description in Peek.](docs/images/outliner.svg)
+
+Work is grouped into lanes and projects; Peek below the outline shows the selected
+task's details. This screen uses fictional tasks.
+
 ## What using it looks like
 
 ### Your first five minutes

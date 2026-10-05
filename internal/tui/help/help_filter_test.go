@@ -77,6 +77,33 @@ func helpFilteredKeys(m *HelpViewModel) []string {
 	return keys
 }
 
+func TestHelpExactMatchesLeadWithoutDuplicatingOrChangingBrowseOrder(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "e", Description: "Edit a note", Category: "Tasks"},
+		{Key: "E/Ctrl+E", Description: "Open editor", Category: "Actions", Aliases: []string{"edit"}},
+		{Key: "z", Description: "Edit", Category: "Other"},
+	}
+	for _, query := range []string{"edit", "Ctrl+E", "EDIT"} {
+		m := NewHelpViewModel(items, "Outliner")
+		m.SetSize(60, 20)
+		m.searchQuery = query
+		m.filterItems()
+		got := ansi.Strip(m.renderContent())
+		if !strings.HasPrefix(strings.TrimSpace(got), "Exact matches\n") || strings.Count(got, "Open editor") != 1 {
+			t.Fatalf("%q: exact match absent or duplicated:\n%s", query, got)
+		}
+		if query != "Ctrl+E" && strings.Index(got, "Open editor") > strings.Index(got, "Edit a note") {
+			t.Fatalf("fuzzy result precedes exact alias:\n%s", got)
+		}
+		m.searchQuery = ""
+		m.filterItems()
+		got = ansi.Strip(m.renderContent())
+		if strings.Contains(got, "Exact matches") || strings.Index(got, "Edit a note") > strings.Index(got, "Open editor") {
+			t.Fatalf("search changed browse order:\n%s", got)
+		}
+	}
+}
+
 func TestHelpFilterSmartCaseNarrowsThenFallsBack(t *testing.T) {
 	m := helpSmartCaseModel()
 

@@ -18,6 +18,9 @@ windows and two when each description has at least 24 columns of room. Search
 highlighting follows matches across wrapped description lines. When a search
 matches an alias, that alias stays beside the description and wraps as needed
 so the reason for the match remains readable.
+An exact key, description, or alias match appears first under `Exact matches`;
+the other results retain their category order. Clearing the search restores the
+ordinary grouped reference, and category tabs still constrain both kinds of match.
 
 Every full-screen presentation keeps one operational title row. It names the
 surface, scope, and mode once on the left, and reports the workspace pulse on the
@@ -211,6 +214,11 @@ current window size. `y` copies the message text in full; `Y` copies all retaine
 messages newest first, with full local timestamps (including UTC offsets) and
 message kinds. `Esc` returns to the outline. Ambient advisories and copy notices
 do not enter the history.
+Press `/` to filter messages by text or kind, case-insensitively. `Enter` leaves
+the input so Left/Right can browse just the matches. `Esc` clears the filter and
+restores the message and scroll position you started from; while typing, another
+`Esc` leaves the input. `Y` still copies the whole retained history, including
+messages outside the filter. Searching changes neither timestamps nor messages.
 Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 

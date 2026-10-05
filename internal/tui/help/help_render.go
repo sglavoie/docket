@@ -114,8 +114,13 @@ func (m *HelpViewModel) renderBySectionContent() string {
 
 	buckets := make(map[string][]filteredHelpItem)
 	categories := make([]string, 0, len(m.filteredItems))
+	const exactSection = "Exact matches"
 	for _, item := range m.filteredItems {
 		section := helpSectionForItem(item.HelpItem)
+		if m.searchQuery != "" && item.exactMatch {
+			buckets[exactSection] = append(buckets[exactSection], item)
+			continue
+		}
 		categories = append(categories, section)
 		buckets[section] = append(buckets[section], item)
 	}
@@ -170,7 +175,11 @@ func (m *HelpViewModel) renderBySectionContent() string {
 
 	var b strings.Builder
 	first := true
-	for _, section := range helpSectionsForCategories(categories) {
+	sections := helpSectionsForCategories(categories)
+	if len(buckets[exactSection]) > 0 {
+		sections = append([]string{exactSection}, sections...)
+	}
+	for _, section := range sections {
 		items := buckets[section]
 		if len(items) == 0 {
 			continue

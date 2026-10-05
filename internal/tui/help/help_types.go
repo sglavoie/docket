@@ -17,6 +17,7 @@ type filteredHelpItem struct {
 	keyPositions   []int
 	descPositions  []int
 	matchedAliases []string
+	exactMatch     bool
 }
 
 // HelpProvider is implemented by views that project help directly from their

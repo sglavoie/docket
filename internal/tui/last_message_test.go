@@ -50,6 +50,38 @@ func TestLastMessageMenuOpensAndReturnsWithoutChangingOutline(t *testing.T) {
 	}
 }
 
+func TestLastMessageSearchOwnsInputAndEscBeforeReturningToOutline(t *testing.T) {
+	driver, out := menuBarDriver(t)
+	m := driver.App()
+	m.Update(status.ErrorMsg{Err: errors.New("Disk unavailable")})
+	m.Update(status.InfoStatusMsg("Saved task"))
+	m.Update(status.StatusClearMsg{})
+	cursor := out.Cursor
+	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Recent messages"}, ObserveOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"/", "d", "i", "s", "k", "enter"} {
+		if err := driver.SendKey(key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(m.View().Content, "Disk unavailable") || strings.Contains(m.View().Content, "Saved task") {
+		t.Fatalf("search did not retain the message view:\n%s", m.View().Content)
+	}
+	if err := driver.SendKey("esc"); err != nil {
+		t.Fatal(err)
+	}
+	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(m.View().Content, "Saved task") {
+		t.Fatal("first Esc did not restore the original message")
+	}
+	if err := driver.SendKey("esc"); err != nil {
+		t.Fatal(err)
+	}
+	if m.currentView() != presentation.ViewCrossProjectOutliner || out.Cursor != cursor {
+		t.Fatal("second Esc did not return to the original outline cursor")
+	}
+}
+
 func TestLastMessageRemembersViewFeedbackAndIgnoresAdvisories(t *testing.T) {
 	driver, out := menuBarDriver(t)
 	m := driver.App()

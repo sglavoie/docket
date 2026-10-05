@@ -1,6 +1,7 @@
 package lens
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -60,6 +61,7 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	}
 	headerText := strings.Join(header, "\n")
 	listHeight := min(max(len(model.Surface.Rows()), 4), 14)
+	bodyHeight := listHeight + 6
 	if height > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
 		// consume eight rows plus the measured footer and header lines.
@@ -68,9 +70,17 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 			headerHeight = lipgloss.Height(headerText)
 		}
 		reserved := 8 + lipgloss.Height(guidance) + headerHeight
-		listHeight = min(listHeight, max(height-reserved, 1))
+		bodyHeight = max(height-reserved, 1)
 	}
+	details := model.renderDetails(contentWidth, max(bodyHeight-3, 0))
+	if details != "" {
+		bodyHeight -= lipgloss.Height(details)
+	}
+	listHeight = min(listHeight, bodyHeight)
 	content := listsurface.RenderCompactListSurface(model.Surface, contentWidth, listHeight)
+	if details != "" {
+		content += "\n" + details
+	}
 	if len(header) > 0 {
 		content = headerText + "\n\n" + content
 	}
@@ -83,6 +93,35 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 		guidance,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
+}
+
+// renderDetails borrows rows from the list while keeping three rows for choosing
+// a lens. The shared preview renderer wraps the complete definition; paging
+// windows those lines instead of shortening the saved query.
+func (model *NamedLensPickerModel) renderDetails(width, available int) string {
+	model.detailPageRows, model.detailMaxOffset = 0, 0
+	selected, ok := model.CurrentLens()
+	if !ok || available < 3 {
+		return ""
+	}
+	document := listsurface.RenderListSurfacePreview(listsurface.ListPreview{
+		Summary: NamedLensSummary(selected, model.snapshot.ProjectSlugs),
+	}, width, 0, nil)
+	lines := strings.Split(document, "\n")
+	capacity := min(4, available-2)
+	model.detailPageRows = capacity
+	model.detailMaxOffset = max(len(lines)-capacity, 0)
+	start := min(model.detailOffset, model.detailMaxOffset)
+	end := min(start+capacity, len(lines))
+	heading := "Details"
+	if model.detailMaxOffset > 0 {
+		heading += " · Ctrl+F/B page"
+	}
+	result := theme.MutedStyle.Render(heading) + "\n" + strings.Join(lines[start:end], "\n")
+	if model.detailMaxOffset > 0 {
+		result += "\n" + theme.MutedStyle.Render(fmt.Sprintf("%d above · %d below", start, len(lines)-end))
+	}
+	return result
 }
 
 // StateLine names an empty population or a query that matched none of it. Both

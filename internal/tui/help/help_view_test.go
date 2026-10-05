@@ -17,6 +17,14 @@ func helpKeyPress(key string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyLeft}
 	case "right":
 		return tea.KeyPressMsg{Code: tea.KeyRight}
+	case "esc":
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
+	case "enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "end":
+		return tea.KeyPressMsg{Code: tea.KeyEnd}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
 	default:
 		return tea.KeyPressMsg{Text: key, Code: rune(key[0])}
 	}

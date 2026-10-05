@@ -117,11 +117,14 @@ type NamedLensPickerModel struct {
 	// capped at nine. It is rebuilt by items() in the same pass that counts
 	// listed, which is what keeps a printed digit and the row under it from ever
 	// naming different lenses.
-	Ordinals    []string
-	Query       string
-	Searching   bool
-	searchInput listsurface.PickerSearchInput
-	notice      string
+	Ordinals        []string
+	Query           string
+	Searching       bool
+	searchInput     listsurface.PickerSearchInput
+	notice          string
+	detailOffset    int
+	detailPageRows  int
+	detailMaxOffset int
 }
 
 // NewNamedLensPickerModel builds the picker over one machine-state snapshot.
@@ -162,6 +165,7 @@ func (model *NamedLensPickerModel) Refresh(snapshot NamedLensPickerSnapshot) err
 		return nil
 	}
 	model.adopt(snapshot)
+	model.detailOffset = 0
 	return model.Surface.SetItems(model.items())
 }
 
@@ -204,7 +208,11 @@ func (model *NamedLensPickerModel) SelectLens(id string) bool {
 	if model == nil || model.Surface == nil {
 		return false
 	}
-	return model.Surface.SetCursorToID(lensPickerItemID(id))
+	if !model.Surface.SetCursorToID(lensPickerItemID(id)) {
+		return false
+	}
+	model.detailOffset = 0
+	return true
 }
 
 // CurrentLens returns the saved lens under the cursor. The Save row is not one,

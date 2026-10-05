@@ -93,9 +93,26 @@ func (m *HelpViewModel) filterItems() {
 func matchHelpItems(items []operation.HelpItem, query string) ([]filteredHelpItem, bool) {
 	// Alias positions index the alias, never the rendered key or description.
 	match := func(items []operation.HelpItem, matcher fuzzy.Matcher) []filteredHelpItem {
+		normalizedQuery := strings.Join(strings.Fields(query), " ")
+		exact := func(value string) bool {
+			value = strings.Join(strings.Fields(value), " ")
+			if matcher.CaseSensitive() {
+				return value == normalizedQuery
+			}
+			return strings.EqualFold(value, normalizedQuery)
+		}
 		var filtered []filteredHelpItem
 		for _, item := range items {
 			entry := filteredHelpItem{HelpItem: item}
+			entry.exactMatch = exact(item.Key) || exact(item.Description)
+			// Operation help joins alternative key spellings with a slash.
+			// The whole-key comparison above also preserves the literal / key.
+			for _, key := range strings.Fields(strings.ReplaceAll(item.Key, "/", " ")) {
+				entry.exactMatch = entry.exactMatch || exact(key)
+			}
+			for _, alias := range item.Aliases {
+				entry.exactMatch = entry.exactMatch || exact(alias)
+			}
 			matches := true
 			aliases := make(map[string]bool)
 			for _, term := range strings.Fields(query) {
