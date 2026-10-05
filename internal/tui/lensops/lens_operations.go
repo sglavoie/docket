@@ -27,10 +27,12 @@ func (c *Controller) ReplacementDetails(shell Shell, targets operation.ResolvedO
 	if err != nil {
 		return "", err
 	}
-	changed := shell.Outliner().CaptureLensState().ChangedAxes(state)
+	current := shell.Outliner().CaptureLensState()
+	changed := current.ChangedAxes(state)
 	detail := "No saved settings change"
 	if len(changed) > 0 {
-		detail = "Changed: " + strings.Join(changed, ", ")
+		detail = "Changed: " + strings.Join(changed, ", ") + "\n" +
+			strings.Join(shell.Outliner().LensReplacementChanges(state, current), "\n")
 	}
 	return saved.Name + "\n" + detail, nil
 }

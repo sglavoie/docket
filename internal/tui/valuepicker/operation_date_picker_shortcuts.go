@@ -33,15 +33,17 @@ func (model *OperationValuePickerModel) handleDatePresetShortcut(key string) (te
 		// Preset keys belong to Due and Defer only. They stay claimed here so a
 		// key such as `t` cannot fall through to another browse grammar while the
 		// Check-in action row is active.
-		return nil, false, true
+		return status.StatusMsg("Press Enter to edit check-in"), false, true
 	}
 	deferred := section == datePickerSectionDefer
 	presetID, ok := chrome.DatePresetIDForKey(deferred, key)
 	if !ok {
-		// The key belongs to the other field. Silence is the whole answer: `t` is
-		// Today and must never become a deferral, and an hour key must never become
-		// a deadline, so neither field ever borrows the other's row.
-		return nil, false, true
+		// Claim the key without borrowing a value from the other field.
+		field := "Defer"
+		if deferred {
+			field = "Due"
+		}
+		return status.StatusMsg(fmt.Sprintf("%s is a %s shortcut", key, field)), false, true
 	}
 	if !model.surface.SetCursorToID(DateListItemID(deferred, presetID)) {
 		// SetCursorToID searches the matches alone and leaves the cursor where it

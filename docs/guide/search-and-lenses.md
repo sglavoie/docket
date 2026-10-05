@@ -425,7 +425,10 @@ as soon as the live view stops matching what was saved — a mode change, a
 filter, a sort, or a scope move. Open `Q` to see which settings changed, such as
 `Changed: sort, project scope`. The confirmation for `Replace from current view`
 also names the settings that would change in the selected saved lens, even when
-that lens is not active. `Esc` restores the exact view the lens
+that lens is not active, and shows their saved and replacement values. For
+example, `Sort: priority ↑ → due date ↑`. An empty query reads `none`; a lens
+without a saved project reads `keep current scope`, because it leaves the
+project scope alone when opened. `Esc` restores the exact view the lens
 replaced, not an intermediate one: switching straight from one lens to another
 keeps the original restoration point, so a single `Esc` still lands where you
 left. Lenses never stack.

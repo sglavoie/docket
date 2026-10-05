@@ -255,15 +255,14 @@ func TestAPresetKeyWithNoMatchesAtAllSaysSo(t *testing.T) {
 }
 
 // The two fields hold separate vocabularies, and the separation is the point: a
-// key one field does not bind does nothing at all rather than reaching into the
-// other field for something near enough.
-func TestKeysUnboundInTheActiveFieldStaySilent(t *testing.T) {
+// key one field does not bind explains its owner without applying a value.
+func TestKeysUnboundInTheActiveFieldExplainTheirOwner(t *testing.T) {
 	picker := newDatePickerForTest(t, "")
 	before := currentDateRowID(t, picker)
 	for _, key := range []string{"1", "4", "8", "9"} {
 		dismissed, result := pressKey(picker, key)
-		if dismissed || result != nil {
-			t.Fatalf("`%s` in the due field = dismissed %v, message %#v, want silence", key, dismissed, result)
+		if dismissed || result != status.StatusMsg(key+" is a Defer shortcut") {
+			t.Fatalf("`%s` in the due field = dismissed %v, message %#v", key, dismissed, result)
 		}
 		if got := currentDateRowID(t, picker); got != before {
 			t.Fatalf("`%s` in the due field moved the cursor to %q", key, got)
@@ -274,8 +273,8 @@ func TestKeysUnboundInTheActiveFieldStaySilent(t *testing.T) {
 	pressKey(picker, "tab")
 	before = currentDateRowID(t, picker)
 	dismissed, result := pressKey(picker, "t")
-	if dismissed || result != nil {
-		t.Fatalf("`t` in the defer field = dismissed %v, message %#v, want silence", dismissed, result)
+	if dismissed || result != status.StatusMsg("t is a Due shortcut") {
+		t.Fatalf("`t` in the defer field = dismissed %v, message %#v", dismissed, result)
 	}
 	if got := currentDateRowID(t, picker); got != before {
 		t.Fatalf("`t` in the defer field moved the cursor to %q", got)
@@ -297,7 +296,7 @@ func TestTheDueOnlyPickerAnswersTheDueShortcutsAlone(t *testing.T) {
 
 	picker = newDueOnlyPickerForTest(t)
 	before := currentDateRowID(t, picker)
-	if dismissed, result := pressKey(picker, "4"); dismissed || result != nil {
+	if dismissed, result := pressKey(picker, "4"); dismissed || result != status.StatusMsg("4 is a Defer shortcut") {
 		t.Fatalf("`4` on the due-only picker = dismissed %v, message %#v", dismissed, result)
 	}
 	if got := currentDateRowID(t, picker); got != before {

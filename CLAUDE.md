@@ -572,9 +572,8 @@ the next first match, disabled rows included. A sole section is inert.
 Both are consumed on every picker; a one-section picker is inert. A preset key
 is one `chrome` table read by field and preset ID, never a per-surface keyboard;
 the creation form borrows it and keeps its own order, labels, and arithmetic.
-It dispatches ahead of the
-browse grammar, which already claims `t` and `w`, and claims a key bound in
-either field so one unbound there is silent; it commits the row `SetCursorToID`
+Dispatch precedes browse keys. Unbound presets name their owning field;
+Check-in names Enter as the editor route. It commits the row `SetCursorToID`
 lands on through the `SelectedValue` path `Enter` takes, so a filtered-out preset
 is a miss and a disabled one keeps its own reason. Its hint rides
 `PrimaryMarker`, never searchable text. The overlay reserves the guidance it

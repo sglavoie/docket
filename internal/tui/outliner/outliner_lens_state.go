@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -514,4 +515,52 @@ func (s *outlinerLensState) setCompilation(remainder string, gate *query.SearchP
 	s.remainder = remainder
 	s.Gate = gate
 	s.NarrowRelaxed = relaxed
+}
+
+// LensReplacementChanges describes the saved and replacement values of changed axes.
+func (view *OutlinerModel) LensReplacementChanges(saved, current LensState) []string {
+	before, after := saved.NamedLens("", ""), current.NamedLens("", "")
+	var lines []string
+	add := func(label, old, next string) {
+		lines = append(lines, fmt.Sprintf("%s: %s → %s", label, old, next))
+	}
+	if before.Mode != after.Mode {
+		old, _ := chrome.OutlinerModeByID(saved.Mode)
+		next, _ := chrome.OutlinerModeByID(current.Mode)
+		add("Mode", old.Label, next.Label)
+	}
+	if before.Query != after.Query {
+		describe := func(value string) string {
+			if value == "" {
+				return "none"
+			}
+			return value
+		}
+		add("Query / filters", describe(before.Query), describe(after.Query))
+	}
+	if before.Sort != after.Sort {
+		describe := func(value query.SortState) string {
+			direction := "↓"
+			if value.Ascending {
+				direction = "↑"
+			}
+			return value.Field.String() + " " + direction
+		}
+		add("Sort", describe(saved.Sort), describe(current.Sort))
+	}
+	if before.Scope != after.Scope {
+		describe := func(id string) string {
+			if id == "" {
+				return "keep current scope"
+			}
+			if view.Runtime != nil {
+				if project := view.Runtime.GetProject(id); project != nil {
+					return project.Slug
+				}
+			}
+			return id + " (unavailable)"
+		}
+		add("Project", describe(before.Scope), describe(after.Scope))
+	}
+	return lines
 }

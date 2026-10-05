@@ -378,8 +378,9 @@ key` block rather than inside its default arm. The position is load-bearing:
 `case "w", "s", "t", "c"` above that default already claims two of the due keys
 for semantic-tag category jumps, so a default-arm shortcut would never see `t`
 or `w`. The handler claims any key bound in *either* field, so a key the active
-field leaves unbound is structurally silent instead of falling through to a
-binding that means something else. It resolves the cursor's field with
+field leaves unbound reports which field owns it without falling through to a
+binding that means something else. On Check-in, preset keys name Enter as the
+editor route. It resolves the cursor's field with
 `dateFieldUnderCursor`, maps key to preset ID, moves with `SetCursorToID` — which
 searches the current matches alone, so a filtered-out preset is a miss and gets a
 status naming it — and then commits through `SelectedValue` and

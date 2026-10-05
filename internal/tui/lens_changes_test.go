@@ -35,7 +35,7 @@ func TestLensChangesExplainModifiedReadoutAndRebase(t *testing.T) {
 		t.Fatalf("missing confirmation: %+v", result)
 	}
 	model.handleOperationOverlayMessage(*result.ConfirmationRequired)
-	if !strings.Contains(model.operations.Confirm.Prompt(), "Changed: sort") {
+	if prompt := model.operations.Confirm.Prompt(); !strings.Contains(prompt, "Changed: sort") || !strings.Contains(prompt, " → title ↑") {
 		t.Fatal(model.operations.Confirm.Prompt())
 	}
 	if result := executeLens(model, lens.OperationLensReplace, operation.LensEntity(saved.ID), "", true); result.Err != nil {

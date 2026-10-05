@@ -331,7 +331,11 @@ func TestCheckInRowOpensTheTypedEditorRequestAndClaimsDateKeys(t *testing.T) {
 	}
 	for _, key := range []string{"t", "a"} {
 		dismissed, result := pressKey(picker, key)
-		if dismissed || result != nil || currentDateRowID(t, picker) != dateCheckInEditorItemID {
+		var expected tea.Msg
+		if key == "t" {
+			expected = status.StatusMsg("Press Enter to edit check-in")
+		}
+		if dismissed || result != expected || currentDateRowID(t, picker) != dateCheckInEditorItemID {
 			t.Fatalf("%q on Check-in dismissed=%v result=%#v row=%q", key, dismissed, result, currentDateRowID(t, picker))
 		}
 	}

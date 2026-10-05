@@ -61,8 +61,9 @@ the section you are in says it means. DUE binds `0` Clear, `t` Today, `m`
 Tomorrow, `w` In one week, `n` In one month. DEFER binds `0` Clear defer, `1`,
 `4`, and `8` for those hour offsets, `9` Tomorrow morning, `m` Until tomorrow,
 `w` For one week, `n` For one month. So `@m` is tomorrow's deadline, `@` `Tab`
-`4` hides the task for four hours, and `t` in the defer section does nothing at
-all — a deferral has no Today. Where a row sits in the list never changes what
+`4` hides the task for four hours, and `t` in the defer section reports
+`t is a Due shortcut` without changing anything. Hour keys in Due similarly
+name Defer. On Check-in, preset keys say `Press Enter to edit check-in`. Where a row sits in the list never changes what
 its key means, so a search that reorders the rows leaves the keyboard alone; a
 search that filters a preset off screen says it is filtered out rather than
 applying whatever is left, and a disabled row gives the same reason it gives
