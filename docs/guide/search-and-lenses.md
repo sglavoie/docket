@@ -219,7 +219,11 @@ you had half-typed when the walk started, with its caret restored to the same
 position, so reaching for an earlier query never
 costs the one in your hands. When the box contains text, both arrows visit
 only queries beginning with that exact, case-sensitive prefix; an empty box
-browses every query. A prefix with no matches leaves the input unchanged.
+browses every query. A prefix with no matches leaves the input unchanged and
+shows `No history matches this prefix`. While walking, `History 2 of 5` counts
+only matching queries; another Up at the oldest match says `Oldest matching
+query`. These quiet labels appear beside the input when space permits, clear
+when typing or returning to the draft, and never enter Recent messages.
 Each distinct query is held once however often you
 submit it, only a submitted query joins the ring — one abandoned with `Esc` does
 not — and typing ends the walk, so the next `↑` starts from the newest match for the edited prefix.

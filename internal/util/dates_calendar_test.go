@@ -219,7 +219,7 @@ func TestValidateStorableCalendarDateRefusesWhatTheLayoutCannotSpell(t *testing.
 // meant to take. The relative forms resolve against today, so they are checked
 // against the same arithmetic rather than against a frozen string.
 func TestParseCheckInDateReadsACalendarDay(t *testing.T) {
-	got, err := ParseCheckInDate("2026-03-15")
+	got, err := ParseCheckInDateAt("2026-03-15", time.Now())
 	if err != nil {
 		t.Fatalf("ParseCheckInDate: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestParseCheckInDateReadsACalendarDay(t *testing.T) {
 		t.Fatalf("a check-in date carried a time of day: %s", got)
 	}
 	for _, input := range []string{"today", "tomorrow", "+7d"} {
-		day, err := ParseCheckInDate(input)
+		day, err := ParseCheckInDateAt(input, time.Now())
 		if err != nil {
 			t.Fatalf("ParseCheckInDate(%q): %v", input, err)
 		}
@@ -251,7 +251,7 @@ func TestParseCheckInDateResolvesAWrittenDateAsACivilDate(t *testing.T) {
 	time.Local = havana
 	defer func() { time.Local = previous }()
 
-	got, err := ParseCheckInDate("2026-03-08")
+	got, err := ParseCheckInDateAt("2026-03-08", time.Now())
 	if err != nil {
 		t.Fatalf("ParseCheckInDate: %v", err)
 	}
@@ -265,7 +265,7 @@ func TestParseCheckInDateResolvesAWrittenDateAsACivilDate(t *testing.T) {
 	apiaPrevious := time.Local
 	time.Local = mustLoadZone(t, "Pacific/Apia")
 	defer func() { time.Local = apiaPrevious }()
-	if _, err := ParseCheckInDate("2011-12-30"); err == nil {
+	if _, err := ParseCheckInDateAt("2011-12-30", time.Now()); err == nil {
 		t.Fatal("Pacific/Apia accepted a date it skipped entirely")
 	}
 }
@@ -283,7 +283,7 @@ func TestParseCheckInDateRefusesATimeOfDay(t *testing.T) {
 		// value that was typed.
 		"2026-03-15 00:00",
 	} {
-		if _, err := ParseCheckInDate(input); !errors.Is(err, ErrCheckInsAreDateOnly) {
+		if _, err := ParseCheckInDateAt(input, time.Now()); !errors.Is(err, ErrCheckInsAreDateOnly) {
 			t.Errorf("ParseCheckInDate(%q) error = %v, want ErrCheckInsAreDateOnly", input, err)
 		}
 	}
@@ -294,7 +294,7 @@ func TestParseCheckInDateRefusesATimeOfDay(t *testing.T) {
 // the message inherited from ParseCalendarDate says so.
 func TestParseCheckInDateRefusesTheHourForm(t *testing.T) {
 	for _, input := range []string{"+4h", "+48h"} {
-		_, err := ParseCheckInDate(input)
+		_, err := ParseCheckInDateAt(input, time.Now())
 		if err == nil {
 			t.Errorf("ParseCheckInDate(%q) was accepted", input)
 			continue
@@ -309,7 +309,7 @@ func TestParseCheckInDateRefusesTheHourForm(t *testing.T) {
 // the field is not quietly permissive about text it cannot resolve.
 func TestParseCheckInDateRefusesNonsense(t *testing.T) {
 	for _, input := range []string{"", "   ", "someday", "2026-13-01", "2026-02-30", "15/03/2026"} {
-		if _, err := ParseCheckInDate(input); err == nil {
+		if _, err := ParseCheckInDateAt(input, time.Now()); err == nil {
 			t.Errorf("ParseCheckInDate(%q) was accepted", input)
 		}
 	}

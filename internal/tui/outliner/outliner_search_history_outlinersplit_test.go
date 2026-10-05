@@ -309,3 +309,33 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 		t.Fatalf("case-sensitive recall = %q, %v", got, ok)
 	}
 }
+
+func TestSearchHistoryFeedbackFollowsPrefixWalk(t *testing.T) {
+	out := searchHistoryOutliner()
+	out.ConfigureSearchHistory([]string{"invoice old", "other", "invoice new"}, nil)
+	out.SetSearchInputValue("invoice")
+	out.SetSearchInputCursor(3)
+	for _, want := range []string{"History 1 of 2", "History 2 of 2", "Oldest matching query"} {
+		pressSearchKey(out, tea.KeyUp)
+		if got := out.buildOutlinerSearchIndicator(120); !strings.Contains(got, want) {
+			t.Fatalf("search indicator %q lacks %q", got, want)
+		}
+	}
+	pressSearchKey(out, tea.KeyDown)
+	if !strings.Contains(out.buildOutlinerSearchIndicator(120), "History 1 of 2") {
+		t.Fatal("boundary press lost the original prefix walk")
+	}
+	pressSearchKey(out, tea.KeyDown)
+	if out.SearchInputValue() != "invoice" || out.SearchInputCursor() != 3 || out.Search.history.notice != "" {
+		t.Fatal("returning to draft did not restore input and clear feedback")
+	}
+	out.SetSearchInputValue("missing")
+	pressSearchKey(out, tea.KeyUp)
+	if !strings.Contains(out.buildOutlinerSearchIndicator(120), "No history matches this prefix") {
+		t.Fatal("missing prefix is unexplained")
+	}
+	out.HandleKeyMsg(tea.KeyPressMsg{Code: 'x', Text: "x"})
+	if out.Search.history.notice != "" {
+		t.Fatal("typing retained stale recall feedback")
+	}
+}

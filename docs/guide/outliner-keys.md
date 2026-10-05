@@ -307,8 +307,12 @@ selection starts blank and says that saving replaces every selected schedule.
 Use `Tab`/`Shift+Tab` between fields, `Enter` for the current field's presets,
 and `Ctrl+S` to save. Dates accept the relative spellings used by the date
 controls or a custom calendar date. Repeat offers Off, 1, 3, 7, 14, and 30 days,
-or a custom positive day count. Clear is an explicit date choice; an empty bulk
-draft never clears schedules. `Esc` closes a nested preset list first and
+or a custom positive day count. Date presets and valid typed dates show their
+resolved weekday and calendar date; `+30 days` means exactly 30 calendar days.
+Repeat presets open on the current interval, including a custom interval shown
+above the standard choices. A repeating draft explains that the next reminder
+falls that many days after you acknowledge it. Clear is an explicit date choice;
+an empty bulk draft never clears schedules. `Esc` closes a nested preset list first and
 cancels the editor from its field view. Validation and save failures keep the
 draft open for correction. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same

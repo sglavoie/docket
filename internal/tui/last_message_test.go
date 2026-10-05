@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -65,7 +66,8 @@ func TestLastMessageSearchOwnsInputAndEscBeforeReturningToOutline(t *testing.T) 
 			t.Fatal(err)
 		}
 	}
-	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(m.View().Content, "Disk unavailable") || strings.Contains(m.View().Content, "Saved task") {
+	plain := ansi.Strip(m.View().Content)
+	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(plain, "Disk unavailable") || strings.Contains(plain, "Saved task") {
 		t.Fatalf("search did not retain the message view:\n%s", m.View().Content)
 	}
 	if err := driver.SendKey("esc"); err != nil {

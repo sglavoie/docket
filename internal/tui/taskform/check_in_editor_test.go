@@ -149,7 +149,7 @@ func TestCheckInEditorCalendarDatePresets(t *testing.T) {
 		{"today", time.Date(2026, 3, 8, 12, 0, 0, 0, loc)},
 		{"tomorrow", time.Date(2026, 3, 7, 12, 0, 0, 0, loc)},
 		{"+week", time.Date(2026, 3, 1, 12, 0, 0, 0, loc)},
-		{"+month", time.Date(2026, 2, 6, 12, 0, 0, 0, loc)},
+		{"+30 days", time.Date(2026, 2, 6, 12, 0, 0, 0, loc)},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
 			model := NewCheckInEditorModel(operation.OperationExecutionRequest{}, "Task", models.CheckInSchedule{}, true)
@@ -220,5 +220,49 @@ func TestCheckInRelativeDatePassesScheduleValidation(t *testing.T) {
 		if err := models.ValidateCheckInSchedule(models.CheckInSchedule{Next: &next}); err != nil {
 			t.Fatalf("%q: %v", tc.input, err)
 		}
+	}
+}
+
+func TestCheckInRepeatPresetsPreserveCurrentInterval(t *testing.T) {
+	day := time.Date(2026, 10, 5, 0, 0, 0, 0, time.Local)
+	for _, days := range []int{0, 1, 3, 7, 14, 30, 45} {
+		model := NewCheckInEditorModel(operation.OperationExecutionRequest{}, "Task", models.CheckInSchedule{Next: &day, RepeatDays: days}, false)
+		model.HandleKey(checkInEditorKey("tab"))
+		model.HandleKey(checkInEditorKey("enter"))
+		model.HandleKey(checkInEditorKey("enter"))
+		_, dismissed, result := model.HandleKey(checkInEditorKey("ctrl+s"))
+		selected, ok := result.(operation.OperationValueSelectedMsg)
+		if !dismissed || !ok {
+			t.Fatalf("interval %d: save failed: %s", days, model.Notice())
+		}
+		if got := selected.Value.(operation.OperationCheckInValue).Schedule.RepeatDays; got != days {
+			t.Fatalf("opening and accepting presets changed %d to %d", days, got)
+		}
+	}
+}
+
+func TestCheckInDatePreviewMatchesSavedRelativeDate(t *testing.T) {
+	model := NewCheckInEditorModel(operation.OperationExecutionRequest{}, "Task", models.CheckInSchedule{}, true)
+	model.now = func() time.Time { return time.Date(2026, 1, 31, 12, 0, 0, 0, time.Local) }
+	model.HandlePaste(tea.PasteMsg{Content: "+30d"})
+	model.repeatInput.SetValue("7")
+	rendered := model.Render(60)
+	if !strings.Contains(rendered, "Mon Mar 2, 2026") || !strings.Contains(rendered, "7 days after you acknowledge.") {
+		t.Fatalf("missing date or repeat preview: %s", rendered)
+	}
+	model.HandleKey(checkInEditorKey("enter"))
+	if rendered := model.Render(60); !strings.Contains(rendered, "+30 days · Mon Mar 2, 2026") || strings.Contains(rendered, "+month") {
+		t.Fatalf("preset hides its interval or resolved date: %s", rendered)
+	}
+	model.HandleKey(checkInEditorKey("esc"))
+	_, _, result := model.HandleKey(checkInEditorKey("ctrl+s"))
+	value := result.(operation.OperationValueSelectedMsg).Value.(operation.OperationCheckInValue)
+	if got := value.Schedule.Next.Format(time.DateOnly); got != "2026-03-02" {
+		t.Fatalf("saved date %s differs from preview", got)
+	}
+	model.Restore(value, "")
+	model.dateInput.SetValue("nonsense")
+	if strings.Contains(model.Render(60), "Resolves to") {
+		t.Fatal("invalid input kept a stale date preview")
 	}
 }

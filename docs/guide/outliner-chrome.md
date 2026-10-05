@@ -220,7 +220,9 @@ characters are highlighted in the message and its kind; copied text stays plain.
 the input so Left/Right can browse just the matches. `Esc` clears the filter and
 restores the message and scroll position you started from; while typing, another
 `Esc` leaves the input. `Y` still copies the whole retained history, including
-messages outside the filter. Searching changes neither timestamps nor messages.
+messages outside the filter. While filtered, its hint names the full count
+(`Y copy all 20`), and successful copying reports how many copied messages were
+hidden by the filter. Searching changes neither timestamps nor messages.
 Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 

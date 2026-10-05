@@ -41,7 +41,7 @@ var checkInDatePresets = []checkInPreset{
 	{label: "today"},
 	{label: "tomorrow", days: 1},
 	{label: "+week", days: 7},
-	{label: "+month", days: 30},
+	{label: "+30 days", days: 30},
 	{label: "clear", clear: true},
 }
 
@@ -205,6 +205,13 @@ func (model *CheckInEditorModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, 
 			model.picker = checkInPickerDate
 		} else {
 			model.picker = checkInPickerRepeat
+			current, _ := strconv.Atoi(strings.TrimSpace(model.repeatInput.Value()))
+			for i, days := range model.repeatPresets() {
+				if days == current {
+					model.pickerCursor = i
+					break
+				}
+			}
 		}
 		return nil, false, nil
 	case "ctrl+s":
@@ -229,7 +236,7 @@ func (model *CheckInEditorModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, 
 func (model *CheckInEditorModel) handlePickerKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	length := len(checkInDatePresets)
 	if model.picker == checkInPickerRepeat {
-		length = len(checkInRepeatPresets)
+		length = len(model.repeatPresets())
 	}
 	switch msg.String() {
 	case "esc":
@@ -265,7 +272,7 @@ func (model *CheckInEditorModel) handlePickerKey(msg tea.KeyPressMsg) (tea.Cmd, 
 			}
 		} else {
 			model.clear = false
-			model.repeatInput.SetValue(repeatDisplay(checkInRepeatPresets[model.pickerCursor]))
+			model.repeatInput.SetValue(repeatDisplay(model.repeatPresets()[model.pickerCursor]))
 		}
 		model.picker = checkInPickerNone
 		return nil, false, nil
@@ -291,7 +298,7 @@ func (model *CheckInEditorModel) submit() (tea.Cmd, bool, tea.Msg) {
 		model.notice = "Choose a next check-in date or select Clear."
 		return nil, false, nil
 	}
-	next, err := util.ParseCheckInDate(dateInput)
+	next, err := util.ParseCheckInDateAt(dateInput, model.now())
 	if err != nil {
 		model.notice = err.Error()
 		return nil, false, nil
@@ -343,11 +350,22 @@ func (model *CheckInEditorModel) Render(width int) string {
 		theme.ApplyThemedTextInput(&model.repeatInput)
 		content.WriteString(chrome.RenderFormLabelWithWidth("Next check-in:", 17, model.focus == checkInFieldNext))
 		content.WriteString(model.dateInput.View())
+		if day, err := util.ParseCheckInDateAt(model.dateInput.Value(), model.now()); err == nil && !model.clear {
+			content.WriteString("\n" + theme.MutedStyle.Render("Resolves to "+day.Format("Mon Jan 2, 2006")))
+		}
 		content.WriteString("\n")
 		content.WriteString(chrome.RenderFormLabelWithWidth("Repeat:", 17, model.focus == checkInFieldRepeat))
 		content.WriteString(model.repeatInput.View())
 		content.WriteString("\n\n")
-		content.WriteString(theme.MutedStyle.Render("Repeat: Off, 1, 3, 7, 14, 30, or custom days"))
+		hint := "Repeat: Off, 1, 3, 7, 14, 30, or custom days"
+		if days, err := strconv.Atoi(strings.TrimSpace(model.repeatInput.Value())); err == nil && days > 0 && models.ValidateCheckInRepeatDays(days) == nil {
+			unit := "days"
+			if days == 1 {
+				unit = "day"
+			}
+			hint = fmt.Sprintf("Next reminder: %d %s after you acknowledge.", days, unit)
+		}
+		content.WriteString(theme.MutedStyle.Render(strings.Join(textfit.WrapText(hint, contentWidth), "\n")))
 	}
 	if model.notice != "" {
 		content.WriteString("\n\n")
@@ -367,10 +385,17 @@ func (model *CheckInEditorModel) Render(width int) string {
 
 func (model *CheckInEditorModel) renderDatePicker(width int) string {
 	var b strings.Builder
+	now := model.now()
 	for i, preset := range checkInDatePresets {
-		line := "  " + preset.label
+		label := preset.label
+		if !preset.clear {
+			if day, err := util.AddCalendarDays(now, preset.days); err == nil {
+				label += " · " + day.Format("Mon Jan 2, 2006")
+			}
+		}
+		line := "  " + label
 		if i == model.pickerCursor {
-			line = theme.SelectedStyle.Render(fmt.Sprintf(" %-*s", max(width-2, 1), preset.label))
+			line = theme.SelectedStyle.Render(fmt.Sprintf(" %-*s", max(width-2, 1), label))
 		}
 		b.WriteString(line)
 		if i < len(checkInDatePresets)-1 {
@@ -380,9 +405,24 @@ func (model *CheckInEditorModel) renderDatePicker(width int) string {
 	return b.String()
 }
 
+// Keep custom intervals selectable so opening and accepting presets preserves them.
+func (model *CheckInEditorModel) repeatPresets() []int {
+	days, err := strconv.Atoi(strings.TrimSpace(model.repeatInput.Value()))
+	if err == nil && days > 0 && models.ValidateCheckInRepeatDays(days) == nil {
+		for _, preset := range checkInRepeatPresets {
+			if preset == days {
+				return checkInRepeatPresets
+			}
+		}
+		return append([]int{days}, checkInRepeatPresets...)
+	}
+	return checkInRepeatPresets
+}
+
 func (model *CheckInEditorModel) renderRepeatPicker(width int) string {
 	var b strings.Builder
-	for i, days := range checkInRepeatPresets {
+	presets := model.repeatPresets()
+	for i, days := range presets {
 		label := repeatDisplay(days)
 		if days > 0 {
 			label += " days"
@@ -392,7 +432,7 @@ func (model *CheckInEditorModel) renderRepeatPicker(width int) string {
 			line = theme.SelectedStyle.Render(fmt.Sprintf(" %-*s", max(width-2, 1), label))
 		}
 		b.WriteString(line)
-		if i < len(checkInRepeatPresets)-1 {
+		if i < len(presets)-1 {
 			b.WriteString("\n")
 		}
 	}

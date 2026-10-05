@@ -120,7 +120,7 @@ func ValidateStorableCalendarDate(t time.Time) error {
 // it to tell a time-bearing input apart from an unparseable one.
 var ErrCheckInsAreDateOnly = errors.New("a check-in is a calendar day; drop the time of day")
 
-// ParseCheckInDate parses a check-in value using ParseCalendarDate's grammar
+// ParseCheckInDateAt parses a check-in value using ParseCalendarDate's grammar
 // with calendar-safe arithmetic. The hour form (+Nh) stays defer-only and a
 // trailing clock is refused by name: a check-in may not carry an hour. A caller
 // that typed one gets told which value it is setting rather than a generic
@@ -132,11 +132,8 @@ var ErrCheckInsAreDateOnly = errors.New("a check-in is a calendar day; drop the 
 // a place to put an hour; here it would mean silently accepting the one spelling
 // of a time that happens to be harmless, and the value a surface reads back
 // would not be the value it was given.
-func ParseCheckInDate(input string) (time.Time, error) {
-	return ParseCheckInDateAt(input, time.Now())
-}
-
-// ParseCheckInDateAt resolves a check-in relative to now's calendar date and
+//
+// It resolves a check-in relative to now's calendar date and
 // location. All date arithmetic happens on civil components before resolving
 // the start of the result in that location, including dates without midnight.
 func ParseCheckInDateAt(input string, now time.Time) (time.Time, error) {

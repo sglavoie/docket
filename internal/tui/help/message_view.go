@@ -45,9 +45,11 @@ type MessageView struct {
 }
 
 type messageCopiedMsg struct {
-	err   error
-	index int
-	all   bool
+	err    error
+	index  int
+	all    bool
+	count  int
+	hidden int
 }
 
 // NewMessageView snapshots feedback in newest-first order.
@@ -95,7 +97,11 @@ func (m *MessageView) guidance() chrome.GuidanceSpec {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "y copy")...)
 	}
 	if len(m.messages) > 0 {
-		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "Y copy all")...)
+		label := "Y copy all"
+		if m.query != "" {
+			label = fmt.Sprintf("Y copy all %d", len(m.messages))
+		}
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, label)...)
 	}
 	if len(m.matches) > 1 {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "← older", "→ newer")...)
@@ -163,6 +169,9 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.copyNotice = "Copied message"
 		if msg.all {
 			m.copyNotice = "Copied message history"
+			if msg.hidden > 0 {
+				m.copyNotice = fmt.Sprintf("Copied all %d messages, including %d hidden by the filter", msg.count, msg.hidden)
+			}
 		}
 		if msg.err != nil {
 			m.copyNotice = fmt.Sprintf("Could not copy: %s", msg.err)
@@ -202,7 +211,10 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					text = m.historyText()
 				}
 				index := m.index
-				return m, func() tea.Msg { return messageCopiedMsg{err: external.CopyText(text), index: index, all: all} }
+				count, hidden := len(m.messages), len(m.messages)-len(m.matches)
+				return m, func() tea.Msg {
+					return messageCopiedMsg{err: external.CopyText(text), index: index, all: all, count: count, hidden: hidden}
+				}
 			}
 		case "left":
 			m.moveMatch(1)

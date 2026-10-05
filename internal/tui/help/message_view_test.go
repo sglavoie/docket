@@ -313,3 +313,26 @@ func TestMessageSearchCopyAndScrollKeepTheOriginalSnapshot(t *testing.T) {
 		t.Fatal("copy-all filtered or mutated the original snapshot")
 	}
 }
+
+func TestFilteredMessageCopyExplainsFullHistory(t *testing.T) {
+	m := NewMessageView(RecalledMessage{Text: "Visible", Kind: "Error"}, RecalledMessage{Text: "Hidden", Kind: "Feedback"})
+	m.SetSize(60, 20)
+	m.query = "Error"
+	m.filterMessages()
+	if !strings.Contains(ansi.Strip(m.View().Content), "Y copy all 2") {
+		t.Fatal("filtered copy hint does not name the full count")
+	}
+	original := external.CopyText
+	t.Cleanup(func() { external.CopyText = original })
+	var copied string
+	external.CopyText = func(text string) error { copied = text; return nil }
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"})
+	// Feedback describes the filter at the time of the copy, even if it changes.
+	m.query = ""
+	m.filterMessages()
+	m.Update(cmd())
+	if !strings.Contains(copied, "Visible") || !strings.Contains(copied, "Hidden") ||
+		m.copyNotice != "Copied all 2 messages, including 1 hidden by the filter" {
+		t.Fatalf("copy scope mismatch: %q / %q", copied, m.copyNotice)
+	}
+}

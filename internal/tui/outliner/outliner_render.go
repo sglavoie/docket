@@ -757,10 +757,13 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	if guidance := m.Search.Gate.GuidanceText(); guidance != "" {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
-	if !m.Search.caseRelaxed {
-		return indicator
+	if m.Search.caseRelaxed {
+		indicator = appendSearchBadge(indicator, " (case ignored)", width)
 	}
-	return appendSearchBadge(indicator, " (case ignored)", width)
+	if m.IsSearchMode() && !m.Search.Autocomplete.Active() && m.Search.history.notice != "" {
+		indicator = appendSearchBadge(indicator, " · "+m.Search.history.notice, width)
+	}
+	return indicator
 }
 
 // appendLensQueryBadge gives the lens query the badges ordinary search already

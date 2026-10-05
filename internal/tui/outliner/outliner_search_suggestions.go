@@ -887,7 +887,8 @@ type outlinerSearchHistory struct {
 	entries     []string
 	index       int
 	draft       string
-	draftCursor int // rune position to restore when returning to the draft
+	draftCursor int    // rune position to restore when returning to the draft
+	notice      string // local recall feedback, never persisted or added to message history
 }
 
 // record appends a submitted query. An earlier identical entry is removed rather
@@ -927,6 +928,7 @@ func (h *outlinerSearchHistory) resetRecall() {
 	h.index = len(h.entries)
 	h.draft = ""
 	h.draftCursor = 0
+	h.notice = ""
 }
 
 // older steps one entry back and reports the query to install. The first step of
@@ -935,7 +937,11 @@ func (h *outlinerSearchHistory) resetRecall() {
 // a floor: pressing Up there reports nothing rather than wrapping, because a
 // wrap would silently hand back the newest query as if it were older.
 func (h *outlinerSearchHistory) older(current string, cursor int) (string, bool) {
-	if h == nil || len(h.entries) == 0 {
+	if h == nil {
+		return "", false
+	}
+	if len(h.entries) == 0 {
+		h.notice = "No search history yet"
 		return "", false
 	}
 	if h.index >= len(h.entries) {
@@ -946,10 +952,28 @@ func (h *outlinerSearchHistory) older(current string, cursor int) (string, bool)
 	for i := h.index - 1; i >= 0; i-- {
 		if strings.HasPrefix(h.entries[i], h.draft) {
 			h.index = i
+			h.notice = h.positionLabel()
 			return h.entries[i], true
 		}
 	}
+	h.notice = "No history matches this prefix"
+	if h.index < len(h.entries) {
+		h.notice = "Oldest matching query"
+	}
 	return "", false
+}
+
+func (h *outlinerSearchHistory) positionLabel() string {
+	position, total := 0, 0
+	for i := len(h.entries) - 1; i >= 0; i-- {
+		if strings.HasPrefix(h.entries[i], h.draft) {
+			total++
+			if i == h.index {
+				position = total
+			}
+		}
+	}
+	return fmt.Sprintf("History %d of %d", position, total)
 }
 
 // newer steps one entry forward, ending on the draft the walk set aside. Down
@@ -961,6 +985,7 @@ func (h *outlinerSearchHistory) newer() (string, bool) {
 	for i := h.index + 1; i < len(h.entries); i++ {
 		if strings.HasPrefix(h.entries[i], h.draft) {
 			h.index = i
+			h.notice = h.positionLabel()
 			return h.entries[i], true
 		}
 	}
@@ -1012,8 +1037,8 @@ func (m *OutlinerModel) ClearSearchHistory() error {
 // recallSearchHistory claims Up and Down inside the slash input, and only there.
 // It is called from the key cascade below the suggestion pane's own claim, so an
 // open pane keeps both keys for its cursor and one Esc gives them back to the
-// walk. Any other key, an exhausted walk, and a Down outside a walk all return
-// false and fall through to the ordinary input handling, which ignores them.
+// walk. Boundary presses are consumed without changing the input; every other
+// key falls through to ordinary input handling.
 func (m *OutlinerModel) recallSearchHistory(key string) bool {
 	if m == nil || !m.IsSearchMode() {
 		return false
@@ -1032,7 +1057,9 @@ func (m *OutlinerModel) recallSearchHistory(key string) bool {
 		return false
 	}
 	if !ok {
-		return false
+		// Claim boundary presses too: they must not reset the walk or its notice
+		// through the ordinary text-input path.
+		return true
 	}
 	m.applyRecalledSearchQuery(value)
 	if key == "down" && m.Search.history.index == len(m.Search.history.entries) {
