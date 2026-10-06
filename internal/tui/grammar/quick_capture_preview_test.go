@@ -214,6 +214,38 @@ func TestDuplicateCaptureContextFollowsReferencedTask(t *testing.T) {
 	}
 }
 
+func TestDuplicateCapturePrefersSameParentThenLowestID(t *testing.T) {
+	parentID, otherID := "parent", "other"
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{
+		{ID: parentID, ShortID: 1, Title: "Release", WorkflowState: models.StateDoing},
+		{ID: otherID, ShortID: 2, Title: "Other release", WorkflowState: models.StateBacklog},
+		{ID: "root", ShortID: 3, Title: "Fix login", WorkflowState: models.StateBacklog},
+		{ID: "sibling-later", ShortID: 42, Title: "Fix login", WorkflowState: models.StateDoing, ParentID: &parentID},
+		{ID: "sibling-first", ShortID: 12, Title: "Fix login", WorkflowState: models.StateWaiting, ParentID: &parentID},
+		{ID: "terminal", ShortID: 4, Title: "Fix login", WorkflowState: models.StateDone, ParentID: &parentID},
+	}}
+	for _, tc := range []struct {
+		name, draft string
+		implicit    *string
+		want        string
+	}{
+		{"explicit", "Fix login >1", nil, "web#12 (+2 more) · Waiting · under #1 Release"},
+		{"implicit", "Fix login", &parentID, "web#12 (+2 more) · Waiting · under #1 Release"},
+		{"explicit overrides implicit", "Fix login >2", &parentID, "web#3 (+2 more) · Backlog"},
+		{"no sibling", "Fix login >2", nil, "web#3 (+2 more) · Backlog"},
+		{"root", "Fix login", nil, "web#3 (+2 more) · Backlog"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			q := draftedCaptureInput(t, tc.draft, project, nil, false)
+			q.DefaultParentID = tc.implicit
+			q.UpdatePreview()
+			if got := q.duplicateCaptureHint(); got != "Already exists: "+tc.want {
+				t.Fatalf("hint = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T) {
 	home := &models.Project{ID: "home", Slug: "home", Name: "Home"}
 	web := &models.Project{ID: "web", Slug: "web", Name: "Web"}

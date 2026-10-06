@@ -424,12 +424,20 @@ func (q *QuickCaptureInput) duplicateCaptureHint() string {
 	}
 	var first *models.Task
 	count := 0
+	parentID := q.Preview.ParentID
+	if parentID == nil {
+		parentID = q.DefaultParentID
+	}
+	sameParent := func(task *models.Task) bool {
+		return parentID != nil && task.ParentID != nil && *task.ParentID == *parentID
+	}
 	for _, task := range project.Tasks {
 		if task == nil || task.IsTerminalState() || !strings.EqualFold(strings.TrimSpace(task.Title), strings.TrimSpace(q.Preview.Title)) {
 			continue
 		}
 		count++
-		if first == nil || task.ShortID < first.ShortID {
+		if first == nil || (sameParent(task) && !sameParent(first)) ||
+			(sameParent(task) == sameParent(first) && task.ShortID < first.ShortID) {
 			first = task
 		}
 	}

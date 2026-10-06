@@ -154,6 +154,23 @@ func TestTaskComposerHeaderAggregatesMultilineRoutes(t *testing.T) {
 	}
 }
 
+func TestChildComposerDuplicateHintUsesImplicitParent(t *testing.T) {
+	parentID := "parent"
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{
+		{ID: parentID, ShortID: 1, Title: "Release", WorkflowState: models.StateDoing},
+		{ID: "root", ShortID: 2, Title: "Fix login", WorkflowState: models.StateBacklog},
+		{ID: "sibling", ShortID: 3, Title: "Fix login", WorkflowState: models.StateWaiting, ParentID: &parentID},
+	}}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind: ComposerChild, Project: project, InitialText: "Fix login",
+		Shared: TaskComposerSharedAttributes{ParentID: &parentID},
+	}, nil)
+	composer.SetSize(100, 30)
+	if view := ansi.Strip(composer.View().Content); !strings.Contains(view, "Already exists: web#3") {
+		t.Fatalf("child capture did not prefer its sibling: %s", view)
+	}
+}
+
 func TestTaskComposerAutocompleteSuppressesUsedSingletonsPerLine(t *testing.T) {
 	parent := &models.Task{ID: "parent", ShortID: 1, Title: "Parent"}
 	project := &models.Project{ID: "project", Name: "Project", Slug: "project", Tasks: []*models.Task{parent}}

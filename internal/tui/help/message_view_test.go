@@ -314,6 +314,80 @@ func TestMessageSearchCopyAndScrollKeepTheOriginalSnapshot(t *testing.T) {
 	}
 }
 
+func TestMessageCopyMatchesSnapshotsFilterAndPreservesMetadata(t *testing.T) {
+	at := time.Date(2026, 10, 5, 10, 30, 0, 0, time.Local)
+	m := NewMessageView(
+		RecalledMessage{Text: "First failure 界", Kind: "Error", At: at},
+		RecalledMessage{Text: "Hidden success", Kind: "Feedback", At: at.Add(-time.Minute)},
+		RecalledMessage{Text: "Second failure", Kind: "Error", At: at.Add(-2 * time.Minute)},
+	)
+	original := external.CopyText
+	t.Cleanup(func() { external.CopyText = original })
+	var copied string
+	external.CopyText = func(text string) error { copied = text; return nil }
+	for _, key := range []string{"/", "E", "r", "r", "o", "r", "enter"} {
+		m.Update(helpKeyPress(key))
+	}
+	for _, size := range [][2]int{{60, 18}, {100, 33}, {60, 18}} {
+		m.SetSize(size[0], size[1])
+		view := ansi.Strip(m.View().Content)
+		if !strings.Contains(view, "Ctrl+Y copy matches") || lipgloss.Width(view) > size[0] || lipgloss.Height(view) != size[1] {
+			t.Fatalf("matching-copy guidance/layout at %v: %s", size, view)
+		}
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Mod: tea.ModCtrl})
+	if cmd == nil {
+		t.Fatal("matching copy unavailable")
+	}
+	// The clipboard command owns the accepted filter, even after it is cleared.
+	m.Update(helpKeyPress("esc"))
+	m.Update(cmd())
+	want := at.Format(time.RFC3339) + " · Error\nFirst failure 界\n\n" +
+		at.Add(-2*time.Minute).Format(time.RFC3339) + " · Error\nSecond failure"
+	if copied != want || m.copyNotice != "Copied 2 matching messages" {
+		t.Fatalf("copy = %q, notice = %q", copied, m.copyNotice)
+	}
+	if len(m.messages) != 3 || m.messages[1].Text != "Hidden success" {
+		t.Fatal("copy modified message history")
+	}
+}
+
+func TestMessageCopyMatchesGuardsAndClipboardFailure(t *testing.T) {
+	m := NewMessageView(RecalledMessage{Text: "Failure", Kind: "Error"})
+	key := tea.KeyPressMsg{Code: 'y', Mod: tea.ModCtrl}
+	for _, query := range []string{"", " ", "absent"} {
+		m.query = query
+		m.filterMessages()
+		if _, cmd := m.Update(key); cmd != nil || strings.Contains(ansi.Strip(m.View().Content), "Ctrl+Y copy matches") {
+			t.Fatalf("matching copy offered for query %q", query)
+		}
+	}
+	m.query = "Error"
+	m.filterMessages()
+	m.searching = true
+	if _, cmd := m.Update(key); cmd != nil {
+		t.Fatal("matching copy ran while typing")
+	}
+	m.searching = false
+	original := external.CopyText
+	t.Cleanup(func() { external.CopyText = original })
+	external.CopyText = func(string) error { return errors.New("clipboard unavailable") }
+	_, cmd := m.Update(key)
+	if cmd == nil {
+		t.Fatal("matching copy unavailable")
+	}
+	m.Update(cmd())
+	if m.copyNotice != "Could not copy: clipboard unavailable" || m.text != "Failure" || m.query != "Error" {
+		t.Fatal("clipboard failure lost message or search")
+	}
+	external.CopyText = func(string) error { return nil }
+	_, cmd = m.Update(key)
+	m.Update(cmd())
+	if m.copyNotice != "Copied 1 matching message" {
+		t.Fatal("single matching message reported incorrectly")
+	}
+}
+
 func TestFilteredMessageCopyExplainsFullHistory(t *testing.T) {
 	m := NewMessageView(RecalledMessage{Text: "Visible", Kind: "Error"}, RecalledMessage{Text: "Hidden", Kind: "Feedback"})
 	m.SetSize(60, 20)

@@ -45,11 +45,12 @@ type MessageView struct {
 }
 
 type messageCopiedMsg struct {
-	err    error
-	index  int
-	all    bool
-	count  int
-	hidden int
+	err      error
+	index    int
+	all      bool
+	matching bool
+	count    int
+	hidden   int
 }
 
 // NewMessageView snapshots feedback in newest-first order.
@@ -95,6 +96,9 @@ func (m *MessageView) guidance() chrome.GuidanceSpec {
 	spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "/ search")...)
 	if m.text != "" {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "y copy")...)
+	}
+	if strings.TrimSpace(m.query) != "" && len(m.matches) > 0 {
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(1, "Ctrl+Y copy matches")...)
 	}
 	if len(m.messages) > 0 {
 		label := "Y copy all"
@@ -167,6 +171,12 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.copyNotice = "Copied message"
+		if msg.matching {
+			m.copyNotice = fmt.Sprintf("Copied %d matching messages", msg.count)
+			if msg.count == 1 {
+				m.copyNotice = "Copied 1 matching message"
+			}
+		}
 		if msg.all {
 			m.copyNotice = "Copied message history"
 			if msg.hidden > 0 {
@@ -203,6 +213,17 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searching = true
 		case "esc":
 			m.clearSearch()
+		case "ctrl+y":
+			if strings.TrimSpace(m.query) != "" && len(m.matches) > 0 {
+				entries := make([]RecalledMessage, 0, len(m.matches))
+				for _, index := range m.matches {
+					entries = append(entries, m.messages[index])
+				}
+				text, index, count := recalledMessagesText(entries), m.index, len(entries)
+				return m, func() tea.Msg {
+					return messageCopiedMsg{err: external.CopyText(text), index: index, matching: true, count: count}
+				}
+			}
 		case "y", "Y":
 			if m.text != "" || (msg.String() == "Y" && len(m.messages) > 0) {
 				text := m.text
@@ -278,8 +299,12 @@ func messageTimeLabel(at, now time.Time) string {
 // historyText exports the same newest-first snapshot the reader browses.
 // Full timestamps retain dates and UTC offsets when shared outside this session.
 func (m *MessageView) historyText() string {
-	entries := make([]string, 0, len(m.messages))
-	for _, entry := range m.messages {
+	return recalledMessagesText(m.messages)
+}
+
+func recalledMessagesText(messages []RecalledMessage) string {
+	entries := make([]string, 0, len(messages))
+	for _, entry := range messages {
 		var metadata []string
 		if !entry.At.IsZero() {
 			metadata = append(metadata, entry.At.Local().Format(time.RFC3339))

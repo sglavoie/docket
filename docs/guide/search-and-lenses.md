@@ -4,6 +4,27 @@ The three session-only axes over an Outliner projection — which rows a mode
 holds, which projects load, and the order they are read in — plus the saved
 projections that write all of them at once.
 
+## Everyday finding and filtering
+
+| Keys | Result |
+| --- | --- |
+| `/`, type a query, `Enter` | Find tasks across the current project scope; existing row filters still apply |
+| `↑` / `↓` while typing | Recall submitted queries matching the typed prefix, after closing suggestions with `Esc` |
+| `f` | Choose which task rows to keep |
+| `F` | Choose which projects load; unavailable in the flat search results |
+| `o` | Choose sorting; `or` switches a held query between ranked results and the mode's lanes |
+| `Q` | Explain what narrows this view and remove restrictions individually |
+| `\` | Save the current view as a named lens or reopen a saved one |
+| `Esc` from search | Restore the view you searched from, including a lens suspended by search |
+
+For example, search `login #auth` to find matching work tagged `auth`. To find
+finished work instead, search `login ?completed`. If results seem unexpectedly
+narrow, open `Q` to see the restrictions still in effect. Use `\` →
+`Save current view` to keep a useful search for later.
+
+Below are the [filter and search reference](#filters-and-search),
+[named lenses](#named-lenses), and [sorting rules](#sorting).
+
 ## Filters and search
 
 In value, named-lens, and relationship pickers, `/` opens an editable search
@@ -218,7 +239,9 @@ back through them newest first and `↓` walks forward again, ending on whatever
 you had half-typed when the walk started, with its caret restored to the same
 position, so reaching for an earlier query never
 costs the one in your hands. When the box contains text, both arrows visit
-only queries beginning with that exact, case-sensitive prefix; an empty box
+only queries beginning with that prefix, using smart case: lowercase input
+matches either case, while a prefix containing a capital is case-sensitive.
+Recalled queries keep their original spelling. An empty box
 browses every query. A prefix with no matches leaves the input unchanged and
 shows `No history matches this prefix`. While walking, `History 2 of 5` counts
 only matching queries; another Up at the oldest match says `Oldest matching

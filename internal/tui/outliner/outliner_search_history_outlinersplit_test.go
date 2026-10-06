@@ -285,7 +285,7 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 	for _, query := range []string{"invoice old", "other", "invoice new", "Invoice upper", "unrelated"} {
 		h.record(query)
 	}
-	for _, want := range []string{"invoice new", "invoice old"} {
+	for _, want := range []string{"Invoice upper", "invoice new", "invoice old"} {
 		if got, ok := h.older("invoice", 7); !ok || got != want {
 			t.Fatalf("older = %q, %v; want %q", got, ok, want)
 		}
@@ -293,7 +293,7 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 	if _, ok := h.older("invoice old", 11); ok {
 		t.Fatal("walk wrapped past its oldest matching entry")
 	}
-	for _, want := range []string{"invoice new", "invoice"} {
+	for _, want := range []string{"invoice new", "Invoice upper", "invoice"} {
 		if got, ok := h.newer(); !ok || got != want {
 			t.Fatalf("newer = %q, %v; want %q", got, ok, want)
 		}
@@ -307,6 +307,33 @@ func TestSearchHistoryFiltersBothDirectionsByOriginalPrefix(t *testing.T) {
 	h.resetRecall()
 	if got, ok := h.older("Invoice", 7); !ok || got != "Invoice upper" {
 		t.Fatalf("case-sensitive recall = %q, %v", got, ok)
+	}
+	if _, ok := h.older("Invoice upper", 13); ok || h.positionLabel() != "History 1 of 1" {
+		t.Fatal("uppercase prefix admitted lowercase entries")
+	}
+}
+
+func TestSearchHistorySmartCaseUnicodeAndOriginalSpelling(t *testing.T) {
+	var h outlinerSearchHistory
+	h.record("école lower")
+	h.record("École upper")
+	for _, want := range []string{"École upper", "école lower"} {
+		if got, ok := h.older("école", 2); !ok || got != want {
+			t.Fatalf("Unicode recall = %q, %v; want %q", got, ok, want)
+		}
+	}
+	if h.positionLabel() != "History 2 of 2" {
+		t.Fatal("smart-case matches were not counted")
+	}
+	h.resetRecall()
+	if got, ok := h.older("École", 2); !ok || got != "École upper" {
+		t.Fatalf("uppercase Unicode recall = %q, %v", got, ok)
+	}
+	if _, ok := h.older("École upper", 11); ok {
+		t.Fatal("uppercase Unicode prefix admitted lowercase entry")
+	}
+	if got, ok := h.newer(); !ok || got != "École" {
+		t.Fatal("returning to draft changed its spelling")
 	}
 }
 

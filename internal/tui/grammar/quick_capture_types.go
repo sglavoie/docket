@@ -135,6 +135,7 @@ type QuickCaptureInput struct {
 
 	// Context needed for parsing/preview
 	Project           *models.Project
+	DefaultParentID   *string // Composer's implicit parent, used for duplicate-hint ranking.
 	allProjects       []*models.Project
 	skipProjectSyntax bool // When true, %project syntax is disabled
 

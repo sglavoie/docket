@@ -4,6 +4,31 @@ The sigils every capture and edit surface speaks, the workflow and hierarchy
 rules they commit against, and the `O` outline buffer that edits a whole
 project at once.
 
+## Everyday capture
+
+Press `a`, type a title, then press `Enter` to create a task. With no project
+in scope it goes to Unfiled / Inbox; inside one project it goes to that project.
+
+| Keys | Result |
+| --- | --- |
+| `a` | Open capture |
+| `A` on a task | Capture a child under that task, defaulting to Backlog |
+| `Enter` in capture | Save the task or batch and close |
+| `Ctrl+N` in capture | Save and keep capture open for another task or batch |
+| `Ctrl+F` in capture | Expand a supported single-task draft into the full form |
+| `?` in capture | Open syntax help after closing suggestions with `Esc` |
+| `Esc` | Close suggestions or help first; leaving a changed draft asks before discarding it |
+
+For example, type `Fix login !1 @tomorrow #auth $today`. The preview shows a
+High-priority task due tomorrow, tagged `auth`, planned for Today with Backlog
+status. Add `%web` to route it to an existing project whose slug is `web`.
+Paste several lines to create one task per nonblank line, all in one undoable
+save. Close suggestions or syntax help with `Esc` before using `Ctrl+N`.
+
+The [grammar reference](#capture-grammar) below covers every sigil, previews,
+and validation. See [workflow and hierarchy](#workflow-and-hierarchy) for
+destination rules and [outline editing](#outline-editing) for whole-project edits.
+
 ## Capture grammar
 
 One nonblank line creates one task. Multiple lines are fully parsed and
@@ -180,8 +205,12 @@ accept them; accepting one inserts only the original date token.
 If the parsed title matches an unfinished task in the resolved project,
 the preview adds `Already exists: web#42 · Backlog` (and a count if more match).
 It shows the referenced task's current status and, for a child, its parent as
-`under #7 Release prep`. Matching
-is case-insensitive, ignores leading and trailing whitespace, and excludes Done
+`under #7 Release prep`. The hint prefers a task under the parent you are
+capturing into, whether chosen with
+`A` or `>parent`; ties use the lowest short ID. If there is no matching sibling,
+or you are capturing at the project root, the lowest short ID wins across the
+project. The count still includes every matching unfinished task in that project.
+Title matching is case-insensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally.
 The preview also checks other valid lines in a multiline draft for the same
 parsed title in the same resolved project. `Same task on line 2` names the first

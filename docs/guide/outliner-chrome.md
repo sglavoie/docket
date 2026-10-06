@@ -223,6 +223,9 @@ restores the message and scroll position you started from; while typing, another
 messages outside the filter. While filtered, its hint names the full count
 (`Y copy all 20`), and successful copying reports how many copied messages were
 hidden by the filter. Searching changes neither timestamps nor messages.
+After accepting a nonempty search with `Enter`, `Ctrl+Y` copies only its matching
+messages, newest first, with the same full timestamps and kinds as `Y`. The hint
+appears only when there are matches, and the result reports how many were copied.
 Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 

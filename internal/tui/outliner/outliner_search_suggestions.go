@@ -932,7 +932,7 @@ func (h *outlinerSearchHistory) resetRecall() {
 }
 
 // older steps one entry back and reports the query to install. The first step of
-// a walk sets the caller's current text aside as both draft and exact prefix.
+// a walk sets the caller's current text aside as both draft and smart-case prefix.
 // Only entries beginning with that prefix are visited in either direction. The oldest entry is
 // a floor: pressing Up there reports nothing rather than wrapping, because a
 // wrap would silently hand back the newest query as if it were older.
@@ -950,7 +950,7 @@ func (h *outlinerSearchHistory) older(current string, cursor int) (string, bool)
 		h.index = len(h.entries)
 	}
 	for i := h.index - 1; i >= 0; i-- {
-		if strings.HasPrefix(h.entries[i], h.draft) {
+		if h.matchesPrefix(h.entries[i]) {
 			h.index = i
 			h.notice = h.positionLabel()
 			return h.entries[i], true
@@ -966,7 +966,7 @@ func (h *outlinerSearchHistory) older(current string, cursor int) (string, bool)
 func (h *outlinerSearchHistory) positionLabel() string {
 	position, total := 0, 0
 	for i := len(h.entries) - 1; i >= 0; i-- {
-		if strings.HasPrefix(h.entries[i], h.draft) {
+		if h.matchesPrefix(h.entries[i]) {
 			total++
 			if i == h.index {
 				position = total
@@ -976,6 +976,13 @@ func (h *outlinerSearchHistory) positionLabel() string {
 	return fmt.Sprintf("History %d of %d", position, total)
 }
 
+func (h *outlinerSearchHistory) matchesPrefix(entry string) bool {
+	if fuzzy.CaseSensitiveQuery(h.draft) {
+		return strings.HasPrefix(entry, h.draft)
+	}
+	return strings.HasPrefix(strings.ToLower(entry), strings.ToLower(h.draft))
+}
+
 // newer steps one entry forward, ending on the draft the walk set aside. Down
 // outside a walk reports nothing, so it never clears an input the user typed.
 func (h *outlinerSearchHistory) newer() (string, bool) {
@@ -983,7 +990,7 @@ func (h *outlinerSearchHistory) newer() (string, bool) {
 		return "", false
 	}
 	for i := h.index + 1; i < len(h.entries); i++ {
-		if strings.HasPrefix(h.entries[i], h.draft) {
+		if h.matchesPrefix(h.entries[i]) {
 			h.index = i
 			h.notice = h.positionLabel()
 			return h.entries[i], true

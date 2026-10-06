@@ -172,6 +172,7 @@ func (m *TaskComposerModel) initCompactInput() {
 		placeholder = "One task per line…"
 	}
 	m.QuickCaptureInput = grammar.NewQuickCaptureInput(project, m.Preset.AllProjects, placeholder, !m.Preset.AllowProjectSwitch)
+	m.DefaultParentID = cloneStringPtr(m.Preset.Shared.ParentID)
 	m.Input.CharLimit = 4000
 	if m.Preset.InitialText != "" {
 		m.Input.SetValue(m.Preset.InitialText)

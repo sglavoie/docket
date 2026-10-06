@@ -53,6 +53,8 @@ func TestLastMessageMenuOpensAndReturnsWithoutChangingOutline(t *testing.T) {
 
 func TestLastMessageSearchOwnsInputAndEscBeforeReturningToOutline(t *testing.T) {
 	driver, out := menuBarDriver(t)
+	var copied string
+	withFakeClipboard(t, nil, &copied)
 	m := driver.App()
 	m.Update(status.ErrorMsg{Err: errors.New("Disk unavailable")})
 	m.Update(status.InfoStatusMsg("Saved task"))
@@ -69,6 +71,14 @@ func TestLastMessageSearchOwnsInputAndEscBeforeReturningToOutline(t *testing.T) 
 	plain := ansi.Strip(m.View().Content)
 	if m.currentView() != presentation.ViewLastMessage || !strings.Contains(plain, "Disk unavailable") || strings.Contains(plain, "Saved task") {
 		t.Fatalf("search did not retain the message view:\n%s", m.View().Content)
+	}
+	if err := driver.SendKey("ctrl+y"); err != nil {
+		t.Fatal(err)
+	}
+	driver.drain()
+	if !strings.Contains(copied, "Disk unavailable") || strings.Contains(copied, "Saved task") ||
+		!strings.Contains(m.View().Content, "Copied 1 matching message") || out.Cursor != cursor {
+		t.Fatalf("matching copy did not stay in the viewer: clipboard=%q\n%s", copied, m.View().Content)
 	}
 	if err := driver.SendKey("esc"); err != nil {
 		t.Fatal(err)
