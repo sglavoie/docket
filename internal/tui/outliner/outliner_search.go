@@ -83,8 +83,9 @@ type searchState struct {
 	// Up and Down inside the input. Unlike jump history it is not scoped to
 	// a projection: a query is worth recalling in whatever mode or scope the user
 	// reaches for it next.
-	Autocomplete outlinerSearchAutocomplete
-	history      outlinerSearchHistory
+	Autocomplete  outlinerSearchAutocomplete
+	history       outlinerSearchHistory
+	historyPicker *searchHistoryPicker
 
 	// The notes tier. noteIndex is the shell-injected accessor over the
 	// workspace-wide note index the tier ranks, so the Outliner never learns where
@@ -248,6 +249,7 @@ func (s *searchState) resetCompilation() {
 		return
 	}
 	s.Autocomplete.clear()
+	s.historyPicker = nil
 	s.setCompilation("", nil, false)
 	s.clearNoteMatches()
 	s.hiddenFilterHint = ""

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -146,11 +147,13 @@ type TaskComposerModel struct {
 	SubmissionInFlight bool
 	// Once a submit has failed, edits keep its line diagnostics current without
 	// moving the caret or issuing another capture request.
-	validateOnEdit    bool
-	pasteRefusal      string
-	batchInvalidLines int
-	batchDestinations []string
-	batchPlanSummary  string
+	validateOnEdit      bool
+	pasteRefusal        string
+	batchInvalidLines   int
+	batchDestinations   []string
+	batchPlanSummary    string
+	matchingTaskPreview *viewport.Model
+	matchingTaskText    string
 	chrome.DiscardConfirmState
 }
 
@@ -208,6 +211,9 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 	m.width, m.height = width, height
 	if m.Expanded != nil {
 		m.Expanded.SetSize(width, height)
+	}
+	if m.matchingTaskPreview != nil {
+		m.resizeMatchingTaskPreview()
 	}
 	if m.Mode == ComposerCompact {
 		m.Width = max(width-2, 1)
@@ -283,17 +289,12 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	if m.matchingTaskPreview != nil {
+		return m, m.updateMatchingTaskPreview(msg)
+	}
+
 	if m.ConfirmDiscard {
-		if key, ok := msg.(tea.KeyPressMsg); ok {
-			switch key.String() {
-			case "y", "Y":
-				m.ConfirmDiscard = false
-				return m, func() tea.Msg { return status.BackMsg{} }
-			case "n", "N", "esc":
-				m.ConfirmDiscard = false
-			}
-		}
-		return m, nil
+		return m.updateDiscardConfirmation(msg)
 	}
 
 	defer m.refreshCaptureErrorsAfterEdit(m.Input.Value(), m.Preset.Project)
@@ -360,11 +361,28 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, m.updateCompactInput(msg)
 }
 
+func (m *TaskComposerModel) updateDiscardConfirmation(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyPressMsg); ok {
+		switch key.String() {
+		case "y", "Y":
+			m.ConfirmDiscard = false
+			return m, func() tea.Msg { return status.BackMsg{} }
+		case "n", "N", "esc":
+			m.ConfirmDiscard = false
+		}
+	}
+	return m, nil
+}
+
 func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd) {
-	if name != "ctrl+n" && name != "alt+n" && name != "alt+p" {
+	if name != "ctrl+n" && name != "alt+n" && name != "alt+p" && name != "ctrl+o" {
 		return false, nil
 	}
 	if m.IsAutocompleteActive() || m.HelpExpanded {
+		return true, nil
+	}
+	if name == "ctrl+o" {
+		m.openMatchingTaskPreview()
 		return true, nil
 	}
 	if name == "ctrl+n" {
@@ -693,7 +711,49 @@ func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState,
 	if due != "" {
 		parts = append(parts, "Due: "+due)
 	}
-	return strings.Join(parts, " · "), nil
+	for _, field := range []struct {
+		label string
+		value func(app.CaptureRequest) string
+	}{
+		{"Defer until", func(req app.CaptureRequest) string {
+			if req.Defer == nil {
+				return ""
+			}
+			return req.Defer.Local().Format("Mon, Jan 2 2006 15:04")
+		}},
+		{"Priority", func(req app.CaptureRequest) string {
+			if req.Priority == models.PriorityUnset {
+				return ""
+			}
+			return models.PriorityName(req.Priority)
+		}},
+	} {
+		value := ""
+		for i, req := range reqs {
+			next := field.value(req)
+			if i == 0 {
+				value = next
+			} else if next != value {
+				value = composerMixedValue
+			}
+		}
+		if value != "" {
+			parts = append(parts, field.label+": "+value)
+		}
+	}
+	var notices []string
+	for _, req := range reqs {
+		project := composer.projectByID(req.ProjectID)
+		input := grammar.QuickCaptureInput{Project: project,
+			Preview: &grammar.QuickCaptureResult{Title: req.Title, ParentID: req.ParentID}}
+		if hint := input.DuplicateCaptureHint(); hint != "" {
+			if len(reqs) > 1 {
+				hint = fmt.Sprintf("Line %d: %s", req.SourceLine, hint)
+			}
+			notices = append(notices, hint)
+		}
+	}
+	return strings.Join(append([]string{strings.Join(parts, " · ")}, notices...), "\n"), nil
 }
 
 // CaptureCompletion is one suggestion CaptureCompletions offers: Label is the

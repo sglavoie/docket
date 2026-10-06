@@ -131,6 +131,7 @@ type QuickCaptureInput struct {
 	// Live preview
 	Preview            *QuickCaptureResult
 	PreviewErr         string
+	previewMinute      time.Time
 	batchDuplicateHint string // settled with the preview, never parsed during layout
 
 	// Context needed for parsing/preview

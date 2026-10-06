@@ -250,6 +250,39 @@ final class ControlClientTests: XCTestCase {
 }
 
 final class QuickCapturePanelTests: XCTestCase {
+    func testControlNCapturesRepeatedlyAndKeepsRefusedDrafts() throws {
+        let panel = QuickCapturePanel()
+        var callbacks: [(Bool, String) -> Void] = []
+        var submitted: [String] = []
+        var dismissals = 0
+        panel.scheduleDismissal = { _ in dismissals += 1 }
+        panel.submit = { text, done in submitted.append(text); callbacks.append(done) }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        let key = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero,
+            modifierFlags: .control, timestamp: 0, windowNumber: panel.panel.windowNumber,
+            context: nil, characters: "\u{0e}", charactersIgnoringModifiers: "n", isARepeat: false, keyCode: 45))
+        field.stringValue = "First"
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
+        XCTAssertEqual(submitted, ["First"], "an in-flight request cannot be duplicated")
+        callbacks[0](true, "Captured")
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertTrue(panel.isVisible)
+        XCTAssertEqual(dismissals, 0)
+        field.stringValue = "Second"
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
+        callbacks[1](false, "Please fix this")
+        XCTAssertEqual(field.stringValue, "Second")
+        XCTAssertTrue(panel.isVisible)
+        XCTAssertEqual(dismissals, 0)
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
+        callbacks[2](true, "Captured")
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertEqual(submitted, ["First", "Second", "Second"])
+    }
+
     func testReopeningAnInterruptedDraftRestoresCaretAndSelection() throws {
         let panel = QuickCapturePanel()
         panel.show()

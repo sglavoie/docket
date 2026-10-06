@@ -170,22 +170,7 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.index != m.index {
 			return m, nil
 		}
-		m.copyNotice = "Copied message"
-		if msg.matching {
-			m.copyNotice = fmt.Sprintf("Copied %d matching messages", msg.count)
-			if msg.count == 1 {
-				m.copyNotice = "Copied 1 matching message"
-			}
-		}
-		if msg.all {
-			m.copyNotice = "Copied message history"
-			if msg.hidden > 0 {
-				m.copyNotice = fmt.Sprintf("Copied all %d messages, including %d hidden by the filter", msg.count, msg.hidden)
-			}
-		}
-		if msg.err != nil {
-			m.copyNotice = fmt.Sprintf("Could not copy: %s", msg.err)
-		}
+		m.setCopyNotice(msg)
 	case tea.KeyPressMsg:
 		if m.searching {
 			switch msg.String() {
@@ -257,6 +242,25 @@ func (m *MessageView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	m.clampOffset()
 	return m, nil
+}
+
+func (m *MessageView) setCopyNotice(msg messageCopiedMsg) {
+	m.copyNotice = "Copied message"
+	if msg.matching {
+		m.copyNotice = fmt.Sprintf("Copied %d matching messages", msg.count)
+		if msg.count == 1 {
+			m.copyNotice = "Copied 1 matching message"
+		}
+	}
+	if msg.all {
+		m.copyNotice = "Copied message history"
+		if msg.hidden > 0 {
+			m.copyNotice = fmt.Sprintf("Copied all %d messages, including %d hidden by the filter", msg.count, msg.hidden)
+		}
+	}
+	if msg.err != nil {
+		m.copyNotice = fmt.Sprintf("Could not copy: %s", msg.err)
+	}
 }
 
 func (m *MessageView) View() tea.View {

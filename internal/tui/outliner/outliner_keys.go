@@ -50,6 +50,13 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.HandleQueryReadoutKey(key)
 	}
 
+	if m.IsSearchMode() && m.Search.historyPicker != nil {
+		return m, m.updateSearchHistoryPicker(msg)
+	}
+	if m.IsSearchMode() && key == "ctrl+r" {
+		return m, m.openSearchHistoryPicker()
+	}
+
 	// An open suggestion pane claims Tab, Esc, and its navigation keys before
 	// the search cascade below sees them, which is what makes the first Esc close
 	// the pane and the next one clear or restore the search.
@@ -606,6 +613,8 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			hints = append(hints, chrome.OptionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
+	case m.IsSearchMode() && m.Search.historyPicker != nil:
+		return chrome.RequiredExitGuidanceSpec("Enter use query", "Esc return to search", "↑/↓ select", "Type to filter history"), true
 	case m.IsSearchMode() && m.Search.Autocomplete.Active():
 		// Only while the pane is open: an Esc here closes suggestions rather than
 		// the search, and saying so is the whole point of the swap.
@@ -615,7 +624,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		if m.hasSearchHistory() {
 			// Only once something has been submitted: an empty ring would advertise
 			// a walk that does nothing on its first press.
-			hints = append(hints, chrome.OptionalGuidanceHints(10, "↑/↓ recall query")...)
+			hints = append(hints, chrome.OptionalGuidanceHints(10, "↑/↓ recall query", "Ctrl+R search history")...)
 		}
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
 	// A focused projection with nothing in it still carries its project header,

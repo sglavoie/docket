@@ -8,6 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -17,6 +20,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // outlinerSearchSuggestionLimit is the dropdown's total row budget, counting the
@@ -114,7 +118,7 @@ func (m *OutlinerModel) RefreshSearchAutocomplete() {
 	if m == nil {
 		return
 	}
-	if !m.IsSearchMode() {
+	if !m.IsSearchMode() || m.Search.historyPicker != nil {
 		m.Search.Autocomplete.clear()
 		return
 	}
@@ -315,6 +319,9 @@ func (m *OutlinerModel) searchAutocompleteRowBudget() int {
 // the returned string rather than predicting its height, because
 // RenderDropdownWithLimit decides how many of its rows go to overflow hints.
 func (m *OutlinerModel) renderSearchAutocompleteDropdown(width int) string {
+	if m != nil && m.IsSearchMode() && m.Search.historyPicker != nil {
+		return m.renderSearchHistoryPicker(width)
+	}
 	if m == nil || !m.Search.Autocomplete.Active() {
 		return ""
 	}
@@ -1129,4 +1136,89 @@ func searchMatchText(task *models.Task, project *models.Project, source MatchSou
 	default:
 		return ""
 	}
+}
+
+// The filter is separate from the live search input: canceling changes neither
+// its text nor its caret, and choosing a query never submits or records it.
+type searchHistoryPicker struct {
+	input   textinput.Model
+	choices grammar.AutocompleteState
+}
+
+func (m *OutlinerModel) openSearchHistoryPicker() tea.Cmd {
+	p := &searchHistoryPicker{input: textinput.New()}
+	p.input.Prompt = ""
+	p.input.Placeholder = "Find a saved query…"
+	p.input.CharLimit = 4000
+	p.input.SetValue(m.SearchInputValue())
+	m.Search.Autocomplete.clear()
+	m.Search.historyPicker = p
+	m.refreshSearchHistoryPicker()
+	return p.input.Focus()
+}
+
+func (m *OutlinerModel) refreshSearchHistoryPicker() {
+	p := m.Search.historyPicker
+	terms := strings.Fields(strings.ToLower(p.input.Value()))
+	var items []grammar.ACSuggestion
+	for i := len(m.Search.history.entries) - 1; i >= 0; i-- {
+		entry := m.Search.history.entries[i]
+		match := true
+		for _, term := range terms {
+			if !strings.Contains(strings.ToLower(entry), term) {
+				match = false
+				break
+			}
+		}
+		if match {
+			items = append(items, grammar.ACSuggestion{Display: entry, Value: entry})
+		}
+	}
+	p.choices.UpdateSuggestions(grammar.ACModeTag, 0, items)
+}
+
+func (m *OutlinerModel) updateSearchHistoryPicker(msg tea.Msg) tea.Cmd {
+	p := m.Search.historyPicker
+	if key, ok := msg.(tea.KeyPressMsg); ok {
+		switch key.String() {
+		case "esc", "ctrl+r":
+			m.Search.historyPicker = nil
+			return nil
+		case "enter", "tab":
+			if p.choices.IsActive() {
+				value := p.choices.Selected().Value
+				m.Search.historyPicker = nil
+				m.Search.history.resetRecall()
+				m.applyRecalledSearchQuery(value)
+			}
+			return nil
+		case "up", "down", "ctrl+k", "ctrl+j", "ctrl+p", "ctrl+n":
+			p.choices.HandleKey(key.String(), nil)
+			return nil
+		}
+	}
+	before := p.input.Value()
+	var cmd tea.Cmd
+	p.input, cmd = p.input.Update(msg)
+	if before != p.input.Value() {
+		m.refreshSearchHistoryPicker()
+	}
+	return cmd
+}
+
+func (m *OutlinerModel) renderSearchHistoryPicker(width int) string {
+	p := m.Search.historyPicker
+	if !p.choices.IsActive() {
+		label := "No history matches"
+		if !m.hasSearchHistory() {
+			label = "No search history yet"
+		}
+		return textfit.TruncateToVisualWidth(theme.MutedStyle.Render(label), max(width, 1))
+	}
+	rendered := p.choices.RenderDropdownWithLimit(outlinerSearchDropdownIndent, m.searchAutocompleteRowBudget())
+	lines := strings.Split(rendered, "\n")
+	for i, line := range lines {
+		lines[i] = textfit.TruncateToVisualWidth(line, max(width, 1))
+	}
+	return strings.Join(lines, "\n")
 }

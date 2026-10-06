@@ -2,6 +2,9 @@ package grammar
 
 import (
 	"strings"
+	"time"
+
+	"charm.land/bubbles/v2/cursor"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -194,7 +197,12 @@ func (q *QuickCaptureInput) UpdateInput(msg tea.Msg) tea.Cmd {
 	if changed {
 		q.err = nil
 	}
-	q.UpdatePreview()
+	// Blink messages do not change the draft or workspace. Still refresh on a
+	// new minute for relative dates; other messages may carry refreshed data.
+	_, blink := msg.(cursor.BlinkMsg)
+	if changed || !blink || !q.previewMinute.Equal(time.Now().Truncate(time.Minute)) {
+		q.UpdatePreview()
+	}
 	if changed {
 		q.RefreshAutocomplete()
 	}

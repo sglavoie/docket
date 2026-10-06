@@ -62,7 +62,7 @@ func composerPanelShareRows(height, contentRows, excessRows int) int {
 // keeps the budget it already had and closing the guide costs it no scroll
 // window.
 func (m *TaskComposerModel) HostedPanelLayout(width, height int) chrome.HostedPanelLayout {
-	if m.Mode == ComposerExpanded {
+	if m.Mode == ComposerExpanded || m.matchingTaskPreview != nil {
 		return chrome.HostedPanelLayout{}
 	}
 	if width <= 0 {
@@ -226,6 +226,9 @@ func (m *TaskComposerModel) compactPanelRows() int {
 // preview every time a message arrived.
 func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
 	m.shellFrame = metrics
+	if m.matchingTaskPreview != nil {
+		m.resizeMatchingTaskPreview()
+	}
 }
 
 // renderCompactPanel draws the bounded capture panel: what the line will do,

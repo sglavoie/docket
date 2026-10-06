@@ -175,12 +175,19 @@ accepts too unless what you typed already stands on its own, as a new tag does.
 Esc closes the list first; with no list, Esc or clicking elsewhere puts the
 field away. Reopening an unfinished capture restores its text and caret or
 selection, so typing resumes where you left off; Select All still replaces the
-whole draft. A successful capture clears the draft and its selection. The
+whole draft. A successful capture clears the draft and its selection. With suggestions
+closed, `Ctrl+N` captures and keeps the field open for another task; Enter keeps
+its usual automatic dismissal. A refused capture preserves the draft for either
+key, and a pending capture cannot be submitted twice. The
 menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
 A live preview under the field names the project, plan (when present), status,
-and resolved deadline, including its weekday and any time. It reads the whole
+and resolved deadline, including its weekday and any time. It also shows
+priority and the resolved deferral date and time when supplied. An unfinished
+task with the same title in the destination project adds the terminal composer's
+`Matching title` advisory, including its state and parent; this never blocks a
+save. It reads the whole
 draft through the running tt's composer, so moving the caret to complete a
 token does not change the preview's meaning. Invalid drafts hide the preview;
 Enter reports the refusal and keeps the text. Refusals wrap in full and the

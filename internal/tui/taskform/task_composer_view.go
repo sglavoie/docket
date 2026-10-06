@@ -202,6 +202,10 @@ func (m *TaskComposerModel) View() tea.View {
 	if m.Mode == ComposerExpanded && m.Expanded != nil {
 		return m.Expanded.View()
 	}
+	if m.matchingTaskPreview != nil {
+		title := chrome.RenderFullscreenTitleWithPulse("Matching task", "Read only", m.CurrentWorkspacePulse(), m.width)
+		return tea.NewView(title + "\n" + m.matchingTaskPreview.View())
+	}
 	theme.ApplyThemedTextarea(&m.Input)
 	return tea.NewView(m.renderCompactPanel(m.compactPanelRows()))
 }
@@ -243,6 +247,9 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.Mode == ComposerExpanded {
 		return chrome.GuidanceSpec{}, false
 	}
+	if m.matchingTaskPreview != nil {
+		return chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "PgUp/PgDn page", "Ctrl+O return to capture"), true
+	}
 	spec := chrome.CaptureGuidanceSpec(
 		m.ConfirmDiscard,
 		m.IsAutocompleteActive(),
@@ -263,6 +270,9 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		)
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
+		if task, _, _ := m.MatchingCaptureTask(); task != nil {
+			spec.Hints = append(spec.Hints, chrome.NewGuidanceHint("Ctrl+O inspect match", 0, false))
+		}
 		spec.Hints = append(spec.Hints, chrome.NewGuidanceHint("Ctrl+N create another", 0, false))
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100,
 			"Shift+Enter new line", m.expansionHint(),

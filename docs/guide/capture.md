@@ -216,7 +216,11 @@ capturing into, whether chosen with
 or you are capturing at the project root, the lowest short ID wins across the
 project. The count still includes every matching unfinished task in that project.
 Title matching is case-insensitive, ignores leading and trailing whitespace, and excludes Done
-and Canceled tasks. This is a hint: Enter still saves normally.
+and Canceled tasks. This is a hint: Enter still saves normally. With suggestions and syntax help
+closed, `Ctrl+O` opens a read-only inspection of that matching task, including
+its resume note, description, and checklist. Arrow keys and Page Up/Down scroll;
+`Esc` or `Ctrl+O` returns to the exact capture draft and caret. Inspection never
+submits the draft.
 The preview also checks other valid lines in a multiline draft for the same
 parsed title in the same resolved project. `Same title on line 2` names the first
 matching source line, counting blank lines too. This notice is advisory and can

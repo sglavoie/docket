@@ -25,7 +25,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: action)
     }
 
-    static let hint = "Enter capture · Tab complete · Esc cancel · #tag  @date  %project  $state  !1"
+    static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc cancel · #tag  @date  %project  $state  !1"
 
     /// The most suggestion rows shown at once; the rest scroll.
     static let visibleSuggestions = 7
@@ -148,6 +148,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         panel.isReleasedWhenClosed = false
         panel.delegate = self
         panel.onCancel = { [weak self] in self?.close() }
+        panel.onCaptureAnother = { [weak self] in
+            guard let self, self.completion == nil else { return }
+            self.capture(keepOpen: true)
+        }
 
         let background = NSVisualEffectView()
         background.material = .hudWindow
@@ -244,6 +248,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     // MARK: Actions
 
     @objc private func enter(_ sender: Any?) {
+        capture(keepOpen: false)
+    }
+
+    private func capture(keepOpen: Bool) {
         clearCompletion()
         let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if let reason = unavailableReason() {
@@ -264,6 +272,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
                 self.savedSelection = nil
                 self.field.stringValue = ""
                 self.setStatus(message.isEmpty ? "Captured" : message, error: false)
+                if keepOpen {
+                    self.dismissalGeneration += 1
+                    self.panel.makeFirstResponder(self.field)
+                    self.requestPreview()
+                    return
+                }
                 self.scheduleDismissal { [weak self] in
                     guard let self, generation == self.dismissalGeneration,
                           !self.sending, self.field.stringValue.isEmpty else { return }
@@ -504,6 +518,17 @@ private final class EmphasizedRowView: NSTableRowView {
 /// activating tt.app, so the app the user was in stays in front.
 private final class KeyablePanel: NSPanel {
     var onCancel: (() -> Void)?
+    var onCaptureAnother: (() -> Void)?
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown,
+           event.modifierFlags.intersection([.control, .option, .command, .shift]) == .control,
+           event.charactersIgnoringModifiers == "n" {
+            onCaptureAnother?()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }

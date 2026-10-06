@@ -250,6 +250,15 @@ when typing or returning to the draft, and never enter Recent messages.
 Each distinct query is held once however often you
 submit it, only a submitted query joins the ring — one abandoned with `Esc` does
 not — and typing ends the walk, so the next `↑` starts from the newest match for the edited prefix.
+`Ctrl+R` inside the search box opens searchable history, initially filtered by
+what you have typed. Every space-separated word matches anywhere in a saved
+query, ignoring case; results stay newest first. Type to change the filter,
+use Up/Down to choose, and press Enter or Tab to put the query into the search
+box for editing. This does not submit or record it: Enter in the search box
+still does that. Esc returns to the untouched search draft and caret. The
+history filter treats sigils as literal text and shows an explanation when no
+queries match. Outside the search box, `Ctrl+R` remains Redo.
+
 The last 50 distinct submitted queries survive a restart on this machine,
 separately for each workspace. Launch still starts with no active search; drafts
 and caret positions are never saved. `View → Clear search history` forgets the

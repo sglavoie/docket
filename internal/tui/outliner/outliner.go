@@ -400,6 +400,12 @@ func (m *OutlinerModel) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.IsSearchMode() && m.Search.historyPicker != nil {
+		switch msg.(type) {
+		case tea.KeyPressMsg, tea.PasteMsg:
+			return m, m.updateSearchHistoryPicker(msg)
+		}
+	}
 	switch msg := msg.(type) {
 	case status.CursorFlashClearMsg:
 		m.CursorFlash = false

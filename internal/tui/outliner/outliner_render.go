@@ -743,6 +743,11 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 // useful half of the segment. A refused sigil wins over the case badge, because a
 // query that cannot run explains an empty list better than how it was matched.
 func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
+	if m.IsSearchMode() && m.Search.historyPicker != nil {
+		picker := m.Search.historyPicker
+		picker.input.SetWidth(max(width-10, 1))
+		return theme.MutedStyle.Render("History: ") + picker.input.View()
+	}
 	var indicator string
 	switch {
 	case m.HasActiveLens() && m.Lens.Query != "":

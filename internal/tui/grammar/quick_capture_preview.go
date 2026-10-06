@@ -18,6 +18,7 @@ import (
 // UpdatePreview parses the logical line under the caret, never combining
 // attributes from separate tasks in a multiline draft.
 func (q *QuickCaptureInput) UpdatePreview() {
+	q.previewMinute = time.Now().Truncate(time.Minute)
 	q.batchDuplicateHint = ""
 	lines := strings.Split(q.Input.Value(), "\n")
 	input := strings.TrimSpace(lines[min(q.Input.Line(), len(lines)-1)])
@@ -411,16 +412,18 @@ func (q *QuickCaptureInput) renderPreviewLine(label, body string) string {
 
 // This is advisory only: a repeated title is legal. Compare the parsed title
 // within its resolved project, excluding completed and canceled work.
-func (q *QuickCaptureInput) duplicateCaptureHint() string {
+// MatchingCaptureTask resolves the same advisory match shown in capture.
+// Callers may inspect it, but it never changes whether a draft can be saved.
+func (q *QuickCaptureInput) MatchingCaptureTask() (*models.Task, *models.Project, int) {
 	if q.Preview == nil || q.PreviewErr != "" {
-		return ""
+		return nil, nil, 0
 	}
 	project := q.Project
 	if q.Preview.targetProject != nil {
 		project = q.Preview.targetProject
 	}
 	if project == nil {
-		return ""
+		return nil, nil, 0
 	}
 	var first *models.Task
 	count := 0
@@ -441,6 +444,16 @@ func (q *QuickCaptureInput) duplicateCaptureHint() string {
 			first = task
 		}
 	}
+	return first, project, count
+}
+
+func (q *QuickCaptureInput) duplicateCaptureHint() string {
+	return q.DuplicateCaptureHint()
+}
+
+// DuplicateCaptureHint shares the terminal's advisory wording with capture hosts.
+func (q *QuickCaptureInput) DuplicateCaptureHint() string {
+	first, project, count := q.MatchingCaptureTask()
 	if first == nil {
 		return ""
 	}
