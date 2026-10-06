@@ -88,10 +88,28 @@ func (a *DateAdder) HandleAddDateInputKey(
 		return nil
 
 	default:
+		previous := a.AddDateInput.Value()
 		var cmd tea.Cmd
 		a.AddDateInput, cmd = a.AddDateInput.Update(msg)
+		if a.AddDateInput.Value() != previous {
+			a.AddDateError = ""
+		}
 		return cmd
 	}
+}
+
+// DatePreview resolves through the submit parser, quietly omitting incomplete
+// input. Deferrals carry their clock because they represent an instant.
+func (a *DateAdder) DatePreview() string {
+	date, err := a.parse(a.AddDateInput.Value())
+	if err != nil {
+		return ""
+	}
+	layout := "Mon, Jan 2 2006"
+	if a.allowsTime {
+		layout += " 15:04"
+	}
+	return date.Format(layout)
 }
 
 // parse resolves the typed expression against the granularity this adder

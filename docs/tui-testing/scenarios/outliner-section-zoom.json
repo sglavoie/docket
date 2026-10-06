@@ -77,7 +77,7 @@
     { "type": "key", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Due soon: renew certificate" },
     { "type": "key", "label": "type the date, because the preset the cursor opens on is the task's current one", "key": "a" },
-    { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
+    { "type": "assert", "assert": "contains", "value": "Set due date" },
     { "type": "text", "text": "today" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

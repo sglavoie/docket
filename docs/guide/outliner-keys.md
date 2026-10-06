@@ -76,7 +76,11 @@ or `dec 15`. The due input also accepts an optional trailing `HH:MM` clock time
 time compares at that instant, so it is overdue once the time passes rather than
 at day's end. `+4h` and the other `+Nh` hour offsets parse only when the cursor
 sits in the defer section, because a deferral is an instant and a due date is a
-calendar day; the due section refuses them by name. Inside the `#` picker the
+calendar day; the due section refuses them by name. The custom input names its
+field: **Set due date** or **Defer until**. Valid input previews the resolved
+weekday and date before Enter, including the clock for deferrals. Incomplete
+input stays quiet until submission; editing rejected text clears its old error.
+Inside the `#` picker the
 same key adds a new tag, or a new context when the cursor sits on a context row.
 
 `-` and `+` move an existing deadline instead of opening anything. They walk one

@@ -208,7 +208,7 @@ weekday and any clock time, adding the year when it differs from the current
 year. Date suggestions also show the resolved weekday and date before you
 accept them; accepting one inserts only the original date token.
 If the parsed title matches an unfinished task in the resolved project,
-the preview adds `Already exists: web#42 · Backlog` (and a count if more match).
+the preview adds `Matching title: web#42 · Backlog` (and a count if more match).
 It shows the referenced task's current status and, for a child, its parent as
 `under #7 Release prep`. The hint prefers a task under the parent you are
 capturing into, whether chosen with
@@ -218,7 +218,7 @@ project. The count still includes every matching unfinished task in that project
 Title matching is case-insensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally.
 The preview also checks other valid lines in a multiline draft for the same
-parsed title in the same resolved project. `Same task on line 2` names the first
+parsed title in the same resolved project. `Same title on line 2` names the first
 matching source line, counting blank lines too. This notice is advisory and can
 appear beside the existing-task hint; changing either line refreshes it.
 With multiple tasks, the preview starts with the task count and source
@@ -228,7 +228,10 @@ a task preview. When every line parses, a second summary row counts destinations
 in first-appearance order, for example `To: web 2 · unfiled 1`. It follows
 `%project` overrides and `Ctrl+P` changes. Narrow panels keep whole destinations
 and name any overflow as `+N projects`; an invalid batch omits the destination
-counts until its errors are corrected. Before submission, the summary also
+counts until its errors are corrected. When planning memberships differ, an
+additional row shows `Plan: Today 2 · Next 1 · Unplanned 1`, omitting zero counts.
+It appears only when the whole row fits and leaves room for the task preview.
+Unplanned means neither Today nor Next, regardless of lifecycle status. Before submission, the summary also
 counts lines the submit parser rejects: `3 tasks · Line 2 · 1 line needs attention`. This count updates as
 you edit, without moving the caret or showing submission refusals; Enter still
 validates the whole batch and focuses its first invalid line. Blank lines do

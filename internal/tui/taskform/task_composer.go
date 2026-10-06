@@ -147,6 +147,7 @@ type TaskComposerModel struct {
 	pasteRefusal      string
 	batchInvalidLines int
 	batchDestinations []string
+	batchPlanSummary  string
 	chrome.DiscardConfirmState
 }
 
@@ -493,16 +494,19 @@ func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
 func (m *TaskComposerModel) refreshBatchDiagnostics() {
 	m.batchInvalidLines = 0
 	m.batchDestinations = nil
+	m.batchPlanSummary = ""
 	if m.nonblankLineCount() > 1 {
 		requests, lineErrors := m.parseCompactLines()
 		m.batchInvalidLines = len(lineErrors)
 		counts := make(map[string]int)
+		planCounts := make(map[app.CaptureDestination]int)
 		var order []string
 		for _, request := range requests {
 			if counts[request.ProjectID] == 0 {
 				order = append(order, request.ProjectID)
 			}
 			counts[request.ProjectID]++
+			planCounts[composerPlanDestination(request.Destination)]++
 		}
 		for _, id := range order {
 			project := m.projectByID(id)
@@ -511,6 +515,19 @@ func (m *TaskComposerModel) refreshBatchDiagnostics() {
 				name = project.Name
 			}
 			m.batchDestinations = append(m.batchDestinations, fmt.Sprintf("%s %d", name, counts[id]))
+		}
+		if len(planCounts) > 1 {
+			var parts []string
+			for _, plan := range []app.CaptureDestination{app.CaptureDestinationToday, app.CaptureDestinationNext, ""} {
+				if count := planCounts[plan]; count > 0 {
+					label := "Unplanned"
+					if plan != "" {
+						label = chrome.PlanStatusValue(string(plan))
+					}
+					parts = append(parts, fmt.Sprintf("%s %d", label, count))
+				}
+			}
+			m.batchPlanSummary = "Plan: " + strings.Join(parts, " · ")
 		}
 	}
 }

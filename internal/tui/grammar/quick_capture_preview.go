@@ -44,7 +44,7 @@ func (q *QuickCaptureInput) UpdatePreview() {
 		}
 		otherProject := q.capturePreviewProject(other)
 		if otherProject != nil && otherProject.ID == project.ID && strings.EqualFold(strings.TrimSpace(other.Title), strings.TrimSpace(q.Preview.Title)) {
-			q.batchDuplicateHint = fmt.Sprintf("Same task on line %d", i+1)
+			q.batchDuplicateHint = fmt.Sprintf("Same title on line %d", i+1)
 			break
 		}
 	}
@@ -444,7 +444,7 @@ func (q *QuickCaptureInput) duplicateCaptureHint() string {
 	if first == nil {
 		return ""
 	}
-	hint := fmt.Sprintf("Already exists: %s#%d", project.Slug, first.ShortID)
+	hint := fmt.Sprintf("Matching title: %s#%d", project.Slug, first.ShortID)
 	if count > 1 {
 		hint += fmt.Sprintf(" (+%d more)", count-1)
 	}

@@ -182,7 +182,7 @@ func TestClearingAffectsOnlyTheFieldUnderTheCursor(t *testing.T) {
 // the target moves it up the list without changing what its key means.
 func TestRowPositionDoesNotChangeWhatAPresetKeyMeans(t *testing.T) {
 	picker := newDatePickerForTest(t, "")
-	picker.Surface().SetQuery("one")
+	picker.Surface().SetQuery("in")
 	if got := currentDateRowID(t, picker); got != DateListItemID(false, "week") {
 		t.Fatalf("filtered opening row = %q, want the due week row", got)
 	}

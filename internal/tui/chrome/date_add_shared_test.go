@@ -122,3 +122,44 @@ func TestInstantDateAdderFormatsAddExactlyTheHoursLine(t *testing.T) {
 		t.Errorf("extra format line = %q, want %q", instantFormats[len(dayFormats)], want)
 	}
 }
+
+func TestDateAdderPreviewAndErrorCorrection(t *testing.T) {
+	adder := NewDateAdder()
+	adder.EnterAddMode()
+	for _, input := range []string{"", "nonsense", "+", "+4h"} {
+		adder.AddDateInput.SetValue(input)
+		if got := adder.DatePreview(); got != "" || adder.AddDateError != "" {
+			t.Fatalf("incomplete input %q produced preview %q or error %q", input, got, adder.AddDateError)
+		}
+	}
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
+		t.Fatal("invalid input submitted")
+		return nil
+	})
+	adder.AddDateInput.CursorEnd()
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyLeft}, nil)
+	if adder.AddDateError == "" {
+		t.Fatal("moving the caret cleared the refusal")
+	}
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyBackspace}, nil)
+	if adder.AddDateError != "" {
+		t.Fatal("editing retained a stale refusal")
+	}
+	adder.AddDateInput.SetValue("2027-03-15")
+	if got := adder.DatePreview(); got != "Mon, Mar 15 2027" {
+		t.Fatalf("preview = %q", got)
+	}
+	adder.AddDateInput.SetValue("fri")
+	if got := adder.DatePreview(); !strings.HasPrefix(got, "Fri, ") {
+		t.Fatalf("weekday preview = %q", got)
+	}
+	instant := NewInstantDateAdder()
+	instant.AddDateInput.SetValue("2027-03-15")
+	if got := instant.DatePreview(); got != "Mon, Mar 15 2027 00:00" {
+		t.Fatalf("instant preview = %q", got)
+	}
+	instant.AddDateInput.SetValue("+4h")
+	if _, err := time.Parse("Mon, Jan 2 2006 15:04", instant.DatePreview()); err != nil {
+		t.Fatalf("hour offset did not preview a date and clock: %v", err)
+	}
+}

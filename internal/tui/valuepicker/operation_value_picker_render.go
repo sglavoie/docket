@@ -168,12 +168,19 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		// as a typed "e"; a render-local copy takes the box's width instead.
 		input := model.dateAdder.AddDateInput
 		input.SetWidth(max(innerWidth-4-lipgloss.Width(input.Prompt), 1))
-		content := input.View() + "\n\n" +
-			theme.MutedStyle.Render(strings.Join(model.dateAdder.DateAdderFormats(), "\n"))
+		content := input.View()
+		if preview := model.dateAdder.DatePreview(); preview != "" {
+			content += "\n" + theme.MutedStyle.Render(preview)
+		}
+		content += "\n\n" + theme.MutedStyle.Render(strings.Join(model.dateAdder.DateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {
 			content += "\n\n" + theme.BoldStyle.Foreground(theme.ColorError).Render(model.dateAdder.AddDateError)
 		}
-		title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set a Specific Date")
+		titleText := "Set due date"
+		if model.dateDeferred {
+			titleText = "Defer until"
+		}
+		title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 		guidance, _ := model.GuidanceSpec()
 		return chrome.RenderOverlayBox(
 			content,

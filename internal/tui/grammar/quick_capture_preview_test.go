@@ -163,8 +163,8 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 		{ID: "canceled", ShortID: 2, Title: "Canceled", WorkflowState: models.StateCanceled},
 	}}
 	for _, tc := range []struct{ draft, want string }{
-		{"Fix login %web !1 #auth", "Already exists: web#42 · Backlog"},
-		{"Fix login", ""}, {"fix login %web", "Already exists: web#42 · Backlog"}, {"Fix login later %web", ""},
+		{"Fix login %web !1 #auth", "Matching title: web#42 · Backlog"},
+		{"Fix login", ""}, {"fix login %web", "Matching title: web#42 · Backlog"}, {"Fix login later %web", ""},
 		{"Finished %web", ""}, {"Canceled %web", ""}, {"Fix login %missing", ""},
 	} {
 		t.Run(tc.draft, func(t *testing.T) {
@@ -194,7 +194,7 @@ func TestDuplicateCaptureContextFollowsReferencedTask(t *testing.T) {
 	}}
 	q := draftedCaptureInput(t, "Fix login", project, nil, false)
 	q.UpdatePreview()
-	want := "Already exists: web#12 (+1 more) · Waiting · under #7 Release prep 界 café"
+	want := "Matching title: web#12 (+1 more) · Waiting · under #7 Release prep 界 café"
 	if got := q.duplicateCaptureHint(); got != want {
 		t.Fatalf("hint = %q, want %q", got, want)
 	}
@@ -209,7 +209,7 @@ func TestDuplicateCaptureContextFollowsReferencedTask(t *testing.T) {
 		}
 	}
 	project.Tasks = project.Tasks[:2]
-	if got := q.duplicateCaptureHint(); got != "Already exists: web#12 (+1 more) · Waiting" {
+	if got := q.duplicateCaptureHint(); got != "Matching title: web#12 (+1 more) · Waiting" {
 		t.Fatalf("missing parent should omit context: %q", got)
 	}
 }
@@ -239,7 +239,7 @@ func TestDuplicateCapturePrefersSameParentThenLowestID(t *testing.T) {
 			q := draftedCaptureInput(t, tc.draft, project, nil, false)
 			q.DefaultParentID = tc.implicit
 			q.UpdatePreview()
-			if got := q.duplicateCaptureHint(); got != "Already exists: "+tc.want {
+			if got := q.duplicateCaptureHint(); got != "Matching title: "+tc.want {
 				t.Fatalf("hint = %q, want %q", got, tc.want)
 			}
 		})
@@ -250,11 +250,11 @@ func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T
 	home := &models.Project{ID: "home", Slug: "home", Name: "Home"}
 	web := &models.Project{ID: "web", Slug: "web", Name: "Web"}
 	for _, tc := range []struct{ name, draft, want string }{
-		{"metadata", "Fix login !1 %web\nFix login #auth %web", "Same task on line 2"},
-		{"blank lines", "Fix login\n\nFix login", "Same task on line 3"},
-		{"project override", "Fix login %home\nFix login", "Same task on line 2"},
+		{"metadata", "Fix login !1 %web\nFix login #auth %web", "Same title on line 2"},
+		{"blank lines", "Fix login\n\nFix login", "Same title on line 3"},
+		{"project override", "Fix login %home\nFix login", "Same title on line 2"},
 		{"different project", "Fix login %web\nFix login", ""},
-		{"different case", "Fix login\nfix login", "Same task on line 2"},
+		{"different case", "Fix login\nfix login", "Same title on line 2"},
 		{"invalid sibling", "Fix login\nFix login !9", ""},
 		{"invalid routing", "Fix login\nFix login %missing", ""},
 		{"invalid current", "Fix login !9\nFix login", ""},
@@ -287,7 +287,7 @@ func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T
 	q := draftedCaptureInput(t, "Fix login\nFix login", home, nil, false)
 	q.Input.MoveToEnd()
 	q.UpdatePreview()
-	if q.batchDuplicateHint != "Same task on line 1" {
+	if q.batchDuplicateHint != "Same title on line 1" {
 		t.Fatal(q.batchDuplicateHint)
 	}
 	q.Input.SetValue("Fix login\nDifferent task")

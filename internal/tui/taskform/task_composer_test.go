@@ -166,7 +166,7 @@ func TestChildComposerDuplicateHintUsesImplicitParent(t *testing.T) {
 		Shared: TaskComposerSharedAttributes{ParentID: &parentID},
 	}, nil)
 	composer.SetSize(100, 30)
-	if view := ansi.Strip(composer.View().Content); !strings.Contains(view, "Already exists: web#3") {
+	if view := ansi.Strip(composer.View().Content); !strings.Contains(view, "Matching title: web#3") {
 		t.Fatalf("child capture did not prefer its sibling: %s", view)
 	}
 }
@@ -911,5 +911,48 @@ func TestBatchDestinationSummaryNamesOverflow(t *testing.T) {
 	text := m.batchDestinationSummary()
 	if !strings.Contains(text, "+2 projects") || lipgloss.Width(text) > m.Width {
 		t.Fatalf("unbounded or silent overflow: %q", text)
+	}
+}
+
+func TestBatchPlanSummaryUsesResolvedCaptureRequests(t *testing.T) {
+	project := &models.Project{ID: "home", Slug: "unfiled", Name: "Unfiled"}
+	for _, tc := range []struct {
+		name, draft, want string
+	}{
+		{"mixed", "One $today\nTwo $next\nThree $backlog\nFour $today", "Plan: Today 2 · Next 1 · Unplanned 1"},
+		{"due and defer", "One @today\nTwo $next @@tomorrow", "Plan: Today 1 · Unplanned 1"},
+		{"default", "One\nTwo $next", "Plan: Today 1 · Next 1"},
+		{"same plan", "One $today\nTwo $today", ""},
+		{"only states", "One $doing\nTwo $waiting", ""},
+		{"invalid", "One $today\nTwo !4", ""},
+		{"single", "One $today", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewTaskComposerModel(TaskComposerPreset{Project: project, Shared: TaskComposerSharedAttributes{Destination: app.CaptureDestinationToday}}, nil)
+			m.SetSize(60, 24)
+			m.Update(tea.PasteMsg{Content: tc.draft})
+			m.AC.Clear()
+			if m.batchPlanSummary != tc.want {
+				t.Fatalf("summary = %q, want %q", m.batchPlanSummary, tc.want)
+			}
+			if tc.want == "" {
+				return
+			}
+			if view := ansi.Strip(m.renderComposerPanelPreview(5)); !strings.Contains(view, tc.want) {
+				t.Fatalf("roomy preview omitted plans: %s", view)
+			}
+			if view := ansi.Strip(m.renderComposerPanelPreview(3)); strings.Contains(view, tc.want) {
+				t.Fatalf("plans displaced the task preview: %s", view)
+			}
+			m.Width = 20
+			if view := ansi.Strip(m.renderComposerPanelPreview(5)); strings.Contains(view, "Plan: ") {
+				t.Fatalf("narrow preview squeezed in plans: %s", view)
+			}
+			m.Input.SetValue("One $next\nTwo $next")
+			m.refreshBatchDiagnostics()
+			if m.batchPlanSummary != "" {
+				t.Fatal("editing retained mixed plan counts")
+			}
+		})
 	}
 }

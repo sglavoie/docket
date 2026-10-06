@@ -132,6 +132,9 @@ func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 		if len(m.batchDestinations) > 0 {
 			rows++
 		}
+		if m.batchPlanSummaryFits() {
+			rows++
+		}
 		return rows
 	}
 }
@@ -375,6 +378,10 @@ func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 			summary = joinPanelBlocks(summary, theme.MutedStyle.Render(m.batchDestinationSummary()))
 			rows--
 		}
+		if rows > 2 && m.batchPlanSummaryFits() {
+			summary = joinPanelBlocks(summary, theme.MutedStyle.Render(m.batchPlanSummary))
+			rows--
+		}
 		if rows <= 1 || m.previewRepeatsRefusal() {
 			return summary
 		}
@@ -384,6 +391,10 @@ func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 		return ""
 	}
 	return m.ComposeBoundedPreviewBlock(rows)
+}
+
+func (m *TaskComposerModel) batchPlanSummaryFits() bool {
+	return m.batchPlanSummary != "" && lipgloss.Width(m.batchPlanSummary) <= m.Width
 }
 
 func joinPanelBlocks(above, below string) string {
