@@ -597,6 +597,94 @@ verify_session_6() {
 	note "session 6 verified"
 }
 
+# fault_stat_total LABEL STAT sums STAT over every seeded summary line the
+# suite logged ("seed N: ... STAT=COUNT ...").
+fault_stat_total() {
+	local label=$1 stat=$2
+	grep -E '^[[:space:]]+sync_fault_test\.go:[0-9]+: seed [0-9]+: ' "$work_dir/$label.log" |
+		grep -Eo "(^| )$stat=[0-9]+" | cut -d= -f2 | awk '{ total += $1 } END { print total + 0 }'
+}
+
+verify_session_7() {
+	require_files \
+		internal/storage/export_test.go \
+		internal/storage/sync_fault_harness_test.go \
+		internal/storage/sync_fault_test.go \
+		internal/synclog/reconcile.go
+
+	# The deterministic multi-replica harness: each named fault on its own, the
+	# seeded properties with every fault at once, exact replay of a seed, and a
+	# failure that names its seed, a replay command, and its trace.
+	local scenarios=(delayed_delivery duplicated_delivery reordered_delivery incomplete_delivery
+		corrupted_delivery missing_ancestors prolonged_offline three_device_concurrency
+		conflicting_resolutions ordinary_edit_keeps_conflict_open crash_restart)
+	local required=(
+		TestSyncFaultScenarios
+		TestSyncFaultPropertiesConverge
+		TestSyncFaultSeedsReplayDeterministically
+		TestSyncFaultSeedsReplayDeterministically/run_1
+		TestSyncFaultSeedsReplayDeterministically/run_2
+		TestSyncFaultFailuresReportSeedAndTrace
+	)
+	local name seed
+	for name in "${scenarios[@]}"; do
+		required+=("TestSyncFaultScenarios/$name")
+	done
+	for seed in 1 2 3 4 5 6; do
+		required+=("TestSyncFaultPropertiesConverge/seed_$seed")
+	done
+	run_go_suite fault ./internal/storage/ '^TestSyncFault' "${required[@]}"
+
+	# The seeded runs must actually have been hostile: every fault fired and
+	# every guarded outcome was reached somewhere across the seeds.
+	local stat total
+	for stat in delayed sent_duplicate applied_out_of_order refused_truncated refused_corrupted \
+		blob_lagged blob_corrupt_reads waiting_for_blob waiting_for_ancestor crashes restarts \
+		offline_toggles repeat_ignored live_user_writes preserved_in_conflict; do
+		total=$(fault_stat_total fault "$stat")
+		[ "$total" -gt 0 ] || fail "fault: no seeded run exercised $stat"
+	done
+	note "fault: seeded runs crashed $(fault_stat_total fault crashes) commits and preserved $(fault_stat_total fault live_user_writes) unresolved user writes"
+
+	# A seed replays exactly in a fresh process: the same summary, transaction
+	# for transaction and fault for fault.
+	TT_SYNC_FAULT_SEED=3 run_go_suite fault-replay ./internal/storage/ '^TestSyncFaultPropertiesConverge$' \
+		TestSyncFaultPropertiesConverge/seed_3
+	local first replayed
+	first=$(grep -Eo 'seed 3: .*' "$work_dir/fault.log")
+	replayed=$(grep -Eo 'seed 3: .*' "$work_dir/fault-replay.log")
+	[ -n "$first" ] || fail "fault: seed 3 logged no summary"
+	[ "$first" = "$replayed" ] || fail "fault: replaying seed 3 diverged: '$first' vs '$replayed'"
+	if grep -Fq -- '--- PASS: TestSyncFaultPropertiesConverge/seed_1 (' "$work_dir/fault-replay.log"; then
+		fail "fault: TT_SYNC_FAULT_SEED did not select one seed"
+	fi
+
+	# Conflicts now stay open until a resolution; the reconciliation and rich
+	# artifact suites hold their guarantees under that rule, and the commit
+	# boundary's crash atomicity is unchanged by the shared crash seam.
+	run_go_suite reconcile ./internal/syncmerge/ \
+		'^TestSync(Reconcile(ConvergesAcrossDeliveryOrders|DeleteEdit|MultipleCommonAncestors|SimultaneousResolutions|SeededHistoriesConverge)|RichArtifactsRoundTrip|Undo)$' \
+		TestSyncReconcileConvergesAcrossDeliveryOrders \
+		TestSyncReconcileDeleteEdit \
+		TestSyncReconcileMultipleCommonAncestors \
+		TestSyncReconcileSimultaneousResolutions/agree \
+		TestSyncReconcileSimultaneousResolutions/keep_current \
+		TestSyncReconcileSimultaneousResolutions/disagree \
+		TestSyncReconcileSeededHistoriesConverge \
+		TestSyncRichArtifactsRoundTrip \
+		TestSyncUndo
+	run_go_suite storage-sync ./internal/storage/ '^TestSync(Local|Incoming)' \
+		TestSyncLocalCommitAndOutboxAreAtomic \
+		TestSyncIncomingApplyAndReceiptAreAtomic \
+		TestSyncIncomingRefusalsAcknowledgeNothing \
+		TestSyncIncomingKeepsCausalOrderAndConcurrentHeads
+	require_crash_prefixes storage-sync TestSyncIncomingApplyAndReceiptAreAtomic 6
+	run_go_suite compat-docs ./internal/compat/ '^TestCompatContractDocumentsAreWellFormed$' \
+		TestCompatContractDocumentsAreWellFormed
+
+	note "session 7 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -605,6 +693,7 @@ case "$session" in
 4) verify_session_4 ;;
 5) verify_session_5 ;;
 6) verify_session_6 ;;
+7) verify_session_7 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

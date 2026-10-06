@@ -326,12 +326,34 @@ competing version stays retained as a blob, so nothing a device wrote is lost.
 A record is also stored under `.tt/sync/conflicts/` when reconciliation first
 derives it, and the receipt names the conflicts open after it.
 
-A conflict closes when a transaction writes its key and descends from every
-competing writer. `CommitService.CommitSyncResolution` commits such a
-`resolution`, and it records the choice even when the chosen bytes are the
-current ones. If two devices resolve one conflict at once, identical
-resolutions coalesce and the conflict closes everywhere. Different resolutions
-compete again as one new conflict whose candidates are the two resolutions.
+A conflict is not only the merge of a key's current maximal writers. Every
+writer of the key was written over the merge of the maximal writers just
+before it, and that merge's conflict is open too. A conflict closes only when
+a transaction of kind `resolution` writes its key and descends from every
+competing writer. An ordinary edit made over a merge therefore leaves the
+conflict open, even one to another task in the same `tasks.md`. Until then
+the conflict reports the key's current value as its result, so the losing
+version is never dropped silently. `CommitService.CommitSyncResolution`
+commits a `resolution`, and it records the choice even when the chosen bytes
+are the current ones. One resolution closes every open conflict on its key.
+If two devices resolve one conflict at once, identical resolutions coalesce
+and the conflict closes everywhere. Different resolutions compete again as one
+new conflict whose candidates include the two resolutions, and any other
+concurrent writer of the key.
+
+## Fault testing
+
+`internal/storage/sync_fault_harness_test.go` simulates devices that edit
+offline, publish to a shared exchange, and receive through a faulty transport.
+Clocks, identities, and every random choice come from one seed. The transport
+can delay, duplicate, reorder, truncate, or corrupt manifests. Blobs can lag
+or arrive damaged. A commit can stop at any point of its journal transaction,
+and the restarted process recovers it. Every run must leave every device and
+every genesis observer converged. It must also keep every unresolved user
+write in the workspace or an open conflict, ignore a redelivered exchange, and
+keep each commit atomic. A failure prints its seed, a replay command
+(`TT_SYNC_FAULT_SEED`), and its trace, and writes the full trace under
+`TT_SYNC_FAULT_TRACE_DIR` (or the system temporary directory).
 
 ## Open questions
 

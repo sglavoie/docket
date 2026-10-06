@@ -36,11 +36,17 @@ import (
 //
 // A conflict is never decided by a timestamp and never published. It is
 // derived: every device holding the same transactions derives the same
-// conflicts under the same content-addressed ids. A transaction that writes
-// the key and descends from every competing writer resolves it, so a
-// resolution is an ordinary transaction, and two devices resolving the same
-// conflict at once either agree, and coalesce, or compete again as a new
-// conflict over the two resolutions.
+// conflicts under the same content-addressed ids. A conflict is not only the
+// merge of the key's current maximal writers: every merge a writer of the key
+// was written over — the merge of the maximal writers just before it — left
+// its conflict too, and that conflict stays open until a transaction of kind
+// resolution that writes the key descends from every competing writer. An
+// ordinary edit made on top of a merge, even of another task in the same
+// document, therefore never closes a conflict and never drops the losing
+// version: the conflict stays open with the workspace's current value as its
+// result. A resolution is an ordinary transaction otherwise, and two devices
+// resolving the same conflict at once either agree, and coalesce, or compete
+// again as a new conflict over the two resolutions.
 
 // ConflictFormat identifies a stored conflict record.
 const ConflictFormat = "tt-sync-conflict"
@@ -148,11 +154,18 @@ type materializer struct {
 	merger Merger
 	blobs  []BlobSource
 	cache  map[string][]byte
-	memo   map[string]*string
+	memo   map[string]resolution
+}
+
+// resolution is one key's resolved value within one set of transactions and
+// the conflict, unsealed, that merging its maximal writers left, if any.
+type resolution struct {
+	value    *string
+	conflict *Conflict
 }
 
 func newMaterializer(h *History, g *graph, merger Merger, blobs ...BlobSource) *materializer {
-	return &materializer{h: h, g: g, merger: merger, blobs: blobs, cache: map[string][]byte{}, memo: map[string]*string{}}
+	return &materializer{h: h, g: g, merger: merger, blobs: blobs, cache: map[string][]byte{}, memo: map[string]resolution{}}
 }
 
 // data returns the bytes behind digest from merged results, the history's
@@ -188,36 +201,36 @@ func (mz *materializer) version(digest *string) (Version, error) {
 	return Version{Exists: true, Data: data}, nil
 }
 
-// value resolves key within set. A non-nil record receives the conflict a
-// merge at this level reports; merges of historical bases report none, since
-// whatever conflicted there was superseded by the writers above it.
-func (mz *materializer) value(key string, set bitset, record *[]Conflict) (*string, error) {
+// resolve resolves key within an ancestor-closed set, memoized, since the
+// result depends only on the key's writers inside set. The conflict it reports
+// is the one merging the current maximal writers leaves; openConflicts finds
+// the ones earlier merges left.
+func (mz *materializer) resolve(key string, set bitset) (resolution, error) {
 	maximal := mz.g.maximal(key, set)
 	switch len(maximal) {
 	case 0:
 		genesis, ok := mz.g.genesis(key)
 		if !ok {
-			return nil, nil
+			return resolution{}, nil
 		}
-		return genesis.base, nil
+		return resolution{value: genesis.base}, nil
 	case 1:
-		return mz.g.writes[maximal[0]][key].value, nil
+		return resolution{value: mz.g.writes[maximal[0]][key].value}, nil
 	}
 
 	memoKey := key + "|" + writerSignature(mz.g, key, set)
-	if record == nil {
-		if cached, ok := mz.memo[memoKey]; ok {
-			return cached, nil
-		}
+	if cached, ok := mz.memo[memoKey]; ok {
+		return cached, nil
 	}
 	baseSet := set
 	for _, w := range maximal {
 		baseSet = baseSet.intersect(mz.g.anc[w])
 	}
-	base, err := mz.value(key, baseSet, nil)
+	baseResolution, err := mz.resolve(key, baseSet)
 	if err != nil {
-		return nil, err
+		return resolution{}, err
 	}
+	base := baseResolution.value
 
 	writersOf := map[string][]string{}
 	for _, w := range maximal {
@@ -254,16 +267,15 @@ func (mz *materializer) value(key string, set bitset, record *[]Conflict) (*stri
 		} else {
 			merged, mergeDetails, mergeErr := mz.merge(key, base, present)
 			if mergeErr != nil {
-				return nil, mergeErr
+				return resolution{}, mergeErr
 			}
 			result = &merged
 			details = append(details, mergeDetails...)
 		}
 	}
-	if record == nil {
-		mz.memo[memoKey] = result
-	} else if len(details) > 0 {
-		conflict := Conflict{
+	out := resolution{value: result}
+	if len(details) > 0 {
+		conflict := &Conflict{
 			Format:     ConflictFormat,
 			Key:        key,
 			Kind:       mz.g.writes[maximal[0]][key].kind,
@@ -282,9 +294,79 @@ func (mz *materializer) value(key string, set bitset, record *[]Conflict) (*stri
 			sort.Strings(writers)
 			conflict.Candidates = append(conflict.Candidates, ConflictCandidate{Blob: absentOrDigest(v), Writers: writers})
 		}
-		*record = append(*record, conflict)
+		out.conflict = conflict
 	}
-	return result, nil
+	mz.memo[memoKey] = out
+	return out, nil
+}
+
+// openConflicts is every conflict on key that set leaves open: the conflict
+// of its current maximal writers, plus the conflict of every merge a writer
+// inside set was written over, unless a resolution inside set that writes the
+// key descends from each of that conflict's competing writers. A carried
+// conflict reports current — the key's value within set — as its result, since
+// that is what the workspace holds meanwhile.
+func (mz *materializer) openConflicts(key string, set bitset, current *string, top *Conflict) ([]Conflict, error) {
+	var out []Conflict
+	if top != nil {
+		out = append(out, *top)
+	}
+	seen := map[string]bool{}
+	var resolutions []int
+	for _, w := range mz.g.writers[key] {
+		if set.has(w) && mz.g.txns[w].Kind == KindResolution {
+			resolutions = append(resolutions, w)
+		}
+	}
+	for _, w := range mz.g.writers[key] {
+		if !set.has(w) {
+			continue
+		}
+		before := append(bitset{}, mz.g.anc[w]...)
+		before[w/64] &^= 1 << (uint(w) % 64)
+		if len(mz.g.maximal(key, before)) < 2 {
+			continue
+		}
+		r, err := mz.resolve(key, before)
+		if err != nil {
+			return nil, err
+		}
+		if r.conflict == nil || mz.resolved(r.conflict, resolutions) {
+			continue
+		}
+		carried := *r.conflict
+		carried.ResultBlob = current
+		identity, err := json.Marshal(carried)
+		if err != nil {
+			return nil, err
+		}
+		if seen[string(identity)] {
+			continue
+		}
+		seen[string(identity)] = true
+		out = append(out, carried)
+	}
+	return out, nil
+}
+
+// resolved reports whether one of resolutions strictly descends from every
+// writer competing in conflict.
+func (mz *materializer) resolved(conflict *Conflict, resolutions []int) bool {
+	for _, r := range resolutions {
+		all := true
+		for _, candidate := range conflict.Candidates {
+			for _, writer := range candidate.Writers {
+				w, ok := mz.g.index[writer]
+				if !ok || w == r || !mz.g.anc[r].has(w) {
+					all = false
+				}
+			}
+		}
+		if all {
+			return true
+		}
+	}
+	return false
 }
 
 func (mz *materializer) merge(key string, base *string, present []string) (string, []ConflictDetail, error) {
@@ -321,13 +403,18 @@ func (mz *materializer) merge(key string, base *string, present []string) (strin
 func (mz *materializer) materialize(set bitset) (*materialized, error) {
 	out := &materialized{values: map[string]string{}, placement: map[string]string{}}
 	for _, key := range mz.g.keys() {
-		v, err := mz.value(key, set, &out.conflicts)
+		r, err := mz.resolve(key, set)
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
-			out.values[key] = *v
+		if r.value != nil {
+			out.values[key] = *r.value
 		}
+		open, err := mz.openConflicts(key, set, r.value, r.conflict)
+		if err != nil {
+			return nil, err
+		}
+		out.conflicts = append(out.conflicts, open...)
 	}
 	catalog, err := mz.catalog(out)
 	if err != nil {
