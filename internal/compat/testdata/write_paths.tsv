@@ -1,0 +1,57 @@
+# Durable write-path inventory: every production function that mutates the filesystem,
+# and the sync integration point that owns it. Classes are defined in
+# docs/mobile/write-path-inventory.md. Regenerate symbols with
+#   UPDATE_WRITE_PATH_INVENTORY=1 go test ./internal/compat/ -run TestCompatWritePathInventoryCoversEveryDurableWrite
+# symbol	integration	note
+cmd/project_export.go:runProjectExport	export	project export creates its output directory outside the workspace; never synced
+cmd/project_export.go:runProjectExportAll	export	project export --all creates its output directory outside the workspace; never synced
+internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change
+internal/config/domain_file_store_io.go:DomainFileStore.saveObserved	domain-store	checked catalog/planning/lenses/machine save; synced kinds become catalog/planning/lenses effects and machine.json stays local
+internal/config/domain_file_store_io.go:backupDomainArtifact	domain-store	.bak sidecar beside a domain artifact; local-only and excluded from exchange
+internal/config/manager_backup.go:Manager.BackupConfig	domain-store	writes .bak sidecars for every domain file; local-only and excluded from exchange
+internal/config/manager_backup.go:Manager.RestoreConfigFromBackup	domain-store	restores domain files from .bak sidecars; the restored synced domains publish as a domain change
+internal/config/paths.go:WriteActiveWorkspacePointer	machine-local	machine-local active-workspace pointer
+internal/config/runtime_state.go:RuntimeState.EnsureDataDir	commit-staging	creates the data/.tt/projects skeleton before a first commit; directories alone carry no synced content
+internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
+internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing
+internal/config/workspace_move_copy.go:copyFileVerified	workspace-relocation	hash-verified copy of every artifact during workspace move
+internal/config/workspace_move_copy.go:createDestinationDirs	workspace-relocation	destination tree for workspace move
+internal/control/server.go:Listen	machine-local	control socket for --control sessions
+internal/control/server.go:Server.Close	machine-local	removes the control socket
+internal/external/vscode.go:createTempFileWithContentInDir	external-editor	temp buffer handed to an external editor; its result re-enters through a commit
+internal/logging/logger.go:Init	machine-local	~/.tt/logs directory and log file
+internal/logging/logger.go:closeLocked	machine-local	removes an empty log file
+internal/logging/logger.go:pruneOldLogs	machine-local	log retention
+internal/logging/logger.go:var openFile	machine-local	os.OpenFile seam for log files
+internal/storage/attachments.go:EnsureTaskAttachmentsDir	commit-staging	creates a task attachment directory before an attachment op commits; the bytes publish through the journal
+internal/storage/commit.go:CommitService.CommitMulti	commit-journal	multi-project change sets published as one journaled transaction
+internal/storage/commit.go:CommitService.CommitPlannedOpsWithArtifacts	commit-journal	planned ops plus artifacts under the workspace commit lock
+internal/storage/commit.go:CommitService.commitOps	commit-journal	raw ops transaction: project delete, moves, notes, attachments
+internal/storage/commit_artifact_paths.go:createArtifactLockDirectories	commit-staging	advisory lock directories beside artifacts; local-only
+internal/storage/commit_artifacts.go:CommitService.CommitPlannedArtifacts	commit-journal	artifact-only maintenance transaction under the commit lock
+internal/storage/commit_artifacts.go:CommitService.commitArtifacts	commit-journal	artifact-only user mutation and config-only artifact commits
+internal/storage/commit_locks.go:withWorkspaceCommitLocks	commit-staging	workspace commit lock files; local-only
+internal/storage/commit_multi.go:CommitService.commitMultiLocked	commit-journal	staging for multi-project commits inside the lock
+internal/storage/conflict_store.go:ConflictStore.Delete	conflict-store	removes a resolved conflict bundle
+internal/storage/conflict_store.go:ConflictStore.Save	conflict-store	records a conflict bundle
+internal/storage/export_markdown.go:ExportProjectMarkdown	export	writes one exported project document outside the workspace
+internal/storage/markdown.go:var writeFileAtomic	commit-journal	atomic tasks.md writer seam used by SaveProject
+internal/storage/markdown_load_save.go:CreateProjectDir	commit-journal	test-double repository path; production creation commits through CommitService
+internal/storage/markdown_load_save.go:SaveProject	commit-journal	raw tasks.md save reached only by the audited fallback; production saves commit through CommitService
+internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-double repository path; production delete is PlanProjectDelete through the journal
+internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
+internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
+internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
+internal/tui/domain_controller.go:tuiAppRepository.CommitOps	commit-journal	delegates to CommitService; the direct-write branch is the test-double fallback
+internal/tui/handler_task_crud.go:removeTaskContentBuffer	external-editor	removes the task content buffer after an external edit
+internal/tui/handler_task_crud.go:writeTaskContentBuffer	external-editor	writes the task content buffer for an external editor
+internal/tui/handler_view.go:AppModel.handleTextEditorExternal	external-editor	removes the external text editor buffer
+internal/tui/lifecycle_controller.go:RunApp	machine-local	TUI process lock directory under the local runtime root
+internal/tui/notes/notes_editor_round_trip.go:startNoteEditorWithContent	external-editor	note round trip through an external editor
+internal/tui/outline_editor.go:removeOutlineBuffer	external-editor	removes the outline dump buffer after O
+internal/tui/taskdetail/comments_actions.go:CommentsModel.createCommentTempFile	external-editor	comment buffer for an external editor
+internal/tui/taskdetail/comments_actions.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
+internal/tui/taskdetail/comments_actions.go:readEditedCommentText	external-editor	removes the comment buffer after reading it
+internal/util/files.go:AtomicWriteFile	commit-journal	temp-write, fsync, rename primitive every durable writer uses
+internal/util/files.go:WithFileLock	commit-staging	advisory lock file; local-only
+internal/util/pidlock.go:AcquirePIDLock	machine-local	process lock file
