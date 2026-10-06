@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestPeekSearchExcerptTracksQueryAndCommentChanges(t *testing.T) {
@@ -61,7 +63,7 @@ func TestPeekSearchExcerptUsesOnlyFreeTextAndHandlesDetails(t *testing.T) {
 		{"untitled", ""},
 	} {
 		searchRankedList(m, tc.query)
-		got := m.peekSearchExcerpt(m.Rows[0])
+		got := ansi.Strip(m.peekSearchExcerpt(m.Rows[0]))
 		if tc.want == "" && got != "" || tc.want != "" && !strings.Contains(got, tc.want) {
 			t.Errorf("query %q excerpt = %q, want %q", tc.query, got, tc.want)
 		}
@@ -76,7 +78,7 @@ func TestPeekSearchExcerptWrapsUnicodeAndBoundsLongText(t *testing.T) {
 	task.Description = strings.Repeat("前置き ", 100) + "請求書を確認" + strings.Repeat(" 続き", 100)
 	m := pagedPeekOutliner(t, task, 60, 20)
 	searchRankedList(m, "請求書")
-	excerpt := m.peekSearchExcerpt(m.Rows[0])
+	excerpt := ansi.Strip(m.peekSearchExcerpt(m.Rows[0]))
 	if !utf8.ValidString(excerpt) || !strings.Contains(excerpt, "請求書") || utf8.RuneCountInString(excerpt) > 180 {
 		t.Fatalf("invalid or unbounded Unicode excerpt: %q", excerpt)
 	}
@@ -88,5 +90,37 @@ func TestPeekSearchExcerptWrapsUnicodeAndBoundsLongText(t *testing.T) {
 				t.Fatalf("width %d: overflowing line %q", width, line)
 			}
 		}
+	}
+}
+
+func TestPeekSearchExcerptExplainsDistantTerms(t *testing.T) {
+	task := tierTask()
+	task.Description = "zeppelin" + strings.Repeat(" ordinary context", 40)
+	task.Comments = []*models.Comment{{Text: "quartz invoice"}}
+	m := pagedPeekOutliner(t, task, 60, 20)
+	searchRankedList(m, "zeppelin quartz")
+	excerpt := ansi.Strip(m.peekSearchExcerpt(m.Rows[0]))
+	if !strings.Contains(excerpt, "zeppelin") || !strings.Contains(excerpt, "quartz") || !strings.Contains(excerpt, "…") {
+		t.Fatalf("distant terms not explained: %q", excerpt)
+	}
+	if utf8.RuneCountInString(excerpt) > 340 {
+		t.Fatalf("unbounded excerpt: %q", excerpt)
+	}
+	for _, line := range cursorPeekDocument(t, m).Body {
+		if lipgloss.Width(line) > 60 {
+			t.Fatalf("overflow: %q", line)
+		}
+	}
+}
+
+func TestSearchExcerptHighlightPositionsSurviveWhitespaceAndUnicode(t *testing.T) {
+	text := []rune("  café\n\t 請求書  ")
+	got := highlightedExcerptWindow(text, []int{5, 9, 10}, 0, len(text))
+	want := textfit.HighlightText("café 請求書", []int{3, 5, 6}, theme.MutedStyle)
+	if got != want {
+		t.Fatalf("highlight positions changed: %q, want %q", got, want)
+	}
+	if got := searchMatchExcerpt("short", nil); got != "" {
+		t.Fatalf("empty match: %q", got)
 	}
 }

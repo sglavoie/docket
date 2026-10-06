@@ -10,8 +10,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
@@ -24,9 +27,11 @@ func (m *TaskComposerModel) openMatchingTaskPreview() {
 		return
 	}
 	m.matchingTaskTexts = make([]string, len(tasks))
+	m.matchingTaskReferences = make([]string, len(tasks))
 	now := time.Now()
 	for i, task := range tasks {
 		m.matchingTaskTexts[i] = m.matchingTaskDocument(task, project, now)
+		m.matchingTaskReferences[i] = fmt.Sprintf("%s#%d", project.Slug, task.ShortID)
 	}
 	m.matchingTaskIndex = 0
 	vp := viewport.New()
@@ -93,6 +98,22 @@ func (m *TaskComposerModel) matchingTaskDocument(task *models.Task, project *mod
 		}
 		lines = append(lines, fmt.Sprintf("[%s] %s", mark, item.Text))
 	}
+	if len(task.Attachments) > 0 {
+		lines = append(lines, "", fmt.Sprintf("Attachments: %d", len(task.Attachments)))
+		for _, attachment := range task.Attachments {
+			lines = append(lines, listsurface.AttachmentDisplayName(attachment))
+		}
+	}
+	for _, comment := range task.Comments {
+		if comment == nil {
+			continue
+		}
+		label := "Comment"
+		if !comment.CreatedAt.IsZero() {
+			label += " " + comment.CreatedAt.Local().Format("2006-01-02 15:04")
+		}
+		lines = append(lines, "", label+":", comment.Text)
+	}
 	return strings.Join(lines, "\n")
 }
 
@@ -112,6 +133,14 @@ func (m *TaskComposerModel) resizeMatchingTaskPreview() {
 func (m *TaskComposerModel) updateMatchingTaskPreview(msg tea.Msg) tea.Cmd {
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		switch key.String() {
+		case "y":
+			reference := m.matchingTaskReferences[m.matchingTaskIndex]
+			return func() tea.Msg {
+				if err := external.CopyText(reference); err != nil {
+					return status.ErrorMsg{Err: fmt.Errorf("couldn't copy task reference: %w", err)}
+				}
+				return status.InfoStatusMsg("Copied task reference: " + reference)
+			}
 		case "left", "right":
 			next := m.matchingTaskIndex
 			if key.String() == "left" {
@@ -128,6 +157,7 @@ func (m *TaskComposerModel) updateMatchingTaskPreview(msg tea.Msg) tea.Cmd {
 			m.matchingTaskPreview = nil
 			m.matchingTaskText = ""
 			m.matchingTaskTexts = nil
+			m.matchingTaskReferences = nil
 			m.matchingTaskIndex = 0
 			return nil
 		}

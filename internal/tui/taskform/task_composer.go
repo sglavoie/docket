@@ -147,15 +147,16 @@ type TaskComposerModel struct {
 	SubmissionInFlight bool
 	// Once a submit has failed, edits keep its line diagnostics current without
 	// moving the caret or issuing another capture request.
-	validateOnEdit      bool
-	pasteRefusal        string
-	batchInvalidLines   int
-	batchDestinations   []string
-	batchPlanSummary    string
-	matchingTaskPreview *viewport.Model
-	matchingTaskText    string
-	matchingTaskTexts   []string
-	matchingTaskIndex   int
+	validateOnEdit         bool
+	pasteRefusal           string
+	batchInvalidLines      int
+	batchDestinations      []string
+	batchPlanSummary       string
+	matchingTaskPreview    *viewport.Model
+	matchingTaskText       string
+	matchingTaskTexts      []string
+	matchingTaskReferences []string
+	matchingTaskIndex      int
 	chrome.DiscardConfirmState
 }
 

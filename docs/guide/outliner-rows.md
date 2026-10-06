@@ -142,6 +142,9 @@ today. Waiting says where a task is, not how loudly it is asking. A Waiting task
 still shouts when it earns it — a deadline that has passed, a check-in whose day
 has come, a priority you set — on exactly the same terms as any other task.
 
+Due-date chips include the year when the date is outside the current year,
+including overdue dates. Today and Tomorrow keep their relative labels.
+
 Due dates and arrived check-ins both render as a filled chip rather than as colored
 text, so a date reads as one bounded object at the end of a row the title now
 owns. All three tiers are chips — overdue, today, and

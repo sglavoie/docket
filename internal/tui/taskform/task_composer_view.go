@@ -249,9 +249,9 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 	if m.matchingTaskPreview != nil {
-		spec := chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "PgUp/PgDn page", "Ctrl+O return to capture")
+		spec := chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "y copy reference", "PgUp/PgDn page", "Ctrl+O return to capture")
 		if len(m.matchingTaskTexts) > 1 {
-			spec = chrome.RequiredExitGuidanceSpec("←/→ match", "Esc return to capture", "↑/↓ scroll", "PgUp/PgDn page", "Ctrl+O return to capture")
+			spec = chrome.RequiredExitGuidanceSpec("←/→ match", "Esc return to capture", "↑/↓ scroll", "y copy reference", "PgUp/PgDn page", "Ctrl+O return to capture")
 		}
 		return spec, true
 	}

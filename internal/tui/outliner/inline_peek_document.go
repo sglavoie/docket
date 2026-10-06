@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"charm.land/lipgloss/v2"
 
@@ -738,19 +739,57 @@ func inlinePeekHangingLines(label string, chunks []string, indent string, width 
 	return lines
 }
 
-// searchMatchExcerpt gives the first matched rune a little leading context.
-// Ellipses explicitly mark the excerpt; ordinary task detail stays below it.
-func searchMatchExcerpt(text string, firstMatch int) string {
+// searchMatchExcerpt shows at most two bounded windows, so distant search
+// terms can explain a result without turning Peek into a second full document.
+func searchMatchExcerpt(text string, positions []int) string {
 	const contextBefore, excerptRunes = 40, 160
 	runes := []rune(text)
-	start := max(firstMatch-contextBefore, 0)
-	end := min(start+excerptRunes, len(runes))
-	excerpt := strings.Join(strings.Fields(string(runes[start:end])), " ")
-	if start > 0 {
-		excerpt = "…" + excerpt
+	var windows []string
+	end := 0
+	for _, position := range positions {
+		if position < end || position < 0 || position >= len(runes) {
+			continue
+		}
+		start := max(position-contextBefore, end)
+		end = min(start+excerptRunes, len(runes))
+		part := highlightedExcerptWindow(runes, positions, start, end)
+		if start > 0 {
+			part = "…" + part
+		}
+		if end < len(runes) {
+			part += "…"
+		}
+		windows = append(windows, part)
+		if len(windows) == 2 {
+			break
+		}
 	}
-	if end < len(runes) {
-		excerpt += "…"
+	return strings.Join(windows, " · ")
+}
+
+// Normalize whitespace before styling, preserving the matcher's rune positions
+// through newlines, repeated spaces and multibyte characters.
+func highlightedExcerptWindow(runes []rune, positions []int, start, end int) string {
+	matches := make(map[int]bool, len(positions))
+	for _, position := range positions {
+		matches[position] = true
 	}
-	return excerpt
+	var text []rune
+	var highlights []int
+	space := false
+	for i := start; i < end; i++ {
+		if unicode.IsSpace(runes[i]) {
+			space = len(text) > 0
+			continue
+		}
+		if space {
+			text = append(text, ' ')
+			space = false
+		}
+		if matches[i] {
+			highlights = append(highlights, len(text))
+		}
+		text = append(text, runes[i])
+	}
+	return textfit.HighlightText(string(text), highlights, theme.MutedStyle)
 }

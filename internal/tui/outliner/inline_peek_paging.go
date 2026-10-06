@@ -657,5 +657,5 @@ func (m *OutlinerModel) peekSearchExcerpt(row OutlinerRow) string {
 	if len(positions) == 0 {
 		return ""
 	}
-	return label + " · " + searchMatchExcerpt(text, positions[0])
+	return label + " · " + searchMatchExcerpt(text, positions)
 }

@@ -223,9 +223,11 @@ resume note, description, and checklist. These are the existing task's values,
 not the draft's. Left/Right browse all matches, with `Match 1 of N` identifying
 the position; browsing stops at either end. Siblings under the capture parent
 come first, then other matches, each ordered by short ID. Each match opens at
-the top. Up/Down and Page Up/Down scroll;
-`Esc` or `Ctrl+O` returns to the exact capture draft and caret. Inspection never
-submits the draft.
+the top. Up/Down and Page Up/Down scroll.
+The inspection also lists attachment names and timestamped comment text.
+Press `y` to copy the displayed task's `project#id` reference; a clipboard failure
+is reported without leaving inspection. `Esc` or `Ctrl+O` returns to the exact
+capture draft and caret. Inspection never submits the draft.
 The preview also checks other valid lines in a multiline draft for the same
 parsed title in the same resolved project. `Same title on line 2` names the first
 matching source line, counting blank lines too. This notice is advisory and can

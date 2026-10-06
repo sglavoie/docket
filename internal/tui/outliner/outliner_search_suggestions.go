@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -1177,10 +1178,33 @@ func (m *OutlinerModel) refreshSearchHistoryPicker() {
 	p.choices.UpdateSuggestions(grammar.ACModeTag, 0, items)
 }
 
+// Forget the selected query only after its durable history has been saved.
+// The picker filter, live search draft and accepted projection remain intact.
+func (m *OutlinerModel) forgetSelectedSearchHistory() tea.Cmd {
+	p := m.Search.historyPicker
+	if !p.choices.IsActive() {
+		return nil
+	}
+	value := p.choices.Selected().Value
+	h := &m.Search.history
+	entries := slices.DeleteFunc(slices.Clone(h.entries), func(entry string) bool { return entry == value })
+	if h.persist != nil {
+		if err := h.persist(entries); err != nil {
+			return status.ErrorCmd("Search history could not be updated: %v", err)
+		}
+	}
+	h.entries = entries
+	h.resetRecall()
+	m.refreshSearchHistoryPicker()
+	return func() tea.Msg { return status.InfoStatusMsg("Query forgotten from search history") }
+}
+
 func (m *OutlinerModel) updateSearchHistoryPicker(msg tea.Msg) tea.Cmd {
 	p := m.Search.historyPicker
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		switch key.String() {
+		case "ctrl+x":
+			return m.forgetSelectedSearchHistory()
 		case "esc", "ctrl+r":
 			m.Search.historyPicker = nil
 			return nil

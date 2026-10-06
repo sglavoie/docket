@@ -127,9 +127,11 @@ narrow row drops, so the title stays readable.
 
 Open Peek with `b` on a non-title result to read a `Match:` excerpt near the
 top, after the title and parent chain. It names the matching field and shows
-up to 160 characters around the first matched character, including comment or
-checklist text; `…` marks omitted context. The excerpt follows the same fuzzy
-and case rules as the results, wraps within the pane, and leaves the ordinary
+up to two excerpts of 160 characters each around matching text, including comment
+or checklist text. Matching characters are highlighted; a second excerpt appears
+when matches fall beyond the first, and `…` marks omitted context. The excerpt
+follows the same fuzzy and case rules as the results, wraps within the pane,
+and leaves the ordinary
 task details below it. Changing the query resets Peek's scroll position when
 an excerpt is shown. Clearing search removes the excerpt; title matches and
 queries made only of sigils need none.
@@ -257,7 +259,11 @@ use Up/Down to choose, and press Enter or Tab to put the query into the search
 box for editing. This does not submit or record it: Enter in the search box
 still does that. Esc returns to the untouched search draft and caret. The
 history filter treats sigils as literal text and shows an explanation when no
-queries match. Outside the search box, `Ctrl+R` remains Redo.
+queries match. `Ctrl+X` forgets the selected query while keeping the history filter
+and original search draft intact. The next matching query stays selected, or the
+previous one if the last row was removed. A failed save keeps the query and
+selection and reports the error. Ordinary Delete still edits the filter.
+Outside the search box, `Ctrl+R` remains Redo.
 
 The last 50 distinct submitted queries survive a restart on this machine,
 separately for each workspace. Launch still starts with no active search; drafts

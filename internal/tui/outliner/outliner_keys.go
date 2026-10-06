@@ -614,7 +614,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
 	case m.IsSearchMode() && m.Search.historyPicker != nil:
-		return chrome.RequiredExitGuidanceSpec("Enter use query", "Esc return to search", "↑/↓ select", "Type to filter history"), true
+		return chrome.RequiredExitGuidanceSpec("Enter use query", "Esc return to search", "↑/↓ select", "Ctrl+X forget query", "Type to filter history"), true
 	case m.IsSearchMode() && m.Search.Autocomplete.Active():
 		// Only while the pane is open: an Esc here closes suggestions rather than
 		// the search, and saying so is the whole point of the swap.

@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -9,7 +10,9 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestCaptureInspectionPreservesBatchDraftAndCaret(t *testing.T) {
@@ -156,5 +159,45 @@ func TestCaptureInspectionSnapshotsMatchesAndReopensFresh(t *testing.T) {
 	m.Update(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
 	if !strings.Contains(m.matchingTaskText, "Changed description") {
 		t.Fatal("reopening did not refresh")
+	}
+}
+
+func TestCaptureInspectionIncludesCommentsAttachmentsAndCopiesSelectedReference(t *testing.T) {
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{
+		{ID: "one", ShortID: 1, Title: "Fix login", WorkflowState: models.StateBacklog,
+			Comments:    []*models.Comment{{Text: "Already reproduced with café credentials", CreatedAt: time.Date(2030, 1, 2, 12, 30, 0, 0, time.Local)}, nil},
+			Attachments: []models.Attachment{{Filename: "trace.txt"}, {Filename: "https://example.com/issue", IsURL: true}, {OriginalPath: "/tmp/login.go", IsCodeRef: true, LineNumber: 42}}},
+		{ID: "two", ShortID: 2, Title: "Fix login", WorkflowState: models.StateWaiting},
+	}}
+	m := NewTaskComposerModel(TaskComposerPreset{Project: project, InitialText: "Fix login"}, nil)
+	m.Input.SetCursorColumn(3)
+	m.Update(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+	for _, want := range []string{"Attachments: 3", "trace.txt", "https://example.com/issue", "login.go:42", "Comment 2030-01-02 12:30:", "Already reproduced with café credentials"} {
+		if !strings.Contains(m.matchingTaskText, want) {
+			t.Fatalf("missing %q: %s", want, m.matchingTaskText)
+		}
+	}
+	originalCopy := external.CopyText
+	t.Cleanup(func() { external.CopyText = originalCopy })
+	var copied string
+	external.CopyText = func(value string) error { copied = value; return nil }
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'y'})
+	// A command copies the reference frozen at the keypress, even after browsing.
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if cmd == nil {
+		t.Fatal("missing clipboard command")
+	}
+	if _, ok := cmd().(status.InfoStatusMsg); !ok || copied != "web#2" {
+		t.Fatalf("wrong copy: %q", copied)
+	}
+	external.CopyText = func(string) error { return errors.New("clipboard unavailable") }
+	_, cmd = m.Update(tea.KeyPressMsg{Code: 'y'})
+	if _, ok := cmd().(status.ErrorMsg); !ok {
+		t.Fatal("clipboard failure not reported")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.Input.Value() != "Fix login" || m.Input.Column() != 3 || m.SubmissionInFlight {
+		t.Fatal("inspection copy changed draft")
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -174,7 +176,7 @@ func TestSearchScoresEveryApprovedFieldAtItsDeclaredTier(t *testing.T) {
 			}
 			outliner := scopeTestOutliner(project)
 			searchRankedList(outliner, tt.query)
-			excerpt := outliner.peekSearchExcerpt(outliner.Rows[0])
+			excerpt := ansi.Strip(outliner.peekSearchExcerpt(outliner.Rows[0]))
 			if tt.source == MatchSourceTitle {
 				if excerpt != "" {
 					t.Fatalf("title match gained a redundant excerpt: %q", excerpt)

@@ -58,3 +58,12 @@ func TestClassifyDueDateTiersCarryTheirEmphasis(t *testing.T) {
 		})
 	}
 }
+
+func TestClassifyDueDateKeepsYearOnOldOverdueDates(t *testing.T) {
+	now := time.Now()
+	old := time.Date(now.Year()-1, time.January, 2, 0, 0, 0, 0, time.Local)
+	text, style := ClassifyDueDate(&old)
+	if text != old.Format("Jan 2 '06") || style.GetForeground() != theme.OverdueStyle.GetForeground() {
+		t.Fatalf("old deadline lost year or overdue styling: %q", text)
+	}
+}

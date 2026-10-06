@@ -37,18 +37,19 @@ func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 	now := time.Now()
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*dueDate)
+	dateText := dueDate.Format("Jan 2")
+	if dueDate.Year() != now.Year() {
+		dateText = dueDate.Format("Jan 2 '06")
+	}
 
 	switch {
 	case dueDay.Before(today):
-		return dueDate.Format("Jan 2"), theme.OverdueStyle
+		return dateText, theme.OverdueStyle
 	case dueDay.Equal(today):
 		return "Today", theme.DueTodayStyle
 	case dueDay.Equal(today.AddDate(0, 0, 1)):
 		return "Tomorrow", theme.DueDateStyle
 	default:
-		if dueDate.Year() != now.Year() {
-			return dueDate.Format("Jan 2 '06"), theme.DueDateStyle
-		}
-		return dueDate.Format("Jan 2"), theme.DueDateStyle
+		return dateText, theme.DueDateStyle
 	}
 }
