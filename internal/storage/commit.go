@@ -43,6 +43,9 @@ type CommitService struct {
 	// effects as an immutable outgoing sync record staged in the same journal
 	// manifest. See WithSyncHistory.
 	history *synclog.History
+	// merger, when non-nil, reconciles incoming sync transactions concurrent
+	// with local history instead of refusing them. See WithSyncMerger.
+	merger synclog.Merger
 }
 
 // OnMachine binds this service to an explicit machine identity and returns the

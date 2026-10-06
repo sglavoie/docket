@@ -37,6 +37,9 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 		return nil, err
 	}
 	o := newOverlay(h)
+	// A resolution may choose the bytes the workspace already holds. It still
+	// has to be an effect: writing the key is what resolves its conflict.
+	o.keepIdentical = kind == KindResolution
 	var pending []pendingEffect
 	for i, op := range ops {
 		effects, effectErr := h.effectsFor(o, op)
@@ -164,7 +167,7 @@ func (h *History) effectsFor(o *overlay, op transaction.Op) ([]pendingEffect, er
 		after := &vfile{exists: true, digest: Digest(op.Data), data: op.Data}
 		o.set(target, after)
 		rel, kind, slug, synced, err := h.classifyAbs(target)
-		if err != nil || !synced || (before.exists && before.digest == after.digest) {
+		if err != nil || !synced || (before.exists && before.digest == after.digest && !o.keepIdentical) {
 			return nil, err
 		}
 		effect := Effect{Kind: kind, Path: rel, Op: OpPut, Blob: digestPtr(after.digest)}

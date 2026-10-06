@@ -129,7 +129,8 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `CommitService.CommitArtifacts` | commit-journal | Config-only artifact commit with no undo entry. It still syncs. |
 | `CommitService.CommitPlannedArtifacts` | commit-journal | Maintenance snapshot. It syncs only if it touches synced artifacts. Migration snapshots under `.tt/backups/` never sync. |
 | `CommitService.CommitProjectRepair` | commit-journal | `doctor --fix` is published as a `kind: repair` manifest. |
-| `CommitService.CommitIncoming` | commit-journal | Applies another device's manifest and records its receipt in one journal entry. Never produces an outgoing record. |
+| `CommitService.CommitIncoming` | commit-journal | Applies another device's manifest and records its receipt in one journal entry; with a merger attached it reconciles the manifest with the whole history and stores the derived conflict records in that same entry. Never produces an outgoing record. |
+| `CommitService.CommitSyncResolution` | commit-journal | Resolves a derived sync conflict by writing its path as an undoable `resolution` transaction, which records an outgoing record even when the chosen bytes are the current ones. |
 | `CommitService.CommitSyncPublished` | commit-journal | Drops published transactions from the outbox through the journal. Never produces an outgoing record. |
 | `CommitService.RecoverWorkspace` | commit-journal | Recovery completes or rolls back a journal entry, and its outbound record with it. |
 | `WorkspaceLedger.Undo` | commit-journal | A new forward `kind: undo` manifest. |

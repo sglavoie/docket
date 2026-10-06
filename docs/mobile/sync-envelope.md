@@ -221,21 +221,92 @@ The rules:
 
 ## Reconciliation
 
-Effects carry `base_blob`, so an importer can always reuse the existing
-three-way merge. For project documents that merge is `storage.MergeProjectDocuments`.
-The base is the bytes behind `base_blob`. "Local" is the importer's current
-file, and "remote" is the bytes behind `blob`. Independent edits merge. Edits
-that compete become durable conflicts, and timestamps never choose a winner.
-Session 5 defines how this extends to the catalog, planning, lenses, notes,
-attachments, and multi-ancestor histories.
+A device's workspace is a pure function of the set of transactions it holds.
+Two devices holding the same transactions hold the same bytes and the same
+conflicts, whatever order the transactions arrived in. `synclog.History.PlanReconcile`
+decides which versions compete; `internal/syncmerge` merges them by what the
+file means. With a merger attached (the engine always attaches one),
+`CommitService.CommitIncoming` reconciles every incoming manifest. Without
+one it applies fast-forwards only, as described above.
+
+- **Logical keys.** A project-scoped path is keyed by its `project_id` and its
+  path inside the project directory, and any other path is its own key. A
+  `move` is a removal at its source and a write at its target. A rename on one
+  device and an edit on another are therefore one file. It lands under the
+  slug the resolved catalog gives its project.
+- **Causal fast-forward.** The writers of a key that no other writer of it
+  descends from are its maximal writers. With one maximal writer, its value
+  stands.
+- **Concurrent merge.** With several maximal writers, their values are merged
+  against the key's value at the intersection of their histories. That base
+  is resolved the same way, recursively, so criss-cross histories with several
+  common ancestors need no arbitrary choice of one ancestor. Identical values
+  coalesce, and a value equal to the base changed nothing. Remaining versions
+  are ordered by digest, which makes the first one the same *primary* version
+  on every device. Conflicts fall back to it, never to a timestamp.
+- **Project documents** (`storage.ReconcileProjectDocuments`) merge task by
+  task and field by field, any number of sides at once. A task whose versions
+  compete is kept whole as the primary side wrote it, and a change always
+  beats a deletion. A deleted parent survives while anything beneath it
+  changed. Merged reparenting that cycles or nests deeper than six reverts to
+  the base hierarchy. Incompatible sibling reorders keep the base order. Two
+  tasks created concurrently under one short id both keep their UUIDs: the
+  task that held the number in the base, or else the smaller UUID, keeps it,
+  and the others are renumbered past the largest number in use. That
+  renumbering is a resolution, not a conflict.
+- **Catalog** (`config.ReconcileCatalogArtifacts`) merges project by project.
+  A changed project beats its deletion. A merged rename onto a slug another
+  project took reverts to its base slug, and two projects created under one
+  slug keep it on the smaller id while the other takes a suffix of its own id.
+- **Planning** (`config.ReconcilePlanningArtifacts`) merges Today and Next as
+  set changes against the base. One reorder, or several compatible ones, is
+  adopted. Incompatible reorders keep the base order. A task planned for Today
+  on one device and for Next on another stays in Today.
+- **Other files** (notes, lenses, attachments, other project files) keep the
+  primary version and record the competition.
+- **Workspace repair.** A project whose files survived because a change beat
+  its deletion is named in the catalog again, using the entry the deleting
+  transaction removed.
+- **Writes.** Only files whose resolved bytes change are written. Each one must
+  still hold what the history says this device last wrote there. Otherwise
+  the manifest is refused with `ErrUnrecordedChange` until that change is
+  recorded. The applied bytes, retained blobs, conflict records, receipt, and
+  tracking state commit in one journal entry. Reconciliation publishes
+  nothing: the next local transaction names every head as a parent and carries
+  the merged bytes as its base.
+
+### Conflicts
+
+Conflicts are derived, not exchanged. This answers session 1's open question.
+`History.OpenConflicts` (and `CommitService.SyncConflicts`) return the
+conflicts a history leaves open. Each is a `tt-sync-conflict` record whose `id`
+is the digest of its key, kind, base, candidates (each competing digest with
+the maximal writers that left it), result, and details. Devices holding the
+same transactions therefore derive the same records under the same ids. Every
+competing version stays retained as a blob, so nothing a device wrote is lost.
+A record is also stored under `.tt/sync/conflicts/` when reconciliation first
+derives it, and the receipt names the conflicts open after it.
+
+A conflict closes when a transaction writes its key and descends from every
+competing writer. `CommitService.CommitSyncResolution` commits such a
+`resolution`, and it records the choice even when the chosen bytes are the
+current ones. If two devices resolve one conflict at once, identical
+resolutions coalesce and the conflict closes everywhere. Different resolutions
+compete again as one new conflict whose candidates are the two resolutions.
 
 ## Open questions
 
-- Conflict bundles under `.tt/conflicts/` are local today. A conflict must be
-  resolvable on either device, so session 5 has to decide between two options:
-  sync conflicts as records, or let each device re-derive them from the same
-  manifests.
+- Conflict bundles under `.tt/conflicts/` remain the local commit-time
+  merge's. Sync conflicts are derived per device (see [Conflicts](#conflicts));
+  surfacing them in the frontends is later work.
 - `lenses.json`, and catalog or planning saves made through the checked domain
   store, are committed outside the journal. They are observed against
   `tracked` rather than hooked (see [Local sync history](#local-sync-history));
-  the observation itself belongs to the external-edit work.
+  the observation itself belongs to the external-edit work. Until it is
+  recorded, such a change makes reconciliation refuse an incoming manifest
+  that would rewrite the same file (`ErrUnrecordedChange`).
+- Reconciliation reads the whole history on every incoming manifest. Caching
+  the resolved workspace, or compacting history, is deferred with history
+  retention.
+- A project directory emptied by a reconciled rename is left in place,
+  because its lock files are device-local.

@@ -463,12 +463,83 @@ verify_session_4() {
 	note "session 4 verified"
 }
 
+verify_session_5() {
+	require_files \
+		internal/synclog/graph.go \
+		internal/synclog/reconcile.go \
+		internal/storage/project_reconcile.go \
+		internal/config/sync_reconcile.go \
+		internal/syncmerge/merger.go \
+		internal/syncmerge/reconcile_test.go \
+		internal/syncmerge/seeded_test.go
+
+	# Deterministic replicas: devices and genesis observers receiving the same
+	# transactions in forward, reversed, and shuffled orders must hold identical
+	# valid content and identical conflict records, with every competing
+	# version recoverable. Each required scenario is its own named test.
+	local required=(
+		TestSyncReconcileConvergesAcrossDeliveryOrders
+		TestSyncReconcileConvergesAcrossDeliveryOrders/independent_edits
+		TestSyncReconcileConvergesAcrossDeliveryOrders/competing_edits
+		TestSyncReconcilePlanningOrder
+		TestSyncReconcilePlanningOrder/incompatible_reorders_keep_base
+		TestSyncReconcileDeleteEdit
+		TestSyncReconcileDeleteEdit/task
+		TestSyncReconcileDeleteEdit/project
+		TestSyncReconcileDeleteEdit/project_uncontested
+		TestSyncReconcileProjectMoves
+		TestSyncReconcileProjectMoves/cross_project_task_move
+		TestSyncReconcileHierarchyInvariants
+		TestSyncReconcileHierarchyInvariants/cycle
+		TestSyncReconcileHierarchyInvariants/depth
+		TestSyncReconcileHierarchyInvariants/deleted_parent_gains_child
+		TestSyncReconcileShortIDAllocation
+		TestSyncReconcileMultipleCommonAncestors
+		TestSyncReconcileSimultaneousResolutions
+		TestSyncReconcileSimultaneousResolutions/agree
+		TestSyncReconcileSimultaneousResolutions/keep_current
+		TestSyncReconcileSimultaneousResolutions/disagree
+		TestSyncReconcileSeededHistoriesConverge
+	)
+	local seed
+	for seed in 1 2 3 4; do
+		required+=("TestSyncReconcileSeededHistoriesConverge/seed_$seed")
+	done
+	run_go_suite reconcile ./internal/syncmerge/ '^TestSyncReconcile' "${required[@]}"
+
+	# The seeded histories must actually be concurrent: at least one must merge
+	# several heads and at least one must leave a conflict to agree on.
+	grep -Eq 'transactions, [1-9][0-9]* merging several heads' "$work_dir/reconcile.log" ||
+		fail "reconcile: no seeded history merged concurrent heads"
+	grep -Eq 'merging several heads, [1-9][0-9]* open conflicts' "$work_dir/reconcile.log" ||
+		fail "reconcile: no seeded history produced a conflict"
+
+	# The merge rules underneath, and the fast-forward and refusal guarantees
+	# session 4 established, unchanged by reconciliation.
+	run_go_suite merge-units ./internal/storage/ '^(TestReconcileProjectDocuments|TestMerge_)' \
+		TestReconcileProjectDocumentsAgreesWithTwoWayMerge \
+		TestReconcileProjectDocumentsAlwaysYieldsValidDocuments
+	run_go_suite config-reconcile ./internal/config/ '^TestReconcile(Catalog|Planning)' \
+		TestReconcileCatalogArtifactsKeepsSlugsUnique \
+		TestReconcileCatalogArtifactsKeepsChangedProjectOverDeletion \
+		TestReconcilePlanningArtifactsMergesMembership
+	run_go_suite storage-sync ./internal/storage/ '^TestSync' \
+		TestSyncIncomingApplyAndReceiptAreAtomic \
+		TestSyncIncomingRefusalsAcknowledgeNothing \
+		TestSyncIncomingKeepsCausalOrderAndConcurrentHeads
+	run_go_suite engine-sync ./internal/engine/ '^TestRuntimeRecordsSyncHistoryAndAppliesItElsewhere$' \
+		TestRuntimeRecordsSyncHistoryAndAppliesItElsewhere
+
+	note "session 5 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
 3) verify_session_3 ;;
 4) verify_session_4 ;;
+5) verify_session_5 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

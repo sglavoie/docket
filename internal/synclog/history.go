@@ -235,6 +235,9 @@ type Receipt struct {
 	LocalTxnID string   `json:"local_txn_id"`
 	ReceivedAt string   `json:"received_at"`
 	Manifest   Manifest `json:"manifest"`
+	// Conflicts are the ids of the conflicts reconciliation left open once
+	// this transaction was applied. A fast-forward names none.
+	Conflicts []string `json:"conflicts,omitempty"`
 }
 
 // LoadState reads the device's tracking state. A device that has recorded

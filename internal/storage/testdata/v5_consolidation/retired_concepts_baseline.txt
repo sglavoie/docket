@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 448
+# Total rows: 449
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -152,6 +152,7 @@ dependency	internal/storage/format/v6_task_convert.go	DependsOn	1
 dependency	internal/storage/format/v6_task_convert.go	dependency	2
 dependency	internal/storage/project_merge.go	Dependencies	2
 dependency	internal/storage/project_merge_helpers.go	Dependencies	2
+dependency	internal/storage/project_reconcile.go	Dependencies	2
 dependency	internal/storage/v5_archive_reintegration.go	DependsOn	5
 dependency	internal/storage/v5_archive_reintegration.go	canonicalV5DependencyReference	2
 dependency	internal/storage/v5_archive_reintegration.go	dependencies	4

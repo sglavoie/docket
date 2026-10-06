@@ -27,6 +27,8 @@ type overlay struct {
 	files   map[string]*vfile
 	planned map[string]bool
 	blobOps []transaction.Op
+	// keepIdentical makes a rewrite of identical bytes an effect.
+	keepIdentical bool
 }
 
 func newOverlay(h *History) *overlay {

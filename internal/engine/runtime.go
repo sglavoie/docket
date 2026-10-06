@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/syncmerge"
 )
 
 // Runtime is one open workspace: the startup-loaded configuration domains, the
@@ -110,7 +111,7 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
 	repo := NewRepository(dataDir, deps, ledger, owner)
-	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock))
+	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock)).WithSyncMerger(syncmerge.Merger{})
 	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
 	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock}
 }
