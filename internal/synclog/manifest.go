@@ -48,11 +48,15 @@ const (
 	// commit — an editor, a script, or a checked domain save — observed against
 	// the last indexed revision.
 	KindExternal Kind = "external"
+	// KindEnroll is the first transaction of an enrolled workspace: it writes
+	// every synced file the working copy started from, so the history alone
+	// can rebuild the workspace on a device that joins later.
+	KindEnroll Kind = "enroll"
 )
 
 func (k Kind) valid() bool {
 	switch k {
-	case KindUser, KindUndo, KindRedo, KindMerge, KindResolution, KindRepair, KindExternal:
+	case KindUser, KindUndo, KindRedo, KindMerge, KindResolution, KindRepair, KindExternal, KindEnroll:
 		return true
 	}
 	return false
@@ -369,7 +373,7 @@ func DecodeManifest(data []byte) (*Manifest, error) {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidManifest, err)
 	}
 	if header.Format == ManifestFormat && header.FormatVersion > ManifestFormatVersion {
-		return nil, fmt.Errorf("%w: format_version %d is newer than %d", ErrHeld, header.FormatVersion, ManifestFormatVersion)
+		return nil, &HeldError{FormatVersion: header.FormatVersion}
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()

@@ -127,7 +127,29 @@ type WorkspaceCatalog struct {
 	WorkspaceID            string           `json:"workspace_id,omitempty"`
 	Projects               []CatalogProject `json:"projects"`
 	SystemUnfiledProjectID string           `json:"system_unfiled_project_id"`
+	// Sync is present exactly when the workspace is enrolled in device sync,
+	// and then the catalog is at SyncEnrolledConfigVersion.
+	Sync *CatalogSync `json:"sync,omitempty"`
 }
+
+// SyncExchangeFormat is the exchange-folder layout an enrolled workspace
+// publishes through.
+const SyncExchangeFormat = "tt-sync/v1"
+
+// CatalogSync is the portable record that a workspace is enrolled in device
+// sync. It is written once, by enrollment, and every device that holds the
+// workspace carries it unchanged: where each device keeps its exchange folder
+// is that device's own business and never synced.
+type CatalogSync struct {
+	// EnrolledAt is when the workspace was enrolled.
+	EnrolledAt time.Time `json:"enrolled_at"`
+	// Exchange is the exchange-folder layout, SyncExchangeFormat.
+	Exchange string `json:"exchange"`
+}
+
+// Enrolled reports whether the catalog belongs to a workspace enrolled in
+// device sync.
+func (w *WorkspaceCatalog) Enrolled() bool { return w != nil && w.Sync != nil }
 
 func (w *WorkspaceCatalog) protectedProjectID() string {
 	if w == nil {
@@ -155,7 +177,7 @@ func NewWorkspaceCatalog() *WorkspaceCatalog {
 // non-empty ID and canonical safe slug, IDs and slugs must be unique, and the
 // protected Unfiled reference must point at a cataloged project when set.
 func (w *WorkspaceCatalog) Validate() error {
-	return w.validate(false, CurrentConfigVersion)
+	return w.validate(false, SupportedConfigVersion)
 }
 
 // validateForLoad is the single seam every catalog-loading path validates
@@ -163,13 +185,13 @@ func (w *WorkspaceCatalog) Validate() error {
 // with EnsureProjectColorSlots; save paths continue to use Validate, which
 // rejects them.
 func (w *WorkspaceCatalog) validateForLoad() error {
-	return w.validate(true, CurrentConfigVersion)
+	return w.validate(true, SupportedConfigVersion)
 }
 
 // validateAtSchema measures a catalog against the schema a migration is
 // activating rather than the schema this build loads, because an activation
 // publishes its target schema before that target becomes the loadable one.
-// Every ordinary save and load keeps measuring against CurrentConfigVersion.
+// Every ordinary save and load measures against SupportedConfigVersion.
 func (w *WorkspaceCatalog) validateAtSchema(supported int) error {
 	return w.validate(false, supported)
 }
@@ -184,6 +206,9 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool, supported in
 			w.SchemaVersion,
 			supported,
 		)
+	}
+	if err := w.validateSyncEnrollment(); err != nil {
+		return err
 	}
 	seenID := make(map[string]bool, len(w.Projects))
 	seenSlug := make(map[string]bool, len(w.Projects))
@@ -258,4 +283,25 @@ func refMatches(ref, id, slug string) bool {
 // slug) is the one being removed.
 func projectMatches(projID, projSlug, id, slug string) bool {
 	return refMatches(projID, id, slug) || refMatches(projSlug, id, slug)
+}
+
+// validateSyncEnrollment ties the enrolled schema to the sync block: an
+// enrolled catalog is at SyncEnrolledConfigVersion and carries the block, and
+// a catalog at any other schema carries none. Neither half can be written
+// without the other, so no tt that predates sync can be handed a catalog it
+// would read as an ordinary workspace.
+func (w *WorkspaceCatalog) validateSyncEnrollment() error {
+	switch {
+	case w.SchemaVersion == SyncEnrolledConfigVersion && w.Sync == nil:
+		return fmt.Errorf("workspace catalog: schema version %d is reserved for workspaces enrolled in sync, and this catalog has no sync block", w.SchemaVersion)
+	case w.Sync == nil:
+		return nil
+	case w.SchemaVersion != SyncEnrolledConfigVersion:
+		return fmt.Errorf("workspace catalog: a sync block requires schema version %d, got %d", SyncEnrolledConfigVersion, w.SchemaVersion)
+	case w.Sync.Exchange != SyncExchangeFormat:
+		return fmt.Errorf("workspace catalog: sync exchange %q is not supported; want %q", w.Sync.Exchange, SyncExchangeFormat)
+	case w.Sync.EnrolledAt.IsZero():
+		return fmt.Errorf("workspace catalog: sync enrollment has no enrolled_at instant")
+	}
+	return nil
 }

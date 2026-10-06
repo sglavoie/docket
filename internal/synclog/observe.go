@@ -1,6 +1,7 @@
 package synclog
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -170,8 +171,57 @@ func (h *History) PlanObserve(v Validator, localTxnID string, index bool) (*Obse
 		return &ObservePlan{Plan: Plan{Ops: ops}, Baselined: true}, nil
 	}
 
+	return h.observe(state, o, v, KindExternal, localTxnID)
+}
+
+// ErrGenesisRefused is a genesis that cannot be recorded: the device already
+// has a history, or a file of the workspace would be held rather than
+// published.
+var ErrGenesisRefused = errors.New("synclog: the enrollment genesis cannot be recorded")
+
+// PlanGenesis plans the first transaction of a workspace enrolled in sync, on
+// the device that enrolled it: one outgoing transaction of kind enroll, at
+// sequence 1 and with no parents, that writes every synced file as it stands.
+// It is observation against an empty index, so the history records the whole
+// workspace as a change and a device that joins with nothing can rebuild it
+// from the history alone. It refuses (ErrGenesisRefused) a device that has
+// recorded anything already, and a workspace any of whose files the validator
+// would hold: a genesis never publishes part of a workspace.
+func (h *History) PlanGenesis(v Validator, localTxnID string) (*ObservePlan, error) {
+	state, err := h.LoadState()
+	if err != nil {
+		return nil, err
+	}
+	if state != nil {
+		return nil, fmt.Errorf("%w: device %s has already recorded history", ErrGenesisRefused, h.deviceID)
+	}
+	catalog, err := h.readCatalog()
+	if err != nil {
+		return nil, err
+	}
+	if catalog == nil || catalog.workspaceID == "" {
+		return nil, fmt.Errorf("%w: no workspace catalog names this workspace's identity", ErrGenesisRefused)
+	}
+	state = h.newState(catalog.workspaceID)
+	state.Indexed = true
+	plan, err := h.observe(state, newOverlay(h), v, KindEnroll, localTxnID)
+	if err != nil {
+		return nil, err
+	}
+	if len(plan.Held) > 0 {
+		return nil, fmt.Errorf("%w: %s: %s", ErrGenesisRefused, plan.Held[0].Path, plan.Held[0].Reason)
+	}
+	if plan.Manifest == nil {
+		return nil, fmt.Errorf("%w: the workspace holds no synced file", ErrGenesisRefused)
+	}
+	return plan, nil
+}
+
+// observe records every synced file whose bytes differ from state's index as
+// one outgoing transaction of txnKind, holding the ones the validator refuses.
+func (h *History) observe(state *State, o *overlay, v Validator, txnKind Kind, localTxnID string) (*ObservePlan, error) {
 	current := map[string][]byte{}
-	if err = h.walkSynced(func(rel string, data []byte) error {
+	if err := h.walkSynced(func(rel string, data []byte) error {
 		current[rel] = data
 		return nil
 	}); err != nil {
@@ -219,7 +269,7 @@ func (h *History) PlanObserve(v Validator, localTxnID string, index bool) (*Obse
 	if len(effects) == 0 {
 		return &ObservePlan{Held: held}, nil
 	}
-	plan, manifest, err := h.recordLocal(state, KindExternal, localTxnID, effects, o)
+	plan, manifest, err := h.recordLocal(state, txnKind, localTxnID, effects, o)
 	if err != nil {
 		return nil, err
 	}

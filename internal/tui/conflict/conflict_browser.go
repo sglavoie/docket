@@ -43,6 +43,10 @@ const (
 	// cannot do is stated before the rows rather than discovered by pressing keys
 	// that do nothing.
 	conflictBrowserReadOnlyLine = "Read-only — resolve with tt conflict resolve"
+	// conflictBrowserReadOnlySyncLine replaces it when sync conflicts are listed,
+	// which that command does not resolve: their every version is kept, and
+	// nothing on this surface writes.
+	conflictBrowserReadOnlySyncLine = "Read-only — resolve bundles with tt conflict resolve; sync conflicts keep every version"
 	// conflictBrowserShortIDWidth matches the CLI's own shortening, so an id read
 	// off this list can be typed straight into `tt conflict resolve`.
 	conflictBrowserShortIDWidth = 8
@@ -82,7 +86,11 @@ type ConflictBrowserClosedMsg struct{}
 type ConflictBrowserModel struct {
 	surface *listsurface.ListSurfaceModel
 	records []storage.ConflictRecord
-	load    func(id string) (*storage.ConflictBundle, error)
+	// syncConflicts are the open sync conflicts, listed after the bundles. Each
+	// is derived from the sync history, which retains every competing version,
+	// so a row carries its whole record and inspecting it reloads nothing.
+	syncConflicts []SyncConflictEntry
+	load          func(id string) (*storage.ConflictBundle, error)
 	// detail is the inspected bundle's rendered lines, unwrapped. A non-empty
 	// slice is what puts the overlay in its detail state; Esc empties it.
 	detail       []string
@@ -99,16 +107,21 @@ type ConflictBrowserModel struct {
 // required: the list carries enough metadata to draw a row, but inspecting
 // re-reads the bundle so a conflict the CLI resolved in another terminal since
 // the list was taken refuses rather than showing a record that is gone.
+//
+// An enrolled workspace has open sync conflicts beside its bundles; they are
+// listed after them.
 func NewConflictBrowserModel(
 	records []storage.ConflictRecord,
+	syncConflicts []SyncConflictEntry,
 	load func(id string) (*storage.ConflictBundle, error),
 ) (*ConflictBrowserModel, error) {
 	if load == nil {
 		return nil, fmt.Errorf("the conflict browser requires a conflict loader")
 	}
 	model := &ConflictBrowserModel{
-		records: append([]storage.ConflictRecord(nil), records...),
-		load:    load,
+		records:       append([]storage.ConflictRecord(nil), records...),
+		syncConflicts: append([]SyncConflictEntry(nil), syncConflicts...),
+		load:          load,
 	}
 	surface, err := listsurface.NewListSurfaceModel(model.items(), nil, listsurface.ListSurfaceConfig{
 		SelectionMode: listsurface.ListSelectionSingle,
@@ -135,6 +148,14 @@ func (model *ConflictBrowserModel) items() []listsurface.ListItem {
 			PrimaryText:   conflictBrowserRowTitle(record),
 			SecondaryText: conflictBrowserRowSummary(record),
 			Data:          record,
+		})
+	}
+	for _, entry := range model.syncConflicts {
+		items = append(items, listsurface.ListItem{
+			ID:            conflictBrowserItemID("sync:" + entry.ID),
+			PrimaryText:   syncConflictRowTitle(entry),
+			SecondaryText: syncConflictRowSummary(entry),
+			Data:          entry,
 		})
 	}
 	return items
@@ -362,6 +383,14 @@ func (model *ConflictBrowserModel) scrollDetail(delta int) {
 // the listing is a snapshot, and a conflict the CLI resolved since it was taken
 // must refuse here rather than paint a record that no longer exists.
 func (model *ConflictBrowserModel) inspectCursor() (tea.Cmd, bool, tea.Msg) {
+	if item, ok := model.surface.CurrentItem(); ok {
+		if entry, isSync := item.Data.(SyncConflictEntry); isSync {
+			model.notice = ""
+			model.detail = syncConflictDetailLines(entry)
+			model.detailOffset = 0
+			return nil, false, nil
+		}
+	}
 	record, ok := model.CurrentRecord()
 	if !ok {
 		model.notice = conflictBrowserMissingRecord
@@ -406,9 +435,13 @@ func (model *ConflictBrowserModel) RenderWithin(width, height int) string {
 		))
 	}
 	if !model.inspecting() {
-		header = append(header, theme.MutedStyle.Render(
-			textfit.TruncateToVisualWidth(conflictBrowserReadOnlyLine, contentWidth),
-		))
+		line := conflictBrowserReadOnlyLine
+		if len(model.syncConflicts) > 0 {
+			line = conflictBrowserReadOnlySyncLine
+		}
+		for _, wrapped := range textfit.WrapText(line, contentWidth) {
+			header = append(header, theme.MutedStyle.Render(wrapped))
+		}
 	}
 
 	// Halo, frame, title, the header block's separating row, and the footer

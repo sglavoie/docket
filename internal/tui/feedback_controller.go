@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/help"
 )
 
@@ -83,6 +84,13 @@ type feedbackController struct {
 	// WorkspacePulse: that ladder is a closed ordinal with no seam for
 	// filesystem-derived state.
 	outstandingConflicts int
+
+	// syncConflicts are an enrolled workspace's open sync conflicts, counted in
+	// outstandingConflicts beside the bundles and listed by the browser after
+	// them; syncAdvisory is the strip's sync line. Both are refreshed on the
+	// conflict count's own cadence and read by no render from disk.
+	syncConflicts []conflict.SyncConflictEntry
+	syncAdvisory  string
 
 	// hideAdvisories suppresses every ambient advisory for this session: the
 	// conflict count and the load-failure notices alike. Both the machine-local
@@ -265,6 +273,14 @@ func (c *feedbackController) advisoriesHidden() bool {
 // outstandingConflictCount is the other injected accessor, so the status strip
 // reads one shell-owned count instead of touching the filesystem during a
 // render.
+// syncAdvisoryLine is the injected accessor for the strip's sync line.
+func (c *feedbackController) syncAdvisoryLine() string {
+	if c == nil {
+		return ""
+	}
+	return c.syncAdvisory
+}
+
 func (c *feedbackController) outstandingConflictCount() int {
 	if c == nil {
 		return 0

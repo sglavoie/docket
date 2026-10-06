@@ -26,6 +26,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+
+	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 )
 
 const (
@@ -983,6 +987,10 @@ func (m *AppModel) refreshOutstandingConflicts() {
 		return
 	}
 	m.feedback.outstandingConflicts = countOutstandingConflicts(m.domain.runtime.DataDir())
+	// Sync status rides the same cadence: what another device delivered or
+	// left in conflict is equally invisible to a local mutation.
+	m.refreshSyncStatus()
+	m.feedback.outstandingConflicts += len(m.feedback.syncConflicts)
 }
 
 // The count itself lives on the feedback cluster, which also supplies the
@@ -1014,4 +1022,104 @@ func (m *AppModel) rememberFeedbackSince(before footerFlashProbe) {
 		}
 		m.feedback.rememberFeedback(owner.StatusText(), fmt.Sprintf("view:%v:%p", view, owner), owner.StatusStamp())
 	}
+}
+
+// refreshSyncStatus re-reads an enrolled workspace's sync status into the
+// feedback cluster: the strip's sync line and the open sync conflicts the
+// conflict count and `gc` include. A workspace that is not enrolled, a shell
+// with no runtime, and a status that cannot be read all report nothing: an
+// indicator that cannot be read must not be asserted.
+func (m *AppModel) refreshSyncStatus() {
+	if m == nil {
+		return
+	}
+	m.feedback.syncAdvisory, m.feedback.syncConflicts = "", nil
+	if m.domain.syncStatus == nil {
+		return
+	}
+	status, err := m.domain.syncStatus()
+	if err != nil {
+		logging.Warn("reading sync status: %v", err)
+		return
+	}
+	if status == nil || !status.Enrolled {
+		return
+	}
+	m.feedback.syncAdvisory = syncAdvisoryText(status, time.Now())
+	m.feedback.syncConflicts = syncConflictEntries(status.Conflicts)
+}
+
+// syncAdvisoryText is the strip's sync line. Local saves, outgoing and
+// incoming work, holds, and a failed exchange are named separately, because
+// a commit written here is not a delivery; an enrolled workspace with nothing
+// waiting draws no line at all.
+func syncAdvisoryText(status *engine.SyncStatus, now time.Time) string {
+	var parts []string
+	if len(status.Upgrades) > 0 || len(status.Held) > 0 {
+		parts = append(parts, "update tt to apply held changes (tt sync status)")
+	}
+	if last := status.LastExchange; last != nil && !last.Succeeded {
+		parts = append(parts, "last exchange failed (tt sync doctor)")
+	}
+	if status.OutstandingUp > 0 {
+		parts = append(parts, fmt.Sprintf("%d saved here, not yet published", status.OutstandingUp))
+	}
+	if status.OutstandingDown > 0 {
+		parts = append(parts, fmt.Sprintf("%d waiting to apply", status.OutstandingDown))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	switch {
+	case status.LastSuccess.IsZero():
+		parts = append(parts, "never exchanged")
+	default:
+		parts = append(parts, "exchanged "+syncAge(now.Sub(status.LastSuccess))+" ago")
+	}
+	return "sync: " + strings.Join(parts, " · ")
+}
+
+// syncAge is a coarse duration: the line says how stale, not when.
+func syncAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "<1m"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%dh", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%dd", int(d.Hours()/24))
+	}
+}
+
+// syncConflictEntries converts the history's conflict records into the rows
+// the conflict browser lists.
+func syncConflictEntries(conflicts []synclog.Conflict) []conflict.SyncConflictEntry {
+	if len(conflicts) == 0 {
+		return nil
+	}
+	entries := make([]conflict.SyncConflictEntry, 0, len(conflicts))
+	for _, record := range conflicts {
+		entry := conflict.SyncConflictEntry{ID: record.ID, Path: record.Path, Kind: string(record.Kind)}
+		if record.ResultBlob != nil {
+			entry.Result = *record.ResultBlob
+		}
+		for _, candidate := range record.Candidates {
+			version := conflict.SyncConflictVersion{Writers: append([]string(nil), candidate.Writers...)}
+			if candidate.Blob != nil {
+				version.Blob = *candidate.Blob
+			}
+			entry.Versions = append(entry.Versions, version)
+		}
+		for _, detail := range record.Details {
+			line := detail.Detail
+			if detail.Subject != "" || detail.Field != "" {
+				line = strings.TrimSpace(detail.Subject+" "+detail.Field) + ": " + detail.Detail
+			}
+			entry.Details = append(entry.Details, line)
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }

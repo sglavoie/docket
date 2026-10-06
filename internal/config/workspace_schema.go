@@ -22,14 +22,15 @@ func (e *SchemaTooNewError) Error() string {
 // dataDir without loading, recovering, or migrating anything, and whether a
 // catalog exists there at all. An envelope or payload newer than this build is
 // a *SchemaTooNewError; comparing an older payload against
-// CurrentConfigVersion is the caller's question.
+// CurrentConfigVersion is the caller's question. An enrolled workspace reports
+// SyncEnrolledConfigVersion, which this build reads.
 func WorkspaceCatalogSchema(dataDir string) (int, bool, error) {
 	schema, exists, err := workspaceCatalogPayloadSchema(dataDir)
 	if err != nil || !exists {
 		return 0, exists, err
 	}
-	if schema > CurrentConfigVersion {
-		return schema, true, &SchemaTooNewError{Artifact: "workspace catalog", Found: schema, Supported: CurrentConfigVersion}
+	if schema > SupportedConfigVersion {
+		return schema, true, &SchemaTooNewError{Artifact: "workspace catalog", Found: schema, Supported: SupportedConfigVersion}
 	}
 	return schema, true, nil
 }

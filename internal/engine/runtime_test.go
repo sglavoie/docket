@@ -322,9 +322,9 @@ func TestRuntimeOpenRefusesMigrationWhenAsked(t *testing.T) {
 		check  func(error) bool
 	}{
 		{config.CurrentConfigVersion - 1, func(err error) bool { return errors.Is(err, ErrMigrationRequired) }},
-		{config.CurrentConfigVersion + 1, func(err error) bool {
+		{config.SupportedConfigVersion + 1, func(err error) bool {
 			var tooNew *config.SchemaTooNewError
-			return errors.As(err, &tooNew) && tooNew.Found == config.CurrentConfigVersion+1
+			return errors.As(err, &tooNew) && tooNew.Found == config.SupportedConfigVersion+1
 		}},
 	} {
 		rewritten := strings.Replace(string(original),

@@ -66,7 +66,7 @@ blob write identical bytes. A file that is missing or still downloading means
 | `txn_id` | `sha256:` followed by the hex digest of the manifest's canonical JSON with `txn_id` omitted. Canonical JSON has sorted keys, no insignificant whitespace, and UTF-8 encoding. Because the id is the content, a manifest cannot be edited after it is published. |
 | `device_id`, `device_seq` | The author, and a gap-free per-device counter starting at 1. A gap tells the reader that delivery is incomplete. It never means the transaction was skipped. |
 | `parents` | The heads this device had applied when it committed: the causal ancestry. A manifest is applied only after all of its parents. Several parents mean the author had merged concurrent histories. |
-| `kind` | One of `user`, `undo`, `redo`, `merge`, `resolution`, `repair`, `external`. Undo and redo are new forward changes. A reader never treats them as image restores. `external` imports a valid change made outside a commit (see [External changes](#external-changes)). |
+| `kind` | One of `user`, `undo`, `redo`, `merge`, `resolution`, `repair`, `external`, `enroll`. Undo and redo are new forward changes. A reader never treats them as image restores. `external` imports a valid change made outside a commit (see [External changes](#external-changes)). `enroll` is an enrolled workspace's genesis (see [Enrollment](#enrollment)). |
 | `local_txn_id` | The author's `.tt/transactions` journal id. It is diagnostic only. |
 | `created_at` | Informational only. Never use it to order transactions or choose a winner. |
 | `schemas` | The author's live artifact schemas when it committed. |
@@ -244,19 +244,71 @@ The rules:
    capability its effects need. For example, a `project_document` effect at
    schema 19 requires `project-document.v19`.
 2. **Readers hold what they cannot apply.** A reader applies a manifest only if
-   all of these hold: it supports `format_version`, its `schemas` equal the
-   manifest's, and `requires` is a subset of its own `capabilities`. Otherwise
-   the manifest is marked `held: capability` with the missing items named. A
-   held manifest is never acknowledged, skipped, or dropped. Every descendant
-   of a held manifest waits behind it. The UI reports "update tt on this
-   device" and never suggests that the change was lost.
+   all of these hold: it supports `format_version`, no schema in the
+   manifest's `schemas` is newer than its own, every older schema governs none
+   of the manifest's effects, and `requires` is a subset of its own
+   `capabilities`. A schema governs an effect when the effect's bytes are
+   written at it: `task_markdown` for `project_document`, `catalog` and
+   `domain_envelope` for `catalog`, and `domain_envelope` for `planning` and
+   `lenses`; notes, attachments, and project files are governed by none.
+   Otherwise the manifest is held (`synclog.HeldError`) with the differing
+   schemas or missing capabilities named. A held manifest is never
+   acknowledged, skipped, or dropped. Every descendant of a held manifest waits
+   behind it. `synclog.RequiredUpgrade` names which device has to update:
+   this one when the manifest is newer, the author when it is older. The UI
+   says so and never suggests that the change was lost.
 3. **Advertisements are informational.** They let a device warn before it
    publishes something a peer cannot read yet. They never gate a local commit:
    another device never approves a local save.
 4. **Schemas move by upgrade, not by exchange.** A schema migration runs locally
    on each device and is never published as a transaction. A device with a
    newer schema keeps publishing at its own schema. Older peers hold those
-   manifests until they upgrade.
+   manifests until they upgrade, and keep committing and publishing their own
+   work meanwhile. After it upgrades, a device still applies what a peer wrote
+   at an older schema wherever that schema governs none of the effects, so an
+   upgrade does not strand a peer's earlier work. Upgrading rewrites no
+   historical record: manifests, receipts, and the index are immutable, and
+   only the tracking state moves.
+
+## Enrollment
+
+A workspace syncs only once it is enrolled (`tt sync enroll`, `engine.Enroll`).
+Enrollment keeps the original workspace as it is, snapshots it, and builds a
+local working copy outside iCloud whose catalog is at the enrolled schema
+(`config.SyncEnrolledConfigVersion`, 22) and carries a `sync` block naming the
+exchange format. The schema and the block are one fact: neither validates
+without the other. Every workspace that is not enrolled stays at catalog
+schema 21, and a `tt` that predates sync refuses an enrolled working copy
+before it writes anything. The catalog schema is therefore part of every
+manifest an enrolled device writes, and devices of one enrolled workspace
+share it.
+
+The working copy's history begins with its genesis: one `kind: enroll`
+transaction at `device_seq` 1 with no parents whose effects create every
+synced file, recorded by `CommitService.CommitSyncGenesis` the first time a
+runtime opens the copy, in place of the silent baseline index an un-enrolled
+device takes. A genesis that would hold any file is refused whole. A device
+that joins (`tt sync join`, `engine.Join`) starts from an empty directory: the
+genesis is the one manifest that may start a history where there is no
+catalog, so the joining device's workspace is exactly what the history says.
+
+Where a device keeps its exchange folder is device-local, in
+`.tt/sync/enrollment.json`, and never synced.
+
+## Desktop folder exchange
+
+`syncexchange.ExchangeFolder` is the desktop's transport over an exchange
+folder it reaches as a directory. One pass observes external changes,
+publishes each outgoing transaction's blobs then its manifest (each verified
+by reading it back) and acknowledges them, rewrites this device's
+advertisement when it changed, stages every other device's unapplied manifest
+and its intact content into the device-local `.tt/sync/transport/inbox`, and
+imports through `ImportInbox`. A `.name.icloud` placeholder is reported
+unavailable and never read. The pass's report, and the time of the last pass
+that succeeded, are kept in `.tt/sync/transport/status.json`, which is what
+`tt sync status`, `tt sync doctor`, and the Outliner's strip read. It speaks
+the same layout as `apple/TTSync`, so a desktop and an iPhone share one
+folder.
 
 ## Reconciliation
 
@@ -431,7 +483,13 @@ keep each commit atomic. A failure prints its seed, a replay command
 
 - Conflict bundles under `.tt/conflicts/` remain the local commit-time
   merge's. Sync conflicts are derived per device (see [Conflicts](#conflicts));
-  surfacing them in the frontends is later work.
+  the Outliner's `gc` lists them read-only, and resolving them is later work.
+- A manifest a peer wrote at an older schema that governs one of its effects
+  (for example a catalog change made before the peer upgraded) stays held on
+  an upgraded device. Applying it needs a translation from the older format,
+  which no schema bump has required yet.
+- The desktop exchanges when asked (`tt sync exchange`, enrollment, join). A
+  running Outliner shows what waits but does not poll the folder yet.
 - `lenses.json`, and catalog or planning saves made through the checked domain
   store, are committed outside the journal and published by observation (see
   [External changes](#external-changes)), which runs at launch and before every

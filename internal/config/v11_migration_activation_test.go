@@ -261,7 +261,7 @@ func TestManagerSnapshotFirstV11MigrationLiftsDeferralInstantAndClearsHistory(t 
 // build activates, so the proof survives the next bump without an edit.
 func TestOrdinaryCatalogPathsStillRefuseAnUnactivatedSchema(t *testing.T) {
 	catalog := &WorkspaceCatalog{
-		SchemaVersion: CurrentConfigVersion + 1,
+		SchemaVersion: SupportedConfigVersion + 1,
 		WorkspaceID:   testWorkspaceID,
 		Projects:      []CatalogProject{{ID: "alpha", Slug: "alpha", ColorSlot: 1}},
 	}
@@ -274,7 +274,7 @@ func TestOrdinaryCatalogPathsStillRefuseAnUnactivatedSchema(t *testing.T) {
 	if _, err := encodeDomainEnvelope(domainCatalog, catalog.WorkspaceID, catalog); err == nil {
 		t.Fatal("ordinary catalog encoding accepted a schema this build does not activate")
 	}
-	if _, err := encodeMigrationCatalogEnvelope(catalog, CurrentConfigVersion+1); err != nil {
+	if _, err := encodeMigrationCatalogEnvelope(catalog, SupportedConfigVersion+1); err != nil {
 		t.Fatalf("migration catalog encoding refused its own target schema: %v", err)
 	}
 

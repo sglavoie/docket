@@ -110,3 +110,25 @@ func (m *OutlinerModel) conflictIndicator() string {
 	}
 	return conflictIndicatorText(m.outstandingConflicts())
 }
+
+// The sync line is the strip's account of an enrolled workspace's exchange:
+// work committed here and not yet published, work found and not yet applied,
+// a transaction held until some device updates tt, and an exchange that last
+// failed. It is ambient state like the conflict count, so it is an advisory,
+// and the shell writes its text; open sync conflicts are counted in the
+// conflict line instead. A workspace that is not enrolled, or one with
+// nothing waiting, draws no line.
+
+// SetSyncAdvisory injects the shell's sync line accessor. A nil accessor is
+// inert, as for the conflict count.
+func (m *OutlinerModel) SetSyncAdvisory(accessor func() string) {
+	m.syncAdvisory = accessor
+}
+
+// syncIndicator is the strip's sync line, or empty.
+func (m *OutlinerModel) syncIndicator() string {
+	if m == nil || m.syncAdvisory == nil {
+		return ""
+	}
+	return m.syncAdvisory()
+}

@@ -12,6 +12,12 @@ internal/config/manager_backup.go:Manager.BackupConfig	domain-store	writes .bak 
 internal/config/manager_backup.go:Manager.RestoreConfigFromBackup	domain-store	restores domain files from .bak sidecars; the restored synced domains publish as a domain change
 internal/config/paths.go:WriteActiveWorkspacePointer	machine-local	machine-local active-workspace pointer
 internal/config/runtime_state.go:RuntimeState.EnsureDataDir	commit-staging	creates the data/.tt/projects skeleton before a first commit; directories alone carry no synced content
+internal/config/sync_enroll.go:PrepareJoinedWorkingCopy	sync-enrollment	creates the empty local directory a joining device imports the published history into
+internal/config/sync_enroll.go:enrollStagedCatalog	sync-enrollment	drops the staged catalog sidecar after advancing the staged working copy to the enrolled schema
+internal/config/sync_enroll.go:publishWorkingCopy	sync-enrollment	publishes the staged working copy by one rename; the copy produces no transactions
+internal/config/sync_enroll.go:snapshotOriginal	sync-enrollment	hash-verified snapshot of the original under the machine-local enrollments root; never synced
+internal/config/sync_enroll.go:stageWorkingCopy	sync-enrollment	stages the working copy beside its final path; replaced only when marked as enrollment staging
+internal/config/sync_enroll.go:writeEnrollmentRecord	sync-enrollment	device-local enrollment record under .tt/sync naming this device exchange folder; never exchanged
 internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
 internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing
 internal/config/workspace_move_copy.go:copyFileVerified	workspace-relocation	hash-verified copy of every artifact during workspace move
@@ -43,6 +49,10 @@ internal/storage/markdown_load_save.go:CreateProjectDir	commit-journal	test-doub
 internal/storage/markdown_load_save.go:SaveProject	commit-journal	raw tasks.md save reached only by the audited fallback; production saves commit through CommitService
 internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-double repository path; production delete is PlanProjectDelete through the journal
 internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
+internal/syncexchange/folder.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
+internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local transport status for status surfaces; never exchanged
+internal/syncexchange/folder.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
+internal/syncexchange/folder.go:writeExchangeFile	sync-transport	writes immutable content-addressed history the identity and this device advertisement into the exchange folder
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
 internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
 internal/tui/handler_task_crud.go:removeTaskContentBuffer	external-editor	removes the task content buffer after an external edit

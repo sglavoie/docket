@@ -14,6 +14,34 @@ pointer last. The source remains as a backup. `--force` skips only the
 confirmation prompt; it never bypasses process locks, commit locks, or
 validation.
 
+## Device sync enrollment
+
+`tt sync enroll` is the one way a workspace starts syncing, and it never
+converts the workspace in place. `engine.Enroll` runs `config.EnrollWorkspace`
+under the original's TUI and commit locks: it snapshots the original, hash
+verified, under `~/.tt/enrollments/<workspace-id>/<instant>/` with a
+`snapshot.json` listing, stages a working copy beside the requested path
+(leaving the original's `.tt/sync`, `.tt/undo`, `.tt/transactions`, and
+`.tt/backups` behind), advances the staged catalog to
+`SyncEnrolledConfigVersion` with its `sync` block, writes the device-local
+`.tt/sync/enrollment.json`, publishes the copy with one rename, and points the
+active-workspace pointer at it. The working copy may not be inside iCloud
+Drive, the original, or the exchange folder. The first runtime opened over the
+copy records the `kind: enroll` genesis through
+`CommitService.CommitSyncGenesis`, and the enrollment then publishes it through
+the folder exchange. Each step resumes: a marked staging directory or a partial
+snapshot from an interrupted run is discarded, a published copy is selected
+again rather than copied twice, and a recorded genesis is not recorded twice.
+
+The enrolled catalog schema is not a step in the migration chain. A workspace
+that is never enrolled stays at `CurrentConfigVersion` and keeps its behavior;
+`SupportedConfigVersion` is what this build reads, so an older `tt` refuses an
+enrolled working copy as newer than it supports and writes nothing.
+`tt sync join` builds another desktop's working copy from the exchange alone,
+`tt sync exchange` runs one pass of `syncexchange.ExchangeFolder`, and
+`tt sync status` and `tt sync doctor` read `engine.Runtime.SyncStatus`. The
+contract is in [`docs/mobile/sync-envelope.md`](../mobile/sync-envelope.md).
+
 ## Backup and restore
 
 Back up the complete selected data directory, including `.tt/`, project notes,
@@ -35,7 +63,7 @@ portable domains, and migration snapshots are not.
 ## Maintenance CLI and platform support
 
 The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
-`completion`, and `project export`, plus help and version output.
+`sync`, `completion`, and `project export`, plus help and version output.
 `project export` names one project, or takes `--all` to write every cataloged
 project, archived included, as `<slug>.md` into `--dir` (default `exports/`,
 created 0700); `--file -` prints one export to stdout instead. `--all` refuses a

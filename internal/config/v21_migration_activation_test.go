@@ -503,7 +503,7 @@ func newerThanSupportedCatalog(t *testing.T, source []byte, currentSchema int) [
 	t.Helper()
 	newer := bytes.Replace(source,
 		fmt.Appendf(nil, "%q: %d", "schema_version", currentSchema),
-		fmt.Appendf(nil, "%q: %d", "schema_version", CurrentConfigVersion+1), 1)
+		fmt.Appendf(nil, "%q: %d", "schema_version", SupportedConfigVersion+1), 1)
 	if bytes.Equal(newer, source) {
 		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
 	}

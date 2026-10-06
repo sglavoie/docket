@@ -780,6 +780,125 @@ verify_session_8() {
 	note "session 8 verified"
 }
 
+# enrollment_old_binary_ref is the newest commit that predates the enrolled
+# catalog schema: the parent of the commit that introduced it, or HEAD while
+# that change is still uncommitted. Its tt reads every workspace this one mints
+# without enrolling, so its refusal of a working copy proves the enrolled
+# marker rather than some other schema bump.
+enrollment_old_binary_ref() {
+	local introduced
+	introduced=$(git log -1 --format=%H -S'SyncEnrolledConfigVersion = ' -- internal/config/config_core.go 2>/dev/null || true)
+	if [ -n "$introduced" ]; then
+		git rev-parse "$introduced^"
+	else
+		git rev-parse HEAD
+	fi
+}
+
+verify_session_9() {
+	require_files \
+		internal/config/sync_enroll.go \
+		internal/config/sync_enroll_test.go \
+		internal/engine/enroll.go \
+		internal/engine/enroll_test.go \
+		internal/synclog/held.go \
+		internal/syncexchange/folder.go \
+		internal/tui/conflict/sync_conflicts.go \
+		cmd/sync.go \
+		cmd/sync_test.go \
+		scripts/cross_machine_gate.sh
+
+	# Enrollment through the shared runtime: the snapshot and the local working
+	# copy, the genesis and its publication, a device rebuilt from the published
+	# history alone, restarts, interruptions at every engine step, external
+	# edits, an incompatible peer that holds and names the upgrade, unsafe
+	# placements, and workspaces never enrolled.
+	local required=(
+		TestSyncEnrollment
+		TestSyncEnrollmentRefusesUnsafePlacement
+	)
+	local name
+	for name in enrolls_from_a_snapshot_into_a_local_working_copy workspaces_never_enrolled_keep_their_behavior \
+		a_second_device_joins_from_the_published_history restart_keeps_history_and_exchanges_new_work \
+		an_interrupted_enrollment_resumes an_interrupted_enrollment_resumes/genesis an_interrupted_enrollment_resumes/exchange \
+		external_edits_are_published_and_invalid_ones_held an_incompatible_peer_holds_and_names_the_upgrade; do
+		required+=("TestSyncEnrollment/$name")
+	done
+	for name in working_copy_in_icloud working_copy_in_original exchange_in_working_copy exchange_in_original \
+		working_copy_not_empty original_is_not_workspace; do
+		required+=("TestSyncEnrollmentRefusesUnsafePlacement/$name")
+	done
+	run_go_suite enroll ./internal/engine/ '^TestSyncEnrollment' "${required[@]}"
+
+	# The copy phase interrupted at each durable step, and the enrolled schema
+	# and sync block held to each other.
+	required=(TestSyncEnrollInterruptedMigration TestSyncEnrolledCatalogSchema)
+	for name in snapshot staged published; do
+		required+=("TestSyncEnrollInterruptedMigration/$name")
+	done
+	for name in current_without_sync enrolled_with_sync enrolled_without_sync sync_at_current_schema \
+		unknown_exchange newer_than_supported; do
+		required+=("TestSyncEnrolledCatalogSchema/$name")
+	done
+	run_go_suite enroll-config ./internal/config/ '^TestSyncEnroll' "${required[@]}"
+
+	# The maintenance commands and the Outliner's status and conflict access.
+	run_go_suite sync-cli ./cmd/ '^(TestSyncCommands|TestPublicCommandTreeIsMaintenanceOnly)$' \
+		TestSyncCommands \
+		TestSyncCommands/enroll_status_exchange_doctor \
+		TestSyncCommands/a_workspace_never_enrolled_is_told_how \
+		TestSyncCommands/enroll_refuses_unconfirmed_and_an_icloud_working_copy \
+		TestPublicCommandTreeIsMaintenanceOnly
+	run_go_suite sync-tui ./internal/tui/ '^(TestSyncStatusReachesTheStripAndTheConflictBrowser|TestSyncAdvisoryTextNamesEachStateApart)$' \
+		TestSyncStatusReachesTheStripAndTheConflictBrowser \
+		TestSyncAdvisoryTextNamesEachStateApart \
+		TestSyncAdvisoryTextNamesEachStateApart/held
+	run_go_suite sync-browser ./internal/tui/conflict/ '^TestConflictBrowser' \
+		TestConflictBrowserListsSyncConflicts
+
+	# Earlier guarantees hold with the genesis, the typed holds, and the
+	# genesis-started history in place.
+	run_go_suite storage-sync ./internal/storage/ '^TestSync(Local|Incoming)' \
+		TestSyncLocalCommitAndOutboxAreAtomic \
+		TestSyncIncomingRefusalsAcknowledgeNothing \
+		TestSyncIncomingRefusalsAcknowledgeNothing/held_schema
+	run_go_suite compat-inventory ./internal/compat/ \
+		'^(TestCompatWritePathInventoryCoversEveryDurableWrite|TestCompatCommitEntryPointsAreDocumented|TestCompatContractDocumentsAreWellFormed)$' \
+		TestCompatWritePathInventoryCoversEveryDurableWrite \
+		TestCompatCommitEntryPointsAreDocumented \
+		TestCompatContractDocumentsAreWellFormed
+
+	# Real processes: the whole cross-machine gate with both older binaries
+	# pinned, so no old-binary case may skip. Case 3 and case 6 use the
+	# schema-19 binary; case 12 uses the newest tt from before enrollment and
+	# must refuse the enrolled working copy byte-identically.
+	local enroll_ref
+	enroll_ref=$(enrollment_old_binary_ref) || fail "resolving the pre-enrollment ref failed"
+	local gate_log="$work_dir/cross-machine.log"
+	note "running the cross-machine gate (old binary 08c0cb08, pre-enrollment binary $enroll_ref)"
+	if ! TT_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d TT_ENROLL_OLD_BINARY_REF="$enroll_ref" \
+		sh scripts/cross_machine_gate.sh >"$gate_log" 2>&1; then
+		cat "$gate_log" >&2
+		fail "the cross-machine gate failed"
+	fi
+	if grep -q '^SKIP:' "$gate_log"; then
+		grep '^SKIP:' "$gate_log" >&2
+		fail "the cross-machine gate skipped a required case"
+	fi
+	grep -q '^cross-machine gate passed\.$' "$gate_log" || fail "the cross-machine gate did not report a clean pass"
+	local expected
+	for expected in \
+		"refuses a newer catalog and leaves it byte-identical" \
+		"migrates, carries a resume note and project comments" \
+		"a tt from before enrollment refuses the enrolled working copy byte-identically and still reads the original"; do
+		grep -Fq "PASS: " "$gate_log" && grep -F "PASS: " "$gate_log" | grep -Fq "$expected" ||
+			fail "cross-machine gate: missing required pass: $expected"
+	done
+	note "cross-machine gate: $(grep -c '^PASS:' "$gate_log") cases passed"
+
+	note "session 9 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -790,6 +909,7 @@ case "$session" in
 6) verify_session_6 ;;
 7) verify_session_7 ;;
 8) verify_session_8 ;;
+9) verify_session_9 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

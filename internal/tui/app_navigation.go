@@ -283,6 +283,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 		outlinerView.ConfigureSearchHistory(machine.SearchHistory, m.commitSearchHistory)
 	}
 	outlinerView.SetOutstandingConflicts(m.feedback.outstandingConflictCount)
+	outlinerView.SetSyncAdvisory(m.feedback.syncAdvisoryLine)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
 }
 

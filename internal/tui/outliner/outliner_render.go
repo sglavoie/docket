@@ -686,6 +686,9 @@ func (m *OutlinerModel) statusStripSignals(width int) []string {
 	if indicator := m.AdvisoryLine(m.conflictIndicator()); indicator != "" {
 		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(indicator))
 	}
+	if indicator := m.AdvisoryLine(m.syncIndicator()); indicator != "" {
+		lines = append(lines, theme.MutedStyle.Width(width).Render(indicator))
+	}
 	if m.Focus.Notice != "" {
 		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(m.Focus.Notice))
 	}

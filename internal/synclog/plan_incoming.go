@@ -81,7 +81,7 @@ func (h *History) admit(m *Manifest) (*State, error) {
 		return nil, fmt.Errorf("%w: no manifest", ErrInvalidManifest)
 	}
 	if m.Format == ManifestFormat && m.FormatVersion > ManifestFormatVersion {
-		return nil, fmt.Errorf("%w: format_version %d is newer than %d", ErrHeld, m.FormatVersion, ManifestFormatVersion)
+		return nil, &HeldError{FormatVersion: m.FormatVersion}
 	}
 	if err := m.Validate(); err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (h *History) admit(m *Manifest) (*State, error) {
 	if m.DeviceID == h.deviceID {
 		return nil, fmt.Errorf("%w: %s", ErrOwnTransaction, m.TxnID)
 	}
-	state, err := h.loadOrStartState()
+	state, err := h.loadOrStartState(m)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +126,11 @@ func (h *History) admit(m *Manifest) (*State, error) {
 }
 
 // loadOrStartState reads the tracking state, or starts one for the workspace
-// the catalog names when this device has recorded nothing yet.
-func (h *History) loadOrStartState() (*State, error) {
+// the catalog names when this device has recorded nothing yet. A device
+// joining an enrolled workspace holds no catalog at all: it starts from the
+// workspace's genesis, which alone may begin a history in an empty directory,
+// and with an index that is complete because there is nothing to index.
+func (h *History) loadOrStartState(m *Manifest) (*State, error) {
 	state, err := h.LoadState()
 	if err != nil || state != nil {
 		return state, err
@@ -135,6 +138,11 @@ func (h *History) loadOrStartState() (*State, error) {
 	catalog, err := h.readCatalog()
 	if err != nil {
 		return nil, err
+	}
+	if catalog == nil && m.Kind == KindEnroll && m.DeviceSeq == 1 && len(m.Parents) == 0 {
+		joining := h.newState(m.WorkspaceID)
+		joining.Indexed = true
+		return joining, nil
 	}
 	if catalog == nil || catalog.workspaceID == "" {
 		return nil, fmt.Errorf("synclog: no workspace catalog names this workspace's identity")
@@ -204,11 +212,15 @@ func fetchBlob(blobs BlobSource, digest string) ([]byte, error) {
 	return data, nil
 }
 
-// readable holds a manifest whose format, schemas, or requirements are not
-// this device's.
+// readable holds a manifest this device cannot read: an unsupported format,
+// any schema newer than this device's, an older schema that governs one of
+// its effects, or a capability this device lacks. An older schema that governs
+// none of its effects does not hold it: a device that upgraded still applies
+// what a peer wrote before upgrading wherever the bytes are the same format,
+// so an upgrade on one device does not strand the other's earlier work.
 func (h *History) readable(m *Manifest) error {
 	if m.FormatVersion != ManifestFormatVersion {
-		return fmt.Errorf("%w: format_version %d", ErrHeld, m.FormatVersion)
+		return &HeldError{FormatVersion: m.FormatVersion}
 	}
 	keys := map[string]bool{}
 	for key := range m.Schemas {
@@ -217,30 +229,64 @@ func (h *History) readable(m *Manifest) error {
 	for key := range h.schemas {
 		keys[key] = true
 	}
-	var mismatched []string
+	held := &HeldError{}
+	newer := false
 	for key := range keys {
 		if m.Schemas[key] != h.schemas[key] {
-			mismatched = append(mismatched, fmt.Sprintf("%s %d (this device %d)", key, m.Schemas[key], h.schemas[key]))
+			held.Schemas = append(held.Schemas, SchemaDifference{Key: key, Manifest: m.Schemas[key], Device: h.schemas[key]})
+			newer = newer || m.Schemas[key] > h.schemas[key]
 		}
 	}
-	if len(mismatched) > 0 {
-		sort.Strings(mismatched)
-		return fmt.Errorf("%w: schemas differ: %s", ErrHeld, strings.Join(mismatched, ", "))
+	sort.Slice(held.Schemas, func(i, j int) bool { return held.Schemas[i].Key < held.Schemas[j].Key })
+	if newer {
+		return held
 	}
-	var missing []string
+	if len(held.Schemas) > 0 {
+		governed := map[string]bool{}
+		for _, effect := range m.Effects {
+			for _, key := range governingSchemas(effect.Kind) {
+				governed[key] = true
+			}
+		}
+		older := held.Schemas
+		held.Schemas = nil
+		for _, diff := range older {
+			if governed[diff.Key] {
+				held.Schemas = append(held.Schemas, diff)
+			}
+		}
+		if len(held.Schemas) > 0 {
+			return held
+		}
+	}
 	for _, requirement := range m.Requires {
 		if !h.capabilities[requirement] {
-			missing = append(missing, requirement)
+			held.Missing = append(held.Missing, requirement)
 		}
 	}
 	for _, effect := range m.Effects {
 		if requirement := h.requirement(effect.Kind); !h.capabilities[requirement] {
-			missing = append(missing, requirement)
+			held.Missing = append(held.Missing, requirement)
 		}
 	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		return fmt.Errorf("%w: missing capabilities %s", ErrHeld, strings.Join(missing, ", "))
+	if len(held.Missing) > 0 {
+		sort.Strings(held.Missing)
+		return held
+	}
+	return nil
+}
+
+// governingSchemas are the schema keys an effect's bytes are written at.
+// Notes, attachments, and other project files are opaque and governed by
+// none.
+func governingSchemas(kind EffectKind) []string {
+	switch kind {
+	case EffectProjectDocument:
+		return []string{SchemaTaskMarkdown}
+	case EffectCatalog:
+		return []string{SchemaCatalog, SchemaDomainEnvelope}
+	case EffectPlanning, EffectLenses:
+		return []string{SchemaDomainEnvelope}
 	}
 	return nil
 }

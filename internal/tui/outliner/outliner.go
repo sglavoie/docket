@@ -121,6 +121,10 @@ type OutlinerModel struct {
 	// indicator; the Outliner never learns where conflicts are stored.
 	outstandingConflicts func() int
 
+	// syncAdvisory is the shell-injected sync line for the status strip; nil is
+	// inert. See advisories.go.
+	syncAdvisory func() string
+
 	// advisoriesHiddenAccessor is the shell-injected opt-out every ambient
 	// advisory is gated by. A nil accessor reads as showing them; see
 	// advisories.go.

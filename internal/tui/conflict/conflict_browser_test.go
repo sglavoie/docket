@@ -46,7 +46,7 @@ func conflictBrowserFixture(id string, retryRequired bool) storage.ConflictRecor
 
 func newTestConflictBrowser(t *testing.T, records ...storage.ConflictRecord) *ConflictBrowserModel {
 	t.Helper()
-	browser, err := NewConflictBrowserModel(records, func(id string) (*storage.ConflictBundle, error) {
+	browser, err := NewConflictBrowserModel(records, nil, func(id string) (*storage.ConflictBundle, error) {
 		for _, record := range records {
 			if record.ID == id {
 				return &storage.ConflictBundle{Record: record}, nil
@@ -226,6 +226,7 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 	record := conflictBrowserFixture("11111111-2222-3333-4444-555555555555", true)
 	browser, err := NewConflictBrowserModel(
 		[]storage.ConflictRecord{record},
+		nil,
 		func(string) (*storage.ConflictBundle, error) {
 			return nil, fmt.Errorf("conflict %s not found", record.ID)
 		},
@@ -253,7 +254,55 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 // TestConflictBrowserRequiresALoader keeps the one construction rule: a browser
 // that cannot reload a bundle would silently show stale records.
 func TestConflictBrowserRequiresALoader(t *testing.T) {
-	if _, err := NewConflictBrowserModel(nil, nil); err == nil {
+	if _, err := NewConflictBrowserModel(nil, nil, nil); err == nil {
 		t.Fatal("a browser without a loader was accepted")
+	}
+}
+
+// TestConflictBrowserListsSyncConflicts lists an enrolled workspace's sync
+// conflicts after the bundles and inspects one without a reload: every
+// competing version, who wrote it, and the version the workspace holds.
+func TestConflictBrowserListsSyncConflicts(t *testing.T) {
+	bundle := conflictBrowserFixture("11111111-2222-3333-4444-555555555555", false)
+	entry := SyncConflictEntry{
+		ID:   "sha256:abcdef0123456789",
+		Path: "projects/unfiled/tasks.md",
+		Kind: "project_document",
+		Versions: []SyncConflictVersion{
+			{Blob: "sha256:1111111111111111", Writers: []string{"sha256:aaaaaaaaaaaaaaaa"}},
+			{Blob: "sha256:2222222222222222", Writers: []string{"sha256:bbbbbbbbbbbbbbbb"}},
+		},
+		Result:  "sha256:1111111111111111",
+		Details: []string{"task title: competing edits"},
+	}
+	loads := 0
+	browser, err := NewConflictBrowserModel([]storage.ConflictRecord{bundle}, []SyncConflictEntry{entry},
+		func(string) (*storage.ConflictBundle, error) {
+			loads++
+			return &storage.ConflictBundle{Record: bundle}, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := browser.RenderWithin(120, 40)
+	for _, want := range []string{"projects/unfiled/tasks.md", "sync conflict · 2 versions", conflictBrowserReadOnlySyncLine[:20]} {
+		if !strings.Contains(list, want) {
+			t.Fatalf("list does not show %q:\n%s", want, list)
+		}
+	}
+	browser.HandleKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	if _, isBundle := browser.CurrentRecord(); isBundle {
+		t.Fatal("the sync row reads as a bundle")
+	}
+	browser.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	detail := strings.Join(browser.detail, "\n")
+	for _, want := range []string{"Sync conflict abcdef0123456789", "[1] content 11111111", "[2] content 22222222",
+		"written by bbbbbbbb", "Holding:   content 11111111", "task title: competing edits", "nothing was lost"} {
+		if !strings.Contains(detail, want) {
+			t.Fatalf("detail does not show %q:\n%s", want, detail)
+		}
+	}
+	if loads != 0 {
+		t.Fatalf("inspecting a sync conflict reloaded %d bundles", loads)
 	}
 }

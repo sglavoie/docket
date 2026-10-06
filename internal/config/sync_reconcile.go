@@ -113,10 +113,13 @@ func ReconcileCatalogArtifacts(base []byte, sides [][]byte) ([]byte, []SyncMerge
 	}
 	conflicts = append(conflicts, repairCatalogSlugs(order, merged, baseByID)...)
 
+	// Enrollment is written once and every side carries it unchanged, so the
+	// primary side's block is the block.
 	result := &WorkspaceCatalog{
 		SchemaVersion: decoded[0].SchemaVersion,
 		WorkspaceID:   decoded[0].WorkspaceID,
 		Projects:      make([]CatalogProject, 0, len(order)),
+		Sync:          decoded[0].Sync,
 	}
 	for _, id := range order {
 		result.Projects = append(result.Projects, merged[id])

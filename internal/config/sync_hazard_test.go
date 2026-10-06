@@ -30,7 +30,7 @@ func TestOlderBinaryRefusesNewerCatalog(t *testing.T) {
 	home := t.TempDir()
 	dataDir, _ := stageSharedWorkspaceOn(t, home)
 
-	bumpCatalogSchemaVersion(t, WorkspaceCatalogPath(dataDir), CurrentConfigVersion+1)
+	bumpCatalogSchemaVersion(t, WorkspaceCatalogPath(dataDir), SupportedConfigVersion+1)
 	before := snapshotWorkspaceFiles(t, dataDir)
 
 	manager := NewManagerOnMachine(ConfigPathForDataDir(dataDir), home)

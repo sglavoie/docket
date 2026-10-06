@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -65,6 +66,11 @@ type domainController struct {
 	// persister loads a project's task tree from storage. It is injectable so a
 	// test can drive the shell against an in-memory double.
 	persister coordinator.Persister
+
+	// syncStatus reads the runtime's sync status for the status strip and the
+	// conflict browser. Nil — every isolated test, and every workspace composed
+	// without a runtime — reports nothing.
+	syncStatus func() (*engine.SyncStatus, error)
 
 	// projects preserves the loaded models.Project pointers used by open views.
 	// RuntimeState deliberately rehydrates fresh catalog models on every read;

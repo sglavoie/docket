@@ -324,3 +324,43 @@ func (s *CommitService) commitExternalLocked(journal *transaction.Journal, index
 	report.TransactionID = prepared.ID
 	return report, nil
 }
+
+// CommitSyncGenesis records the first transaction of a workspace enrolled in
+// sync, on the device that enrolled it: one outgoing transaction of kind
+// enroll that writes every synced file as it stands, so a device joining with
+// nothing can rebuild the workspace from the published history alone. It runs
+// under the workspace commit lock after crash recovery and writes only the
+// history. A device that has already recorded anything, or a workspace holding
+// a file the live readers would refuse, is refused whole
+// (synclog.ErrGenesisRefused) and nothing is written.
+func (s *CommitService) CommitSyncGenesis() (*synclog.Manifest, error) {
+	if s.history == nil {
+		return nil, fmt.Errorf("storage: an enrollment genesis requires a sync history")
+	}
+	var genesis *synclog.Manifest
+	err := s.withWorkspaceCommitLock(func() error {
+		journal := s.journal()
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
+		}
+		validator, _ := s.merger.(synclog.Validator)
+		id := uuid.NewString()
+		plan, err := s.history.PlanGenesis(validator, id)
+		if err != nil {
+			return err
+		}
+		prepared, err := journal.PrepareWithID(id, plan.Ops)
+		if err != nil {
+			return fmt.Errorf("preparing enrollment genesis: %w", err)
+		}
+		if err := commitJournal(journal, prepared); err != nil {
+			return fmt.Errorf("committing enrollment genesis: %w", err)
+		}
+		genesis = plan.Manifest
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return genesis, nil
+}

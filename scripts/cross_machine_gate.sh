@@ -27,6 +27,11 @@
 #   TT_OLD_BINARY_REF  git ref to build the older binary from. Defaults to the
 #                      newest tag reachable from HEAD. The old-binary cases are
 #                      reported as skipped, loudly, when neither is available.
+#   TT_ENROLL_OLD_BINARY_REF
+#                      git ref of a tt that predates sync enrollment, for the
+#                      enrolled-workspace refusal case. Defaults to the parent of
+#                      the commit that introduced the enrolled catalog schema, or
+#                      HEAD while that change is still uncommitted.
 
 set -eu
 
@@ -107,11 +112,20 @@ helper_outcome() {
 	fi
 }
 
+# fresh_workspace_dir makes the directory a first launch would create a
+# workspace in. `tt doctor` never creates a workspace where there is none, so an
+# empty internal .tt directory is what marks the place one belongs; doctor then
+# bootstraps the domains into it exactly as a first launch does.
+fresh_workspace_dir() {
+	mkdir -p "$1/.tt"
+}
+
 # mint_workspace creates an empty workspace with the current binary, the way a
 # first launch does. It is separate from seeding because several cases want a
 # workspace one process minted and a different one filled.
 mint_workspace() {
-	mkdir -p "$1" "$2"
+	mkdir -p "$2"
+	fresh_workspace_dir "$1"
 	HOME="$2" "$current_binary" doctor --data-dir "$1" >"$3" 2>&1
 }
 
@@ -162,7 +176,8 @@ case_one() {
 	shared="$work_dir/case1/workspace"
 	home_a="$work_dir/case1/home-a"
 	home_b="$work_dir/case1/home-b"
-	mkdir -p "$shared" "$home_a" "$home_b"
+	mkdir -p "$home_a" "$home_b"
+	fresh_workspace_dir "$shared"
 
 	if ! HOME="$home_a" "$current_binary" doctor --data-dir "$shared" >"$work_dir/case1-a.log" 2>&1; then
 		report_fail "machine A could not open a fresh workspace (see $work_dir/case1-a.log)"
@@ -195,7 +210,8 @@ case_two() {
 	shared="$work_dir/case2/workspace"
 	home_a="$work_dir/case2/home-a"
 	home_b="$work_dir/case2/home-b"
-	mkdir -p "$shared" "$home_a" "$home_b"
+	mkdir -p "$home_a" "$home_b"
+	fresh_workspace_dir "$shared"
 
 	# Mint the workspace first so the race is over an existing catalog rather
 	# than over which process gets to create one.
@@ -317,7 +333,8 @@ case_three() {
 	shared="$work_dir/case3/workspace"
 	home_new="$work_dir/case3/home-new"
 	home_old="$work_dir/case3/home-old"
-	mkdir -p "$shared" "$home_new" "$home_old"
+	mkdir -p "$home_new" "$home_old"
+	fresh_workspace_dir "$shared"
 
 	# The current binary mints and migrates the workspace to today's schema.
 	if ! HOME="$home_new" "$current_binary" doctor --data-dir "$shared" >"$work_dir/case3-new.log" 2>&1; then
@@ -557,7 +574,8 @@ case_six() {
 	shared="$work_dir/case6/workspace"
 	home_old="$work_dir/case6/home-old"
 	home_new="$work_dir/case6/home-new"
-	mkdir -p "$shared" "$home_old" "$home_new"
+	mkdir -p "$home_old" "$home_new"
+	fresh_workspace_dir "$shared"
 
 	if ! HOME="$home_old" "$old_binary" doctor --data-dir "$shared" >"$work_dir/case6-old.log" 2>&1; then
 		report_fail "tt at $ref could not mint a workspace of its own (see $work_dir/case6-old.log)"
@@ -1478,6 +1496,111 @@ case_eleven_check_ins() {
  fi
 }
 
+# --- Case 12: an older binary against an enrolled working copy ----------------
+#
+# Enrollment never converts a workspace in place: it snapshots the original,
+# builds a local working copy at the enrolled catalog schema, and publishes the
+# copy's history. A tt from before enrollment must refuse that working copy as
+# newer than it supports, writing nothing, while it keeps opening the original
+# it already knew. The older binary here is the newest one that reads every
+# workspace the current one mints without enrolling, so the refusal proves the
+# enrolled marker rather than an unrelated schema bump.
+
+enroll_old_binary_ref() {
+	if [ -n "${TT_ENROLL_OLD_BINARY_REF:-}" ]; then
+		echo "$TT_ENROLL_OLD_BINARY_REF"
+		return 0
+	fi
+	introduced=$(git log -1 --format=%H -S'SyncEnrolledConfigVersion = ' -- internal/config/config_core.go 2>/dev/null || true)
+	if [ -n "$introduced" ]; then
+		git rev-parse "$introduced^"
+		return 0
+	fi
+	git rev-parse HEAD
+}
+
+enroll_old_binary=""
+ensure_enroll_old_binary() {
+	if [ -n "$enroll_old_binary" ]; then
+		return 0
+	fi
+	enroll_ref=$(enroll_old_binary_ref) || return 1
+	if ! git rev-parse --verify "$enroll_ref" >/dev/null 2>&1; then
+		report_fail "TT_ENROLL_OLD_BINARY_REF=$enroll_ref does not resolve to a git ref"
+		return 1
+	fi
+	enroll_source="$work_dir/enroll-old-source"
+	if ! git worktree add --detach "$enroll_source" "$enroll_ref" >"$work_dir/enroll-old-worktree.log" 2>&1; then
+		report_fail "could not check out $enroll_ref (see $work_dir/enroll-old-worktree.log)"
+		return 1
+	fi
+	if ! (cd "$enroll_source" && go build -o "$work_dir/tt-enroll-old" .) >"$work_dir/enroll-old-build.log" 2>&1; then
+		git worktree remove --force "$enroll_source" >/dev/null 2>&1 || true
+		report_fail "could not build tt at $enroll_ref (see $work_dir/enroll-old-build.log)"
+		return 1
+	fi
+	git worktree remove --force "$enroll_source" >/dev/null 2>&1 || true
+	enroll_old_binary="$work_dir/tt-enroll-old"
+	return 0
+}
+
+case_twelve_enrolled_refusal() {
+	ensure_enroll_old_binary || return
+	original="$work_dir/case12/original"
+	working_copy="$work_dir/case12/local/synced"
+	exchange="$work_dir/case12/exchange"
+	home="$work_dir/case12/home"
+	home_old="$work_dir/case12/home-old"
+	mkdir -p "$home" "$home_old" "$exchange"
+	if ! mint_workspace "$original" "$home" "$work_dir/case12-mint.log"; then
+		report_fail "case12: could not mint the original (see $work_dir/case12-mint.log)"
+		return
+	fi
+	if ! HOME="$home_old" "$enroll_old_binary" doctor --data-dir "$original" >"$work_dir/case12-old-control.log" 2>&1; then
+		report_fail "case12: the older binary cannot read a workspace that was never enrolled (see $work_dir/case12-old-control.log)"
+		return
+	fi
+	if ! HOME="$home" "$current_binary" sync enroll --data-dir "$original" --exchange "$exchange" \
+		--working-copy "$working_copy" --force >"$work_dir/case12-enroll.log" 2>&1; then
+		report_fail "case12: enrollment failed (see $work_dir/case12-enroll.log)"
+		return
+	fi
+	if ! find "$exchange/tt-sync/v1/txns" -name '0000000001-*.json' | grep -q .; then
+		report_fail "case12: enrollment published no initial history"
+		return
+	fi
+
+	before="$work_dir/case12-before.txt"
+	after="$work_dir/case12-after.txt"
+	snapshot_workspace "$working_copy" "$before"
+	set +e
+	HOME="$home_old" "$enroll_old_binary" doctor --data-dir "$working_copy" >"$work_dir/case12-old.log" 2>&1
+	old_status=$?
+	set -e
+	if [ "$old_status" -eq 0 ]; then
+		report_fail "case12: the older binary opened an enrolled working copy (see $work_dir/case12-old.log)"
+		return
+	fi
+	if ! grep -q "newer than supported" "$work_dir/case12-old.log"; then
+		report_fail "case12: the older binary failed for some other reason (see $work_dir/case12-old.log)"
+		return
+	fi
+	snapshot_workspace "$working_copy" "$after"
+	if ! diff "$before" "$after" >"$work_dir/case12-diff.log" 2>&1; then
+		report_fail "case12: the older binary's refusal modified the working copy (see $work_dir/case12-diff.log)"
+		return
+	fi
+	if ! HOME="$home_old" "$enroll_old_binary" doctor --data-dir "$original" >"$work_dir/case12-old-original.log" 2>&1; then
+		report_fail "case12: the older binary can no longer read the original (see $work_dir/case12-old-original.log)"
+		return
+	fi
+	if ! HOME="$home" "$current_binary" sync doctor --data-dir "$working_copy" >"$work_dir/case12-sync-doctor.log" 2>&1; then
+		report_fail "case12: sync doctor reports issues on the fresh enrollment (see $work_dir/case12-sync-doctor.log)"
+		return
+	fi
+	report_pass "a tt from before enrollment refuses the enrolled working copy byte-identically and still reads the original"
+}
+
 # snapshot_workspace writes a sorted path/size/checksum listing of every file
 # under a workspace, which is what "byte-identical" is checked against.
 snapshot_workspace() {
@@ -1505,6 +1628,7 @@ case_nine_batch_versus_write
 case_ten_rival_promotions
 case_ten_promotion_versus_edit
 case_eleven_check_ins
+case_twelve_enrolled_refusal
 
 echo
 if [ "$failures" -gt 0 ]; then

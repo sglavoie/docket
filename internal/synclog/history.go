@@ -134,6 +134,18 @@ func (h *History) requirement(kind EffectKind) string {
 // DeviceID is the identity this history records as.
 func (h *History) DeviceID() string { return h.deviceID }
 
+// Schemas are the artifact schemas this device writes and reads, as a copy.
+func (h *History) Schemas() map[string]int {
+	out := make(map[string]int, len(h.schemas))
+	for key, value := range h.schemas {
+		out[key] = value
+	}
+	return out
+}
+
+// Capabilities are what this device can apply, sorted.
+func (h *History) Capabilities() []string { return sortedKeys(h.capabilities) }
+
 // Dir is <data>/.tt/sync.
 func (h *History) Dir() string { return filepath.Join(h.dataDir, ".tt", "sync") }
 
@@ -501,3 +513,24 @@ func hasPathPrefix(p, dir string) bool {
 // WorkspacePath resolves a manifest's workspace-relative path to its absolute
 // location in this workspace.
 func (h *History) WorkspacePath(rel string) string { return h.abs(rel) }
+
+// Genesis is the enrollment genesis this device recorded, or nil when its
+// first transaction is not one (or it has recorded none).
+func (h *History) Genesis() (*Manifest, error) {
+	matches, err := filepath.Glob(filepath.Join(h.deviceDir(), "txns", fmt.Sprintf("%010d-*.json", 1)))
+	if err != nil || len(matches) == 0 {
+		return nil, err
+	}
+	data, err := os.ReadFile(matches[0])
+	if err != nil {
+		return nil, fmt.Errorf("reading the first outgoing record: %w", err)
+	}
+	m, err := DecodeManifest(data)
+	if err != nil {
+		return nil, err
+	}
+	if m.Kind != KindEnroll {
+		return nil, nil
+	}
+	return m, nil
+}

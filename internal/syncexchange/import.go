@@ -49,6 +49,9 @@ type Result struct {
 	DeviceSeq uint64  `json:"device_seq"`
 	Outcome   Outcome `json:"outcome"`
 	Reason    string  `json:"reason,omitempty"`
+	// Upgrade names the update a held manifest waits for: which device has to
+	// update tt, and why.
+	Upgrade string `json:"upgrade,omitempty"`
 	// LocalTxnID is the journal transaction that applied an imported manifest.
 	LocalTxnID string `json:"local_txn_id,omitempty"`
 	// Missing lists the required blobs not yet staged or retained.
@@ -114,6 +117,7 @@ func ImportInbox(committer Committer, inbox string) (*Report, error) {
 		switch {
 		case errors.Is(err, synclog.ErrHeld):
 			item.result.Outcome, item.result.Reason = Held, err.Error()
+			item.result.Upgrade = synclog.RequiredUpgrade(err, deviceID)
 		case err != nil:
 			item.result.Outcome, item.result.Reason = Invalid, err.Error()
 		case manifest.TxnID != txnID || manifest.DeviceID != deviceID || manifest.DeviceSeq != seq:
@@ -156,7 +160,7 @@ func ImportInbox(committer Committer, inbox string) (*Report, error) {
 
 // applyStaged tries one manifest and reports whether it was applied.
 func applyStaged(committer Committer, blobs inboxBlobs, item *staged) bool {
-	item.result.Missing, item.result.Unavailable = nil, nil
+	item.result.Missing, item.result.Unavailable, item.result.Upgrade = nil, nil, ""
 	for _, digest := range RequiredBlobs(item.manifest) {
 		if !blobs.has(digest) {
 			item.result.Missing = append(item.result.Missing, digest)
@@ -191,6 +195,7 @@ func applyStaged(committer Committer, blobs inboxBlobs, item *staged) bool {
 		item.result.Outcome, item.result.Reason = Incomplete, err.Error()
 	case errors.Is(err, synclog.ErrHeld):
 		item.result.Outcome, item.result.Reason = Held, err.Error()
+		item.result.Upgrade = synclog.RequiredUpgrade(err, item.manifest.DeviceID)
 	case errors.Is(err, synclog.ErrForeignWorkspace):
 		item.result.Outcome, item.result.Reason = Foreign, err.Error()
 	case errors.Is(err, synclog.ErrInvalidManifest):

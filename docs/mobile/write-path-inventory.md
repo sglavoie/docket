@@ -80,8 +80,34 @@ entries (or unstamped entries recorded before sync).
 `tt workspace move` copies, verifies, and switches the active workspace.
 
 **Sync integration point:** relocation is outside the exchange. The moved
-workspace keeps its workspace id, and its device identity is re-enrolled
-(session 9). The copy produces no transactions.
+workspace keeps its workspace id, and the copy produces no transactions. Moving
+an enrolled working copy keeps its history, since `.tt/sync/` moves with it.
+
+### `sync-enrollment`
+
+`tt sync enroll` snapshots the original workspace under the machine-local
+`~/.tt/enrollments/`, stages a working copy beside its final path, advances the
+staged catalog to the enrolled schema, writes the device-local enrollment
+record under `.tt/sync/`, and publishes the working copy with one rename.
+`tt sync join` creates the empty directory a joining device imports into.
+
+**Sync integration point:** the genesis. None of these writes is a
+transaction: the working copy's first sync record is the `kind: enroll`
+genesis `CommitService.CommitSyncGenesis` records when a runtime first opens
+it, which is how every later device rebuilds the same bytes. The snapshot and
+the enrollment record are never exchanged.
+
+### `sync-transport`
+
+The desktop's folder exchange (`syncexchange.ExchangeFolder`) writes immutable,
+content-addressed manifests and blobs, the exchange identity, and this device's
+advertisement into the exchange folder, and keeps its inbox and status in the
+device-local `.tt/sync/transport/`.
+
+**Sync integration point:** it *is* the exchange. It never deletes from the
+exchange folder, and it applies nothing itself: staged manifests are imported
+through `CommitService.CommitIncoming` by `ImportInbox`, and publication is
+acknowledged through `CommitService.CommitSyncPublished`.
 
 ### `conflict-store`
 
@@ -136,6 +162,7 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `CommitService.CommitSyncResolution` | commit-journal | Resolves a derived sync conflict by writing its path as an undoable `resolution` transaction, which records an outgoing record even when the chosen bytes are the current ones. |
 | `CommitService.CommitSyncPublished` | commit-journal | Drops published transactions from the outbox through the journal. Never produces an outgoing record. |
 | `CommitService.CommitExternalChanges` | commit-journal | Observes the synced workspace against the history's `tracked` digests and records every valid difference as one outgoing `kind: external` transaction; writes only the history, never the workspace. Invalid differences are held on disk unpublished. The first observation on a device only indexes the workspace. `CommitIncoming` runs the same observation first, and `engine.Open` runs it at launch. |
+| `CommitService.CommitSyncGenesis` | commit-journal | Records an enrolled working copy's first transaction, `kind: enroll` at sequence 1 with no parents, writing every synced file as a creation; writes only the history. Refused whole when the device already has history or a file would be held. `engine.Open` runs it before the first observation of an enrolled working copy. |
 | `CommitService.RecoverWorkspace` | commit-journal | Recovery completes or rolls back a journal entry, and its outbound record with it. |
 | `WorkspaceLedger.Undo` | commit-journal | A new forward `kind: undo` manifest. |
 | `WorkspaceLedger.UndoWithEntry` | commit-journal | As `Undo`. |

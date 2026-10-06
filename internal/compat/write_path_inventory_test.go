@@ -42,6 +42,8 @@ var writePathIntegrations = []string{
 	"domain-store",
 	"ledger-restore",
 	"workspace-relocation",
+	"sync-enrollment",
+	"sync-transport",
 	"conflict-store",
 	"external-editor",
 	"export",

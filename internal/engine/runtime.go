@@ -82,8 +82,18 @@ func Open(cfg Config) (*Runtime, error) {
 // Open loaded stays current; a failure is reported and leaves the edits for
 // the next observation.
 func (r *Runtime) observeExternalChanges() {
-	if r.repo.svc.SyncHistory() == nil {
+	history := r.repo.svc.SyncHistory()
+	if history == nil {
 		return
+	}
+	if r.state.Catalog().Enrolled() {
+		// An enrolled working copy's history starts with its genesis, which
+		// records every file as published history; indexing it first would
+		// record the same files as a silent baseline no peer can rebuild from.
+		if err := r.recordGenesis(); err != nil {
+			logging.Warn("sync: recording the enrollment genesis: %v", err)
+			return
+		}
 	}
 	report, err := r.repo.svc.CommitExternalChanges()
 	if err != nil {
@@ -133,7 +143,7 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
 	repo := NewRepository(dataDir, deps, ledger, owner)
-	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock)).WithSyncMerger(syncmerge.Merger{})
+	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock, workspaceSchemas(state))).WithSyncMerger(syncmerge.Merger{})
 	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
 	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock}
 }

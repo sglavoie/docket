@@ -387,3 +387,39 @@ If the same transaction quarantines repeatedly, the cause is usually a partial
 sync: the manifest arrived and its staged bytes did not. Wait for the sync to
 complete on the machine that wrote it before clearing anything.
 
+
+## Syncing through an exchange folder
+
+Putting the live workspace in a file sync service is the older way to share it,
+and everything above describes its hazards. The newer way keeps every device's
+workspace local and shares only immutable history through an *exchange
+folder*, typically one in iCloud Drive. It is opt-in, and a workspace that is
+never enrolled keeps working exactly as before.
+
+```bash
+tt sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
+```
+
+Enrolling does not convert your workspace. It keeps the current one untouched,
+saves a verified snapshot of it under `~/.tt/enrollments/`, builds a new local
+working copy at `--working-copy` — which must be outside iCloud Drive — and makes
+that copy the workspace `tt` opens from then on. The copy's whole content is
+then published to the exchange folder as its first piece of history. If
+enrollment is interrupted, run the same command again: it finishes what is left
+and copies or publishes nothing twice.
+
+An enrolled working copy uses a newer catalog schema, so a `tt` from before sync
+refuses to open it rather than write around its history; update `tt` on every
+machine that opens it. Another desktop joins with
+`tt sync join --exchange DIR --working-copy DIR`, which builds its own local
+copy from the published history alone.
+
+`tt sync exchange` publishes what you committed and applies what other devices
+published; the Outliner's status strip shows a `sync:` line while anything is
+waiting — work saved here and not yet published, work found and not yet
+applied, or a change held until a device updates `tt` — and counts open sync
+conflicts beside the merge conflicts, which `gc` lists. A file iCloud has not
+downloaded yet is reported as unavailable and fetched on a later exchange; a
+missing file never deletes anything. `tt sync status` shows the same state in
+full, and `tt sync doctor` checks the working copy's placement, the exchange
+folder, the history, and which device needs an update.

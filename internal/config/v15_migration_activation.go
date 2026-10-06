@@ -72,10 +72,10 @@ func (m *Manager) migrateWorkspaceToV15(hooks v15MigrationActivationHooks) error
 		}
 	}
 	if schema >= V15ConfigSchemaVersion {
-		if schema <= CurrentConfigVersion {
+		if schema <= SupportedConfigVersion {
 			return nil
 		}
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, CurrentConfigVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, SupportedConfigVersion)
 	}
 	if schema != V14ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V15ConfigSchemaVersion)

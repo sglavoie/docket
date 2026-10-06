@@ -484,14 +484,14 @@ is transient, and the Outliner writes none about a selection: the context row's
 no seam refreshes a count. It states the total and, whenever nonzero, the hidden
 half in both spellings, since a compact row shedding that number is what a bulk
 gesture would be surprised by; the visible half is `Q`'s and appears only beside
-a nonzero hidden one. An outstanding-conflict count leads
-that strip, refreshed at launch and on the 60s tick, read straight from
-`ConflictStore` with no `internal/app` port; the pulse ladder stays closed to it
-and resolving stays in the CLI. `gc` browses those bundles read-only, as an
+a nonzero hidden one. An outstanding-conflict count, sync conflicts
+included, leads that strip, refreshed at launch and on the 60s tick with no
+`internal/app` port; the pulse ladder stays closed to it
+and resolving stays in the CLI. `gc` browses them read-only, as an
 overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
 That count is an advisory: ambient workspace state, not an answer to a
-keystroke. The load-failure notice is the only other one. Every advisory routes
+keystroke. Only the load-failure notice and `sync:` line join it. Every advisory routes
 through `AdvisoryLine` or `AdvisoryStatus`, which is what makes
 `--no-advisories` and the keyless `Advisories` menu entry general; suppression
 returns an empty line, so the height falls out of the one `StatusStripHeight`
@@ -1068,6 +1068,7 @@ Lens and history writes open no workspace transaction and record no undo entry.
 Preserve approved roots, symlink-aware containment, checked revisions,
 deterministic locks, and recovery manifests.
 
+Schema 22 marks an enrolled catalog.
 Schema-21 catalogs hold schema-19 task Markdown. That pairing is descriptive,
 never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, v17
 lifts `review` off the tag list onto the stored flag, v18 admits the
