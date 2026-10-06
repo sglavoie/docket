@@ -2,11 +2,14 @@ package taskform
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -16,12 +19,40 @@ import (
 // the host or replaces the textarea, so returning preserves the entire draft.
 func (m *TaskComposerModel) openMatchingTaskPreview() {
 	m.UpdatePreview()
-	task, _, _ := m.MatchingCaptureTask()
-	if task == nil {
+	tasks, project := m.MatchingCaptureTasks()
+	if len(tasks) == 0 {
 		return
 	}
-	lines := []string{m.DuplicateCaptureHint(), "", task.Title,
-		"Status: " + models.WorkflowStateGroupForState(task.WorkflowState).Label()}
+	m.matchingTaskTexts = make([]string, len(tasks))
+	now := time.Now()
+	for i, task := range tasks {
+		m.matchingTaskTexts[i] = m.matchingTaskDocument(task, project, now)
+	}
+	m.matchingTaskIndex = 0
+	vp := viewport.New()
+	m.matchingTaskPreview = &vp
+	m.showMatchingTask()
+}
+
+func (m *TaskComposerModel) matchingTaskDocument(task *models.Task, project *models.Project, now time.Time) string {
+	identity := fmt.Sprintf("%s#%d", project.Slug, task.ShortID)
+	if task.ParentID != nil {
+		if parent := project.GetTaskByID(*task.ParentID); parent != nil {
+			identity += fmt.Sprintf(" · under #%d %s", parent.ShortID, parent.Title)
+		}
+	}
+	lines := []string{identity, "", task.Title}
+	if m.runtime != nil {
+		locator := config.ProjectTaskLocator{ProjectID: project.ID, TaskID: task.ID}
+		planning := m.runtime.Planning()
+		switch {
+		case slices.Contains(planning.GetToday(), locator):
+			lines = append(lines, chrome.PlanFieldLabel+": Today")
+		case slices.Contains(planning.GetNext(), locator):
+			lines = append(lines, chrome.PlanFieldLabel+": Next")
+		}
+	}
+	lines = append(lines, chrome.StatusFieldLabel+": "+models.WorkflowStateGroupForState(task.WorkflowState).Label())
 	if task.Priority != models.PriorityUnset {
 		lines = append(lines, "Priority: "+models.PriorityName(task.Priority))
 	}
@@ -31,6 +62,17 @@ func (m *TaskComposerModel) openMatchingTaskPreview() {
 			date += " " + clock
 		}
 		lines = append(lines, "Due: "+date)
+	}
+	if task.IsDeferredAt(now) {
+		lines = append(lines, "Defer until: "+chrome.FormatDeferDate(*task.DeferredUntil, now))
+	}
+	if task.NextCheckIn != nil {
+		lines = append(lines, "Check-in: "+task.NextCheckIn.Format("Mon, Jan 2 2006"))
+		repeat := "off"
+		if task.CheckInRepeatDays > models.CheckInRepeatOff {
+			repeat = fmt.Sprintf("every %d days", task.CheckInRepeatDays)
+		}
+		lines = append(lines, "Repeat: "+repeat)
 	}
 	if len(task.Tags) > 0 {
 		lines = append(lines, "Tags: "+strings.Join(task.Tags, ", "))
@@ -51,10 +93,13 @@ func (m *TaskComposerModel) openMatchingTaskPreview() {
 		}
 		lines = append(lines, fmt.Sprintf("[%s] %s", mark, item.Text))
 	}
-	m.matchingTaskText = strings.Join(lines, "\n")
-	vp := viewport.New()
-	m.matchingTaskPreview = &vp
+	return strings.Join(lines, "\n")
+}
+
+func (m *TaskComposerModel) showMatchingTask() {
+	m.matchingTaskText = m.matchingTaskTexts[m.matchingTaskIndex]
 	m.resizeMatchingTaskPreview()
+	m.matchingTaskPreview.GotoTop()
 }
 
 func (m *TaskComposerModel) resizeMatchingTaskPreview() {
@@ -67,9 +112,23 @@ func (m *TaskComposerModel) resizeMatchingTaskPreview() {
 func (m *TaskComposerModel) updateMatchingTaskPreview(msg tea.Msg) tea.Cmd {
 	if key, ok := msg.(tea.KeyPressMsg); ok {
 		switch key.String() {
+		case "left", "right":
+			next := m.matchingTaskIndex
+			if key.String() == "left" {
+				next--
+			} else {
+				next++
+			}
+			if next >= 0 && next < len(m.matchingTaskTexts) {
+				m.matchingTaskIndex = next
+				m.showMatchingTask()
+			}
+			return nil
 		case "esc", "ctrl+o":
 			m.matchingTaskPreview = nil
 			m.matchingTaskText = ""
+			m.matchingTaskTexts = nil
+			m.matchingTaskIndex = 0
 			return nil
 		}
 	}

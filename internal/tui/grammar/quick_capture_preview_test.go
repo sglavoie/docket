@@ -296,3 +296,31 @@ func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T
 		t.Fatal("stale duplicate hint after editing")
 	}
 }
+
+func TestCaptureMatchesBrowseInPreferredOrderWithoutReorderingProject(t *testing.T) {
+	parent := "parent"
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{
+		{ID: "root", ShortID: 1, Title: "Fix login", WorkflowState: models.StateBacklog},
+		{ID: "later", ShortID: 9, Title: " fix LOGIN ", ParentID: &parent, WorkflowState: models.StateDoing},
+		{ID: "done", ShortID: 3, Title: "Fix login", WorkflowState: models.StateDone},
+		{ID: "first", ShortID: 4, Title: "Fix login", ParentID: &parent, WorkflowState: models.StateWaiting},
+		{ID: "canceled", ShortID: 2, Title: "Fix login", WorkflowState: models.StateCanceled},
+	}}
+	original := slices.Clone(project.Tasks)
+	home := &models.Project{ID: "home", Slug: "home"}
+	q := draftedCaptureInput(t, "Fix login %web", home, []*models.Project{home, project}, false)
+	q.DefaultParentID = &parent
+	q.UpdatePreview()
+	matches, owner := q.MatchingCaptureTasks()
+	if owner != project || len(matches) != 3 {
+		t.Fatalf("wrong matches: %+v", matches)
+	}
+	for i, id := range []string{"first", "later", "root"} {
+		if matches[i].ID != id {
+			t.Fatalf("match %d = %s, want %s", i, matches[i].ID, id)
+		}
+	}
+	if !slices.Equal(project.Tasks, original) {
+		t.Fatal("browsing reordered the project")
+	}
+}

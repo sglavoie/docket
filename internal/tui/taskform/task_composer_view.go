@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -203,7 +204,7 @@ func (m *TaskComposerModel) View() tea.View {
 		return m.Expanded.View()
 	}
 	if m.matchingTaskPreview != nil {
-		title := chrome.RenderFullscreenTitleWithPulse("Matching task", "Read only", m.CurrentWorkspacePulse(), m.width)
+		title := chrome.RenderFullscreenTitleWithPulse("Matching task", fmt.Sprintf("Match %d of %d · Read only", m.matchingTaskIndex+1, len(m.matchingTaskTexts)), m.CurrentWorkspacePulse(), m.width)
 		return tea.NewView(title + "\n" + m.matchingTaskPreview.View())
 	}
 	theme.ApplyThemedTextarea(&m.Input)
@@ -248,7 +249,11 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 	if m.matchingTaskPreview != nil {
-		return chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "PgUp/PgDn page", "Ctrl+O return to capture"), true
+		spec := chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "PgUp/PgDn page", "Ctrl+O return to capture")
+		if len(m.matchingTaskTexts) > 1 {
+			spec = chrome.RequiredExitGuidanceSpec("←/→ match", "Esc return to capture", "↑/↓ scroll", "PgUp/PgDn page", "Ctrl+O return to capture")
+		}
+		return spec, true
 	}
 	spec := chrome.CaptureGuidanceSpec(
 		m.ConfirmDiscard,

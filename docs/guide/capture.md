@@ -218,7 +218,12 @@ project. The count still includes every matching unfinished task in that project
 Title matching is case-insensitive, ignores leading and trailing whitespace, and excludes Done
 and Canceled tasks. This is a hint: Enter still saves normally. With suggestions and syntax help
 closed, `Ctrl+O` opens a read-only inspection of that matching task, including
-its resume note, description, and checklist. Arrow keys and Page Up/Down scroll;
+its Today/Next plan, status, pending deferral, check-in date and repeat cadence,
+resume note, description, and checklist. These are the existing task's values,
+not the draft's. Left/Right browse all matches, with `Match 1 of N` identifying
+the position; browsing stops at either end. Siblings under the capture parent
+come first, then other matches, each ordered by short ID. Each match opens at
+the top. Up/Down and Page Up/Down scroll;
 `Esc` or `Ctrl+O` returns to the exact capture draft and caret. Inspection never
 submits the draft.
 The preview also checks other valid lines in a multiline draft for the same

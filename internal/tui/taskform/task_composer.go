@@ -154,6 +154,8 @@ type TaskComposerModel struct {
 	batchPlanSummary    string
 	matchingTaskPreview *viewport.Model
 	matchingTaskText    string
+	matchingTaskTexts   []string
+	matchingTaskIndex   int
 	chrome.DiscardConfirmState
 }
 

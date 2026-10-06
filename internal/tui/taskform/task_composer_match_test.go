@@ -3,10 +3,12 @@ package taskform
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -37,6 +39,25 @@ func TestCaptureInspectionPreservesBatchDraftAndCaret(t *testing.T) {
 		}
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if m.matchingTaskIndex != 0 {
+		t.Fatal("left wrapped at first match")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if !strings.Contains(m.matchingTaskText, "web#1") || !strings.Contains(ansi.Strip(m.View().Content), "Match 2 of 2") {
+		t.Fatalf("did not browse to root: %s", m.View().Content)
+	}
+	if m.matchingTaskPreview.YOffset() != 0 {
+		t.Fatal("new match did not start at top")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if m.matchingTaskIndex != 1 {
+		t.Fatal("right wrapped at last match")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if !strings.Contains(m.matchingTaskText, "web#2") {
+		t.Fatal("did not return to sibling")
+	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if m.SubmissionInFlight {
 		t.Fatal("inspection submitted the draft")
@@ -74,5 +95,66 @@ func TestHostCapturePreviewIncludesDeferralPriorityAndDuplicate(t *testing.T) {
 	text, errs = CapturePreviewText(preset, nil, "Fix login %missing !1")
 	if len(errs) == 0 || text != "" {
 		t.Fatalf("invalid preview: %s, %+v", text, errs)
+	}
+}
+
+func TestCaptureInspectionUsesExistingTaskScheduleAndQualifiedPlan(t *testing.T) {
+	now := time.Date(2030, 1, 1, 12, 0, 0, 0, time.Local)
+	deferred := now.Add(2 * time.Hour)
+	checkIn := time.Date(2030, 1, 2, 0, 0, 0, 0, time.Local)
+	task := &models.Task{ID: "shared-id", ShortID: 2, Title: "Fix login", WorkflowState: models.StateBacklog,
+		DeferredUntil: &deferred, NextCheckIn: &checkIn, CheckInRepeatDays: 7}
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{task}}
+	runtime := newTestConfig()
+	m := NewTaskComposerModel(TaskComposerPreset{Project: project, InitialText: "Fix login $today"}, runtime)
+	locator := config.ProjectTaskLocator{ProjectID: "web", TaskID: task.ID}
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: "other", TaskID: task.ID}})
+	text := m.matchingTaskDocument(task, project, now)
+	if strings.Contains(text, "Plan:") {
+		t.Fatalf("used draft or other project's plan: %s", text)
+	}
+	for _, want := range []string{"Status: Backlog", "Defer until: 14:00", "Check-in: Wed, Jan 2 2030", "Repeat: every 7 days"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in %s", want, text)
+		}
+	}
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{locator})
+	if text = m.matchingTaskDocument(task, project, now); !strings.Contains(text, "Plan: Next") {
+		t.Fatalf("missing Next membership: %s", text)
+	}
+	runtime.Planning().SetNext(nil)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{locator})
+	task.CheckInRepeatDays = 0
+	text = m.matchingTaskDocument(task, project, deferred)
+	if !strings.Contains(text, "Plan: Today") || !strings.Contains(text, "Repeat: off") || strings.Contains(text, "Defer until:") {
+		t.Fatalf("wrong current schedule: %s", text)
+	}
+	task.NextCheckIn = nil
+	text = m.matchingTaskDocument(task, project, deferred)
+	if strings.Contains(text, "Check-in:") || strings.Contains(text, "Repeat:") {
+		t.Fatalf("invented check-in: %s", text)
+	}
+}
+
+func TestCaptureInspectionSnapshotsMatchesAndReopensFresh(t *testing.T) {
+	task := &models.Task{ID: "one", ShortID: 1, Title: "Fix login", Description: "Original description", WorkflowState: models.StateBacklog}
+	project := &models.Project{ID: "web", Slug: "web", Tasks: []*models.Task{task}}
+	m := NewTaskComposerModel(TaskComposerPreset{Project: project, InitialText: "Fix login"}, nil)
+	m.Update(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+	task.Description = "Changed description"
+	m.SetSize(60, 20)
+	if !strings.Contains(m.matchingTaskText, "Original description") {
+		t.Fatal("inspection lost its snapshot")
+	}
+	guidance, _ := m.ContextualGuidance()
+	for _, hint := range guidance.Hints {
+		if strings.Contains(hint.Key, "←/→") {
+			t.Fatal("single match advertises browsing")
+		}
+	}
+	m.Update(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+	m.Update(tea.KeyPressMsg{Code: 'o', Mod: tea.ModCtrl})
+	if !strings.Contains(m.matchingTaskText, "Changed description") {
+		t.Fatal("reopening did not refresh")
 	}
 }

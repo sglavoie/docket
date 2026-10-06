@@ -1,7 +1,9 @@
 package grammar
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -410,23 +412,20 @@ func (q *QuickCaptureInput) renderPreviewLine(label, body string) string {
 	return strings.Join(wrapped, "\n")
 }
 
-// This is advisory only: a repeated title is legal. Compare the parsed title
-// within its resolved project, excluding completed and canceled work.
-// MatchingCaptureTask resolves the same advisory match shown in capture.
-// Callers may inspect it, but it never changes whether a draft can be saved.
-func (q *QuickCaptureInput) MatchingCaptureTask() (*models.Task, *models.Project, int) {
+// MatchingCaptureTasks returns unfinished title matches in the resolved project,
+// with siblings first when capturing under a parent, then by short ID. Sorting
+// owns a separate slice and never changes the project's task order.
+func (q *QuickCaptureInput) MatchingCaptureTasks() ([]*models.Task, *models.Project) {
 	if q.Preview == nil || q.PreviewErr != "" {
-		return nil, nil, 0
+		return nil, nil
 	}
 	project := q.Project
 	if q.Preview.targetProject != nil {
 		project = q.Preview.targetProject
 	}
 	if project == nil {
-		return nil, nil, 0
+		return nil, nil
 	}
-	var first *models.Task
-	count := 0
 	parentID := q.Preview.ParentID
 	if parentID == nil {
 		parentID = q.DefaultParentID
@@ -434,17 +433,32 @@ func (q *QuickCaptureInput) MatchingCaptureTask() (*models.Task, *models.Project
 	sameParent := func(task *models.Task) bool {
 		return parentID != nil && task.ParentID != nil && *task.ParentID == *parentID
 	}
+	var matches []*models.Task
 	for _, task := range project.Tasks {
-		if task == nil || task.IsTerminalState() || !strings.EqualFold(strings.TrimSpace(task.Title), strings.TrimSpace(q.Preview.Title)) {
-			continue
-		}
-		count++
-		if first == nil || (sameParent(task) && !sameParent(first)) ||
-			(sameParent(task) == sameParent(first) && task.ShortID < first.ShortID) {
-			first = task
+		if task != nil && !task.IsTerminalState() && strings.EqualFold(strings.TrimSpace(task.Title), strings.TrimSpace(q.Preview.Title)) {
+			matches = append(matches, task)
 		}
 	}
-	return first, project, count
+	slices.SortStableFunc(matches, func(a, b *models.Task) int {
+		if sameParent(a) != sameParent(b) {
+			if sameParent(a) {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(a.ShortID, b.ShortID)
+	})
+	return matches, project
+}
+
+// MatchingCaptureTask resolves the preferred advisory match shown in capture.
+// A repeated title is legal; matches never change whether a draft can be saved.
+func (q *QuickCaptureInput) MatchingCaptureTask() (*models.Task, *models.Project, int) {
+	matches, project := q.MatchingCaptureTasks()
+	if len(matches) == 0 {
+		return nil, project, 0
+	}
+	return matches[0], project, len(matches)
 }
 
 func (q *QuickCaptureInput) duplicateCaptureHint() string {
