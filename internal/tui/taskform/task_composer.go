@@ -1,9 +1,12 @@
 package taskform
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -479,7 +482,16 @@ func (m *TaskComposerModel) focusCaptureErrorLine(line int) {
 	for guard := m.composerInputContentRows(); m.Input.Line() < target && guard > 0; guard-- {
 		m.Input.CursorDown()
 	}
-	m.Input.SetCursorColumn(0)
+	column := 0
+	for _, problem := range m.Errors {
+		if problem.Line == line {
+			column = problem.Column
+			break
+		}
+	}
+	m.Input.SetCursorColumn(column)
+	// Setting a column alone does not scroll a wrapped token into view.
+	m.Input, _ = m.Input.Update(nil)
 	m.UpdatePreview()
 }
 
@@ -548,7 +560,13 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []grammar
 		}
 		parsed, err := grammar.ParseQuickCapture(line, m.Preset.Project, m.Preset.AllProjects, !m.Preset.AllowProjectSwitch)
 		if err != nil {
-			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
+			problem := grammar.LineError{Line: idx + 1, Message: err.Error()}
+			var tokenError *grammar.CaptureTokenError
+			if errors.As(err, &tokenError) {
+				leadingBytes := len(raw) - len(strings.TrimLeftFunc(raw, unicode.IsSpace))
+				problem.Column = utf8.RuneCountInString(raw[:leadingBytes]) + tokenError.Column
+			}
+			lineErrors = append(lineErrors, problem)
 			continue
 		}
 		if err := models.ValidateTaskTitle(parsed.Title); err != nil {

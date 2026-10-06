@@ -2,6 +2,7 @@ package grammar
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -9,6 +10,7 @@ import (
 
 type quickCaptureParser struct {
 	input       string
+	source      string
 	project     *models.Project
 	allProjects []*models.Project
 	skipProject bool
@@ -22,12 +24,33 @@ type quickCaptureParser struct {
 func newQuickCaptureParser(input string, project *models.Project, allProjects []*models.Project, skipProject, strict bool) *quickCaptureParser {
 	return &quickCaptureParser{
 		input:       input,
+		source:      input,
 		project:     project,
 		allProjects: allProjects,
 		skipProject: skipProject,
 		strict:      strict,
 		result:      &QuickCaptureResult{Priority: models.PriorityUnset},
 	}
+}
+
+// CaptureTokenError keeps the parser's refusal and its original rune column
+// together, so capture can navigate without trying to parse an error message.
+type CaptureTokenError struct {
+	Column  int // zero-based; includes leading whitespace in the supplied input
+	Message string
+}
+
+func (e *CaptureTokenError) Error() string { return e.Message }
+
+func (p *quickCaptureParser) failTokenf(token textgrammar.Token, format string, args ...any) bool {
+	stop := p.failf(format, args...)
+	if stop {
+		p.err = &CaptureTokenError{
+			Column:  utf8.RuneCountInString(p.source[:token.Start]),
+			Message: p.err.Error(),
+		}
+	}
+	return stop
 }
 
 func (p *quickCaptureParser) failf(format string, args ...any) bool {

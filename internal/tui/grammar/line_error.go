@@ -6,5 +6,6 @@ package grammar
 // stop at the first problem.
 type LineError struct {
 	Line    int
+	Column  int // zero-based rune column; zero when no token owns the refusal
 	Message string
 }

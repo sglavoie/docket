@@ -29,29 +29,29 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 		return
 	}
 	if len(remove) > 0 {
-		p.failf("%stask is not available when capturing; a new task has no dependencies to remove", removeDefinition.Trigger)
+		p.failTokenf(remove[0], "%stask is not available when capturing; a new task has no dependencies to remove", removeDefinition.Trigger)
 		return
 	}
 	for _, token := range add {
 		if token.Value == DependencyClearValue {
-			p.failf("%s%s is not available when capturing; a new task starts without dependencies", definition.Trigger, token.Value)
+			p.failTokenf(token, "%s%s is not available when capturing; a new task starts without dependencies", definition.Trigger, token.Value)
 			return
 		}
 		ref, err := ResolveDependencyReference(token.Value, p.project, p.allProjects)
 		if err != nil {
-			if p.failf("%s", err) {
+			if p.failTokenf(token, "%s", err) {
 				return
 			}
 			continue
 		}
 		if !ref.resolved {
-			if p.failf("%s", DependencyNotFoundMessage(definition.Trigger, token.Value)) {
+			if p.failTokenf(token, "%s", DependencyNotFoundMessage(definition.Trigger, token.Value)) {
 				return
 			}
 			continue
 		}
 		if ref.terminal {
-			if p.failf("cannot depend on %s: it is already closed", ref.Label()) {
+			if p.failTokenf(token, "cannot depend on %s: it is already closed", ref.Label()) {
 				return
 			}
 			continue
@@ -88,7 +88,7 @@ func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgram
 	removed := make([]app.TaskLocator, 0, len(remove))
 	for _, token := range remove {
 		if token.Value == DependencyClearValue {
-			p.failf("%s%s is not a clear form; use %s%s to clear every dependency", removeDefinition.Trigger, token.Value, definition.Trigger, DependencyClearValue)
+			p.failTokenf(token, "%s%s is not a clear form; use %s%s to clear every dependency", removeDefinition.Trigger, token.Value, definition.Trigger, DependencyClearValue)
 			return
 		}
 		ref, ok := p.resolveOutlineDependency(token, removeDefinition.Trigger)
@@ -116,11 +116,11 @@ func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgram
 func (p *quickCaptureParser) resolveOutlineDependency(token textgrammar.Token, trigger string) (CapturedDependencyRef, bool) {
 	ref, err := ResolveDependencyReference(token.Value, p.project, p.allProjects)
 	if err != nil {
-		p.failf("%s", err)
+		p.failTokenf(token, "%s", err)
 		return CapturedDependencyRef{}, false
 	}
 	if ref.Locator.TaskID == "" {
-		p.failf("%s", DependencyNotFoundMessage(trigger, token.Value))
+		p.failTokenf(token, "%s", DependencyNotFoundMessage(trigger, token.Value))
 		return CapturedDependencyRef{}, false
 	}
 	return ref, true

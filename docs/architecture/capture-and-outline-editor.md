@@ -605,6 +605,12 @@ and the write it authorized.
 
 ## Caret context and feedback recall
 
+Grammar tokens retain their original byte offsets as earlier tokens are removed.
+Capture refusals carry that position as a rune column alongside the source line;
+submission and next/previous-problem navigation focus it and scroll wrapped input
+into view. Refusals without a token use the line start. Live validation refreshes
+positions without moving the caret.
+
 Capture completion uses the textarea's logical line and rune column, translated
 once to grammar byte offsets. It replaces the whole token at the caret and
 preserves the rest of the draft. Candidate context is the complete current line

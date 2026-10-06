@@ -277,11 +277,12 @@ shared defaults, including a project selected with `Ctrl+P`, but inherits none
 of the submitted line's sigils. Each save is its own undo entry. Close any
 suggestions or syntax help first with `Esc`; `Enter` still creates and closes.
 
-A rejected submission moves the cursor to the start of the first invalid line
-and scrolls it into view, keeping the entire draft. After that attempt, editing
+A rejected submission moves the cursor to the invalid token on the first
+invalid line and scrolls it into view, keeping the entire draft. Errors without
+a particular token, such as a missing title, go to the line’s start. After that attempt, editing
 refreshes the line errors without moving the cursor or submitting again;
 correcting the last error clears the refusal. `Alt+N` visits the next reported
-problem; `Alt+P` visits the previous one. Both wrap at the ends. With several
+problem; `Alt+P` visits the previous one. Both land on the reported token and wrap at the ends. With several
 problems, the panel names the current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
 changes no text and submits nothing. Press `Enter` to retry the save.
 

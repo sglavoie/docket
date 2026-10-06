@@ -443,11 +443,17 @@ default ordering.
 | --- | --- |
 | `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
 | `1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would; the digit is drawn in a column ahead of the row it names. Both action rows are unnumbered, and a narrowed list renumbers from one, so a digit always counts the saved rows on screen. A tenth saved lens carries no digit |
-| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete. On either action row it says which key that row answers to instead |
+| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Duplicate, Delete. On either action row it says which key that row answers to instead |
 | `/` | Narrow the saved list by name or summary, including project scope; both action rows stay put while the saved rows filter. While editing, `Esc` clears the typed query, then leaves the search, then closes the picker. After `Enter` accepts the search, `/` edits it again and `Esc` closes the picker |
 | `Esc` | Close the picker without changing the view |
 
-Applying, saving, renaming, replacing, and deleting write the lens list alone,
+Duplicate asks for a new name and copies the selected lens’s saved mode, query,
+sort, and project scope under a new identity. It leaves the current view and
+the original lens unchanged, including any unsaved view changes. The copy is
+an ordinary lens; select it and press `Enter` to apply it. An unavailable
+project scope can still be copied.
+
+Applying, saving, duplicating, renaming, replacing, and deleting write the lens list alone,
 outside the workspace history, so none of them records an undo entry and `u`
 never takes a lens back. A write that fails changes nothing: the list, the view,
 and the saved records stay exactly as they were, and the picker keeps the

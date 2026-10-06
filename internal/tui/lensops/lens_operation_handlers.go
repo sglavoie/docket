@@ -31,6 +31,8 @@ func (c *Controller) executeLensOperation(
 		return c.applyLensOperation(shell, saved)
 	case lens.OperationLensRename:
 		return c.renameLensOperation(shell, invocation, saved)
+	case lens.OperationLensDuplicate:
+		return c.duplicateLensOperation(shell, invocation, saved)
 	case lens.OperationLensReplace:
 		return c.replaceLensOperation(shell, saved)
 	case lens.OperationLensDelete:
@@ -158,6 +160,36 @@ func (c *Controller) executeLensAddTemplateOperation(shell Shell, invocation ope
 		}
 	}
 	return lensCommandResult(cmd, "Added built-in view: "+template.Name)
+}
+
+// duplicateLensOperation copies the saved definition, including unavailable
+// scope, without applying it or borrowing the current view's unsaved changes.
+func (c *Controller) duplicateLensOperation(
+	shell Shell,
+	invocation operation.OperationInvocation,
+	existing config.NamedLens,
+) operation.OperationHandlerResult {
+	name, err := config.NormalizeNamedLensName(operation.StringValue(invocation))
+	if err != nil {
+		return operation.OperationHandlerResult{Err: err}
+	}
+	if err := c.CommitNamedLensMutation(shell, func(machine *config.MachineState) error {
+		if namedLensNameTaken(machine.NamedLenses, name, "") {
+			return fmt.Errorf("a lens named %q already exists", name)
+		}
+		source := machine.NamedLensByID(existing.ID)
+		if source == nil {
+			return fmt.Errorf("lens %s is no longer available; reopen the lens list", existing.ID)
+		}
+		duplicate := source.Clone()
+		duplicate.ID = uuid.NewString()
+		duplicate.Name = name
+		machine.NamedLenses = append(machine.NamedLenses, duplicate)
+		return nil
+	}); err != nil {
+		return operation.OperationHandlerResult{Err: err}
+	}
+	return operation.OperationHandlerResult{Status: "Duplicated lens: " + name}
 }
 
 // renameLensOperation changes the label alone. The projection is untouched, so

@@ -1,5 +1,5 @@
 // Package lensops owns the named-lens cluster: the picker overlay's state, the
-// six operations a saved projection answers to, and the machine-local commits
+// operations a saved projection answers to, and the machine-local commits
 // each of them publishes through.
 //
 // The behavior lives here rather than on the shell because a lens touches
@@ -25,7 +25,7 @@ type Shell interface {
 	Outliner() *outliner.OutlinerModel
 
 	// Registry and Executor are the descriptor authority and the invocation
-	// pipeline the six lens operations register themselves with.
+	// pipeline the lens operations register themselves with.
 	Registry() *operation.OperationRegistry
 	Executor() *operation.OperationExecutor
 

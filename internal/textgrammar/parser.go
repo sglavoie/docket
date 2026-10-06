@@ -15,6 +15,8 @@ type Token struct {
 	Field Field
 	Value string
 	Form  string
+	// Start is the byte offset of the sigil in the original input.
+	Start int
 }
 
 // Result contains recognized tokens and the normalized free-text remainder.
@@ -63,12 +65,16 @@ func buildTokenPatterns() []tokenPattern {
 func Parse(input string, surface Surface) Result {
 	result := Result{}
 	remaining := input
+	offsets := make([]int, len(input))
+	for i := range offsets {
+		offsets[i] = i
+	}
 	for _, pattern := range tokenPatterns {
 		if pattern.spec.Surfaces&surface == 0 {
 			continue
 		}
 		var tokens []Token
-		remaining, tokens = extractTokens(remaining, pattern, surface)
+		remaining, offsets, tokens = extractTokens(remaining, offsets, pattern, surface)
 		result.Tokens = append(result.Tokens, tokens...)
 	}
 	result.Text = NormalizeText(remaining)
@@ -76,12 +82,13 @@ func Parse(input string, surface Surface) Result {
 	return result
 }
 
-func extractTokens(input string, pattern tokenPattern, surface Surface) (string, []Token) {
+func extractTokens(input string, offsets []int, pattern tokenPattern, surface Surface) (string, []int, []Token) {
 	matches := pattern.re.FindAllStringSubmatchIndex(input, -1)
 	if len(matches) == 0 {
-		return input, nil
+		return input, offsets, nil
 	}
 	var rebuilt strings.Builder
+	positions := make([]int, 0, len(input))
 	tokens := make([]Token, 0, len(matches))
 	last := 0
 	for _, match := range matches {
@@ -89,22 +96,27 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 			continue
 		}
 		rebuilt.WriteString(input[last:match[0]])
+		positions = append(positions, offsets[last:match[0]]...)
 		value := tokenValue(pattern.spec, input[match[2]:match[3]])
 		if !validTokenValue(pattern.spec, value, surface) {
 			rebuilt.WriteString(input[match[0]:match[1]])
+			positions = append(positions, offsets[match[0]:match[1]]...)
 			last = match[1]
 			continue
 		}
 		rebuilt.WriteByte(' ')
+		positions = append(positions, offsets[match[0]])
 		tokens = append(tokens, Token{
 			Field: pattern.spec.Field,
 			Value: value,
 			Form:  pattern.spec.Trigger,
+			Start: offsets[match[2]-len(pattern.spec.Trigger)],
 		})
 		last = match[1]
 	}
 	rebuilt.WriteString(input[last:])
-	return rebuilt.String(), tokens
+	positions = append(positions, offsets[last:]...)
+	return rebuilt.String(), positions, tokens
 }
 
 // tokenValue reduces one matched group to the value that validation and every

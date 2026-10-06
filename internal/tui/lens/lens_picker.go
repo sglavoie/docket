@@ -66,12 +66,13 @@ const (
 )
 
 // NamedLensActionSheetOperations is the Space menu over one saved lens: the
-// three management acts, in the order the product contract names them. Apply is
+// management acts, in the order the product contract names them. Apply is
 // absent because Enter already is it, which is the one-path rule the entity
 // surfaces hold to.
 var NamedLensActionSheetOperations = []operation.OperationID{
 	OperationLensRename,
 	OperationLensReplace,
+	OperationLensDuplicate,
 	OperationLensDelete,
 }
 

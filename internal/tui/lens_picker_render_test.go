@@ -294,7 +294,7 @@ func TestLensPickerIsClearedByNavigationCollapse(t *testing.T) {
 	model := lensPickerApp(t)
 	selectLensRow(t, model, "Stale")
 	pressLens(t, model, "space")
-	pressLens(t, model, "j", "j")
+	pressLens(t, model, "j", "j", "j")
 	pressLens(t, model, "enter")
 
 	model.clearTransientNavigationState()

@@ -1,0 +1,31 @@
+{
+  "name": "named-lens-duplicate",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "\\" },
+    { "type": "key", "label": "apply the Waiting starter", "key": "3" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Waiting" },
+    { "type": "key", "key": "\\" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Duplicate lens" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "enter" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "text", "text": "Waiting copy" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "contains", "value": "Waiting copy" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "label": "copying does not switch the active lens", "assert": "contains", "value": "Lens: Waiting" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens: Waiting copy" },
+    { "type": "key", "key": "\\" },
+    { "type": "key", "label": "the copy is an ordinary selectable lens", "key": "4" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Waiting copy" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

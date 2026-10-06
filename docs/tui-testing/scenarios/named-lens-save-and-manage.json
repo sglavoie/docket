@@ -61,6 +61,7 @@
     { "type": "key", "label": "delete it from the same sheet", "key": "space" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "key", "key": "y" },

@@ -839,8 +839,9 @@ func TestTaskComposerPreviousProblemPreservesDraftAndSkipsCorrectedLines(t *test
 		if _, cmd := m.Update(previous); cmd != nil {
 			t.Fatal("problem navigation emitted a command")
 		}
-		if m.Input.Line()+1 != line || m.Input.Column() != 0 {
-			t.Fatalf("visit %d: line %d column %d, want line %d start", i, m.Input.Line()+1, m.Input.Column(), line)
+		wantColumn := strings.Index(strings.Split(draft, "\n")[line-1], "!")
+		if m.Input.Line()+1 != line || m.Input.Column() != wantColumn {
+			t.Fatalf("visit %d: line %d column %d, want line %d column %d", i, m.Input.Line()+1, m.Input.Column(), line, wantColumn)
 		}
 		problem := []int{3, 2, 1, 3}[i]
 		want := fmt.Sprintf("Problem %d of 3 · Line %d", problem, line)

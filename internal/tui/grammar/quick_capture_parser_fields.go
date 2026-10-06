@@ -114,15 +114,15 @@ func (p *quickCaptureParser) parseContextTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		if token.Value == "0" {
 			if p.surface == textgrammar.SurfaceOutline {
-				p.failf("omit %s to clear the context here", definition.Forms[0])
+				p.failTokenf(token, "omit %s to clear the context here", definition.Forms[0])
 				return
 			}
-			p.failf("%s is not available when capturing; a new task starts without a context", definition.Trigger+token.Value)
+			p.failTokenf(token, "%s is not available when capturing; a new task starts without a context", definition.Trigger+token.Value)
 			return
 		}
 		context, err := models.NormalizeTaskContext(token.Value)
 		if err != nil {
-			if p.failf("invalid context %s%s: %s", definition.Trigger, token.Value, err) {
+			if p.failTokenf(token, "invalid context %s%s: %s", definition.Trigger, token.Value, err) {
 				return
 			}
 			continue
@@ -142,12 +142,12 @@ func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
 			continue
 		}
 		if p.surface == textgrammar.SurfaceOutline {
-			if p.failf("omit *pin to unpin here") {
+			if p.failTokenf(token, "omit *pin to unpin here") {
 				return
 			}
 			continue
 		}
-		if p.failf("*unpin is not available when capturing; a new task starts unpinned") {
+		if p.failTokenf(token, "*unpin is not available when capturing; a new task starts unpinned") {
 			return
 		}
 	}
@@ -174,12 +174,12 @@ func (p *quickCaptureParser) parseReviewTokens(tokens []textgrammar.Token) {
 			continue
 		}
 		if p.surface == textgrammar.SurfaceOutline {
-			if p.failf("omit =review to clear the review flag here") {
+			if p.failTokenf(token, "omit =review to clear the review flag here") {
 				return
 			}
 			continue
 		}
-		if p.failf("=unreview is not available when capturing; a new task starts unflagged") {
+		if p.failTokenf(token, "=unreview is not available when capturing; a new task starts unflagged") {
 			return
 		}
 	}
@@ -205,14 +205,14 @@ func (p *quickCaptureParser) parseRetiredTaskTypeTokens(tokens []textgrammar.Tok
 	case "bug", "feature", "idea":
 		replacement = "use #" + strings.ToLower(token.Value)
 	}
-	p.failf("task type ^%s was removed (%s)", token.Value, replacement)
+	p.failTokenf(token, "task type ^%s was removed (%s)", token.Value, replacement)
 }
 
 func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		values, ok := textgrammar.ParsePriority(token.Value, false)
 		if !ok {
-			if p.failf("%s", textgrammar.InvalidPriorityError(token.Value)) {
+			if p.failTokenf(token, "%s", textgrammar.InvalidPriorityError(token.Value)) {
 				return
 			}
 			continue
@@ -246,7 +246,7 @@ func (p *quickCaptureParser) parseDueTokens(tokens []textgrammar.Token) {
 func (p *quickCaptureParser) parseDueToken(token textgrammar.Token, parse func(string) (time.Time, error)) {
 	date, err := parse(token.Value)
 	if err != nil {
-		p.failf("invalid date: %s", token.Value)
+		p.failTokenf(token, "invalid date: %s", token.Value)
 		return
 	}
 	p.result.DueDate = &date
@@ -262,12 +262,12 @@ func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
 	}
 	for _, token := range tokens {
 		if token.Value == "0" {
-			p.failf("%s%s is not available when capturing; a new task starts without a deferral", definition.Trigger, token.Value)
+			p.failTokenf(token, "%s%s is not available when capturing; a new task starts without a deferral", definition.Trigger, token.Value)
 			return
 		}
 		instant, err := util.ParseDeferInstant(token.Value)
 		if err != nil {
-			if p.failf("invalid defer: %s", token.Value) {
+			if p.failTokenf(token, "invalid defer: %s", token.Value) {
 				return
 			}
 			continue
@@ -285,7 +285,7 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		targetProject := resolveProject(token.Value, p.allProjects)
 		if targetProject == nil {
 			hint := projectSlugHint(token.Value, p.allProjects)
-			if p.failf("project not found: '%s' (%s)", token.Value, hint) {
+			if p.failTokenf(token, "project not found: '%s' (%s)", token.Value, hint) {
 				return
 			}
 			continue
@@ -301,14 +301,14 @@ func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		parent, err := resolveParent(token.Value, p.project)
 		if err != nil {
-			if p.failf("%s", err) {
+			if p.failTokenf(token, "%s", err) {
 				return
 			}
 			continue
 		}
 		switch parent {
 		case nil:
-			if p.failf("parent not found: '%s' (use >short-id or title prefix)", token.Value) {
+			if p.failTokenf(token, "parent not found: '%s' (use >short-id or title prefix)", token.Value) {
 				return
 			}
 		default:
@@ -326,19 +326,19 @@ func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
 		child, err := resolveChild(token.Value, p.project)
 		if err != nil {
-			if p.failf("%s", err) {
+			if p.failTokenf(token, "%s", err) {
 				return
 			}
 			continue
 		}
 		if child == nil {
-			if p.failf("child not found: '%s' (use <short-id or title prefix)", token.Value) {
+			if p.failTokenf(token, "child not found: '%s' (use <short-id or title prefix)", token.Value) {
 				return
 			}
 			continue
 		}
 		if p.result.ParentID != nil && *p.result.ParentID == child.ID {
-			if p.failf("#%d cannot be both the parent and a child", child.ShortID) {
+			if p.failTokenf(token, "#%d cannot be both the parent and a child", child.ShortID) {
 				return
 			}
 			continue
@@ -379,7 +379,7 @@ func (p *quickCaptureParser) parseDestinationTokens(tokens []textgrammar.Token) 
 		destination, ok := app.ParseCaptureDestination(token.Value)
 		if !ok {
 			err := app.InvalidCaptureDestinationError(token.Value)
-			p.failf("%s", err)
+			p.failTokenf(token, "%s", err)
 			return
 		}
 		p.result.Destination = destination

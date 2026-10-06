@@ -60,7 +60,7 @@ func TestLensPickerSpaceOpensManagementActionsOverThePicker(t *testing.T) {
 	if model.lenses.Picker() == nil {
 		t.Error("the picker must stay mounted beneath the action sheet")
 	}
-	want := []string{"Rename lens", "Replace from current view", "Delete lens"}
+	want := []string{"Rename lens", "Replace from current view", "Duplicate lens", "Delete lens"}
 	if got := sheetRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("sheet rows = %v, want %v", got, want)
 	}
@@ -246,7 +246,7 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 	model := lensPickerApp(t)
 	selectLensRow(t, model, "Stale")
 	pressLens(t, model, "space")
-	pressLens(t, model, "j", "j")
+	pressLens(t, model, "j", "j", "j")
 	pressLens(t, model, "enter") // Delete lens
 	if !model.operations.Confirm.IsActive() {
 		t.Fatal("Delete raised no confirmation")
@@ -280,7 +280,7 @@ func TestLensDeleteOfTheActiveLensRestoresTheBaseBeneathThePicker(t *testing.T) 
 	}
 	selectLensRow(t, model, "Waiting")
 	pressLens(t, model, "space")
-	pressLens(t, model, "j", "j")
+	pressLens(t, model, "j", "j", "j")
 	pressLens(t, model, "enter")
 	pressLens(t, model, "y")
 
@@ -302,7 +302,7 @@ func TestLensDeleteConfirmCancelReturnsToTheActionSheet(t *testing.T) {
 	model := lensPickerApp(t)
 	selectLensRow(t, model, "Stale")
 	pressLens(t, model, "space")
-	pressLens(t, model, "j", "j")
+	pressLens(t, model, "j", "j", "j")
 	pressLens(t, model, "enter")
 	pressLens(t, model, "n")
 

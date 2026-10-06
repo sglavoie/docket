@@ -59,11 +59,11 @@ func (c *Controller) ReplacementDetails(shell Shell, targets operation.ResolvedO
 // no act to be ordered ahead of. Create, replace, rename, and delete all still
 // commit first.
 //
-// The six operation IDs this file describes and registers are internal/tui/lens's,
+// The operation IDs this file describes and registers are internal/tui/lens's,
 // because the picker names them on its rows.
 
 // lensOperationDescriptors is the authoritative catalog of named-lens
-// operations. Four of them target one saved lens by its UUID; Create and Add
+// operations. Management actions target one saved lens by its UUID; Create and Add
 // built-in view resolve no target, because the record each writes does not
 // exist yet.
 func lensOperationDescriptors() []operation.OperationDescriptor {
@@ -118,6 +118,10 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 		},
 		operation.WithValueProvider(
 			targeted(lens.OperationLensRename, "Rename lens", "Give this lens a new name", operation.OperationRiskMutation),
+			operation.ValueProviderLensName,
+		),
+		operation.WithValueProvider(
+			targeted(lens.OperationLensDuplicate, "Duplicate lens", "Copy this saved view under a new name", operation.OperationRiskMutation),
 			operation.ValueProviderLensName,
 		),
 		// Replace and Delete overwrite or drop a saved record with no undo entry

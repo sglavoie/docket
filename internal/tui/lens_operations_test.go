@@ -35,6 +35,7 @@ func TestLensOperationsAreReachableOnlyFromTheLensPicker(t *testing.T) {
 		lens.OperationLensCreate,
 		lens.OperationLensAddTemplate,
 		lens.OperationLensRename,
+		lens.OperationLensDuplicate,
 		lens.OperationLensReplace,
 		lens.OperationLensDelete,
 	} {
@@ -60,6 +61,7 @@ func TestLensTargetedOperationsRefuseANonLensCursor(t *testing.T) {
 	for _, id := range []operation.OperationID{
 		lens.OperationLensApply,
 		lens.OperationLensRename,
+		lens.OperationLensDuplicate,
 		lens.OperationLensReplace,
 		lens.OperationLensDelete,
 	} {
@@ -88,6 +90,7 @@ func TestLensOperationsRejectAStaleLensID(t *testing.T) {
 	for _, id := range []operation.OperationID{
 		lens.OperationLensApply,
 		lens.OperationLensRename,
+		lens.OperationLensDuplicate,
 		lens.OperationLensReplace,
 		lens.OperationLensDelete,
 	} {
