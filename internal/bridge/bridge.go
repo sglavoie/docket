@@ -53,14 +53,18 @@ type op struct {
 
 // operations are the ops this engine build serves.
 var operations = map[string]op{
-	"workspace.open":     {opens: true, run: (*Bridge).workspaceOpen},
-	"workspace.status":   {run: (*Bridge).workspaceStatus},
-	"workspace.close":    {run: (*Bridge).workspaceClose},
-	"query.projects":     {run: (*Bridge).queryProjects},
-	"query.tasks":        {run: (*Bridge).queryTasks},
-	"query.task":         {run: (*Bridge).queryTask},
-	"command.capture":    {mutates: true, run: (*Bridge).commandCapture},
-	"command.transition": {mutates: true, run: (*Bridge).commandTransition},
+	"workspace.open":      {opens: true, run: (*Bridge).workspaceOpen},
+	"workspace.status":    {run: (*Bridge).workspaceStatus},
+	"workspace.close":     {run: (*Bridge).workspaceClose},
+	"query.projects":      {run: (*Bridge).queryProjects},
+	"query.tasks":         {run: (*Bridge).queryTasks},
+	"query.task":          {run: (*Bridge).queryTask},
+	"command.capture":     {mutates: true, run: (*Bridge).commandCapture},
+	"command.transition":  {mutates: true, run: (*Bridge).commandTransition},
+	"sync.status":         {run: (*Bridge).syncStatus},
+	"sync.export_pending": {run: (*Bridge).syncExportPending},
+	"sync.import":         {mutates: true, run: (*Bridge).syncImport},
+	"sync.acknowledge":    {mutates: true, run: (*Bridge).syncAcknowledge},
 }
 
 // reservedOperations are part of bridge version 1 but not yet served. They
@@ -71,7 +75,6 @@ var reservedOperations = map[string]bool{
 	"command.edit": true, "command.plan": true, "command.check_in": true,
 	"command.checklist": true, "command.comment": true, "command.note": true,
 	"command.attachment": true, "command.undo": true, "command.redo": true,
-	"sync.status": true, "sync.export_pending": true, "sync.import": true, "sync.acknowledge": true,
 	"conflict.list": true, "conflict.show": true, "conflict.resolve": true,
 }
 

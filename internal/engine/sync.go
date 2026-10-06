@@ -45,3 +45,9 @@ func syncHistory(dataDir, owner string, clock app.Clock) *synclog.History {
 	}
 	return history
 }
+
+// SyncCommits is the commit boundary the sync exchange publishes from and
+// imports through: the same service every mutation commits with, carrying the
+// device's sync history and merger. A runtime with no history (an unrooted
+// workspace) returns a service whose SyncHistory is nil.
+func (r *Runtime) SyncCommits() *storage.CommitService { return r.repo.svc }

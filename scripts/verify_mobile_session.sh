@@ -685,6 +685,101 @@ verify_session_7() {
 	note "session 7 verified"
 }
 
+# run_swift_suite LABEL PACKAGE_DIR REQUIRED_TEST...
+#
+# Runs one SwiftPM test suite and holds it to the same evidence rules as
+# run_go_suite: it must succeed, execute tests, skip none, fail none, and
+# report every REQUIRED_TEST (Class/method) as passed.
+run_swift_suite() {
+	local label=$1 package=$2
+	shift 2
+	local log="$work_dir/$label.log"
+	note "running $label: swift test in $package"
+	if ! (cd "$package" && swift test) >"$log" 2>&1; then
+		grep -E 'error:|failed' "$log" >&2 || tail -40 "$log" >&2
+		fail "$label: swift test failed"
+	fi
+	if grep -Eq "Test Case .* skipped|with [1-9][0-9]* tests? skipped" "$log"; then
+		grep -E 'skipped' "$log" >&2
+		fail "$label: a required test was skipped"
+	fi
+	grep -Eq 'Executed [1-9][0-9]* tests?, with 0 failures' "$log" || fail "$label: no tests executed, or some failed"
+	local test
+	for test in "$@"; do
+		grep -Fq -- "Test Case '-[${test%%/*} ${test##*/}]' passed" "$log" ||
+			fail "$label: missing required passing test $test"
+	done
+	note "$label: $(grep -Ec "Test Case '.*' passed" "$log") passing tests"
+}
+
+verify_session_8() {
+	[ "$(uname -s)" = Darwin ] || fail "session 8 runs the Apple transport suites and checks real iCloud evidence on macOS only"
+	require_files \
+		internal/syncexchange/exchange.go \
+		internal/syncexchange/import.go \
+		internal/bridge/sync_ops.go \
+		apple/TTSync/Package.swift \
+		apple/TTSync/Sources/TTSync/ExchangeTransport.swift \
+		apple/TTSync/Sources/TTSync/CoordinatedFolderProvider.swift \
+		apple/TTSync/Sources/TTSync/FolderAccess.swift \
+		apple/TTSync/Sources/TTSync/TransferState.swift \
+		apple/TTSync/Sources/TTSyncContract/ExchangeContract.swift \
+		apple/TTSync/Sources/tt-sync-helper/main.swift \
+		apple/TTSync/Tests/TTSyncTests/ExchangeContractTests.swift \
+		ios/TTMobileDeviceTests/ICloudExchangeDeviceTests.swift \
+		ios/scripts/record-icloud-exchange.sh \
+		ios/scripts/icloud-exchange-fingerprint.sh
+
+	# The engine half: the reserved sync ops are served, export lists every
+	# file, and an import applies only verified content and reports missing
+	# content as unavailable without touching the workspace.
+	run_go_suite bridge-sync ./internal/bridge/ \
+		'^(TestBridgeSyncExchangeImportsOnlyVerifiedContent|TestBridgeRefusesMalformedAndMisaddressedRequests)$' \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/manifest_without_content_waits \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/damaged_content_waits \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/verified_content_imports_once \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/misnamed_manifest_is_invalid \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/acknowledge_empties_the_outbox \
+		TestBridgeSyncExchangeImportsOnlyVerifiedContent/missing_attachment_is_unavailable_not_deleted \
+		TestBridgeRefusesMalformedAndMisaddressedRequests/reserved_op
+	run_go_suite exchange-paths ./internal/syncexchange/ '^(TestManifestPaths|TestRequiredBlobs)' \
+		TestManifestPathsRoundTripAndRefuseOtherNames \
+		TestRequiredBlobsNamesEveryBaseAndNewDigestOnce
+
+	# The Apple transport against the fake iCloud provider and a real
+	# coordinated folder, each device a real bridgehost engine.
+	local bridgehost="$work_dir/bridgehost"
+	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
+	local class=TTSyncTests.ExchangeContractTests
+	TT_BRIDGEHOST="$bridgehost" run_swift_suite transport apple/TTSync \
+		"$class/testContractRoundTripOverFakeICloud" \
+		"$class/testAccountUnavailabilityKeepsLocalWorkAndQueues" \
+		"$class/testExpiredFolderAccessIsRenewedOrReported" \
+		"$class/testFailedTransfersRetryWithBackoff" \
+		"$class/testRestartResumesTheDurableUploadQueue" \
+		"$class/testMissingContentIsUnavailableAndNeverDeletes" \
+		"$class/testForeignExchangeIsRefused" \
+		"$class/testContractRoundTripOverACoordinatedFolder" \
+		"$class/testBookmarkAccessFollowsAMoveAndReportsLoss" \
+		"$class/testCoordinatedListingReportsNestedFilesAndNothingForAMissingFolder"
+
+	# The same contract over real iCloud Drive between this Mac and a physical
+	# iPhone, recorded by ios/scripts/record-icloud-exchange.sh and held to the
+	# builds the current tree produces.
+	local source_fp bridge_fp bridgehost_sha
+	source_fp=$(ios/scripts/icloud-exchange-fingerprint.sh) || fail "fingerprinting the Swift sources failed"
+	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
+	bridgehost_sha=$(shasum -a 256 "$bridgehost" | cut -d' ' -f1)
+	require_files docs/mobile/evidence/session-8-icloud-exchange.json
+	TT_ICLOUD_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" TT_BRIDGEHOST_SHA256="$bridgehost_sha" \
+		run_go_suite icloud-evidence ./internal/syncexchange/ '^TestRecordedICloudExchangeEvidence$' \
+		TestRecordedICloudExchangeEvidence
+	note "real iCloud exchange: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-8-icloud-exchange.json | head -1)"
+
+	note "session 8 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -694,6 +789,7 @@ case "$session" in
 5) verify_session_5 ;;
 6) verify_session_6 ;;
 7) verify_session_7 ;;
+8) verify_session_8 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

@@ -12,19 +12,27 @@ final class WorkspaceModel {
     private(set) var isOpen = false
 
     private let engine = TTEngine()
+    let sync = SyncModel()
+
+    /// The engine serves one workspace per process, so a hosted test that
+    /// opens its own must not race the app for it.
+    private static var isHostingTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
 
     func start() async {
+        guard !Self.isHostingTests else { return }
         do {
             let support = try FileManager.default.url(
                 for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
             )
-            try await engine.open(
-                dataDirectory: support.appendingPathComponent("workspace", isDirectory: true),
-                runtimeDirectory: support.appendingPathComponent("device", isDirectory: true),
-                deviceID: Self.deviceID(),
-                createIfMissing: true
-            )
+            let data = support.appendingPathComponent("workspace", isDirectory: true)
+            let runtime = support.appendingPathComponent("device", isDirectory: true)
+            let device = Self.deviceID()
+            try await engine.open(dataDirectory: data, runtimeDirectory: runtime, deviceID: device, createIfMissing: true)
             isOpen = true
+            sync.attach(dataDirectory: data, runtimeDirectory: runtime, deviceID: device)
+            sync.exchange()
             await reload()
         } catch {
             failure = String(describing: error)
@@ -43,9 +51,16 @@ final class WorkspaceModel {
         do {
             try await mutation()
             failure = nil
+            sync.exchange()
         } catch {
             failure = String(describing: error)
         }
+        await reload()
+    }
+
+    /// Exchanges, then rereads what an import may have changed.
+    func refresh() async {
+        sync.exchange()
         await reload()
     }
 

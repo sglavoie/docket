@@ -150,9 +150,19 @@ from one the protocol never had. The current build serves these:
 | `query.task` | `{task}` | `{task, project, revision}` |
 | `command.capture` | `{title, project_id, destination, priority, tags}`; only `title` is required | `{task, committed}` |
 | `command.transition` | `{task, state}` | `{task, committed}` |
+| `sync.status` | none | `{device_id, indexed, heads, outbox: [{txn_id, device_seq}], received, conflicts}` |
+| `sync.export_pending` | none | `{device_id, pending: [{txn_id, device_seq, manifest, blobs}], external}`; each file is `{path, source, digest, size}` |
+| `sync.import` | `{inbox_dir}`, absolute | `{results: [{path, txn_id, device_id, device_seq, outcome, reason, local_txn_id, missing, unavailable}]}` |
+| `sync.acknowledge` | `{txn_ids}` | `{acknowledged}` |
 
 `command.capture` takes a literal title in this build: a sigil in it stays
 text. An absent `project_id` is the protected Unfiled project.
+
+`sync.export_pending` first records any edit made outside a commit (see
+[External changes](sync-envelope.md#external-changes)), so the list includes
+it. `sync.status` reports the engine's side only. Whether the exchange is
+reachable, and when it last succeeded, is the transport's to report (see
+[Apple transport](sync-envelope.md#apple-transport)).
 
 `committed` is `{transaction_id, projects, domains}`: the project revisions the
 commit produced and every domain artifact whose raw revision moved.

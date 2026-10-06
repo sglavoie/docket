@@ -12,6 +12,8 @@ it runs under `just ci`.
 | `TTEngine/` | Swift package: the bridge models and the `TTEngine` actor |
 | `TTEngine/Frameworks/TTBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
 | `TTMobile/` | the app target |
+| `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
+| `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
 | `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
 | `scripts/` | the bridge build, project generation, and the simulator suite |
 
@@ -43,3 +45,25 @@ fixture into `OUTPUT_DIR`, then opens it, captures and completes a task, and
 reopens it on a simulator. `TT_IOS_SIMULATOR` picks the simulator by UDID.
 `bash scripts/verify_mobile_session.sh 3` runs that suite and then checks the
 resulting Markdown through Go.
+
+## Sync exchange
+
+The app exchanges through a folder the user picks with **Sync > Choose
+Exchange Folder…**. It exchanges at launch, when it returns to the foreground,
+after every commit, and on pull to refresh. The transport is
+[`apple/TTSync`](../apple/TTSync/Package.swift). Its contract suite runs on the
+Mac against the real engine:
+
+```sh
+go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
+(cd apple/TTSync && TT_BRIDGEHOST=/tmp/bridgehost swift test)
+```
+
+`ios/scripts/record-icloud-exchange.sh` records the same contract between this
+Mac and a physical iPhone over iCloud Drive. First install the app on the
+iPhone once, open it, and choose `iCloud Drive/tt-sync-evidence` as its exchange
+folder. Then run the script with `TT_IOS_DEVELOPMENT_TEAM` set to your signing
+team and the iPhone unlocked. Each run uses its own disposable workspace and its
+own `runs/<id>` folder. The script rewrites
+`docs/mobile/evidence/session-8-icloud-exchange.json`, which
+`bash scripts/verify_mobile_session.sh 8` holds to the current sources.

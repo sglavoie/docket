@@ -341,6 +341,78 @@ and the conflict closes everywhere. Different resolutions compete again as one
 new conflict whose candidates include the two resolutions, and any other
 concurrent writer of the key.
 
+## Apple transport
+
+The engine never touches the exchange folder. `internal/syncexchange` is its
+half of the exchange: it names where each manifest and blob lives, lists the
+outbox with every file a transport must copy (`sync.export_pending`), and
+imports what a transport staged into a local inbox (`sync.import`). An import
+applies a manifest only after every blob it names, both the replaced bytes and
+the new ones, is present and matches its digest. Then it goes through the
+checked commit boundary, which applies it and writes its receipt in one local
+transaction. Manifests are retried in sequence order until a pass applies
+nothing, so a staged batch may arrive in any order. Each result is `imported`,
+`known`, `incomplete`, `held`, `invalid`, `foreign`, or `failed`. An
+incomplete result lists the missing digests and the workspace paths whose new
+content they are, so a status surface can show them as unavailable. The local
+files stay as they are.
+
+`apple/TTSync` is the transport on Apple platforms. The iPhone app and the
+macOS helper (`tt-sync-helper`, which drives a desktop engine running as
+`mobile/bridgehost`) share it:
+
+- **Coordinated access.** `CoordinatedFolderProvider` reads and writes through
+  `NSFileCoordinator`, one coordinated read per directory it lists. It reports
+  iCloud placeholders as not downloaded and never reads through them. It asks
+  for their content with `startDownloadingUbiquitousItem` and does not wait.
+- **Folder access.** The user picks the folder with the document picker.
+  `BookmarkFolderAccess` keeps it as a bookmark, enters its security scope,
+  and rewrites a stale bookmark while it still resolves. If a bookmark no
+  longer resolves, the transport reports `needsFolderAccess` and the user
+  picks the folder again. An expired grant is renewed once per pass before
+  that.
+- **Account.** A ubiquitous folder with no iCloud identity reports
+  `accountUnavailable`. Local commits continue, and the queues wait.
+- **Uploads.** All blobs are written first and the manifest last. Each file is
+  read back and verified before the engine is told the transaction was
+  published (`sync.acknowledge`). An intact copy already in the exchange is
+  not written again. A failure retries with exponential backoff, and later
+  transactions wait behind it.
+- **Downloads.** The transport lists `txns/` and queues every manifest beyond
+  what the engine has received. It requests what is still a placeholder,
+  copies each blob into the inbox only when its digest matches, and stages
+  the manifest last, once nothing it names is missing. A short read from a
+  transfer still in progress never counts as content.
+- **Durable queues.** `transport.json` under the runtime directory records each
+  upload's verified files and each download's staged blobs, attempts, and
+  backoff. It is rewritten atomically after every step, so a restart resumes
+  where the previous pass stopped.
+- **Status.** Each pass reports separately: the exchange condition, what it
+  published and imported, outstanding uploads and downloads, unavailable
+  content, held transactions, and the last successful exchange. A local write
+  never counts as a delivery.
+
+Nothing is ever deleted from the exchange or from the workspace because a file
+is missing. A folder whose `workspace.json` names another workspace is refused
+(`foreignExchange`).
+
+`TTSyncContract` is the two-device exchange contract. The originator commits a
+task and an attachment and publishes them. The responder imports both,
+verified, then commits and publishes its own pair. The originator then imports
+those, and both end with the same workspace bytes. `apple/TTSync`'s suite runs
+it against a fake iCloud with upload and download lag, placeholders,
+truncated transfers, account loss, expired and unrenewable grants, failing
+writes, a restart mid-upload, vanished exchange files, and a foreign exchange.
+It runs the same contract over a real coordinated folder, with every device a
+real `bridgehost` engine. `ios/scripts/record-icloud-exchange.sh` runs it for
+real: the Mac is the originator and a physical iPhone, as the hosted
+`TTMobileDeviceTests` suite, is the responder, with iCloud Drive between them.
+The run uses a disposable copy of the representative fixture, seeded through
+the run's own folder. It writes `docs/mobile/evidence/session-8-icloud-exchange.json`,
+which `scripts/verify_mobile_session.sh 8` checks against the Swift source
+fingerprint, the bridge fingerprint, and the reproducible `bridgehost` hash of
+the current tree.
+
 ## Fault testing
 
 `internal/storage/sync_fault_harness_test.go` simulates devices that edit

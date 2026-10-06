@@ -12,6 +12,9 @@ packages:
   # The typed engine adapter and the gomobile XCFramework it wraps.
   TTEngine:
     path: TTEngine
+  # The exchange transport shared with the macOS helper.
+  TTSync:
+    path: ../apple/TTSync
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -39,3 +42,28 @@ targets:
     dependencies:
       - package: TTEngine
         product: TTEngine
+      - package: TTSync
+        product: TTSync
+    scheme:
+      testTargets:
+        - TTMobileDeviceTests
+  # Hosted in the app, so it runs with the app's container and the exchange
+  # folder bookmark the document picker left there. Physical iPhone only:
+  # ios/scripts/record-icloud-exchange.sh drives it.
+  TTMobileDeviceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TTMobileDeviceTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.devicetests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/tt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tt
+        BUNDLE_LOADER: $(TEST_HOST)
+    dependencies:
+      - target: TTMobile
+      - package: TTEngine
+        product: TTEngine
+      - package: TTSync
+        product: TTSyncContract

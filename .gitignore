@@ -36,3 +36,8 @@ ios/.cache/
 ios/TTEngine/Frameworks/
 ios/TTEngine/.build/
 ios/TTEngine/.swiftpm/
+
+# The Apple sync transport package (apple/TTSync) keeps SwiftPM state beside
+# itself.
+apple/TTSync/.build/
+apple/TTSync/.swiftpm/

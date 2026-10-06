@@ -257,7 +257,7 @@ func TestBridgeRefusesMalformedAndMisaddressedRequests(t *testing.T) {
 		}
 	})
 	t.Run("reserved_op", func(t *testing.T) {
-		refusal := h.refused(h.call("sync.status", nil), CodeUnknownOp)
+		refusal := h.refused(h.call("conflict.list", nil), CodeUnknownOp)
 		if refusal.Details["reserved"] != true {
 			t.Fatalf("a contract op this build lacks says so: %+v", refusal)
 		}
