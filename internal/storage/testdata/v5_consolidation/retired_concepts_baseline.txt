@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 447
+# Total rows: 448
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -116,7 +116,7 @@ dependency	internal/config/v15_migration_activation.go	createPreDependenciesV15S
 dependency	internal/config/v15_migration_activation.go	preDependenciesV15SnapshotPrefix	2
 dependency	internal/config/v15_migration_activation.go	v15DependenciesAuditReport	2
 dependency	internal/engine/repository.go	RuntimeDependencies	2
-dependency	internal/engine/runtime.go	RuntimeDependencies	3
+dependency	internal/engine/runtime.go	RuntimeDependencies	2
 dependency	internal/models/derived_property.go	Dependencies	1
 dependency	internal/models/query_admit.go	Dependencies	2
 dependency	internal/models/query_admit.go	QueryFieldDependency	1
@@ -429,6 +429,7 @@ dependency	internal/tui/valuepicker/operation_task_reference_picker.go	Dependenc
 dependency	internal/tui/valuepicker/operation_task_reference_picker.go	DependencyPatch	5
 dependency	internal/tui/valuepicker/operation_task_reference_picker.go	DependencyRemovalCandidates	1
 recurrence	internal/config/pre_consolidation_v6_snapshot_audit.go	recurrenceCount	3
+recurrence	internal/engine/runtime.go	requireCurrentSchema	2
 recurrence	internal/storage/format/legacy_v4_metadata_decode.go	V5TaskRecurrence	2
 recurrence	internal/storage/format/legacy_v4_metadata_decode.go	convertLegacyV4Recurrence	1
 recurrence	internal/storage/format/legacy_v4_metadata_decode.go	recurrence	17

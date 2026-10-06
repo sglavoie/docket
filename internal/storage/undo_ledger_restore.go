@@ -112,7 +112,7 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 			if prepareErr != nil {
 				return prepareErr
 			}
-			if commitErr := journal.Commit(manifest); commitErr != nil {
+			if commitErr := commitJournal(journal, manifest); commitErr != nil {
 				return fmt.Errorf("committing %s transaction: %w", label, commitErr)
 			}
 			l.gcBlobs(lf)

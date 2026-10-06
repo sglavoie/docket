@@ -105,7 +105,67 @@ The local commit and its outbound record are written together. The outbound
 manifest is staged inside the same `.tt/transactions` journal entry that
 publishes the commit, so after a crash recovery either both exist or neither
 does. Importing works the same way: applying a manifest and recording its
-receipt happen in one local transaction. Session 4 implements this.
+receipt happen in one local transaction.
+
+## Local sync history
+
+Each device keeps its own history under `<data>/.tt/sync/`. It is never
+exchanged as files; only the manifests and blobs it holds are published.
+`internal/synclog` plans every change to it as journal operations, and
+`storage.CommitService` stages them in the manifest of the transaction they
+describe, so nothing here is ever written on its own.
+
+```text
+.tt/sync/
+├── blobs/sha256/<aa>/<hash>                       # retained bytes, base and new
+├── index/<aa>/<hash>.json                         # txn_id → device, seq, stored record
+└── devices/<device-id>/
+    ├── device.json                                # identity: device_id, workspace_id
+    ├── state.json                                 # heads, next_seq, outbox, received, tracked
+    ├── txns/<seq>-<hash>.json                     # immutable outgoing manifests
+    └── incoming/<author>/<seq>-<hash>.json        # immutable receipts, each with its manifest
+```
+
+- **Recording.** Every `CommitService` entry point, and the ledger's undo and
+  redo, records when a history is attached; the engine attaches one to every
+  rooted runtime. User commits are `kind: user`, undo and redo are `undo` and
+  `redo`, and `CommitProjectRepair` and the planned maintenance commits are
+  `repair`. A transaction that changes no synced bytes records nothing.
+- **Effects.** Each changed synced file is one effect. A rewrite of identical
+  bytes is not a change. Directories are not artifacts: a directory move
+  becomes one `move` per file it carries, and removing a directory is
+  published through the deletion of each file in it. Device-local paths — the
+  journal, the ledger, this history, `.tt/backups/`, `.tt/conflicts/`, `*.bak`,
+  `*.lock`, and staging files — are never effects. A commit whose change the
+  history cannot classify, or whose project directory no catalog names, is
+  refused whole rather than published incomplete.
+- **Blobs.** The bytes behind every `base_blob` and `blob` are retained, so a
+  peer always has the merge base an effect names.
+- **Ancestry.** `heads` are the transactions nothing known descends from. A
+  local transaction's parents are the current heads and it becomes the only
+  head; an applied incoming transaction replaces its own parents among the
+  heads, so concurrent histories leave several heads until the next local
+  transaction names them all.
+- **Outgoing.** `outbox` lists recorded transactions until the transport
+  confirms publication (`CommitService.CommitSyncPublished`); the records
+  themselves are retained.
+- **Incoming.** `CommitService.CommitIncoming` applies a manifest only as a
+  fast-forward: every effect's base must be this device's current bytes. It
+  refuses, applying and acknowledging nothing, a manifest that is malformed or
+  whose `txn_id` does not match its content, addressed to another workspace,
+  authored here, already received, held by capability or schema, missing an
+  earlier `device_seq`, a parent, or a blob, or concurrent with a local change
+  to the same path. `received` holds each remote device's highest applied
+  sequence number.
+- **Tracking.** `tracked` holds each synced path's digest as of the last
+  recorded or applied transaction: the last indexed revision that external-edit
+  detection compares against.
+
+Checked domain saves outside the journal (`DomainCoordinator.CommitCatalog`,
+`CommitPlanning`, `CommitLensDefinitions`) are not recorded at the commit
+boundary. Their bytes differ from `tracked` afterwards, which is exactly what
+the external-change observation compares, so they are imported as changes by
+that observation rather than by a second hook.
 
 ## Capability negotiation
 
@@ -175,6 +235,7 @@ attachments, and multi-ancestor histories.
   resolvable on either device, so session 5 has to decide between two options:
   sync conflicts as records, or let each device re-derive them from the same
   manifests.
-- `lenses.json` is committed outside the journal (`DomainCoordinator.CommitLensDefinitions`
-  uses the checked domain save, not `CommitService`). Session 4 has to route it
-  through the commit boundary or give it its own outbound hook.
+- `lenses.json`, and catalog or planning saves made through the checked domain
+  store, are committed outside the journal. They are observed against
+  `tracked` rather than hooked (see [Local sync history](#local-sync-history));
+  the observation itself belongs to the external-edit work.

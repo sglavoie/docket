@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
@@ -38,6 +39,10 @@ type CommitService struct {
 	// home, so two machines sharing a synced workspace never claim each other's
 	// live transactions.
 	machineID string
+	// history, when non-nil, records every committed transaction's synced
+	// effects as an immutable outgoing sync record staged in the same journal
+	// manifest. See WithSyncHistory.
+	history *synclog.History
 }
 
 // OnMachine binds this service to an explicit machine identity and returns the
@@ -327,9 +332,9 @@ func (s *CommitService) CommitPlannedOpsWithArtifacts(
 			allOps = append(allOps, artifactOps...)
 			allOps = append(allOps, ops...)
 
-			manifest, prepareErr := journal.Prepare(allOps)
+			manifest, _, prepareErr := s.prepareTransaction(journal, allOps, nil, synclog.KindRepair)
 			if prepareErr != nil {
-				return fmt.Errorf("preparing transaction: %w", prepareErr)
+				return prepareErr
 			}
 			for _, op := range allOps {
 				if op.Kind != transaction.OpMove {
@@ -339,7 +344,7 @@ func (s *CommitService) CommitPlannedOpsWithArtifacts(
 					return fmt.Errorf("creating commit target directory: %w", err)
 				}
 			}
-			if err := journal.Commit(manifest); err != nil {
+			if err := commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			return nil
@@ -405,7 +410,7 @@ func (s *CommitService) commitOps(request OpsCommitRequest, recordUndo bool) (st
 					Artifacts:  ledgerArtifacts,
 				}
 			}
-			manifest, ledgerPlan, err := s.prepareTransaction(journal, allOps, ledgerRecord)
+			manifest, ledgerPlan, err := s.prepareTransaction(journal, allOps, ledgerRecord, synclog.KindUser)
 			if err != nil {
 				return err
 			}
@@ -424,7 +429,7 @@ func (s *CommitService) commitOps(request OpsCommitRequest, recordUndo bool) (st
 					// Prepare or an earlier move provides write parents. Deletes need none.
 				}
 			}
-			if err := journal.Commit(manifest); err != nil {
+			if err := commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			if ledgerPlan != nil {

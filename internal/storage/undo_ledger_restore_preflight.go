@@ -7,6 +7,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
+
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
@@ -36,10 +39,29 @@ func (l *WorkspaceLedger) prepareRestoreTransaction(
 	if err != nil {
 		return nil, err
 	}
-	ops = append(ops, transaction.Op{
+	ledgerOp := transaction.Op{
 		Kind: transaction.OpWrite, Target: l.ledgerPath(), Data: ledgerData, Mode: FilePermissions,
-	})
-	manifest, err := journal.Prepare(ops)
+	}
+	if l.history == nil {
+		manifest, prepareErr := journal.Prepare(append(ops, ledgerOp))
+		if prepareErr != nil {
+			return nil, fmt.Errorf("preparing ledger restore transaction: %w", prepareErr)
+		}
+		return manifest, nil
+	}
+	// An undo or redo is a new forward change to every other device, so it is
+	// recorded as one, in the same manifest as the bytes it restores.
+	kind := synclog.KindUndo
+	if redo {
+		kind = synclog.KindRedo
+	}
+	txnID := uuid.NewString()
+	syncPlan, err := l.history.PlanLocal(kind, txnID, ops)
+	if err != nil {
+		return nil, fmt.Errorf("preparing sync history for ledger restore: %w", err)
+	}
+	ops = append(ops, syncPlan.Ops...)
+	manifest, err := journal.PrepareWithID(txnID, append(ops, ledgerOp))
 	if err != nil {
 		return nil, fmt.Errorf("preparing ledger restore transaction: %w", err)
 	}

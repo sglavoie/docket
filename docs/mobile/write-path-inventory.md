@@ -32,7 +32,9 @@ atomic-write primitives).
 
 **Sync integration point:** the outbound manifest is staged in the same journal
 entry that publishes the commit, so it is committed or rolled back with the
-commit (session 4). This one hook covers every row in this class. The rows
+commit. `CommitService.prepareTransaction` is that one hook for every commit
+path, and the ledger's restore stages the same record for undo and redo; see
+[Local sync history](sync-envelope.md#local-sync-history). The rows
 outside `CommitService`, namely `SaveProject`, `CreateProjectDir`,
 `deleteProjectDir`, `writeFileAtomic`, and the `engine.Repository` fallback, are
 reached only through the test-double repository. The audited raw-save
@@ -55,11 +57,10 @@ sidecars. Catalog and planning commits reach disk here when a caller uses
 outside any workspace transaction and outside the undo ledger. Machine state
 also reaches disk here, but it stays local.
 
-**Sync integration point:** each synced domain kind (`catalog`, `planning`,
-`lenses`) records an outbound effect from the checked save once that save has
-succeeded. Alternatively, session 4 can route these commits through
-`CommitArtifacts` so they share the journal hook. `.bak` sidecars and
-`machine.json` are never exchanged.
+**Sync integration point:** observation. A checked save is not recorded when
+it lands; its bytes then differ from the history's `tracked` digest, and the
+external-change observation imports that difference as a change. `.bak`
+sidecars and `machine.json` are never exchanged.
 
 ### `ledger-restore`
 
@@ -128,6 +129,8 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `CommitService.CommitArtifacts` | commit-journal | Config-only artifact commit with no undo entry. It still syncs. |
 | `CommitService.CommitPlannedArtifacts` | commit-journal | Maintenance snapshot. It syncs only if it touches synced artifacts. Migration snapshots under `.tt/backups/` never sync. |
 | `CommitService.CommitProjectRepair` | commit-journal | `doctor --fix` is published as a `kind: repair` manifest. |
+| `CommitService.CommitIncoming` | commit-journal | Applies another device's manifest and records its receipt in one journal entry. Never produces an outgoing record. |
+| `CommitService.CommitSyncPublished` | commit-journal | Drops published transactions from the outbox through the journal. Never produces an outgoing record. |
 | `CommitService.RecoverWorkspace` | commit-journal | Recovery completes or rolls back a journal entry, and its outbound record with it. |
 | `WorkspaceLedger.Undo` | commit-journal | A new forward `kind: undo` manifest. |
 | `WorkspaceLedger.UndoWithEntry` | commit-journal | As `Undo`. |

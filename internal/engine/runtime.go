@@ -110,6 +110,7 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
 	repo := NewRepository(dataDir, deps, ledger, owner)
+	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock))
 	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
 	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock}
 }

@@ -376,11 +376,99 @@ verify_session_3() {
 	note "session 3 verified"
 }
 
+# require_crash_prefixes LABEL TEST MIN requires TEST to have run as passing
+# crash-injection subtests at no fewer than MIN distinct points, including the
+# undurable manifest (-1), the prepared manifest (00), and a first applied
+# operation (01), so a fixture that quietly stopped injecting is missing
+# evidence.
+require_crash_prefixes() {
+	local label=$1 test=$2 min=$3
+	local prefix count
+	for prefix in -1 00 01; do
+		require_passed "$label" "$test/crash_after_$prefix"
+	done
+	count=$(grep -Fc -- "--- PASS: $test/crash_after_" "$work_dir/$label.log" || true)
+	[ "$count" -ge "$min" ] || fail "$label: $test ran $count crash points, want at least $min"
+	note "$label: $test survived $count crash points"
+}
+
+verify_session_4() {
+	require_files \
+		internal/synclog/manifest.go \
+		internal/synclog/history.go \
+		internal/synclog/plan_local.go \
+		internal/synclog/plan_incoming.go \
+		internal/storage/commit_sync.go \
+		internal/storage/sync_history_test.go \
+		internal/engine/sync.go
+
+	# The record format: content addressing, explicit effects, and which paths
+	# are exchanged at all.
+	run_go_suite synclog ./internal/synclog/ '^TestSync' \
+		TestSyncManifestContentAddressIsCanonical \
+		TestSyncManifestRefusesIncompleteEffects \
+		TestSyncClassifyPaths
+
+	# The commit boundary: every entry point stopped at every point of its
+	# journal transaction lands the edit and its outgoing record together or not
+	# at all; incoming transactions are applied and acknowledged together; every
+	# refusal acknowledges nothing; ancestry and outbox tracking hold.
+	local mutations=(commit_multi artifact_transaction config_artifacts ops_transaction_rename undo)
+	local refusals=(held_capability held_schema sequence_gap missing_parent missing_blob concurrent_local_edit foreign_workspace tampered own_transaction)
+	local required=(
+		TestSyncLocalCommitAndOutboxAreAtomic
+		TestSyncLocalRecordsNameProjectsAndAncestry
+		TestSyncLocalCommitRefusesUnclassifiedPaths
+		TestSyncPublicationConfirmationDrainsTheOutbox
+		TestSyncIncomingApplyAndReceiptAreAtomic
+		TestSyncIncomingRefusalsAcknowledgeNothing
+		TestSyncIncomingKeepsCausalOrderAndConcurrentHeads
+	)
+	local name
+	for name in "${mutations[@]}"; do
+		required+=("TestSyncLocalCommitAndOutboxAreAtomic/$name")
+	done
+	for name in "${refusals[@]}"; do
+		required+=("TestSyncIncomingRefusalsAcknowledgeNothing/$name")
+	done
+	run_go_suite storage-sync ./internal/storage/ '^TestSync' "${required[@]}"
+	for name in "${mutations[@]}"; do
+		require_crash_prefixes storage-sync "TestSyncLocalCommitAndOutboxAreAtomic/$name" 6
+	done
+	require_crash_prefixes storage-sync TestSyncIncomingApplyAndReceiptAreAtomic 6
+
+	# The runtime records its own mutations and a second device applies them.
+	run_go_suite engine-sync ./internal/engine/ '^TestRuntimeRecordsSyncHistoryAndAppliesItElsewhere$' \
+		TestRuntimeRecordsSyncHistoryAndAppliesItElsewhere
+
+	# The journal and ledger guarantees the history rides on, unchanged.
+	run_go_suite journal ./internal/transaction/ '^TestRecover_' \
+		TestRecover_RollsForwardPreparedWrite \
+		TestRecover_RollsForwardMoveAndDelete \
+		TestRecover_SweepsOrphanStaging \
+		TestRecover_ResumesAfterMidApplyCrash
+	run_go_suite storage-ledger ./internal/storage/ \
+		'^(TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation|TestUndoConcurrentCommitSerializesLedgerRestore|TestCommitResultTransactionIDSharedByCommitMulti|TestMutationCallsiteInventoryBaseline|TestRawProjectSaveCallsitesAreAllowlisted)$' \
+		TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation \
+		TestUndoConcurrentCommitSerializesLedgerRestore \
+		TestCommitResultTransactionIDSharedByCommitMulti \
+		TestMutationCallsiteInventoryBaseline \
+		TestRawProjectSaveCallsitesAreAllowlisted
+	run_go_suite compat-inventory ./internal/compat/ \
+		'^(TestCompatWritePathInventoryCoversEveryDurableWrite|TestCompatCommitEntryPointsAreDocumented|TestCompatContractDocumentsAreWellFormed)$' \
+		TestCompatWritePathInventoryCoversEveryDurableWrite \
+		TestCompatCommitEntryPointsAreDocumented \
+		TestCompatContractDocumentsAreWellFormed
+
+	note "session 4 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
 3) verify_session_3 ;;
+4) verify_session_4 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

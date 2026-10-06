@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
@@ -185,6 +186,10 @@ type WorkspaceLedger struct {
 	// transactionsDir, so an undo runs as the same machine as the commit it
 	// reverses. Empty means the running process's machine.
 	machineID string
+	// history, when non-nil, records each undo and redo as a new outgoing sync
+	// transaction staged in the restore's own journal manifest. The commit
+	// service that attaches the history propagates it here.
+	history *synclog.History
 }
 
 // WorkspaceLedgerValidation summarizes a successful read-only validation.

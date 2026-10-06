@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
@@ -17,7 +18,7 @@ import (
 // empty set makes the entry global-only, while any listed project can select and
 // reverse the entire grouped transaction through ProjectScope.
 func (s *CommitService) CommitArtifactTransaction(request ArtifactCommitRequest) (string, error) {
-	return s.commitArtifacts(request, true)
+	return s.commitArtifacts(request, true, synclog.KindUser)
 }
 
 // CommitArtifacts commits configuration-domain artifacts with no accompanying
@@ -26,7 +27,7 @@ func (s *CommitService) CommitArtifactTransaction(request ArtifactCommitRequest)
 // intentionally records no workspace-ledger entry so existing configuration
 // saves do not become user-visible undo steps.
 func (s *CommitService) CommitArtifacts(artifacts []ArtifactChange) (string, error) {
-	return s.commitArtifacts(ArtifactCommitRequest{Artifacts: artifacts}, false)
+	return s.commitArtifacts(ArtifactCommitRequest{Artifacts: artifacts}, false, synclog.KindUser)
 }
 
 // CommitPlannedArtifacts builds and commits an artifact-only maintenance
@@ -75,16 +76,16 @@ func (s *CommitService) CommitPlannedArtifacts(plan func() ([]ArtifactChange, er
 			if expandErr != nil {
 				return expandErr
 			}
-			manifest, prepareErr := journal.Prepare(ops)
+			manifest, _, prepareErr := s.prepareTransaction(journal, ops, nil, synclog.KindRepair)
 			if prepareErr != nil {
-				return fmt.Errorf("preparing transaction: %w", prepareErr)
+				return prepareErr
 			}
 			for _, dir := range dirsToCreate {
 				if err := os.MkdirAll(dir, DirPermissions); err != nil {
 					return fmt.Errorf("creating commit target directory: %w", err)
 				}
 			}
-			if err := journal.Commit(manifest); err != nil {
+			if err := commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			txnID = manifest.ID
@@ -123,27 +124,33 @@ func (s *CommitService) CommitProjectRepair(project *models.Project, expectedRaw
 	if err != nil {
 		return "", fmt.Errorf("rendering project repair for %s: %w", project.Name, err)
 	}
-	return s.CommitArtifacts([]ArtifactChange{{
+	return s.commitArtifacts(ArtifactCommitRequest{Artifacts: []ArtifactChange{{
 		Path:             tasksFilePath(project.Path),
 		Data:             []byte(content),
 		Mode:             FilePermissions,
 		ExpectedRevision: &expectedRawRevision,
-	}})
+	}}}, false, synclog.KindRepair)
 }
 
 // prepareTransaction stages one journal manifest and, when record is non-nil and
 // an enabled workspace ledger is configured, includes the complete ledger append
-// in that same manifest. A disabled ledger yields a user-operations-only manifest.
-// The transaction ID is allocated before ledger planning so the entry and manifest
-// share an identity. User operations stay first; retained blobs and ledger.json
-// follow, with ledger.json last by prepareRecord's contract. A ledger planning
-// failure returns before Journal.Prepare stages any operation.
+// in that same manifest. When the service carries a sync history, the outgoing
+// record of ops — its blobs, immutable manifest, index entry, and tracking
+// state — is staged in that manifest too, so the commit and its publication
+// record recover together. A service with neither yields a user-operations-only
+// manifest. The transaction ID is allocated before either is planned so every
+// record cites the journal transaction that carries it. User operations stay
+// first, sync history follows, and the ledger's blobs and ledger.json come
+// last, with ledger.json last by prepareRecord's contract. A planning failure
+// returns before Journal.Prepare stages any operation.
 func (s *CommitService) prepareTransaction(
 	journal *transaction.Journal,
 	ops []transaction.Op,
 	record *LedgerRecord,
+	kind synclog.Kind,
 ) (*transaction.Manifest, *preparedLedgerRecord, error) {
-	if record == nil || s.ledger == nil {
+	recordLedger := record != nil && s.ledger != nil
+	if !recordLedger && s.history == nil {
 		manifest, err := journal.Prepare(ops)
 		if err != nil {
 			return nil, nil, fmt.Errorf("preparing transaction: %w", err)
@@ -152,23 +159,27 @@ func (s *CommitService) prepareTransaction(
 	}
 
 	txnID := uuid.NewString()
-	ledgerRecord := *record
-	ledgerRecord.TransactionID = txnID
-	ledgerPlan, err := s.ledger.prepareRecord(ledgerRecord)
-	if err != nil {
-		return nil, nil, fmt.Errorf("preparing undo ledger entry: %w", err)
-	}
-	if ledgerPlan == nil {
-		manifest, prepareErr := journal.PrepareWithID(txnID, ops)
-		if prepareErr != nil {
-			return nil, nil, fmt.Errorf("preparing transaction: %w", prepareErr)
+	combinedOps := append([]transaction.Op{}, ops...)
+	if s.history != nil {
+		syncPlan, err := s.history.PlanLocal(kind, txnID, ops)
+		if err != nil {
+			return nil, nil, fmt.Errorf("preparing sync history: %w", err)
 		}
-		return manifest, nil, nil
+		combinedOps = append(combinedOps, syncPlan.Ops...)
 	}
-
-	combinedOps := make([]transaction.Op, 0, len(ops)+len(ledgerPlan.ops))
-	combinedOps = append(combinedOps, ops...)
-	combinedOps = append(combinedOps, ledgerPlan.ops...)
+	var ledgerPlan *preparedLedgerRecord
+	if recordLedger {
+		ledgerRecord := *record
+		ledgerRecord.TransactionID = txnID
+		var err error
+		ledgerPlan, err = s.ledger.prepareRecord(ledgerRecord)
+		if err != nil {
+			return nil, nil, fmt.Errorf("preparing undo ledger entry: %w", err)
+		}
+		if ledgerPlan != nil {
+			combinedOps = append(combinedOps, ledgerPlan.ops...)
+		}
+	}
 	manifest, err := journal.PrepareWithID(txnID, combinedOps)
 	if err != nil {
 		return nil, nil, fmt.Errorf("preparing transaction: %w", err)
@@ -181,7 +192,7 @@ func (s *CommitService) prepareTransaction(
 // user mutation may have no project IDs or description, while CommitArtifacts
 // must preserve its historical no-ledger behavior even on a ledger-backed
 // service.
-func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUndo bool) (string, error) {
+func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUndo bool, kind synclog.Kind) (string, error) {
 	artifacts := request.Artifacts
 	if len(artifacts) == 0 {
 		return "", fmt.Errorf("storage: commit requires at least one artifact")
@@ -245,7 +256,7 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 						Artifacts:  ledgerArtifacts,
 					}
 				}
-				manifest, ledgerPlan, prepareErr := s.prepareTransaction(journal, ops, ledgerRecord)
+				manifest, ledgerPlan, prepareErr := s.prepareTransaction(journal, ops, ledgerRecord, kind)
 				if prepareErr != nil {
 					return prepareErr
 				}
@@ -254,7 +265,7 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 						return fmt.Errorf("creating commit target directory: %w", err)
 					}
 				}
-				if err := journal.Commit(manifest); err != nil {
+				if err := commitJournal(journal, manifest); err != nil {
 					return fmt.Errorf("committing transaction: %w", err)
 				}
 				if ledgerPlan != nil {

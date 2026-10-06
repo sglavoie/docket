@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -248,7 +249,7 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 			Artifacts:  ledgerArtifacts,
 		}
 	}
-	manifest, ledgerPlan, err := s.prepareTransaction(journal, ops, ledgerRecord)
+	manifest, ledgerPlan, err := s.prepareTransaction(journal, ops, ledgerRecord, synclog.KindUser)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +262,7 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 			return nil, fmt.Errorf("creating commit target directory: %w", err)
 		}
 	}
-	if err := journal.Commit(manifest); err != nil {
+	if err := commitJournal(journal, manifest); err != nil {
 		return nil, fmt.Errorf("committing transaction: %w", err)
 	}
 	if ledgerPlan != nil {

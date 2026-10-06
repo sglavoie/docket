@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
@@ -257,7 +258,7 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 		Action:     "change both projects",
 		ProjectIDs: []string{ledgerProjectID(alpha), ledgerProjectID(beta)},
 		Artifacts:  ledgerImages,
-	})
+	}, synclog.KindUser)
 	if err != nil {
 		t.Fatalf("prepare combined project and ledger transaction: %v", err)
 	}

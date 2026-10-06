@@ -33,6 +33,7 @@ internal/storage/commit_artifacts.go:CommitService.CommitPlannedArtifacts	commit
 internal/storage/commit_artifacts.go:CommitService.commitArtifacts	commit-journal	artifact-only user mutation and config-only artifact commits
 internal/storage/commit_locks.go:withWorkspaceCommitLocks	commit-staging	workspace commit lock files; local-only
 internal/storage/commit_multi.go:CommitService.commitMultiLocked	commit-journal	staging for multi-project commits inside the lock
+internal/storage/commit_sync.go:CommitService.CommitIncoming	commit-journal	incoming sync transaction applied with its receipt in one journal manifest
 internal/storage/conflict_store.go:ConflictStore.Delete	conflict-store	removes a resolved conflict bundle
 internal/storage/conflict_store.go:ConflictStore.Save	conflict-store	records a conflict bundle
 internal/storage/export_markdown.go:ExportProjectMarkdown	export	writes one exported project document outside the workspace
