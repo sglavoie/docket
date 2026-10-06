@@ -22,6 +22,12 @@ An exact key, description, or alias match appears first under `Exact matches`;
 the other results retain their category order. Clearing the search restores the
 ordinary grouped reference, and category tabs still constrain both kinds of match.
 
+Help remembers its query, category, and scroll position separately for each
+surface until you quit `tt`. Press `?` to close a filtered reference and reopen
+it later in the same place; `Backspace` clears the query and returns to All.
+Available actions refresh on every opening. If a category has disappeared,
+Help returns to All, and shorter results or a resized window clamp the scroll.
+
 Every full-screen presentation keeps one operational title row. It names the
 surface, scope, and mode once on the left, and reports the workspace pulse on the
 right as `workspace: inbox 3 · today 2 · overdue 1 · done 4`. A component at zero
@@ -48,7 +54,7 @@ the right — Help first, then Find, then Go — rather than cutting a word in h
 because a half-word is a lie about what the bar offers while a dropped menu is
 still reachable by the keys its entries carry.
 
-`Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
+`F10` or `Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
 so reaching a menu is never two presses. The reveal lasts as long as the menu
 does: close the menu and the bar goes back to whatever `M` last left it as, up
 if it was up and away if it was away. The dropdown falls inline under the label
@@ -60,7 +66,7 @@ pushing them anywhere, so nothing shifts down and back up per press and the view
 you return to is the one you left, scrolled where you left it. A menu too tall
 for the room under its label scrolls inside its own box. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
 the open menu and step over the rules between groups, `Enter` runs the
-highlighted entry and closes the menu, and `Esc` or `Ctrl+M` closes it without
+highlighted entry and closes the menu, and `Esc`, `F10`, or `Ctrl+M` closes it without
 running anything, leaving the bar exactly as it was.
 
 A menu lists only what the cursor could do right now: an entry that does not
@@ -93,9 +99,9 @@ the view or on nothing at all — so the bar can stay off by default without hid
 anything that edits your work.
 
 Terminals that do not report enhanced keyboard events encode `Ctrl+M` as
-`Enter`, the way they encode `Ctrl+I` as `Tab`. There `M` still shows the bar,
-and `Ctrl+M` over an open menu runs the highlighted entry rather than closing
-it.
+`Enter`, the way they encode `Ctrl+I` as `Tab`. Use `F10` to open and close the
+menu in those terminals. `M` still shows the bar, and `Ctrl+M` over an open menu
+runs the highlighted entry rather than closing it.
 
 Whether the bar is drawn is remembered for this machine, the way the light or
 dark theme is: it survives quitting and reopening `tt`, and it does not follow
@@ -201,7 +207,7 @@ to. A live visual selection is no exception, because the strip never carries one
 in the first place: the selection states itself on the second header row, once,
 and the strip is left free for the feedback your next bulk gesture writes there.
 
-`Ctrl+M` → Help → Recent messages opens the latest feedback in a read-only,
+`F10` → Help → Recent messages opens the latest feedback in a read-only,
 scrollable viewer, even after it has expired or a mode change has cleared it.
 The viewer keeps the latest 20 messages for this session, including operation
 errors and transient view feedback. Left visits older messages and Right returns

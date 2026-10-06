@@ -70,6 +70,26 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	}
 }
 
+func TestMenuBarF10OpensAndClosesWithoutEnhancedKeyboardEvents(t *testing.T) {
+	driver, view := menuBarDriver(t)
+	pressMenuBarKey(t, driver, "f10")
+	if !view.MenuBar.Open || !view.MenuBarVisible() {
+		t.Fatal("F10 did not open the hidden menu bar")
+	}
+	pressMenuBarKey(t, driver, "f10")
+	if view.MenuBar.Open || view.MenuBarVisible() {
+		t.Fatal("F10 did not close the menu and release its borrowed row")
+	}
+	pressMenuBarKey(t, driver, "?")
+	if screen := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(screen, "F10/Ctrl+M") {
+		// The System category may be below the viewport; search its exact key.
+		pressMenuBarKey(t, driver, "/", "F", "1", "0", "enter")
+		if screen = driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(screen, "F10/Ctrl+M") {
+			t.Fatalf("Help does not advertise F10:\n%s", screen)
+		}
+	}
+}
+
 func TestMenuHistoryLabelsFollowTheWorkspaceLedger(t *testing.T) {
 	driver, view := menuBarDriver(t)
 	pressMenuBarKey(t, driver, "!", "1")

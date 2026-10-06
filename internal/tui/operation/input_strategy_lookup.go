@@ -216,7 +216,7 @@ func IsDirectInputKey(key string) bool {
 	}
 	switch key {
 	case "up", "down", "left", "right", "enter", "space", "tab", "esc",
-		"backspace", "delete", "home", "end", "pgup", "pgdown":
+		"backspace", "delete", "home", "end", "pgup", "pgdown", "f10":
 		return true
 	}
 	if !strings.Contains(key, "+") {

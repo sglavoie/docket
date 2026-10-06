@@ -177,7 +177,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// row that advertises what opening does; a second footer hint would spend
 			// a rank restating chrome the user is already looking at. The keys inside
 			// an open menu take none either, per the gated-keymap invariant.
-			{OperationID: OperationCoreOpenMenuBar, Keys: []string{"ctrl+m"}, DisplayKey: "Ctrl+M"},
+			{OperationID: OperationCoreOpenMenuBar, Keys: []string{"f10", "ctrl+m"}, DisplayKey: "F10/Ctrl+M"},
 			{OperationID: OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},

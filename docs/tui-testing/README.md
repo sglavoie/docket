@@ -174,7 +174,7 @@ v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter b              Focus, widen focus, and Peek
 Ctrl+F/Ctrl+B                    page the open Peek
 c x                              add and tick checklist items
-M Ctrl+M                         pin the menu bar, open it for one act
+M F10/Ctrl+M                     pin the menu bar, open it for one act
 P Q \ Ctrl+N T / ? u Ctrl+R Esc q Ctrl+C  global
 f!0-3 f@ fa fw f# fc f% f= fh f~ fs f* fx  filters
 F# Fp FP Fa FA Fx                project population filters

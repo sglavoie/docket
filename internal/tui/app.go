@@ -116,6 +116,7 @@ type AppModel struct {
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	helpView      *help.HelpViewModel
 	crossOutliner *outliner.OutlinerModel
+	helpSession   help.Session
 
 	// Focus view session state (persists across view navigation within a session)
 	nextOrder    []outliner.PlanningTask

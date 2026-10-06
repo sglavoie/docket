@@ -23,7 +23,7 @@ func TestDueDatePresetsStayCalendarDays(t *testing.T) {
 		{id: "today", label: "Today", value: midnight},
 		{id: "tomorrow", label: "Tomorrow", value: midnight.AddDate(0, 0, 1)},
 		{id: "week", label: "In one week", value: midnight.AddDate(0, 0, 7)},
-		{id: "month", label: "In one month", value: midnight.AddDate(0, 0, 30)},
+		{id: "month", label: "In 30 days", value: midnight.AddDate(0, 0, 30)},
 	}
 
 	presets := OperationDatePresets(false, now)
@@ -67,7 +67,7 @@ func TestDeferPresetsOfferHoursMorningAndDays(t *testing.T) {
 		{id: "morning", label: "Tomorrow morning", value: time.Date(2026, 3, 15, 9, 0, 0, 0, time.Local)},
 		{id: "tomorrow", label: "Until tomorrow", value: midnight.AddDate(0, 0, 1)},
 		{id: "week", label: "For one week", value: midnight.AddDate(0, 0, 7)},
-		{id: "month", label: "For one month", value: midnight.AddDate(0, 0, 30)},
+		{id: "month", label: "For 30 days", value: midnight.AddDate(0, 0, 30)},
 	}
 
 	presets := OperationDatePresets(true, now)

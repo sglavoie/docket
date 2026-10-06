@@ -26,7 +26,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "walk to the last row of the defer section", "key": "j" },
-    { "type": "assert", "label": "every defer row is reachable, the window just moves", "assert": "contains", "value": "For one month" },
+    { "type": "assert", "label": "every defer row is reachable, the window just moves", "assert": "contains", "value": "For 30 days" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

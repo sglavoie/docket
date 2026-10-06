@@ -51,7 +51,7 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 			{id: chrome.DatePresetMorning, label: "Tomorrow morning", value: morning(1)},
 			{id: chrome.DatePresetTomorrow, label: "Until tomorrow", value: dayOffset(1)},
 			{id: chrome.DatePresetWeek, label: "For one week", value: dayOffset(7)},
-			{id: chrome.DatePresetMonth, label: "For one month", value: dayOffset(30)},
+			{id: chrome.DatePresetMonth, label: "For 30 days", value: dayOffset(30)},
 		}
 	}
 	return []datePreset{
@@ -59,7 +59,7 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 		{id: chrome.DatePresetToday, label: "Today", value: dayOffset(0)},
 		{id: chrome.DatePresetTomorrow, label: "Tomorrow", value: dayOffset(1)},
 		{id: chrome.DatePresetWeek, label: "In one week", value: dayOffset(7)},
-		{id: chrome.DatePresetMonth, label: "In one month", value: dayOffset(30)},
+		{id: chrome.DatePresetMonth, label: "In 30 days", value: dayOffset(30)},
 	}
 }
 

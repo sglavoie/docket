@@ -19,9 +19,9 @@ sheets, and the two edit surfaces. What the modes themselves list is in
 | Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
 
 `@` opens one scheduling picker holding three sections. Its DUE section lists
-Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
+Clear, Today, Tomorrow, In one week, and In 30 days; its DEFER section lists
 Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until
-tomorrow, For one week, and For one month. CHECK-IN contains one Set check-in
+tomorrow, For one week, and For 30 days. CHECK-IN contains one Set check-in
 row that opens the same Next check-in and Repeat editor as the task action menu;
 it is a typed editor action, never a deadline value. The row you commit decides
 which field or editor is reached, and the cursor always opens in the due section, so a due date
@@ -58,9 +58,9 @@ Every preset row prints the key that applies it immediately, in a muted column
 before its label, and pressing that key commits the row exactly as `Enter` on it
 would. The two fields keep separate keyboards, because a shortcut means whatever
 the section you are in says it means. DUE binds `0` Clear, `t` Today, `m`
-Tomorrow, `w` In one week, `n` In one month. DEFER binds `0` Clear defer, `1`,
+Tomorrow, `w` In one week, `n` In 30 days. DEFER binds `0` Clear defer, `1`,
 `4`, and `8` for those hour offsets, `9` Tomorrow morning, `m` Until tomorrow,
-`w` For one week, `n` For one month. So `@m` is tomorrow's deadline, `@` `Tab`
+`w` For one week, `n` For 30 days. So `@m` is tomorrow's deadline, `@` `Tab`
 `4` hides the task for four hours, and `t` in the defer section reports
 `t is a Due shortcut` without changing anything. Hour keys in Due similarly
 name Defer. On Check-in, preset keys say `Press Enter to edit check-in`. Where a row sits in the list never changes what
@@ -329,11 +329,11 @@ check-in date alone keeps any manual review flag and the previous review time.
 Deferral hides scheduled reminders until wake; completion or cancellation clears
 the schedule, so reopening retains review history without restarting it.
 
-To schedule existing active work, press `Ctrl+M` and choose **Task** → **Set up
-check-ins**. `M` only keeps the bar on screen; `Ctrl+M` is the key that opens a
-menu, so on a terminal that sends `Ctrl+M` as `Enter` (see
-[`outliner-chrome.md`](outliner-chrome.md)) the menu cannot be opened from the
-keyboard. The action also appears in `?` help. It walks unscheduled Doing and Waiting tasks
+To schedule existing active work, press `F10` or `Ctrl+M` and choose **Task** →
+**Set up check-ins**. `M` only keeps the bar on screen; `F10` opens the menu even
+on terminals that send `Ctrl+M` as `Enter` (see
+[`outliner-chrome.md`](outliner-chrome.md)). The action also appears in `?` help.
+It walks unscheduled Doing and Waiting tasks
 across every unparked, unarchived project, including tasks hidden by the current
 lens, query, scope, or folds. Projects sort by slug and tasks by local number;
 the initial list stays fixed for the pass. Each editor shows the project, task,

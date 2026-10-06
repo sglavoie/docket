@@ -18,6 +18,7 @@ func TestUITestKeyParsing(t *testing.T) {
 		{"1", '1', 0, "1"},
 		{"!", '!', 0, "!"},
 		{"enter", tea.KeyEnter, 0, ""},
+		{"f10", tea.KeyF10, 0, ""},
 		{"esc", tea.KeyEscape, 0, ""},
 		{"escape", tea.KeyEscape, 0, ""},
 		{"tab", tea.KeyTab, 0, ""},

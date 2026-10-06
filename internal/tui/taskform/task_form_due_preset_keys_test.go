@@ -1,12 +1,42 @@
 package taskform
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+func TestFormDueDatePresetsShowResolvedDatesAtMinimumWidth(t *testing.T) {
+	for _, now := range []time.Time{
+		time.Date(2026, 1, 31, 14, 0, 0, 0, time.UTC),
+		time.Date(2026, 12, 31, 14, 0, 0, 0, time.UTC),
+	} {
+		picker := newFormDueDatePicker(nil)
+		rendered := picker.renderAt(chrome.MinTerminalWidth, nil, now)
+		plain := ansi.Strip(rendered)
+		for _, preset := range formDueDatePresets {
+			if preset.isClear {
+				continue
+			}
+			want := preset.label + " [" + preset.key() + "] · " + util.StartOfDay(now).AddDate(0, 0, preset.daysFromNow).Format("Mon Jan 2, 2006")
+			if !strings.Contains(plain, want) {
+				t.Errorf("missing resolved preset %q:\n%s", want, plain)
+			}
+		}
+		if lipgloss.Width(rendered) > chrome.MinTerminalWidth {
+			t.Fatalf("picker overflows minimum width: %d", lipgloss.Width(rendered))
+		}
+		if strings.Contains(plain, "clear [0] ·") {
+			t.Fatal("Clear displayed a date")
+		}
+	}
+}
 
 // The form prints the key it answers to, and both readings come from the shared
 // table, so a row can neither advertise a key nothing applies nor answer a key
@@ -46,7 +76,7 @@ func TestFormDueDatePresetsKeepTheirOrderAndDistances(t *testing.T) {
 		{label: "today", days: 0},
 		{label: "tomorrow", days: 1},
 		{label: "+week", days: 7},
-		{label: "+month", days: 30},
+		{label: "+30 days", days: 30},
 		{label: "clear", clear: true},
 	}
 	for i, expected := range want {

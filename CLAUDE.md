@@ -510,7 +510,7 @@ A modal covers rows rather than displacing them, so the window, Peek, and a
 selection are all still what the close redraws; the box is bounded by what the
 anchor leaves and scrolls its own list rather than growing, and it composites
 once, never over another modal of its own.
-`MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `Ctrl+M`
+`MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `F10` or `Ctrl+M`
 borrows that row and the close gives it back; `M` alone writes the pinned flag
 the View checkbox reads.
 

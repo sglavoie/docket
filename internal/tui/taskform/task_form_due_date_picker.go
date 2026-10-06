@@ -35,7 +35,7 @@ var formDueDatePresets = []formDueDatePreset{
 	{presetID: chrome.DatePresetToday, label: "today", daysFromNow: 0},
 	{presetID: chrome.DatePresetTomorrow, label: "tomorrow", daysFromNow: 1},
 	{presetID: chrome.DatePresetWeek, label: "+week", daysFromNow: 7},
-	{presetID: chrome.DatePresetMonth, label: "+month", daysFromNow: 30},
+	{presetID: chrome.DatePresetMonth, label: "+30 days", daysFromNow: 30},
 	{presetID: chrome.DatePresetClear, label: "clear", isClear: true},
 }
 
@@ -113,6 +113,10 @@ func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 }
 
 func (p *formDueDatePicker) render(width int, current *time.Time) string {
+	return p.renderAt(width, current, time.Now())
+}
+
+func (p *formDueDatePicker) renderAt(width int, current *time.Time, now time.Time) string {
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 
 	var titleText string
@@ -123,12 +127,12 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 
-	innerWidth := formOverlayInnerWidth(width, max(width*2/5, 36), formOverlayTitleMinInner(title))
+	innerWidth := formOverlayInnerWidth(width, max(width*2/5, 48), formOverlayTitleMinInner(title))
 	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter select", "j/k navigate", "preset key pick",
 	), max(innerWidth-4, 1))
 
-	today := util.StartOfDay(time.Now())
+	today := util.StartOfDay(now)
 	currentEntryIdx := -1
 	if current == nil {
 		for i, e := range formDueDatePresets {
@@ -158,6 +162,10 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 			currentMark = "● "
 		}
 		line := fmt.Sprintf(" %s%s %s", currentMark, e.label, keyHint)
+		if !e.isClear {
+			date := today.AddDate(0, 0, e.daysFromNow)
+			line += theme.MutedStyle.Render(" · " + date.Format("Mon Jan 2, 2006"))
+		}
 		lineWidth := lipgloss.Width(line)
 		if lineWidth < innerWidth-4 {
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)

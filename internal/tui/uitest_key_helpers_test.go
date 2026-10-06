@@ -15,6 +15,7 @@ import (
 //   - arrows: "up", "down", "left", "right"
 //   - pages: "pgup"/"pageup", "pgdown"/"pagedown"
 //   - edges: "home", "end"
+//   - menu function key: "f10"
 //   - modifier prefixes joined with "+": "ctrl+x", "alt+x", "shift+tab"
 //   - modifier and lock keys pressed alone: "leftshift", "rightctrl", "capslock"
 //
@@ -90,6 +91,8 @@ func parseUITestKey(name string) (tea.KeyPressMsg, error) {
 		key.Code = tea.KeyHome
 	case "end":
 		key.Code = tea.KeyEnd
+	case "f10":
+		key.Code = tea.KeyF10
 	default:
 		runes := []rune(base)
 		if len(runes) != 1 {

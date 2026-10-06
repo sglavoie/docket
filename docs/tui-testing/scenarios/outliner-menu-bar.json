@@ -22,7 +22,7 @@
     { "type": "resize", "width": 100, "height": 20 },
 
     { "type": "wait", "label": "let the toggle's transient status expire so the footer is guidance again", "duration": "10s" },
-    { "type": "key", "label": "Ctrl+M opens a menu out of a bar that was already shown", "key": "ctrl+m" },
+    { "type": "key", "label": "F10 opens a menu out of a bar that was already shown", "key": "f10" },
     { "type": "assert", "assert": "contains", "value": "Capture Child" },
     { "type": "key", "label": "closing the menu leaves a shown bar shown", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
@@ -36,13 +36,13 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "wait", "label": "let the toggle's transient status expire so the footer is guidance again", "duration": "10s" },
-    { "type": "key", "label": "Ctrl+M opens a menu, borrowing the hidden bar's row in the same press", "key": "ctrl+m" },
+    { "type": "key", "label": "F10 opens a menu, borrowing the hidden bar's row in the same press", "key": "f10" },
     { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
     { "type": "assert", "label": "the leftmost menu drops under its own label", "assert": "contains", "value": "Capture Child" },
     { "type": "assert", "assert": "contains", "value": "External Editor" },
     { "type": "assert", "label": "an entry carries the key its own accelerator is bound to", "assert": "contains", "value": "Ctrl+E" },
     { "type": "assert", "label": "the open menu's gated keymap owns the footer", "assert": "contains", "value": "Enter run" },
-    { "type": "assert", "label": "and names the key that opened it as the key that closes it", "assert": "contains", "value": "Ctrl+M/Esc close" },
+    { "type": "assert", "label": "and names the key that opened it as the key that closes it", "assert": "contains", "value": "F10/Ctrl+M/Esc close" },
     { "type": "assert", "label": "the menu stands on the view rather than replacing it: the title and its pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "label": "and the list is still there, dimmed, wherever the box does not reach", "assert": "contains", "value": "bounded viewport content" },
     { "type": "assert", "label": "what the box does reach is covered rather than shrunk, so no row moves to make space", "assert": "not_contains", "value": "Release acceptance item 088" },
@@ -72,7 +72,7 @@
     { "type": "assert", "assert": "contains", "value": "Release acceptance item 032" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "reopen it to press a key it does not list", "key": "ctrl+m" },
+    { "type": "key", "label": "reopen it to press a key it does not list", "key": "f10" },
     { "type": "assert", "assert": "contains", "value": "Capture Child" },
     { "type": "key", "label": "the menu is non-modal: a closes it and captures anyway", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },

@@ -262,6 +262,11 @@ says `single task only` for a multiline batch. Pressing it still names the
 unsupported action and keeps the original draft intact;
 submit that line with `Enter` to keep all its attributes.
 
+The expanded form's due-date presets show the resolved weekday and calendar
+date beside each shortcut. `+30 days` adds exactly 30 calendar days, matching
+the Outliner picker's **In 30 days** preset; typed month expressions still use
+calendar months.
+
 In compact capture, `Ctrl+N` creates the current task or batch and keeps the
 panel open for another capture. The input clears only after a successful save;
 a refusal keeps it intact. The next draft keeps the composer's project and

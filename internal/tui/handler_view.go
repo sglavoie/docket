@@ -63,7 +63,8 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
 
 	case help.ShowHelpMsg:
-		m.helpView = help.NewHelpViewModel(msg.Items, msg.ViewName)
+		width, height := m.viewNav.viewSize()
+		m.helpView = m.helpSession.Open(msg.Items, msg.ViewName, width, height)
 		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
 
