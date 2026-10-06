@@ -72,6 +72,9 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 
 func TestMenuBarF10OpensAndClosesWithoutEnhancedKeyboardEvents(t *testing.T) {
 	driver, view := menuBarDriver(t)
+	if driver.App().View().KeyboardEnhancements.ReportEventTypes {
+		t.Fatal("unused release reports make the pinned terminal decoder toggle F10 twice")
+	}
 	pressMenuBarKey(t, driver, "f10")
 	if !view.MenuBar.Open || !view.MenuBarVisible() {
 		t.Fatal("F10 did not open the hidden menu bar")

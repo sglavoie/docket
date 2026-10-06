@@ -27,7 +27,9 @@ import (
 func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	defer func() {
 		result.AltScreen = true
-		result.KeyboardEnhancements.ReportEventTypes = true
+		// Keep Bubble Tea's default key disambiguation, but do not request
+		// releases: we do not use them, and the pinned decoder mistakes CSI ~
+		// releases (including F10) for another press.
 		// Focus reports are what let a long-lived session notice a workspace
 		// changed elsewhere while it sat in the background.
 		result.ReportFocus = true

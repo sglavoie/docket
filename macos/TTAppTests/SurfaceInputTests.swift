@@ -16,6 +16,7 @@ final class SurfaceInputTests: XCTestCase {
     private static let kVKI: UInt16 = 0x22
     private static let kVKJ: UInt16 = 0x26
     private static let kVKE: UInt16 = 0x0E
+    private static let kVKF10: UInt16 = 0x6D
 
     private func requireUSLayout() throws {
         let id = KeyboardLayout.id ?? ""
@@ -226,6 +227,23 @@ final class SurfaceInputTests: XCTestCase {
         try press(key(Self.kVKI, "\t", ignoring: "i", mods: .control), expecting: "1b.5b.31.30.35.3b.35.75.")
         try press(key(Self.kVKReturn, "\r", mods: .shift), expecting: "1b.5b.31.33.3b.32.75.")
         try press(key(Self.kVKJ, "\n", ignoring: "j", mods: .control), expecting: "1b.5b.31.30.36.3b.35.75.")
+    }
+
+    func testF10ReleaseDoesNotSendAnotherMenuToggle() throws {
+        // Match tt's default disambiguation-only negotiation (CSI > 1 u).
+        // Asking for event types too would emit CSI 21;1:3~ on release,
+        // which the pinned Go decoder incorrectly treats as another press.
+        try startByteDump()
+        let characters = String(UnicodeScalar(NSF10FunctionKey)!)
+        try press(key(Self.kVKF10, characters), expecting: "1b.5b.32.31.7e.")
+        let before = dumped()
+        view.keyUp(with: try key(Self.kVKF10, characters, type: .keyUp))
+        for _ in 0..<10 {
+            ghostty.appTick()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+        XCTAssertEqual(dumped(), before, "releasing F10 must not toggle the menu again")
+        try press(key(Self.kVKF10, characters), expecting: "1b.5b.32.31.7e.")
     }
 
     func testComposedTextIsSentAsUTF8() throws {
