@@ -197,6 +197,10 @@ type State struct {
 	// Tracked is the digest of each synced path as of the last transaction the
 	// history recorded or applied: the last indexed revision of the workspace.
 	Tracked map[string]string `json:"tracked"`
+	// Indexed reports that Tracked covers every synced file, not only the ones
+	// a transaction named: the device indexed the workspace it started from
+	// (see baseline), so any difference from Tracked is an external change.
+	Indexed bool `json:"indexed,omitempty"`
 }
 
 // OutboxEntry is one outgoing transaction awaiting publication.

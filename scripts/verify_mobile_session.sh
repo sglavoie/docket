@@ -533,6 +533,70 @@ verify_session_5() {
 	note "session 5 verified"
 }
 
+verify_session_6() {
+	require_files \
+		internal/synclog/observe.go \
+		internal/storage/commit_sync.go \
+		internal/config/sync_validate.go \
+		internal/syncmerge/merger.go \
+		internal/syncmerge/rich_test.go
+
+	# Every rich artifact round-trips through sync to every device and to
+	# observers that start from genesis in several delivery orders; valid
+	# external edits are imported as changes and invalid ones are held intact
+	# and unpublished; undo and redo are device-local, revision-checked new
+	# transactions that never restore over another device's work.
+	local required=(
+		TestSyncRichArtifactsRoundTrip
+		TestSyncExternalEdits
+		TestSyncUndo
+	)
+	local name
+	for name in notes comments checklists dependencies lenses lenses_domain_save attachments \
+		concurrent_rich_edits mobile_edit_preserves_unexposed_fields; do
+		required+=("TestSyncRichArtifactsRoundTrip/$name")
+	done
+	for name in valid_markdown_edit_is_published invalid_markdown_edit_is_held invalid_domain_edits_are_held \
+		external_files_are_published domain_save_is_observed_before_incoming runtime_open_imports_external_edit; do
+		required+=("TestSyncExternalEdits/$name")
+	done
+	for name in undo_and_redo_publish_new_transactions remote_edit_refuses_stale_undo remote_edit_refuses_stale_redo \
+		unrecorded_change_refuses_undo undo_history_is_device_local; do
+		required+=("TestSyncUndo/$name")
+	done
+	run_go_suite rich ./internal/syncmerge/ '^TestSync(RichArtifactsRoundTrip|ExternalEdits|Undo)$' "${required[@]}"
+
+	# The ledger's own revision checks and grouped atomicity, which the sync
+	# undo rides on, unchanged.
+	run_go_suite storage-ledger ./internal/storage/ \
+		'^(TestLedgerRestore.*|TestWorkspaceLedger.*|TestUndo.*|TestRedo.*)$' \
+		TestLedgerRestoreAtomicRevisionDrift \
+		TestLedgerRestoreAtomicPreflightRejectsMissingBlob \
+		TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation \
+		TestUndoConcurrentCommitSerializesLedgerRestore \
+		TestUndoRedoConcurrentCallersSerializeStackMovement
+
+	# Session 4 and 5 guarantees hold with indexing and observation in front of
+	# every apply.
+	run_go_suite storage-sync ./internal/storage/ '^TestSync' \
+		TestSyncLocalCommitAndOutboxAreAtomic \
+		TestSyncIncomingApplyAndReceiptAreAtomic \
+		TestSyncIncomingRefusalsAcknowledgeNothing \
+		TestSyncIncomingKeepsCausalOrderAndConcurrentHeads
+	run_go_suite reconcile ./internal/syncmerge/ '^TestSyncReconcile(ConvergesAcrossDeliveryOrders|DeleteEdit|SimultaneousResolutions)$' \
+		TestSyncReconcileConvergesAcrossDeliveryOrders \
+		TestSyncReconcileDeleteEdit \
+		TestSyncReconcileSimultaneousResolutions
+	run_go_suite compat-inventory ./internal/compat/ \
+		'^(TestCompatWritePathInventoryCoversEveryDurableWrite|TestCompatCommitEntryPointsAreDocumented|TestCompatContractDocumentsAreWellFormed|TestCompatExternalMarkdownEditIsObservable)$' \
+		TestCompatWritePathInventoryCoversEveryDurableWrite \
+		TestCompatCommitEntryPointsAreDocumented \
+		TestCompatContractDocumentsAreWellFormed \
+		TestCompatExternalMarkdownEditIsObservable
+
+	note "session 6 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -540,6 +604,7 @@ case "$session" in
 3) verify_session_3 ;;
 4) verify_session_4 ;;
 5) verify_session_5 ;;
+6) verify_session_6 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

@@ -53,6 +53,7 @@ type replica struct {
 	root    string
 	history *synclog.History
 	svc     *storage.CommitService
+	ledger  *storage.WorkspaceLedger
 }
 
 // cluster is a set of devices that started from one genesis copy, and the
@@ -79,6 +80,12 @@ func (c *cluster) clone(device string) *replica {
 	c.t.Helper()
 	root := filepath.Join(c.t.TempDir(), device)
 	copyTree(c.t, c.genesis, root)
+	return c.open(device, root)
+}
+
+// open opens device over the workspace at root.
+func (c *cluster) open(device, root string) *replica {
+	c.t.Helper()
 	history, err := synclog.New(synclog.Config{
 		DataDir:  root,
 		DeviceID: device,
@@ -92,7 +99,7 @@ func (c *cluster) clone(device string) *replica {
 	svc := storage.NewCommitServiceWithLedger(filepath.Join(root, ".tt", "transactions"), []string{root}, ledger).
 		WithSyncHistory(history).
 		WithSyncMerger(syncmerge.Merger{})
-	return &replica{t: c.t, device: device, root: root, history: history, svc: svc}
+	return &replica{t: c.t, device: device, root: root, history: history, svc: svc, ledger: ledger}
 }
 
 func (c *cluster) r(device string) *replica { return c.devices[device] }
@@ -117,6 +124,24 @@ func copyTree(t *testing.T, from, to string) {
 	if err != nil {
 		t.Fatalf("copy %s: %v", from, err)
 	}
+}
+
+func writeFile(path string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+func removeFile(path string) error { return os.Remove(path) }
+
+func readFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func (r *replica) path(rel string) string { return filepath.Join(r.root, filepath.FromSlash(rel)) }
@@ -471,8 +496,9 @@ func syncedFiles(t *testing.T, root string) map[string]string {
 		}
 		rel, _ := filepath.Rel(root, path)
 		rel = filepath.ToSlash(rel)
-		if _, _, local, classifyErr := synclog.Classify(rel); classifyErr != nil || local {
-			return classifyErr
+		if !isSyncedPath(rel) {
+			// A file outside the synced layout is not workspace content.
+			return nil
 		}
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
@@ -485,6 +511,12 @@ func syncedFiles(t *testing.T, root string) map[string]string {
 		t.Fatalf("walk %s: %v", root, err)
 	}
 	return out
+}
+
+// isSyncedPath reports whether rel is synced workspace content.
+func isSyncedPath(rel string) bool {
+	_, _, local, err := synclog.Classify(rel)
+	return err == nil && !local
 }
 
 // requireConverged holds every replica to identical synced content, identical

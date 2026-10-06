@@ -45,7 +45,9 @@ func (s *CommitService) WithSyncMerger(merger synclog.Merger) *CommitService {
 
 // CommitIncoming applies another device's sync transaction and records its
 // receipt as one journal transaction, under the workspace commit lock and the
-// advisory locks of every path it touches, after crash recovery. Recovery
+// advisory locks of every path it touches, after crash recovery and after
+// importing every external change (see CommitExternalChanges), so a change
+// made outside a commit is published rather than reconciled away. Recovery
 // therefore lands the applied bytes and the acknowledgement together: a crash
 // can never acknowledge an unapplied transaction or apply one twice. A
 // manifest that is held, incomplete, or already received is refused before
@@ -79,6 +81,9 @@ func (s *CommitService) CommitIncoming(manifest *synclog.Manifest, blobs synclog
 		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
+		}
+		if _, observeErr := s.commitExternalLocked(journal, false); observeErr != nil {
+			return observeErr
 		}
 		if err := createArtifactLockDirectories(lockPaths); err != nil {
 			return err
@@ -121,6 +126,9 @@ func (s *CommitService) commitReconciled(manifest *synclog.Manifest, blobs syncl
 		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
+		}
+		if _, observeErr := s.commitExternalLocked(journal, false); observeErr != nil {
+			return observeErr
 		}
 		id := uuid.NewString()
 		plan, err := s.history.PlanReconcile(manifest, blobs, s.merger, id)
@@ -237,4 +245,82 @@ func (s *CommitService) CommitSyncPublished(txnIDs []string) error {
 		}
 		return commitJournal(journal, prepared)
 	})
+}
+
+// ExternalChanges reports one observation of the workspace against the sync
+// history's last indexed revision, in the shape a status surface serializes.
+type ExternalChanges struct {
+	// TransactionID is the journal transaction that recorded the observation,
+	// or empty when nothing was recorded.
+	TransactionID string `json:"transaction_id,omitempty"`
+	// Baselined reports that the device indexed its workspace for the first
+	// time; nothing was imported.
+	Baselined bool `json:"baselined,omitempty"`
+	// Imported is the outgoing transaction of kind external that publishes the
+	// valid changes, or nil when there were none.
+	Imported *synclog.Manifest `json:"imported,omitempty"`
+	// Held lists the invalid changes left on disk, unpublished, for repair.
+	Held []synclog.HeldChange `json:"held,omitempty"`
+}
+
+// CommitExternalChanges imports every change made to the synced workspace
+// outside a commit — an external editor, a script, or a checked domain save —
+// as one outgoing transaction of kind external, under the workspace commit
+// lock after crash recovery. A change the live readers would refuse is held:
+// its bytes stay on disk untouched and unpublished, and reconciliation will
+// not write over them until a repaired version is observed. The first
+// observation on a device only indexes the workspace it starts from.
+func (s *CommitService) CommitExternalChanges() (*ExternalChanges, error) {
+	if s.history == nil {
+		return nil, fmt.Errorf("storage: external-change observation requires a sync history")
+	}
+	var report *ExternalChanges
+	err := s.withWorkspaceCommitLock(func() error {
+		journal := s.journal()
+		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
+			return recoverErr
+		}
+		var observeErr error
+		report, observeErr = s.commitExternalLocked(journal, true)
+		return observeErr
+	})
+	if err != nil {
+		return nil, err
+	}
+	return report, nil
+}
+
+// commitExternalLocked is CommitExternalChanges under a held workspace commit
+// lock. The observation is its own journal transaction: it writes nothing but
+// the history, so it needs no artifact lock, and a commit racing it outside
+// the lock is caught by the next observation or by reconciliation's own
+// recheck.
+//
+// index lets a device that has never indexed its workspace do so now. An
+// incoming apply passes false: its own plan indexes the workspace in the same
+// journal transaction as the apply, so a refused manifest still leaves the
+// history untouched.
+func (s *CommitService) commitExternalLocked(journal *transaction.Journal, index bool) (*ExternalChanges, error) {
+	if s.history == nil {
+		return &ExternalChanges{}, nil
+	}
+	validator, _ := s.merger.(synclog.Validator)
+	id := uuid.NewString()
+	plan, err := s.history.PlanObserve(validator, id, index)
+	if err != nil {
+		return nil, fmt.Errorf("observing external changes: %w", err)
+	}
+	report := &ExternalChanges{Baselined: plan.Baselined, Imported: plan.Manifest, Held: plan.Held}
+	if len(plan.Ops) == 0 {
+		return report, nil
+	}
+	prepared, err := journal.PrepareWithID(id, plan.Ops)
+	if err != nil {
+		return nil, fmt.Errorf("preparing external-change record: %w", err)
+	}
+	if err := commitJournal(journal, prepared); err != nil {
+		return nil, fmt.Errorf("committing external-change record: %w", err)
+	}
+	report.TransactionID = prepared.ID
+	return report, nil
 }

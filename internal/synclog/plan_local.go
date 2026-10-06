@@ -78,8 +78,14 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 		return nil, fmt.Errorf("%w: catalog %s, sync history %s", ErrForeignWorkspace, workspaceID, state.WorkspaceID)
 	}
 
+	// The first record indexes the workspace as it stood before this
+	// transaction, so later observation can tell an external change from a
+	// file no transaction has named yet.
+	if err = h.baseline(state, o); err != nil {
+		return nil, err
+	}
+
 	effects := make([]Effect, 0, len(pending))
-	requires := map[string]bool{}
 	for _, p := range pending {
 		effect := p.effect
 		if effect.Kind.projectScoped() {
@@ -95,10 +101,20 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 			}
 			effect.ProjectID = id
 		}
-		requires[h.requirement(effect.Kind)] = true
 		effects = append(effects, effect)
 	}
+	plan, _, err := h.recordLocal(state, kind, localTxnID, effects, o)
+	return plan, err
+}
 
+// recordLocal mints the outgoing record of effects, which already name their
+// projects, and plans it with the blobs o retained: the immutable manifest,
+// its index entry, and the advanced tracking state last.
+func (h *History) recordLocal(state *State, kind Kind, localTxnID string, effects []Effect, o *overlay) (*Plan, *Manifest, error) {
+	requires := map[string]bool{}
+	for _, effect := range effects {
+		requires[h.requirement(effect.Kind)] = true
+	}
 	manifest := &Manifest{
 		Format:        ManifestFormat,
 		FormatVersion: ManifestFormatVersion,
@@ -114,20 +130,20 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 		Effects:       effects,
 	}
 	sort.Strings(manifest.Parents)
-	if err = manifest.seal(); err != nil {
-		return nil, err
+	if err := manifest.seal(); err != nil {
+		return nil, nil, err
 	}
-	if err = manifest.Validate(); err != nil {
-		return nil, fmt.Errorf("synclog: planned an invalid record: %w", err)
+	if err := manifest.Validate(); err != nil {
+		return nil, nil, fmt.Errorf("synclog: planned an invalid record: %w", err)
 	}
 	record, err := manifest.Encode()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	recordPath := h.outgoingRecordPath(manifest.DeviceSeq, manifest.TxnID)
 	recordOp, err := immutableOp(recordPath, record)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	state.NextSeq++
@@ -146,9 +162,9 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 		Record:    h.rel(recordPath),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &Plan{Ops: planOps}, nil
+	return &Plan{Ops: planOps}, manifest, nil
 }
 
 // effectsFor folds one journal operation into the overlay and returns the

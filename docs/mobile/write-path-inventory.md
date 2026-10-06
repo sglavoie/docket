@@ -70,7 +70,10 @@ Undo-ledger maintenance (`WorkspaceLedger.gcBlobs`). The ledger is local.
 new forward change: `WorkspaceLedger.Undo`/`Redo` publishes through the journal
 and syncs as a `kind: undo`/`redo` manifest whose effects carry the current
 bytes as `base_blob`. It never restores images over edits made on another
-device.
+device: the restore preflight refuses the whole entry when any file no longer
+holds the image the entry left. Undo history is device-local: each entry is
+stamped with the device that committed it, and a device only restores its own
+entries (or unstamped entries recorded before sync).
 
 ### `workspace-relocation`
 
@@ -132,6 +135,7 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `CommitService.CommitIncoming` | commit-journal | Applies another device's manifest and records its receipt in one journal entry; with a merger attached it reconciles the manifest with the whole history and stores the derived conflict records in that same entry. Never produces an outgoing record. |
 | `CommitService.CommitSyncResolution` | commit-journal | Resolves a derived sync conflict by writing its path as an undoable `resolution` transaction, which records an outgoing record even when the chosen bytes are the current ones. |
 | `CommitService.CommitSyncPublished` | commit-journal | Drops published transactions from the outbox through the journal. Never produces an outgoing record. |
+| `CommitService.CommitExternalChanges` | commit-journal | Observes the synced workspace against the history's `tracked` digests and records every valid difference as one outgoing `kind: external` transaction; writes only the history, never the workspace. Invalid differences are held on disk unpublished. The first observation on a device only indexes the workspace. `CommitIncoming` runs the same observation first, and `engine.Open` runs it at launch. |
 | `CommitService.RecoverWorkspace` | commit-journal | Recovery completes or rolls back a journal entry, and its outbound record with it. |
 | `WorkspaceLedger.Undo` | commit-journal | A new forward `kind: undo` manifest. |
 | `WorkspaceLedger.UndoWithEntry` | commit-journal | As `Undo`. |
@@ -176,8 +180,11 @@ integration point is **observation**:
   synced `blob`, not the canonical revision.
 - The strict reader refuses an invalid external edit. The edit is never read as
   a smaller project, so it cannot be mistaken for a deletion.
-- Sync records an observed external edit as a local `kind: user` transaction
-  whose `base_blob` is the last synced digest. Sessions 4 and 6 implement this.
+- Sync records an observed external edit as a local `kind: external`
+  transaction whose `base_blob` is the last indexed digest
+  (`CommitService.CommitExternalChanges`). An edit the live readers would
+  refuse is held instead: it stays on disk byte for byte, is not published, and
+  blocks reconciliation of that path until a repaired version is observed.
 
 `TestCompatExternalMarkdownEditIsObservable` holds both properties against the
 representative fixture.

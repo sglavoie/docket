@@ -594,6 +594,9 @@ func (h *History) PlanReconcile(m *Manifest, blobs BlobSource, merger Merger, lo
 	}
 
 	o := newOverlay(h)
+	if err = h.baseline(state, o); err != nil {
+		return nil, err
+	}
 	plan := &ReconcilePlan{Expect: map[string]*string{}}
 	effectOps, err := h.planWrites(o, mz, before, after, state, plan)
 	if err != nil {

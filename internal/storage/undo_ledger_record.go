@@ -89,6 +89,7 @@ func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord
 		Timestamp:     l.now(),
 		ProjectIDs:    dedupeStrings(rec.ProjectIDs),
 		Artifacts:     images,
+		Device:        l.device(),
 	}
 	lf.NextSeq++
 	lf.Entries = append(lf.Entries, entry)

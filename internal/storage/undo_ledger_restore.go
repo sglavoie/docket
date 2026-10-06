@@ -57,7 +57,7 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 			source = lf.RedoEntries
 			label = "redo"
 		}
-		entry, idx, ok := selectNewest(source, scope)
+		entry, idx, ok := selectNewestOwned(source, scope, l.device())
 		if !ok {
 			historyErr := ErrNoUndoHistory
 			if redo {

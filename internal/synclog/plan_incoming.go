@@ -29,6 +29,9 @@ func (h *History) PlanIncoming(m *Manifest, blobs BlobSource, localTxnID string)
 		return nil, err
 	}
 	o := newOverlay(h)
+	if err = h.baseline(state, o); err != nil {
+		return nil, err
+	}
 	effectOps, moveTargets, err := h.applyEffects(o, m, blobs)
 	if err != nil {
 		return nil, err

@@ -91,6 +91,13 @@ type LedgerEntry struct {
 	// Their file-only images need conservative attachment-directory cleanup on
 	// every undo/redo, including after the containing ledger is rewritten as v2.
 	LegacySchemaVersion int `json:"legacy_schema_version,omitempty"`
+	// Device is the sync device that committed the transaction, stamped when
+	// the ledger records beside a sync history. Undo is device-local: a device
+	// restores only its own entries, so a ledger carried to another device in a
+	// copied workspace can never replay one device's history on another. An
+	// entry without one predates sync and stays restorable, revision checks
+	// included.
+	Device string `json:"device,omitempty"`
 }
 
 func (a ArtifactImage) imageKind() ArtifactImageKind {
@@ -98,6 +105,22 @@ func (a ArtifactImage) imageKind() ArtifactImageKind {
 		return ArtifactImageKindFile
 	}
 	return a.Kind
+}
+
+// ownedBy reports whether device may restore the entry: any entry when the
+// ledger records beside no sync history (device is empty), otherwise its own
+// entries and those recorded before sync stamped a device.
+func (e LedgerEntry) ownedBy(device string) bool {
+	return device == "" || e.Device == "" || e.Device == device
+}
+
+// device is the sync identity entries are stamped with and restored by, or
+// empty without a sync history.
+func (l *WorkspaceLedger) device() string {
+	if l.history == nil {
+		return ""
+	}
+	return l.history.DeviceID()
 }
 
 func (e LedgerEntry) touchesProject(projectID string) bool {

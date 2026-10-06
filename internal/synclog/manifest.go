@@ -44,11 +44,15 @@ const (
 	KindMerge      Kind = "merge"
 	KindResolution Kind = "resolution"
 	KindRepair     Kind = "repair"
+	// KindExternal imports a valid change made to the workspace outside a
+	// commit — an editor, a script, or a checked domain save — observed against
+	// the last indexed revision.
+	KindExternal Kind = "external"
 )
 
 func (k Kind) valid() bool {
 	switch k {
-	case KindUser, KindUndo, KindRedo, KindMerge, KindResolution, KindRepair:
+	case KindUser, KindUndo, KindRedo, KindMerge, KindResolution, KindRepair, KindExternal:
 		return true
 	}
 	return false

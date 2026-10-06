@@ -261,7 +261,7 @@ func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 	if err != nil {
 		t.Fatalf("load ledger: %v", err)
 	}
-	entry, idx, ok := selectNewest(lf.Entries, GlobalScope())
+	entry, idx, ok := selectNewestOwned(lf.Entries, GlobalScope(), "")
 	if !ok {
 		t.Fatal("restore crash fixture has no undo entry")
 	}

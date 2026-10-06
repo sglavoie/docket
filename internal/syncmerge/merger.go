@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/synclog"
 )
@@ -17,7 +18,10 @@ import (
 // Merger reconciles every synced artifact kind. The zero value is ready.
 type Merger struct{}
 
-var _ synclog.Merger = Merger{}
+var (
+	_ synclog.Merger    = Merger{}
+	_ synclog.Validator = Merger{}
+)
 
 // Merge combines req.Sides against req.Base. A kind with no structure of its
 // own — notes, lenses, attachments, other project files — and any artifact a
@@ -50,6 +54,34 @@ func (Merger) Merge(req synclog.MergeRequest) (synclog.MergeResult, error) {
 // RestoreProject names projectID in catalog again with its entry from from.
 func (Merger) RestoreProject(catalog []byte, projectID string, from []byte) ([]byte, bool, error) {
 	return config.RestoreCatalogProject(catalog, projectID, from)
+}
+
+// ValidateArtifact accepts exactly what the live readers load: a project
+// document that parses, passes the project audit, and renders through the
+// canonical writer, and a catalog, planning, or lens file the domain loader
+// accepts. Other kinds are opaque bytes and always valid.
+func (Merger) ValidateArtifact(kind synclog.EffectKind, data []byte) error {
+	switch kind {
+	case synclog.EffectProjectDocument:
+		doc, err := storage.ParseProjectDocument(string(data))
+		if err != nil {
+			return err
+		}
+		if err = models.AuditProject(&models.Project{Name: doc.ProjectName, Tasks: doc.Tasks, Comments: doc.Comments}); err != nil {
+			return err
+		}
+		_, err = doc.WriteCurrent()
+		return err
+	case synclog.EffectCatalog:
+		return config.ValidateSyncedDomainArtifact("workspace", data)
+	case synclog.EffectPlanning:
+		return config.ValidateSyncedDomainArtifact("planning", data)
+	case synclog.EffectLenses:
+		return config.ValidateSyncedDomainArtifact("lenses", data)
+	case synclog.EffectNote, synclog.EffectGlobalNote, synclog.EffectAttachment, synclog.EffectProjectTree:
+		return nil
+	}
+	return nil
 }
 
 func keepPrimary(req synclog.MergeRequest, why string) synclog.MergeResult {

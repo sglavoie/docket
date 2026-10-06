@@ -39,10 +39,10 @@ func (l *WorkspaceLedger) gcBlobs(lf *ledgerFile) {
 
 // selectNewest returns the highest-Seq entry in stack matching scope, its index,
 // and whether one was found.
-func selectNewest(stack []LedgerEntry, scope LedgerScope) (LedgerEntry, int, bool) {
+func selectNewestOwned(stack []LedgerEntry, scope LedgerScope, device string) (LedgerEntry, int, bool) {
 	best := -1
 	for i := range stack {
-		if !entryMatchesScope(stack[i], scope) {
+		if !entryMatchesScope(stack[i], scope) || !stack[i].ownedBy(device) {
 			continue
 		}
 		if best == -1 || stack[i].Seq > stack[best].Seq {

@@ -30,7 +30,7 @@ func (l *WorkspaceLedger) SelectNewestUndo(scope LedgerScope) (LedgerEntry, bool
 	if err != nil {
 		return LedgerEntry{}, false, err
 	}
-	entry, _, ok := selectNewest(lf.Entries, scope)
+	entry, _, ok := selectNewestOwned(lf.Entries, scope, l.device())
 	return entry, ok, nil
 }
 
@@ -41,7 +41,7 @@ func (l *WorkspaceLedger) UndoCount(scope LedgerScope) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return countInScope(lf.Entries, scope), nil
+	return countInScope(lf.Entries, scope, l.device()), nil
 }
 
 // RedoCount reports how many redo entries the scope can still reach.
@@ -50,13 +50,13 @@ func (l *WorkspaceLedger) RedoCount(scope LedgerScope) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return countInScope(lf.RedoEntries, scope), nil
+	return countInScope(lf.RedoEntries, scope, l.device()), nil
 }
 
-func countInScope(stack []LedgerEntry, scope LedgerScope) int {
+func countInScope(stack []LedgerEntry, scope LedgerScope, device string) int {
 	n := 0
 	for i := range stack {
-		if entryMatchesScope(stack[i], scope) {
+		if entryMatchesScope(stack[i], scope) && stack[i].ownedBy(device) {
 			n++
 		}
 	}
@@ -106,6 +106,6 @@ func (l *WorkspaceLedger) SelectNewestRedo(scope LedgerScope) (LedgerEntry, bool
 	if err != nil {
 		return LedgerEntry{}, false, err
 	}
-	entry, _, ok := selectNewest(lf.RedoEntries, scope)
+	entry, _, ok := selectNewestOwned(lf.RedoEntries, scope, l.device())
 	return entry, ok, nil
 }

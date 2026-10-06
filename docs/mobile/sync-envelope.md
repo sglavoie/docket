@@ -66,7 +66,7 @@ blob write identical bytes. A file that is missing or still downloading means
 | `txn_id` | `sha256:` followed by the hex digest of the manifest's canonical JSON with `txn_id` omitted. Canonical JSON has sorted keys, no insignificant whitespace, and UTF-8 encoding. Because the id is the content, a manifest cannot be edited after it is published. |
 | `device_id`, `device_seq` | The author, and a gap-free per-device counter starting at 1. A gap tells the reader that delivery is incomplete. It never means the transaction was skipped. |
 | `parents` | The heads this device had applied when it committed: the causal ancestry. A manifest is applied only after all of its parents. Several parents mean the author had merged concurrent histories. |
-| `kind` | One of `user`, `undo`, `redo`, `merge`, `resolution`, `repair`. Undo and redo are new forward changes. A reader never treats them as image restores. |
+| `kind` | One of `user`, `undo`, `redo`, `merge`, `resolution`, `repair`, `external`. Undo and redo are new forward changes. A reader never treats them as image restores. `external` imports a valid change made outside a commit (see [External changes](#external-changes)). |
 | `local_txn_id` | The author's `.tt/transactions` journal id. It is diagnostic only. |
 | `created_at` | Informational only. Never use it to order transactions or choose a winner. |
 | `schemas` | The author's live artifact schemas when it committed. |
@@ -159,13 +159,52 @@ describe, so nothing here is ever written on its own.
   sequence number.
 - **Tracking.** `tracked` holds each synced path's digest as of the last
   recorded or applied transaction: the last indexed revision that external-edit
-  detection compares against.
+  detection compares against. `indexed` says it covers every synced file: the
+  first time a device records anything — a commit, an apply, or an observation
+  — it indexes the workspace as it stands and retains those bytes as blobs, so
+  every later difference is a change with a merge base the device can supply.
 
 Checked domain saves outside the journal (`DomainCoordinator.CommitCatalog`,
 `CommitPlanning`, `CommitLensDefinitions`) are not recorded at the commit
 boundary. Their bytes differ from `tracked` afterwards, which is exactly what
 the external-change observation compares, so they are imported as changes by
 that observation rather than by a second hook.
+
+### External changes
+
+`CommitService.CommitExternalChanges` observes the workspace: every synced
+file whose bytes differ from `tracked` — edited, created, or removed outside a
+commit — is judged, and every valid difference becomes one effect of a single
+outgoing `kind: external` transaction whose `base_blob` is the indexed digest.
+The observation writes only the history, never the workspace. It runs at
+`engine.Open` and before every `CommitIncoming`, so an edit made while no
+runtime held the workspace, or a domain save, is published before an incoming
+manifest is reconciled.
+
+A difference is held, not published, when the live readers would refuse it: a
+project document that does not parse, fails the project audit, or does not
+render through the canonical writer; a catalog, planning, or lens file the
+domain loader refuses (`syncmerge.Merger.ValidateArtifact`); a catalog naming
+another workspace; a removed catalog, planning, or lens file; a removed
+`tasks.md` whose project the catalog still names; or a file in a project
+directory no catalog names. A held file stays on disk byte for byte. Because it
+is not indexed, reconciliation refuses to write over it (`ErrUnrecordedChange`)
+and the incoming manifest waits; once the file is repaired, the next
+observation imports it and the manifest reconciles with it. Files outside the
+synced layout are ignored.
+
+### Undo and redo
+
+The undo ledger (`.tt/undo/`) is device-local and never exchanged. Each entry is
+stamped with the device that committed it, and a device restores only its own
+entries, so a workspace copied with its ledger cannot replay another device's
+history; entries recorded before sync carry no device and stay restorable. A
+restore is checked against the current bytes of every file it touches and is
+refused whole when any of them no longer holds the image the entry left —
+another device's applied change, a reconciliation, or an unrecorded edit — so
+undo never restores an old image over someone else's work. A successful undo or
+redo is published as a new `kind: undo` or `redo` transaction whose parents are
+the device's heads.
 
 ## Capability negotiation
 
@@ -300,11 +339,13 @@ compete again as one new conflict whose candidates are the two resolutions.
   merge's. Sync conflicts are derived per device (see [Conflicts](#conflicts));
   surfacing them in the frontends is later work.
 - `lenses.json`, and catalog or planning saves made through the checked domain
-  store, are committed outside the journal. They are observed against
-  `tracked` rather than hooked (see [Local sync history](#local-sync-history));
-  the observation itself belongs to the external-edit work. Until it is
-  recorded, such a change makes reconciliation refuse an incoming manifest
-  that would rewrite the same file (`ErrUnrecordedChange`).
+  store, are committed outside the journal and published by observation (see
+  [External changes](#external-changes)), which runs at launch and before every
+  incoming manifest. A frontend that wants them published sooner must observe
+  after saving; continuous observation belongs to the transport's polling.
+- Undo refuses whenever another device changed a file the entry touches, even
+  a different task in the same `tasks.md`. A three-way rebase of the inverse
+  change would let more undos through.
 - Reconciliation reads the whole history on every incoming manifest. Caching
   the resolved workspace, or compacting history, is deferred with history
   retention.

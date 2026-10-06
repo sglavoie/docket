@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/syncmerge"
 )
@@ -70,7 +71,28 @@ func Open(cfg Config) (*Runtime, error) {
 	if state, err = Recover(state, manager); err != nil {
 		return nil, fmt.Errorf("recover workspace: %w", err)
 	}
-	return Attach(state, manager, cfg.Clock, cfg.IDs), nil
+	rt := Attach(state, manager, cfg.Clock, cfg.IDs)
+	rt.observeExternalChanges()
+	return rt, nil
+}
+
+// observeExternalChanges imports what was edited in the workspace while no
+// runtime had it open, so those edits are published like any commit. It
+// writes only the device's sync history, never the workspace, so the snapshot
+// Open loaded stays current; a failure is reported and leaves the edits for
+// the next observation.
+func (r *Runtime) observeExternalChanges() {
+	if r.repo.svc.SyncHistory() == nil {
+		return
+	}
+	report, err := r.repo.svc.CommitExternalChanges()
+	if err != nil {
+		logging.Warn("sync: observing external changes: %v", err)
+		return
+	}
+	for _, held := range report.Held {
+		logging.Warn("sync: holding the external change to %s unpublished until it is repaired: %s", held.Path, held.Reason)
+	}
 }
 
 // requireCurrentSchema refuses a workspace this engine would have to migrate
