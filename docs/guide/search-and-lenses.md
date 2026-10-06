@@ -425,10 +425,16 @@ it, `Add built-in view` — followed by every saved lens in alphabetical order.
 Scoped lens previews include `Project: web`, using the project's current slug;
 an unavailable project keeps its stored ID with an `unavailable` label. Lenses
 without a saved scope leave that label out because they keep the current scope.
+Selecting a lens whose project is parked, archived, or missing shows that reason
+above the list before you try to apply it. The lens remains selectable and its
+management actions remain available.
 The selected lens also shows its wrapped definition beneath the list. Long
 definitions show `Ctrl+F/B page` and counts of lines above and below; paging reads
 the whole query and sort without applying the lens. Selecting another lens
 starts its details at the top. Refusal messages take priority on short terminals.
+Searching highlights matching characters in lens names, summaries, and the
+selected definition. Matches on the cursor row are underlined to preserve its
+selection colors. Clearing the search removes the highlighting.
 The built-in gallery includes both Review Queue, which preserves the stored
 `=review` flag meaning, and Needs Review, which uses `?review` with the ordinary
 default ordering.

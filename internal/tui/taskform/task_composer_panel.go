@@ -306,12 +306,15 @@ func (m *TaskComposerModel) renderComposerPanelTail(rows int, errors string) str
 // of the wrapping would let those two disagree.
 func (m *TaskComposerModel) composerPanelErrorBlock(width int) string {
 	var block string
+	if m.pasteRefusal != "" {
+		block = theme.ValidationErrorStyle.Width(width).Render(m.pasteRefusal)
+	}
 	errors := m.Errors
 	// Put the caret's problem first so a bounded panel always shows its reason.
 	if len(errors) > 1 {
 		for index, problem := range errors {
 			if problem.Line == m.Input.Line()+1 {
-				block = theme.SubtitleStyle.Render(fmt.Sprintf("Problem %d of %d · Line %d", index+1, len(errors), problem.Line))
+				block = joinPanelBlocks(block, theme.SubtitleStyle.Render(fmt.Sprintf("Problem %d of %d · Line %d", index+1, len(errors), problem.Line)))
 				errors = append(append([]grammar.LineError{problem}, errors[:index]...), errors[index+1:]...)
 				break
 			}
@@ -320,6 +323,16 @@ func (m *TaskComposerModel) composerPanelErrorBlock(width int) string {
 	for _, lineErr := range errors {
 		block = joinPanelBlocks(block, theme.ValidationErrorStyle.Width(width).
 			Render(fmt.Sprintf("Line %d: %s", lineErr.Line, lineErr.Message)))
+	}
+	if m.pasteRefusal == "" && m.Input.CharLimit > 0 {
+		remaining := max(m.Input.CharLimit-m.Input.Length(), 0)
+		if remaining <= m.Input.CharLimit/10 {
+			unit := "characters"
+			if remaining == 1 {
+				unit = "character"
+			}
+			block = joinPanelBlocks(block, theme.MutedStyle.Render(fmt.Sprintf("%d %s remaining", remaining, unit)))
+		}
 	}
 	return block
 }

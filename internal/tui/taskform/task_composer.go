@@ -144,6 +144,7 @@ type TaskComposerModel struct {
 	// Once a submit has failed, edits keep its line diagnostics current without
 	// moving the caret or issuing another capture request.
 	validateOnEdit    bool
+	pasteRefusal      string
 	batchInvalidLines int
 	batchDestinations []string
 	chrome.DiscardConfirmState
@@ -352,7 +353,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, m.UpdateInput(msg)
+	return m, m.updateCompactInput(msg)
 }
 
 func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd) {
@@ -376,6 +377,7 @@ func (m *TaskComposerModel) handleCaptureUtilityKey(name string) (bool, tea.Cmd)
 func (m *TaskComposerModel) refreshCaptureErrorsAfterEdit(before string, projectBefore *models.Project) {
 	if m.Mode == ComposerCompact &&
 		(m.Input.Value() != before || m.Preset.Project != projectBefore) {
+		m.pasteRefusal = ""
 		m.refreshBatchDiagnostics()
 		if m.validateOnEdit {
 			m.ParseCompactLines()
@@ -402,6 +404,7 @@ func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
 	if m.SubmissionInFlight {
 		return nil
 	}
+	m.pasteRefusal = ""
 	reqs, ok := m.ParseCompactLines()
 	if !ok {
 		m.validateOnEdit = true

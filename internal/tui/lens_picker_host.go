@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/lens"
@@ -30,8 +31,15 @@ func (m *AppModel) namedLensPickerSnapshot() lens.NamedLensPickerSnapshot {
 	}
 	if m.domain.runtime != nil {
 		snapshot.ProjectSlugs = make(map[string]string)
+		snapshot.ProjectUnavailableReasons = make(map[string]string)
 		for _, project := range m.domain.runtime.AllProjects() {
 			snapshot.ProjectSlugs[project.ID] = project.Slug
+			switch {
+			case project.Archived:
+				snapshot.ProjectUnavailableReasons[project.ID] = "project is archived"
+			case models.ProjectTagsParked(project.Tags):
+				snapshot.ProjectUnavailableReasons[project.ID] = "project is parked"
+			}
 		}
 		if machine := m.domain.runtime.Machine(); machine != nil {
 			snapshot.Lenses = machine.NamedLenses.Clone()

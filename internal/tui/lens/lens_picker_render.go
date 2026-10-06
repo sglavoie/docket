@@ -43,6 +43,9 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	if state := model.StateLine(); state != "" {
 		header = append(header, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(state, contentWidth)))
 	}
+	if reason := model.selectedScopeUnavailableReason(); reason != "" {
+		header = append(header, theme.MutedStyle.Render(textfit.TruncateToVisualWidth("Unavailable: "+reason, contentWidth)))
+	}
 
 	guidance := chrome.RenderGuidanceText(model.GuidanceSpec(), contentWidth)
 	if model.notice != "" {
@@ -95,6 +98,22 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	)
 }
 
+// Availability is explanatory only. Apply still checks the live workspace, and
+// an unavailable lens stays selectable for inspecting, replacing or deleting it.
+func (model *NamedLensPickerModel) selectedScopeUnavailableReason() string {
+	selected, ok := model.CurrentLens()
+	if !ok || selected.Scope == "" {
+		return ""
+	}
+	if reason := model.snapshot.ProjectUnavailableReasons[selected.Scope]; reason != "" {
+		return reason
+	}
+	if _, exists := model.snapshot.ProjectSlugs[selected.Scope]; !exists {
+		return "project no longer exists"
+	}
+	return ""
+}
+
 // renderDetails borrows rows from the list while keeping three rows for choosing
 // a lens. The shared preview renderer wraps the complete definition; paging
 // windows those lines instead of shortening the saved query.
@@ -104,8 +123,10 @@ func (model *NamedLensPickerModel) renderDetails(width, available int) string {
 	if !ok || available < 3 {
 		return ""
 	}
+	summary := NamedLensSummary(selected, model.snapshot.ProjectSlugs)
+	_, positions, _ := namedLensMatchPositions(selected.Name, summary, model.Query)
 	document := listsurface.RenderListSurfacePreview(listsurface.ListPreview{
-		Summary: NamedLensSummary(selected, model.snapshot.ProjectSlugs),
+		Summary: textfit.HighlightText(summary, positions, theme.MutedStyle),
 	}, width, 0, nil)
 	lines := strings.Split(document, "\n")
 	capacity := min(4, available-2)

@@ -5,11 +5,56 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
+
+func TestLensPickerExplainsCatalogScopeBeforeApply(t *testing.T) {
+	for _, reason := range []string{"parked", "archived", "missing"} {
+		t.Run(reason, func(t *testing.T) {
+			project := lensScopeProject(lensScopeAlphaID)
+			project.Slug = "web"
+			if reason == "parked" {
+				project.Tags = []string{models.ParkedProjectTag}
+			}
+			if reason == "archived" {
+				project.Archived = true
+			}
+			projects := []*models.Project{project}
+			if reason == "missing" {
+				projects = nil
+			}
+			model := lensOperationApp(t)
+			model.domain.runtime = testConfigWithProjects(projects...)
+			model.crossOutliner = scopeTestOutliner(projects...)
+			saved := scopedWaitingLens(lensTestID(3), "Elsewhere", project.ID)
+			model.domain.runtime.Machine().NamedLenses = config.NamedLensList{saved}
+			model.openNamedLensPicker()
+			picker := model.lenses.Picker()
+			if picker == nil || !picker.SelectLens(saved.ID) {
+				t.Fatal("scoped lens not selectable")
+			}
+			want := "project is " + reason
+			if reason == "missing" {
+				want = "project no longer exists"
+			}
+			if view := ansi.Strip(picker.RenderWithin(60, 18)); !strings.Contains(view, want) {
+				t.Fatalf("catalog reason missing: %s", view)
+			}
+			if model.crossOutliner.HasActiveLens() {
+				t.Fatal("preview applied lens")
+			}
+			pressLens(t, model, "enter")
+			if model.lenses.Picker() == nil || model.crossOutliner.HasActiveLens() {
+				t.Fatal("apply bypassed scope refusal")
+			}
+		})
+	}
+}
 
 // A lens scope names a project by ID, and NamedLens.Validate holds that ID to
 // the canonical UUID spelling, so a scoped fixture's projects have to be minted

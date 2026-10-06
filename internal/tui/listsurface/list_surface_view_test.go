@@ -267,6 +267,22 @@ func assertListSurfaceWidth(t *testing.T, rendered string, width int) {
 	}
 }
 
+func TestListMatchHighlightPreservesTruncationAndSelectionGeometry(t *testing.T) {
+	item := ListItem{ID: "one", PrimaryText: "界 Release planning", SecondaryText: "Project: café · $waiting",
+		PrimaryMatchPositions: []int{0, 3, 6, 17}, SecondaryMatchPositions: []int{10, 12, 22}}
+	for _, width := range []int{4, 12, 30, 80} {
+		for _, cursor := range []bool{false, true} {
+			row := ListSurfaceRow{Cursor: cursor, Match: ListMatch{Item: item}}
+			highlighted := RenderListSurfaceRow(row, ListSelectionSingle, width)
+			row.Match.Item.PrimaryMatchPositions, row.Match.Item.SecondaryMatchPositions = nil, nil
+			plain := RenderListSurfaceRow(row, ListSelectionSingle, width)
+			if ansi.Strip(highlighted) != ansi.Strip(plain) || lipgloss.Width(highlighted) > width {
+				t.Fatalf("highlight changed geometry at width %d: %q vs %q", width, highlighted, plain)
+			}
+		}
+	}
+}
+
 func TestListSurfacePreviewGeometryHonorsListWidthPercent(t *testing.T) {
 	cases := []struct {
 		name        string

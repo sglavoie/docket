@@ -125,9 +125,13 @@ type ListItem struct {
 	// PrimaryText. Unlike PrimaryStyle it survives the cursor row, because
 	// SelectedLine strips styling but not characters.
 	PrimaryMarker string
-	Preview       ListPreview
-	OperationIDs  []operation.OperationID
-	Data          any
+	// Match positions are rune offsets in the plain texts, supplied by adapters
+	// that filter outside this surface. They affect rendering alone.
+	PrimaryMatchPositions   []int
+	SecondaryMatchPositions []int
+	Preview                 ListPreview
+	OperationIDs            []operation.OperationID
+	Data                    any
 }
 
 // Enabled reports whether the item may be selected or activated.

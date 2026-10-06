@@ -25,6 +25,11 @@ status. Add `%web` to route it to an existing project whose slug is `web`.
 Paste several lines to create one task per nonblank line, all in one undoable
 save. Close suggestions or syntax help with `Esc` before using `Ctrl+N`.
 
+Compact capture has a 4,000-character input limit. A paste that would exceed
+the available space is refused in full, with a message asking for a smaller
+batch; the existing draft and caret stay intact. Tabs count after expansion
+to spaces. Remaining capacity appears when the input is nearly full.
+
 The [grammar reference](#capture-grammar) below covers every sigil, previews,
 and validation. See [workflow and hierarchy](#workflow-and-hierarchy) for
 destination rules and [outline editing](#outline-editing) for whole-project edits.

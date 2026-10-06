@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -327,6 +328,9 @@ func RenderListSurfaceRow(
 		}
 	}
 	layout := LayoutListText(item.PrimaryText, secondary, max(width-markerWidth, 0))
+	if item.Enabled() && (len(item.PrimaryMatchPositions) > 0 || len(item.SecondaryMatchPositions) > 0) {
+		return renderMatchedListSurfaceRow(row, marker, layout, width)
+	}
 	// A checked row keeps its color because "applied" is the state worth
 	// previewing; the [x] still says it is applied. The cursor row does not,
 	// because SelectedLine owns the whole line on every list surface, and a
@@ -355,6 +359,49 @@ func RenderListSurfaceRow(
 		line = chrome.SelectedLine(line, width)
 	}
 	return textfit.TruncateToVisualWidth(line, width)
+}
+
+func renderMatchedListSurfaceRow(row ListSurfaceRow, marker string, layout ListTextLayout, width int) string {
+	item := row.Match.Item
+	base, match := lipgloss.NewStyle(), theme.HighlightStyle
+	if row.Selected {
+		base = theme.SelectionStyle
+	}
+	primary := base
+	if item.PrimaryStyle != nil {
+		primary = *item.PrimaryStyle
+	}
+	marker += item.PrimaryMarker
+	if row.Cursor {
+		base, primary = theme.SelectedStyle, theme.SelectedStyle
+		match = theme.SelectedStyle.Underline(true)
+		marker = ansi.Strip(marker)
+	}
+	line := base.Render(marker) + highlightListField(layout.Primary, item.PrimaryText, item.PrimaryMatchPositions, primary, match)
+	if layout.Secondary != "" {
+		line += base.Render(layout.Gap) + highlightListField(layout.Secondary, item.SecondaryText, item.SecondaryMatchPositions, base, match)
+	}
+	if row.Cursor {
+		line = theme.SelectedStyle.Width(width).Render(line)
+	}
+	return textfit.TruncateToVisualWidth(line, width)
+}
+
+// A truncation's ellipsis is chrome, not the character it displaced. Keep only
+// positions in the unchanged prefix, with rune offsets even for wide text.
+func highlightListField(shown, original string, positions []int, base, match lipgloss.Style) string {
+	visible, source := []rune(shown), []rune(original)
+	prefix := 0
+	for prefix < len(visible) && prefix < len(source) && visible[prefix] == source[prefix] {
+		prefix++
+	}
+	kept := make([]int, 0, len(positions))
+	for _, position := range positions {
+		if position >= 0 && position < prefix {
+			kept = append(kept, position)
+		}
+	}
+	return textfit.HighlightTextWithStyle(shown, kept, base, match)
 }
 
 func RenderListContinuation(direction string, count, width int) string {

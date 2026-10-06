@@ -124,6 +124,8 @@ func normalizeListItems(
 }
 
 func cloneListItem(item ListItem) ListItem {
+	item.PrimaryMatchPositions = append([]int(nil), item.PrimaryMatchPositions...)
+	item.SecondaryMatchPositions = append([]int(nil), item.SecondaryMatchPositions...)
 	item.Aliases = append([]string(nil), item.Aliases...)
 	item.OperationIDs = append([]operation.OperationID(nil), item.OperationIDs...)
 	item.Preview = cloneListPreview(item.Preview)

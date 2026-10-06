@@ -12,6 +12,12 @@ import (
 // Positions are rune indices (0-based) that should be highlighted.
 // This is used to show fuzzy match positions in search results.
 func HighlightText(text string, positions []int, baseStyle lipgloss.Style) string {
+	return HighlightTextWithStyle(text, positions, baseStyle, theme.HighlightStyle)
+}
+
+// HighlightTextWithStyle lets a selected row retain its selection palette while
+// distinguishing matches with an underline instead of a second background.
+func HighlightTextWithStyle(text string, positions []int, baseStyle, matchStyle lipgloss.Style) string {
 	if len(positions) == 0 {
 		return baseStyle.Render(text)
 	}
@@ -28,7 +34,7 @@ func HighlightText(text string, positions []int, baseStyle lipgloss.Style) strin
 	for i, r := range runes {
 		char := string(r)
 		if _, highlight := posSet[i]; highlight {
-			result.WriteString(theme.HighlightStyle.Render(char))
+			result.WriteString(matchStyle.Render(char))
 		} else {
 			result.WriteString(baseStyle.Render(char))
 		}

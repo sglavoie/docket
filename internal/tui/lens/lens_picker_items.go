@@ -3,6 +3,7 @@ package lens
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -27,7 +28,9 @@ func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 	listed := 0
 	model.Ordinals = model.Ordinals[:0]
 	for _, lens := range model.sorted {
-		if !namedLensMatchesQuery(lens, model.Query, model.snapshot.ProjectSlugs) {
+		item := namedLensPickerItem(lens, model.snapshot)
+		primary, secondary, matches := namedLensMatchPositions(item.PrimaryText, item.SecondaryText, model.Query)
+		if !matches {
 			continue
 		}
 		listed++
@@ -36,7 +39,9 @@ func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 			model.Ordinals = append(model.Ordinals, lens.ID)
 			ordinal = len(model.Ordinals)
 		}
-		items = append(items, namedLensPickerItem(lens, model.snapshot, ordinal))
+		item.PrimaryMarker = lensPickerOrdinalMarker(ordinal) + item.PrimaryMarker
+		item.PrimaryMatchPositions, item.SecondaryMatchPositions = primary, secondary
+		items = append(items, item)
 	}
 	model.Listed = listed
 	return items
@@ -85,9 +90,8 @@ func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []listsurface.ListIt
 func namedLensPickerItem(
 	lens config.NamedLens,
 	snapshot NamedLensPickerSnapshot,
-	ordinal int,
 ) listsurface.ListItem {
-	marker := lensPickerOrdinalMarker(ordinal)
+	marker := ""
 	if lens.ID == snapshot.ActiveID {
 		label := "●"
 		if snapshot.Modified {
@@ -118,13 +122,18 @@ func lensPickerItemID(id string) listsurface.ListItemID {
 	return listsurface.ListItemID(lensPickerLensPrefix + id)
 }
 
-// namedLensMatchesQuery scores a saved lens against the picker's own query. The
-// summary participates so a search for "waiting" finds a lens whose facets say
-// waiting even when its name does not.
-func namedLensMatchesQuery(lens config.NamedLens, query string, projectSlugs map[string]string) bool {
-	normalized := strings.Join(strings.Fields(query), " ")
-	if normalized == "" {
-		return true
+// Filter and highlights share the exact combined string, so terms may span
+// name and summary without either field inventing a second match.
+func namedLensMatchPositions(name, summary, query string) (primary, secondary []int, matches bool) {
+	score, positions := fuzzy.NewMatcher(false).ScoreTermsWithPositions(name+" "+summary, query)
+	split := utf8.RuneCountInString(name)
+	for _, position := range positions {
+		switch {
+		case position < split:
+			primary = append(primary, position)
+		case position > split:
+			secondary = append(secondary, position-split-1)
+		}
 	}
-	return fuzzy.ScoreTerms(lens.Name+" "+NamedLensSummary(lens, projectSlugs), normalized) != 0
+	return primary, secondary, score > 0
 }
