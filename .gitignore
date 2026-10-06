@@ -28,3 +28,11 @@ macos/.cache/
 macos/build/
 macos/DerivedData/
 *.xcodeproj
+
+# iOS app: the gomobile XCFramework and its fingerprint are built by
+# ios/scripts/build-bridge.sh, the Xcode project is generated from
+# ios/project.yml, and SwiftPM keeps its own state beside the package.
+ios/.cache/
+ios/TTEngine/Frameworks/
+ios/TTEngine/.build/
+ios/TTEngine/.swiftpm/

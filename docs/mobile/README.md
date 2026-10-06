@@ -61,8 +61,16 @@ The catalog carries each project's `id`, `slug`, `name`, `description`,
 `color_slot`, and `tags`. The `parked` tag is the only tag that changes
 behavior.
 
+## Implementation
+
+`internal/bridge` serves the bridge contract over the shared runtime in
+`internal/engine`, and `mobile/ttbridge` is the gomobile binding. The iPhone
+app, its Swift package, and the XCFramework build are described in
+[`ios/README.md`](../../ios/README.md).
+
 ## Verification
 
 ```bash
 bash scripts/verify_mobile_session.sh 1
+bash scripts/verify_mobile_session.sh 3   # macOS with Xcode: builds both slices, runs the simulator suite
 ```

@@ -1,0 +1,41 @@
+# XcodeGen spec for the iPhone app. ios/scripts/generate-project.sh builds the
+# Go bridge and generates ios/TTMobile.xcodeproj from this file with the
+# XcodeGen macos/XCODEGEN_VERSION pins; the generated project is gitignored,
+# so edit this file instead.
+name: TTMobile
+options:
+  bundleIdPrefix: io.github.sglavoie
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  # The typed engine adapter and the gomobile XCFramework it wraps.
+  TTEngine:
+    path: TTEngine
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+targets:
+  TTMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: TTMobile
+    settings:
+      base:
+        PRODUCT_NAME: tt
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: tt
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: TTEngine
+        product: TTEngine

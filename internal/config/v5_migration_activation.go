@@ -151,11 +151,11 @@ func workspaceCatalogPayloadSchema(dataDir string) (int, bool, error) {
 		return 0, false, fmt.Errorf("decode workspace catalog envelope: %w", err)
 	}
 	if env.SchemaVersion > CurrentDomainSchemaVersion {
-		return 0, false, fmt.Errorf(
-			"workspace envelope schema %d is newer than supported schema %d; upgrade tt",
-			env.SchemaVersion,
-			CurrentDomainSchemaVersion,
-		)
+		return 0, false, &SchemaTooNewError{
+			Artifact:  "workspace envelope",
+			Found:     env.SchemaVersion,
+			Supported: CurrentDomainSchemaVersion,
+		}
 	}
 	if env.Kind != domainCatalog.name() {
 		return 0, false, fmt.Errorf("workspace catalog artifact contains %q domain", env.Kind)

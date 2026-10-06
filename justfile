@@ -123,6 +123,18 @@ mac-test:
 mac-install: (mac-app "Release")
     ./macos/scripts/install-app.sh
 
+# Bind the Go engine into the iOS XCFramework, device and simulator slices (outside `just ci`)
+ios-bridge:
+    ./ios/scripts/build-bridge.sh
+
+# Build the iOS bridge and generate ios/TTMobile.xcodeproj (outside `just ci`)
+ios-project:
+    ./ios/scripts/generate-project.sh
+
+# Run the TTEngine simulator suite against the real engine (outside `just ci`)
+ios-test:
+    ./ios/scripts/test-engine.sh ios/.cache/test-engine
+
 # Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:
     @echo "Running code quality checks..."

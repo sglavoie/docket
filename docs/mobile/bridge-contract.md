@@ -110,7 +110,7 @@ There is no bridge-only mutation path.
 
 | Op | Mutates | Notes |
 | --- | --- | --- |
-| `workspace.open` | may recover | Payload is `{data_dir, runtime_dir, device_id}`. Recovers interrupted journals and refuses to migrate implicitly. |
+| `workspace.open` | may recover | Payload is `{data_dir, runtime_dir, device_id, create_if_missing}`; the last is optional and bootstraps an empty directory. Recovers interrupted journals and refuses to migrate implicitly. |
 | `workspace.status` | no | Reports schemas, revisions, and the sync state summary. |
 | `workspace.close` | no | Releases locks and caches. |
 | `query.projects` | no | Returns active, parked, and archived projects as separate populations, matching `TaskWorkspaceProjects` and `AvailableProjects`. |
@@ -133,6 +133,29 @@ There is no bridge-only mutation path.
 | `sync.acknowledge` | yes | Records that the transport durably published an outbound manifest. |
 | `conflict.list`, `conflict.show` | no | Durable conflicts. |
 | `conflict.resolve` | yes | Resolves a conflict as a new transaction. |
+
+## Served operations
+
+`internal/bridge` implements this contract and `mobile/ttbridge` binds it. An op
+listed above that a build does not serve yet answers `unknown_op` with
+`details.reserved` set to `true`, so a client can tell an op the build lacks
+from one the protocol never had. The current build serves these:
+
+| Op | Payload | Result |
+| --- | --- | --- |
+| `workspace.open`, `workspace.status` | as above; status takes none | `{workspace, data_dir, device_id, schemas, revisions}` |
+| `workspace.close` | none | `{closed}` |
+| `query.projects` | none | `{active, parked, archived}` |
+| `query.tasks` | `{mode, scope, query, sort: {field, ascending}}`, each optional; `query` is the strict canonical clause string | `{query, items: [{task, today, next}], diagnostics}` |
+| `query.task` | `{task}` | `{task, project, revision}` |
+| `command.capture` | `{title, project_id, destination, priority, tags}`; only `title` is required | `{task, committed}` |
+| `command.transition` | `{task, state}` | `{task, committed}` |
+
+`command.capture` takes a literal title in this build: a sigil in it stays
+text. An absent `project_id` is the protected Unfiled project.
+
+`committed` is `{transaction_id, projects, domains}`: the project revisions the
+commit produced and every domain artifact whose raw revision moved.
 
 ## Runtime configuration
 

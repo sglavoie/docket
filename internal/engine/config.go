@@ -23,6 +23,23 @@ import (
 // directory that holds no workspace.
 var ErrWorkspaceNotFound = errors.New("no tt workspace at the configured data directory")
 
+// ErrInvalidConfig marks a Config that names no usable workspace or machine.
+// Every validation failure matches it with errors.Is and keeps its own message.
+var ErrInvalidConfig = errors.New("engine: invalid configuration")
+
+type configError struct{ message string }
+
+func (e configError) Error() string        { return e.message }
+func (e configError) Is(target error) bool { return target == ErrInvalidConfig }
+
+func invalidConfig(format string, args ...any) error {
+	return configError{message: fmt.Sprintf(format, args...)}
+}
+
+// ErrMigrationRequired reports an Open with RefuseMigration against a workspace
+// whose schema is older than this engine, which opening would migrate.
+var ErrMigrationRequired = errors.New("the workspace schema is older than this engine and opening it would migrate")
+
 // Config is everything a Runtime depends on. Only DataDir and Machine are
 // required; a nil Clock or IDs means the system clock and random UUIDs, which
 // are values rather than environment and are what every frontend uses outside
@@ -43,6 +60,11 @@ type Config struct {
 	// CreateIfMissing bootstraps a fresh workspace at DataDir when none exists.
 	// Without it, Open refuses a directory holding no workspace.
 	CreateIfMissing bool
+	// RefuseMigration fails Open with ErrMigrationRequired, before anything is
+	// recovered or written, when the workspace schema is older than this engine,
+	// and with a *config.SchemaTooNewError when it is newer. Without it, Open
+	// activates pending migrations as the desktop always has.
+	RefuseMigration bool
 }
 
 // Machine is the identity a runtime commits as. Exactly one of two forms is
@@ -82,25 +104,25 @@ var deviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 func (m Machine) validate() error {
 	if m.followProcess {
 		if m.Home != "" || m.DeviceID != "" {
-			return fmt.Errorf("engine: the process machine names no home or device identity")
+			return invalidConfig("engine: the process machine names no home or device identity")
 		}
 		return nil
 	}
 	if m.Home == "" || m.DeviceID == "" {
-		return fmt.Errorf("engine: a machine home and a device identity are required")
+		return invalidConfig("engine: a machine home and a device identity are required")
 	}
 	if !filepath.IsAbs(m.Home) {
-		return fmt.Errorf("engine: machine home %q is not absolute", m.Home)
+		return invalidConfig("engine: machine home %q is not absolute", m.Home)
 	}
 	if !deviceIDPattern.MatchString(m.DeviceID) {
-		return fmt.Errorf("engine: device identity %q must be 1-64 letters, digits, '.', '_' or '-'", m.DeviceID)
+		return invalidConfig("engine: device identity %q must be 1-64 letters, digits, '.', '_' or '-'", m.DeviceID)
 	}
 	return nil
 }
 
 func (c Config) validate() error {
 	if c.DataDir == "" {
-		return fmt.Errorf("engine: a data directory is required")
+		return invalidConfig("engine: a data directory is required")
 	}
 	return c.Machine.validate()
 }

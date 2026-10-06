@@ -207,10 +207,180 @@ verify_session_2() {
 	note "session 2 verified"
 }
 
+# require_slice_platform LABEL BINARY ARCHS PLATFORM fails unless the archive
+# carries exactly ARCHS and every object in it was built for Mach-O PLATFORM
+# (2 is iOS, 7 the iOS simulator).
+require_slice_platform() {
+	local label=$1 binary=$2 archs=$3 platform=$4
+	local actual arch platforms
+	actual=$(lipo -archs "$binary" | tr ' ' '\n' | sort | xargs)
+	[ "$actual" = "$archs" ] || fail "$label slice carries architectures '$actual', want '$archs'"
+	for arch in $archs; do
+		platforms=$(otool -arch "$arch" -l "$binary" | awk '/LC_BUILD_VERSION/ { want = 1; next } want && $1 == "platform" { print $2; want = 0 }' | sort -u | xargs)
+		[ "$platforms" = "$platform" ] || fail "$label $arch objects target platforms '$platforms', want '$platform'"
+	done
+}
+
+# require_xcresult_passed BUNDLE TEST... holds an xcodebuild result bundle to
+# the evidence rules: it passed, ran tests, failed and skipped none, and records
+# each named test case as passed.
+require_xcresult_passed() {
+	local bundle=$1
+	shift
+	local summary="$work_dir/xcresult-summary.json" tests="$work_dir/xcresult-tests.json"
+	xcrun xcresulttool get test-results summary --path "$bundle" >"$summary" ||
+		fail "cannot read the result bundle summary at $bundle"
+	xcrun xcresulttool get test-results tests --path "$bundle" >"$tests" ||
+		fail "cannot read the result bundle tests at $bundle"
+	local result passed failed skipped
+	result=$(plutil -extract result raw -o - "$summary")
+	passed=$(plutil -extract passedTests raw -o - "$summary")
+	failed=$(plutil -extract failedTests raw -o - "$summary")
+	skipped=$(plutil -extract skippedTests raw -o - "$summary")
+	[ "$result" = Passed ] || fail "simulator suite result is $result"
+	[ "$failed" -eq 0 ] || fail "simulator suite failed $failed tests"
+	[ "$skipped" -eq 0 ] || fail "simulator suite skipped $skipped tests"
+	[ "$passed" -gt 0 ] || fail "simulator suite passed zero tests"
+	local test
+	for test in "$@"; do
+		python3 -I - "$tests" "$test" <<'PY' || fail "simulator suite does not record $test as passed"
+import json, sys
+
+def cases(node):
+    if node.get("nodeType") == "Test Case":
+        yield node
+    for child in node.get("children", []):
+        yield from cases(child)
+
+with open(sys.argv[1]) as handle:
+    tree = json.load(handle)
+wanted = sys.argv[2]
+found = [case for root in tree["testNodes"] for case in cases(root) if case.get("name") == wanted]
+sys.exit(0 if found and all(case.get("result") == "Passed" for case in found) else 1)
+PY
+	done
+	note "simulator suite: $passed passed, 0 failed, 0 skipped"
+}
+
+verify_session_3() {
+	[ "$(uname -s)" = Darwin ] || fail "session 3 builds and runs the iOS simulator suite on macOS only"
+	require_files \
+		internal/bridge/protocol.go \
+		internal/bridge/bridge.go \
+		internal/bridge/ops.go \
+		mobile/ttbridge/ttbridge.go \
+		mobile/bridgehost/main.go \
+		ios/project.yml \
+		ios/scripts/build-bridge.sh \
+		ios/scripts/generate-project.sh \
+		ios/scripts/test-engine.sh \
+		ios/TTEngine/Package.swift \
+		ios/TTEngine/Sources/TTEngine/TTEngine.swift \
+		ios/TTEngine/Sources/TTEngine/BridgeModels.swift \
+		ios/TTEngine/Tests/TTEngineTests/BridgeSimulatorTests.swift \
+		ios/TTMobile/App/TTMobileApp.swift
+	grep -Eq '^[[:space:]]+golang.org/x/mobile/cmd/gomobile$' go.mod || fail "go.mod pins no gomobile tool"
+	grep -Eq '^[[:space:]]+golang.org/x/mobile/cmd/gobind$' go.mod || fail "go.mod pins no gobind tool"
+
+	# The protocol in Go: envelope refusals, the open/capture/complete/reopen
+	# cycle with replay and stale preconditions, refusing migration, and the
+	# two-function binding surface.
+	run_go_suite bridge ./internal/bridge/ \
+		'^(TestBridgeRefusesMalformedAndMisaddressedRequests|TestBridgeCapturesCompletesAndReopens|TestBridgeOpenRefusesToMigrate|TestBridgeCreatesAFreshWorkspace|TestSimulatorEvidenceShapeMatchesTheSwiftRecord)$' \
+		TestBridgeRefusesMalformedAndMisaddressedRequests \
+		TestBridgeRefusesMalformedAndMisaddressedRequests/reserved_op \
+		TestBridgeRefusesMalformedAndMisaddressedRequests/workspace_mismatch \
+		TestBridgeCapturesCompletesAndReopens \
+		TestBridgeCapturesCompletesAndReopens/stale_expectation_commits_nothing \
+		TestBridgeCapturesCompletesAndReopens/replay_returns_the_first_result \
+		TestBridgeCapturesCompletesAndReopens/queries \
+		TestBridgeOpenRefusesToMigrate/older \
+		TestBridgeOpenRefusesToMigrate/newer \
+		TestBridgeCreatesAFreshWorkspace \
+		TestSimulatorEvidenceShapeMatchesTheSwiftRecord
+	run_go_suite engine-refuse-migration ./internal/engine/ \
+		'^(TestRuntimeOpenRefusesMigrationWhenAsked|TestRuntimeOpenRequiresExplicitConfiguration)$' \
+		TestRuntimeOpenRefusesMigrationWhenAsked \
+		TestRuntimeOpenRequiresExplicitConfiguration
+	run_go_suite mobile-binding ./mobile/... '^Test' \
+		TestBindingExportsExactlyTheContractSurface \
+		TestBindingAnswersThroughTheSharedBridge \
+		TestServeAnswersEachRequestLine
+
+	# Both slices from the pinned generator, published only with the
+	# fingerprint the current sources carry, and reused while it holds.
+	note "building TTBridgeCore.xcframework"
+	ios/scripts/build-bridge.sh >"$work_dir/build-bridge.log" 2>&1 || {
+		cat "$work_dir/build-bridge.log" >&2
+		fail "ios/scripts/build-bridge.sh failed"
+	}
+	local framework=ios/TTEngine/Frameworks/TTBridgeCore.xcframework
+	local stamp=ios/TTEngine/Frameworks/TTBridgeCore.fingerprint
+	require_files "$framework/Info.plist" "$stamp" \
+		"$framework/ios-arm64/TTBridgeCore.framework/TTBridgeCore" \
+		"$framework/ios-arm64_x86_64-simulator/TTBridgeCore.framework/TTBridgeCore"
+	[ "$(cat "$stamp")" = "$(ios/scripts/build-bridge.sh --fingerprint)" ] ||
+		fail "the published framework's fingerprint is not the current sources'"
+	ios/scripts/build-bridge.sh >"$work_dir/build-bridge-again.log" 2>&1 ||
+		fail "rerunning ios/scripts/build-bridge.sh failed"
+	grep -q 'is current' "$work_dir/build-bridge-again.log" ||
+		fail "an unchanged bridge was rebuilt rather than reused: $(cat "$work_dir/build-bridge-again.log")"
+	require_slice_platform device "$framework/ios-arm64/TTBridgeCore.framework/TTBridgeCore" arm64 2
+	require_slice_platform simulator "$framework/ios-arm64_x86_64-simulator/TTBridgeCore.framework/TTBridgeCore" "arm64 x86_64" 7
+	note "XCFramework: device and simulator slices at fingerprint $(cat "$stamp")"
+
+	# The generated app links each slice: built for a simulator and, unsigned,
+	# for a device.
+	note "generating ios/TTMobile.xcodeproj"
+	ios/scripts/generate-project.sh >"$work_dir/generate-project.log" 2>&1 || {
+		cat "$work_dir/generate-project.log" >&2
+		fail "ios/scripts/generate-project.sh failed"
+	}
+	require_files ios/TTMobile.xcodeproj/project.pbxproj
+	local destination products
+	for destination in 'iOS Simulator:iphonesimulator' 'iOS:iphoneos'; do
+		products="$work_dir/app-derived/Build/Products/Debug-${destination#*:}/tt.app"
+		note "building TTMobile for generic/platform=${destination%%:*}"
+		xcodebuild build -project ios/TTMobile.xcodeproj -scheme TTMobile \
+			-destination "generic/platform=${destination%%:*}" \
+			-derivedDataPath "$work_dir/app-derived" CODE_SIGNING_ALLOWED=NO \
+			>"$work_dir/app-${destination#*:}.log" 2>&1 || {
+			tail -40 "$work_dir/app-${destination#*:}.log" >&2
+			fail "TTMobile does not build for ${destination%%:*}"
+		}
+		[ -d "$products" ] || fail "no tt.app was produced for ${destination%%:*}"
+		# A Debug build moves the app's code into tt.debug.dylib; read both.
+		nm -arch arm64 "$products"/tt "$products"/tt.debug.dylib >"$work_dir/app-symbols.txt" 2>/dev/null || true
+		grep -q '_TtbridgeCall$' "$work_dir/app-symbols.txt" ||
+			fail "tt.app for ${destination%%:*} does not link the Go bridge"
+	done
+
+	# The simulator suite over the real engine, then Go reading what it wrote.
+	note "running the TTEngine simulator suite"
+	ios/scripts/test-engine.sh "$work_dir/ios" >"$work_dir/test-engine.log" 2>&1 || {
+		cat "$work_dir/test-engine.log" >&2
+		fail "ios/scripts/test-engine.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ios/TTEngine.xcresult" \
+		'testLinkedEngineSpeaksTheModelsBridgeVersion()' \
+		'testEngineRefusalsArriveAsTypedErrors()' \
+		'testOpenFixtureCaptureCompleteReopen()'
+	require_files "$work_dir/ios/evidence/evidence.json"
+	TT_BRIDGE_SIMULATOR_EVIDENCE="$work_dir/ios/evidence/evidence.json" \
+		run_go_suite simulator-evidence ./internal/bridge/ '^TestBridgeSimulatorEvidence$' \
+		TestBridgeSimulatorEvidence \
+		TestBridgeSimulatorEvidence/fixture_tasks_survive \
+		TestBridgeSimulatorEvidence/other_project_files_untouched \
+		TestBridgeSimulatorEvidence/go_reopen_agrees
+
+	note "session 3 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
+3) verify_session_3 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

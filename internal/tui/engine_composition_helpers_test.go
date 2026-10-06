@@ -14,7 +14,7 @@ import (
 // shell's durable side piece by piece. Production composes it through
 // engine.Open or engine.Attach.
 func newTUIAppService(dataDir string, deps *config.RuntimeDependencies, ledger *storage.WorkspaceLedger) *app.Service {
-	return engine.NewService(dataDir, deps, ledger, "", nil, nil)
+	return engine.NewService(engine.NewRepository(dataDir, deps, ledger, ""), nil, nil)
 }
 
 // newTUIAppRepository is the shared runtime's repository on the process

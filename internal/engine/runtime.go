@@ -22,6 +22,7 @@ type Runtime struct {
 	state   *config.RuntimeState
 	ledger  *storage.WorkspaceLedger
 	service *app.Service
+	repo    *Repository
 	clock   app.Clock
 }
 
@@ -40,19 +41,22 @@ func Open(cfg Config) (*Runtime, error) {
 		return nil, fmt.Errorf("data directory %s is not a directory", dataDir)
 	}
 	manager := newManager(dataDir, cfg.Machine)
-	if !cfg.CreateIfMissing {
-		exists, err := workspaceExists(manager)
-		if err != nil {
-			return nil, err
-		}
-		if !exists {
-			return nil, fmt.Errorf("%w: %s", ErrWorkspaceNotFound, dataDir)
+	exists, err := workspaceExists(manager)
+	if err != nil {
+		return nil, err
+	}
+	if !exists && !cfg.CreateIfMissing {
+		return nil, fmt.Errorf("%w: %s", ErrWorkspaceNotFound, dataDir)
+	}
+	if exists && cfg.RefuseMigration {
+		if schemaErr := requireCurrentSchema(dataDir); schemaErr != nil {
+			return nil, schemaErr
 		}
 	}
 	// Loading the domains is what recovers: the manager completes this
 	// machine's interrupted transactions and any pending activation before a
 	// domain is read, so nothing below observes a half-applied commit.
-	if _, err := manager.LoadOrCreateDomains(); err != nil {
+	if _, err = manager.LoadOrCreateDomains(); err != nil {
 		return nil, fmt.Errorf("failed to load workspace: %w", err)
 	}
 	state, err := manager.LoadRuntimeState()
@@ -66,6 +70,20 @@ func Open(cfg Config) (*Runtime, error) {
 		return nil, fmt.Errorf("recover workspace: %w", err)
 	}
 	return Attach(state, manager, cfg.Clock, cfg.IDs), nil
+}
+
+// requireCurrentSchema refuses a workspace this engine would have to migrate
+// or cannot read, judged from the catalog alone so nothing is recovered first.
+// A workspace with no catalog yet predates the split domains and is older.
+func requireCurrentSchema(dataDir string) error {
+	schema, exists, err := config.WorkspaceCatalogSchema(dataDir)
+	if err != nil {
+		return err
+	}
+	if !exists || schema < config.CurrentConfigVersion {
+		return fmt.Errorf("%w: %s holds schema %d, this engine writes %d", ErrMigrationRequired, dataDir, schema, config.CurrentConfigVersion)
+	}
+	return nil
 }
 
 // Attach composes a runtime over a domain snapshot and manager already loaded
@@ -91,8 +109,9 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir})
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
-	service := NewService(dataDir, deps, ledger, owner, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
-	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, clock: clock}
+	repo := NewRepository(dataDir, deps, ledger, owner)
+	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
+	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock}
 }
 
 // Recover completes the machine's interrupted transactions under a loaded
@@ -133,23 +152,11 @@ func Recover(state *config.RuntimeState, manager *config.Manager) (*config.Runti
 	return recovered, nil
 }
 
-// NewService builds the application service over the storage-backed repository
-// for one workspace, without a default planning builder. Open and Attach add
-// one; a caller composing a narrower service picks its own.
-func NewService(
-	dataDir string,
-	deps *config.RuntimeDependencies,
-	ledger *storage.WorkspaceLedger,
-	owner string,
-	clock app.Clock,
-	ids app.IDGenerator,
-) *app.Service {
-	return app.NewServiceWithArtifacts(
-		NewRepository(dataDir, deps, ledger, owner),
-		clock,
-		ids,
-		app.NewStorageWorkspaceNotePort(dataDir),
-	)
+// NewService builds the application service over a storage-backed repository,
+// without a default planning builder. Attach adds one; a caller composing a
+// narrower service picks its own.
+func NewService(repo *Repository, clock app.Clock, ids app.IDGenerator) *app.Service {
+	return app.NewServiceWithArtifacts(repo, clock, ids, app.NewStorageWorkspaceNotePort(repo.dataDir))
 }
 
 func newManager(dataDir string, machine Machine) *config.Manager {
@@ -191,6 +198,11 @@ func (r *Runtime) Ledger() *storage.WorkspaceLedger { return r.ledger }
 // Service is the application service every task, planning, note, and project
 // mutation commits through.
 func (r *Runtime) Service() *app.Service { return r.service }
+
+// Snapshot reads the revision-consistent model a mutation would start from:
+// every available project's tasks and the canonical revision each was loaded
+// at, which is what a frontend passes back as its next precondition.
+func (r *Runtime) Snapshot() (app.Snapshot, error) { return r.repo.Snapshot() }
 
 // DataDir is the workspace root.
 func (r *Runtime) DataDir() string { return r.state.DataDir() }

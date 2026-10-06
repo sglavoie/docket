@@ -301,3 +301,47 @@ func TestRuntimeBindsTheConfiguredDevice(t *testing.T) {
 		t.Fatal("two configured devices share one transaction owner")
 	}
 }
+
+// TestRuntimeOpenRefusesMigrationWhenAsked holds RefuseMigration to its
+// promise: a workspace older or newer than the engine is refused from the
+// catalog alone, before recovery or any write, and a current one opens.
+func TestRuntimeOpenRefusesMigrationWhenAsked(t *testing.T) {
+	env := newHeadlessEnvironment(t)
+	openHeadless(t, env.config(true))
+	catalogPath := config.WorkspaceCatalogPath(env.dataDir)
+	original, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusing := env.config(false)
+	refusing.RefuseMigration = true
+	openHeadless(t, refusing)
+
+	for _, tc := range []struct {
+		schema int
+		check  func(error) bool
+	}{
+		{config.CurrentConfigVersion - 1, func(err error) bool { return errors.Is(err, ErrMigrationRequired) }},
+		{config.CurrentConfigVersion + 1, func(err error) bool {
+			var tooNew *config.SchemaTooNewError
+			return errors.As(err, &tooNew) && tooNew.Found == config.CurrentConfigVersion+1
+		}},
+	} {
+		rewritten := strings.Replace(string(original),
+			fmt.Sprintf(`"schema_version": %d`, config.CurrentConfigVersion),
+			fmt.Sprintf(`"schema_version": %d`, tc.schema), 1)
+		if rewritten == string(original) {
+			t.Fatal("the catalog payload schema was not found to rewrite")
+		}
+		if err = os.WriteFile(catalogPath, []byte(rewritten), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, openErr := Open(refusing); !tc.check(openErr) {
+			t.Fatalf("schema %d: Open returned %v", tc.schema, openErr)
+		}
+		after, readErr := os.ReadFile(catalogPath)
+		if readErr != nil || string(after) != rewritten {
+			t.Fatalf("schema %d: a refused open rewrote the catalog (err %v)", tc.schema, readErr)
+		}
+	}
+}
