@@ -102,3 +102,12 @@ Their `include` value narrows nothing and exists only to carry that obligation,
 while `only` both loads and isolates. `RequiresReload` reads the canonical form,
 so a hand-built clause that understates its own obligation is corrected before
 it is believed.
+
+`Query.AdmitsInPopulation` is the evaluator for a holder of the population: it
+lifts the census fields out of the row predicate and answers them against a
+`QueryCensus` built once over the loaded projects. `engine.Runtime.Query` is
+that holder for every frontend. It loads the population the clauses oblige,
+applies the terminal and deferred population rules, answers the mode as
+membership (Today and Next from planning, Inbox and Backlog by state, Due and
+Recent by date), and orders by the mode or a named Sort; sections, hierarchy,
+and folds remain presentation.

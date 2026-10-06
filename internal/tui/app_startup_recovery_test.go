@@ -85,7 +85,7 @@ func TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace(t *testing.T) {
 	for _, state := range []transaction.State{transaction.StatePrepared, transaction.StateCommitting} {
 		t.Run(string(state), func(t *testing.T) {
 			staleRuntime, manager, projectID, taskID := prepareTUIStartupRecovery(t, state)
-			app, err := NewAppModel(staleRuntime, manager)
+			app, err := newAppModelFromSnapshot(staleRuntime, manager)
 			if err != nil {
 				t.Fatalf("NewAppModel: %v", err)
 			}
@@ -117,7 +117,7 @@ func TestNewAppModelBlocksOnRecoveryQuarantine(t *testing.T) {
 		t.Fatalf("write corrupt manifest: %v", writeErr)
 	}
 
-	app, err := NewAppModel(runtime, manager)
+	app, err := newAppModelFromSnapshot(runtime, manager)
 	if err == nil {
 		t.Fatal("NewAppModel succeeded with quarantined transaction")
 	}

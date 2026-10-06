@@ -2,7 +2,6 @@ package query
 
 import (
 	"cmp"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -36,32 +35,6 @@ func (s *SortState) Toggle(f SortField) {
 	}
 }
 
-// StateOrder returns the sort order for a workflow state (workflow order).
-// This is the single source of truth used by all views that sort by
-// status/state. Active lifecycle states lead, followed by deferred and terminal work.
-func StateOrder(state models.WorkflowState) int {
-	switch state {
-	case models.StateInbox:
-		return 0
-	case models.StateBacklog:
-		return 1
-	case models.StateDoing:
-		return 2
-	case models.StatePaused:
-		return 3
-	case models.StateSomeday:
-		return 4
-	case models.StateWaiting:
-		return 5
-	case models.StateDone:
-		return 6
-	case models.StateCanceled:
-		return 7
-	default:
-		return 8
-	}
-}
-
 // CompareTasks compares two tasks based on the given sort field.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
 // Ties on the primary key are broken by task.ID (lexicographic) to keep
@@ -76,38 +49,27 @@ func CompareTasks(a, b *models.Task, field SortField) int {
 }
 
 func compareTasksPrimary(a, b *models.Task, field SortField) int {
+	return models.CompareTasksBySortField(a, b, querySortFieldFor(field))
+}
+
+// querySortFieldFor names the canonical sort field a view sort key stands for.
+func querySortFieldFor(field SortField) models.QuerySortField {
 	switch field {
 	case SortByPriority:
-		return cmp.Compare(models.EffectivePriority(a.Priority), models.EffectivePriority(b.Priority))
-
+		return models.QuerySortPriority
 	case SortByDueDate:
-		if a.DueDate == nil && b.DueDate == nil {
-			return 0
-		}
-		if a.DueDate == nil {
-			return 1 // nil goes after
-		}
-		if b.DueDate == nil {
-			return -1 // nil goes after
-		}
-		return a.DueDate.Compare(*b.DueDate)
-
+		return models.QuerySortDue
 	case SortByCreatedAt:
-		return a.CreatedAt.Compare(b.CreatedAt)
-
+		return models.QuerySortCreated
 	case SortByStatus:
-		return cmp.Compare(StateOrder(a.State()), StateOrder(b.State()))
-
+		return models.QuerySortStatus
 	case SortByUpdatedAt:
-		return a.UpdatedAt.Compare(b.UpdatedAt)
-
+		return models.QuerySortUpdated
 	case SortByTitle:
-		return cmp.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title))
-
+		return models.QuerySortTitle
 	default:
+		return models.QuerySortDefault
 	}
-
-	return 0
 }
 
 // ApplySortDirection converts a three-way compare result into a Less

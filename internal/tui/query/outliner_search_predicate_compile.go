@@ -56,58 +56,30 @@ func (p *SearchPredicates) needsDerived(reads func(models.DerivedProperty) bool)
 }
 
 // OpenChildCounts censuses each task's open direct children across the scope.
-// It reads the authoritative flat project.Tasks, which already holds every
-// nested child, because a row's own task can be a filter-pipeline clone whose
-// Children were rewritten — the marker would then mean one thing in All and
-// another in a flat mode.
+// It is the shared models.QueryOpenChildCounts keyed by the TUI identity, so the
+// marker, the facet, and a headless query all count one way: from the
+// authoritative flat project.Tasks rather than a filter-pipeline clone's
+// rewritten Children.
 //
 // It sits beside the reference census rather than beside the mode wiring that
 // also reads it, because the derived predicates compile against both and cannot
 // reach a projection above them for either one.
 func OpenChildCounts(projects []*models.Project) map[taskref.TaskIdentity]int {
-	counts := make(map[taskref.TaskIdentity]int)
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			open := len(task.IncompleteChildren())
-			if open == 0 {
-				continue
-			}
-			identity := taskref.For(task, project)
-			if !identity.Valid() {
-				continue
-			}
-			counts[identity] = open
-		}
+	shared := models.QueryOpenChildCounts(projects)
+	counts := make(map[taskref.TaskIdentity]int, len(shared))
+	for reference, open := range shared {
+		counts[taskref.TaskIdentity{ProjectID: reference.ProjectID, TaskID: reference.TaskID}] = open
 	}
 	return counts
 }
 
-// collectDependencyTargets names every task some loaded task points at. It is
-// the same honestly partial census incomingDependencyDetails walks: dependents
+// collectDependencyTargets names every task some loaded task points at, through
+// the shared census. It is the same honestly partial census
+// incomingDependencyDetails walks: dependents
 // are computed, never stored, so a reference from an unloaded project is not
 // knowable and no project is opened to answer a search.
 func collectDependencyTargets(projects []*models.Project) map[models.TaskReference]bool {
-	targets := make(map[models.TaskReference]bool)
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			for _, reference := range task.Dependencies {
-				targets[reference] = true
-			}
-		}
-	}
-	return targets
+	return models.QueryDependencyTargets(projects)
 }
 
 // addDependency compiles one ~target predicate into the exact stored locator a

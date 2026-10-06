@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/control"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -149,8 +150,10 @@ type RunOptions struct {
 	ControlSocket string
 }
 
-// RunApp starts the TUI application.
-func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOptions, opts ...AppOption) error {
+// RunApp starts the TUI application over an opened runtime. engine.Open has
+// already recovered and loaded the workspace, so the shell takes the process
+// lock and builds its presentation over that one composition.
+func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	if runOpts.HideAdvisories {
 		opts = append(opts, WithHiddenAdvisories())
 	}
@@ -160,15 +163,10 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOp
 	if runOpts.DisableColor {
 		opts = append(opts, WithDisabledColor())
 	}
-	if runtime == nil {
-		return fmt.Errorf("runtime state is required")
+	if rt == nil {
+		return fmt.Errorf("runtime is required")
 	}
-	var err error
-	runtime, err = recoverTUIWorkspace(runtime)
-	if err != nil {
-		return err
-	}
-	dataDir := runtime.DataDir()
+	dataDir := rt.DataDir()
 	// Keep the TUI PID lock machine-local: when the durable data dir lives on
 	// iCloud Drive it must never sync, so route it through the local runtime dir.
 	lockPath := config.TUIProcessLockPath(dataDir)
@@ -181,7 +179,7 @@ func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOp
 	}
 	defer lock.Release()
 
-	model, err := NewAppModel(runtime, manager, opts...)
+	model, err := NewAppModel(rt, opts...)
 	if err != nil {
 		return err
 	}

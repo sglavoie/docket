@@ -34,7 +34,7 @@ atomic-write primitives).
 entry that publishes the commit, so it is committed or rolled back with the
 commit (session 4). This one hook covers every row in this class. The rows
 outside `CommitService`, namely `SaveProject`, `CreateProjectDir`,
-`deleteProjectDir`, `writeFileAtomic`, and the `tuiAppRepository` fallback, are
+`deleteProjectDir`, `writeFileAtomic`, and the `engine.Repository` fallback, are
 reached only through the test-double repository. The audited raw-save
 allowlist in `internal/storage` keeps it that way.
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/ttenv"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -44,6 +45,23 @@ func loadCLIWorkspace() (*CLIWorkspace, error) {
 		Manager: manager,
 		Runtime: runtime,
 	}, nil
+}
+
+// openDesktopRuntime opens the workspace the desktop launch resolves — an
+// explicit --data-dir or TT_DATA_DIR, the active-workspace pointer, or the
+// default — through the shared runtime, as the process machine. The resolution
+// policy is the desktop's and stays here; the runtime receives its answer as
+// explicit configuration.
+func openDesktopRuntime() (*engine.Runtime, error) {
+	if err := checkDataDirOverride(); err != nil {
+		return nil, err
+	}
+	configPath := config.NewManager(resolveConfigPath()).GetConfigPath()
+	return engine.Open(engine.Config{
+		DataDir:         config.WorkspaceRootFromConfigPath(configPath),
+		Machine:         engine.ProcessMachine(),
+		CreateIfMissing: true,
+	})
 }
 
 // LoadRuntimeProject resolves one project by slug or ID from the cached runtime

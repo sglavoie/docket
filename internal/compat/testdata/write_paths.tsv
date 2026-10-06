@@ -18,6 +18,7 @@ internal/config/workspace_move_copy.go:copyFileVerified	workspace-relocation	has
 internal/config/workspace_move_copy.go:createDestinationDirs	workspace-relocation	destination tree for workspace move
 internal/control/server.go:Listen	machine-local	control socket for --control sessions
 internal/control/server.go:Server.Close	machine-local	removes the control socket
+internal/engine/repository.go:Repository.CommitOps	commit-journal	delegates to CommitService; the direct-write branch is the test-double fallback
 internal/external/vscode.go:createTempFileWithContentInDir	external-editor	temp buffer handed to an external editor; its result re-enters through a commit
 internal/logging/logger.go:Init	machine-local	~/.tt/logs directory and log file
 internal/logging/logger.go:closeLocked	machine-local	removes an empty log file
@@ -42,7 +43,6 @@ internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-doub
 internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
 internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
-internal/tui/domain_controller.go:tuiAppRepository.CommitOps	commit-journal	delegates to CommitService; the direct-write branch is the test-double fallback
 internal/tui/handler_task_crud.go:removeTaskContentBuffer	external-editor	removes the task content buffer after an external edit
 internal/tui/handler_task_crud.go:writeTaskContentBuffer	external-editor	writes the task content buffer for an external editor
 internal/tui/handler_view.go:AppModel.handleTextEditorExternal	external-editor	removes the external text editor buffer

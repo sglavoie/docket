@@ -217,14 +217,14 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	workspace, err := LoadCLIWorkspace()
+	runtime, err := openDesktopRuntime()
 	if err != nil {
 		return err
 	}
 
 	version, _, _ := resolveBuildInfo()
 	tui.AppVersion = version
-	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{
+	return tui.RunApp(runtime, tui.RunOptions{
 		DisableColor:   noColor,
 		HideAdvisories: noAdvisories,
 		Notify:         notify,

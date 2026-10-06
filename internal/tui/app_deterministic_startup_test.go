@@ -73,7 +73,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	if err != nil {
 		t.Fatalf("reload runtime: %v", err)
 	}
-	relaunched, err := NewAppModel(reloaded, config.NewManager(workspace.ConfigPath))
+	relaunched, err := newAppModelFromSnapshot(reloaded, config.NewManager(workspace.ConfigPath))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}

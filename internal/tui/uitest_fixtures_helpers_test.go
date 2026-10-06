@@ -241,7 +241,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err := w.persistNoteSeeds(); err != nil {
 		return nil, err
 	}
-	app, err := NewAppModel(w.Runtime, w.Manager)
+	app, err := newAppModelFromSnapshot(w.Runtime, w.Manager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model: %w", err)
 	}
@@ -285,7 +285,7 @@ func (w *uitestWorkspace) relaunchApp() (*AppModel, error) {
 		return nil, fmt.Errorf("failed to reload workspace for restart: %w", err)
 	}
 	w.Runtime = runtime
-	app, err := NewAppModel(runtime, w.Manager)
+	app, err := newAppModelFromSnapshot(runtime, w.Manager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize app model after restart: %w", err)
 	}

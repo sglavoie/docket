@@ -37,7 +37,7 @@ func TestNewAppModelLoadsEachReferencedStartupProjectOnce(t *testing.T) {
 	mock := newMockPersister()
 	mock.Projects[project.ID] = &stored
 
-	app, err := NewAppModel(runtime, &config.Manager{}, withPersister(mock))
+	app, err := newAppModelFromSnapshot(runtime, &config.Manager{}, withPersister(mock))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestEnsureProjectColorSlotsCommitFailureIsNonfatal(t *testing.T) {
 	var logOutput bytes.Buffer
 	log.SetOutput(&logOutput)
 	t.Cleanup(func() { log.SetOutput(previousLogOutput) })
-	app, err := NewAppModel(runtime, &config.Manager{}, withPersister(newMockPersister()))
+	app, err := newAppModelFromSnapshot(runtime, &config.Manager{}, withPersister(newMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel returned startup persistence error: %v", err)
 	}

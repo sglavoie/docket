@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 444
+# Total rows: 447
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -115,9 +115,14 @@ dependency	internal/config/runtime.go	RuntimeDependencies	11
 dependency	internal/config/v15_migration_activation.go	createPreDependenciesV15Snapshot	2
 dependency	internal/config/v15_migration_activation.go	preDependenciesV15SnapshotPrefix	2
 dependency	internal/config/v15_migration_activation.go	v15DependenciesAuditReport	2
+dependency	internal/engine/repository.go	RuntimeDependencies	2
+dependency	internal/engine/runtime.go	RuntimeDependencies	3
 dependency	internal/models/derived_property.go	Dependencies	1
 dependency	internal/models/query_admit.go	Dependencies	2
 dependency	internal/models/query_admit.go	QueryFieldDependency	1
+dependency	internal/models/query_census.go	Dependencies	2
+dependency	internal/models/query_census.go	QueryDependencyTargets	2
+dependency	internal/models/query_census.go	dependedOn	3
 dependency	internal/models/query_string.go	QueryFieldDependency	2
 dependency	internal/models/query_value.go	QueryFieldDependency	1
 dependency	internal/models/query_vocabulary.go	QueryFieldDependency	2
@@ -161,9 +166,7 @@ dependency	internal/textgrammar/grammar_registry.go	FieldRemoveDependency	2
 dependency	internal/textgrammar/grammar_types.go	FieldDependency	1
 dependency	internal/textgrammar/grammar_types.go	FieldRemoveDependency	1
 dependency	internal/textgrammar/search.go	FieldDependency	1
-dependency	internal/tui/app_init.go	RuntimeDependencies	2
 dependency	internal/tui/app_manage_hub.go	ManageHubDependencies	1
-dependency	internal/tui/domain_controller.go	RuntimeDependencies	3
 dependency	internal/tui/filterops/filter_operations.go	OperationFilterDependency	1
 dependency	internal/tui/filterops/filter_operations.go	ValueProviderFilterDependency	2
 dependency	internal/tui/filterops/filter_pickers.go	DependencyFilterShortcuts	1
@@ -385,11 +388,11 @@ dependency	internal/tui/query/outliner_search_predicate_admits.go	admitsDependen
 dependency	internal/tui/query/outliner_search_predicate_admits.go	dependedOn	1
 dependency	internal/tui/query/outliner_search_predicate_admits.go	dependencies	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	CapturedDependencyRef	1
-dependency	internal/tui/query/outliner_search_predicate_compile.go	Dependencies	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	DependencyNotFoundMessage	2
 dependency	internal/tui/query/outliner_search_predicate_compile.go	DependencyRefFor	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	DependencyRelationship	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	FieldDependency	1
+dependency	internal/tui/query/outliner_search_predicate_compile.go	QueryDependencyTargets	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	ResolveDependencyReference	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	addDependency	1
 dependency	internal/tui/query/outliner_search_predicate_compile.go	collectDependencyTargets	2

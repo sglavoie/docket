@@ -14,9 +14,24 @@ The repository is divided by responsibility:
 - `internal/config` owns the lean catalog and planning domains, project tags,
   machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19
   migration chain.
+- `internal/engine` owns the frontend-independent workspace runtime: opening
+  a workspace (recovery, bootstrap, domain load, planning reconciliation), the
+  production repository and application service every frontend commits through,
+  and query evaluation over the canonical query, census and planning included.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
 - `cmd` owns only the TUI launcher and maintenance CLI adapters.
+
+The desktop launch and a headless caller open the same `engine.Runtime`.
+`engine.Config` names everything it depends on: the data directory, the machine
+(an explicit local-state home and device identity, or `engine.ProcessMachine()`,
+the desktop's deliberate choice to follow `$HOME` and the hostname), the clock,
+and the identity generator. Nothing in the runtime reads the environment on its
+own. `engine.Open` loads, recovers, and ends in `engine.Attach`; a test that
+built its own snapshot calls `engine.Attach` directly, and `NewAppModel` takes
+either runtime, so every scenario commits through the composition a launch
+uses. A frontend reconciles planning once at startup through
+`Runtime.ReconcilePlanning`.
 
 A user mutation resolves project-qualified targets from one immutable workspace
 snapshot. The application layer validates every requested target and domain

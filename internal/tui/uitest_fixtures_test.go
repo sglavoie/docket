@@ -163,7 +163,7 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	if reloadErr != nil {
 		t.Fatalf("reload runtime: %v", reloadErr)
 	}
-	relaunched, err := NewAppModel(reloaded, config.NewManager(ws.ConfigPath))
+	relaunched, err := newAppModelFromSnapshot(reloaded, config.NewManager(ws.ConfigPath))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}

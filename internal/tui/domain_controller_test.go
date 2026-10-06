@@ -118,7 +118,7 @@ func TestNewAppModelCompletesTheDomainCluster(t *testing.T) {
 	t.Setenv("HOME", dataDir)
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 
-	shell, err := NewAppModel(testRuntimeAt(dataDir, newTestConfigAt(dataDir)), manager, withPersister(newMockPersister()))
+	shell, err := newAppModelFromSnapshot(testRuntimeAt(dataDir, newTestConfigAt(dataDir)), manager, withPersister(newMockPersister()))
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}

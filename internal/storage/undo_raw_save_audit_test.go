@@ -17,7 +17,7 @@ import (
 const rawSaveAppTestRepo = "app.Repository Commit fallback runs only when DefaultRepository is a non-filesystem test double; filesystem production commits use the journal and workspace ledger"
 
 var rawProjectSaveAllowlist = map[string]string{
-	"internal/tui/domain_controller.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
+	"internal/engine/repository.go:(*Repository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
 }
 
 func TestRawProjectSaveCallsitesAreAllowlisted(t *testing.T) {

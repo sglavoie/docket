@@ -88,7 +88,7 @@ exist. Whether to delete the fixture directory is still open.
 
 | Metric                                       | Value | Reproduce |
 | -------------------------------------------- | ----- | --------- |
-| Direct storage mutation callsites (cmd/, tui/) | 1   | `UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline` |
+| Direct storage mutation callsites (cmd/, tui/) | 0 | `UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline` |
 
 The full, sorted inventory is committed at
 `internal/storage/testdata/mutation_callsites_baseline.txt` and enforced by

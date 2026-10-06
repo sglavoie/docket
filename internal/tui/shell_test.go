@@ -12,7 +12,7 @@ import (
 
 func newShellTestApp() *AppModel {
 	cfg := newTestConfig()
-	app, err := NewAppModel(testRuntimeAt("", cfg), &config.Manager{}, withPersister(newMockPersister()))
+	app, err := newAppModelFromSnapshot(testRuntimeAt("", cfg), &config.Manager{}, withPersister(newMockPersister()))
 	if err != nil {
 		panic(err)
 	}

@@ -19,8 +19,14 @@ fi
 # grammar that compiles into it. deadcode still reports NewQuery,
 # AllQueryModes, AllQuerySortFields, and ParseQuery as unreached from
 # production; delete this pattern once internal/textgrammar imports the query.
+#
+# internal/engine's explicit machine and query evaluation serve headless
+# frontends; the desktop opens as the process machine and queries through the
+# Outliner. They are exercised by internal/engine's own tests and become
+# reachable when the mobile bridge calls them; delete this pattern then.
 grep -v '^internal/testutil/' "$production_output" |
-	grep -v '^internal/models/query' >"$actionable_output" || true
+	grep -v '^internal/models/query' |
+	grep -Ev '^internal/engine/[a-z_]+\.go:[0-9]+:[0-9]+: unreachable func: (ExplicitMachine|QueryItem\.Locator|Runtime\.(Query|queryPopulation|Now|Refresh)|opensPopulation|planningRanks|modeAdmits|modeLead|planningTieRank)$' >"$actionable_output" || true
 if [ -s "$actionable_output" ]; then
 	echo "production dead code detected outside internal/testutil:" >&2
 	cat "$actionable_output" >&2

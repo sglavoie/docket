@@ -121,6 +121,11 @@ type Manager struct {
 	// production caller uses; only a caller that explicitly names a home departs
 	// from $HOME.
 	machineHome string
+	// deviceID, when set, is the transaction owner this manager stamps instead
+	// of the identity derived from machineHome and the hostname. A frontend that
+	// names its own stable device identity sets it, so recovery and every commit
+	// it opens agree on one owner without consulting the host environment.
+	deviceID string
 }
 
 // NewManager creates a workspace configuration manager. The path identifies
@@ -141,6 +146,17 @@ func NewManagerOnMachine(customPath, machineHome string) *Manager {
 		return &Manager{configPath: customPath, machineHome: machineHome}
 	}
 	return &Manager{configPath: defaultConfigPathOn(machineHome), fromDefaultPath: true, machineHome: machineHome}
+}
+
+// NewManagerForDevice creates a workspace configuration manager whose
+// machine-local state resolves beneath machineHome and whose transactions are
+// owned by deviceID. Both are explicit, so neither $HOME nor the hostname is
+// read: this is the constructor a frontend without desktop home-directory
+// conventions uses.
+func NewManagerForDevice(customPath, machineHome, deviceID string) *Manager {
+	manager := NewManagerOnMachine(customPath, machineHome)
+	manager.deviceID = deviceID
+	return manager
 }
 
 func (m *Manager) CreatedFromDefaultPath() bool { return m.fromDefaultPath }
@@ -166,7 +182,28 @@ func (m *Manager) localDataRoot() string {
 // manager named after another machine's home stamps that machine onto the
 // manifests it writes and does not claim the real machine's live transactions.
 func (m *Manager) machineID() string {
+	if m.deviceID != "" {
+		return m.deviceID
+	}
 	return transaction.MachineIDForHome(m.machineHome)
+}
+
+// TransactionOwner is the machine identity bound to this manager, or the empty
+// string when it follows the running process. The empty answer is deliberate: a
+// commit service handed it recomputes this machine on every journal, so a
+// process whose home changes is a different machine, while a manager that named
+// a home or a device keeps that one owner.
+func (m *Manager) TransactionOwner() string {
+	if m.deviceID == "" && m.machineHome == "" {
+		return ""
+	}
+	return m.machineID()
+}
+
+// LocalDataRoot is this manager's machine-local ~/.tt root, the approved commit
+// root beside the workspace that machine.json writes resolve beneath.
+func (m *Manager) LocalDataRoot() string {
+	return m.localDataRoot()
 }
 
 func (m *Manager) domainStore() *DomainFileStore {

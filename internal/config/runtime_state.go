@@ -40,8 +40,14 @@ type RuntimeState struct {
 // that must always obtain a usable (possibly empty) state can fall back to
 // EmptyRuntimeState.
 func LoadRuntimeState(dataDir string) (*RuntimeState, error) {
+	return LoadRuntimeStateOnMachine(dataDir, "")
+}
+
+// LoadRuntimeStateOnMachine is LoadRuntimeState with machine-local state
+// resolved beneath a named machine home rather than $HOME.
+func LoadRuntimeStateOnMachine(dataDir, machineHome string) (*RuntimeState, error) {
 	rs := &RuntimeState{
-		coord:   NewDomainCoordinator(dataDir),
+		coord:   newDomainCoordinatorOnMachine(dataDir, machineHome),
 		revs:    make(map[domainKind]string, len(syncedDomainKinds)),
 		dataDir: dataDir,
 	}
@@ -85,12 +91,13 @@ func NewRuntimeState(dataDir string, domains *Domains) *RuntimeState {
 }
 
 // LoadRuntimeState builds the runtime snapshot for this manager's workspace
-// from the canonical split-domain layout.
+// from the canonical split-domain layout, reading machine-local state beneath
+// this manager's machine home.
 func (m *Manager) LoadRuntimeState() (*RuntimeState, error) {
 	if _, err := m.LoadOrCreateDomains(); err != nil {
 		return nil, err
 	}
-	return LoadRuntimeState(m.workspaceDataDir())
+	return LoadRuntimeStateOnMachine(m.workspaceDataDir(), m.machineHome)
 }
 
 // Reload re-reads every domain from disk through the coordinator, refreshing both

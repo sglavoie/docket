@@ -7,10 +7,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operationhost"
@@ -19,15 +18,13 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// NewAppModel creates a new TUI application model from the startup-loaded
-// configuration domains and the services rooted at the same workspace.
-func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...AppOption) (*AppModel, error) {
-	var err error
-	runtime, err = recoverTUIWorkspace(runtime)
-	if err != nil {
-		return nil, err
-	}
-	dataDir := runtime.DataDir()
+// NewAppModel builds the shell over an opened runtime. Every durable piece —
+// the domain snapshot, the manager, the ledger, and the application service —
+// is the runtime's; the shell adds only presentation. A launch passes the
+// runtime engine.Open returned, and a test the one engine.Attach composed over
+// a snapshot it built, so both run through one composition.
+func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
+	runtime, manager := rt.State(), rt.Manager()
 
 	app := &AppModel{
 		domain:       newDomainController(runtime, manager),
@@ -53,29 +50,19 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	}
 	app.operations.BindExecutor()
 
-	// Bind the primary feature coordinators to the application service. The
-	// service is built once per session over the storage-backed repository so a
-	// mutation dispatched from a primary view commits through the same
-	// transactional, undoable path as the equivalent CLI command.
-	var runtimeDeps *config.RuntimeDependencies
-	if manager != nil {
-		runtimeDeps = manager.RuntimeDependencies()
-	}
-	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir})
-	appService := newTUIAppService(dataDir, runtimeDeps, ledger)
-	// Fold Today/Next exclusivity into every workflow-state transition committed
-	// through this service (global state pickers, palette actions, pinned/quick-
-	// switch state changes), so exclusivity holds regardless of the initiating
-	// adapter, matching the coordinator-driven view-local pickers.
-	appService.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
+	// Bind the primary feature coordinators to the runtime's application
+	// service, so a mutation dispatched from a primary view commits through the
+	// same transactional, undoable path as every other frontend. The runtime
+	// already folds Today/Next exclusivity into every workflow-state transition
+	// the service commits.
+	appService := rt.Service()
 	app.domain.service = appService
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 
-	// Complete the domain cluster with the shared history handle. It is bound
-	// here, after the service, because both are built from the same workspace
-	// paths and neither can exist before them.
-	app.domain.ledger = ledger
+	// Complete the domain cluster with the shared history handle the runtime's
+	// commit service records into.
+	app.domain.ledger = rt.Ledger()
 
 	if ensureErr := app.ensureSystemUnfiledProject(); ensureErr != nil {
 		logging.Warn("failed to ensure system Unfiled project: %v", ensureErr)
@@ -104,7 +91,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// reset about a case it should not know.
 	app.lenses.SetPendingLaunch(runtime.Machine().ActiveNamedLens())
 	app.lifecycle.startup = launchOutlinerMsg{}
-	if changed, reconcileErr := app.domain.service.ReconcilePlanning(); reconcileErr != nil {
+	if changed, reconcileErr := rt.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
 	} else if changed {
 		app.refreshRuntime()
@@ -159,34 +146,6 @@ func (app *AppModel) registerOperationCatalog() error {
 		{Name: "checklist row", Register: app.registerChecklistRowOperations},
 		{Name: "lens", Register: app.registerLensOperations},
 	}, surfaceOperationGates())
-}
-
-// recoverTUIWorkspace runs before domain consumption or project load.
-// NewAppModel also calls it so direct/headless
-// model construction has the same crash-recovery guarantee as RunApp.
-func recoverTUIWorkspace(runtime *config.RuntimeState) (*config.RuntimeState, error) {
-	if runtime == nil {
-		return config.EmptyRuntimeState(""), nil
-	}
-	dataDir := runtime.DataDir()
-	if dataDir == "" {
-		return runtime, nil
-	}
-	report, err := storage.NewCommitService(
-		config.TransactionsDir(dataDir),
-		[]string{dataDir, config.LocalDataRoot()},
-	).RecoverWorkspace()
-	if err != nil {
-		return nil, fmt.Errorf("recover workspace before TUI startup: %w", err)
-	}
-	if len(report.RolledForward) == 0 && len(report.CleanedUp) == 0 {
-		return runtime, nil
-	}
-	recovered, err := config.LoadRuntimeState(dataDir)
-	if err != nil {
-		return nil, fmt.Errorf("reload recovered workspace domains: %w", err)
-	}
-	return recovered, nil
 }
 
 // hydrateNextOrder restores the focus queue from the planning-domain snapshot,

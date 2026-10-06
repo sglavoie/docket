@@ -136,9 +136,81 @@ verify_session_1() {
 	note "session 1 verified"
 }
 
+verify_session_2() {
+	require_files \
+		internal/engine/config.go \
+		internal/engine/runtime.go \
+		internal/engine/repository.go \
+		internal/engine/planning.go \
+		internal/engine/query.go \
+		internal/models/query_census.go \
+		internal/models/query_sort.go
+
+	# The headless runtime: capture, planning, editing, completion, and reopen
+	# with no frontend import, explicit configuration, and query evaluation.
+	run_go_suite engine ./internal/engine/ '^TestRuntime' \
+		TestRuntimeHeadlessCapturePlanEditCompleteReopen \
+		TestRuntimeOpenRequiresExplicitConfiguration \
+		TestRuntimeBindsTheConfiguredDevice \
+		TestRuntimeImportsNoFrontend \
+		TestRuntimeQueryAnswersPopulationCensusAndModes \
+		TestRuntimeQueryAnswersPopulationCensusAndModes/all \
+		TestRuntimeQueryAnswersPopulationCensusAndModes/census \
+		TestRuntimeQueryAnswersPopulationCensusAndModes/population \
+		TestRuntimeQueryAnswersPopulationCensusAndModes/modes \
+		TestRuntimeQueryAnswersPopulationCensusAndModes/scope_and_sort
+
+	# The canonical query evaluator the runtime and the Outliner share.
+	run_go_suite models-query ./internal/models/ \
+		'^(TestQueryAdmitsInPopulationAnswersCensusFields|TestCompareTasksBySortFieldOrdersEachField|TestQuery.*)$' \
+		TestQueryAdmitsInPopulationAnswersCensusFields \
+		TestCompareTasksBySortFieldOrdersEachField
+
+	# Desktop startup composes through the runtime: recovery before load, and
+	# the write-path and raw-save audits that follow the repository's move.
+	run_go_suite tui-composition ./internal/tui/ \
+		'^(TestNewAppModel.*|TestProjectPopulationCallersAreClassified|TestRawArchivePredicatesAreClassified)$' \
+		TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace \
+		TestNewAppModelBlocksOnRecoveryQuarantine \
+		TestProjectPopulationCallersAreClassified \
+		TestRawArchivePredicatesAreClassified
+	run_go_suite storage-audit ./internal/storage/ \
+		'^(TestMutationCallsiteInventoryBaseline|TestRawProjectSaveCallsitesAreAllowlisted)$' \
+		TestMutationCallsiteInventoryBaseline \
+		TestRawProjectSaveCallsitesAreAllowlisted
+	run_go_suite compat-inventory ./internal/compat/ \
+		'^TestCompatWritePathInventoryCoversEveryDurableWrite$' \
+		TestCompatWritePathInventoryCoversEveryDurableWrite
+
+	# Every committed desktop scenario replays through the runtime-composed
+	# shell, each as its own passing subtest, so a skipped or dropped scenario is
+	# missing evidence rather than a quiet success.
+	run_go_suite tui-scenarios ./internal/tui/ \
+		'^Test(CommittedScenarioInventoryCoversFinalProduct|ExampleScenariosPass)$' \
+		TestCommittedScenarioInventoryCoversFinalProduct \
+		TestExampleScenariosPass
+	local scenario count=0
+	for scenario in docs/tui-testing/scenarios/*.json; do
+		require_passed tui-scenarios "TestExampleScenariosPass/$(basename "$scenario")"
+		count=$((count + 1))
+	done
+	[ "$count" -gt 0 ] || fail "no committed scenarios were found to verify"
+	note "desktop scenarios: $count passed through the shared runtime"
+
+	# The existing aggregate, unchanged, as the desktop regression gate.
+	note "running scripts/run_tui_scenarios.sh"
+	if ! ./scripts/run_tui_scenarios.sh >"$work_dir/run_tui_scenarios.log" 2>&1; then
+		cat "$work_dir/run_tui_scenarios.log" >&2
+		fail "scripts/run_tui_scenarios.sh failed"
+	fi
+
+	note "session 2 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
+2) verify_session_2 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac
