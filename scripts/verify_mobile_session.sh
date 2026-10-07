@@ -1322,6 +1322,77 @@ verify_session_14() {
 }
 
 session=${1:-}
+verify_session_15() {
+	[ "$(uname -s)" = Darwin ] || fail "session 15 runs the reminder scheduling suite and checks real iPhone evidence on macOS only"
+	require_files \
+		internal/engine/reminders.go \
+		internal/bridge/reminder_ops.go \
+		internal/bridge/reminders_test.go \
+		internal/bridge/reminder_evidence_test.go \
+		ios/TTEngine/Sources/TTEngine/Reminders.swift \
+		ios/TTReminders/Package.swift \
+		ios/TTReminders/Sources/TTReminders/ReminderScheduler.swift \
+		ios/TTReminders/Sources/TTReminders/ReminderReconciler.swift \
+		ios/TTReminders/Sources/TTReminders/ReminderActions.swift \
+		ios/TTReminders/Sources/TTReminders/SystemNotificationCenter.swift \
+		ios/TTReminders/Tests/TTRemindersTests/FakeNotificationCenter.swift \
+		ios/TTMobile/App/ReminderModel.swift \
+		ios/TTMobile/App/ReminderSettingsView.swift \
+		ios/TTMobileUITests/ReminderDeliveryUITests.swift \
+		ios/scripts/record-reminder-evidence.sh \
+		ios/scripts/reminder-evidence-fingerprint.sh
+	grep -Fq '"query.reminders":' internal/bridge/bridge.go || fail "the bridge does not serve query.reminders"
+
+	# The engine plans under the shared attention rules: which tasks raise a
+	# reminder and when, wall-clock reminders replanned in a new zone while
+	# deferrals keep their instant, the actions' commands reflected in the
+	# next plan, another device's changes once imported, parked and archived
+	# projects silent, and the bounds and refusals.
+	run_go_suite bridge-reminders ./internal/bridge/ '^TestBridgePlansReminders$' \
+		TestBridgePlansReminders/attention_rules \
+		TestBridgePlansReminders/time_zone_change \
+		TestBridgePlansReminders/actions_replan \
+		TestBridgePlansReminders/incoming_changes_replan \
+		TestBridgePlansReminders/parked_and_archived_raise_nothing \
+		TestBridgePlansReminders/limit_and_refusals
+
+	# Scheduling and actions against a fake notification center: explicit
+	# trigger zones, replace/keep/cancel reconciliation, opt-in, a harmless
+	# permission denial, time-zone and incoming-change replanning, a failed
+	# plan, a switched workspace, and every action routed to its command.
+	local scheduling=TTRemindersTests.ReminderSchedulingTests actions=TTRemindersTests.ReminderActionTests
+	run_swift_suite reminders ios/TTReminders \
+		"$scheduling/testSchedulesThePlanWithExplicitZones" \
+		"$scheduling/testReconcileReplacesMovedRemovesStaleAndKeepsUnchanged" \
+		"$scheduling/testTimeZoneChangeReplansWallClockReminders" \
+		"$scheduling/testIncomingChangesReconcile" \
+		"$scheduling/testRemindersAreOptInAndNeverPromptUntilTurnedOn" \
+		"$scheduling/testPermissionDenialIsHarmless" \
+		"$scheduling/testPlanFailureLeavesPendingRemindersAlone" \
+		"$scheduling/testClosedOrSwitchedWorkspaceRemovesItsReminders" \
+		"$scheduling/testAFailedAddIsReportedAndTheRestScheduled" \
+		"$actions/testAcknowledgeRoutesToTheEngine" \
+		"$actions/testDeferActionsUseTheEngineDeferralGrammar" \
+		"$actions/testOpeningShowsTheTaskAndWritesNothing" \
+		"$actions/testAnotherWorkspacesReminderIsRefused" \
+		"$actions/testAnEngineRefusalIsRecordedNotThrown" \
+		"$actions/testCategoriesOfferOnlyWhatTheReminderAllows"
+
+	# Real delivery and actions on a physical iPhone, recorded by
+	# ios/scripts/record-reminder-evidence.sh and held to the builds the
+	# current tree produces. Simulator runs do not count.
+	local source_fp bridge_fp
+	source_fp=$(ios/scripts/reminder-evidence-fingerprint.sh) || fail "fingerprinting the Swift sources failed"
+	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
+	require_files docs/mobile/evidence/session-15-reminders.json
+	TT_REMINDER_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" \
+		run_go_suite reminder-evidence ./internal/bridge/ '^TestRecordedReminderDeviceEvidence$' \
+		TestRecordedReminderDeviceEvidence
+	note "real iPhone reminders: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-15-reminders.json | head -1)"
+
+	note "session 15 verified"
+}
+
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
@@ -1337,6 +1408,7 @@ case "$session" in
 12) verify_session_12 ;;
 13) verify_session_13 ;;
 14) verify_session_14 ;;
+15) verify_session_15 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

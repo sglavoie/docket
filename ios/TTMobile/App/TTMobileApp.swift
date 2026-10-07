@@ -2,15 +2,22 @@ import SwiftUI
 
 @main
 struct TTMobileApp: App {
-    @State private var workspace = WorkspaceModel()
+    /// The delegate owns the workspace: a notification action can launch the
+    /// app in the background, with no scene to own it.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @Environment(\.scenePhase) private var scenePhase
+
+    private var workspace: WorkspaceModel { delegate.workspace }
 
     var body: some Scene {
         WindowGroup {
             RootView(workspace: workspace)
                 .task { await workspace.start() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { workspace.sync.exchange() }
+                    if phase == .active {
+                        workspace.sync.exchange()
+                        Task { await workspace.reminders.refresh() }
+                    }
                 }
         }
     }

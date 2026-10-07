@@ -178,7 +178,7 @@ func (b *Bridge) structuredCapture(payload capturePayload, source *models.Projec
 		}
 	}
 	if payload.Defer != "" {
-		until, err := util.ParseDeferInstantAt(payload.Defer, b.now())
+		until, err := deferInstant(payload.Defer, b.now())
 		if err != nil {
 			return app.CaptureRequest{}, newError(CodeValidation, "invalid deferral %q: %v", payload.Defer, err).with("field", "defer")
 		}
@@ -385,7 +385,7 @@ func (b *Bridge) commandEdit(request Request) (any, error) {
 	if payload.Defer != nil {
 		req.DeferSet = true
 		if *payload.Defer != "" {
-			until, deferErr := util.ParseDeferInstantAt(*payload.Defer, b.now())
+			until, deferErr := deferInstant(*payload.Defer, b.now())
 			if deferErr != nil {
 				return nil, newError(CodeValidation, "invalid deferral %q: %v", *payload.Defer, deferErr).with("field", "defer")
 			}
@@ -420,6 +420,17 @@ func (b *Bridge) commandEdit(request Request) (any, error) {
 		}, before, after)
 	}
 	return out, nil
+}
+
+// deferInstant reads a deferral as the edit grammar does, or as an RFC 3339
+// instant, which is how a client names an exact moment such as one picked on
+// a clock (a deferral is an instant, so the grammar's day and hour forms are
+// spellings of one rather than the whole of what it may hold).
+func deferInstant(value string, now time.Time) (time.Time, error) {
+	if instant, err := time.Parse(time.RFC3339, value); err == nil {
+		return instant, nil
+	}
+	return util.ParseDeferInstantAt(value, now)
 }
 
 // tagPatch turns a complete tag set into the additions and removals the line

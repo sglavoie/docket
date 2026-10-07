@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import TTEngine
+import TTReminders
 
 /// Where the app stands with its workspace. Each phase has its own screen, so
 /// a slow open, a first launch, a workspace that went missing, and one this
@@ -34,6 +35,10 @@ final class WorkspaceModel {
     let engine = TTEngine()
     let sync = SyncModel()
     let launch = LaunchConfiguration.current
+    let reminders: ReminderModel
+    /// The open in flight, which a notification action launching the app
+    /// in the background waits for rather than opening a second time.
+    @ObservationIgnored private var starting: Task<Void, Never>?
 
     /// The engine serves one workspace per process, so a hosted test that
     /// opens its own must not race the app for it.
@@ -42,18 +47,49 @@ final class WorkspaceModel {
     }
 
     init() {
-        sync.onImport = { [weak self] in self?.generation += 1 }
+        reminders = ReminderModel(root: LaunchConfiguration.current.root)
+        sync.onImport = { [weak self] in self?.changed(.incomingChanges) }
+    }
+
+    /// Marks the workspace as possibly changed: every list rereads, and the
+    /// pending reminders are reconciled with what changed.
+    private func changed(_ reason: ReconcileReason) {
+        generation += 1
+        reminders.reconcile(reason)
+    }
+
+    /// Opens the selected workspace unless it is open, waiting for an open
+    /// already in flight. Answers whether a workspace is open afterwards.
+    func ensureReady() async -> Bool {
+        if phase == .ready { return true }
+        await start()
+        return phase == .ready
     }
 
     var existingLocations: [WorkspaceLocation] { launch.existingLocations() }
 
     func start() async {
+        if let starting {
+            await starting.value
+            return
+        }
+        let task = Task { await self.performStart() }
+        starting = task
+        await task.value
+        starting = nil
+    }
+
+    private func performStart() async {
         guard !Self.isHostingTests else { return }
         phase = .loading
         if launch.openDelay > .zero {
             try? await Task.sleep(for: launch.openDelay)
         }
         guard let selected = launch.selectedLocation() else {
+            if let seed = launch.reminderSeed {
+                await seedReminder(seed)
+                return
+            }
             phase = .onboarding
             return
         }
@@ -82,10 +118,40 @@ final class WorkspaceModel {
             sync.exchange()
             generation += 1
             phase = .ready
+            reminders.attach(engine: engine, commands: WorkspaceReminderCommands(workspace: self))
             await resumeImports()
         } catch {
             status = nil
             phase = .failed(Self.describe(error))
+        }
+    }
+
+    /// UI-test seam: a disposable workspace holding one task whose reminder
+    /// fires shortly, with reminders turned on, so a device test can watch a
+    /// real notification arrive and act on it. Production never takes it.
+    private func seedReminder(_ seed: LaunchConfiguration.ReminderSeed) async {
+        await createWorkspace()
+        guard phase == .ready else { return }
+        do {
+            let locator = try await engine.capture(title: seed.title).task.locator
+            var settings = ReminderSettings(enabled: true, checkInHour: 9, checkInMinute: 0)
+            let fire = Date().addingTimeInterval(seed.delay)
+            switch seed.kind {
+            case .checkIn:
+                // A check-in is a day announced at a whole minute: the first
+                // whole minute after the delay, today.
+                let next = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire.addingTimeInterval(59))
+                settings.checkInHour = next.hour ?? 9
+                settings.checkInMinute = next.minute ?? 0
+                let day = String(format: "%04d-%02d-%02d", next.year ?? 0, next.month ?? 0, next.day ?? 0)
+                _ = try await engine.checkIn([locator], .set(date: day, repeatDays: 0))
+            case .deferral:
+                _ = try await engine.edit(locator, TaskEdit(deferUntil: ISO8601DateFormatter().string(from: fire)))
+            }
+            changed(.localChange)
+            await reminders.update(settings)
+        } catch {
+            failure = Self.describe(error)
         }
     }
 
@@ -125,6 +191,7 @@ final class WorkspaceModel {
     func chooseAnotherWorkspace() {
         try? launch.select(nil)
         sync.detach()
+        reminders.detach()
         location = nil
         status = nil
         phase = .onboarding
@@ -229,7 +296,7 @@ final class WorkspaceModel {
                 refusal = refusal ?? Self.describe(error)
             }
         }
-        generation += 1
+        changed(.localChange)
         return refusal
     }
 
@@ -239,7 +306,7 @@ final class WorkspaceModel {
         do {
             let pending = try await Task.detached { try importer.stage(data: data, filename: filename, for: task) }.value
             let refusal = await commitImport(pending, importer)
-            generation += 1
+            changed(.localChange)
             return refusal
         } catch {
             return Self.describe(error)
@@ -258,7 +325,7 @@ final class WorkspaceModel {
                 failure = "An interrupted import of \(record.filename) could not finish: \(refusal)"
             }
         }
-        generation += 1
+        changed(.localChange)
     }
 
     private func commitImport(_ pending: AttachmentImporter.Pending, _ importer: AttachmentImporter) async -> String? {
@@ -290,7 +357,7 @@ final class WorkspaceModel {
         do {
             let resolution = try await engine.resolve(conflict: conflict.id, choice)
             sync.noteConflicts(resolution.remaining)
-            generation += 1
+            changed(.localChange)
             sync.exchange()
             return .success(resolution)
         } catch let failure as BridgeError where failure.code == .staleRevision || failure.code == .notFound {
@@ -340,7 +407,7 @@ final class WorkspaceModel {
     private func attempt(_ mutation: @escaping () async throws -> Void) async -> String? {
         do {
             try await mutation()
-            generation += 1
+            changed(.localChange)
             sync.exchange()
             return nil
         } catch {
@@ -356,7 +423,7 @@ final class WorkspaceModel {
         do {
             try await mutation()
             failure = nil
-            generation += 1
+            changed(.localChange)
             sync.exchange()
             return true
         } catch {
@@ -368,7 +435,7 @@ final class WorkspaceModel {
     /// Exchanges, then rereads what an import may have changed.
     func refresh() async {
         sync.exchange()
-        generation += 1
+        changed(.foreground)
     }
 
     static func describe(_ error: Error) -> String {

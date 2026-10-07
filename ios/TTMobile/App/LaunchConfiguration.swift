@@ -21,11 +21,35 @@ struct LaunchConfiguration: Sendable {
     /// watch the import resume.
     let holdImportsBeforeCommit: Bool
 
+    /// A device UI test's one seeded reminder: a disposable workspace holding
+    /// one task whose reminder fires `delay` seconds after launch.
+    struct ReminderSeed: Sendable {
+        enum Kind: String, Sendable {
+            case checkIn = "check_in"
+            case deferral
+        }
+
+        let kind: Kind
+        let title: String
+        let delay: TimeInterval
+    }
+
+    let reminderSeed: ReminderSeed?
+
     static let current = LaunchConfiguration(environment: ProcessInfo.processInfo.environment)
 
     init(environment: [String: String]) {
         if let override = environment["TT_UITEST_ROOT"], !override.isEmpty {
             root = URL(fileURLWithPath: override, isDirectory: true)
+            legacyWorkspace = nil
+        } else if let scratch = environment["TT_UITEST_SCRATCH"], !scratch.isEmpty {
+            // A disposable root inside the app's own container, for UI tests
+            // on a physical iPhone, which cannot reach a host directory. The
+            // workspaces already on the device are neither read nor written.
+            let support = (try? FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+            )) ?? FileManager.default.temporaryDirectory
+            root = support.appendingPathComponent("uitest-scratch/\(scratch)", isDirectory: true)
             legacyWorkspace = nil
         } else {
             let support = (try? FileManager.default.url(
@@ -39,6 +63,21 @@ struct LaunchConfiguration: Sendable {
         deviceIDOverride = environment["TT_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
         importSourceOverride = environment["TT_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
         holdImportsBeforeCommit = environment["TT_UITEST_HOLD_IMPORTS"] == "1"
+        if let kind = environment["TT_UITEST_SEED_REMINDER"].flatMap(ReminderSeed.Kind.init(rawValue:)) {
+            reminderSeed = ReminderSeed(
+                kind: kind,
+                title: environment["TT_UITEST_SEED_TITLE"] ?? "Reminder evidence",
+                delay: TimeInterval(environment["TT_UITEST_SEED_DELAY_SECONDS"] ?? "") ?? 20
+            )
+        } else {
+            reminderSeed = nil
+        }
+    }
+
+    /// Whether this launch runs under a UI test.
+    var isUITest: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment.keys.contains { $0.hasPrefix("TT_UITEST_") }
     }
 
     private var selectionFile: URL { root.appendingPathComponent("selected-workspace") }

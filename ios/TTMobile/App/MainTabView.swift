@@ -11,12 +11,19 @@ enum Route: Hashable {
     case note(NoteLocation, filename: String?)
 }
 
+/// A task a reminder notification opened.
+private struct OpenedTask: Identifiable {
+    let locator: TaskLocator
+    var id: TaskLocator { locator }
+}
+
 /// Today, Inbox, and Browse, with capture reachable from every one of them
 /// and sync status a tap away.
 struct MainTabView: View {
     let workspace: WorkspaceModel
     @State private var capturing = false
     @State private var showingSync = false
+    @State private var opened: OpenedTask?
 
     var body: some View {
         TabView {
@@ -55,6 +62,34 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $showingSync) {
             SyncView(workspace: workspace)
+        }
+        .onChange(of: workspace.reminders.openRequest) { _, request in
+            guard let request else { return }
+            // One sheet presents at a time: a reminder opened while capture
+            // or the sync sheet is up replaces it (capture keeps its draft).
+            if capturing || showingSync {
+                capturing = false
+                showingSync = false
+                Task {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    opened = OpenedTask(locator: request)
+                }
+            } else {
+                opened = OpenedTask(locator: request)
+            }
+        }
+        .sheet(item: $opened, onDismiss: { workspace.reminders.openRequest = nil }) { opened in
+            NavigationStack {
+                TaskDetailView(workspace: workspace, locator: opened.locator)
+                    .navigationDestination(for: Route.self) { destination($0) }
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { self.opened = nil }
+                                .accessibilityIdentifier("reminder.opened.done")
+                        }
+                    }
+            }
+            .accessibilityIdentifier("reminder.opened")
         }
     }
 
@@ -145,6 +180,14 @@ struct SyncView: View {
                         workspace.chooseAnotherWorkspace()
                     }
                     .accessibilityIdentifier("workspace.switch")
+                }
+                Section {
+                    NavigationLink {
+                        ReminderSettingsView(reminders: workspace.reminders)
+                    } label: {
+                        LabeledContent("Reminders", value: workspace.reminders.summary)
+                    }
+                    .accessibilityIdentifier("reminders.open")
                 }
                 SyncStatusSection(sync: workspace.sync)
                 ConflictsSection(workspace: workspace, notice: $conflictNotice)

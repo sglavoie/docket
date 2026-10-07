@@ -130,6 +130,7 @@ There is no bridge-only mutation path.
 | `command.bulk` | yes | One planning, status, tag, or project action over a selection, as one transaction. |
 | `command.project` | yes | Creates, edits, retags (parking included), archives, restores, or deletes a project. |
 | `query.project` | no | One project, archived ones included, with what deleting it would remove. |
+| `query.reminders` | no | The local notifications the device should hold, planned under the shared attention rules. |
 | `command.comment` | yes | Task or project comment: `add`, `edit`, `delete`. |
 | `command.note` | yes | Creates, edits, moves, or deletes a note. |
 | `command.attachment` | yes | Adds or removes an attachment. Bytes travel as a file path under `runtime_dir`, never inline. |
@@ -168,6 +169,7 @@ from one the protocol never had. The current build serves these:
 | `command.hierarchy` | `{task, action, title, parent}`; `action` is `add_child` (`title`), `set_parent` (`parent`, same project), `clear_parent`, `indent`, `outdent`, `move_up`, or `move_down` | `{task, created, committed}` |
 | `command.bulk` | `{tasks, action, plan, state, add_tags, remove_tags, project_id}`; `action` is `plan` (`plan` as in `command.plan`), `state`, `tags` (`add_tags`, `remove_tags`), or `move` (`project_id`) | `{tasks, moves: [{from, to}], committed}` |
 | `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}, comments}` |
+| `query.reminders` | `{time_zone, check_in_time, horizon_days, limit}`; `time_zone` (IANA) and `check_in_time` (`HH:MM`) required, `horizon_days` 0-366 (0 is 30), `limit` 0-64 (0 is 60) | `{time_zone, check_in_time, generated_at, truncated, reminders: [{id, kind, task, project_name, short_id, title, fire_at, local_time, can_acknowledge, can_defer, fingerprint}]}`, soonest first |
 | `command.project` | `{action, project_id, name, description, tags, confirm}`; `action` is `create` (`name`), `edit` (any of `name`, `description`, `tags`), `set_tags` (`tags`, the complete set), `archive`, `unarchive`, or `delete` (`confirm`, the `impact` the confirmation showed) | `{project, committed}` |
 | `command.comment` | `{task, project_id, action, text, index, comment_id, original}` with exactly one of `task` and `project_id`; `action` is `add` (`text`), `edit` (`text`), or `delete`; `edit` and `delete` name the comment by `index` on a task or `comment_id` on a project, and send `original`, the text read there | `{task, project_id, comment_id, comments, committed}` |
 | `query.notes` | `{location}`, optional; a location is `{scope, project_id}`, `scope` `global` or `project` | `{notes: [{location, project_name, filename, title, created_at, modified_at, revision, parse_error, excerpt}]}` |
@@ -192,10 +194,34 @@ line commits in one transaction. A refused line commits nothing and answers
 zero-based in runes. `text` takes no structured field beside `project_id`. A
 structured capture's `title` is literal, so a sigil in it stays text. `due` and
 `defer` are read with the grammar's own date readers (`2026-10-21`,
-`2026-10-21 14:30`, `tomorrow`, `+3d`; `defer` also takes `+4h`). A deadline
+`2026-10-21 14:30`, `tomorrow`, `+3d`; `defer` also takes `+4h` and an RFC 3339
+instant, since a deferral is an instant). A deadline
 falling today routes to Today, as it does on the desktop. An absent
 `project_id` is the protected Unfiled project. `tasks` lists every created
 task in line order, and `task` is the first.
+
+`query.reminders` plans and never writes. It rereads the workspace, so an
+import or another device's change is planned at the next call, and it covers
+the task workspace population only: parked and archived projects raise
+nothing. A reminder's `kind` is `check_in`, `deadline`, or `deferral_ends`,
+and each is planned only when the engine's own rules say the moment asks for
+attention: a check-in on its day at `check_in_time`, exactly when
+`Task.CheckInIsDueAt` turns true at that instant, so a check-in already owed,
+a deferred one, and finished work raise nothing new; a deadline only when it
+carries a time of day and no deferral covers it; a deferral when it lapses,
+and a deferral landing on local midnight (a day) at `check_in_time` that
+morning. The review flag has no moment and is never a reminder. The request
+names its zone and the plan adopts it: check-in days and timed deadlines are
+wall-clock values placed in that zone, so a device that changes zone replans
+them at the same local time, while a deferral is an instant and keeps it.
+`fire_at` is that instant in UTC and `local_time` its wall-clock reading in
+`time_zone`. `id` is `kind/project_id/task_id`, stable across reschedules,
+and `fingerprint` changes whenever the moment, title, project name, or
+offered actions do, so a client replaces a notification rather than keeping
+two. `can_acknowledge` is `TaskAllowsExplicitReview` at that moment, which is
+when `command.check_in` `acknowledge` would succeed; `can_defer` is set for
+open work. A notification's actions are ordinary commands: `command.check_in`
+`acknowledge`, and `command.edit` with `defer` `+1h` or `tomorrow`.
 
 `query.capture_preview` answers a draft rather than failing on it: a refused
 draft returns ok with its `errors` and no `lines`. `plan` is `today` or `next`

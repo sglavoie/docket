@@ -66,6 +66,7 @@ var operations = map[string]op{
 	"query.lenses":          {run: (*Bridge).queryLenses},
 	"query.capture_preview": {run: (*Bridge).queryCapturePreview},
 	"query.project":         {run: (*Bridge).queryProject},
+	"query.reminders":       {run: (*Bridge).queryReminders},
 	"command.capture":       {mutates: true, run: (*Bridge).commandCapture},
 	"command.edit":          {mutates: true, run: (*Bridge).commandEdit},
 	"command.transition":    {mutates: true, run: (*Bridge).commandTransition},

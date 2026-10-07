@@ -15,6 +15,9 @@ packages:
   # The exchange transport shared with the macOS helper.
   TTSync:
     path: ../apple/TTSync
+  # Local notifications for check-ins, timed deadlines, and deferrals.
+  TTReminders:
+    path: TTReminders
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -44,6 +47,8 @@ targets:
         product: TTEngine
       - package: TTSync
         product: TTSync
+      - package: TTReminders
+        product: TTReminders
     scheme:
       testTargets:
         - TTMobileDeviceTests

@@ -12,7 +12,8 @@ it runs under `just ci`.
 | `TTEngine/` | Swift package: the bridge models and the `TTEngine` actor |
 | `TTEngine/Frameworks/TTBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
 | `TTMobile/` | the app target |
-| `TTMobileUITests/` | the seeded browsing UI suite, on a simulator against the real engine |
+| `TTReminders/` | Swift package: the reminder scheduler, its reconciliation, and notification action routing, tested against a fake notification center |
+| `TTMobileUITests/` | the seeded browsing UI suite, on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
 | `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
 | `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
 | `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
@@ -121,6 +122,42 @@ termination interrupted resumes at the next launch. A file opens in Quick Look
 and shares through the system sheet; a link opens and shares; a code reference
 is kept for the desktop. A file this iPhone does not hold says so, one still
 arriving says **Waiting to download**, and **Download** asks iCloud for it now.
+
+## Reminders
+
+**Reminders** in the sync sheet turns on local notifications. They are off
+until turned on, and turning them on is the only thing that asks for
+notification permission. The engine plans them (`query.reminders`) under the
+same attention rules the desktop's review pass uses: a check-in on its day at
+the check-in time chosen there, a deadline that carries a time of day when it
+is due, and a deferral when it ends. The app only schedules, replaces, and
+cancels what the plan names, after the workspace opens, every commit, every
+import of another device's changes, each return to the foreground, a
+time-zone or clock change, and a settings change. Closing or switching the
+workspace cancels every pending reminder.
+
+A notification offers **Acknowledge** (when the task owes a review),
+**Defer 1 Hour**, and **Defer to Tomorrow**, which commit in the background
+through the same commands the task's detail uses; tapping it opens the task.
+A refused action writes nothing and is listed under **Recent** with the
+reason. Denying permission is harmless: nothing is scheduled, the status says
+why and links to Settings, and allowing it later schedules at the next
+foreground. Times are explicit about zones: check-ins and timed deadlines keep
+their local time when the iPhone changes time zone, while a deferral ends at
+the same instant everywhere. Settings and the recent-action list are kept
+under `Application Support/reminders/` and never synced.
+
+`cd ios/TTReminders && swift test` runs the scheduling and action suite on the
+Mac against a fake notification center. Delivery itself is proven on a
+physical iPhone: `TT_IOS_DEVELOPMENT_TEAM=… ios/scripts/record-reminder-evidence.sh`
+builds the signed app, runs `ReminderDeliveryUITests` there (each test seeds a
+disposable workspace in the app's own container through `TT_UITEST_SCRATCH`
+and `TT_UITEST_SEED_REMINDER`, waits for the real notification, and acts on it
+through SpringBoard), and writes `docs/mobile/evidence/session-15-reminders.json`
+naming the source fingerprint, the bridge fingerprint, and the executable
+digests the running app reported. `bash scripts/verify_mobile_session.sh 15`
+runs the engine and scheduling suites and holds that evidence to the current
+tree; a simulator run does not count.
 
 ## Sync exchange
 
