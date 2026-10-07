@@ -1220,6 +1220,107 @@ verify_session_13() {
 	note "session 13 verified"
 }
 
+verify_session_14() {
+	[ "$(uname -s)" = Darwin ] || fail "session 14 runs the iPhone conflict and recovery UI tests on an iOS simulator, on macOS only"
+	require_files \
+		internal/engine/conflicts.go \
+		internal/bridge/conflict_ops.go \
+		internal/bridge/conflict_sync_test.go \
+		cmd/sync_conflicts.go \
+		cmd/sync_conflicts_test.go \
+		ios/TTEngine/Sources/TTEngine/Conflicts.swift \
+		ios/TTMobile/App/ConflictViews.swift \
+		ios/TTMobileUITests/ConflictRecoveryUITests.swift
+
+	# The conflict ops are served, not reserved.
+	local served
+	for served in conflict.list conflict.show conflict.resolve sync.diagnostics; do
+		grep -Fq "\"$served\":" internal/bridge/bridge.go || fail "the bridge does not serve $served"
+	done
+
+	# One engine behind both interfaces: the phone through the bridge and the
+	# desktop through the call tt sync resolve makes. Base and competing
+	# versions with device and change context; keeping a version, the current
+	# bytes, or replacement text; coupled changes resolved in one transaction;
+	# convergence once the resolution travels; a stale resolution refused
+	# without writing; a resolution racing an edit or another resolution
+	# keeping every variant; local content during a transport failure and a
+	# retry; and a content-free diagnostics export.
+	run_go_suite bridge-conflicts ./internal/bridge/ '^TestBridgeResolvesSyncConflictsFromEitherDevice$' \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/inspect_base_and_competing_versions \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/resolve_from_phone_converges \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/resolve_from_desktop_converges \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/replacement_text \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/coupled_changes_resolve_together \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/stale_resolution_is_refused \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/resolution_racing_an_edit_keeps_both \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/competing_resolutions_keep_both \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/transport_failure_keeps_local_content \
+		TestBridgeResolvesSyncConflictsFromEitherDevice/diagnostics_export
+
+	# The desktop's commands, between two real desktop devices sharing an
+	# exchange folder, and the read-only gc browser over the same views.
+	run_go_suite cli-conflicts ./cmd/ '^(TestSyncConflictCommands|TestPublicCommandTreeIsMaintenanceOnly)$' \
+		TestSyncConflictCommands \
+		TestPublicCommandTreeIsMaintenanceOnly
+	run_go_suite tui-conflicts ./internal/tui/ '^TestSyncStatusReachesTheStripAndTheConflictBrowser$' \
+		TestSyncStatusReachesTheStripAndTheConflictBrowser
+	run_go_suite tui-conflict-browser ./internal/tui/conflict/ '^TestConflictBrowserListsSyncConflicts$' \
+		TestConflictBrowserListsSyncConflicts
+	# Simultaneous resolutions stay convergent, and the new commit entry point
+	# is inventoried.
+	run_go_suite simultaneous-resolutions ./internal/syncmerge/ '^TestSyncReconcileSimultaneousResolutions$' \
+		TestSyncReconcileSimultaneousResolutions/agree \
+		TestSyncReconcileSimultaneousResolutions/keep_current
+	run_go_suite write-inventory ./internal/compat/ '^(TestCompatCommitEntryPointsAreDocumented|TestCompatWritePathInventoryCoversEveryDurableWrite)$' \
+		TestCompatCommitEntryPointsAreDocumented \
+		TestCompatWritePathInventoryCoversEveryDurableWrite
+
+	# The iPhone on a simulator against the gomobile-bound engine: it joins
+	# an exchange where two Macs left a coupled conflict, inspects and resolves
+	# it, writes replacement text, survives a stale resolution, and keeps
+	# working through a lost exchange folder with a retry and a diagnostics
+	# export.
+	note "running the TTMobile conflict and recovery UI suite"
+	TT_UITEST_ONLY=ConflictRecoveryUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testKeepingAVersionResolvesTheWholeChangeAndPublishesIt()' \
+		'testReplacementTextAndAStaleResolutionKeepEveryEdit()' \
+		'testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics()'
+
+	# Every replica converges on the phone's resolution: both Macs apply what
+	# the phone published and end with its bytes and nothing open.
+	local phone_root conflict="$work_dir/ui/conflict" tt="$work_dir/ui/enroll/tt" who path
+	phone_root=$(find "$work_dir/ui/work" -maxdepth 1 -type d -name '*testKeepingAVersion*' | head -1)
+	[ -n "$phone_root" ] && [ -d "$phone_root/exchange" ] || fail "the phone's resolution test left no exchange"
+	for who in studio laptop; do
+		HOME="$conflict/$who-home" "$tt" --data-dir "$conflict/$who" sync exchange --folder "$phone_root/exchange" \
+			>"$work_dir/$who-exchange.log" 2>&1 || {
+			cat "$work_dir/$who-exchange.log" >&2
+			fail "the $who Mac could not apply the phone's resolution"
+		}
+		HOME="$conflict/$who-home" "$tt" --data-dir "$conflict/$who" sync conflicts --json >"$work_dir/$who-conflicts.json" ||
+			fail "the $who Mac could not list its conflicts"
+		python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["conflicts"] == [] else 1)' \
+			"$work_dir/$who-conflicts.json" || {
+			cat "$work_dir/$who-conflicts.json" >&2
+			fail "the $who Mac still has open conflicts after the phone's resolution"
+		}
+		for path in projects/atlas-launch/tasks.md projects/atlas-launch/notes/2026-09-03-090000_0a1b2c3d-release-runbook.md; do
+			cmp -s "$conflict/$who/$path" "$phone_root/workspaces/joined/$path" ||
+				fail "the $who Mac's $path differs from the phone's after the resolution"
+		done
+	done
+	grep -Fq '## Task: Ship beta build (laptop)' "$conflict/studio/projects/atlas-launch/tasks.md" ||
+		fail "the studio Mac does not hold the version the phone kept"
+	note "both Macs converged on the phone's resolution"
+
+	note "session 14 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -1235,6 +1336,7 @@ case "$session" in
 11) verify_session_11 ;;
 12) verify_session_12 ;;
 13) verify_session_13 ;;
+14) verify_session_14 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

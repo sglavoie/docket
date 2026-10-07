@@ -28,7 +28,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 
 	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 )
 
@@ -1046,7 +1045,15 @@ func (m *AppModel) refreshSyncStatus() {
 		return
 	}
 	m.feedback.syncAdvisory = syncAdvisoryText(status, time.Now())
-	m.feedback.syncConflicts = syncConflictEntries(status.Conflicts)
+	if len(status.Conflicts) == 0 || m.domain.syncConflicts == nil {
+		return
+	}
+	views, err := m.domain.syncConflicts(nil)
+	if err != nil {
+		logging.Warn("reading sync conflicts: %v", err)
+		return
+	}
+	m.feedback.syncConflicts = syncConflictEntries(views)
 }
 
 // syncAdvisoryText is the strip's sync line. Local saves, outgoing and
@@ -1093,26 +1100,32 @@ func syncAge(d time.Duration) string {
 	}
 }
 
-// syncConflictEntries converts the history's conflict records into the rows
-// the conflict browser lists.
-func syncConflictEntries(conflicts []synclog.Conflict) []conflict.SyncConflictEntry {
-	if len(conflicts) == 0 {
+// syncConflictEntries converts the engine's conflict views into the rows the
+// conflict browser lists.
+func syncConflictEntries(views []engine.ConflictView) []conflict.SyncConflictEntry {
+	if len(views) == 0 {
 		return nil
 	}
-	entries := make([]conflict.SyncConflictEntry, 0, len(conflicts))
-	for _, record := range conflicts {
-		entry := conflict.SyncConflictEntry{ID: record.ID, Path: record.Path, Kind: string(record.Kind)}
-		if record.ResultBlob != nil {
-			entry.Result = *record.ResultBlob
+	entries := make([]conflict.SyncConflictEntry, 0, len(views))
+	for _, view := range views {
+		entry := conflict.SyncConflictEntry{ID: view.ID, Path: view.Path, Kind: view.Kind, Label: view.Label, Base: syncConflictContent(view.Base)}
+		if view.Current != nil {
+			entry.Result = view.Current.Digest
 		}
-		for _, candidate := range record.Candidates {
-			version := conflict.SyncConflictVersion{Writers: append([]string(nil), candidate.Writers...)}
-			if candidate.Blob != nil {
-				version.Blob = *candidate.Blob
+		for _, candidate := range view.Versions {
+			version := conflict.SyncConflictVersion{Blob: candidate.Digest, Content: syncConflictContent(&candidate.ConflictContent), Current: candidate.Current}
+			for _, writer := range candidate.Writers {
+				version.Writers = append(version.Writers, conflict.SyncConflictWriter{
+					TxnID: writer.TxnID, Device: writer.DeviceID, DeviceName: writer.DeviceName,
+					ThisDevice: writer.ThisDevice, Change: writer.Change, At: writer.CreatedAt,
+				})
+			}
+			for _, also := range candidate.AlsoResolves {
+				version.AlsoResolves = append(version.AlsoResolves, also.Label)
 			}
 			entry.Versions = append(entry.Versions, version)
 		}
-		for _, detail := range record.Details {
+		for _, detail := range view.Details {
 			line := detail.Detail
 			if detail.Subject != "" || detail.Field != "" {
 				line = strings.TrimSpace(detail.Subject+" "+detail.Field) + ": " + detail.Detail
@@ -1122,4 +1135,20 @@ func syncConflictEntries(conflicts []synclog.Conflict) []conflict.SyncConflictEn
 		entries = append(entries, entry)
 	}
 	return entries
+}
+
+// syncConflictContent is a version's content as the browser prints it: its
+// text, or a sentence saying why there is none to print.
+func syncConflictContent(content *engine.ConflictContent) []string {
+	switch {
+	case content == nil:
+		return []string{"(the file did not exist)"}
+	case content.Deleted:
+		return []string{"(deleted)"}
+	case !content.Available:
+		return []string{"(not on this device)"}
+	case content.Text == nil:
+		return []string{fmt.Sprintf("(%d bytes, not text)", content.Size)}
+	}
+	return strings.Split(strings.TrimRight(*content.Text, "\n"), "\n")
 }

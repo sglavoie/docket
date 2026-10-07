@@ -59,7 +59,13 @@ the bridge to byte-identical capture and editing outcomes, and
 `bash scripts/verify_mobile_session.sh 12` runs `OrganizingUITests`, beside the
 bridge's single-device and two-device organizing tests, and
 `bash scripts/verify_mobile_session.sh 13` runs `RichContentUITests`, beside the
-bridge's rich-content tests on one and two devices. Two launch variables stand
+bridge's rich-content tests on one and two devices, and
+`bash scripts/verify_mobile_session.sh 14` runs `ConflictRecoveryUITests`. For
+it, `test-ui.sh` also enrolls a second fixture copy as two Mac devices (each
+under its own `HOME`) that change one task title and one note line while apart,
+so `OUTPUT_DIR/conflict/exchange` holds a coupled conflict for the phone to join;
+the verifier then applies what the phone published on both Macs and compares
+their files with the phone's. Two launch variables stand
 in for what XCUITest cannot drive: `TT_UITEST_IMPORT_SOURCE` names the file the
 Files picker would have returned, and `TT_UITEST_HOLD_IMPORTS=1` stops each
 import after it is staged, as a termination before the commit would.
@@ -128,6 +134,18 @@ Mac against the real engine:
 go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
 (cd apple/TTSync && TT_BRIDGEHOST=/tmp/bridgehost swift test)
 ```
+
+The sync sheet lists the open conflicts from the phone's own history, so they
+read with the exchange unreachable. A conflict shows what differs, the version
+every side started from, and each competing version with the device and change
+that wrote it. **Keep This Version** keeps that side of what conflicted and the
+rest of what both devices changed, plus the same change's side of any other
+file it touched; **Keep What This iPhone Has Now** and, for tasks and notes,
+**Write a Replacement…** resolve it otherwise. A conflict that changed after it
+was opened is refused without writing and read again. While the exchange
+fails, a banner says everything is saved on the iPhone and offers **Retry**;
+the sheet's Recovery section repeats the retry and exports a diagnostics file
+(under `devices/<name>/diagnostics/`) to share.
 
 `ios/scripts/record-icloud-exchange.sh` records the same contract between this
 Mac and a physical iPhone over iCloud Drive. First install the app on the

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/engine"
 )
@@ -127,6 +129,18 @@ func TestSyncStatusReachesTheStripAndTheConflictBrowser(t *testing.T) {
 	rendered := model.conflictBrowser.RenderWithin(160, 40)
 	if !strings.Contains(rendered, "projects/unfiled/tasks.md") || !strings.Contains(rendered, "sync conflict · 2 versions") {
 		t.Fatalf("browser does not list the sync conflict:\n%s", rendered)
+	}
+	// Inspecting it shows the base and both versions with who wrote each.
+	model.conflictBrowser.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	inspected := model.conflictBrowser.RenderWithin(200, 60)
+	for range 80 {
+		model.conflictBrowser.HandleKey(tea.KeyPressMsg{Code: 'j', Text: "j"})
+		inspected += model.conflictBrowser.RenderWithin(200, 60)
+	}
+	for _, want := range []string{"Started from:", "Shared task", "Desk title", "Laptop title", ", this device", "edit outside tt on", "tt sync resolve"} {
+		if !strings.Contains(inspected, want) {
+			t.Fatalf("the inspected sync conflict lacks %q:\n%s", want, inspected)
+		}
 	}
 
 	plain, err := NewAppModel(pair.original)

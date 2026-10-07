@@ -272,6 +272,69 @@ final class WorkspaceModel {
         }
     }
 
+    // MARK: Sync conflicts and recovery
+
+    /// Every open sync conflict, read from this iPhone's own history: it
+    /// answers with the exchange unreachable.
+    func conflicts() async -> Result<[SyncConflict], ConflictFailure> {
+        do {
+            return .success(try await engine.conflicts(deviceNames: sync.deviceNames))
+        } catch {
+            return .failure(ConflictFailure(message: Self.describe(error), stale: false))
+        }
+    }
+
+    /// Resolves a conflict. A conflict that changed since it was read is
+    /// refused as stale and nothing is written; the caller re-reads it.
+    func resolve(_ conflict: SyncConflict, _ choice: ConflictChoice) async -> Result<ConflictResolution, ConflictFailure> {
+        do {
+            let resolution = try await engine.resolve(conflict: conflict.id, choice)
+            sync.noteConflicts(resolution.remaining)
+            generation += 1
+            sync.exchange()
+            return .success(resolution)
+        } catch let failure as BridgeError where failure.code == .staleRevision || failure.code == .notFound {
+            // An edit observed by the next pass changes the conflict; ask for
+            // that pass so the re-read sees it.
+            sync.exchange()
+            return .failure(ConflictFailure(message: failure.message, stale: true))
+        } catch {
+            return .failure(ConflictFailure(message: Self.describe(error), stale: false))
+        }
+    }
+
+    /// Writes a diagnostics document — the engine's status, outbox, and
+    /// conflict structure, and the transport's queues and last error — under
+    /// this workspace's device directory and returns it for sharing. It names
+    /// files and devices but holds no task or note content.
+    func exportDiagnostics() async -> Result<URL, ConflictFailure> {
+        guard let location else { return .failure(ConflictFailure(message: "No workspace is open.", stale: false)) }
+        var document = DiagnosticsDocument(
+            exportedAt: Date(),
+            app: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+            workspace: location.name,
+            transport: sync.diagnostics()
+        )
+        do {
+            document.engine = try await engine.syncDiagnostics(deviceNames: sync.deviceNames)
+        } catch {
+            document.engineError = Self.describe(error)
+        }
+        do {
+            let directory = location.runtime.appendingPathComponent("diagnostics", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let stamp = ISO8601DateFormatter().string(from: document.exportedAt).replacingOccurrences(of: ":", with: "")
+            let file = directory.appendingPathComponent("tt-sync-diagnostics-\(stamp).json")
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            encoder.dateEncodingStrategy = .iso8601
+            try encoder.encode(document).write(to: file, options: .atomic)
+            return .success(file)
+        } catch {
+            return .failure(ConflictFailure(message: "The diagnostics could not be written: \(error.localizedDescription)", stale: false))
+        }
+    }
+
     /// Runs one mutation for a screen that shows its own refusal, so the
     /// refusal stays beside the draft it refused rather than in the banner.
     private func attempt(_ mutation: @escaping () async throws -> Void) async -> String? {
@@ -333,5 +396,30 @@ final class WorkspaceModel {
         let minted = UUID().uuidString.lowercased()
         UserDefaults.standard.set(minted, forKey: key)
         return minted
+    }
+}
+
+/// A conflict read or resolution that did not go through. `stale` means the
+/// conflict changed since it was read: nothing was written, and re-reading
+/// shows it as it is now.
+struct ConflictFailure: Error, Equatable {
+    let message: String
+    let stale: Bool
+}
+
+/// One diagnostics export: what the app, the transport, and the engine knew.
+struct DiagnosticsDocument: Encodable {
+    var format = "tt-mobile-sync-diagnostics/v1"
+    var exportedAt: Date
+    var app: String
+    var workspace: String
+    var transport: TransportDiagnostics
+    var engine: JSONValue?
+    var engineError: String?
+
+    enum CodingKeys: String, CodingKey {
+        case format, app, workspace, transport, engine
+        case exportedAt = "exported_at"
+        case engineError = "engine_error"
     }
 }

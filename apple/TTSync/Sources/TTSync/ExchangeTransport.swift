@@ -106,6 +106,34 @@ public final class ExchangeTransport: @unchecked Sendable {
         return try finish()
     }
 
+    /// The names other devices advertise in the exchange, by device id, so a
+    /// conflict names who wrote each version. Unreadable or undownloaded
+    /// advertisements are skipped: a name only informs.
+    public func deviceNames() -> [String: String] {
+        guard (try? provider.checkAccess()) != nil,
+              let items = try? provider.list(directory: "\(Self.root)/devices")
+        else { return [:] }
+        var names: [String: String] = [:]
+        for item in items where item.path.hasSuffix(".json") {
+            guard let data = try? provider.read(item.path),
+                  let advert = try? JSONDecoder().decode(DeviceAdvertisement.self, from: data),
+                  !advert.deviceName.isEmpty
+            else { continue }
+            names[advert.deviceID] = advert.deviceName
+        }
+        return names
+    }
+
+    private struct DeviceAdvertisement: Decodable {
+        var deviceID: String
+        var deviceName: String
+
+        enum CodingKeys: String, CodingKey {
+            case deviceID = "device_id"
+            case deviceName = "device_name"
+        }
+    }
+
     /// Asks for content now rather than on the queue's own schedule: every
     /// queued incoming transaction whose unavailable workspace paths include
     /// one of `paths` (every queued one when nil) has its retry delay cleared

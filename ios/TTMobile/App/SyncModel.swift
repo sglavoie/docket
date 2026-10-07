@@ -32,6 +32,20 @@ final class SyncModel {
     private(set) var conflicts = 0
     private(set) var lastSuccessfulExchange: Date?
     private(set) var lastError: String?
+    /// Names other devices advertise in the exchange, by device id, read on
+    /// each pass so a conflict names who wrote each version.
+    private(set) var deviceNames: [String: String] = [:]
+    /// When the last pass ended, successful or not.
+    private(set) var lastAttempt: Date?
+
+    /// Whether the last pass failed to reach the exchange or finished with an
+    /// error. Local saves are unaffected: everything stays on this iPhone and
+    /// is published on a later pass.
+    var isFailing: Bool {
+        guard hasFolder else { return false }
+        if let condition, condition != .reachable { return true }
+        return lastError != nil
+    }
 
     /// Called on the main actor after a pass imported anything.
     var onImport: (() -> Void)?
@@ -80,6 +94,8 @@ final class SyncModel {
         conflicts = 0
         lastSuccessfulExchange = nil
         lastError = nil
+        deviceNames = [:]
+        lastAttempt = nil
     }
 
     /// Records the folder the document picker returned.
@@ -142,10 +158,46 @@ final class SyncModel {
         Task.detached(priority: .utility) {
             let outcome = Result { try transport.exchange() }
             let conflicts = (try? transport.engine.status().conflicts.count) ?? 0
+            let names = transport.deviceNames()
             await MainActor.run {
+                if !names.isEmpty { self.deviceNames = names }
                 self.finish(outcome, conflicts: conflicts)
             }
         }
+    }
+
+    /// Retries now: every queued transfer skips its backoff and the exchange
+    /// runs once more. Nothing local waits on it.
+    func retry() {
+        guard hasFolder, let transport else { return }
+        Task.detached(priority: .userInitiated) {
+            _ = try? transport.requestDownloads(paths: nil)
+            await MainActor.run { self.exchange() }
+        }
+    }
+
+    /// Records the conflict count a resolution reported, before the next pass
+    /// confirms it.
+    func noteConflicts(_ count: Int) {
+        conflicts = count
+    }
+
+    /// The transport's half of a diagnostics export: the durable queues and
+    /// condition as last saved, plus what this session observed.
+    func diagnostics() -> TransportDiagnostics {
+        TransportDiagnostics(
+            hasFolder: hasFolder,
+            condition: condition?.rawValue,
+            lastError: lastError,
+            lastAttempt: lastAttempt,
+            lastSuccessfulExchange: lastSuccessfulExchange,
+            outstandingUploads: outstandingUploads,
+            outstandingDownloads: outstandingDownloads,
+            unavailable: unavailable,
+            held: held,
+            deviceNames: deviceNames,
+            state: try? transport?.state()
+        )
     }
 
     /// Asks for content a person is waiting on now: the queued transfers
@@ -167,6 +219,7 @@ final class SyncModel {
 
     private func finish(_ outcome: Result<ExchangeReport, Error>, conflicts: Int) {
         isExchanging = false
+        lastAttempt = Date()
         self.conflicts = conflicts
         switch outcome {
         case .success(let report):
@@ -197,5 +250,31 @@ final class SyncModel {
         held = state.downloads.filter { $0.outcome == "held" }.map(\.txnID)
         lastSuccessfulExchange = state.lastSuccessfulExchange
         lastError = state.lastError
+    }
+}
+
+/// What the transport knew when a diagnostics export was made.
+struct TransportDiagnostics: Encodable {
+    var hasFolder: Bool
+    var condition: String?
+    var lastError: String?
+    var lastAttempt: Date?
+    var lastSuccessfulExchange: Date?
+    var outstandingUploads: Int
+    var outstandingDownloads: Int
+    var unavailable: [String]
+    var held: [String]
+    var deviceNames: [String: String]
+    var state: TransferState?
+
+    enum CodingKeys: String, CodingKey {
+        case condition, unavailable, held, state
+        case hasFolder = "has_folder"
+        case lastError = "last_error"
+        case lastAttempt = "last_attempt"
+        case lastSuccessfulExchange = "last_successful_exchange"
+        case outstandingUploads = "outstanding_uploads"
+        case outstandingDownloads = "outstanding_downloads"
+        case deviceNames = "device_names"
     }
 }

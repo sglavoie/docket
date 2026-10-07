@@ -423,3 +423,21 @@ downloaded yet is reported as unavailable and fetched on a later exchange; a
 missing file never deletes anything. `tt sync status` shows the same state in
 full, and `tt sync doctor` checks the working copy's placement, the exchange
 folder, the history, and which device needs an update.
+
+When two devices change the same thing while apart, both versions are kept as a
+sync conflict until you choose; nothing is decided by timestamp. `gc` shows each
+one read-only, and `tt sync conflicts ID` prints it in full: the version both
+sides started from, every competing version with the device and the kind of
+change that wrote it, and what the workspace holds meanwhile. Resolve it with
+`tt sync resolve ID --version N`, which keeps that version's side of what
+conflicted and everything else both devices changed; when the same change also
+left conflicts in other files, their versions from that change are kept too, in
+one resolution. `--current` keeps what the workspace holds, and `--file PATH`
+writes replacement text for tasks or a note, checked the way `tt` reads that
+file. A resolution is a new change that reaches your other devices at the next
+exchange, and the iPhone resolves the same conflicts the same way. If the
+conflict changed after you read it — another device resolved it, or an edit
+landed — the resolution is refused and writes nothing; read it again and
+choose. `tt sync diagnostics --output FILE` writes what to share when sync
+misbehaves: status, the last exchange and its error, the unpublished work, and
+the conflicts' files, devices, and digests, without task or note content.

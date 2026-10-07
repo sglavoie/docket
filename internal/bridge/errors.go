@@ -44,8 +44,11 @@ func classify(err error) error {
 		errors.Is(err, config.ErrProtectedSystemUnfiled),
 		errors.Is(err, storage.ErrCommitBlocked):
 		return newError(CodeRefused, "%s", err)
+	case errors.Is(err, engine.ErrInvalidResolution):
+		return newError(CodeValidation, "%s", err).with("field", "resolution")
 	case errors.Is(err, storage.ErrStaleRevision),
 		errors.Is(err, storage.ErrStaleArtifact),
+		errors.Is(err, engine.ErrConflictStale),
 		errors.Is(err, config.ErrStaleObject):
 		return newError(CodeStaleRevision, "%s", err)
 	case errors.Is(err, storage.ErrMergeConflict):

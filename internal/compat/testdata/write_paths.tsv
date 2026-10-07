@@ -3,6 +3,7 @@
 # docs/mobile/write-path-inventory.md. Regenerate symbols with
 #   UPDATE_WRITE_PATH_INVENTORY=1 go test ./internal/compat/ -run TestCompatWritePathInventoryCoversEveryDurableWrite
 # symbol	integration	note
+cmd/sync_conflicts.go:runSyncDiagnostics	export	sync diagnostics writes a report the person names, outside the workspace; never synced
 cmd/project_export.go:runProjectExport	export	project export creates its output directory outside the workspace; never synced
 cmd/project_export.go:runProjectExportAll	export	project export --all creates its output directory outside the workspace; never synced
 internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change

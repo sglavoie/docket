@@ -71,6 +71,9 @@ type domainController struct {
 	// conflict browser. Nil — every isolated test, and every workspace composed
 	// without a runtime — reports nothing.
 	syncStatus func() (*engine.SyncStatus, error)
+	// syncConflicts reads the open sync conflicts with their base, versions,
+	// and the devices and changes that wrote them, for the conflict browser.
+	syncConflicts func(map[string]string) ([]engine.ConflictView, error)
 
 	// projects preserves the loaded models.Project pointers used by open views.
 	// RuntimeState deliberately rehydrates fresh catalog models on every read;

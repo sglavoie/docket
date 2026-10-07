@@ -46,7 +46,7 @@ const (
 	// conflictBrowserReadOnlySyncLine replaces it when sync conflicts are listed,
 	// which that command does not resolve: their every version is kept, and
 	// nothing on this surface writes.
-	conflictBrowserReadOnlySyncLine = "Read-only — resolve bundles with tt conflict resolve; sync conflicts keep every version"
+	conflictBrowserReadOnlySyncLine = "Read-only — resolve bundles with tt conflict resolve, sync conflicts with tt sync resolve"
 	// conflictBrowserShortIDWidth matches the CLI's own shortening, so an id read
 	// off this list can be typed straight into `tt conflict resolve`.
 	conflictBrowserShortIDWidth = 8

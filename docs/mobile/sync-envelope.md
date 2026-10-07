@@ -393,6 +393,46 @@ and the conflict closes everywhere. Different resolutions compete again as one
 new conflict whose candidates include the two resolutions, and any other
 concurrent writer of the key.
 
+### Resolving
+
+Both frontends resolve through one engine call,
+`engine.Runtime.ResolveSyncConflict` (bridge `conflict.resolve`, CLI
+`tt sync resolve`), and read through `engine.Runtime.SyncConflicts` (bridge
+`conflict.list`/`conflict.show`, CLI `tt sync conflicts`, the `gc` browser).
+A view carries the base, the current bytes, and each candidate's bytes from
+the device's own retained blobs, so it reads with the exchange unreachable,
+with each writer's device, kind, instant, and file count.
+
+- *Keep a version.* For a project document, the catalog, or planning the
+  engine merges the current bytes into the chosen candidate against the
+  conflict's base with that candidate as the primary side, so the choice wins
+  only what conflicted and the other side's independent changes and any edit
+  made since survive. Opaque kinds and deletions are kept whole.
+- *Coupled changes.* Another open conflict is coupled to the chosen version
+  when exactly one of its candidates shares a writer with it. Keeping the
+  version keeps those candidates too, in the same `resolution` transaction
+  (`CommitService.CommitSyncResolutions`), so a transaction that spanned files
+  is never resolved half way.
+- *Current* writes the current bytes; *replace* writes text, accepted only for
+  project documents and notes and only if the live readers would load it.
+- *Recheck.* The request names the conflict id it read, which covers the
+  current bytes. A closed or changed conflict refuses with `stale_revision`
+  (`engine.ErrConflictStale`) and `details.conflicts`, the ids open now, and
+  every resolved path is written with its expected revision under the commit's
+  artifact locks, so an edit that lands between the read and the commit
+  refuses the whole resolution. Nothing is written either way.
+- *Races.* A resolution concurrent with another device's edit of the same key
+  merges with it like any two writers: a disjoint edit survives beside the
+  resolution with nothing left open, an overlapping one opens a new conflict
+  whose candidates are the resolution's bytes and the edit's. Two disagreeing
+  resolutions do the same.
+
+`engine.Runtime.SyncDiagnostics` (bridge `sync.diagnostics`, CLI
+`tt sync diagnostics`) is format `tt-sync-diagnostics/v1`: the status, the
+outbox, and each conflict's paths, digests, writers, and merge details, never
+file content. The iPhone wraps it with its transport state as
+`tt-mobile-sync-diagnostics/v1`.
+
 ## Apple transport
 
 The engine never touches the exchange folder. `internal/syncexchange` is its

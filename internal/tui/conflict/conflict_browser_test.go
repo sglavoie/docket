@@ -265,12 +265,16 @@ func TestConflictBrowserRequiresALoader(t *testing.T) {
 func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 	bundle := conflictBrowserFixture("11111111-2222-3333-4444-555555555555", false)
 	entry := SyncConflictEntry{
-		ID:   "sha256:abcdef0123456789",
-		Path: "projects/unfiled/tasks.md",
-		Kind: "project_document",
+		ID:    "sha256:abcdef0123456789",
+		Path:  "projects/unfiled/tasks.md",
+		Kind:  "project_document",
+		Label: "Tasks in Unfiled",
+		Base:  []string{"## Task: Shared task"},
 		Versions: []SyncConflictVersion{
-			{Blob: "sha256:1111111111111111", Writers: []string{"sha256:aaaaaaaaaaaaaaaa"}},
-			{Blob: "sha256:2222222222222222", Writers: []string{"sha256:bbbbbbbbbbbbbbbb"}},
+			{Blob: "sha256:1111111111111111", Current: true, Content: []string{"## Task: Desk title"},
+				Writers: []SyncConflictWriter{{TxnID: "sha256:aaaaaaaaaaaaaaaa", Device: "desk", ThisDevice: true, Change: "edit", At: "2026-10-06T09:00:00Z"}}},
+			{Blob: "sha256:2222222222222222", Content: []string{"## Task: Laptop title"}, AlsoResolves: []string{"Today and Next"},
+				Writers: []SyncConflictWriter{{TxnID: "sha256:bbbbbbbbbbbbbbbb", Device: "laptop", DeviceName: "Laptop", Change: "edit outside tt"}}},
 		},
 		Result:  "sha256:1111111111111111",
 		Details: []string{"task title: competing edits"},
@@ -296,8 +300,10 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 	}
 	browser.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	detail := strings.Join(browser.detail, "\n")
-	for _, want := range []string{"Sync conflict abcdef0123456789", "[1] content 11111111", "[2] content 22222222",
-		"written by bbbbbbbb", "Holding:   content 11111111", "task title: competing edits", "nothing was lost"} {
+	for _, want := range []string{"Sync conflict abcdef0123456789", "Tasks in Unfiled", "[1] content 11111111 · held meanwhile", "[2] content 22222222",
+		"edit on desk, this device at 2026-10-06T09:00:00Z · aaaaaaaa", "edit outside tt on Laptop (laptop) · bbbbbbbb",
+		"Started from:", "│ ## Task: Shared task", "│ ## Task: Laptop title", "keeping it also keeps this change's Today and Next",
+		"Holding:   content 11111111", "task title: competing edits", "nothing was lost", "tt sync resolve abcdef01"} {
 		if !strings.Contains(detail, want) {
 			t.Fatalf("detail does not show %q:\n%s", want, detail)
 		}

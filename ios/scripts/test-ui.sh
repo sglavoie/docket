@@ -4,6 +4,10 @@
 # gomobile-bound engine. Prepares, under OUTPUT_DIR:
 #   exchange/   an exchange folder a desktop `tt sync enroll` of the
 #               representative fixture published (the join test's source)
+#   conflict/   a second enrollment whose two Mac devices (studio/ and
+#               laptop/, each with its own HOME) changed one task title and
+#               one note line while apart, so conflict/exchange/ holds a
+#               coupled conflict across two files for the conflict tests
 #   work/       the host directory each test makes its disposable root under
 # then generates the project and runs `xcodebuild test` for TTMobileUITests.
 # The result bundle is OUTPUT_DIR/TTMobileUITests.xcresult and the log
@@ -63,8 +67,50 @@ HOME="$output/enroll/home" "$output/enroll/tt" --data-dir "$output/enroll/origin
 	exit 1
 }
 
+# The desktop half of the conflict tests: two Mac devices of one enrolled
+# workspace edit the same task title and the same note line outside tt while
+# apart, then exchange, so both hold the same two coupled conflicts.
+conflict="$output/conflict"
+rm -rf "$conflict"
+mkdir -p "$conflict/exchange"
+cp -R "$fixture" "$conflict/original"
+tt_as() {
+	who=$1
+	shift
+	HOME="$conflict/$who-home" "$output/enroll/tt" "$@" >>"$conflict/$who.log" 2>&1 || {
+		cat "$conflict/$who.log" >&2
+		echo "the $who device failed: tt $*" >&2
+		exit 1
+	}
+}
+edit_apart() {
+	who=$1
+	tasks="$conflict/$who/projects/atlas-launch/tasks.md"
+	note="$conflict/$who/projects/atlas-launch/notes/2026-09-03-090000_0a1b2c3d-release-runbook.md"
+	sed "s/^## Task: Ship beta build\$/## Task: Ship beta build ($who)/" "$tasks" >"$tasks.edit" && mv "$tasks.edit" "$tasks"
+	sed "s/^3\. Upload\$/3. Upload from the $who/" "$note" >"$note.edit" && mv "$note.edit" "$note"
+	grep -q "Ship beta build ($who)" "$tasks" && grep -q "Upload from the $who" "$note" || {
+		echo "the $who edit did not apply" >&2
+		exit 1
+	}
+}
+tt_as studio --data-dir "$conflict/original" sync enroll --exchange "$conflict/exchange" --working-copy "$conflict/studio" --force
+tt_as laptop sync join --exchange "$conflict/exchange" --working-copy "$conflict/laptop"
+edit_apart studio
+tt_as studio --data-dir "$conflict/studio" sync exchange
+edit_apart laptop
+tt_as laptop --data-dir "$conflict/laptop" sync exchange
+tt_as studio --data-dir "$conflict/studio" sync exchange
+HOME="$conflict/studio-home" "$output/enroll/tt" --data-dir "$conflict/studio" sync conflicts --json >"$conflict/conflicts.json"
+[ "$(grep -c '"replaceable":' "$conflict/conflicts.json")" -eq 2 ] || {
+	cat "$conflict/conflicts.json" >&2
+	echo "the two Macs did not leave the coupled conflict" >&2
+	exit 1
+}
+
 echo "Testing TTMobileUITests on simulator $simulator..." >&2
 TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
+	TEST_RUNNER_TT_UITEST_CONFLICT_EXCHANGE="$conflict/exchange" \
 	TEST_RUNNER_TT_UITEST_EXCHANGE="$output/exchange" \
 	TEST_RUNNER_TT_UITEST_WORK_DIR="$output/work" \
 	xcodebuild test \

@@ -58,6 +58,7 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	appService := rt.Service()
 	app.domain.service = appService
 	app.domain.syncStatus = rt.SyncStatus
+	app.domain.syncConflicts = rt.SyncConflicts
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 

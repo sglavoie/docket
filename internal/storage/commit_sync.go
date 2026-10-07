@@ -1,8 +1,11 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -202,22 +205,70 @@ func (s *CommitService) SyncConflicts() ([]synclog.Conflict, error) {
 // supersedes them on every device that receives it; choosing the bytes the
 // workspace already holds still records the choice.
 func (s *CommitService) CommitSyncResolution(conflictID string, data []byte) (string, error) {
+	return s.CommitSyncResolutions([]SyncResolution{{ConflictID: conflictID, Data: data}})
+}
+
+// SyncResolution is the bytes one open sync conflict's path is resolved to; a
+// nil Data deletes the path.
+type SyncResolution struct {
+	ConflictID string
+	Data       []byte
+}
+
+// ErrSyncConflictClosed marks a resolution naming a conflict the history no
+// longer leaves open: another resolution closed it, or an edit since it was
+// read changed what it holds, which gives it a new id.
+var ErrSyncConflictClosed = errors.New("storage: sync conflict is no longer open")
+
+// CommitSyncResolutions resolves several open sync conflicts as one undoable
+// transaction of kind resolution, so changes one transaction coupled across
+// files are resolved together or not at all. Each path must still hold the
+// bytes its conflict reported when the commit locks it; anything that moved
+// in between refuses the whole resolution with an *ArtifactConflictError, so
+// a racing edit is never written over.
+func (s *CommitService) CommitSyncResolutions(resolutions []SyncResolution) (string, error) {
+	if len(resolutions) == 0 {
+		return "", fmt.Errorf("storage: a sync resolution names at least one conflict")
+	}
 	conflicts, err := s.SyncConflicts()
 	if err != nil {
 		return "", err
 	}
+	open := make(map[string]synclog.Conflict, len(conflicts))
 	for _, conflict := range conflicts {
-		if conflict.ID != conflictID {
-			continue
-		}
-		change := ArtifactChange{Path: s.history.WorkspacePath(conflict.Path), Data: data, Mode: FilePermissions, Delete: data == nil}
-		return s.commitArtifacts(ArtifactCommitRequest{
-			Artifacts:   []ArtifactChange{change},
-			UndoAction:  "Resolve sync conflict",
-			UndoContext: conflict.Path,
-		}, true, synclog.KindResolution)
+		open[conflict.ID] = conflict
 	}
-	return "", fmt.Errorf("storage: no open sync conflict %s", conflictID)
+	changes := make([]ArtifactChange, 0, len(resolutions))
+	paths := make([]string, 0, len(resolutions))
+	seen := map[string]bool{}
+	for _, resolution := range resolutions {
+		conflict, ok := open[resolution.ConflictID]
+		if !ok {
+			return "", fmt.Errorf("%w: %s", ErrSyncConflictClosed, resolution.ConflictID)
+		}
+		if seen[conflict.Path] {
+			return "", fmt.Errorf("storage: a sync resolution names %s twice", conflict.Path)
+		}
+		seen[conflict.Path] = true
+		expected := ""
+		if conflict.ResultBlob != nil {
+			expected = strings.TrimPrefix(*conflict.ResultBlob, "sha256:")
+		}
+		changes = append(changes, ArtifactChange{
+			Path:             s.history.WorkspacePath(conflict.Path),
+			Data:             resolution.Data,
+			Mode:             FilePermissions,
+			Delete:           resolution.Data == nil,
+			ExpectedRevision: &expected,
+		})
+		paths = append(paths, conflict.Path)
+	}
+	sort.Strings(paths)
+	return s.commitArtifacts(ArtifactCommitRequest{
+		Artifacts:   changes,
+		UndoAction:  "Resolve sync conflict",
+		UndoContext: strings.Join(paths, ", "),
+	}, true, synclog.KindResolution)
 }
 
 // CommitSyncPublished records that the outgoing transactions txnIDs reached

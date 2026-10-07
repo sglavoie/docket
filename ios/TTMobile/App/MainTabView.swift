@@ -100,14 +100,19 @@ private struct ShellChrome: ViewModifier {
                 }
             }
             .safeAreaInset(edge: .top) {
-                if let failure = workspace.failure {
-                    Text(failure)
-                        .font(.footnote)
-                        .foregroundStyle(.white)
-                        .padding(8)
-                        .frame(maxWidth: .infinity)
-                        .background(.red)
-                        .accessibilityIdentifier("workspace.failure")
+                VStack(spacing: 0) {
+                    if let failure = workspace.failure {
+                        Text(failure)
+                            .font(.footnote)
+                            .foregroundStyle(.white)
+                            .padding(8)
+                            .frame(maxWidth: .infinity)
+                            .background(.red)
+                            .accessibilityIdentifier("workspace.failure")
+                    }
+                    if workspace.sync.isFailing {
+                        SyncFailureBanner(sync: workspace.sync)
+                    }
                 }
             }
     }
@@ -124,6 +129,7 @@ struct SyncView: View {
     let workspace: WorkspaceModel
     @Environment(\.dismiss) private var dismiss
     @State private var choosingFolder = false
+    @State private var conflictNotice: String?
 
     var body: some View {
         NavigationStack {
@@ -141,6 +147,8 @@ struct SyncView: View {
                     .accessibilityIdentifier("workspace.switch")
                 }
                 SyncStatusSection(sync: workspace.sync)
+                ConflictsSection(workspace: workspace, notice: $conflictNotice)
+                SyncRecoverySection(workspace: workspace)
                 Section {
                     Button("Choose Exchange Folder…") { choosingFolder = true }
                     Button("Exchange Now") { Task { await workspace.refresh() } }

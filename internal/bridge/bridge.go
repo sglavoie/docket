@@ -84,6 +84,10 @@ var operations = map[string]op{
 	"sync.export_pending":   {run: (*Bridge).syncExportPending},
 	"sync.import":           {mutates: true, run: (*Bridge).syncImport},
 	"sync.acknowledge":      {mutates: true, run: (*Bridge).syncAcknowledge},
+	"sync.diagnostics":      {run: (*Bridge).syncDiagnostics},
+	"conflict.list":         {run: (*Bridge).conflictList},
+	"conflict.show":         {run: (*Bridge).conflictShow},
+	"conflict.resolve":      {mutates: true, run: (*Bridge).conflictResolve},
 }
 
 // reservedOperations are part of bridge version 1 but not yet served. They
@@ -91,7 +95,6 @@ var operations = map[string]op{
 // build lacks from one the protocol never had.
 var reservedOperations = map[string]bool{
 	"command.undo": true, "command.redo": true,
-	"conflict.list": true, "conflict.show": true, "conflict.resolve": true,
 }
 
 // Call answers one JSON request with one JSON response. It never panics and
