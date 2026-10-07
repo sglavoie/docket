@@ -45,6 +45,17 @@ struct LaunchConfiguration: Sendable {
     /// before a relaunch imports them.
     let holdCaptureImports: Bool
 
+    /// Where the app writes its semantic state for automation, rewritten as
+    /// it changes (see AutomationState.swift); nil leaves nothing written.
+    let stateExport: URL?
+    /// A forced appearance, standing in for the system setting a UI test
+    /// cannot reach; nil follows the system.
+    let appearance: Appearance?
+
+    enum Appearance: String, Sendable {
+        case light, dark
+    }
+
     static let current = LaunchConfiguration(environment: ProcessInfo.processInfo.environment)
 
     init(environment: [String: String]) {
@@ -78,6 +89,8 @@ struct LaunchConfiguration: Sendable {
             sharedContainer = SharedContainer.root(environment: [:])
         }
         holdCaptureImports = environment["TT_UITEST_HOLD_CAPTURES"] == "1"
+        stateExport = environment["TT_UITEST_STATE_EXPORT"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+        appearance = environment["TT_UITEST_APPEARANCE"].flatMap(Appearance.init(rawValue:))
         if let kind = environment["TT_UITEST_SEED_REMINDER"].flatMap(ReminderSeed.Kind.init(rawValue:)) {
             reminderSeed = ReminderSeed(
                 kind: kind,

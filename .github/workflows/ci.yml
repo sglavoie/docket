@@ -49,3 +49,45 @@ jobs:
       # rather than a convenience.
       - name: Check known vulnerabilities
         run: govulncheck ./...
+
+  # The iPhone app on an iOS simulator, beside the Go gate above, which it
+  # does not repeat: the Swift unit, bridge, and sync suites, the whole UI
+  # suite, and the accessibility suite again on a small-screen simulator.
+  # Every result bundle, summary, and screenshot is kept as an artifact.
+  ios:
+    name: iOS simulator
+    runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      TT_IOS_RESULTS: ${{ github.workspace }}/ios-results
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install just
+        run: brew install just
+
+      - name: Build the app for the simulator
+        run: just ios-build
+
+      - name: Swift unit, bridge, and sync suites
+        run: just ios-test all
+
+      - name: Simulator UI suite
+        run: just ios-ui-test
+
+      - name: Accessibility suite on a small screen
+        run: just ios-ui-test AccessibilityUITests small
+
+      - name: Keep result bundles, summaries, and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-results
+          path: ios-results
+          if-no-files-found: warn

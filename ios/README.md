@@ -17,11 +17,11 @@ it runs under `just ci`.
 | `TTShare/` | the share extension, which saves what was shared to the capture inbox |
 | `TTWidgets/` | the Today and Inbox widgets, drawn from the App Group snapshot |
 | `Config/` | the app's and extensions' Info.plist additions and App Group entitlements |
-| `TTMobileUITests/` | the seeded browsing UI suite, on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
+| `TTMobileUITests/` | the seeded UI suites (browsing, capture and editing, organizing, rich content, conflicts, share and widgets, accessibility), on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
 | `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
 | `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
 | `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
-| `scripts/` | the bridge build, project generation, and the simulator suite |
+| `scripts/` | the bridge build, project generation, the suites, and the app automation behind the `ios-*` recipes |
 
 ## Prerequisites
 
@@ -36,7 +36,16 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | --- | --- |
 | `just ios-bridge` | Bind `mobile/ttbridge` into the device and simulator slices |
 | `just ios-project` | The bridge, then `TTMobile.xcodeproj` from `project.yml` |
-| `just ios-test` | The `TTEngine` simulator suite against the real engine |
+| `just ios-build` | `tt.app` for the simulator, with its result bundle and build diagnostics |
+| `just ios-test [unit\|bridge\|sync\|all]` | The Swift suites that are not UI tests, each on its own |
+| `just ios-ui-test [CLASS] [default\|small]` | The simulator UI suite, or one class, on the default or small-screen simulator |
+| `just ios-run [FIXTURE] [light\|dark] [TEXT_SIZE] [default\|small]` | Launch the app over a fresh copy of a fixture |
+| `just ios-reset` | Reseed the running app's workspace and relaunch it |
+| `just ios-screenshot [NAME]` | Save what the simulator shows |
+| `just ios-export` | Print the running app's semantic state and save it with its log |
+| `just ios-stop` | Stop the app `ios-run` launched |
+
+None of them needs Xcode open; see [Automation](#automation).
 
 `ios/scripts/build-bridge.sh` publishes the XCFramework with a fingerprint of
 everything that decides its bytes: the gomobile pin, the Go toolchain, Xcode,
@@ -74,6 +83,53 @@ their files with the phone's. Two launch variables stand
 in for what XCUITest cannot drive: `TT_UITEST_IMPORT_SOURCE` names the file the
 Files picker would have returned, and `TT_UITEST_HOLD_IMPORTS=1` stops each
 import after it is staged, as a termination before the commit would.
+
+## Automation
+
+Every recipe writes under `ios/.cache/` (gitignored): results under
+`results/`, or `TT_IOS_RESULTS`, and the running app's session under `run/`,
+or `TT_IOS_RUN`.
+
+**Suites.** `just ios-test` runs four separately reported suites through
+`ios/scripts/test-suites.sh`: `unit` is `swift test` in `TTShared` and
+`TTReminders` on the Mac; `bridge` is the `TTEngine` suite on a simulator
+against the gomobile-bound engine (`test-engine.sh`); `sync` is the
+`apple/TTSync` exchange and join scenarios between real `bridgehost` engines.
+`results/<suite>/summary.json` lists each with its status and its executed,
+failed, and skipped counts; a suite that executes nothing or skips a test
+fails. `just ios-ui-test` runs the UI suite (`test-ui.sh`) and leaves, under
+`results/ui-<device>/`, the result bundle, `summary.json` and `tests.json`
+(the bundle's structured results, failures included), and every screenshot
+and recording under `attachments/` with their `manifest.json`. `small` runs
+on a simulator named `tt-small`, an iPhone SE (3rd generation) that
+`ios/scripts/simulator.sh` creates on the newest runtime the first time.
+
+**Accessibility.** `AccessibilityUITests` holds the main workflows to the
+largest Dynamic Type size, VoiceOver labels on every control, dark mode, a
+small screen, a hardware keyboard, and drafts that survive a relaunch under
+all of them, with the system's accessibility audits on each screen. Each test
+reads the app's semantic state to prove its setting took effect and keeps a
+screenshot of what it checked. Issues in system-drawn chrome (the navigation
+toolbar, the search field, and content under the translucent tab bar) are
+attached rather than failed. On a hardware keyboard, Command-1, -2, and -3
+select Today, Inbox, and Browse, Command-N opens capture, Command-S saves it,
+and Command-W closes it keeping the draft.
+
+**Running the app.** `just ios-run` builds, boots the simulator, sets its
+appearance and text size (`simctl ui`; `accessibility-extra-extra-extra-large`
+is the largest), installs the app, and launches it over `run/root`, a fresh
+copy of the representative fixture without its one wall-clock deferral (or no
+workspace at all, for `empty`), so every run starts from the same state. The
+app never touches its real container: `TT_UITEST_ROOT` points it at that root,
+and `TT_UITEST_STATE_EXPORT` has it keep `run/state.json` current. That
+document (`tt-mobile-state/v1`, described in
+`TTMobile/App/AutomationState.swift`) names the phase, the workspace, the tab
+and sheet showing, the appearance and text size actually drawn, sync status,
+pending captures, unsaved drafts, and the rows Today and Inbox show.
+`just ios-export` prints it and saves it under `run/export/` beside the app's
+recent unified log and a summary of the session; `just ios-screenshot NAME`
+saves `run/screenshots/NAME.png`; `just ios-reset` reseeds and relaunches with
+the same options, so a workflow repeats from the same start.
 
 ## The app
 

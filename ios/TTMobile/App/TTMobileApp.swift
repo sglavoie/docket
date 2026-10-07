@@ -12,6 +12,7 @@ struct TTMobileApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(workspace: workspace)
+                .modifier(ShellEnvironmentReporter(screen: workspace.screen, appearance: workspace.launch.appearance))
                 .task { await workspace.start() }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {

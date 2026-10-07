@@ -62,8 +62,20 @@ struct MainTabView: View {
             }
             .accessibilityLabel("Capture")
             .accessibilityIdentifier("capture.open")
+            .keyboardShortcut("n", modifiers: .command)
             .padding(.trailing, 20)
             .padding(.bottom, 64)
+        }
+        .background { TabShortcuts(tab: $tab) }
+        .onChange(of: tab, initial: true) { _, tab in
+            workspace.screen.tab = switch tab {
+            case .today: "today"
+            case .inbox: "inbox"
+            case .browse: "browse"
+            }
+        }
+        .onChange(of: presentedSheet, initial: true) { _, sheet in
+            workspace.screen.sheet = sheet
         }
         .sheet(isPresented: $capturing) {
             CaptureSheet(workspace: workspace)
@@ -103,6 +115,13 @@ struct MainTabView: View {
             }
             .accessibilityIdentifier("reminder.opened")
         }
+    }
+
+    private var presentedSheet: String? {
+        if capturing { return "capture" }
+        if showingSync { return "sync" }
+        if opened != nil { return "task" }
+        return nil
     }
 
     /// Shows what a link named: a view selects its tab, capture opens the
@@ -164,6 +183,24 @@ struct MainTabView: View {
         case .note(let location, let filename):
             NoteEditorView(workspace: workspace, location: location, filename: filename)
         }
+    }
+}
+
+/// Command-1, -2, and -3 select Today, Inbox, and Browse from a hardware
+/// keyboard. The buttons draw nothing and VoiceOver skips them; the tab bar
+/// is their accessible counterpart.
+private struct TabShortcuts: View {
+    @Binding var tab: ShellTab
+
+    var body: some View {
+        ZStack {
+            Button("Today") { tab = .today }.keyboardShortcut("1", modifiers: .command)
+            Button("Inbox") { tab = .inbox }.keyboardShortcut("2", modifiers: .command)
+            Button("Browse") { tab = .browse }.keyboardShortcut("3", modifiers: .command)
+        }
+        // Hidden draws nothing and leaves VoiceOver nothing to land on; the
+        // shortcuts still answer.
+        .hidden()
     }
 }
 

@@ -131,9 +131,42 @@ ios-bridge:
 ios-project:
     ./ios/scripts/generate-project.sh
 
-# Run the TTEngine simulator suite against the real engine (outside `just ci`)
-ios-test:
-    ./ios/scripts/test-engine.sh ios/.cache/test-engine
+# Build tt.app for the simulator; result bundle and diagnostics in ios/.cache/results/build (outside `just ci`)
+ios-build:
+    ./ios/scripts/app.sh build
+
+# Run the Swift suites: unit, bridge (TTEngine on a simulator), sync, or all; summary in ios/.cache/results/<suite> (outside `just ci`)
+ios-test suite="all":
+    ./ios/scripts/test-suites.sh {{ suite }} "${TT_IOS_RESULTS:-ios/.cache/results}/{{ suite }}"
+
+# Run the simulator UI suite, or one class, on the default or small simulator; result bundle, summary, and screenshots in ios/.cache/results/ui-<device> (outside `just ci`)
+ios-ui-test only="" device="default":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    max_width=""
+    if [ "{{ device }}" = small ]; then max_width=375; fi
+    TT_UITEST_ONLY="{{ only }}" TT_IOS_DEVICE="{{ device }}" TT_UITEST_MAX_WIDTH="$max_width" \
+        ./ios/scripts/test-ui.sh "${TT_IOS_RESULTS:-ios/.cache/results}/ui-{{ device }}"
+
+# Launch tt on a simulator over a fresh copy of a fixture (representative or empty), light or dark, at a text size (outside `just ci`)
+ios-run fixture="representative" appearance="light" text_size="large" device="default":
+    ./ios/scripts/app.sh run {{ fixture }} {{ appearance }} {{ text_size }} {{ device }}
+
+# Reseed the running app's isolated workspace from its fixture and relaunch it
+ios-reset:
+    ./ios/scripts/app.sh reset
+
+# Save a screenshot of the simulator as ios/.cache/run/screenshots/NAME.png
+ios-screenshot name="screen":
+    ./ios/scripts/app.sh screenshot {{ name }}
+
+# Print the running app's semantic state and save it with its recent log under ios/.cache/run/export
+ios-export:
+    ./ios/scripts/app.sh export
+
+# Stop the app ios-run launched
+ios-stop:
+    ./ios/scripts/app.sh stop
 
 # Run read-only code quality checks (gofmt, goimports, vet, golangci-lint, deadcode)
 check:

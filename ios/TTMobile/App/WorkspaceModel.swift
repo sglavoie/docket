@@ -38,6 +38,9 @@ final class WorkspaceModel {
     let launch = LaunchConfiguration.current
     let reminders: ReminderModel
     let captures: CaptureInboxModel
+    /// What the shell is showing, for the semantic state export.
+    let screen = ShellScreen()
+    @ObservationIgnored private var exporter: AutomationStateExporter?
     /// A place a widget, a shortcut, or a link asked the app to open, which
     /// the shell shows once a workspace is open.
     var linkRequest: DeepLink?
@@ -58,6 +61,10 @@ final class WorkspaceModel {
             holdImports: LaunchConfiguration.current.holdCaptureImports
         )
         sync.onImport = { [weak self] in self?.changed(.incomingChanges) }
+        if let destination = LaunchConfiguration.current.stateExport {
+            exporter = AutomationStateExporter(destination: destination, workspace: self)
+            exporter?.start()
+        }
     }
 
     /// Marks the workspace as possibly changed: every list rereads, and the

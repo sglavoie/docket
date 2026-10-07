@@ -70,6 +70,24 @@ struct CaptureSheet: View {
                         .accessibilityIdentifier("capture.save")
                 }
             }
+            .background {
+                // Command-S saves, as the desktop's editors do. Command-W
+                // closes the sheet as a swipe down does, keeping the draft;
+                // so does Escape, where no text field takes the key first.
+                // Only Cancel throws a draft away.
+                ZStack {
+                    Button("Save") { save() }
+                        .keyboardShortcut("s", modifiers: .command)
+                        .disabled(!canSave || saving)
+                    Button("Close") { dismiss() }
+                        .keyboardShortcut(.escape, modifiers: [])
+                    Button("Close Window") { dismiss() }
+                        .keyboardShortcut("w", modifiers: .command)
+                }
+                // Hidden draws nothing and leaves VoiceOver nothing to land on; the
+                // shortcuts still answer.
+                .hidden()
+            }
             .task {
                 if !loaded {
                     loaded = true

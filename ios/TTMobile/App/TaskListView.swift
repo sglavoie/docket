@@ -190,7 +190,9 @@ struct TaskListView: View {
                         TaskRowView(item: row.item)
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
+                    .accessibilityLabel(TaskRowView.spokenLabel(row.item))
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
+                    .accessibilityIdentifier("task.row")
                     .tag(row.id)
                     .swipeActions {
                         if !row.item.task.state.isTerminal {
@@ -201,6 +203,8 @@ struct TaskListView: View {
                 }
             }
             .accessibilityIdentifier("list.tasks")
+            // The last row scrolls clear of the floating capture button.
+            .contentMargins(.bottom, 72, for: .scrollContent)
         }
     }
 
@@ -335,30 +339,72 @@ extension WorkflowState {
 
 struct TaskRowView: View {
     let item: TaskQueryItem
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// The badges sit on one line until an accessibility text size, where
+    /// one line would break them mid-word; then each takes its own.
+    private var badgeLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(spacing: 8))
+    }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: item.task.state.symbol)
                 .foregroundStyle(item.task.state.isTerminal ? Color.secondary : Color.accentColor)
-                .accessibilityLabel(item.task.state.rawValue)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.task.title)
                     .strikethrough(item.task.state.isTerminal)
-                HStack(spacing: 8) {
+                badgeLayout {
                     if item.task.priority > 0 {
                         Text("P\(item.task.priority)").foregroundStyle(.orange)
                     }
                     if let due = item.task.dueDate {
                         Label(due.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                            .labelStyle(DueLabelStyle(compact: dynamicTypeSize.isAccessibilitySize))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if item.today { Text("Today") }
                     if item.next { Text("Next") }
-                    if item.task.pinned { Image(systemName: "pin.fill").accessibilityLabel("pinned") }
-                    if item.task.review { Image(systemName: "flag.fill").accessibilityLabel("review") }
+                    if item.task.pinned { Image(systemName: "pin.fill") }
+                    if item.task.review { Image(systemName: "flag.fill") }
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                // Each badge takes the height its text needs rather than
+                // being clipped to the row's first guess.
+                .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    /// What VoiceOver says for a row, in the order it is read: the state,
+    /// the title, then each badge in words rather than its symbol or
+    /// abbreviation.
+    static func spokenLabel(_ item: TaskQueryItem) -> String {
+        var parts = [item.task.state.rawValue, item.task.title]
+        if item.task.priority > 0 { parts.append("priority \(item.task.priority)") }
+        if let due = item.task.dueDate { parts.append("due \(due.formatted(date: .abbreviated, time: .omitted))") }
+        if item.today { parts.append("Today") }
+        if item.next { parts.append("Next") }
+        if item.task.pinned { parts.append("pinned") }
+        if item.task.review { parts.append("review") }
+        return parts.joined(separator: ", ")
+    }
+}
+
+/// The due badge: icon and date, or the date alone where an accessibility
+/// text size leaves no room for both.
+private struct DueLabelStyle: LabelStyle {
+    let compact: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if compact {
+            configuration.title
+        } else {
+            Label(configuration)
         }
     }
 }

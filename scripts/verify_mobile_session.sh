@@ -1518,6 +1518,233 @@ verify_session_16() {
 	note "session 16 verified"
 }
 
+# require_suite_summary SUMMARY SUITE... holds the summary ios/scripts/
+# test-suites.sh wrote to the evidence rules: each named suite is listed as
+# passed, executed tests, and failed and skipped none.
+require_suite_summary() {
+	local summary=$1
+	shift
+	local suite
+	for suite in "$@"; do
+		python3 -I - "$summary" "$suite" <<'PY' || fail "suite $suite is missing from $summary, or did not pass whole"
+import json, sys
+suites = {entry["suite"]: entry for entry in json.load(open(sys.argv[1]))["suites"]}
+entry = suites.get(sys.argv[2])
+ok = entry and entry["status"] == "passed" and entry["executed"] > 0 and entry["failed"] == 0 and entry["skipped"] == 0
+if ok:
+    print(f"verify_mobile_session: suite {sys.argv[2]}: {entry['executed']} tests passed")
+sys.exit(0 if ok else 1)
+PY
+	done
+}
+
+# require_xctest_passed LOG CLASS/METHOD... requires each XCTest case passed in
+# a swift test log.
+require_xctest_passed() {
+	local log=$1
+	shift
+	local test
+	for test in "$@"; do
+		grep -Fq -- "Test Case '-[${test%%/*} ${test##*/}]' passed" "$log" || fail "missing required passing test $test in $log"
+	done
+}
+
+# require_ui_screenshots RESULTS NAME... requires the UI suite's exported
+# attachments to hold a screenshot for each NAME the tests attached.
+require_ui_screenshots() {
+	local results=$1
+	shift
+	local name
+	for name in "$@"; do
+		python3 -I - "$results/attachments/manifest.json" "$results/attachments" "$name" <<'PY' || fail "no exported screenshot $name in $results/attachments"
+import json, os, sys
+manifest, directory, wanted = sys.argv[1:4]
+found = [a for test in json.load(open(manifest)) for a in test["attachments"]
+         if a["suggestedHumanReadableName"].startswith(wanted + "_")
+         and os.path.getsize(os.path.join(directory, a["exportedFileName"])) > 0]
+sys.exit(0 if found else 1)
+PY
+	done
+}
+
+# state_field FILE PATH prints one value of a tt-mobile-state/v1 document.
+state_field() {
+	python3 -I - "$1" "$2" <<'PY'
+import json, sys
+node = json.load(open(sys.argv[1]))
+for key in sys.argv[2].split("."):
+    node = node[key]
+print(json.dumps(node, sort_keys=True) if isinstance(node, (list, dict)) else node)
+PY
+}
+
+# state_lists FILE prints the Today and Inbox rows a state export names,
+# without the snapshot's own clock, so two exports of one state compare equal.
+state_lists() {
+	python3 -I - "$1" <<'PY'
+import json, sys
+state = json.load(open(sys.argv[1]))
+lists = state["lists"]
+print(json.dumps({"today": lists["today"], "inbox": lists["inbox"], "drafts": state["drafts"],
+                  "workspace": state["workspace"]["name"]}, sort_keys=True))
+PY
+}
+
+verify_session_17() {
+	[ "$(uname -s)" = Darwin ] || fail "session 17 drives the iOS simulator recipes on macOS only"
+	require_files \
+		ios/scripts/app.sh \
+		ios/scripts/simulator.sh \
+		ios/scripts/test-suites.sh \
+		ios/scripts/test-ui.sh \
+		ios/TTMobile/App/AutomationState.swift \
+		ios/TTMobileUITests/AccessibilityUITests.swift \
+		ios/README.md \
+		.github/workflows/ci.yml
+	command -v just >/dev/null || fail "just is required to exercise the recipes"
+
+	# The public recipes exist and are documented.
+	local recipe recipes
+	recipes=$(just --summary)
+	for recipe in ios-build ios-test ios-ui-test ios-run ios-reset ios-screenshot ios-export ios-stop; do
+		printf ' %s ' "$recipes" | grep -q " $recipe " || fail "the justfile has no $recipe recipe"
+		grep -Fq "just $recipe" ios/README.md || fail "ios/README.md does not document just $recipe"
+	done
+
+	# CI: the Go gate still runs on Linux and macOS, and a separate macOS job
+	# runs the simulator suites through those recipes, keeps their results,
+	# and does not repeat the Go gate.
+	ruby -ryaml -e '
+		jobs = YAML.load_file(".github/workflows/ci.yml").fetch("jobs")
+		go = jobs.fetch("ci")
+		abort "the Go job lost a platform" unless go.dig("strategy", "matrix", "os").to_a.sort == %w[macos-latest ubuntu-latest]
+		abort "the Go job no longer runs scripts/ci.sh" unless go["steps"].any? { |s| s["run"].to_s.include?("./scripts/ci.sh") }
+		ios = jobs.fetch("ios") { abort "no ios job" }
+		abort "the ios job does not run on macOS" unless ios["runs-on"].to_s.start_with?("macos")
+		runs = ios["steps"].map { |s| s["run"].to_s }
+		["just ios-build", "just ios-test all", "just ios-ui-test", "just ios-ui-test AccessibilityUITests small"].each do |want|
+			abort "the ios job does not run #{want}" unless runs.any? { |r| r.strip == want }
+		end
+		abort "the ios job repeats the Go gate" if runs.any? { |r| r.include?("scripts/ci.sh") || r.include?("go test") }
+		upload = ios["steps"].find { |s| s["uses"].to_s.start_with?("actions/upload-artifact") }
+		abort "the ios job keeps no results" unless upload && upload["if"].to_s.include?("always()")
+	' || fail "the CI configuration does not run the simulator suites as required"
+	note "CI: Go on Linux and macOS, plus the iOS simulator job"
+
+	export TT_IOS_RESULTS="$work_dir/results" TT_IOS_RUN="$work_dir/run"
+
+	# Build: the app, its result bundle, and the structured build diagnostics.
+	note "running just ios-build"
+	just ios-build >"$work_dir/ios-build.log" 2>&1 || { tail -40 "$work_dir/ios-build.log" >&2; fail "just ios-build failed"; }
+	require_files "$TT_IOS_RESULTS/build/summary.json"
+	[ -d "$TT_IOS_RESULTS/build/TTMobile-build.xcresult" ] || fail "the build left no result bundle"
+	[ "$(plutil -extract status raw -o - "$TT_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
+	[ "$(plutil -extract errorCount raw -o - "$TT_IOS_RESULTS/build/summary.json")" -eq 0 ] || fail "the build diagnostics report errors"
+
+	# The four Swift suites, each run and reported on its own.
+	note "running just ios-test all"
+	just ios-test all >"$work_dir/ios-test.log" 2>&1 || { tail -40 "$work_dir/ios-test.log" >&2; fail "just ios-test all failed"; }
+	local suites="$TT_IOS_RESULTS/all"
+	require_suite_summary "$suites/summary.json" unit-shared unit-reminders bridge sync
+	require_xctest_passed "$suites/unit-shared.log" \
+		TTSharedTests.CaptureInboxTests/testSavePublishesTheEnvelopeAndVerifiableFiles \
+		TTSharedTests.CaptureImportContractTests/testCapturesThisPackageWritesImportOnceAcrossDeliveriesAndRestarts
+	require_xctest_passed "$suites/unit-reminders.log" \
+		TTRemindersTests.ReminderSchedulingTests/testSchedulesThePlanWithExplicitZones \
+		TTRemindersTests.ReminderActionTests/testAcknowledgeRoutesToTheEngine
+	require_xctest_passed "$suites/sync.log" \
+		TTSyncTests.ExchangeContractTests/testContractRoundTripOverFakeICloud \
+		TTSyncTests.ExchangeContractTests/testContractRoundTripOverACoordinatedFolder \
+		TTSyncTests.JoinTests/testJoinBuildsAWorkingCopyFromTheExchange
+	require_xcresult_passed "$suites/bridge/TTEngine.xcresult" \
+		'testLinkedEngineSpeaksTheModelsBridgeVersion()' \
+		'testOpenFixtureCaptureCompleteReopen()'
+
+	# Accessibility on the default simulator, then again on a small one.
+	local a11y_tests=(
+		'testTheLargestTextSizeKeepsTheMainWorkflowsWhole()'
+		'testVoiceOverLabelsNameEveryControl()'
+		'testDarkModeDrawsEveryMainScreenReadably()'
+		'testASmallScreenKeepsEveryMainActionReachable()'
+		'testAHardwareKeyboardDrivesTabsAndCapture()'
+		'testDraftsComeBackAfterARelaunchAtTheLargestTextSizeInDarkMode()'
+	)
+	local device results
+	for device in default small; do
+		results="$TT_IOS_RESULTS/ui-$device"
+		note "running just ios-ui-test AccessibilityUITests $device"
+		just ios-ui-test AccessibilityUITests "$device" >"$work_dir/ios-ui-test-$device.log" 2>&1 || {
+			tail -60 "$work_dir/ios-ui-test-$device.log" >&2
+			fail "just ios-ui-test AccessibilityUITests $device failed"
+		}
+		require_files "$results/summary.json" "$results/tests.json" "$results/attachments/manifest.json"
+		require_xcresult_passed "$results/TTMobileUITests.xcresult" "${a11y_tests[@]}"
+		require_ui_screenshots "$results" today-largest-text detail-largest-text capture-largest-text \
+			sync-voiceover-labels today-dark detail-dark capture-dark browse-dark \
+			today-small-screen capture-small-screen capture-keyboard-restored \
+			capture-restored-dark-largest edit-restored-dark-largest
+	done
+	# The small run really was on a small screen.
+	local width
+	width=$(python3 -I - "$TT_IOS_RESULTS/ui-small/attachments" <<'PY'
+import json, os, re, sys
+directory = sys.argv[1]
+for test in json.load(open(os.path.join(directory, "manifest.json"))):
+    for a in test["attachments"]:
+        if a["suggestedHumanReadableName"].startswith("window size_"):
+            print(re.search(r"window (\d+) x", open(os.path.join(directory, a["exportedFileName"])).read()).group(1))
+            sys.exit(0)
+sys.exit(1)
+PY
+) || fail "the small run recorded no window size"
+	[ "$width" -le 375 ] || fail "the small-screen run drew a $width-point window"
+	note "small screen: a $width-point window"
+
+	# Launch, look, export, reset, and repeat from the command line.
+	note "running just ios-run"
+	just ios-run >"$work_dir/ios-run.log" 2>&1 || { tail -40 "$work_dir/ios-run.log" >&2; fail "just ios-run failed"; }
+	local state="$TT_IOS_RUN/state.json" first="$work_dir/first-state.json" second="$work_dir/second-state.json"
+	[ "$(state_field "$state" phase)" = ready ] || fail "ios-run did not leave the workspace open"
+	just ios-screenshot launch >/dev/null 2>&1 || fail "just ios-screenshot failed"
+	file "$TT_IOS_RUN/screenshots/launch.png" | grep -q 'PNG image' || fail "the screenshot is not a PNG"
+	just ios-export >"$first" 2>"$work_dir/ios-export.log" || { cat "$work_dir/ios-export.log" >&2; fail "just ios-export failed"; }
+	require_files "$TT_IOS_RUN/export/state.json" "$TT_IOS_RUN/export/session.json" "$TT_IOS_RUN/export/log.ndjson"
+	[ "$(state_field "$first" schema)" = tt-mobile-state/v1 ] || fail "the export is not tt-mobile-state/v1"
+	[ "$(state_field "$first" environment.color_scheme)" = light ] || fail "the default run is not light"
+	[ "$(state_field "$first" screen.tab)" = today ] || fail "the launch does not show Today"
+	state_lists "$first" | grep -q '"title": "Ship beta build"' || fail "the export does not name Today's rows"
+	[ "$(state_field "$first" lists.inbox.count)" -gt 0 ] || fail "the export names no Inbox rows"
+
+	note "running just ios-reset"
+	just ios-reset >"$work_dir/ios-reset.log" 2>&1 || { cat "$work_dir/ios-reset.log" >&2; fail "just ios-reset failed"; }
+	just ios-export >"$second" 2>>"$work_dir/ios-export.log" || fail "just ios-export after the reset failed"
+	[ "$(state_lists "$first")" = "$(state_lists "$second")" ] || {
+		diff <(state_lists "$first") <(state_lists "$second") >&2 || true
+		fail "a reset run does not start from the same state"
+	}
+	note "a reset relaunch repeats the same start"
+
+	note "running just ios-run representative dark accessibility-extra-extra-extra-large"
+	just ios-run representative dark accessibility-extra-extra-extra-large >"$work_dir/ios-run-dark.log" 2>&1 ||
+		{ tail -40 "$work_dir/ios-run-dark.log" >&2; fail "the dark, largest-text run failed"; }
+	just ios-export >"$second" 2>>"$work_dir/ios-export.log" || fail "just ios-export of the dark run failed"
+	[ "$(state_field "$second" environment.color_scheme)" = dark ] || fail "the dark run was not drawn dark"
+	[ "$(state_field "$second" environment.dynamic_type)" = accessibility5 ] || fail "the largest-text run was not drawn at accessibility5"
+	just ios-screenshot dark-largest >/dev/null 2>&1 || fail "just ios-screenshot of the dark run failed"
+
+	note "running just ios-run empty"
+	just ios-run empty >"$work_dir/ios-run-empty.log" 2>&1 || { tail -40 "$work_dir/ios-run-empty.log" >&2; fail "the empty-fixture run failed"; }
+	[ "$(state_field "$TT_IOS_RUN/state.json" phase)" = onboarding ] || fail "the empty fixture did not start at onboarding"
+	just ios-stop >/dev/null 2>&1 || fail "just ios-stop failed"
+	# Leave the simulator at its ordinary appearance and size.
+	local udid
+	udid=$(sed -n 's/^udid=//p' "$TT_IOS_RUN/session.env")
+	xcrun simctl ui "$udid" appearance light >/dev/null 2>&1 || true
+	xcrun simctl ui "$udid" content_size large >/dev/null 2>&1 || true
+
+	note "session 17 verified"
+}
+
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
@@ -1535,6 +1762,7 @@ case "$session" in
 14) verify_session_14 ;;
 15) verify_session_15 ;;
 16) verify_session_16 ;;
+17) verify_session_17 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

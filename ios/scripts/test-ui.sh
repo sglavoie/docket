@@ -11,13 +11,19 @@
 #   work/       the host directory each test makes its disposable root under
 # then generates the project and runs `xcodebuild test` for TTMobileUITests.
 # The result bundle is OUTPUT_DIR/TTMobileUITests.xcresult and the log
-# OUTPUT_DIR/xcodebuild-ui-test.log.
+# OUTPUT_DIR/xcodebuild-ui-test.log. Pass or fail, the bundle's structured
+# results are written to OUTPUT_DIR/summary.json (counts, devices, and each
+# failure) and OUTPUT_DIR/tests.json (every test case and its result), and its
+# screenshots and other attachments to OUTPUT_DIR/attachments with their
+# manifest.json.
 #
 #   ios/scripts/test-ui.sh OUTPUT_DIR
 #
 # Environment:
-#   TT_IOS_SIMULATOR        simulator UDID (default: the first available
-#                           iPhone on an iOS 18 or later runtime)
+#   TT_IOS_DEVICE           default or small, the simulator simulator.sh picks
+#   TT_IOS_SIMULATOR        simulator UDID for default (default: the first
+#                           available iPhone on an iOS 18 or later runtime)
+#   TT_UITEST_MAX_WIDTH     the widest window the small-screen test accepts
 #   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
 #   TT_UITEST_ONLY          one UI test class to run (default: every class)
 
@@ -39,20 +45,18 @@ fixture="$repo_root/internal/compat/testdata/workspaces/representative"
 
 "$script_dir/generate-project.sh"
 
-simulator=${TT_IOS_SIMULATOR:-$(xcrun simctl list devices available | awk '
-	/^-- iOS [0-9]+/ { split($3, version, "."); eligible = (version[1] + 0 >= 18); next }
-	/^-- / { eligible = 0; next }
-	eligible && /iPhone/ && match($0, /\([0-9A-F-]{36}\)/) {
-		print substr($0, RSTART + 1, RLENGTH - 2); exit
-	}')}
-if [ -z "$simulator" ]; then
-	echo "no available iPhone simulator on iOS 18 or later; set TT_IOS_SIMULATOR" >&2
-	exit 1
-fi
+simulator=$("$script_dir/simulator.sh" "${TT_IOS_DEVICE:-default}")
+# The tests read the system's appearance and text size unless they set their
+# own, and `just ios-run` changes both, so every run starts from the defaults.
+xcrun simctl boot "$simulator" >/dev/null 2>&1 || true
+xcrun simctl bootstatus "$simulator" -b >/dev/null
+xcrun simctl ui "$simulator" appearance light
+xcrun simctl ui "$simulator" content_size large
 
 # The desktop half of the join test: enroll a disposable copy of the fixture
 # with the tt this tree builds, under a private HOME.
-rm -rf "$output/exchange" "$output/enroll" "$output/work" "$output/TTMobileUITests.xcresult"
+rm -rf "$output/exchange" "$output/enroll" "$output/work" "$output/TTMobileUITests.xcresult" \
+	"$output/attachments" "$output/summary.json" "$output/tests.json"
 mkdir -p "$output/exchange" "$output/enroll" "$output/work"
 (cd "$repo_root" && go build -o "$output/enroll/tt" .)
 cp -R "$fixture" "$output/enroll/original"
@@ -109,10 +113,12 @@ HOME="$conflict/studio-home" "$output/enroll/tt" --data-dir "$conflict/studio" s
 }
 
 echo "Testing TTMobileUITests on simulator $simulator..." >&2
+status=0
 TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
 	TEST_RUNNER_TT_UITEST_CONFLICT_EXCHANGE="$conflict/exchange" \
 	TEST_RUNNER_TT_UITEST_EXCHANGE="$output/exchange" \
 	TEST_RUNNER_TT_UITEST_WORK_DIR="$output/work" \
+	TEST_RUNNER_TT_UITEST_MAX_WIDTH="${TT_UITEST_MAX_WIDTH:-}" \
 	xcodebuild test \
 	-project "$ios_dir/TTMobile.xcodeproj" \
 	-scheme TTMobile \
@@ -121,9 +127,16 @@ TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
 	-derivedDataPath "$cache_root/UIDerivedData" \
 	-resultBundlePath "$output/TTMobileUITests.xcresult" \
 	CODE_SIGNING_ALLOWED=NO \
-	>"$output/xcodebuild-ui-test.log" 2>&1 || {
+	>"$output/xcodebuild-ui-test.log" 2>&1 || status=$?
+if [ -d "$output/TTMobileUITests.xcresult" ]; then
+	xcrun xcresulttool get test-results summary --path "$output/TTMobileUITests.xcresult" >"$output/summary.json" 2>/dev/null || true
+	xcrun xcresulttool get test-results tests --path "$output/TTMobileUITests.xcresult" >"$output/tests.json" 2>/dev/null || true
+	xcrun xcresulttool export attachments --path "$output/TTMobileUITests.xcresult" \
+		--output-path "$output/attachments" >/dev/null 2>&1 || true
+fi
+if [ "$status" -ne 0 ]; then
 	tail -60 "$output/xcodebuild-ui-test.log" >&2
-	echo "xcodebuild test failed; full log at $output/xcodebuild-ui-test.log" >&2
+	echo "xcodebuild test failed; full log at $output/xcodebuild-ui-test.log, results in $output/summary.json" >&2
 	exit 1
-}
+fi
 echo "TTMobileUITests passed; result bundle at $output/TTMobileUITests.xcresult" >&2
