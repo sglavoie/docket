@@ -188,3 +188,47 @@ func TestSetResumeNoteRefusesAnUnresolvableTarget(t *testing.T) {
 		t.Fatalf("a missing task committed: %d", len(repo.commits))
 	}
 }
+
+// TestResumeNoteRidesCaptureAndTheLineEdit holds the two creation and editing
+// boundaries a structured form submits through to the same gate SetResumeNote
+// applies: a valid note lands inside that one transaction, an invalid one is
+// refused before anything is written, and an edit that never names a note keeps
+// the stored one.
+func TestResumeNoteRidesCaptureAndTheLineEdit(t *testing.T) {
+	svc, repo, task, _ := seedResumeNoteTask(t)
+
+	captured, err := svc.Capture(app.CaptureRequest{ProjectID: "proj-a", Title: "Draft the RFC", ResumeNote: "outline done"})
+	if err != nil {
+		t.Fatalf("capture: %v", err)
+	}
+	if got := repo.projects[0].GetTaskByID(captured.TaskID).ResumeNote; got != "outline done" {
+		t.Fatalf("captured note = %q", got)
+	}
+	before := len(repo.commits)
+	_, err = svc.Capture(app.CaptureRequest{ProjectID: "proj-a", Title: "Bad", ResumeNote: "two\nlines"})
+	if !errors.Is(err, app.ErrInvalidInput) || len(repo.commits) != before {
+		t.Fatalf("multiline capture note = %v with %d commits, want an invalid-input refusal", err, len(repo.commits)-before)
+	}
+
+	note := "half the importer ported"
+	if _, err = svc.EditTaskLine(app.TaskLineEditRequest{Source: repo.loc("t1"), Title: task.Title, ResumeNote: &note}); err != nil {
+		t.Fatalf("line edit: %v", err)
+	}
+	if task.ResumeNote != note {
+		t.Fatalf("edited note = %q", task.ResumeNote)
+	}
+	if _, err = svc.EditTaskLine(app.TaskLineEditRequest{Source: repo.loc("t1"), Title: "Wire the importer again"}); err != nil {
+		t.Fatalf("title-only edit: %v", err)
+	}
+	if task.ResumeNote != note {
+		t.Fatalf("a title-only edit changed the note to %q", task.ResumeNote)
+	}
+	tooLong := strings.Repeat("x", 241)
+	if _, err = svc.EditTaskLine(app.TaskLineEditRequest{Source: repo.loc("t1"), Title: task.Title, ResumeNote: &tooLong}); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("overlong edit note = %v, want invalid input", err)
+	}
+	cleared := ""
+	if _, err = svc.EditTaskLine(app.TaskLineEditRequest{Source: repo.loc("t1"), Title: task.Title, ResumeNote: &cleared}); err != nil || task.ResumeNote != "" {
+		t.Fatalf("clear = %v note %q", err, task.ResumeNote)
+	}
+}

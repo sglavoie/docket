@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -38,7 +39,7 @@ func classify(err error) error {
 	case errors.Is(err, app.ErrInvalidInput),
 		errors.Is(err, app.ErrInvalidTransition),
 		errors.Is(err, app.ErrParentHasIncompleteChildren):
-		return newError(CodeValidation, "%s", err)
+		return explainRefusal(newError(CodeValidation, "%s", err), err)
 	case errors.Is(err, app.ErrProtectedSystemUnfiled),
 		errors.Is(err, config.ErrProtectedSystemUnfiled),
 		errors.Is(err, storage.ErrCommitBlocked):
@@ -56,4 +57,33 @@ func classify(err error) error {
 	}
 	logging.Warn("bridge: unclassified engine error: %v", err)
 	return newError(CodeInternal, "%s", err)
+}
+
+// explainRefusal carries the shared engine's own refusal into details, so a
+// client words a lifecycle or field refusal from the values the engine judged
+// rather than by parsing its message: the refused field and reason, the two
+// states of a forbidden transition, or the children blocking a completion. A
+// batch refusal also names the capture line it came from.
+func explainRefusal(refusal *Error, err error) *Error {
+	var line int
+	if _, scanErr := fmt.Sscanf(err.Error(), "line %d:", &line); scanErr == nil && line > 0 {
+		refusal = refusal.with("line", line)
+	}
+	var invalid *app.InvalidInputError
+	var transition *app.TransitionError
+	var blocked *app.ChildrenBlockedError
+	switch {
+	case errors.As(err, &blocked):
+		children := make([]map[string]any, 0, len(blocked.Children))
+		for _, child := range blocked.Children {
+			children = append(children, map[string]any{"short_id": child.ShortID, "title": child.Title, "state": child.Status})
+		}
+		return refusal.with("kind", "incomplete_children").with("short_id", blocked.ParentShortID).with("children", children)
+	case errors.As(err, &transition):
+		return refusal.with("kind", "invalid_transition").with("from", transition.From).with("to", transition.To).
+			with("reason", transition.Reason)
+	case errors.As(err, &invalid):
+		return refusal.with("kind", "invalid_input").with("field", invalid.Field).with("reason", invalid.Reason)
+	}
+	return refusal
 }

@@ -88,6 +88,10 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 		task.Description = *prepared.description
 		changed = true
 	}
+	if prepared.resumeNote != nil && task.ResumeNote != *prepared.resumeNote {
+		task.ResumeNote = *prepared.resumeNote
+		changed = true
+	}
 	if prepared.priority != nil && task.Priority != *prepared.priority {
 		task.Priority = *prepared.priority
 		changed = true

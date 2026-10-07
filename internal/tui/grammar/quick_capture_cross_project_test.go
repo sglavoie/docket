@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -13,21 +14,21 @@ func TestCaptureProjectTypoSuggestionsDoNotRoute(t *testing.T) {
 	for _, ref := range []string{"weeb", "we", "wet", "wbe", "WEB"} {
 		t.Run(ref, func(t *testing.T) {
 			input := "Fix login %" + ref
-			result, err := ParseQuickCapture(input, nil, projects, false)
+			result, err := capturetext.ParseQuickCapture(input, nil, projects, false)
 			if err == nil || !strings.Contains(err.Error(), "did you mean %web?") || result != nil {
 				t.Fatalf("capture = %+v, %v; want a suggestion and refusal", result, err)
 			}
-			preview, message := ParseQuickCaptureForPreview(input, nil, projects, false)
+			preview, message := capturetext.ParseQuickCaptureForPreview(input, nil, projects, false)
 			if !strings.Contains(message, "did you mean %web?") || preview.TargetProjectID != nil {
 				t.Fatalf("preview = %+v, %q; must not route a typo", preview, message)
 			}
 		})
 	}
-	result, err := ParseQuickCapture("Fix login %web", nil, projects, false)
+	result, err := capturetext.ParseQuickCapture("Fix login %web", nil, projects, false)
 	if err != nil || result.TargetProjectID == nil || *result.TargetProjectID != "web-id" {
 		t.Fatalf("corrected capture = %+v, %v", result, err)
 	}
-	_, err = ParseQuickCapture("Fix login %unrelated", nil, projects, false)
+	_, err = capturetext.ParseQuickCapture("Fix login %unrelated", nil, projects, false)
 	if err == nil || strings.Contains(err.Error(), "did you mean") {
 		t.Fatalf("unrelated reference = %v; want the ordinary refusal", err)
 	}
@@ -39,18 +40,18 @@ func TestProjectSuggestionsAreBoundedAndOnlyNameAvailableSlugs(t *testing.T) {
 		{Slug: "web"}, {Slug: "web"}, {Slug: "weed"}, {Slug: "weel"}, {Slug: "week"},
 	}
 	want := []string{"%web", "%weed", "%week"}
-	if got := suggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
+	if got := capturetext.SuggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
 		t.Fatalf("suggestions = %v, want %v", got, want)
 	}
 	slices.Reverse(projects)
-	if got := suggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
+	if got := capturetext.SuggestProjectSlugs("weeb", projects); !slices.Equal(got, want) {
 		t.Fatalf("reversed suggestions = %v, want %v", got, want)
 	}
-	if got := suggestProjectSlugs("cafe", []*models.Project{{Slug: "café"}}); !slices.Equal(got, []string{"%café"}) {
+	if got := capturetext.SuggestProjectSlugs("cafe", []*models.Project{{Slug: "café"}}); !slices.Equal(got, []string{"%café"}) {
 		t.Fatalf("Unicode suggestion = %v", got)
 	}
 	for _, ref := range []string{"", "w", "zzzz", "wxez"} {
-		if got := suggestProjectSlugs(ref, []*models.Project{{Slug: "web"}}); len(got) != 0 {
+		if got := capturetext.SuggestProjectSlugs(ref, []*models.Project{{Slug: "web"}}); len(got) != 0 {
 			t.Errorf("%q suggested unrelated slugs: %v", ref, got)
 		}
 	}
@@ -64,7 +65,7 @@ func TestEditProjectTypoSuggestionsDoNotRoute(t *testing.T) {
 	for _, ref := range []string{"weeb", "we", "wet", "wbe", "WEB", "sourc", "ol", "unrelated"} {
 		t.Run(ref, func(t *testing.T) {
 			input := "Fix login %" + ref
-			_, captureErr := ParseQuickCapture(input, source, projects, false)
+			_, captureErr := capturetext.ParseQuickCapture(input, source, projects, false)
 			result, err := ParseQuickEdit(input, task, source, projects)
 			if result != nil || err == nil || captureErr == nil {
 				t.Fatalf("invalid project was accepted: %+v, %v, %v", result, err, captureErr)
@@ -154,7 +155,7 @@ func TestCrossProjectCapture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseQuickCapture(tt.input, currentProject, allProjects, false)
+			result, err := capturetext.ParseQuickCapture(tt.input, currentProject, allProjects, false)
 
 			if tt.wantErr {
 				if err == nil {
@@ -188,8 +189,8 @@ func TestCrossProjectCapture(t *testing.T) {
 				}
 			}
 
-			if result.targetProjectName != tt.wantTargetName {
-				t.Errorf("targetProjectName = %q, want %q", result.targetProjectName, tt.wantTargetName)
+			if result.TargetProjectName != tt.wantTargetName {
+				t.Errorf("TargetProjectName = %q, want %q", result.TargetProjectName, tt.wantTargetName)
 			}
 			if tt.wantParentID != nil && (result.ParentID == nil || *result.ParentID != *tt.wantParentID) {
 				t.Errorf("parentID = %v, want %q", result.ParentID, *tt.wantParentID)

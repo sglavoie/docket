@@ -49,7 +49,8 @@ public actor TTEngine {
             dataDir: dataDirectory.path,
             runtimeDir: runtimeDirectory.path,
             deviceID: deviceID,
-            createIfMissing: createIfMissing
+            createIfMissing: createIfMissing,
+            timeZone: TimeZone.current.identifier
         )
         workspace = nil
         let status: WorkspaceStatus = try send("workspace.open", payload: payload, addressed: false)
@@ -74,7 +75,8 @@ public actor TTEngine {
         }
         let payload = JoinPayload(
             dataDir: dataDirectory.path, runtimeDir: runtimeDirectory.path, deviceID: deviceID,
-            workspaceID: workspaceID, exchange: exchange, inboxDir: inbox.path
+            workspaceID: workspaceID, exchange: exchange, inboxDir: inbox.path,
+            timeZone: TimeZone.current.identifier
         )
         workspace = nil
         let status: WorkspaceStatus = try send("workspace.join", payload: payload, addressed: false)
@@ -142,6 +144,51 @@ public actor TTEngine {
             projectID: projectID, title: title, destination: destination, priority: priority, tags: tags
         )
         return try send("command.capture", payload: payload, expect: expect, requestID: requestID)
+    }
+
+    /// Captures text in the capture grammar, every nonblank line read as the
+    /// desktop composer reads it and committed in one transaction. A refused
+    /// line commits nothing and throws a `validation` error whose details name
+    /// each refused line.
+    public func capture(
+        text: String,
+        projectID: String? = nil,
+        requestID: String = UUID().uuidString
+    ) throws -> CaptureMutation {
+        try send("command.capture", payload: CaptureTextPayload(projectID: projectID, text: text), requestID: requestID)
+    }
+
+    /// Captures one structured task.
+    public func capture(
+        _ fields: CaptureFields,
+        requestID: String = UUID().uuidString
+    ) throws -> CaptureMutation {
+        try send("command.capture", payload: fields, requestID: requestID)
+    }
+
+    /// Reads capture text without committing anything.
+    public func previewCapture(text: String, projectID: String? = nil) throws -> CapturePreview {
+        try send("query.capture_preview", payload: CaptureTextPayload(projectID: projectID, text: text))
+    }
+
+    /// Applies a structured edit as one transaction.
+    public func edit(
+        _ locator: TaskLocator,
+        _ edit: TaskEdit,
+        expect: Expectation? = nil,
+        requestID: String = UUID().uuidString
+    ) throws -> EditMutation {
+        try send("command.edit", payload: EditPayload(task: locator, edit: edit), expect: expect, requestID: requestID)
+    }
+
+    /// Applies one planning action.
+    public func plan(
+        _ locator: TaskLocator,
+        _ action: PlanAction,
+        expect: Expectation? = nil,
+        requestID: String = UUID().uuidString
+    ) throws -> TaskMutation {
+        try send("command.plan", payload: PlanPayload(task: locator, action: action), expect: expect, requestID: requestID)
     }
 
     /// Moves one task through the lifecycle primitive.
@@ -258,12 +305,15 @@ private struct OpenPayload: Encodable {
     var runtimeDir: String
     var deviceID: String
     var createIfMissing: Bool
+    /// The device's zone, so the engine and the phone agree on today.
+    var timeZone: String
 
     enum CodingKeys: String, CodingKey {
         case dataDir = "data_dir"
         case runtimeDir = "runtime_dir"
         case deviceID = "device_id"
         case createIfMissing = "create_if_missing"
+        case timeZone = "time_zone"
     }
 }
 
@@ -283,9 +333,11 @@ private struct JoinPayload: Encodable {
     var workspaceID: String
     var exchange: String
     var inboxDir: String
+    var timeZone: String
 
     enum CodingKeys: String, CodingKey {
         case exchange
+        case timeZone = "time_zone"
         case dataDir = "data_dir"
         case runtimeDir = "runtime_dir"
         case deviceID = "device_id"
@@ -314,4 +366,35 @@ private struct CapturePayload: Encodable {
 private struct TransitionPayload: Encodable {
     var task: TaskLocator
     var state: WorkflowState
+}
+
+private struct CaptureTextPayload: Encodable {
+    var projectID: String?
+    var text: String
+
+    enum CodingKeys: String, CodingKey {
+        case text
+        case projectID = "project_id"
+    }
+}
+
+/// The edit's fields beside the task they address, flattened into one object.
+private struct EditPayload: Encodable {
+    var task: TaskLocator
+    var edit: TaskEdit
+
+    enum CodingKeys: String, CodingKey {
+        case task
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try edit.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(task, forKey: .task)
+    }
+}
+
+private struct PlanPayload: Encodable {
+    var task: TaskLocator
+    var action: PlanAction
 }

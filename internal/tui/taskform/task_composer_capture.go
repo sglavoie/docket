@@ -1,9 +1,6 @@
 package taskform
 
 import (
-	"fmt"
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -11,40 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
-// validateComposerParent mirrors the application-layer child placement rule so a
-// rejected nesting is reported on the offending line instead of failing the whole
-// submission after the fact.
-func validateComposerParent(project *models.Project, parentID string) error {
-	parent := project.GetTaskByID(parentID)
-	if parent == nil {
-		return fmt.Errorf("parent not found: %s", parentID)
-	}
-	if parent.Level+1 > models.MaxNestingDepth {
-		return fmt.Errorf("nesting under #%d would exceed maximum depth of %d levels", parent.ShortID, models.MaxNestingDepth)
-	}
-	return nil
-}
-
 func cloneStringPtr(value *string) *string {
 	if value == nil {
 		return nil
 	}
 	cp := *value
 	return &cp
-}
-
-func mergeComposerTags(shared, line []string) []string {
-	result := make([]string, 0, len(shared)+len(line))
-	seen := make(map[string]bool, len(shared)+len(line))
-	for _, tag := range append(append([]string(nil), shared...), line...) {
-		key := strings.ToLower(strings.TrimSpace(tag))
-		if key == "" || seen[key] {
-			continue
-		}
-		seen[key] = true
-		result = append(result, tag)
-	}
-	return result
 }
 
 func (m *TaskComposerModel) projectByID(id string) *models.Project {

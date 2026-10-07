@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -35,16 +36,16 @@ func TestParseDateIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			_, err := ParseDate(tt.input)
+			_, err := capturetext.ParseDate(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				t.Errorf("capturetext.ParseDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
 		})
 	}
 }
 
 func TestParseDateTomorrow(t *testing.T) {
-	result, err := ParseDate("tomorrow")
+	result, err := capturetext.ParseDate("tomorrow")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -53,6 +54,6 @@ func TestParseDateTomorrow(t *testing.T) {
 	expected := util.StartOfDay(now).AddDate(0, 0, 1)
 
 	if !result.Equal(expected) {
-		t.Errorf("ParseDate(tomorrow) = %v, want %v", result, expected)
+		t.Errorf("capturetext.ParseDate(tomorrow) = %v, want %v", result, expected)
 	}
 }

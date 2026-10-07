@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
@@ -99,7 +99,7 @@ func TestParseQuickCaptureChildReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture(tt.input, project, nil, false)
+			result, err := capturetext.ParseQuickCapture(tt.input, project, nil, false)
 			if tt.errContains != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got none", tt.errContains)
@@ -130,7 +130,7 @@ func TestParseQuickCaptureChildReferences(t *testing.T) {
 
 func TestParseQuickCaptureChildMetadataFeedsPreviewWithoutTaskPointers(t *testing.T) {
 	project := quickCaptureTestProject()
-	result, err := grammar.ParseQuickCapture("Ship it <2", project, nil, false)
+	result, err := capturetext.ParseQuickCapture("Ship it <2", project, nil, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestParseQuickCaptureChildMetadataFeedsPreviewWithoutTaskPointers(t *testin
 
 func TestParseQuickCaptureChildErrorsSurfaceInPreviewWithoutFailingEarly(t *testing.T) {
 	project := quickCaptureTestProject()
-	result, errMsg := grammar.ParseQuickCaptureForPreview("Ship it !1 <99", project, nil, false)
+	result, errMsg := capturetext.ParseQuickCaptureForPreview("Ship it !1 <99", project, nil, false)
 	if !strings.Contains(errMsg, "child not found: '99'") {
 		t.Fatalf("preview error = %q, want a child-not-found message", errMsg)
 	}
@@ -175,7 +175,7 @@ func TestQuickCaptureTerminalDestinationRefusesIncompleteAdoptedChild(t *testing
 		})
 
 		t.Run("open adopted child blocks "+destination, func(t *testing.T) {
-			_, err := grammar.ParseQuickCapture("Ship it $"+destination+" <2", project, nil, false)
+			_, err := capturetext.ParseQuickCapture("Ship it $"+destination+" <2", project, nil, false)
 			want := "cannot capture as " + destination + ": adopted #2 is incomplete"
 			if err == nil || err.Error() != want {
 				t.Fatalf("error = %v, want %q", err, want)
@@ -183,7 +183,7 @@ func TestQuickCaptureTerminalDestinationRefusesIncompleteAdoptedChild(t *testing
 		})
 
 		t.Run("finished adopted child allows "+destination, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture("Ship it $"+destination+" <5", project, nil, false)
+			result, err := capturetext.ParseQuickCapture("Ship it $"+destination+" <5", project, nil, false)
 			if err != nil {
 				t.Fatalf("parseQuickCapture: %v", err)
 			}
@@ -242,7 +242,7 @@ func TestCrossProjectCaptureResolvesChildrenInTheRoutedProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture(tt.input, currentProject, allProjects, false)
+			result, err := capturetext.ParseQuickCapture(tt.input, currentProject, allProjects, false)
 			if tt.errContains != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.errContains) {
 					t.Fatalf("error = %v, want one containing %q", err, tt.errContains)
@@ -433,12 +433,12 @@ func TestQuickCaptureChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) 
 		},
 	}
 
-	_, err := grammar.ParseQuickCapture("Ship it <0", project, nil, false)
+	_, err := capturetext.ParseQuickCapture("Ship it <0", project, nil, false)
 	if err == nil || !strings.Contains(err.Error(), "child not found: '0'") {
 		t.Fatalf("<0 error = %v, want the reserved token to resolve nothing", err)
 	}
 
-	result, err := grammar.ParseQuickCapture("Ship it <9", project, nil, false)
+	result, err := capturetext.ParseQuickCapture("Ship it <9", project, nil, false)
 	if err != nil {
 		t.Fatalf("<9 parse: %v", err)
 	}

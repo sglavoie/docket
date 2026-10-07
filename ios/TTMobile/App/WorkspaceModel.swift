@@ -133,8 +133,47 @@ final class WorkspaceModel {
         await start()
     }
 
-    func capture(_ title: String, projectID: String?, destination: CaptureDestination?) async -> Bool {
-        await perform { _ = try await self.engine.capture(title: title, projectID: projectID, destination: destination) }
+    /// This workspace's unsaved drafts, or nil before one is open.
+    var drafts: DraftStore? { location.map(DraftStore.init(location:)) }
+
+    /// Captures shorthand text. Returns the refusal in a person's words, or
+    /// nil once every line committed.
+    func capture(text: String, projectID: String?) async -> String? {
+        await attempt { _ = try await self.engine.capture(text: text, projectID: projectID) }
+    }
+
+    /// Captures one structured task.
+    func capture(_ fields: CaptureFields) async -> String? {
+        await attempt { _ = try await self.engine.capture(fields) }
+    }
+
+    func previewCapture(text: String, projectID: String?) async -> CapturePreview? {
+        try? await engine.previewCapture(text: text, projectID: projectID)
+    }
+
+    func edit(_ locator: TaskLocator, _ edit: TaskEdit) async -> String? {
+        await attempt { _ = try await self.engine.edit(locator, edit) }
+    }
+
+    func plan(_ locator: TaskLocator, _ action: PlanAction) async -> String? {
+        await attempt { _ = try await self.engine.plan(locator, action) }
+    }
+
+    func transition(_ locator: TaskLocator, to state: WorkflowState) async -> String? {
+        await attempt { _ = try await self.engine.transition(locator, to: state) }
+    }
+
+    /// Runs one mutation for a screen that shows its own refusal, so the
+    /// refusal stays beside the draft it refused rather than in the banner.
+    private func attempt(_ mutation: @escaping () async throws -> Void) async -> String? {
+        do {
+            try await mutation()
+            generation += 1
+            sync.exchange()
+            return nil
+        } catch {
+            return Self.describe(error)
+        }
     }
 
     func complete(_ task: TaskSnapshot) async {
@@ -165,6 +204,7 @@ final class WorkspaceModel {
             switch failure.code {
             case .schemaTooNew: return "This workspace was written by a newer tt. Update tt on this iPhone to open it. (\(failure.message))"
             case .migrationRequired: return "This workspace needs a migration only the desktop runs. (\(failure.message))"
+            case .validation: return failure.explanation
             default: return failure.message
             }
         }

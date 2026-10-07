@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"fmt"
@@ -9,16 +9,16 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// resolveParent finds the task a >parent reference names.
-func resolveParent(ref string, project *models.Project) (*models.Task, error) {
+// ResolveParent finds the task a >parent reference names.
+func ResolveParent(ref string, project *models.Project) (*models.Task, error) {
 	return ResolveStructuralReference(ref, project, "parent")
 }
 
-// resolveChild finds the task a <child reference names. The literal 0 resolves
+// ResolveChild finds the task a <child reference names. The literal 0 resolves
 // to nothing before any lookup runs: >0 detaches a task from its parent, so a
 // <0 that adopted a task whose title happens to begin with a zero would read as
 // that clear having quietly done something else.
-func resolveChild(ref string, project *models.Project) (*models.Task, error) {
+func ResolveChild(ref string, project *models.Project) (*models.Task, error) {
 	if ref == "0" {
 		return nil, nil
 	}
@@ -63,10 +63,10 @@ func ResolveStructuralReference(ref string, project *models.Project, relationshi
 	return nil, fmt.Errorf("%s reference %q is ambiguous: %s", relationship, ref, strings.Join(labels, ", "))
 }
 
-// resolveProject finds a non-archived project by exact slug. Autocomplete may
+// ResolveProject finds a non-archived project by exact slug. Autocomplete may
 // fuzzy-filter display candidates, but committed structural references are
 // stable canonical slugs rather than best-score guesses.
-func resolveProject(ref string, allProjects []*models.Project) *models.Project {
+func ResolveProject(ref string, allProjects []*models.Project) *models.Project {
 	for _, project := range allProjects {
 		if project != nil && !project.Archived && project.Slug == ref {
 			return project
@@ -75,18 +75,18 @@ func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	return nil
 }
 
-func projectSlugHint(ref string, projects []*models.Project) string {
+func ProjectSlugHint(ref string, projects []*models.Project) string {
 	hint := "use an exact %project-slug"
-	if suggestions := suggestProjectSlugs(ref, projects); len(suggestions) > 0 {
+	if suggestions := SuggestProjectSlugs(ref, projects); len(suggestions) > 0 {
 		hint += "; did you mean " + strings.Join(suggestions, ", ") + "?"
 	}
 	return hint
 }
 
-// suggestProjectSlugs offers up to three canonical slugs after a typo, without
+// SuggestProjectSlugs offers up to three canonical slugs after a typo, without
 // resolving the reference. Sorting keeps ambiguous suggestions independent of
 // project load order. Archived projects cannot be capture or edit destinations.
-func suggestProjectSlugs(ref string, projects []*models.Project) []string {
+func SuggestProjectSlugs(ref string, projects []*models.Project) []string {
 	var suggestions []string
 	seen := make(map[string]bool)
 	for _, project := range projects {

@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -196,11 +197,11 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 func outlineDependencyAlias(reference models.TaskReference, scope *models.Project, projects []*models.Project) string {
 	target := scope
 	if target == nil || target.ID != reference.ProjectID {
-		target = grammar.ProjectByStableID(reference.ProjectID, projects)
+		target = capturetext.ProjectByStableID(reference.ProjectID, projects)
 	}
 	if target != nil {
 		if task := target.GetTaskByID(reference.TaskID); task != nil {
-			return grammar.DependencyAlias(target, task, scope)
+			return capturetext.DependencyAlias(target, task, scope)
 		}
 	}
 	return reference.Locator()

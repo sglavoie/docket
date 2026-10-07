@@ -52,7 +52,10 @@ disposable copy of the fixture with the `tt` this tree builds, so the join test
 has an exchange folder to read. Each test then seeds its own root under
 `OUTPUT_DIR/work`, and the app reads that root from `TT_UITEST_ROOT` in place
 of its container. `bash scripts/verify_mobile_session.sh 10` runs it with the
-engine's browsing tests and the transport's join tests.
+engine's browsing tests and the transport's join tests. `TT_UITEST_ONLY` names
+one test class to run alone; `bash scripts/verify_mobile_session.sh 11` runs
+`CaptureEditingUITests` that way, beside the Go tests that hold the desktop and
+the bridge to byte-identical capture and editing outcomes.
 
 ## The app
 
@@ -70,6 +73,17 @@ population (active, parked, archived), and the saved lenses. Every list is one
 engine query with search, filters, and a sort. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
+
+Capture takes shorthand in the desktop's capture grammar, one task per line,
+previewed as it is typed and committed in one transaction, or a structured
+form. A task's detail edits its daily fields (title, description, resume note,
+priority, tags, context, pin, review, due, and deferral) and changes its plan
+and status, the two halves of the desktop's workflow chord. The engine judges
+every save, and a refusal is explained beside the draft it refused. Unsaved
+capture and edit drafts are kept per workspace under
+`devices/<name>/drafts`, never synced, and come back after a refused save, a
+dismissed sheet, or a relaunch. Only a committed save or **Cancel** removes
+one.
 
 ## Sync exchange
 

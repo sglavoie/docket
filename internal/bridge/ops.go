@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"path/filepath"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
@@ -16,6 +17,10 @@ type openPayload struct {
 	RuntimeDir      string `json:"runtime_dir"`
 	DeviceID        string `json:"device_id"`
 	CreateIfMissing bool   `json:"create_if_missing,omitempty"`
+	// TimeZone is the device's IANA zone. A due date is a local calendar day
+	// and Today is a local day, so the engine must agree with the phone about
+	// which day it is; a process that inherits no zone runs in UTC otherwise.
+	TimeZone string `json:"time_zone,omitempty"`
 }
 
 type schemas struct {
@@ -47,6 +52,9 @@ func (b *Bridge) workspaceOpen(request Request) (any, error) {
 		return nil, newError(CodeInvalidRequest, "data_dir, runtime_dir, and device_id are required")
 	case !filepath.IsAbs(payload.DataDir):
 		return nil, newError(CodeInvalidRequest, "data_dir %q is not absolute", payload.DataDir)
+	}
+	if err := adoptTimeZone(payload.TimeZone); err != nil {
+		return nil, err
 	}
 	b.workspace = nil
 	runtime, err := engine.Open(engine.Config{
@@ -91,6 +99,7 @@ type joinPayload struct {
 	WorkspaceID string `json:"workspace_id"`
 	Exchange    string `json:"exchange"`
 	InboxDir    string `json:"inbox_dir"`
+	TimeZone    string `json:"time_zone,omitempty"`
 }
 
 type joinResult struct {
@@ -114,6 +123,9 @@ func (b *Bridge) workspaceJoin(request Request) (any, error) {
 	case !filepath.IsAbs(payload.DataDir) || !filepath.IsAbs(payload.InboxDir):
 		return nil, newError(CodeInvalidRequest, "data_dir and inbox_dir must be absolute")
 	}
+	if err := adoptTimeZone(payload.TimeZone); err != nil {
+		return nil, err
+	}
 	b.workspace = nil
 	runtime, report, err := engine.JoinInbox(engine.JoinInboxConfig{
 		DataDir:     payload.DataDir,
@@ -131,8 +143,8 @@ func (b *Bridge) workspaceJoin(request Request) (any, error) {
 		}
 		return nil, refusal
 	}
-	if err := b.adopt(runtime, payload.DeviceID); err != nil {
-		return nil, err
+	if adoptErr := b.adopt(runtime, payload.DeviceID); adoptErr != nil {
+		return nil, adoptErr
 	}
 	status, err := b.status()
 	if err != nil {
@@ -323,6 +335,10 @@ type taskResult struct {
 	Project   projectView `json:"project"`
 	Revision  string      `json:"revision"`
 	Relations relations   `json:"relations"`
+	// Today and Next are the task's planning memberships, read from the same
+	// planning state the Today and Next modes list.
+	Today bool `json:"today"`
+	Next  bool `json:"next"`
 }
 
 // queryTask reads one task by its qualified identity, with the canonical
@@ -352,64 +368,29 @@ func (b *Bridge) readTask(target app.TaskLocator) (taskResult, error) {
 		return taskResult{}, newError(CodeNotFound, "task %s:%s does not resolve", target.ProjectID, target.TaskID).
 			with("project_id", target.ProjectID).with("task_id", target.TaskID)
 	}
+	state := runtime.State()
 	return taskResult{
 		Task:      viewTask(ref.Project.ID, ref.Task),
-		Project:   viewProject(runtime.State(), ref.Project),
+		Project:   viewProject(state, ref.Project),
 		Revision:  snapshot.Revision(ref.Project.ID),
 		Relations: taskRelations(snapshot, ref.Project, ref.Task),
+		Today:     plannedIn(state.Planning().GetToday(), target),
+		Next:      plannedIn(state.NextOrder(), target),
 	}, nil
 }
 
-type capturePayload struct {
-	ProjectID   string   `json:"project_id,omitempty"`
-	Title       string   `json:"title"`
-	Destination string   `json:"destination,omitempty"`
-	Priority    int      `json:"priority,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
+func plannedIn(members []config.ProjectTaskLocator, target app.TaskLocator) bool {
+	for _, member := range members {
+		if member.ProjectID == target.ProjectID && member.TaskID == target.TaskID {
+			return true
+		}
+	}
+	return false
 }
 
 type mutationResult struct {
 	Task      taskView  `json:"task"`
 	Committed committed `json:"committed"`
-}
-
-// commandCapture creates one task. The title is literal: the capture grammar
-// is not parsed here yet, so a sigil in it stays text. An absent project is the
-// protected Unfiled project, and an absent destination the capture default.
-func (b *Bridge) commandCapture(request Request) (any, error) {
-	var payload capturePayload
-	if err := decodePayload(request.Payload, &payload); err != nil {
-		return nil, err
-	}
-	runtime := b.workspace.runtime
-	if err := runtime.Refresh(); err != nil {
-		return nil, err
-	}
-	projectID := payload.ProjectID
-	if projectID == "" {
-		unfiled := runtime.State().SystemUnfiledProject()
-		if unfiled == nil {
-			return nil, newError(CodeNotFound, "the workspace has no Unfiled project")
-		}
-		projectID = unfiled.ID
-	}
-	var destination app.CaptureDestination
-	if payload.Destination != "" {
-		parsed, ok := app.ParseCaptureDestination(payload.Destination)
-		if !ok {
-			return nil, newError(CodeValidation, "%v", app.InvalidCaptureDestinationError(payload.Destination))
-		}
-		destination = parsed
-	}
-	return b.commitTask(func(service *app.Service) (app.TaskResult, error) {
-		return service.Capture(app.CaptureRequest{
-			ProjectID:   projectID,
-			Title:       payload.Title,
-			Priority:    payload.Priority,
-			Tags:        payload.Tags,
-			Destination: destination,
-		})
-	})
 }
 
 type transitionPayload struct {
@@ -452,4 +433,19 @@ func (b *Bridge) commitTask(mutate func(*app.Service) (app.TaskResult, error)) (
 		return mutationResult{}, err
 	}
 	return mutationResult{Task: read.Task, Committed: committedEffect(result, before, after)}, nil
+}
+
+// adoptTimeZone makes the named IANA zone the process's local time. The bridge
+// serves one device, so its zone is the process's; an empty name keeps
+// whatever the process already has.
+func adoptTimeZone(name string) error {
+	if name == "" {
+		return nil
+	}
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		return newError(CodeInvalidRequest, "time_zone %q: %v", name, err)
+	}
+	time.Local = location
+	return nil
 }

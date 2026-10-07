@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -60,7 +61,7 @@ func DependencyRemovalCandidates(task *models.Task, projects []*models.Project, 
 			continue
 		}
 		candidate := DependencyCandidate{Locator: locator}
-		if project := ProjectByStableID(reference.ProjectID, projects); project != nil {
+		if project := capturetext.ProjectByStableID(reference.ProjectID, projects); project != nil {
 			candidate.Project = project
 			candidate.Task = project.GetTaskByID(reference.TaskID)
 		}
@@ -116,7 +117,7 @@ func dependencyCandidateRow(candidate DependencyCandidate, effective *models.Pro
 		value = candidate.Locator.Reference().Locator()
 		return value, fmt.Sprintf("%s%s (unavailable)", trigger, value)
 	}
-	value = DependencyAlias(candidate.Project, candidate.Task, effective)
+	value = capturetext.DependencyAlias(candidate.Project, candidate.Task, effective)
 	title := textfit.TruncateToVisualWidth(candidate.Task.Title, max(titleWidth, 10))
 	name := ""
 	if candidate.Project != nil {
@@ -136,7 +137,7 @@ func draftedDependencyLocators(parsed textgrammar.Result, field textgrammar.Fiel
 	}
 	used := make(map[app.TaskLocator]bool, len(tokens))
 	for _, token := range tokens {
-		ref, err := ResolveDependencyReference(token.Value, effective, allProjects)
+		ref, err := capturetext.ResolveDependencyReference(token.Value, effective, allProjects)
 		if err != nil || ref.Locator.TaskID == "" {
 			continue
 		}

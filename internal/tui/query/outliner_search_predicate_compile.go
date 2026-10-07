@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -121,30 +122,30 @@ func compileSearchDependency(value string, projects []*models.Project) (models.T
 		if len(projects) == 1 {
 			effective = projects[0]
 		}
-		ref, err := grammar.ResolveDependencyReference(value, effective, projects)
+		ref, err := capturetext.ResolveDependencyReference(value, effective, projects)
 		if err != nil {
 			return models.TaskReference{}, err.Error()
 		}
 		if ref.Locator.TaskID == "" {
-			return models.TaskReference{}, grammar.DependencyNotFoundMessage(trigger, value)
+			return models.TaskReference{}, capturetext.DependencyNotFoundMessage(trigger, value)
 		}
 		return ref.Locator.Reference(), ""
 	}
 
 	var matches []grammar.CapturedDependencyRef
 	for _, project := range projects {
-		task, err := grammar.ResolveStructuralReference(value, project, grammar.DependencyRelationship)
+		task, err := capturetext.ResolveStructuralReference(value, project, capturetext.DependencyRelationship)
 		if err != nil {
 			return models.TaskReference{}, err.Error()
 		}
 		if task == nil {
 			continue
 		}
-		matches = append(matches, grammar.DependencyRefFor(project, task))
+		matches = append(matches, capturetext.DependencyRefFor(project, task))
 	}
 	switch len(matches) {
 	case 0:
-		return models.TaskReference{}, grammar.DependencyNotFoundMessage(trigger, value)
+		return models.TaskReference{}, capturetext.DependencyNotFoundMessage(trigger, value)
 	case 1:
 		return matches[0].Locator.Reference(), ""
 	}
@@ -217,7 +218,7 @@ func compileSearchDue(value string, now time.Time) searchDuePredicate {
 	case "none":
 		return searchDuePredicate{bucket: DueDateNone, hasBucket: true}
 	}
-	day, err := grammar.ParseDate(value)
+	day, err := capturetext.ParseDate(value)
 	if err != nil {
 		return searchDuePredicate{}
 	}

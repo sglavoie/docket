@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/util"
@@ -98,7 +99,7 @@ func (p *quickEditParser) applyDueDate() bool {
 		p.result.DueDateClear = true
 		return false
 	}
-	date, err := ParseDueDateValue(token.Value)
+	date, err := capturetext.ParseDueDateValue(token.Value)
 	if err != nil {
 		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
 	}
@@ -170,7 +171,7 @@ func (p *quickEditParser) applyPin() {
 	if len(tokens) == 0 {
 		return
 	}
-	p.result.Pinned = slices.Contains(pinSetValues(), tokens[0].Value)
+	p.result.Pinned = slices.Contains(capturetext.PinSetValues(), tokens[0].Value)
 	p.result.PinnedSet = true
 }
 
@@ -182,7 +183,7 @@ func (p *quickEditParser) applyReview() {
 	if len(tokens) == 0 {
 		return
 	}
-	p.result.Review = slices.Contains(reviewSetValues(), tokens[0].Value)
+	p.result.Review = slices.Contains(capturetext.ReviewSetValues(), tokens[0].Value)
 	p.result.ReviewSet = true
 }
 
@@ -191,9 +192,9 @@ func (p *quickEditParser) applyProject() bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	target := resolveProject(tokens[0].Value, p.allProjects)
+	target := capturetext.ResolveProject(tokens[0].Value, p.allProjects)
 	if target == nil {
-		return p.setError(fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, p.allProjects)))
+		return p.setError(fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, capturetext.ProjectSlugHint(tokens[0].Value, p.allProjects)))
 	}
 	p.result.TargetProject = target
 	p.effectiveProject = target
@@ -212,7 +213,7 @@ func (p *quickEditParser) applyParent() bool {
 		p.result.ParentMode = QuickEditParentRoot
 		return false
 	}
-	parent, err := resolveParent(token.Value, p.effectiveProject)
+	parent, err := capturetext.ResolveParent(token.Value, p.effectiveProject)
 	if err != nil {
 		return p.setError(err.Error())
 	}
@@ -240,7 +241,7 @@ func (p *quickEditParser) applyChildren() bool {
 	}
 	seen := make(map[string]bool, len(tokens))
 	for _, token := range tokens {
-		child, err := resolveChild(token.Value, p.effectiveProject)
+		child, err := capturetext.ResolveChild(token.Value, p.effectiveProject)
 		if err != nil {
 			if p.setError(err.Error()) {
 				return true
@@ -338,12 +339,12 @@ func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger 
 	if token.Value == DependencyClearValue && !addition {
 		return !p.setError(fmt.Sprintf("%s%s is not a clear form; use ~%s to clear every dependency", trigger, token.Value, DependencyClearValue))
 	}
-	ref, err := ResolveDependencyReference(token.Value, p.effectiveProject, p.allProjects)
+	ref, err := capturetext.ResolveDependencyReference(token.Value, p.effectiveProject, p.allProjects)
 	if err != nil {
 		return !p.setError(err.Error())
 	}
 	if ref.Locator.TaskID == "" {
-		return !p.setError(DependencyNotFoundMessage(trigger, token.Value))
+		return !p.setError(capturetext.DependencyNotFoundMessage(trigger, token.Value))
 	}
 	if p.task != nil && ref.Locator.TaskID == p.task.ID {
 		return !p.setError("a task cannot depend on itself")
@@ -354,17 +355,17 @@ func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger 
 		// reference after its target closes or its project stops being loaded, so
 		// naming it again must stay the no-op it was a moment before.
 		if !p.storesDependency(ref.Locator) {
-			if !ref.resolved {
-				return !p.setError(DependencyNotFoundMessage(trigger, token.Value))
+			if !ref.Resolved {
+				return !p.setError(capturetext.DependencyNotFoundMessage(trigger, token.Value))
 			}
-			if ref.terminal {
+			if ref.Terminal {
 				return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.Label()))
 			}
 		}
-		p.result.dependencyAdds = appendDependencyRef(p.result.dependencyAdds, ref)
+		p.result.dependencyAdds = capturetext.AppendDependencyRef(p.result.dependencyAdds, ref)
 		return true
 	}
-	p.result.dependencyRemovals = appendDependencyRef(p.result.dependencyRemovals, ref)
+	p.result.dependencyRemovals = capturetext.AppendDependencyRef(p.result.dependencyRemovals, ref)
 	return true
 }
 
@@ -381,8 +382,8 @@ func (p *quickEditParser) storesDependency(locator app.TaskLocator) bool {
 // DependencyPatch projects the parsed halves into the application contract.
 func (r *QuickEditResult) DependencyPatch() app.DependencyPatch {
 	return app.DependencyPatch{
-		Add:    dependencyLocators(r.dependencyAdds),
-		Remove: dependencyLocators(r.dependencyRemovals),
+		Add:    capturetext.DependencyLocatorsOf(r.dependencyAdds),
+		Remove: capturetext.DependencyLocatorsOf(r.dependencyRemovals),
 		Clear:  r.dependencyClear,
 	}
 }

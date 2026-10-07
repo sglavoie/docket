@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -24,7 +25,7 @@ type composerEffectiveRoute struct {
 
 func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffectiveRoute {
 	project := m.Preset.Project
-	parsed, _ := grammar.ParseQuickCaptureForPreview(
+	parsed, _ := capturetext.ParseQuickCaptureForPreview(
 		strings.TrimSpace(line),
 		m.Preset.Project,
 		m.Preset.AllProjects,
@@ -57,7 +58,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if coordinator.DueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
-	destination = grammar.ComposerDeferredDestination(parsed, destination)
+	destination = capturetext.ComposerDeferredDestination(parsed, destination)
 
 	return composerEffectiveRoute{project: project, destination: destination}
 }

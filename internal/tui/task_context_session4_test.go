@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -12,7 +13,7 @@ import (
 
 func TestQuickCaptureParsesContextAndRefusesClearBySurface(t *testing.T) {
 	project := &models.Project{ID: "project"}
-	result, err := grammar.ParseQuickCapture("Ship it ##Client-Acme #bug", project, nil, false)
+	result, err := capturetext.ParseQuickCapture("Ship it ##Client-Acme #bug", project, nil, false)
 	if err != nil {
 		t.Fatalf("parse capture: %v", err)
 	}
@@ -21,12 +22,12 @@ func TestQuickCaptureParsesContextAndRefusesClearBySurface(t *testing.T) {
 	}
 
 	captureDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
-	if _, err := grammar.ParseQuickCapture("Ship it "+captureDefinition.Trigger+"0", project, nil, false); err == nil || !strings.Contains(err.Error(), captureDefinition.Trigger+"0") {
+	if _, err := capturetext.ParseQuickCapture("Ship it "+captureDefinition.Trigger+"0", project, nil, false); err == nil || !strings.Contains(err.Error(), captureDefinition.Trigger+"0") {
 		t.Fatalf("capture clear error = %v, want named refusal", err)
 	}
 
 	outlineDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldContext)
-	if _, err := grammar.ParseQuickCaptureSurface("Ship it "+outlineDefinition.Trigger+"0", project, nil, true, textgrammar.SurfaceOutline); err == nil || !strings.Contains(err.Error(), outlineDefinition.Forms[0]) {
+	if _, err := capturetext.ParseQuickCaptureSurface("Ship it "+outlineDefinition.Trigger+"0", project, nil, true, textgrammar.SurfaceOutline); err == nil || !strings.Contains(err.Error(), outlineDefinition.Forms[0]) {
 		t.Fatalf("outline clear error = %v, want omission guidance", err)
 	}
 }

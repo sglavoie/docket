@@ -34,6 +34,9 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 	if err := models.ValidatePriority(priority, true); err != nil {
 		return preparedCapture{}, invalidInput("priority", err.Error())
 	}
+	if err := models.ValidateResumeNote(req.ResumeNote); err != nil {
+		return preparedCapture{}, invalidInput("resume note", err.Error())
+	}
 
 	normalizedTags, err := normalizeTags(req.Tags)
 	if err != nil {
@@ -154,6 +157,7 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	task.Priority = prepared.priority
 	task.Context = prepared.context
 	task.Description = req.Description
+	task.ResumeNote = req.ResumeNote
 	task.Dependencies = models.CloneTaskReferences(prepared.dependencies)
 	for _, tag := range prepared.tags {
 		task.AddTag(tag)

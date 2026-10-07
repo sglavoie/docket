@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"strings"
@@ -35,9 +35,9 @@ func TestResolveParent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := resolveParent(tt.ref, project)
+			result, err := ResolveParent(tt.ref, project)
 			if err != nil {
-				t.Fatalf("resolveParent: %v", err)
+				t.Fatalf("ResolveParent: %v", err)
 			}
 
 			if tt.wantNil {
@@ -117,7 +117,7 @@ func TestResolveProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := resolveProject(tt.ref, projects)
+			result := ResolveProject(tt.ref, projects)
 
 			if tt.wantNil {
 				if result != nil {

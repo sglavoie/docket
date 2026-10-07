@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 // LineError is one refusal reported against one input line. Both the multiline
 // composer and the outline buffer validate every nonblank line before they

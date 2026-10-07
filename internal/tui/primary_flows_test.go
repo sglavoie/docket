@@ -3,10 +3,10 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // TestCaptureCreatesInboxTask verifies that a plain quick-capture input (no
@@ -15,7 +15,7 @@ import (
 func TestCaptureCreatesInboxTask(t *testing.T) {
 	project := testutil.NewTestProject("smoke")
 
-	result, err := grammar.ParseQuickCapture("Buy milk", project, nil, false)
+	result, err := capturetext.ParseQuickCapture("Buy milk", project, nil, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}

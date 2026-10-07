@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -306,7 +307,7 @@ func (q *QuickCaptureInput) effectiveProject(draftedLine textgrammar.Result) *mo
 		return q.Project
 	}
 	// The parser lets the last %project token win, so completion must too.
-	if target := resolveProject(tokens[len(tokens)-1].Value, q.allProjects); target != nil {
+	if target := capturetext.ResolveProject(tokens[len(tokens)-1].Value, q.allProjects); target != nil {
 		return target
 	}
 	return q.Project
@@ -338,7 +339,7 @@ func filterAdoptedChildCandidates(candidates []*models.Task, project *models.Pro
 	}
 	adopted := make(map[string]bool, len(tokens))
 	for _, token := range tokens {
-		task, err := resolveChild(token.Value, project)
+		task, err := capturetext.ResolveChild(token.Value, project)
 		if err != nil || task == nil {
 			continue
 		}

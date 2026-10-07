@@ -33,16 +33,16 @@ func TestOutlineHeaderFormsComeFromCanonicalRegistry(t *testing.T) {
 }
 
 func TestInlineGrammarConsumersDoNotOwnParallelStaticLists(t *testing.T) {
-	// Five of the six moved into the grammar package in Session 2.11; the rule
-	// follows the file, not the package, so this stays one contract spanning the
-	// shell's outline editor and the grammar it delegates to.
+	// The rule follows the file, not the package, so this stays one contract
+	// spanning the shell's outline editor, the grammar it delegates to, and the
+	// frontend-free capture parser in internal/capturetext.
 	consumerFiles := []string{
 		"outline_editor.go",
 		"grammar/outline_editor_parse.go",
 		"grammar/quick_capture_autocomplete.go",
 		"grammar/quick_capture_input.go",
-		"grammar/quick_capture_parser.go",
-		"grammar/quick_capture_parser_fields.go",
+		"../capturetext/parse.go",
+		"../capturetext/fields.go",
 	}
 	triggerSet := make(map[string]bool)
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceCapture) {

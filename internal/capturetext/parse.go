@@ -9,7 +9,7 @@
 // internal/tui. In particular it never imports query: the search surface is the
 // fourth consumer of the same registry, so it reads this package rather than
 // the other way round.
-package grammar
+package capturetext
 
 import (
 	"github.com/sglavoie/tt/internal/models"

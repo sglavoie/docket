@@ -56,6 +56,9 @@ type CaptureRequest struct {
 	RemoveTags []string
 	// Description is optional free-form body text.
 	Description string
+	// ResumeNote is the optional one-line orientation note; empty is none. It
+	// passes the one gate models.ValidateResumeNote, never a repair.
+	ResumeNote string
 	// Due, when non-nil, sets the task's calendar due date.
 	Due *time.Time
 	// CheckIn is the schedule the new task starts with; its zero value is no

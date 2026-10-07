@@ -971,6 +971,86 @@ verify_session_10() {
 	note "session 10 verified"
 }
 
+verify_session_11() {
+	[ "$(uname -s)" = Darwin ] || fail "session 11 runs the iPhone capture and editing UI tests on an iOS simulator, on macOS only"
+	require_files \
+		internal/capturetext/parse.go \
+		internal/capturetext/requests.go \
+		internal/bridge/capture_ops.go \
+		internal/bridge/capture_edit_test.go \
+		internal/mobileparity/parity_test.go \
+		ios/TTMobile/App/CaptureView.swift \
+		ios/TTMobile/App/TaskEditView.swift \
+		ios/TTMobile/App/DraftStore.swift \
+		ios/TTMobileUITests/CaptureEditingUITests.swift
+
+	# The capture grammar now reaches the phone: the bound package must link
+	# the parser without the terminal stack it moved out of.
+	local frontend
+	frontend=$(go list -deps ./mobile/ttbridge | grep -E '^(github.com/sglavoie/tt/internal/tui|charm.land/|github.com/charmbracelet/)' || true)
+	[ -z "$frontend" ] || fail "the mobile binding links frontend packages: $frontend"
+	go list -deps ./mobile/ttbridge | grep -qx 'github.com/sglavoie/tt/internal/capturetext' ||
+		fail "the mobile binding does not link the shared capture parser"
+
+	# Desktop and phone over two copies of one workspace: the composer's
+	# reading, the inline editor's grammar, the resume prompt, and the workflow
+	# chord against the bridge's capture, edit, plan, and transition ops. Each
+	# scenario must leave byte-identical task Markdown and planning state, and
+	# each refusal must refuse on both sides and write nothing.
+	run_go_suite capture-parity ./internal/mobileparity/ '^TestDesktopAndMobileCaptureAndEditAlike$' \
+		TestDesktopAndMobileCaptureAndEditAlike/shorthand_capture \
+		TestDesktopAndMobileCaptureAndEditAlike/shorthand_preview_matches_the_capture \
+		TestDesktopAndMobileCaptureAndEditAlike/shorthand_refusal_names_the_line_and_commits_nothing \
+		TestDesktopAndMobileCaptureAndEditAlike/structured_capture \
+		TestDesktopAndMobileCaptureAndEditAlike/daily_edit \
+		TestDesktopAndMobileCaptureAndEditAlike/deferral_routes_to_backlog \
+		TestDesktopAndMobileCaptureAndEditAlike/today_next_exclusivity \
+		TestDesktopAndMobileCaptureAndEditAlike/completion_clears_planning \
+		TestDesktopAndMobileCaptureAndEditAlike/lifecycle_refusals
+
+	# The bridge contract of those ops: envelopes, refusal details, preview,
+	# replay, planning membership on the task read, and the device time zone
+	# the engine reads due dates and Today in.
+	run_go_suite bridge-capture ./internal/bridge/ '^(TestBridgeCapturesAndEditsThroughTheSharedEngine|TestBridgeAdoptsTheDeviceTimeZone)$' \
+		TestBridgeAdoptsTheDeviceTimeZone \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/grammar_capture_is_one_transaction \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/grammar_refusal_names_every_line \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/text_stands_alone \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/structured_capture_keeps_a_literal_title \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/preview_reads_without_writing \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/edit_applies_named_fields_once \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/plan_keeps_today_and_next_exclusive \
+		TestBridgeCapturesAndEditsThroughTheSharedEngine/lifecycle_refusals_explain_themselves
+
+	# The shared engine's half: the resume note rides capture and the line
+	# edit through the one gate, and the desktop composer still reads text
+	# through the request builder the bridge now shares.
+	run_go_suite app-resume ./internal/app/ '^TestResumeNoteRidesCaptureAndTheLineEdit$' \
+		TestResumeNoteRidesCaptureAndTheLineEdit
+	run_go_suite composer-capture ./internal/tui/taskform/ '^TestParseCaptureTextReadsLinesAsTheComposerDoes$' \
+		TestParseCaptureTextReadsLinesAsTheComposerDoes
+	run_go_suite capture-grammar ./internal/capturetext/ '^(TestParseDate|TestResolveParent|TestResolveProject|TestStructuralReferencesShareMatchingAndNameTheirRelationship)$' \
+		TestParseDate TestResolveParent TestResolveProject TestStructuralReferencesShareMatchingAndNameTheirRelationship
+
+	# The iPhone on a simulator against the gomobile-bound engine: shorthand
+	# capture with its preview, a structured capture, the structured edit, plan
+	# and status, explained refusals, and drafts kept across a refused save and
+	# a killed app, each checked against the seeded workspace's files.
+	note "running the TTMobile capture and editing UI suite"
+	TT_UITEST_ONLY=CaptureEditingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testShorthandCaptureWithLivePreview()' \
+		'testRefusedCaptureKeepsItsDraftAcrossARelaunch()' \
+		'testStructuredCaptureCarriesEveryField()' \
+		'testDailyEditSavesOnceAndKeepsARefusedDraft()' \
+		'testPlanStatusAndLifecycleRefusals()'
+
+	note "session 11 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -983,6 +1063,7 @@ case "$session" in
 8) verify_session_8 ;;
 9) verify_session_9 ;;
 10) verify_session_10 ;;
+11) verify_session_11 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

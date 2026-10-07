@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"fmt"
@@ -31,15 +31,15 @@ type CapturedDependencyRef struct {
 	shortID     int
 	title       string
 	projectName string
-	terminal    bool
-	resolved    bool
+	Terminal    bool
+	Resolved    bool
 }
 
 // Label renders the reference for a preview or an error. A resolved reference
 // reads as the project-qualified short ID a user typed; an unresolved one falls
 // back to the durable locator, which is all that is known about it.
 func (r CapturedDependencyRef) Label() string {
-	if !r.resolved {
+	if !r.Resolved {
 		return r.Locator.Reference().Locator()
 	}
 	if r.projectName == "" {
@@ -74,7 +74,7 @@ func ResolveDependencyReference(ref string, effective *models.Project, allProjec
 		}
 		return DependencyRefFor(effective, task), nil
 	}
-	if project := resolveProject(head, allProjects); project != nil {
+	if project := ResolveProject(head, allProjects); project != nil {
 		task, err := ResolveStructuralReference(tail, project, DependencyRelationship)
 		if err != nil || task == nil {
 			return CapturedDependencyRef{}, err
@@ -108,8 +108,8 @@ func DependencyRefFor(project *models.Project, task *models.Task) CapturedDepend
 		Locator:  app.TaskLocator{TaskID: task.ID},
 		shortID:  task.ShortID,
 		title:    task.Title,
-		terminal: task.IsTerminalState(),
-		resolved: true,
+		Terminal: task.IsTerminalState(),
+		Resolved: true,
 	}
 	if project != nil {
 		ref.Locator.ProjectID = project.ID
@@ -140,9 +140,9 @@ func DependencyNotFoundMessage(trigger, ref string) string {
 	return fmt.Sprintf("dependency not found: %q (use %sshort-id, %stitle-prefix, or %sproject-slug:short-id)", ref, trigger, trigger, trigger)
 }
 
-// dependencyLocators projects resolved references into the locators an
+// DependencyLocatorsOf projects resolved references into the locators an
 // application request carries, in reference order.
-func dependencyLocators(refs []CapturedDependencyRef) []app.TaskLocator {
+func DependencyLocatorsOf(refs []CapturedDependencyRef) []app.TaskLocator {
 	if len(refs) == 0 {
 		return nil
 	}
@@ -153,10 +153,10 @@ func dependencyLocators(refs []CapturedDependencyRef) []app.TaskLocator {
 	return locators
 }
 
-// appendDependencyRef collapses repeated locators to their first occurrence,
+// AppendDependencyRef collapses repeated locators to their first occurrence,
 // which is the order the set is stored in. It mirrors the application layer's
 // addition dedupe so preview and commit can never disagree about order.
-func appendDependencyRef(refs []CapturedDependencyRef, ref CapturedDependencyRef) []CapturedDependencyRef {
+func AppendDependencyRef(refs []CapturedDependencyRef, ref CapturedDependencyRef) []CapturedDependencyRef {
 	for _, existing := range refs {
 		if existing.Locator == ref.Locator {
 			return refs

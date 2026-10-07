@@ -42,10 +42,13 @@ type TaskLineParentPatch struct {
 //
 // Description is preserve-on-nil too, and carries the body an external-editor
 // round trip returns so title and description land in the same transaction.
+// ResumeNote is preserve-on-nil as well; a pointer to the empty note clears it,
+// through the same models.ValidateResumeNote gate SetResumeNote applies.
 type TaskLineEditRequest struct {
 	Source               TaskLocator
 	Title                string
 	Description          *string
+	ResumeNote           *string
 	Priority             *int
 	DueSet               bool
 	Due                  *time.Time

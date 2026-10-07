@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
@@ -401,7 +402,7 @@ func (m *OutlinerModel) searchDependencyCandidates() []grammar.DependencyCandida
 			}
 			seen[locator] = true
 			candidate := grammar.DependencyCandidate{Locator: locator}
-			if project := grammar.ProjectByStableID(reference.ProjectID, projects); project != nil {
+			if project := capturetext.ProjectByStableID(reference.ProjectID, projects); project != nil {
 				candidate.Project = project
 				candidate.Task = project.GetTaskByID(reference.TaskID)
 			}

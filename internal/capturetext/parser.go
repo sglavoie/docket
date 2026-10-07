@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"fmt"

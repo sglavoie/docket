@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -142,7 +143,7 @@ func TestCaptureAutocompleteWithholdsCompletedTasksThatStayTypeable(t *testing.T
 		}
 	}
 
-	parsed, err := ParseQuickCapture("Adopt <3", project, nil, false)
+	parsed, err := capturetext.ParseQuickCapture("Adopt <3", project, nil, false)
 	if err != nil {
 		t.Fatalf("manually typed completed-task reference: %v", err)
 	}
@@ -179,7 +180,7 @@ func TestSyntaxGuideAdvertisesRepeatableChildPlacement(t *testing.T) {
 func TestRenderPreview_ChildrenGroupFollowsRouteInReferenceOrder(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{
 		Title: "Ship it",
-		Children: []CapturedChildRef{
+		Children: []capturetext.CapturedChildRef{
 			{Id: "task-3", ShortID: 3, Title: "Implement button"},
 			{Id: "epic-1", ShortID: 1, Title: "User Authentication"},
 		},
@@ -205,7 +206,7 @@ func TestRenderPreview_ChildrenGroupFollowsRouteInReferenceOrder(t *testing.T) {
 func TestRenderPreview_ChildrenSurviveCompactFlattening(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:    "Ship it",
-		Children: []CapturedChildRef{{Id: "story-2", ShortID: 2, Title: "Login Flow"}},
+		Children: []capturetext.CapturedChildRef{{Id: "story-2", ShortID: 2, Title: "Login Flow"}},
 	}, "", 120)
 
 	compact := ansi.Strip(q.renderCompactPreview())
@@ -221,7 +222,7 @@ func TestRenderPreview_ChildrenNarrowSafeWithWideRunes(t *testing.T) {
 	for _, width := range []int{28, 32, 100} {
 		q := makePreviewInput(t, &QuickCaptureResult{
 			Title: "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
-			Children: []CapturedChildRef{
+			Children: []capturetext.CapturedChildRef{
 				{Id: "wide-1", ShortID: 11, Title: "登录流程与凭据刷新"},
 				{Id: "wide-2", ShortID: 12, Title: "Implement search across every configured workspace"},
 			},

@@ -80,7 +80,7 @@ func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Capture for other team",
 		Priority:          0,
-		targetProjectName: "Web App",
+		TargetProjectName: "Web App",
 	}, "", 0)
 
 	plain := ansi.Strip(q.renderPreview())
@@ -120,7 +120,7 @@ func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Capture for the offsite tomorrow morning",
 		Priority:          0,
-		targetProjectName: "Q1 Planning Roadmap Initiative",
+		TargetProjectName: "Q1 Planning Roadmap Initiative",
 	}, "", 32)
 
 	rendered := q.renderPreview()
@@ -152,7 +152,7 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 		DueDate:           &due,
 		Destination:       textgrammar.DestinationDoing,
 		DestinationSet:    true,
-		targetProjectName: "Web App",
+		TargetProjectName: "Web App",
 	}, "", 0)
 
 	plain := ansi.Strip(q.renderPreview())
@@ -214,7 +214,7 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 		DueDate:           &due,
 		Destination:       app.CaptureDestinationBacklog,
 		DestinationSet:    true,
-		targetProjectName: "Reliability And Observability Platform",
+		TargetProjectName: "Reliability And Observability Platform",
 	}, "", 32)
 
 	rendered := q.renderPreview()

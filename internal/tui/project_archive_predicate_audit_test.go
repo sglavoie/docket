@@ -53,15 +53,15 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/task_operation_manifest.go:taskActionOperationApplicable":        "lifecycle: an archived owner admits read-only operations only",
 	"internal/tui/projectops/project_operations_shell.go:projectRequirementUnmet":  "lifecycle: descriptors require an archived or a live project",
 	"internal/tui/grammar/quick_capture_input.go:InitCaches":                       "availability: %project completes parked projects",
-	"internal/tui/grammar/quick_capture_parser_resolution.go:resolveProject":       "availability: %project resolves parked projects",
-	"internal/tui/grammar/quick_capture_parser_resolution.go:suggestProjectSlugs":  "availability: typo suggestions admit parked destinations, matching exact %project resolution",
+	"internal/capturetext/resolution.go:ResolveProject":                            "availability: %project resolves parked projects",
+	"internal/capturetext/resolution.go:SuggestProjectSlugs":                       "availability: typo suggestions admit parked destinations, matching exact %project resolution",
 	"internal/tui/task_operation_manifest.go:taskActionDisabledReason":             "lifecycle: an archived owner disables writing task actions",
 	"internal/tui/taskform/task_composer_capture.go:cycleProject":                  "availability: the composer cycles onto a parked destination",
 }
 
 // archiveAuditPackages are the layers whose availability decisions this audit
 // governs. Storage, models, and the maintenance CLI carry no population choice.
-var archiveAuditPackages = []string{"internal/app", "internal/config", "internal/engine", "internal/tui"}
+var archiveAuditPackages = []string{"internal/app", "internal/capturetext", "internal/config", "internal/engine", "internal/tui"}
 
 // archiveAuditMigrationPrefixes name the migration-only decoders and dry runs.
 // They reason about retired schemas rather than about live availability, so

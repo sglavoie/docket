@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -210,7 +211,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 			continue
 		}
 
-		parsed, err := ParseQuickCaptureSurface(item.body, project, projects, true, textgrammar.SurfaceOutline)
+		parsed, err := capturetext.ParseQuickCaptureSurface(item.body, project, projects, true, textgrammar.SurfaceOutline)
 		if err != nil {
 			errs = append(errs, LineError{Line: item.sourceLine, Message: err.Error()})
 			continue
@@ -232,7 +233,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 			Review:     parsed.Review,
 			// The parser has already folded -~task and ~0 in, so this is the final
 			// set the line declares rather than a patch over the stored one.
-			Dependencies: dependencyLocators(parsed.dependencies),
+			Dependencies: capturetext.DependencyLocatorsOf(parsed.DependencyRefs),
 		}
 		if parsed.DestinationSet {
 			line.Destination = parsed.Destination

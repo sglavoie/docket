@@ -10,6 +10,11 @@ struct TaskDetailView: View {
     let locator: TaskLocator
     @State private var detail: TaskDetail?
     @State private var state: ScreenState? = .loading("Loading task…")
+    @State private var editing = false
+    @State private var choosingPlan = false
+    @State private var choosingStatus = false
+    /// The last plan or status refusal, explained from what the engine judged.
+    @State private var failure: String?
 
     var body: some View {
         Group {
@@ -21,7 +26,65 @@ struct TaskDetailView: View {
         }
         .navigationTitle(detail?.task.title ?? "Task")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if detail != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") { editing = true }
+                        .accessibilityIdentifier("detail.edit")
+                }
+            }
+        }
+        .sheet(isPresented: $editing) {
+            if let task = detail?.task {
+                TaskEditSheet(workspace: workspace, task: task)
+            }
+        }
         .task(id: workspace.generation) { await load() }
+    }
+
+    /// Plan and status, the two halves of the desktop's workflow chord: a plan
+    /// is the collection the task is committed to, a status its lifecycle
+    /// state. Both commit at once; a refusal is explained in place.
+    @ViewBuilder
+    private func workflow(_ detail: TaskDetail) -> some View {
+        let task = detail.task
+        let plan = detail.today == true ? "Today" : detail.next == true ? "Next" : "None"
+        Section("Workflow") {
+            LabeledContent("Plan", value: plan)
+                .accessibilityIdentifier("detail.plan.value")
+            Button("Change Plan") { choosingPlan = true }
+                .accessibilityIdentifier("detail.plan")
+                .confirmationDialog("Change Plan", isPresented: $choosingPlan, titleVisibility: .visible) {
+                    if detail.today != true {
+                        Button("Add to Today") { act { await workspace.plan(task.locator, .addToday) } }
+                    } else {
+                        Button("Remove from Today") { act { await workspace.plan(task.locator, .removeToday) } }
+                    }
+                    if detail.next != true {
+                        Button("Add to Next") { act { await workspace.plan(task.locator, .addNext) } }
+                    } else {
+                        Button("Remove from Next") { act { await workspace.plan(task.locator, .removeNext) } }
+                    }
+                    Button("Move to Backlog") { act { await workspace.plan(task.locator, .backlog) } }
+                }
+            Button("Change Status") { choosingStatus = true }
+                .accessibilityIdentifier("detail.status.menu")
+                .confirmationDialog("Change Status", isPresented: $choosingStatus, titleVisibility: .visible) {
+                    ForEach(WorkflowState.allCases.filter { $0 != task.state }, id: \.self) { target in
+                        Button(target.rawValue.capitalized) { act { await workspace.transition(task.locator, to: target) } }
+                    }
+                }
+            if let failure {
+                Text(failure)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("detail.failure")
+            }
+        }
+    }
+
+    private func act(_ command: @escaping () async -> String?) {
+        Task { failure = await command() }
     }
 
     private func content(_ detail: TaskDetail) -> some View {
@@ -42,6 +105,7 @@ struct TaskDetailView: View {
                     LabeledContent("Flags", value: [task.pinned ? "Pinned" : nil, task.review ? "Review" : nil].compactMap { $0 }.joined(separator: " · "))
                 }
             }
+            workflow(detail)
             if let ancestors = relations?.ancestors, !ancestors.isEmpty {
                 relationSection("Inside", ancestors, identifier: "detail.ancestor")
             }

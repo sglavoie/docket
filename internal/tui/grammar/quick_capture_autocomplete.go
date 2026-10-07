@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -141,7 +142,7 @@ func (q *QuickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	for _, value := range def.Values {
 		if partial == "" || strings.Contains(value, partialLower) {
 			display := def.Trigger + value
-			if due, err := ParseDueDateValue(value); err == nil {
+			if due, err := capturetext.ParseDueDateValue(value); err == nil {
 				display += " · " + captureDuePreview(due, now)
 			}
 			suggestions = append(suggestions, ACSuggestion{

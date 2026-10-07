@@ -10,6 +10,13 @@ Omitted destinations default roots to Inbox and children to Backlog, and adoptin
 children changes neither default, because `normalizeCaptureDestination` reads
 only `ParentID`.
 
+The capture-line reading lives in `internal/capturetext`, outside `internal/tui`,
+so the mobile bridge links it without the terminal stack. `capturetext.Requests`
+turns text and a host's defaults into the `app.CaptureRequest` batch; the
+composer passes its preset's shared values and the bridge passes none, so a
+line reads the same on both. `internal/tui/grammar` keeps the presentation half
+(autocomplete, preview, the syntax guide) and aliases the parse result types.
+
 `coreCaptureMessage` resolves the destination from the task Focus root, then the
 scoped project, then `cursorProjectHeaderProject()`, then Unfiled. A Focus root
 that `taskAcceptsDeeperChild` admits opens the child preset built by
@@ -213,7 +220,7 @@ accepts the `+Nh` offsets `util.ParseCalendarDate` refuses by name. It also
 carries a lifecycle effect the other metadata sigils do not: `deferralRefusesState`
 is the terminal half of `deferTask`'s policy, shared by capture and inline edit so
 a refusal is worded the same wherever it is expressed, and a deferral that is
-honored claims Backlog. `grammar.ComposerDeferredDestination` applies that route to both
+honored claims Backlog. `capturetext.ComposerDeferredDestination` applies that route to both
 the composer's header and its preview, so neither promises a landing place the
 submitted request will not honor. Entering a state clears `DeferredUntil`, so both
 surfaces write the instant *after* the transition — `buildPreparedCapturedTask`
@@ -469,7 +476,7 @@ to Doing. Inline edit refuses a child locator outside the destination project
 with `invalid child: child must belong to the effective project`.
 
 `~task` is the soft-reference sigil, and it is the one repeatable reference that
-crosses a project boundary: `grammar.ResolveDependencyReference` accepts a bare alias,
+crosses a project boundary: `capturetext.ResolveDependencyReference` accepts a bare alias,
 resolved in the effective project like `>parent` and `<child`, or a
 `project-slug:alias` pair resolved against the loaded population. It is peeled
 before `FieldTag` for the attachment entry's reason — `#([\w][\w.:-]*)` stops at
@@ -484,7 +491,7 @@ and `~0` are refused there by name. Inline edit and the outline buffer take all
 three. Search takes `~task` and `-~task` and compiles them into
 `admitsDependencies`, an AND gate over the stored list and an AND of nots beside
 it: the negation resolves its locator through the same
-`grammar.ResolveDependencyReference` its positive twin uses, so an ambiguous or unknown
+`capturetext.ResolveDependencyReference` its positive twin uses, so an ambiguous or unknown
 alias is reported identically, and the resolved target then subtracts the tasks
 the positive form would have selected. `~0` is still named in
 `placementDiagnostics` and `refusedSearchFields` rather than compiled into a
@@ -552,7 +559,7 @@ a visual selection, which names rows rather than a project.
 Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
 asserted unique at dump time so a collision aborts before the editor opens. The
 outline layer strips that marker before the remainder of the line reaches
-`grammar.ParseQuickCapture` with `skipProject=true`, which is what keeps one capture
+`capturetext.ParseQuickCapture` with `skipProject=true`, which is what keeps one capture
 parser true for the whole product and makes a `>parent` or `<child` sigil an
 error rather than a competing parentage channel. `FieldChild` is absent from
 `SurfaceOutline`, so the rejection is what stops the sigil from surviving inside

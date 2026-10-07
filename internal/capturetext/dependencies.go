@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"slices"
@@ -44,19 +44,19 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 			}
 			continue
 		}
-		if !ref.resolved {
+		if !ref.Resolved {
 			if p.failTokenf(token, "%s", DependencyNotFoundMessage(definition.Trigger, token.Value)) {
 				return
 			}
 			continue
 		}
-		if ref.terminal {
+		if ref.Terminal {
 			if p.failTokenf(token, "cannot depend on %s: it is already closed", ref.Label()) {
 				return
 			}
 			continue
 		}
-		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
+		p.result.DependencyRefs = AppendDependencyRef(p.result.DependencyRefs, ref)
 	}
 }
 
@@ -105,7 +105,7 @@ func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgram
 		if slices.Contains(removed, ref.Locator) {
 			continue
 		}
-		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
+		p.result.DependencyRefs = AppendDependencyRef(p.result.DependencyRefs, ref)
 	}
 }
 

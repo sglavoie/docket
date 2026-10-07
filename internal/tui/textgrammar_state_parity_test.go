@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/outliner"
@@ -17,7 +18,7 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 		t.Run(state.String(), func(t *testing.T) {
 			input := "Task $" + state.String()
 
-			captured, err := grammar.ParseQuickCapture(input, project, nil, true)
+			captured, err := capturetext.ParseQuickCapture(input, project, nil, true)
 			if err != nil {
 				t.Fatalf("capture parse: %v", err)
 			}
@@ -100,12 +101,12 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 
 	project := &models.Project{Name: "Grammar"}
 	for raw, replacement := range map[string]string{"ready": "$backlog", "in_progress": "$doing"} {
-		_, captureErr := grammar.ParseQuickCapture("Task $"+raw, project, nil, true)
+		_, captureErr := capturetext.ParseQuickCapture("Task $"+raw, project, nil, true)
 		if captureErr == nil || !strings.Contains(captureErr.Error(), replacement) {
 			t.Errorf("capture error for %q = %v, want replacement %s", raw, captureErr, replacement)
 		}
 	}
-	if parsed, err := grammar.ParseQuickCapture("Task $today", project, nil, true); err != nil || parsed.Destination != app.CaptureDestinationToday {
+	if parsed, err := capturetext.ParseQuickCapture("Task $today", project, nil, true); err != nil || parsed.Destination != app.CaptureDestinationToday {
 		t.Fatalf("Today destination = %+v, %v", parsed, err)
 	}
 }

@@ -12,6 +12,7 @@ import (
 type preparedTaskLineEdit struct {
 	title              string
 	description        *string
+	resumeNote         *string
 	priority           *int
 	dueSet             bool
 	due                *time.Time
@@ -41,6 +42,13 @@ func prepareTaskLineScalars(prepared *preparedTaskLineEdit, req TaskLineEditRequ
 	if req.Description != nil {
 		description := *req.Description
 		prepared.description = &description
+	}
+	if req.ResumeNote != nil {
+		if err := models.ValidateResumeNote(*req.ResumeNote); err != nil {
+			return invalidInput("resume note", err.Error())
+		}
+		note := *req.ResumeNote
+		prepared.resumeNote = &note
 	}
 	if req.Priority != nil {
 		if err := models.ValidatePriority(*req.Priority, true); err != nil {

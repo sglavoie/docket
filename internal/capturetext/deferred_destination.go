@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import "github.com/sglavoie/tt/internal/app"
 

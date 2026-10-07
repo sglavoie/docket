@@ -182,12 +182,16 @@ public struct TaskRelations: Decodable, Hashable, Sendable {
     public var dependents: [RelatedTask]
 }
 
-/// One task with its project, the project's revision, and its relations.
+/// One task with its project, the project's revision, its relations, and its
+/// planning memberships.
 public struct TaskDetail: Decodable, Hashable, Sendable {
     public var task: TaskSnapshot
     public var project: ProjectSummary
     public var revision: String
     public var relations: TaskRelations?
+    /// Absent from an engine older than the editing ops, so optional.
+    public var today: Bool?
+    public var next: Bool?
 }
 
 /// A manual order: a field and a direction. A nil field is the mode's own
@@ -269,6 +273,212 @@ public struct TaskMutation: Decodable, Hashable, Sendable {
     public var committed: CommittedEffect
 }
 
+/// Every task one capture created, in line order; `task` is the first.
+public struct CaptureMutation: Decodable, Hashable, Sendable {
+    public var task: TaskSnapshot
+    public var tasks: [TaskSnapshot]
+    public var committed: CommittedEffect
+}
+
+/// A structured edit's outcome. An edit that changed nothing committed nothing.
+public struct EditMutation: Decodable, Hashable, Sendable {
+    public var task: TaskSnapshot
+    public var changed: Bool
+    public var committed: CommittedEffect
+}
+
+/// One refusal against one capture line. `column` is zero-based in runes.
+public struct CaptureLineError: Decodable, Hashable, Sendable {
+    public var line: Int
+    public var column: Int
+    public var message: String
+}
+
+/// What one capture line would create, named as the desktop names it: a plan
+/// beside a status.
+public struct CapturePreviewLine: Decodable, Hashable, Sendable {
+    public var line: Int
+    public var title: String
+    public var projectID: String
+    public var projectName: String
+    public var destination: CaptureDestination
+    public var plan: String?
+    public var state: WorkflowState
+    public var priority: Int
+    public var tags: [String]
+    public var context: String?
+    public var due: Date?
+    public var deferUntil: Date?
+    public var pinned: Bool
+    public var review: Bool
+    public var parentID: String?
+    public var children: Int
+    public var dependencies: Int
+    public var attachments: Int
+    public var comments: Int
+
+    enum CodingKeys: String, CodingKey {
+        case line, title, destination, plan, state, priority, tags, context, due, pinned, review
+        case children, dependencies, attachments, comments
+        case projectID = "project_id"
+        case projectName = "project_name"
+        case deferUntil = "defer"
+        case parentID = "parent_id"
+    }
+}
+
+/// A capture draft read without committing: what each line would create, or
+/// every refused line.
+public struct CapturePreview: Decodable, Hashable, Sendable {
+    public var projectID: String
+    public var lines: [CapturePreviewLine]
+    public var errors: [CaptureLineError]
+
+    enum CodingKeys: String, CodingKey {
+        case lines, errors
+        case projectID = "project_id"
+    }
+}
+
+/// One structured task to create. The title is literal. `due` and `defer`
+/// are read by the engine's own date readers, so `2026-10-21`, `tomorrow`,
+/// and `+3d` all work.
+public struct CaptureFields: Encodable, Hashable, Sendable {
+    public var projectID: String?
+    public var title: String
+    public var description: String?
+    public var resumeNote: String?
+    public var destination: CaptureDestination?
+    public var priority: Int?
+    public var tags: [String]?
+    public var context: String?
+    public var due: String?
+    public var deferUntil: String?
+    public var pinned: Bool?
+    public var review: Bool?
+
+    public init(
+        title: String, projectID: String? = nil, description: String? = nil, resumeNote: String? = nil,
+        destination: CaptureDestination? = nil, priority: Int? = nil, tags: [String]? = nil,
+        context: String? = nil, due: String? = nil, deferUntil: String? = nil,
+        pinned: Bool? = nil, review: Bool? = nil
+    ) {
+        self.projectID = projectID
+        self.title = title
+        self.description = description
+        self.resumeNote = resumeNote
+        self.destination = destination
+        self.priority = priority
+        self.tags = tags
+        self.context = context
+        self.due = due
+        self.deferUntil = deferUntil
+        self.pinned = pinned
+        self.review = review
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case title, description, destination, priority, tags, context, due, pinned, review
+        case projectID = "project_id"
+        case resumeNote = "resume_note"
+        case deferUntil = "defer"
+    }
+}
+
+/// A structured edit of one task. A nil field keeps the stored value; an
+/// empty string clears a clearable one, and `tags` is the complete new set.
+public struct TaskEdit: Encodable, Hashable, Sendable {
+    public var title: String?
+    public var description: String?
+    public var resumeNote: String?
+    public var priority: Int?
+    public var tags: [String]?
+    public var context: String?
+    public var pinned: Bool?
+    public var review: Bool?
+    public var due: String?
+    public var deferUntil: String?
+
+    public init(
+        title: String? = nil, description: String? = nil, resumeNote: String? = nil, priority: Int? = nil,
+        tags: [String]? = nil, context: String? = nil, pinned: Bool? = nil, review: Bool? = nil,
+        due: String? = nil, deferUntil: String? = nil
+    ) {
+        self.title = title
+        self.description = description
+        self.resumeNote = resumeNote
+        self.priority = priority
+        self.tags = tags
+        self.context = context
+        self.pinned = pinned
+        self.review = review
+        self.due = due
+        self.deferUntil = deferUntil
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case title, description, priority, tags, context, pinned, review, due
+        case resumeNote = "resume_note"
+        case deferUntil = "defer"
+    }
+}
+
+/// The planning boundary's intents. Today and Next exclude each other.
+public enum PlanAction: String, Codable, Sendable, CaseIterable {
+    case addToday = "add_today"
+    case removeToday = "remove_today"
+    case addNext = "add_next"
+    case removeNext = "remove_next"
+    case backlog
+}
+
+/// What the shared engine judged when it refused: a field and why, the two
+/// states of a forbidden move, or the open subtasks blocking a completion.
+public struct RefusalDetails: Decodable, Hashable, Sendable {
+    public struct BlockingChild: Decodable, Hashable, Sendable {
+        public var shortID: Int
+        public var title: String
+        public var state: String
+
+        enum CodingKeys: String, CodingKey {
+            case title, state
+            case shortID = "short_id"
+        }
+    }
+
+    public var kind: String?
+    public var field: String?
+    public var reason: String?
+    public var from: String?
+    public var to: String?
+    public var shortID: Int?
+    public var children: [BlockingChild]?
+    public var line: Int?
+    public var lines: [CaptureLineError]?
+
+    enum CodingKeys: String, CodingKey {
+        case kind, field, reason, from, to, children, line, lines
+        case shortID = "short_id"
+    }
+
+    /// Decodes each field on its own, so a detail another op spells
+    /// differently never costs the ones this client reads.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try? container.decodeIfPresent(String.self, forKey: .kind)
+        field = try? container.decodeIfPresent(String.self, forKey: .field)
+        reason = try? container.decodeIfPresent(String.self, forKey: .reason)
+        from = try? container.decodeIfPresent(String.self, forKey: .from)
+        to = try? container.decodeIfPresent(String.self, forKey: .to)
+        shortID = try? container.decodeIfPresent(Int.self, forKey: .shortID)
+        children = try? container.decodeIfPresent([BlockingChild].self, forKey: .children)
+        line = try? container.decodeIfPresent(Int.self, forKey: .line)
+        lines = try? container.decodeIfPresent([CaptureLineError].self, forKey: .lines)
+    }
+
+    public init() {}
+}
+
 /// A structured engine failure.
 public struct BridgeError: Error, Decodable, Hashable, Sendable, CustomStringConvertible {
     /// The contract's error codes. A code this client does not know decodes as
@@ -295,18 +505,46 @@ public struct BridgeError: Error, Decodable, Hashable, Sendable, CustomStringCon
     public var rawCode: String
     public var message: String
     public var retryable: Bool
+    /// What the engine judged, when it said. Absent for most codes.
+    public var details: RefusalDetails?
 
     public var code: Code { Code(rawValue: rawCode) ?? .unrecognized }
     public var description: String { "\(rawCode): \(message)" }
 
-    public init(rawCode: String, message: String, retryable: Bool) {
+    public init(rawCode: String, message: String, retryable: Bool, details: RefusalDetails? = nil) {
         self.rawCode = rawCode
         self.message = message
         self.retryable = retryable
+        self.details = details
+    }
+
+    /// The refusal in a person's words, built from what the engine judged
+    /// rather than from its message wherever the details say enough.
+    public var explanation: String {
+        guard let details else { return message }
+        if let lines = details.lines, !lines.isEmpty {
+            return lines.map { "Line \($0.line): \($0.message)" }.joined(separator: "\n")
+        }
+        let prefix = details.line.map { "Line \($0): " } ?? ""
+        switch details.kind {
+        case "incomplete_children":
+            let children = (details.children ?? []).map { "#\($0.shortID) \($0.title) (\($0.state))" }
+            let owner = details.shortID.map { "#\($0)" } ?? "This task"
+            return prefix + "\(owner) still has open subtasks: " + children.joined(separator: ", ")
+        case "invalid_transition":
+            return prefix + "Can’t move from \(details.from ?? "?") to \(details.to ?? "?"): \(details.reason ?? message)"
+        case "invalid_input":
+            if let field = details.field, let reason = details.reason {
+                return prefix + "\(field.prefix(1).uppercased() + field.dropFirst()): \(reason)"
+            }
+            return prefix + message
+        default:
+            return prefix + message
+        }
     }
 
     enum CodingKeys: String, CodingKey {
-        case message, retryable
+        case message, retryable, details
         case rawCode = "code"
     }
 }

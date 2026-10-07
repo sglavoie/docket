@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -140,7 +141,7 @@ func (q *QuickEditComponent) dependencyReferences() []models.TaskReference {
 func (q *QuickEditComponent) effectiveProject() *models.Project {
 	parsed := textgrammar.Parse(q.Input.Value(), textgrammar.SurfaceEdit)
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		if project := resolveProject(tokens[0].Value, q.projects); project != nil {
+		if project := capturetext.ResolveProject(tokens[0].Value, q.projects); project != nil {
 			return project
 		}
 	}

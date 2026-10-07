@@ -1,4 +1,4 @@
-package grammar
+package capturetext
 
 import (
 	"slices"
@@ -135,7 +135,7 @@ func (p *quickCaptureParser) parseContextTokens(tokens []textgrammar.Token) {
 // clear value reaches here on purpose: neither surface advertises it, so the
 // refusal has to name the surface rather than let the word fold into the title.
 func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
-	setValues := pinSetValues()
+	setValues := PinSetValues()
 	for _, token := range tokens {
 		if slices.Contains(setValues, token.Value) {
 			p.result.Pinned = true
@@ -153,9 +153,9 @@ func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
 	}
 }
 
-// pinSetValues is the advertised pin vocabulary, read from the registry so the
+// PinSetValues is the advertised pin vocabulary, read from the registry so the
 // accepted value stays owned by the definition instead of spelled out here.
-func pinSetValues() []string {
+func PinSetValues() []string {
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
 	if !ok {
 		return nil
@@ -167,7 +167,7 @@ func pinSetValues() []string {
 // two surfaces and for the same reasons the pin one does: the outline buffer
 // clears by omission, and a captured task starts unflagged.
 func (p *quickCaptureParser) parseReviewTokens(tokens []textgrammar.Token) {
-	setValues := reviewSetValues()
+	setValues := ReviewSetValues()
 	for _, token := range tokens {
 		if slices.Contains(setValues, token.Value) {
 			p.result.Review = true
@@ -185,9 +185,9 @@ func (p *quickCaptureParser) parseReviewTokens(tokens []textgrammar.Token) {
 	}
 }
 
-// reviewSetValues is the advertised review vocabulary, read from the registry
-// for the same reason pinSetValues is.
-func reviewSetValues() []string {
+// ReviewSetValues is the advertised review vocabulary, read from the registry
+// for the same reason PinSetValues is.
+func ReviewSetValues() []string {
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
 	if !ok {
 		return nil
@@ -282,24 +282,24 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		return
 	}
 	for _, token := range tokens {
-		targetProject := resolveProject(token.Value, p.allProjects)
-		if targetProject == nil {
-			hint := projectSlugHint(token.Value, p.allProjects)
+		target := ResolveProject(token.Value, p.allProjects)
+		if target == nil {
+			hint := ProjectSlugHint(token.Value, p.allProjects)
 			if p.failTokenf(token, "project not found: '%s' (%s)", token.Value, hint) {
 				return
 			}
 			continue
 		}
-		p.result.TargetProjectID = &targetProject.ID
-		p.result.targetProjectName = targetProject.Name
-		p.result.targetProject = targetProject
-		p.project = targetProject
+		p.result.TargetProjectID = &target.ID
+		p.result.TargetProjectName = target.Name
+		p.result.TargetProject = target
+		p.project = target
 	}
 }
 
 func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		parent, err := resolveParent(token.Value, p.project)
+		parent, err := ResolveParent(token.Value, p.project)
 		if err != nil {
 			if p.failTokenf(token, "%s", err) {
 				return
@@ -324,7 +324,7 @@ func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 	seen := make(map[string]bool, len(tokens))
 	for _, token := range tokens {
-		child, err := resolveChild(token.Value, p.project)
+		child, err := ResolveChild(token.Value, p.project)
 		if err != nil {
 			if p.failTokenf(token, "%s", err) {
 				return
@@ -351,7 +351,7 @@ func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 			Id:       child.ID,
 			ShortID:  child.ShortID,
 			Title:    child.Title,
-			terminal: child.IsTerminalState(),
+			Terminal: child.IsTerminalState(),
 		})
 	}
 }
@@ -365,7 +365,7 @@ func (p *quickCaptureParser) parseTerminalAdoption() {
 		return
 	}
 	for _, child := range p.result.Children {
-		if child.terminal {
+		if child.Terminal {
 			continue
 		}
 		if p.failf("cannot capture as %s: adopted #%d is incomplete", p.result.Destination, child.ShortID) {

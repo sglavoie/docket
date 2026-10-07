@@ -1,12 +1,9 @@
 package taskform
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"
@@ -14,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -566,100 +564,20 @@ func (m *TaskComposerModel) refreshBatchDiagnostics() {
 }
 
 func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []grammar.LineError) {
-	var lineErrors []grammar.LineError
-	if m.Preset.Project == nil {
-		lineErrors = []grammar.LineError{{Line: 1, Message: "project is unavailable"}}
-		return nil, lineErrors
-	}
+	return capturetext.Requests(m.Input.Value(), m.Preset.Project, m.Preset.AllProjects, m.captureDefaults())
+}
 
-	lines := strings.Split(m.Input.Value(), "\n")
-	reqs := make([]app.CaptureRequest, 0, len(lines))
-	for idx, raw := range lines {
-		line := strings.TrimSpace(raw)
-		if line == "" {
-			continue
-		}
-		parsed, err := grammar.ParseQuickCapture(line, m.Preset.Project, m.Preset.AllProjects, !m.Preset.AllowProjectSwitch)
-		if err != nil {
-			problem := grammar.LineError{Line: idx + 1, Message: err.Error()}
-			var tokenError *grammar.CaptureTokenError
-			if errors.As(err, &tokenError) {
-				leadingBytes := len(raw) - len(strings.TrimLeftFunc(raw, unicode.IsSpace))
-				problem.Column = utf8.RuneCountInString(raw[:leadingBytes]) + tokenError.Column
-			}
-			lineErrors = append(lineErrors, problem)
-			continue
-		}
-		if err := models.ValidateTaskTitle(parsed.Title); err != nil {
-			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
-			continue
-		}
-
-		target := m.Preset.Project
-		if parsed.TargetProjectID != nil {
-			target = m.projectByID(*parsed.TargetProjectID)
-		}
-		if target == nil {
-			lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: "target project is unavailable"})
-			continue
-		}
-
-		priority := parsed.Priority
-		if m.Preset.Shared.Priority != 0 && !parsed.PrioritySet {
-			priority = m.Preset.Shared.Priority
-		}
-		parentID := parsed.ParentID
-		if parentID == nil {
-			parentID = cloneStringPtr(m.Preset.Shared.ParentID)
-		}
-		due := parsed.DueDate
-		if due == nil {
-			due = cloneTime(m.Preset.Shared.Due)
-		}
-		destination := parsed.Destination
-		if !parsed.DestinationSet {
-			destination = m.Preset.defaultDestination(parentID)
-		}
-		if coordinator.DueDateIsToday(due) {
-			destination = app.CaptureDestinationToday
-		}
-		destination = grammar.ComposerDeferredDestination(parsed, destination)
-		req := app.CaptureRequest{
-			SourceLine:   idx + 1,
-			ProjectID:    target.ID,
-			Title:        parsed.Title,
-			Priority:     priority,
-			Tags:         mergeComposerTags(m.Preset.Shared.Tags, parsed.Tags),
-			Context:      parsed.Context,
-			Due:          due,
-			DeferSet:     parsed.DeferSet,
-			Defer:        parsed.DeferUntil,
-			ParentID:     parentID,
-			ChildIDs:     parsed.ChildIDs(),
-			Destination:  destination,
-			Prepend:      true,
-			Pinned:       parsed.Pinned,
-			Review:       parsed.Review,
-			Attachments:  parsed.Attachments,
-			Comments:     parsed.Comments,
-			Dependencies: parsed.DependencyLocators(),
-		}
-		if parentID != nil {
-			if err := validateComposerParent(target, *parentID); err != nil {
-				lineErrors = append(lineErrors, grammar.LineError{Line: idx + 1, Message: err.Error()})
-				continue
-			}
-		}
-		reqs = append(reqs, req)
+// captureDefaults is the preset's half of every line: the shared values a line's
+// own tokens override, read by the one request builder the bridge also uses.
+func (m *TaskComposerModel) captureDefaults() capturetext.Defaults {
+	return capturetext.Defaults{
+		Priority:    m.Preset.Shared.Priority,
+		Tags:        m.Preset.Shared.Tags,
+		ParentID:    m.Preset.Shared.ParentID,
+		Due:         m.Preset.Shared.Due,
+		Destination: m.Preset.Shared.Destination,
+		SkipProject: !m.Preset.AllowProjectSwitch,
 	}
-
-	if len(reqs) == 0 && len(lineErrors) == 0 {
-		lineErrors = []grammar.LineError{{Line: 1, Message: "no tasks to create"}}
-	}
-	if len(lineErrors) > 0 {
-		return nil, lineErrors
-	}
-	return reqs, nil
 }
 
 // ParseCaptureText reads text exactly as the compact composer would on

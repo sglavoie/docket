@@ -15,6 +15,7 @@
 #   TT_IOS_SIMULATOR        simulator UDID (default: the first available
 #                           iPhone on an iOS 18 or later runtime)
 #   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
+#   TT_UITEST_ONLY          one UI test class to run (default: every class)
 
 set -eu
 
@@ -69,7 +70,7 @@ TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
 	xcodebuild test \
 	-project "$ios_dir/TTMobile.xcodeproj" \
 	-scheme TTMobile \
-	-only-testing:TTMobileUITests \
+	-only-testing:"TTMobileUITests${TT_UITEST_ONLY:+/$TT_UITEST_ONLY}" \
 	-destination "platform=iOS Simulator,id=$simulator" \
 	-derivedDataPath "$cache_root/UIDerivedData" \
 	-resultBundlePath "$output/TTMobileUITests.xcresult" \

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -57,9 +58,9 @@ func QuickEditParentCandidates(input string, task *models.Task, source *models.P
 	effective := source
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
 		projects := flattenProjectSets(source, [][]*models.Project{allProjects})
-		effective = resolveProject(tokens[0].Value, projects)
+		effective = capturetext.ResolveProject(tokens[0].Value, projects)
 		if effective == nil {
-			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, projects))
+			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, capturetext.ProjectSlugHint(tokens[0].Value, projects))
 		}
 	}
 	return ValidQuickEditParents(task, source, effective), ""
@@ -83,9 +84,9 @@ func QuickEditChildCandidates(input string, task *models.Task, source *models.Pr
 	draft := &QuickEditResult{ParentMode: QuickEditParentPreserve}
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
 		projects := flattenProjectSets(source, [][]*models.Project{allProjects})
-		effective = resolveProject(tokens[0].Value, projects)
+		effective = capturetext.ResolveProject(tokens[0].Value, projects)
 		if effective == nil {
-			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, projectSlugHint(tokens[0].Value, projects))
+			return nil, fmt.Sprintf("project not found: %q (%s)", tokens[0].Value, capturetext.ProjectSlugHint(tokens[0].Value, projects))
 		}
 		draft.ParentMode = QuickEditParentRoot
 	}
@@ -97,7 +98,7 @@ func QuickEditChildCandidates(input string, task *models.Task, source *models.Pr
 	}
 	adopted := map[string]bool{}
 	for _, token := range parsed.TokensFor(textgrammar.FieldChild) {
-		child, err := resolveChild(token.Value, effective)
+		child, err := capturetext.ResolveChild(token.Value, effective)
 		if err != nil || child == nil || adopted[child.ID] {
 			continue
 		}
@@ -123,7 +124,7 @@ func draftedQuickEditParent(value string, task *models.Task, source, effective *
 	if value == "0" {
 		return QuickEditParentRoot, nil
 	}
-	parent, err := resolveParent(value, effective)
+	parent, err := capturetext.ResolveParent(value, effective)
 	if err != nil || parent == nil || InvalidQuickEditParent(task, source, effective, parent) != "" {
 		return mode, nil
 	}

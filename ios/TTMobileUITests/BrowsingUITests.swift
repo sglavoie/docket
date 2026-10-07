@@ -346,8 +346,8 @@ final class BrowsingUITests: XCTestCase {
         require(app.staticTexts["state.empty"], "Inbox's empty state")
 
         app.buttons["capture.open"].tap()
-        let title = app.textFields["capture.title"].firstMatch
-        let field = title.exists ? title : app.textViews["capture.title"].firstMatch
+        let title = app.textFields["capture.text"].firstMatch
+        let field = title.waitForExistence(timeout: 5) ? title : app.textViews["capture.text"].firstMatch
         require(field, "the capture field")
         field.typeText("Buy milk")
         app.buttons["capture.save"].tap()

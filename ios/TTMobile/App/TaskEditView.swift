@@ -1,0 +1,94 @@
+import SwiftUI
+import TTEngine
+
+/// Edits one task's daily fields in one transaction. Only what the person
+/// changed is sent, measured against the task as it stood when editing
+/// began, and the draft is kept on this device until a save commits or Cancel
+/// discards it — a refused save or an interrupted session reopens on the same
+/// changes.
+struct TaskEditSheet: View {
+    let workspace: WorkspaceModel
+    let task: TaskSnapshot
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: EditDraft?
+    @State private var restored = false
+    @State private var failure: String?
+    @State private var saving = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if restored {
+                    Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("edit.restored")
+                }
+                if let failure {
+                    Text(failure)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("edit.failure")
+                }
+                if draft != nil {
+                    TaskFieldsForm(fields: fieldsBinding)
+                }
+            }
+            .navigationTitle("Edit Task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        workspace.drafts?.discardEdit(task.locator)
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("edit.cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { save() }
+                        .disabled(saving || draft == nil)
+                        .accessibilityIdentifier("edit.save")
+                }
+            }
+            .task {
+                guard draft == nil else { return }
+                if let saved = workspace.drafts?.loadEdit(task.locator), saved.fields != saved.original {
+                    draft = saved
+                    restored = true
+                } else {
+                    let original = TaskFields(task)
+                    draft = EditDraft(original: original, fields: original)
+                }
+            }
+            .onChange(of: draft) { _, draft in
+                guard let draft else { return }
+                if draft.fields == draft.original {
+                    workspace.drafts?.discardEdit(task.locator)
+                } else {
+                    workspace.drafts?.saveEdit(draft, for: task.locator)
+                }
+            }
+        }
+    }
+
+    private var fieldsBinding: Binding<TaskFields> {
+        Binding(
+            get: { draft?.fields ?? TaskFields() },
+            set: { draft?.fields = $0 }
+        )
+    }
+
+    private func save() {
+        guard let draft else { return }
+        saving = true
+        Task {
+            let refusal = await workspace.edit(task.locator, draft.fields.edit(from: draft.original))
+            saving = false
+            if let refusal {
+                failure = refusal
+                return
+            }
+            workspace.drafts?.discardEdit(task.locator)
+            dismiss()
+        }
+    }
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -102,7 +103,7 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 			t.Errorf("%s validation examples = %d, want %d", definition.Field, len(entry.validation), len(definition.Examples))
 		}
 		for _, input := range entry.validation {
-			if _, err := ParseQuickCapture(input, project, []*models.Project{routed}, false); err != nil {
+			if _, err := capturetext.ParseQuickCapture(input, project, []*models.Project{routed}, false); err != nil {
 				t.Errorf("registry-backed syntax example %q does not parse: %v", input, err)
 			}
 		}

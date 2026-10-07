@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -29,7 +30,7 @@ func (q *QuickCaptureInput) UpdatePreview() {
 		q.PreviewErr = ""
 		return
 	}
-	q.Preview, q.PreviewErr = ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.skipProjectSyntax)
+	q.Preview, q.PreviewErr = capturetext.ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.skipProjectSyntax)
 	if q.Preview == nil || q.PreviewErr != "" || q.Preview.Title == "" {
 		return
 	}
@@ -41,7 +42,7 @@ func (q *QuickCaptureInput) UpdatePreview() {
 		if i == q.Input.Line() || strings.TrimSpace(line) == "" {
 			continue
 		}
-		other, err := ParseQuickCapture(line, q.Project, q.allProjects, q.skipProjectSyntax)
+		other, err := capturetext.ParseQuickCapture(line, q.Project, q.allProjects, q.skipProjectSyntax)
 		if err != nil {
 			continue
 		}
@@ -54,8 +55,8 @@ func (q *QuickCaptureInput) UpdatePreview() {
 }
 
 func (q *QuickCaptureInput) capturePreviewProject(result *QuickCaptureResult) *models.Project {
-	if result.targetProject != nil {
-		return result.targetProject
+	if result.TargetProject != nil {
+		return result.TargetProject
 	}
 	return q.Project
 }
@@ -98,7 +99,7 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	// The deferral route runs through the same helper the submitted request uses,
 	// so the preview never promises a landing place the capture will not honor.
 	deferred := false
-	if routed := ComposerDeferredDestination(q.Preview, destination); routed != destination {
+	if routed := capturetext.ComposerDeferredDestination(q.Preview, destination); routed != destination {
 		destination, deferred = routed, true
 	}
 	previewTask := &models.Task{
@@ -131,8 +132,8 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	// under its Plan and Status labels, so the preview names the token alone
 	// rather than saying the same two words a second time.
 	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
-	if q.Preview.targetProjectName != "" {
-		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.targetProject).Render(q.Preview.targetProjectName))
+	if q.Preview.TargetProjectName != "" {
+		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.TargetProject).Render(q.Preview.TargetProjectName))
 	}
 	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
 
@@ -150,10 +151,10 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	// Depends follows Children because both name other tasks, and it states one
 	// chunk per reference for the same reason: the parser already deduped aliases
 	// in first-reference order, so the group is also the count.
-	if len(q.Preview.dependencies) > 0 {
+	if len(q.Preview.DependencyRefs) > 0 {
 		dependencyDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
-		dependencyChunks := make([]string, len(q.Preview.dependencies))
-		for i, ref := range q.Preview.dependencies {
+		dependencyChunks := make([]string, len(q.Preview.DependencyRefs))
+		for i, ref := range q.Preview.DependencyRefs {
 			dependencyChunks[i] = dependencyDefinition.Trigger + ref.Label()
 		}
 		groups = append(groups, previewGroup{label: "Depends", chunks: dependencyChunks})
@@ -420,8 +421,8 @@ func (q *QuickCaptureInput) MatchingCaptureTasks() ([]*models.Task, *models.Proj
 		return nil, nil
 	}
 	project := q.Project
-	if q.Preview.targetProject != nil {
-		project = q.Preview.targetProject
+	if q.Preview.TargetProject != nil {
+		project = q.Preview.TargetProject
 	}
 	if project == nil {
 		return nil, nil

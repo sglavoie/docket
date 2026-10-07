@@ -4,7 +4,13 @@
 // none; the protocol itself lives in internal/bridge.
 package ttbridge
 
-import "github.com/sglavoie/tt/internal/bridge"
+import (
+	// An iOS process has no zoneinfo the Go runtime can read, so the time
+	// zone workspace.open names is resolved from the embedded database.
+	_ "time/tzdata"
+
+	"github.com/sglavoie/tt/internal/bridge"
+)
 
 var shared = bridge.New(bridge.Options{})
 

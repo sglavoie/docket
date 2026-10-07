@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -174,7 +175,7 @@ func TestDuplicateCaptureHintUsesParsedTitleAndResolvedProject(t *testing.T) {
 				t.Fatalf("hint = %q, want %q", got, tc.want)
 			}
 			if tc.want != "" {
-				if _, err := ParseQuickCapture(tc.draft, home, []*models.Project{home, web}, false); err != nil {
+				if _, err := capturetext.ParseQuickCapture(tc.draft, home, []*models.Project{home, web}, false); err != nil {
 					t.Fatalf("duplicate blocked capture: %v", err)
 				}
 				if !strings.Contains(ansi.Strip(q.renderPreview()), tc.want) || !strings.Contains(ansi.Strip(q.renderCompactPreview()), tc.want) {
@@ -277,7 +278,7 @@ func TestBatchDuplicateCaptureHintFollowsParsedTitleProjectAndCaret(t *testing.T
 					if strings.TrimSpace(line) == "" {
 						continue
 					}
-					if _, err := ParseQuickCapture(line, home, []*models.Project{home, web}, false); err != nil {
+					if _, err := capturetext.ParseQuickCapture(line, home, []*models.Project{home, web}, false); err != nil {
 						t.Fatalf("advisory blocked valid capture: %v", err)
 					}
 				}

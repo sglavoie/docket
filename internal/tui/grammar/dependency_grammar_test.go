@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -133,7 +134,7 @@ func TestCaptureResolvesDependencyAliasesInEveryForm(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseQuickCapture(tt.input, home, projects, false)
+			result, err := capturetext.ParseQuickCapture(tt.input, home, projects, false)
 			if err != nil {
 				t.Fatalf("parseQuickCapture(%q): %v", tt.input, err)
 			}
@@ -153,7 +154,7 @@ func TestCaptureResolvesBareAliasesAgainstTheRoutedProject(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	projects := []*models.Project{home, routed}
 
-	result, err := ParseQuickCapture("New work %routed ~1", home, projects, false)
+	result, err := capturetext.ParseQuickCapture("New work %routed ~1", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
@@ -162,7 +163,7 @@ func TestCaptureResolvesBareAliasesAgainstTheRoutedProject(t *testing.T) {
 	}
 
 	// A qualified alias is unaffected by the route, and reaches back home.
-	result, err = ParseQuickCapture("New work %routed ~home:2", home, projects, false)
+	result, err = capturetext.ParseQuickCapture("New work %routed ~home:2", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
@@ -190,7 +191,7 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseQuickCapture(tt.input, home, projects, false)
+			_, err := capturetext.ParseQuickCapture(tt.input, home, projects, false)
 			if err == nil {
 				t.Fatalf("parseQuickCapture(%q) accepted the line", tt.input)
 			}
@@ -205,7 +206,7 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 // tilde only opens a reference where a sigil may start.
 func TestCaptureLeavesProseTildesAlone(t *testing.T) {
 	home, routed := dependencyWorkspace()
-	result, err := ParseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
+	result, err := capturetext.ParseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}

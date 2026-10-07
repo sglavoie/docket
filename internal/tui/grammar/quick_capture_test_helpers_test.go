@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -49,7 +50,7 @@ func runQuickCaptureParseTests(t *testing.T, tests []quickCaptureParseTestCase) 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseQuickCapture(tt.input, project, nil, false)
+			result, err := capturetext.ParseQuickCapture(tt.input, project, nil, false)
 
 			if tt.wantErr {
 				if err == nil {
