@@ -1,0 +1,50 @@
+{
+  "builds": {
+    "app_executables": "tt=sha256:3fafbb245c9f2074e0aea884c4ce9576850887861374a73880990a7df148c9b0;tt.debug.dylib=sha256:525a31f233b4902f7865e7a163d41675eead8e817ca26e8d72bc6cbd3fc91877",
+    "bridge_fingerprint": "064759834a8962d17ecccf34e90bb453de13a2b276a941364428bdbd77e819ca",
+    "source_fingerprint": "ea35bb112dd8078c5d297264eb53c57c710ba5a1d7e27b14c7d4b182261cc208",
+    "xcode": "Xcode 27.0 Build version 27A266a"
+  },
+  "format": "tt-mobile-reminder-evidence",
+  "format_version": 1,
+  "iphone": {
+    "model": "iPhone 13 Pro",
+    "model_identifier": "iPhone14,2",
+    "name": "Be Aware",
+    "os_version": "27.0.1",
+    "reality": "physical",
+    "udid": "00008110-00167DCE260A801E"
+  },
+  "mac": {
+    "model": "Mac14,14",
+    "os_version": "27.0.1"
+  },
+  "recorded_at": "2026-10-07T17:47:44Z",
+  "run_id": "20261007T174350Z",
+  "xcresult": {
+    "devices": [
+      "00008110-00167DCE260A801E"
+    ],
+    "failed": 0,
+    "passed": 3,
+    "result": "Passed",
+    "skipped": 0,
+    "tests": [
+      {
+        "duration": 105.38165700435638,
+        "name": "testAcknowledgingACheckInFromItsNotification()",
+        "result": "Passed"
+      },
+      {
+        "duration": 44.835394978523254,
+        "name": "testDeferringFromADeferralNotification()",
+        "result": "Passed"
+      },
+      {
+        "duration": 45.357216000556946,
+        "name": "testTappingANotificationOpensItsTask()",
+        "result": "Passed"
+      }
+    ]
+  }
+}
