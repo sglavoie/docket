@@ -34,7 +34,10 @@ type openWorkspace struct {
 	runtime  *engine.Runtime
 	id       string
 	deviceID string
-	replay   *replayCache
+	// runtimeDir is the device's machine-local directory, the one place an
+	// attachment's staged bytes may be handed over from.
+	runtimeDir string
+	replay     *replayCache
 }
 
 // New returns a bridge with no workspace open.
@@ -72,6 +75,11 @@ var operations = map[string]op{
 	"command.hierarchy":     {mutates: true, run: (*Bridge).commandHierarchy},
 	"command.bulk":          {mutates: true, run: (*Bridge).commandBulk},
 	"command.project":       {mutates: true, run: (*Bridge).commandProject},
+	"query.notes":           {run: (*Bridge).queryNotes},
+	"query.note":            {run: (*Bridge).queryNote},
+	"command.comment":       {mutates: true, run: (*Bridge).commandComment},
+	"command.note":          {mutates: true, run: (*Bridge).commandNote},
+	"command.attachment":    {mutates: true, run: (*Bridge).commandAttachment},
 	"sync.status":           {run: (*Bridge).syncStatus},
 	"sync.export_pending":   {run: (*Bridge).syncExportPending},
 	"sync.import":           {mutates: true, run: (*Bridge).syncImport},
@@ -82,9 +90,7 @@ var operations = map[string]op{
 // answer unknown_op with details.reserved, so a client can tell an op this
 // build lacks from one the protocol never had.
 var reservedOperations = map[string]bool{
-	"query.notes": true, "query.note": true,
-	"command.comment": true, "command.note": true,
-	"command.attachment": true, "command.undo": true, "command.redo": true,
+	"command.undo": true, "command.redo": true,
 	"conflict.list": true, "conflict.show": true, "conflict.resolve": true,
 }
 

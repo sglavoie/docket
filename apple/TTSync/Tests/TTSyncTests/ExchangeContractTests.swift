@@ -302,6 +302,59 @@ final class ExchangeContractTests: XCTestCase {
         XCTAssertEqual(try SeedTransfer.workspaceDigest(phone.dataDirectory), after)
     }
 
+    /// An explicit download asks the provider for exactly the content a
+    /// person is waiting on, and retries now a transfer the queue had put off,
+    /// rather than at its backoff.
+    func testExplicitDownloadRequestsUnavailableContentNow() throws {
+        let cloud = FakeCloud()
+        let clock = TestClock()
+        let run = "explicit-download"
+        let pause = { cloud.advance() }
+        let (mac, phone) = try seededPair(
+            run: run, originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run), clock: clock, pause: pause
+        )
+        let attachment = "projects/atlas-launch/.attachments/scan.pdf"
+        let contents = String(repeating: "scan ", count: 400)
+        let before = Set(cloud.paths())
+        try mac.writeWorkspaceFile(attachment, contents: contents)
+        try mac.exchange(until: { try mac.published() }, describe: "publish", timeout: 30, pause: pause)
+        let blob = "\(run)/\(ExchangeTransport.root)/\(ExchangeTransport.blobPath(contentDigest(Data(contents.utf8))))"
+        let manifest = try XCTUnwrap(cloud.paths().first { !before.contains($0) && $0.contains("/txns/") })
+
+        // The blob keeps arriving short: the attachment is unavailable, and a
+        // request for another path asks for nothing.
+        cloud.truncatedReads[blob] = 1_000
+        try phone.exchange(until: { try phone.transport.state().downloads.contains { $0.unavailable.contains(attachment) } },
+                           describe: "the attachment to be reported unavailable", timeout: 30, pause: pause)
+        let requestsBefore = cloud.downloadRequests
+        XCTAssertEqual(try phone.transport.requestDownloads(paths: ["projects/other/.attachments/x"]), 0)
+        XCTAssertEqual(cloud.downloadRequests, requestsBefore)
+        XCTAssertEqual(try phone.transport.requestDownloads(paths: [attachment]), 1)
+        XCTAssertGreaterThan(cloud.downloadRequests, requestsBefore, "the waiting content was not requested")
+        cloud.truncatedReads[blob] = 0
+        try phone.exchange(until: { phone.workspaceFile(attachment) == contents }, describe: "the attachment", timeout: 30, pause: pause)
+
+        // A manifest that read short is put off by the backoff; the frozen
+        // clock never lets it retry on its own, and an explicit download does.
+        try mac.writeWorkspaceFile("projects/atlas-launch/.attachments/second.txt", contents: "second")
+        let known = Set(cloud.paths())
+        try mac.exchange(until: { try mac.published() }, describe: "publish again", timeout: 30, pause: pause)
+        let second = try XCTUnwrap(cloud.paths().first { !known.contains($0) && $0.contains("/txns/") })
+        XCTAssertNotEqual(second, manifest)
+        cloud.truncatedReads[second] = 1
+        try phone.exchange(until: { try phone.transport.state().downloads.contains { $0.nextAttempt != nil } },
+                           describe: "the short manifest to back off", timeout: 30, pause: pause)
+        for _ in 0..<3 {
+            pause()
+            XCTAssertTrue(try phone.transport.exchange().imported.isEmpty, "a backed-off transfer retried before its delay")
+        }
+        XCTAssertEqual(try phone.transport.requestDownloads(), 1)
+        XCTAssertNil(try phone.transport.state().downloads.first?.nextAttempt)
+        try phone.exchange(until: { phone.workspaceFile("projects/atlas-launch/.attachments/second.txt") == "second" },
+                           describe: "the explicitly requested transfer", timeout: 30, pause: pause)
+    }
+
     func testForeignExchangeIsRefused() throws {
         let cloud = FakeCloud()
         let run = "foreign"

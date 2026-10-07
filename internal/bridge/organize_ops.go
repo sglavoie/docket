@@ -500,6 +500,9 @@ type impactView struct {
 type projectDetail struct {
 	Project projectView `json:"project"`
 	Impact  impactView  `json:"impact"`
+	// Comments are the project's own comments in stored order; an archived
+	// project reports none.
+	Comments []commentView `json:"comments"`
 }
 
 type projectPayload struct {
@@ -529,9 +532,14 @@ func (b *Bridge) readProject(projectID string) (projectDetail, error) {
 	if err != nil {
 		return projectDetail{}, err
 	}
+	comments, err := b.projectComments(projectID)
+	if err != nil {
+		return projectDetail{}, err
+	}
 	return projectDetail{
-		Project: viewProject(runtime.State(), project),
-		Impact:  impactView{Tasks: impact.Tasks, Notes: impact.Notes, Attachments: impact.Attachments, Digest: digest},
+		Project:  viewProject(runtime.State(), project),
+		Impact:   impactView{Tasks: impact.Tasks, Notes: impact.Notes, Attachments: impact.Attachments, Digest: digest},
+		Comments: comments,
 	}, nil
 }
 

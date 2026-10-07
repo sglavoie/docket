@@ -20,6 +20,7 @@ struct ProjectSettingsView: View {
     @State private var confirmingPark = false
     @State private var confirmingArchive = false
     @State private var confirmingDelete = false
+    @State private var commentRequest: CommentRequest?
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,24 @@ struct ProjectSettingsView: View {
                 }
                 if let detail {
                     fields(detail.project)
+                    if !detail.project.archived {
+                        CommentsSection(
+                            comments: (detail.comments ?? []).reversed(),
+                            compose: { editing in commentRequest = CommentRequest(owner: .project(projectID), editing: editing) },
+                            delete: { comment in
+                                Task {
+                                    failure = await workspace.comment(.project(projectID), .delete(comment))
+                                    await load()
+                                }
+                            }
+                        )
+                        Section("Notes") {
+                            NavigationLink(value: Route.notes(.project(projectID))) {
+                                Label("Project Notes", systemImage: "note.text")
+                            }
+                            .accessibilityIdentifier("project.notes")
+                        }
+                    }
                     if !detail.project.systemUnfiled {
                         lifecycle(detail)
                     }
@@ -51,7 +70,18 @@ struct ProjectSettingsView: View {
                         .accessibilityIdentifier("project.save")
                 }
             }
-            .task { await load() }
+            .task(id: workspace.generation) { await load() }
+            .sheet(item: $commentRequest) { request in
+                CommentEditorSheet(workspace: workspace, request: request)
+            }
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .notes(let location): NotesListView(workspace: workspace, location: location)
+                case .note(let location, let filename): NoteEditorView(workspace: workspace, location: location, filename: filename)
+                case .list(let source): TaskListView(workspace: workspace, source: source)
+                case .task(let locator): TaskDetailView(workspace: workspace, locator: locator)
+                }
+            }
         }
     }
 

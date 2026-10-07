@@ -148,6 +148,23 @@ final class SyncModel {
         }
     }
 
+    /// Asks for content a person is waiting on now: the queued transfers
+    /// whose unavailable paths include one of `paths` (every queued one when
+    /// nil) skip their retry delay and request their missing files from
+    /// iCloud, then an exchange runs.
+    func download(paths: [String]?) {
+        guard hasFolder, let transport else { return }
+        Task.detached(priority: .userInitiated) {
+            _ = try? transport.requestDownloads(paths: paths)
+            await MainActor.run { self.exchange() }
+        }
+    }
+
+    /// Whether content for `path` is known to be on its way.
+    func isArriving(_ path: String) -> Bool {
+        unavailable.contains(path)
+    }
+
     private func finish(_ outcome: Result<ExchangeReport, Error>, conflicts: Int) {
         isExchanging = false
         self.conflicts = conflicts

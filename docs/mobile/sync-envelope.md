@@ -435,6 +435,13 @@ macOS helper (`tt-sync-helper`, which drives a desktop engine running as
   copies each blob into the inbox only when its digest matches, and stages
   the manifest last, once nothing it names is missing. A short read from a
   transfer still in progress never counts as content.
+- **Explicit download.** `requestDownloads(paths:)` is the person asking for
+  content now: each queued download whose unavailable workspace paths include
+  one named (every queued one when none is named) has its backoff cleared and
+  each manifest or blob it still misses requested from the provider, and the
+  next pass stages and imports what arrived. The iPhone's attachment rows
+  call it from their Download action, and match the unavailable paths against
+  a task's `attachment_dir` to show content still on its way.
 - **Durable queues.** `transport.json` under the runtime directory records each
   upload's verified files and each download's staged blobs, attempts, and
   backoff. It is rewritten atomically after every step, so a restart resumes

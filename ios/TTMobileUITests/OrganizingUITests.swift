@@ -157,9 +157,13 @@ final class OrganizingUITests: XCTestCase {
     private func press(_ app: XCUIApplication, _ identifier: String) {
         let button = app.buttons[identifier].firstMatch
         // A list draws only the rows near the screen, so a control further
-        // down exists only once it is scrolled toward.
+        // down exists only once it is scrolled toward, and one above the rows
+        // in view only once the list is scrolled back.
         for _ in 0..<5 where !button.waitForExistence(timeout: 2) {
             app.swipeUp()
+        }
+        for _ in 0..<8 where !button.waitForExistence(timeout: 2) {
+            app.swipeDown()
         }
         require(button, identifier)
         for _ in 0..<4 where !button.isHittable {

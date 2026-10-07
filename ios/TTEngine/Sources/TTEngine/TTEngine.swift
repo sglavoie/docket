@@ -262,6 +262,14 @@ public actor TTEngine {
 
     // MARK: Transport
 
+    /// One addressed request, for the op families declared beside their own
+    /// models in other files.
+    func call<Payload: Encodable, Result: Decodable>(
+        _ op: String, payload: Payload, requestID: String = UUID().uuidString
+    ) throws -> Result {
+        try send(op, payload: payload, requestID: requestID)
+    }
+
     private func send<Payload: Encodable, Result: Decodable>(
         _ op: String,
         payload: Payload,

@@ -30,6 +30,19 @@ struct DraftStore: Sendable {
     func saveEdit(_ draft: EditDraft, for locator: TaskLocator) { save(draft, to: editFile(locator)) }
     func discardEdit(_ locator: TaskLocator) { try? FileManager.default.removeItem(at: editFile(locator)) }
 
+    private func keyedFile(_ prefix: String, _ key: String) -> URL {
+        let name = "\(prefix)-\(key)".map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
+        return directory.appendingPathComponent(String(name) + ".json")
+    }
+
+    func loadComment(_ key: String) -> CommentDraft? { load(keyedFile("comment", key)) }
+    func saveComment(_ draft: CommentDraft, for key: String) { save(draft, to: keyedFile("comment", key)) }
+    func discardComment(_ key: String) { try? FileManager.default.removeItem(at: keyedFile("comment", key)) }
+
+    func loadNote(_ key: String) -> NoteDraft? { load(keyedFile("note", key)) }
+    func saveNote(_ draft: NoteDraft, for key: String) { save(draft, to: keyedFile("note", key)) }
+    func discardNote(_ key: String) { try? FileManager.default.removeItem(at: keyedFile("note", key)) }
+
     private func load<Draft: Decodable>(_ file: URL) -> Draft? {
         guard let data = try? Data(contentsOf: file) else { return nil }
         return try? JSONDecoder().decode(Draft.self, from: data)
@@ -171,4 +184,24 @@ extension TaskFields {
 struct EditDraft: Codable, Equatable, Sendable {
     var original: TaskFields
     var fields: TaskFields
+}
+
+/// A comment being written or edited: the comment as read when editing
+/// began (nil for a new one) and the text so far.
+struct CommentDraft: Codable, Equatable, Sendable {
+    var editingIndex: Int?
+    var editingID: String?
+    var original: String?
+    var text: String
+}
+
+/// A note being written or edited: the revision it was read at (nil for a
+/// new one), so a save after another device's edit is refused rather than
+/// overwriting it, and the title and body so far.
+struct NoteDraft: Codable, Equatable, Sendable {
+    var location: NoteLocation
+    var filename: String?
+    var revision: String?
+    var title: String
+    var body: String
 }

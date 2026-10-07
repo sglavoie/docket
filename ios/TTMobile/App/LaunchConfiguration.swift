@@ -13,6 +13,13 @@ struct LaunchConfiguration: Sendable {
     let openDelay: Duration
     let exchangeOverride: URL?
     let deviceIDOverride: String?
+    /// A file a UI test hands over in place of the Files picker, which
+    /// XCUITest cannot drive. The import pipeline is the same from there on.
+    let importSourceOverride: URL?
+    /// Stops every attachment import after it is staged and recorded, as a
+    /// termination before the commit would, so a UI test can relaunch and
+    /// watch the import resume.
+    let holdImportsBeforeCommit: Bool
 
     static let current = LaunchConfiguration(environment: ProcessInfo.processInfo.environment)
 
@@ -30,6 +37,8 @@ struct LaunchConfiguration: Sendable {
         openDelay = .milliseconds(Int(environment["TT_UITEST_OPEN_DELAY_MS"] ?? "") ?? 0)
         exchangeOverride = environment["TT_UITEST_EXCHANGE_DIR"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
         deviceIDOverride = environment["TT_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
+        importSourceOverride = environment["TT_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+        holdImportsBeforeCommit = environment["TT_UITEST_HOLD_IMPORTS"] == "1"
     }
 
     private var selectionFile: URL { root.appendingPathComponent("selected-workspace") }

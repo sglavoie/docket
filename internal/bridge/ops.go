@@ -68,14 +68,14 @@ func (b *Bridge) workspaceOpen(request Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := b.adopt(runtime, payload.DeviceID); err != nil {
+	if err := b.adopt(runtime, payload.DeviceID, payload.RuntimeDir); err != nil {
 		return nil, err
 	}
 	return b.status()
 }
 
 // adopt makes an opened runtime the bridge's one workspace.
-func (b *Bridge) adopt(runtime *engine.Runtime, deviceID string) error {
+func (b *Bridge) adopt(runtime *engine.Runtime, deviceID, runtimeDir string) error {
 	if _, err := runtime.ReconcilePlanning(); err != nil {
 		return err
 	}
@@ -84,10 +84,11 @@ func (b *Bridge) adopt(runtime *engine.Runtime, deviceID string) error {
 		return newError(CodeInternal, "workspace at %s carries no identity", runtime.DataDir())
 	}
 	b.workspace = &openWorkspace{
-		runtime:  runtime,
-		id:       catalog.WorkspaceID,
-		deviceID: deviceID,
-		replay:   newReplayCache(),
+		runtime:    runtime,
+		id:         catalog.WorkspaceID,
+		deviceID:   deviceID,
+		runtimeDir: runtimeDir,
+		replay:     newReplayCache(),
 	}
 	return nil
 }
@@ -143,7 +144,7 @@ func (b *Bridge) workspaceJoin(request Request) (any, error) {
 		}
 		return nil, refusal
 	}
-	if adoptErr := b.adopt(runtime, payload.DeviceID); adoptErr != nil {
+	if adoptErr := b.adopt(runtime, payload.DeviceID, payload.RuntimeDir); adoptErr != nil {
 		return nil, adoptErr
 	}
 	status, err := b.status()
@@ -339,6 +340,11 @@ type taskResult struct {
 	// planning state the Today and Next modes list.
 	Today bool `json:"today"`
 	Next  bool `json:"next"`
+	// Comments and Attachments are the task's rich records whole, and
+	// AttachmentDir the workspace path its attachment bytes live under.
+	Comments      []commentView    `json:"comments"`
+	Attachments   []attachmentView `json:"attachments"`
+	AttachmentDir string           `json:"attachment_dir"`
 }
 
 // queryTask reads one task by its qualified identity, with the canonical
@@ -376,6 +382,10 @@ func (b *Bridge) readTask(target app.TaskLocator) (taskResult, error) {
 		Relations: taskRelations(snapshot, ref.Project, ref.Task),
 		Today:     plannedIn(state.Planning().GetToday(), target),
 		Next:      plannedIn(state.NextOrder(), target),
+
+		Comments:      viewTaskComments(ref.Task),
+		Attachments:   viewAttachments(runtime.DataDir(), ref.Project, ref.Task),
+		AttachmentDir: attachmentDir(runtime.DataDir(), ref.Project, ref.Task),
 	}, nil
 }
 

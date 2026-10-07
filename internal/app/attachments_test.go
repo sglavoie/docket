@@ -379,3 +379,53 @@ func TestRemoveAttachmentUndoRedoAcceptance(t *testing.T) {
 		t.Fatalf("sibling attachment removed by redo: %q", got)
 	}
 }
+
+// TestImportAttachmentRecordsNoTemporaryPath holds a staged import to the
+// workspace bytes alone: the copy op reads the staged file, the attachment is
+// named as the person picked it, and the temporary staging path is recorded
+// nowhere, so nothing points at storage that will be swept.
+func TestImportAttachmentRecordsNoTemporaryPath(t *testing.T) {
+	task := newTask("t1", 1, "Task")
+	project := newProject("p1", "Alpha", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	staged := "/device/runtime/attachment-imports/4f0c/IMG_0001.HEIC"
+	if _, err := svc.ImportAttachment(repo.loc(task.ID), staged, "Whiteboard.HEIC"); err != nil {
+		t.Fatalf("ImportAttachment: %v", err)
+	}
+	if len(task.Attachments) != 1 {
+		t.Fatalf("expected one attachment, got %+v", task.Attachments)
+	}
+	attachment := task.Attachments[0]
+	if attachment.Filename != "Whiteboard.HEIC" || attachment.OriginalPath != "" || attachment.IsURL || attachment.IsCodeRef {
+		t.Fatalf("the import recorded %+v", attachment)
+	}
+	cs, ok := repo.lastCommit()
+	if !ok || len(cs.AttachmentOps) != 1 {
+		t.Fatalf("expected one committed copy op, got %+v", cs)
+	}
+	op := cs.AttachmentOps[0]
+	if op.Kind != storage.AttachmentCopy || op.SourcePath != staged || op.Filename != "Whiteboard.HEIC" || op.DestProject != project {
+		t.Fatalf("unexpected copy op: %+v", op)
+	}
+	if cs.UndoAction != "Attach File" {
+		t.Errorf("UndoAction = %q, want Attach File", cs.UndoAction)
+	}
+}
+
+// TestImportAttachmentCommitsNothingWhenRefused: a name the canonical writer
+// would refuse aborts before any metadata or byte is staged.
+func TestImportAttachmentCommitsNothingWhenRefused(t *testing.T) {
+	for _, name := range []string{"", "..", "a/b.txt", "bad;name.txt"} {
+		task := newTask("t1", 1, "Task")
+		repo := newFakeRepo(newProject("p1", "Alpha", task))
+		svc := newTestService(repo)
+		if _, err := svc.ImportAttachment(repo.loc(task.ID), "/device/runtime/attachment-imports/x/file", name); err == nil {
+			t.Errorf("ImportAttachment(%q) succeeded", name)
+		}
+		if len(task.Attachments) != 0 || len(repo.commits) != 0 {
+			t.Errorf("ImportAttachment(%q) left attachments=%v commits=%d", name, task.Attachments, len(repo.commits))
+		}
+	}
+}

@@ -155,7 +155,7 @@ from one the protocol never had. The current build serves these:
 | `workspace.close` | none | `{closed}` |
 | `query.projects` | none | `{active, parked, archived}` |
 | `query.tasks` | `{mode, scope, query, sort: {field, ascending}, lens, search}`, each optional; `query` is the strict canonical clause string; `lens` excludes the four before it | `{query, items: [{task, today, next}], diagnostics}` |
-| `query.task` | `{task}` | `{task, project, revision, relations: {ancestors, children, dependencies, dependents}, today, next}` |
+| `query.task` | `{task}` | `{task, project, revision, relations: {ancestors, children, dependencies, dependents}, today, next, comments, attachments, attachment_dir}` |
 | `query.lenses` | none | `{lenses: [{id, name, mode, scope, query, sort}]}` |
 | `query.capture_preview` | `{text, project_id}`; `project_id` optional | `{project_id, lines: [{line, title, project_id, project_name, destination, plan, state, priority, tags, context, due, defer, pinned, review, parent_id, children, dependencies, attachments, comments}], errors: [{line, column, message}]}` |
 | `command.capture` | `{text, project_id}`, or `{title, project_id, description, resume_note, destination, priority, tags, context, due, defer, pinned, review}` with `title` required | `{task, tasks, committed}` |
@@ -166,8 +166,13 @@ from one the protocol never had. The current build serves these:
 | `command.check_in` | `{tasks, action, date, repeat_days}`; `action` is `set` (`date`, optional `repeat_days`), `clear`, or `acknowledge` (exactly one task) | `{tasks, moves, committed}` |
 | `command.hierarchy` | `{task, action, title, parent}`; `action` is `add_child` (`title`), `set_parent` (`parent`, same project), `clear_parent`, `indent`, `outdent`, `move_up`, or `move_down` | `{task, created, committed}` |
 | `command.bulk` | `{tasks, action, plan, state, add_tags, remove_tags, project_id}`; `action` is `plan` (`plan` as in `command.plan`), `state`, `tags` (`add_tags`, `remove_tags`), or `move` (`project_id`) | `{tasks, moves: [{from, to}], committed}` |
-| `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}}` |
+| `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}, comments}` |
 | `command.project` | `{action, project_id, name, description, tags, confirm}`; `action` is `create` (`name`), `edit` (any of `name`, `description`, `tags`), `set_tags` (`tags`, the complete set), `archive`, `unarchive`, or `delete` (`confirm`, the `impact` the confirmation showed) | `{project, committed}` |
+| `command.comment` | `{task, project_id, action, text, index, comment_id, original}` with exactly one of `task` and `project_id`; `action` is `add` (`text`), `edit` (`text`), or `delete`; `edit` and `delete` name the comment by `index` on a task or `comment_id` on a project, and send `original`, the text read there | `{task, project_id, comment_id, comments, committed}` |
+| `query.notes` | `{location}`, optional; a location is `{scope, project_id}`, `scope` `global` or `project` | `{notes: [{location, project_name, filename, title, created_at, modified_at, revision, parse_error, excerpt}]}` |
+| `query.note` | `{location, filename}` | `{note}`, the list's fields and `body` |
+| `command.note` | `{action, location, filename, revision, title, body, destination}`; `action` is `create` (`title`, `body`), `update` (`body`, optional `title`), `rename` (`title`), `move` (`destination`), or `delete`; every action but `create` names the note and sends `revision`, the revision read | `{note, committed}`; a delete has no `note` |
+| `command.attachment` | `{task, action, path, filename, digest, url, index, original}`; `action` is `add_file` (`path`, `filename`, `digest`), `add_url` (`url`), or `remove` (`index`, `original`, the name read) | `{task, attachment, attachments, outcome, committed}`; `outcome` is `added`, `present`, or `removed` |
 | `sync.status` | none | `{device_id, indexed, heads, outbox: [{txn_id, device_seq}], received, conflicts}` |
 | `sync.export_pending` | none | `{device_id, pending: [{txn_id, device_seq, manifest, blobs}], external}`; each file is `{path, source, digest, size}` |
 | `sync.import` | `{inbox_dir}`, absolute | `{results: [{path, txn_id, device_id, device_seq, outcome, reason, local_txn_id, missing, unavailable}]}` |
@@ -266,6 +271,53 @@ workspace answers `refused` and leaves no workspace open.
 it. `sync.status` reports the engine's side only. Whether the exchange is
 reachable, and when it last succeeded, is the transport's to report (see
 [Apple transport](sync-envelope.md#apple-transport)).
+
+The rich-content ops call the use cases the desktop's comment panel, Notes
+surface, and attachment panel call. A task comment has no stored identity, so
+`edit` and `delete` name it by `index` and carry the text read there; a project
+comment is named by its `comment_id` and that text. Either is refused
+(`validation`, `field` `comment`) when the stored comment no longer holds the
+text, so an edit or an import in the meantime never redirects the action. Each
+comment arrives as `{index, id, text, created_at}`, `id` on project comments
+only, in stored order; a task read and a project read carry them whole.
+
+A note is location-qualified: the global collection, or one available
+project's. `query.notes` without a location lists every collection a phone can
+reach, newest first; an archived project's notes are not among them, and
+naming one answers `not_found`. `revision` is the raw revision of the note
+bytes read. An `update`, `rename`, `move`, or `delete` whose `revision` is no
+longer the note's answers `stale_revision` with `current_revision` and writes
+nothing, so another device's edit is never overwritten unseen. A body is stored
+without leading blank lines or trailing whitespace, which is how the note file
+reads back, so the body a client saved is the body it reads.
+
+An attachment arrives as `{index, kind, name, url, code_path, line, added_at,
+available, size, local_path, workspace_path}`. `kind` is `file`, `url`, or
+`code`. Only a file has bytes in the workspace: `available` says whether this
+device holds them, `local_path` is where (read-only), and `workspace_path` is
+the workspace-relative path the exchange names them by. A task read's
+`attachment_dir` is the workspace-relative directory its attachment bytes live
+under, so a client can tell which paths its transport reports unavailable
+belong to the task. A URL and a code reference are kept whole even though a
+phone cannot open a code reference's target.
+
+`add_file` imports bytes the client staged under its `runtime_dir`: a copy it
+made of a Files or Photos item while the provider's grant was valid. The path
+must resolve, after symlinks, inside `runtime_dir` (`invalid_request`
+otherwise), and `digest` is that copy's `sha256:`-prefixed content address; a
+copy whose bytes no longer match it, as one cut short by a termination would
+not, is refused (`validation`, `field` `attachment`) and nothing is written.
+The engine reads the copy into one transaction with the task's metadata, so a
+failure commits neither, and it records no original path, so no temporary
+provider or staging location is ever kept as the attachment's storage. A name
+is made storable (one path component, no attachment delimiter or control
+character, never hidden), and a name the task already uses for other bytes
+takes a number before its extension. Repeating an import whose bytes are
+already attached under that name answers `present` and commits nothing, which
+is how a client resumes an import a termination interrupted without knowing
+whether its commit landed. `remove` names the attachment by `index` and the
+name read, deletes a file's bytes in the same transaction, and works on a file
+whose bytes this device does not hold.
 
 `workspace.open` and `workspace.join` take an optional `time_zone`, the
 device's IANA zone. The engine adopts it as the process's local time, because

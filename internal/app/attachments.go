@@ -62,10 +62,22 @@ type AttachFileResult struct {
 // rejected by the copy resolver, matching the legacy CopyAttachment contract.
 func (s *Service) AttachFile(locator TaskLocator, sourcePath string) (AttachFileResult, error) {
 	sourcePath = strings.TrimSpace(sourcePath)
+	return s.attachFile(locator, sourcePath, filepath.Base(sourcePath), sourcePath)
+}
+
+// ImportAttachment ingests bytes a frontend staged at sourcePath under the
+// given filename, through the same single transaction AttachFile uses. The
+// staged copy is temporary — a phone copies a Files or Photos item there while
+// its provider grant is valid — so its path is never recorded: the attachment
+// keeps no original path, and the workspace bytes are its only storage.
+func (s *Service) ImportAttachment(locator TaskLocator, sourcePath, filename string) (AttachFileResult, error) {
+	return s.attachFile(locator, strings.TrimSpace(sourcePath), strings.TrimSpace(filename), "")
+}
+
+func (s *Service) attachFile(locator TaskLocator, sourcePath, filename, originalPath string) (AttachFileResult, error) {
 	if sourcePath == "" || strings.ContainsRune(sourcePath, '\x00') {
 		return AttachFileResult{}, invalidInput("attachment", "source path is required")
 	}
-	filename := filepath.Base(sourcePath)
 	if err := storage.SafeChildName(filename); err != nil {
 		return AttachFileResult{}, invalidInput("attachment", err.Error())
 	}
@@ -82,7 +94,7 @@ func (s *Service) AttachFile(locator TaskLocator, sourcePath string) (AttachFile
 	}()
 	// Validate and record the metadata BEFORE staging the copy. A rejected filename
 	// aborts here, so the AttachmentCopy op — and therefore any byte write — never runs.
-	if addErr := ref.Task.AddAttachmentAt(filename, false, sourcePath, s.clock.Now()); addErr != nil {
+	if addErr := ref.Task.AddAttachmentAt(filename, false, originalPath, s.clock.Now()); addErr != nil {
 		return AttachFileResult{}, addErr
 	}
 	op := storage.AttachmentOp{

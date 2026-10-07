@@ -31,6 +31,12 @@ struct BrowseView: View {
                             .accessibilityIdentifier("browse.mode.\(mode)")
                         }
                     }
+                    Section("Notes") {
+                        NavigationLink(value: Route.notes(nil)) {
+                            Label("All Notes", systemImage: "note.text")
+                        }
+                        .accessibilityIdentifier("browse.notes")
+                    }
                     Section("Lenses") {
                         if lenses.isEmpty {
                             Text("No saved lenses").foregroundStyle(.secondary)

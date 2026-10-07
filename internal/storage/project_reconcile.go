@@ -286,20 +286,7 @@ func versionConflict(versions []*models.Task, field string, base any, values []r
 }
 
 func reconcileValue(value any) string {
-	v := reflect.ValueOf(value)
-	for v.IsValid() && v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return "<none>"
-		}
-		v = v.Elem()
-	}
-	if !v.IsValid() {
-		return "<none>"
-	}
-	if t, ok := v.Interface().(time.Time); ok {
-		return t.UTC().Format(time.RFC3339Nano)
-	}
-	return fmt.Sprintf("%v", v.Interface())
+	return conflictValue(value)
 }
 
 // latestUpdate is the newest touch time among versions. UpdatedAt is not

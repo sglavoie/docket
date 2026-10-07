@@ -694,8 +694,8 @@ run_swift_suite() {
 	local label=$1 package=$2
 	shift 2
 	local log="$work_dir/$label.log"
-	note "running $label: swift test in $package"
-	if ! (cd "$package" && swift test) >"$log" 2>&1; then
+	note "running $label: swift test${TT_SWIFT_FILTER:+ --filter $TT_SWIFT_FILTER} in $package"
+	if ! (cd "$package" && swift test ${TT_SWIFT_FILTER:+--filter "$TT_SWIFT_FILTER"}) >"$log" 2>&1; then
 		grep -E 'error:|failed' "$log" >&2 || tail -40 "$log" >&2
 		fail "$label: swift test failed"
 	fi
@@ -1141,6 +1141,85 @@ verify_session_12() {
 	note "session 12 verified"
 }
 
+verify_session_13() {
+	[ "$(uname -s)" = Darwin ] || fail "session 13 runs the iPhone rich-content UI tests on an iOS simulator, on macOS only"
+	require_files \
+		internal/bridge/rich_ops.go \
+		internal/bridge/rich_test.go \
+		internal/bridge/rich_sync_test.go \
+		internal/storage/project_merge_conflict_value_test.go \
+		ios/TTEngine/Sources/TTEngine/RichContent.swift \
+		ios/TTMobile/App/AttachmentImporter.swift \
+		ios/TTMobile/App/RichSections.swift \
+		ios/TTMobile/App/NotesViews.swift \
+		ios/TTMobileUITests/RichContentUITests.swift
+
+	# The rich-content ops are served, not reserved.
+	local served
+	for served in query.notes query.note command.comment command.note command.attachment; do
+		grep -Fq "\"$served\":" internal/bridge/bridge.go || fail "the bridge does not serve $served"
+	done
+
+	# One device: comments addressed by what was read, notes guarded by their
+	# revision, attachments staged under runtime_dir and committed with their
+	# metadata, with no temporary path recorded, a truncated or vanished
+	# staging copy refused, a resumed import answering present, unavailable
+	# bytes reported, and everything surviving a termination and reopen.
+	run_go_suite bridge-rich ./internal/bridge/ '^TestBridgeKeepsRichContentThroughTheSharedEngine$' \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/task_comments \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/project_comments \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/notes_lifecycle \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/stale_note_is_refused \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/attachment_import \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/attachment_kinds_and_removal \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/unavailable_attachment \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/interrupted_import \
+		TestBridgeKeepsRichContentThroughTheSharedEngine/termination_and_reopen
+
+	# Two devices through the exchange: offline work on both sides crosses
+	# byte for byte, concurrent edits of one note, one comment, or one
+	# attachment name keep every side's bytes recoverable on both devices, and
+	# an attachment whose bytes have not arrived applies nothing.
+	run_go_suite bridge-rich-sync ./internal/bridge/ '^TestBridgeRichContentConvergesAcrossDevices$' \
+		TestBridgeRichContentConvergesAcrossDevices/offline_edits_cross_byte_identical \
+		TestBridgeRichContentConvergesAcrossDevices/conflicting_note_edits \
+		TestBridgeRichContentConvergesAcrossDevices/conflicting_comment_edits \
+		TestBridgeRichContentConvergesAcrossDevices/conflicting_attachment_imports \
+		TestBridgeRichContentConvergesAcrossDevices/attachment_unavailable_until_its_bytes_arrive
+
+	# The merge records the same conflict on every device: a comment conflict
+	# spells values, never addresses.
+	run_go_suite merge-conflict-text ./internal/storage/ '^TestMergeConflictsSpellValuesNotAddresses$' \
+		TestMergeConflictsSpellValuesNotAddresses
+	run_go_suite app-import ./internal/app/ '^TestImportAttachment' \
+		TestImportAttachmentRecordsNoTemporaryPath \
+		TestImportAttachmentCommitsNothingWhenRefused
+
+	# The transport's explicit download asks for exactly the content waited
+	# on and retries a backed-off transfer now.
+	local bridgehost="$work_dir/bridgehost"
+	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
+	TT_BRIDGEHOST="$bridgehost" TT_SWIFT_FILTER='ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow' \
+		run_swift_suite transport-download apple/TTSync \
+		TTSyncTests.ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow
+
+	# The iPhone on a simulator against the gomobile-bound engine, offline,
+	# each outcome read back from the seeded workspace's files.
+	note "running the TTMobile rich-content UI suite"
+	TT_UITEST_ONLY=RichContentUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testTaskCommentsEditRefuseAndKeepADraftAcrossARelaunch()' \
+		'testNotesCreateEditMoveAndKeepAStaleEditAsACopy()' \
+		'testAttachmentImportResumesAfterTerminationAndShares()' \
+		'testAttachmentKindsReportTheirAvailability()' \
+		'testProjectCommentsAndProjectNotes()'
+
+	note "session 13 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -1155,6 +1234,7 @@ case "$session" in
 10) verify_session_10 ;;
 11) verify_session_11 ;;
 12) verify_session_12 ;;
+13) verify_session_13 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

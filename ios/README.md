@@ -57,7 +57,12 @@ one test class to run alone; `bash scripts/verify_mobile_session.sh 11` runs
 `CaptureEditingUITests` that way, beside the Go tests that hold the desktop and
 the bridge to byte-identical capture and editing outcomes, and
 `bash scripts/verify_mobile_session.sh 12` runs `OrganizingUITests`, beside the
-bridge's single-device and two-device organizing tests.
+bridge's single-device and two-device organizing tests, and
+`bash scripts/verify_mobile_session.sh 13` runs `RichContentUITests`, beside the
+bridge's rich-content tests on one and two devices. Two launch variables stand
+in for what XCUITest cannot drive: `TT_UITEST_IMPORT_SOURCE` names the file the
+Files picker would have returned, and `TT_UITEST_HOLD_IMPORTS=1` stops each
+import after it is staged, as a termination before the commit would.
 
 ## The app
 
@@ -95,6 +100,21 @@ capture and edit drafts are kept per workspace under
 `devices/<name>/drafts`, never synced, and come back after a refused save, a
 dismissed sheet, or a relaunch. Only a committed save or **Cancel** removes
 one.
+
+A task's detail lists its comments and attachments, and a project's settings
+list the project's comments and open its notes. **All Notes** in Browse lists
+the global notes and every available project's. A comment or a note keeps a
+draft the same way, and each change names what was read: a comment edited on
+another device refuses the change, and a note saved over another device's edit
+is refused, with **Save as New Note** keeping the phone's text beside it.
+Attachments import from Files or Photos. The item is copied into
+`devices/<name>/attachment-imports` while its grant is valid, recorded with its
+digest, and committed by the engine with the task's metadata in one
+transaction; no provider URL or staging path is ever stored, and an import a
+termination interrupted resumes at the next launch. A file opens in Quick Look
+and shares through the system sheet; a link opens and shares; a code reference
+is kept for the desktop. A file this iPhone does not hold says so, one still
+arriving says **Waiting to download**, and **Download** asks iCloud for it now.
 
 ## Sync exchange
 

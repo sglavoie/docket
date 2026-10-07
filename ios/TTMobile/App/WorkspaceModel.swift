@@ -82,6 +82,7 @@ final class WorkspaceModel {
             sync.exchange()
             generation += 1
             phase = .ready
+            await resumeImports()
         } catch {
             status = nil
             phase = .failed(Self.describe(error))
@@ -185,6 +186,90 @@ final class WorkspaceModel {
 
     func project(_ projectID: String?, _ action: ProjectAction) async -> String? {
         await attempt { _ = try await self.engine.project(projectID, action) }
+    }
+
+    // MARK: Rich content
+
+    func comment(_ owner: CommentOwner, _ action: CommentAction) async -> String? {
+        await attempt { _ = try await self.engine.comment(owner, action) }
+    }
+
+    /// Runs one note action, returning the note as saved.
+    func note(_ action: NoteAction) async -> (refusal: String?, note: NoteRecord?, stale: Bool) {
+        var saved: NoteRecord?
+        var stale = false
+        let refusal = await attempt {
+            do {
+                saved = try await self.engine.note(action).note
+            } catch let failure as BridgeError where failure.code == .staleRevision {
+                stale = true
+                throw failure
+            }
+        }
+        return (refusal, saved, stale)
+    }
+
+    func attachment(_ locator: TaskLocator, _ action: AttachmentAction) async -> String? {
+        await attempt { _ = try await self.engine.attachment(locator, action) }
+    }
+
+    /// This workspace's staged attachment imports, or nil before one is open.
+    var importer: AttachmentImporter? { location.map(AttachmentImporter.init(location:)) }
+
+    /// Imports picked files into a task: each is copied into staging while
+    /// its grant is valid, then committed. Returns the first refusal.
+    func importFiles(_ urls: [URL], to task: TaskLocator) async -> String? {
+        guard let importer else { return "No workspace is open." }
+        var refusal: String?
+        for url in urls {
+            do {
+                let pending = try await Task.detached { try importer.stage(file: url, for: task) }.value
+                if let failure = await commitImport(pending, importer) { refusal = refusal ?? failure }
+            } catch {
+                refusal = refusal ?? Self.describe(error)
+            }
+        }
+        generation += 1
+        return refusal
+    }
+
+    /// Imports a photo's bytes into a task through the same staging.
+    func importPhoto(_ data: Data, filename: String, to task: TaskLocator) async -> String? {
+        guard let importer else { return "No workspace is open." }
+        do {
+            let pending = try await Task.detached { try importer.stage(data: data, filename: filename, for: task) }.value
+            let refusal = await commitImport(pending, importer)
+            generation += 1
+            return refusal
+        } catch {
+            return Self.describe(error)
+        }
+    }
+
+    /// Finishes every import a termination interrupted, and sweeps copies
+    /// that were never recorded.
+    func resumeImports() async {
+        guard let importer, !launch.holdImportsBeforeCommit else { return }
+        importer.sweep()
+        let pending = importer.pending()
+        guard !pending.isEmpty else { return }
+        for record in pending {
+            if let refusal = await commitImport(record, importer) {
+                failure = "An interrupted import of \(record.filename) could not finish: \(refusal)"
+            }
+        }
+        generation += 1
+    }
+
+    private func commitImport(_ pending: AttachmentImporter.Pending, _ importer: AttachmentImporter) async -> String? {
+        guard !launch.holdImportsBeforeCommit else { return nil }
+        do {
+            _ = try await importer.commit(pending, engine: engine)
+            sync.exchange()
+            return nil
+        } catch {
+            return Self.describe(error)
+        }
     }
 
     /// Runs one mutation for a screen that shows its own refusal, so the

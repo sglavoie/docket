@@ -5,6 +5,10 @@ import TTEngine
 enum Route: Hashable {
     case list(ListSource)
     case task(TaskLocator)
+    /// Every reachable note, or one collection's.
+    case notes(NoteLocation?)
+    /// One note, or a new one at a location when the filename is nil.
+    case note(NoteLocation, filename: String?)
 }
 
 /// Today, Inbox, and Browse, with capture reachable from every one of them
@@ -69,6 +73,10 @@ struct MainTabView: View {
             TaskListView(workspace: workspace, source: source)
         case .task(let locator):
             TaskDetailView(workspace: workspace, locator: locator)
+        case .notes(let location):
+            NotesListView(workspace: workspace, location: location)
+        case .note(let location, let filename):
+            NoteEditorView(workspace: workspace, location: location, filename: filename)
         }
     }
 }

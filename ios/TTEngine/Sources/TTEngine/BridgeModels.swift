@@ -203,6 +203,17 @@ public struct TaskDetail: Decodable, Hashable, Sendable {
     /// Absent from an engine older than the editing ops, so optional.
     public var today: Bool?
     public var next: Bool?
+    /// The task's comments and attachments whole, and the workspace path its
+    /// attachment bytes live under. Absent from an engine older than the
+    /// rich-content ops.
+    public var comments: [CommentRecord]?
+    public var attachments: [AttachmentRecord]?
+    public var attachmentDir: String?
+
+    enum CodingKeys: String, CodingKey {
+        case task, project, revision, relations, today, next, comments, attachments
+        case attachmentDir = "attachment_dir"
+    }
 }
 
 /// A manual order: a field and a direction. A nil field is the mode's own
@@ -642,6 +653,8 @@ public struct ProjectImpact: Codable, Hashable, Sendable {
 public struct ProjectDetail: Decodable, Hashable, Sendable {
     public var project: ProjectSummary
     public var impact: ProjectImpact
+    /// The project's own comments in stored order.
+    public var comments: [CommentRecord]?
 }
 
 /// A project lifecycle action.

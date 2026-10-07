@@ -1,3 +1,5 @@
+import PhotosUI
+import QuickLook
 import SwiftUI
 import TTEngine
 
@@ -17,6 +19,15 @@ struct TaskDetailView: View {
     @State private var choosingStatus = false
     /// The last plan or status refusal, explained from what the engine judged.
     @State private var failure: String?
+    @State private var commentRequest: CommentRequest?
+    @State private var choosingAttachment = false
+    @State private var importingFiles = false
+    @State private var pickingPhoto = false
+    @State private var photo: PhotosPickerItem?
+    @State private var addingLink = false
+    @State private var linkText = ""
+    @State private var previewURL: URL?
+    @State private var pendingImports: [AttachmentImporter.Pending] = []
 
     var body: some View {
         Group {
@@ -54,6 +65,41 @@ struct TaskDetailView: View {
                 TaskEditSheet(workspace: workspace, task: task)
             }
         }
+        .sheet(item: $commentRequest) { request in
+            CommentEditorSheet(workspace: workspace, request: request)
+        }
+        .confirmationDialog("Add Attachment", isPresented: $choosingAttachment, titleVisibility: .visible) {
+            Button("Import from Files") { afterDialogCloses { chooseFiles() } }
+            Button("Import Photo") { afterDialogCloses { pickingPhoto = true } }
+            Button("Add Link") {
+                linkText = ""
+                afterDialogCloses { addingLink = true }
+            }
+        }
+        .fileImporter(isPresented: $importingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                importFiles(urls)
+            }
+        }
+        .photosPicker(isPresented: $pickingPhoto, selection: $photo, matching: .images)
+        .onChange(of: photo) {
+            guard let item = photo else { return }
+            photo = nil
+            importPhoto(item)
+        }
+        .alert("Add Link", isPresented: $addingLink) {
+            TextField("https://", text: $linkText)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+                .accessibilityIdentifier("attachment.link")
+            Button("Cancel", role: .cancel) {}
+            Button("Add") {
+                if let task = detail?.task {
+                    act { await workspace.attachment(task.locator, .addURL(linkText)) }
+                }
+            }
+        }
+        .quickLookPreview($previewURL)
         .task(id: LoadKey(generation: workspace.generation, locator: current ?? locator)) { await load() }
     }
 
@@ -164,16 +210,21 @@ struct TaskDetailView: View {
                     }
                 }
             )
-            let extras = [
-                task.context.map { "@\($0)" },
-                task.tags.isEmpty ? nil : task.tags.map { "#\($0)" }.joined(separator: " "),
-            ].compactMap { $0 }
-            if !extras.isEmpty || (task.commentCount ?? 0) > 0 || (task.attachmentCount ?? 0) > 0 {
+            CommentsSection(
+                comments: detail.comments ?? [],
+                compose: { editing in commentRequest = CommentRequest(owner: .task(task.locator), editing: editing) },
+                delete: { comment in act { await workspace.comment(.task(task.locator), .delete(comment)) } }
+            )
+            AttachmentsSection(
+                detail: detail, sync: workspace.sync, pending: pendingImports,
+                add: { choosingAttachment = true },
+                preview: { previewURL = $0 },
+                remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
+            )
+            if task.context != nil || !task.tags.isEmpty {
                 Section("More") {
                     if let context = task.context { LabeledContent("Context", value: context) }
                     if !task.tags.isEmpty { LabeledContent("Tags", value: task.tags.joined(separator: ", ")) }
-                    if let comments = task.commentCount, comments > 0 { LabeledContent("Comments", value: "\(comments)") }
-                    if let attachments = task.attachmentCount, attachments > 0 { LabeledContent("Attachments", value: "\(attachments)") }
                 }
             }
         }
@@ -207,12 +258,48 @@ struct TaskDetailView: View {
         }
     }
 
+    /// Files come from the document picker, or in a UI test from the file
+    /// it names, since XCUITest cannot drive the picker.
+    private func chooseFiles() {
+        if let source = workspace.launch.importSourceOverride {
+            importFiles([source])
+        } else {
+            importingFiles = true
+        }
+    }
+
+    private func importFiles(_ urls: [URL]) {
+        guard let task = detail?.task else { return }
+        Task {
+            failure = await workspace.importFiles(urls, to: task.locator)
+            pendingImports = workspace.importer?.pending() ?? []
+        }
+    }
+
+    private func importPhoto(_ item: PhotosPickerItem) {
+        guard let task = detail?.task else { return }
+        Task {
+            guard let data = try? await item.loadTransferable(type: Data.self) else {
+                failure = "The photo could not be read."
+                return
+            }
+            let type = item.supportedContentTypes.first
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
+            let stamp = formatter.string(from: Date())
+            let name = "Photo \(stamp).\(type?.preferredFilenameExtension ?? "jpg")"
+            failure = await workspace.importPhoto(data, filename: name, to: task.locator)
+            pendingImports = workspace.importer?.pending() ?? []
+        }
+    }
+
     private struct LoadKey: Hashable {
         var generation: Int
         var locator: TaskLocator
     }
 
     private func load() async {
+        pendingImports = workspace.importer?.pending() ?? []
         do {
             detail = try await workspace.engine.task(current ?? locator)
             state = nil

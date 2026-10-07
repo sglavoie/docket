@@ -106,6 +106,40 @@ public final class ExchangeTransport: @unchecked Sendable {
         return try finish()
     }
 
+    /// Asks for content now rather than on the queue's own schedule: every
+    /// queued incoming transaction whose unavailable workspace paths include
+    /// one of `paths` (every queued one when nil) has its retry delay cleared
+    /// and each manifest or blob it still misses requested from the provider.
+    /// Run an exchange afterwards to stage and import what arrived. Returns how
+    /// many queued transactions were asked for.
+    @discardableResult
+    public func requestDownloads(paths: [String]? = nil) throws -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        var state = try store.load()
+        let wanted = paths.map(Set.init)
+        var requested = 0
+        for index in state.downloads.indices {
+            var entry = state.downloads[index]
+            if let wanted, wanted.isDisjoint(with: entry.unavailable) {
+                continue
+            }
+            entry.nextAttempt = nil
+            entry.attempts = 0
+            for missing in entry.missing {
+                let path = missing == entry.path ? missing : Self.blobPath(missing)
+                try? provider.requestDownload("\(Self.root)/\(path)")
+            }
+            if entry.missing.isEmpty, !entry.manifestStaged {
+                try? provider.requestDownload("\(Self.root)/\(entry.path)")
+            }
+            state.downloads[index] = entry
+            requested += 1
+        }
+        try store.save(state)
+        return requested
+    }
+
     // MARK: Access
 
     /// Confirms the account and the grant, renewing an expired grant once.

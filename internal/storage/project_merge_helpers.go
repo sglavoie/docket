@@ -3,6 +3,8 @@ package storage
 import (
 	"fmt"
 	"reflect"
+	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -109,9 +111,59 @@ func fieldEditConflict(title, field string, base, local, current any) MergeConfl
 		Kind:      kind,
 		TaskTitle: title,
 		Field:     field,
-		Base:      fmt.Sprintf("%v", base),
-		Local:     fmt.Sprintf("%v", local),
-		Current:   fmt.Sprintf("%v", current),
+		Base:      conflictValue(base),
+		Local:     conflictValue(local),
+		Current:   conflictValue(current),
+	}
+}
+
+// conflictValue spells a field value for a conflict record by what it holds,
+// never where it lives: a pointer is followed, and so is each pointer in a
+// slice or a struct, and an instant is written in UTC. Every device must derive
+// the same record from the same versions, and a conflict's identity covers
+// this text, so an address would make two devices that merged identical bytes
+// disagree about which conflict is open.
+func conflictValue(value any) string {
+	return formatConflictValue(reflect.ValueOf(value))
+}
+
+func formatConflictValue(value reflect.Value) string {
+	switch value.Kind() {
+	case reflect.Invalid:
+		return "<none>"
+	case reflect.Pointer, reflect.Interface:
+		if value.IsNil() {
+			return "<none>"
+		}
+		return formatConflictValue(value.Elem())
+	case reflect.Slice, reflect.Array:
+		if value.Kind() == reflect.Slice && value.Type().Elem().Kind() == reflect.Uint8 {
+			return fmt.Sprintf("%v", value.Interface())
+		}
+		parts := make([]string, value.Len())
+		for i := range parts {
+			parts[i] = formatConflictValue(value.Index(i))
+		}
+		return "[" + strings.Join(parts, " ") + "]"
+	case reflect.Struct:
+		if instant, ok := value.Interface().(time.Time); ok {
+			return instant.UTC().Format(time.RFC3339Nano)
+		}
+		if stringer, ok := value.Interface().(fmt.Stringer); ok {
+			return stringer.String()
+		}
+		parts := make([]string, 0, value.NumField())
+		for i := 0; i < value.NumField(); i++ {
+			if value.Type().Field(i).IsExported() {
+				parts = append(parts, formatConflictValue(value.Field(i)))
+			}
+		}
+		return "{" + strings.Join(parts, " ") + "}"
+	default:
+		if value.CanInterface() {
+			return fmt.Sprintf("%v", value.Interface())
+		}
+		return value.String()
 	}
 }
 

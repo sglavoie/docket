@@ -164,8 +164,8 @@ func conflictOn(t *testing.T, conflicts []synclog.Conflict, path string) synclog
 	return found[0]
 }
 
-// syncedFiles is every exchanged workspace file: task Markdown, notes,
-// attachments, and the catalog, planning, and lens documents.
+// syncedFiles is every exchanged workspace file: task Markdown, project and
+// global notes, attachments, and the catalog, planning, and lens documents.
 func syncedFiles(t *testing.T, dataDir string) map[string][]byte {
 	t.Helper()
 	files := make(map[string][]byte)
@@ -174,7 +174,17 @@ func syncedFiles(t *testing.T, dataDir string) map[string][]byte {
 			files[".tt/"+name] = data
 		}
 	}
-	root := filepath.Join(dataDir, "projects")
+	for _, root := range []string{filepath.Join(dataDir, "projects"), filepath.Join(dataDir, ".tt", "global-notes")} {
+		walkSyncedFiles(t, dataDir, root, files)
+	}
+	return files
+}
+
+func walkSyncedFiles(t *testing.T, dataDir, root string, files map[string][]byte) {
+	t.Helper()
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		return
+	}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil || entry.IsDir() || strings.HasSuffix(path, ".bak") || strings.HasSuffix(path, ".lock") {
 			return walkErr
@@ -190,7 +200,6 @@ func syncedFiles(t *testing.T, dataDir string) map[string][]byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return files
 }
 
 // taskLine is one task's stored metadata line.
