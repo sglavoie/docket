@@ -16,9 +16,13 @@ struct TTMobileApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         workspace.sync.exchange()
-                        Task { await workspace.reminders.refresh() }
+                        Task {
+                            await workspace.importCaptures()
+                            await workspace.reminders.refresh()
+                        }
                     }
                 }
+                .onOpenURL { url in workspace.open(url: url) }
         }
     }
 }

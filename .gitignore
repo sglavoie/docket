@@ -45,3 +45,6 @@ apple/TTSync/.swiftpm/
 # its sources.
 ios/TTReminders/.build/
 ios/TTReminders/.swiftpm/
+# The App Group package (ios/TTShared) keeps SwiftPM state beside its sources.
+ios/TTShared/.build/
+ios/TTShared/.swiftpm/

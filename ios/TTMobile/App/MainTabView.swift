@@ -1,5 +1,6 @@
 import SwiftUI
 import TTEngine
+import TTShared
 
 /// Where a navigation stack can go: a task list or one task.
 enum Route: Hashable {
@@ -11,7 +12,12 @@ enum Route: Hashable {
     case note(NoteLocation, filename: String?)
 }
 
-/// A task a reminder notification opened.
+/// The shell's tabs, which a widget or a shortcut can select.
+enum ShellTab: Hashable {
+    case today, inbox, browse
+}
+
+/// A task a reminder notification or a link opened.
 private struct OpenedTask: Identifiable {
     let locator: TaskLocator
     var id: TaskLocator { locator }
@@ -24,16 +30,18 @@ struct MainTabView: View {
     @State private var capturing = false
     @State private var showingSync = false
     @State private var opened: OpenedTask?
+    @State private var tab: ShellTab = .today
 
     var body: some View {
-        TabView {
-            Tab("Today", systemImage: "sun.max") {
+        TabView(selection: $tab) {
+            Tab("Today", systemImage: "sun.max", value: ShellTab.today) {
                 stack(root: .today)
             }
-            Tab("Inbox", systemImage: "tray") {
+            Tab("Inbox", systemImage: "tray", value: ShellTab.inbox) {
                 stack(root: .inbox)
             }
-            Tab("Browse", systemImage: "square.grid.2x2") {
+            .badge(workspace.captures.pending.count)
+            Tab("Browse", systemImage: "square.grid.2x2", value: ShellTab.browse) {
                 NavigationStack {
                     BrowseView(workspace: workspace)
                         .modifier(ShellChrome(workspace: workspace, showingSync: $showingSync))
@@ -78,6 +86,10 @@ struct MainTabView: View {
                 opened = OpenedTask(locator: request)
             }
         }
+        .task(id: workspace.linkRequest) {
+            guard let link = workspace.linkRequest else { return }
+            follow(link)
+        }
         .sheet(item: $opened, onDismiss: { workspace.reminders.openRequest = nil }) { opened in
             NavigationStack {
                 TaskDetailView(workspace: workspace, locator: opened.locator)
@@ -91,6 +103,45 @@ struct MainTabView: View {
             }
             .accessibilityIdentifier("reminder.opened")
         }
+    }
+
+    /// Shows what a link named: a view selects its tab, capture opens the
+    /// sheet, and a task opens over whatever is showing.
+    private func follow(_ link: DeepLink) {
+        guard workspace.accepts(link) else {
+            workspace.refuseLink()
+            return
+        }
+        workspace.linkRequest = nil
+        switch link {
+        case .view(.today):
+            dismissSheets()
+            tab = .today
+        case .view(.inbox):
+            dismissSheets()
+            tab = .inbox
+        case .capture:
+            showingSync = false
+            opened = nil
+            capturing = true
+        case .task(_, let projectID, let taskID):
+            let locator = TaskLocator(projectID: projectID, taskID: taskID)
+            if capturing || showingSync {
+                dismissSheets()
+                Task {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    opened = OpenedTask(locator: locator)
+                }
+            } else {
+                opened = OpenedTask(locator: locator)
+            }
+        }
+    }
+
+    private func dismissSheets() {
+        capturing = false
+        showingSync = false
+        opened = nil
     }
 
     private func stack(root: ListSource) -> some View {

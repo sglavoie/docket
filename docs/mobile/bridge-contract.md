@@ -131,6 +131,8 @@ There is no bridge-only mutation path.
 | `command.project` | yes | Creates, edits, retags (parking included), archives, restores, or deletes a project. |
 | `query.project` | no | One project, archived ones included, with what deleting it would remove. |
 | `query.reminders` | no | The local notifications the device should hold, planned under the shared attention rules. |
+| `query.widget_snapshot` | no | Today and Inbox as the widgets show them, with the local day they are true for. |
+| `capture.import` | yes | Imports the captures a share extension or a shortcut saved to the App Group inbox, each exactly once. |
 | `command.comment` | yes | Task or project comment: `add`, `edit`, `delete`. |
 | `command.note` | yes | Creates, edits, moves, or deletes a note. |
 | `command.attachment` | yes | Adds or removes an attachment. Bytes travel as a file path under `runtime_dir`, never inline. |
@@ -170,6 +172,8 @@ from one the protocol never had. The current build serves these:
 | `command.bulk` | `{tasks, action, plan, state, add_tags, remove_tags, project_id}`; `action` is `plan` (`plan` as in `command.plan`), `state`, `tags` (`add_tags`, `remove_tags`), or `move` (`project_id`) | `{tasks, moves: [{from, to}], committed}` |
 | `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}, comments}` |
 | `query.reminders` | `{time_zone, check_in_time, horizon_days, limit}`; `time_zone` (IANA) and `check_in_time` (`HH:MM`) required, `horizon_days` 0-366 (0 is 30), `limit` 0-64 (0 is 60) | `{time_zone, check_in_time, generated_at, truncated, reminders: [{id, kind, task, project_name, short_id, title, fire_at, local_time, can_acknowledge, can_defer, fingerprint}]}`, soonest first |
+| `query.widget_snapshot` | `{limit}`, optional, 0-20 (0 is 8) | `{format, workspace, generated_at, day, valid_until, today, inbox}`; each list is `{count, tasks: [{project_id, task_id, short_id, title, project_name, state, priority, due_date, overdue, pinned}]}` |
+| `capture.import` | `{captures_dir}`, absolute | `{imported: [{capture_id, outcome, tasks}], pending: [{capture_id, reason, code, message, lines}], transaction_ids}`; `outcome` is `imported`, `resumed`, or `already_imported`; `reason` is `refused`, `other_workspace`, or `incomplete` |
 | `command.project` | `{action, project_id, name, description, tags, confirm}`; `action` is `create` (`name`), `edit` (any of `name`, `description`, `tags`), `set_tags` (`tags`, the complete set), `archive`, `unarchive`, or `delete` (`confirm`, the `impact` the confirmation showed) | `{project, committed}` |
 | `command.comment` | `{task, project_id, action, text, index, comment_id, original}` with exactly one of `task` and `project_id`; `action` is `add` (`text`), `edit` (`text`), or `delete`; `edit` and `delete` name the comment by `index` on a task or `comment_id` on a project, and send `original`, the text read there | `{task, project_id, comment_id, comments, committed}` |
 | `query.notes` | `{location}`, optional; a location is `{scope, project_id}`, `scope` `global` or `project` | `{notes: [{location, project_name, filename, title, created_at, modified_at, revision, parse_error, excerpt}]}` |
@@ -199,6 +203,13 @@ instant, since a deferral is an instant). A deadline
 falling today routes to Today, as it does on the desktop. An absent
 `project_id` is the protected Unfiled project. `tasks` lists every created
 task in line order, and `task` is the first.
+
+`capture.import` and `query.widget_snapshot` serve the App Group container
+the share extension, the widgets, and shortcuts share with the app; the
+envelope, the exactly-once rules, and the snapshot's freshness are in
+[capture-inbox.md](capture-inbox.md). A capture's tasks pass the same
+validation `command.capture` applies, and a refused capture commits nothing
+and stays in the inbox beside its `status.json`.
 
 `query.reminders` plans and never writes. It rereads the workspace, so an
 import or another device's change is planned at the next call, and it covers

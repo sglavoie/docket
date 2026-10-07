@@ -161,12 +161,21 @@ struct TaskListView: View {
             }
     }
 
+    /// The Inbox also lists what the share extension and shortcuts saved
+    /// and the engine has not imported yet.
+    private var showsPendingCaptures: Bool {
+        source == .inbox && !workspace.captures.pending.isEmpty
+    }
+
     @ViewBuilder
     private var content: some View {
-        if let state {
+        if let state, !(showsPendingCaptures && state.isEmpty) {
             ScreenStateView(state: state)
         } else {
             List(selection: $selection) {
+                if showsPendingCaptures {
+                    PendingCapturesSection(workspace: workspace)
+                }
                 if !diagnostics.isEmpty {
                     Section {
                         ForEach(diagnostics, id: \.projectID) { diagnostic in

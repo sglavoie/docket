@@ -3,9 +3,13 @@
 # docs/mobile/write-path-inventory.md. Regenerate symbols with
 #   UPDATE_WRITE_PATH_INVENTORY=1 go test ./internal/compat/ -run TestCompatWritePathInventoryCoversEveryDurableWrite
 # symbol	integration	note
-cmd/sync_conflicts.go:runSyncDiagnostics	export	sync diagnostics writes a report the person names, outside the workspace; never synced
 cmd/project_export.go:runProjectExport	export	project export creates its output directory outside the workspace; never synced
 cmd/project_export.go:runProjectExportAll	export	project export --all creates its output directory outside the workspace; never synced
+cmd/sync_conflicts.go:runSyncDiagnostics	export	sync diagnostics writes a report the person names, outside the workspace; never synced
+internal/bridge/capture_inbox_ops.go:Bridge.sweepCaptureStaging	machine-local	sweeps interrupted removals and abandoned extension writes from the capture inbox
+internal/bridge/capture_inbox_ops.go:Bridge.writeCaptureReceipt	machine-local	capture import receipts under the device runtime directory; never synced
+internal/bridge/capture_inbox_ops.go:removeCaptureEntry	machine-local	removes an imported capture from the App Group capture inbox after its receipt; never synced
+internal/bridge/capture_inbox_ops.go:writeFileAtomically	machine-local	capture receipts and pending-capture status notes; never synced
 internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change
 internal/config/domain_file_store_io.go:DomainFileStore.saveObserved	domain-store	checked catalog/planning/lenses/machine save; synced kinds become catalog/planning/lenses effects and machine.json stays local
 internal/config/domain_file_store_io.go:backupDomainArtifact	domain-store	.bak sidecar beside a domain artifact; local-only and excluded from exchange

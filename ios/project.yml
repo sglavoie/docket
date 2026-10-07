@@ -18,6 +18,10 @@ packages:
   # Local notifications for check-ins, timed deadlines, and deferrals.
   TTReminders:
     path: TTReminders
+  # The capture inbox, widget snapshot, and deep links the app shares with
+  # its share extension, widgets, and shortcuts through the App Group.
+  TTShared:
+    path: TTShared
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -35,6 +39,8 @@ targets:
         PRODUCT_NAME: tt
         PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/TTMobile-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/TTMobile.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: tt
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -49,10 +55,59 @@ targets:
         product: TTSync
       - package: TTReminders
         product: TTReminders
+      - package: TTShared
+        product: TTShared
+      - target: TTShare
+        embed: true
+      - target: TTWidgets
+        embed: true
     scheme:
       testTargets:
         - TTMobileDeviceTests
         - TTMobileUITests
+  # The share sheet's tt entry: saves what was shared to the App Group
+  # capture inbox and never opens the workspace.
+  TTShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TTShare
+    settings:
+      base:
+        PRODUCT_NAME: TTShare
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.share
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/TTShare-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: tt
+        CODE_SIGN_ENTITLEMENTS: Config/TTShare.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: TTShared
+        product: TTShared
+  # Today and Inbox widgets drawn from the App Group snapshot.
+  TTWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: TTWidgets
+    settings:
+      base:
+        PRODUCT_NAME: TTWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.widgets
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/TTWidgets-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: tt
+        CODE_SIGN_ENTITLEMENTS: Config/TTWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    dependencies:
+      - package: TTShared
+        product: TTShared
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
   # Hosted in the app, so it runs with the app's container and the exchange
   # folder bookmark the document picker left there. Physical iPhone only:
   # ios/scripts/record-icloud-exchange.sh drives it.
@@ -87,3 +142,7 @@ targets:
         TEST_TARGET_NAME: TTMobile
     dependencies:
       - target: TTMobile
+      # The share and widget suite writes captures with the extension's own
+      # inbox writer and reads the widget snapshot with the widgets' reader.
+      - package: TTShared
+        product: TTShared

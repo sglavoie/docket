@@ -187,6 +187,16 @@ struct ReminderRefusal: Error, LocalizedError {
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     let workspace = WorkspaceModel()
 
+    /// The delegate SwiftUI made, which a shortcut running in this process
+    /// reaches the workspace through: `UIApplication.shared.delegate` is
+    /// SwiftUI's own adaptor, not this object.
+    private(set) static var current: AppDelegate?
+
+    override init() {
+        super.init()
+        Self.current = self
+    }
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil

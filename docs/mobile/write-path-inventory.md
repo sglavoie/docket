@@ -136,7 +136,10 @@ themselves are never exchanged.
 
 ### `machine-local`
 
-Logs, process locks, the control socket, and the active-workspace pointer.
+Logs, process locks, the control socket, the active-workspace pointer, and the
+phone's capture inbox (`internal/bridge/capture_inbox_ops.go`): the receipts that
+keep a saved capture from importing twice, the status beside a refused one,
+and the removal of imported entries from the App Group container.
 
 **Sync integration point:** none, ever.
 

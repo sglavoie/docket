@@ -38,6 +38,11 @@ func InvalidCaptureDestinationError(raw string) error {
 // Title are required; every other field is optional and defaults to the domain
 // default (unset priority, root Inbox/child Backlog destination, no due date).
 type CaptureRequest struct {
+	// TaskID, when set, is the identity the new task takes instead of a minted
+	// one. It must be a UUID the project does not hold yet. An importer that
+	// derives it from a durable capture identity can tell, after a termination,
+	// whether its commit landed by looking for the task.
+	TaskID string
 	// SourceLine is the one-based composer line that produced this request.
 	// Zero means the request did not originate from a multiline composer.
 	SourceLine int

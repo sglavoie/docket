@@ -1393,6 +1393,129 @@ verify_session_15() {
 	note "session 15 verified"
 }
 
+verify_session_16() {
+	[ "$(uname -s)" = Darwin ] || fail "session 16 runs the App Group package and the share and widget UI tests on macOS only"
+	require_files \
+		internal/bridge/capture_inbox_ops.go \
+		internal/bridge/capture_inbox_test.go \
+		internal/bridge/widget_ops.go \
+		internal/app/capture_task_id_test.go \
+		docs/mobile/capture-inbox.md \
+		ios/TTShared/Package.swift \
+		ios/TTShared/Sources/TTShared/CaptureInbox.swift \
+		ios/TTShared/Sources/TTShared/WidgetSnapshot.swift \
+		ios/TTShared/Sources/TTShared/DeepLink.swift \
+		ios/TTShared/Sources/TTShared/SharedItems.swift \
+		ios/TTShared/Tests/TTSharedTests/CaptureImportContractTests.swift \
+		ios/TTEngine/Sources/TTEngine/Captures.swift \
+		ios/TTShare/ShareViewController.swift \
+		ios/TTWidgets/TTWidgets.swift \
+		ios/TTMobile/App/CaptureInboxModel.swift \
+		ios/TTMobile/App/PendingCapturesSection.swift \
+		ios/TTMobile/App/Shortcuts.swift \
+		ios/TTMobileUITests/ShareCaptureUITests.swift
+
+	local served
+	for served in capture.import query.widget_snapshot; do
+		grep -Fq "\"$served\":" internal/bridge/bridge.go || fail "the bridge does not serve $served"
+	done
+
+	# The engine imports each saved capture exactly once: duplicate delivery,
+	# a termination after the commit, between files, and after the receipt,
+	# an interrupted removal, an extension terminated before it published and
+	# its retry, a refusal kept pending with its reason, a damaged file, and
+	# another workspace's capture left alone. The widget snapshot answers the
+	# app's own Today and Inbox, each row linking to its task, for the local
+	# day it is true for.
+	run_go_suite capture-inbox ./internal/bridge/ '^(TestBridgeImportsSavedCapturesOnce|TestBridgeAnswersAWidgetSnapshot)$' \
+		TestBridgeImportsSavedCapturesOnce/text_link_and_file_import \
+		TestBridgeImportsSavedCapturesOnce/duplicate_delivery \
+		TestBridgeImportsSavedCapturesOnce/termination_after_commit \
+		TestBridgeImportsSavedCapturesOnce/termination_between_files \
+		TestBridgeImportsSavedCapturesOnce/termination_after_receipt \
+		TestBridgeImportsSavedCapturesOnce/interrupted_removal_is_finished \
+		TestBridgeImportsSavedCapturesOnce/extension_termination_and_retry \
+		TestBridgeImportsSavedCapturesOnce/refused_capture_stays_pending \
+		TestBridgeImportsSavedCapturesOnce/damaged_file_imports_nothing \
+		TestBridgeImportsSavedCapturesOnce/other_workspace_is_left_alone \
+		TestBridgeAnswersAWidgetSnapshot
+	run_go_suite capture-task-id ./internal/app/ '^TestCaptureWithTaskIDTakesThatIdentityOnce$' \
+		TestCaptureWithTaskIDTakesThatIdentityOnce
+	run_go_suite write-inventory ./internal/compat/ '^TestCompatWritePathInventoryCoversEveryDurableWrite$' \
+		TestCompatWritePathInventoryCoversEveryDurableWrite
+
+	# The App Group package: the extension's writer publishes once and whole,
+	# survives its own termination and a retry, reads a share sheet's words,
+	# links, and files, and judges a widget snapshot's freshness; then the
+	# same writer's captures imported by the real engine in separate
+	# processes, and the engine's snapshot read back with its links.
+	local bridgehost="$work_dir/bridgehost"
+	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
+	local inbox=TTSharedTests.CaptureInboxTests share=TTSharedTests.SharedItemsTests widget=TTSharedTests.WidgetAndLinkTests contract=TTSharedTests.CaptureImportContractTests
+	TT_BRIDGEHOST="$bridgehost" TT_CAPTURE_FIXTURE="$repo_root/internal/compat/testdata/workspaces/representative" \
+		run_swift_suite shared ios/TTShared \
+		"$inbox/testSavePublishesTheEnvelopeAndVerifiableFiles" \
+		"$inbox/testATerminatedSaveLeavesNothingPendingAndItsRetryPublishesOnce" \
+		"$inbox/testDeliveringTheSameCaptureTwiceKeepsOneEntry" \
+		"$inbox/testPendingCapturesShowTheirRefusalUntilRevised" \
+		"$inbox/testFilenamesStayInsideTheirEntry" \
+		"$share/testTextLinksAndFilesAreReadAndFilesCopied" \
+		"$share/testADraftIsProposedFromALinkOrAFileAlone" \
+		"$widget/testFreshnessFollowsAgeAndTheDayItDescribes" \
+		"$widget/testTheTimelineTurnsAtStalenessAndMidnight" \
+		"$widget/testTheStoreRoundTripsAndSkipsAnUnchangedWrite" \
+		"$widget/testDeepLinksRoundTripAndRefuseWhatTheyDoNotName" \
+		"$contract/testCapturesThisPackageWritesImportOnceAcrossDeliveriesAndRestarts" \
+		"$contract/testARefusedCaptureStaysPendingWithTheEnginesReason" \
+		"$contract/testTheEnginesWidgetSnapshotDecodesAndLinksToItsTasks"
+
+	# The iPhone on a simulator against the gomobile-bound engine: saved
+	# captures shown as pending, imported once across relaunches and a second
+	# delivery, a refusal corrected in the app; the widget snapshot following
+	# the workspace with rows that open their tasks; and links to views,
+	# capture, and another workspace's task.
+	note "running the TTMobile share and widget UI suite"
+	TT_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testSavedCapturesStayPendingUntilImportedAndLandOnce()' \
+		'testTheWidgetSnapshotFollowsTheWorkspaceAndItsRowsOpenTheirTasks()' \
+		'testLinksOpenViewsAndCaptureAndRefuseAnotherWorkspace()'
+
+	# The app that suite ran embeds the share extension and the widgets,
+	# declares the tt scheme and its shortcuts, and neither extension links
+	# the engine, so neither can rewrite the workspace.
+	local app="${TT_IOS_CACHE:-ios/.cache}/UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
+	[ -d "$app" ] || fail "no simulator app at $app"
+	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/TTShare.appex/Info.plist")" = com.apple.share-services ] ||
+		fail "the app embeds no share extension"
+	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/TTWidgets.appex/Info.plist")" = com.apple.widgetkit-extension ] ||
+		fail "the app embeds no widget extension"
+	[ "$(plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes.0 raw "$app/Info.plist")" = tt ] || fail "the app does not declare the tt scheme"
+	grep -rqF CaptureTaskIntent "$app/Metadata.appintents" || fail "the app declares no capture shortcut"
+	# The app itself links the engine, which is what makes the check below
+	# able to see a link at all.
+	local linked="" binary
+	for binary in "$app/tt" "$app/tt.debug.dylib"; do
+		[ -f "$binary" ] && linked="$linked$(otool -L "$binary")"
+	done
+	printf '%s' "$linked" | grep -q 'TTEngine' || fail "cannot see the app's own link to the engine, so the extension check proves nothing"
+	for binary in "$app"/PlugIns/TTShare.appex/* "$app"/PlugIns/TTWidgets.appex/*; do
+		[ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
+		if otool -L "$binary" | grep -qE 'TTEngine|TTBridgeCore'; then
+			fail "$(basename "$(dirname "$binary")") links the engine"
+		fi
+	done
+	if find "$app/PlugIns" -name 'TTBridgeCore*' | grep -q .; then
+		fail "an extension embeds the engine framework"
+	fi
+	note "the share extension and widgets are embedded and link no engine"
+
+	note "session 16 verified"
+}
+
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
@@ -1409,6 +1532,7 @@ case "$session" in
 13) verify_session_13 ;;
 14) verify_session_14 ;;
 15) verify_session_15 ;;
+16) verify_session_16 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

@@ -1,4 +1,5 @@
 import Foundation
+import TTShared
 
 /// Where the app keeps its workspaces and how this launch was asked to run.
 /// Production reads the app container; a UI test points the same code at a
@@ -36,6 +37,14 @@ struct LaunchConfiguration: Sendable {
 
     let reminderSeed: ReminderSeed?
 
+    /// The App Group container shared with the share extension, the widgets,
+    /// and shortcuts. A UI test, whose unsigned build holds no App Group,
+    /// names a host directory instead.
+    let sharedContainer: URL?
+    /// Leaves saved captures in the inbox, so a UI test can see them pending
+    /// before a relaunch imports them.
+    let holdCaptureImports: Bool
+
     static let current = LaunchConfiguration(environment: ProcessInfo.processInfo.environment)
 
     init(environment: [String: String]) {
@@ -63,6 +72,12 @@ struct LaunchConfiguration: Sendable {
         deviceIDOverride = environment["TT_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
         importSourceOverride = environment["TT_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
         holdImportsBeforeCommit = environment["TT_UITEST_HOLD_IMPORTS"] == "1"
+        if let shared = environment["TT_UITEST_SHARED_CONTAINER"], !shared.isEmpty {
+            sharedContainer = URL(fileURLWithPath: shared, isDirectory: true)
+        } else {
+            sharedContainer = SharedContainer.root(environment: [:])
+        }
+        holdCaptureImports = environment["TT_UITEST_HOLD_CAPTURES"] == "1"
         if let kind = environment["TT_UITEST_SEED_REMINDER"].flatMap(ReminderSeed.Kind.init(rawValue:)) {
             reminderSeed = ReminderSeed(
                 kind: kind,

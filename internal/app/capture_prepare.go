@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -28,6 +30,14 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return preparedCapture{}, invalidInput("title", err.Error())
+	}
+	if req.TaskID != "" {
+		if parsed, err := uuid.Parse(req.TaskID); err != nil || parsed.String() != req.TaskID {
+			return preparedCapture{}, invalidInput("task id", "must be a lowercase UUID")
+		}
+		if project.GetTaskByID(req.TaskID) != nil {
+			return preparedCapture{}, invalidInput("task id", "the project already holds task "+req.TaskID)
+		}
 	}
 
 	priority := req.Priority
@@ -150,7 +160,11 @@ func captureDestinationChildrenGuard(project *models.Project, task *models.Task,
 
 func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared preparedCapture, now time.Time) (*models.Task, error) {
 	req := prepared.req
-	task, err := newTaskForCreation(s.ids.NewID(), project.GetNextShortID(), prepared.title)
+	id := req.TaskID
+	if id == "" {
+		id = s.ids.NewID()
+	}
+	task, err := newTaskForCreation(id, project.GetNextShortID(), prepared.title)
 	if err != nil {
 		return nil, invalidInput("title", err.Error())
 	}

@@ -18,6 +18,10 @@ import (
 type Options struct {
 	Clock app.Clock
 	IDs   app.IDGenerator
+
+	// captureFault, set only by tests, interrupts a capture import at a named
+	// stage as a termination there would.
+	captureFault func(stage, captureID string) error
 }
 
 // Bridge serves one host. It holds at most one open workspace and answers one
@@ -81,6 +85,8 @@ var operations = map[string]op{
 	"command.comment":       {mutates: true, run: (*Bridge).commandComment},
 	"command.note":          {mutates: true, run: (*Bridge).commandNote},
 	"command.attachment":    {mutates: true, run: (*Bridge).commandAttachment},
+	"capture.import":        {mutates: true, run: (*Bridge).importCaptures},
+	"query.widget_snapshot": {run: (*Bridge).queryWidgetSnapshot},
 	"sync.status":           {run: (*Bridge).syncStatus},
 	"sync.export_pending":   {run: (*Bridge).syncExportPending},
 	"sync.import":           {mutates: true, run: (*Bridge).syncImport},

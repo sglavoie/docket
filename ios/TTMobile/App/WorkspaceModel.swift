@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import TTEngine
 import TTReminders
+import TTShared
 
 /// Where the app stands with its workspace. Each phase has its own screen, so
 /// a slow open, a first launch, a workspace that went missing, and one this
@@ -36,6 +37,10 @@ final class WorkspaceModel {
     let sync = SyncModel()
     let launch = LaunchConfiguration.current
     let reminders: ReminderModel
+    let captures: CaptureInboxModel
+    /// A place a widget, a shortcut, or a link asked the app to open, which
+    /// the shell shows once a workspace is open.
+    var linkRequest: DeepLink?
     /// The open in flight, which a notification action launching the app
     /// in the background waits for rather than opening a second time.
     @ObservationIgnored private var starting: Task<Void, Never>?
@@ -48,6 +53,10 @@ final class WorkspaceModel {
 
     init() {
         reminders = ReminderModel(root: LaunchConfiguration.current.root)
+        captures = CaptureInboxModel(
+            container: LaunchConfiguration.current.sharedContainer,
+            holdImports: LaunchConfiguration.current.holdCaptureImports
+        )
         sync.onImport = { [weak self] in self?.changed(.incomingChanges) }
     }
 
@@ -56,6 +65,43 @@ final class WorkspaceModel {
     private func changed(_ reason: ReconcileReason) {
         generation += 1
         reminders.reconcile(reason)
+        captures.publishSnapshot(engine: engine)
+    }
+
+    /// Imports what the share extension and shortcuts saved. Each capture
+    /// lands exactly once, however often this runs or was interrupted.
+    func importCaptures() async {
+        guard phase == .ready else {
+            captures.refreshPending()
+            return
+        }
+        if await captures.importPending(engine: engine) {
+            changed(.localChange)
+            sync.exchange()
+        }
+    }
+
+    /// Opens what a `tt://` link names. A task link minted for another
+    /// workspace is refused rather than guessed at.
+    func open(url: URL) {
+        guard let link = DeepLink(url: url) else {
+            failure = "tt cannot open \(url.absoluteString)."
+            return
+        }
+        linkRequest = link
+    }
+
+    /// Whether a task link belongs to the open workspace.
+    func accepts(_ link: DeepLink) -> Bool {
+        if case .task(let workspaceID, _, _) = link {
+            return status?.workspace == workspaceID
+        }
+        return true
+    }
+
+    func refuseLink() {
+        failure = "That link belongs to another workspace than the one open on this iPhone."
+        linkRequest = nil
     }
 
     /// Opens the selected workspace unless it is open, waiting for an open
@@ -120,6 +166,8 @@ final class WorkspaceModel {
             phase = .ready
             reminders.attach(engine: engine, commands: WorkspaceReminderCommands(workspace: self))
             await resumeImports()
+            await importCaptures()
+            captures.publishSnapshot(engine: engine)
         } catch {
             status = nil
             phase = .failed(Self.describe(error))
@@ -192,6 +240,7 @@ final class WorkspaceModel {
         try? launch.select(nil)
         sync.detach()
         reminders.detach()
+        captures.clearSnapshot()
         location = nil
         status = nil
         phase = .onboarding
@@ -435,6 +484,7 @@ final class WorkspaceModel {
     /// Exchanges, then rereads what an import may have changed.
     func refresh() async {
         sync.exchange()
+        await importCaptures()
         changed(.foreground)
     }
 

@@ -13,6 +13,10 @@ it runs under `just ci`.
 | `TTEngine/Frameworks/TTBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
 | `TTMobile/` | the app target |
 | `TTReminders/` | Swift package: the reminder scheduler, its reconciliation, and notification action routing, tested against a fake notification center |
+| `TTShared/` | Swift package shared with the extensions: the App Group capture inbox, the widget snapshot and its freshness, and `tt://` links |
+| `TTShare/` | the share extension, which saves what was shared to the capture inbox |
+| `TTWidgets/` | the Today and Inbox widgets, drawn from the App Group snapshot |
+| `Config/` | the app's and extensions' Info.plist additions and App Group entitlements |
 | `TTMobileUITests/` | the seeded browsing UI suite, on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
 | `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
 | `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
@@ -158,6 +162,38 @@ naming the source fingerprint, the bridge fingerprint, and the executable
 digests the running app reported. `bash scripts/verify_mobile_session.sh 15`
 runs the engine and scheduling suites and holds that evidence to the current
 tree; a simulator run does not count.
+
+## Share, Shortcuts, and widgets
+
+The app shares the App Group `group.io.github.sglavoie.tt` with its share
+extension and widgets ([capture-inbox.md](../docs/mobile/capture-inbox.md)).
+**Share → tt** reads the shared words, links, and files, proposes a title and
+a note, and saves them to the capture inbox in the container. The **Capture a
+Task** shortcut saves its text the same way, read as capture shorthand. Neither
+opens the workspace. The app imports every saved capture through the engine
+(`capture.import`) when it opens a workspace, returns to the foreground, or
+refreshes, and right after a shortcut runs if it can open the workspace then.
+Each capture lands exactly once, however often it was delivered or wherever an
+import was interrupted. Until a capture is imported, the Inbox lists it under
+**Saved, waiting to be added**, and the Inbox tab carries a badge. A capture
+the engine refused shows its reason there and can be corrected or discarded.
+
+The **Today** and **Inbox** widgets draw the snapshot the app writes after
+every change (`query.widget_snapshot`). They say how old it is, mark it as
+possibly out of date after three hours, and stop presenting it as current at
+local midnight. Each row opens its task. **Open tt** opens Today, the Inbox, or
+capture, and so do the links `tt://view/today`, `tt://view/inbox`,
+`tt://capture`, and `tt://task/<workspace>/<project>/<task>`. A task link for
+another workspace is refused.
+
+`cd ios/TTShared && swift test` runs the package suite. With `TT_BRIDGEHOST` (a
+built `mobile/bridgehost`) and `TT_CAPTURE_FIXTURE` (the representative
+fixture), it also runs the contract between the package's writer and the real
+engine's importer. `TT_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh
+OUT` runs the simulator suite. The unsigned UI test build holds no App Group,
+so `TT_UITEST_SHARED_CONTAINER` stands one in on the host, and
+`TT_UITEST_HOLD_CAPTURES=1` leaves saved captures pending.
+`bash scripts/verify_mobile_session.sh 16` runs all of it.
 
 ## Sync exchange
 

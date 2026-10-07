@@ -9,6 +9,11 @@ enum ScreenState: Equatable {
     case empty(title: String, message: String)
     case unavailable(title: String, message: String)
     case error(title: String, message: String)
+
+    var isEmpty: Bool {
+        if case .empty = self { return true }
+        return false
+    }
 }
 
 struct ScreenStateView: View {
