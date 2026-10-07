@@ -52,6 +52,11 @@ struct BrowseView: View {
             }
         }
         .navigationTitle("Browse")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NewProjectButton(workspace: workspace)
+            }
+        }
         .refreshable { await workspace.refresh() }
         .task(id: workspace.generation) { await load() }
     }

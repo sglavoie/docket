@@ -15,6 +15,9 @@ struct ListSource: Hashable {
     /// search reorders them.
     var outline = false
 
+    /// The project a project list shows, which its settings manage.
+    var projectID: String? { outline ? scope : nil }
+
     static let today = ListSource(title: "Today", mode: "today")
     static let inbox = ListSource(title: "Inbox", mode: "inbox")
 
@@ -80,6 +83,11 @@ struct TaskListView: View {
     @State private var search = ""
     @State private var filter = TaskFilter()
     @State private var sort = TaskSort()
+    @State private var selecting = false
+    @State private var selection = Set<TaskLocator>()
+    @State private var bulkFailure: String?
+    @State private var managingProject = false
+    @Environment(\.dismiss) private var dismiss
 
     private struct LoadKey: Hashable {
         var generation: Int
@@ -93,11 +101,54 @@ struct TaskListView: View {
             .navigationTitle(source.title)
             .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search titles, #tags, $states…")
             .toolbar {
-                if source.lens == nil {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if selecting {
+                        // The selection's actions sit beside Done: a bottom
+                        // bar would sit under the tab bar.
+                        BulkActionsButton(workspace: workspace, selection: Array(selection)) { refusal, moved in
+                            bulkFailure = refusal
+                            // A moved task has a new address, so the selection
+                            // naming the old one is spent; every other action
+                            // leaves it in place for the next.
+                            if refusal == nil, moved {
+                                selection = []
+                            }
+                        }
+                    }
+                    Button(selecting ? "Done" : "Select") {
+                        selecting.toggle()
+                        selection = []
+                        bulkFailure = nil
+                    }
+                    .accessibilityIdentifier("list.select")
+                    if source.lens == nil, !selecting {
                         filterMenu
                         sortMenu
                     }
+                    if let projectID = source.projectID, !selecting {
+                        Button {
+                            managingProject = true
+                        } label: {
+                            Image(systemName: "folder.badge.gearshape")
+                        }
+                        .accessibilityLabel("Project settings")
+                        .accessibilityIdentifier("list.project.settings")
+                        .sheet(isPresented: $managingProject) {
+                            ProjectSettingsView(workspace: workspace, projectID: projectID) { dismiss() }
+                        }
+                    }
+                }
+            }
+            .environment(\.editMode, .constant(selecting ? .active : .inactive))
+            .safeAreaInset(edge: .top) {
+                if let bulkFailure {
+                    Text(bulkFailure)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.regularMaterial)
+                        .accessibilityIdentifier("list.failure")
                 }
             }
             .refreshable { await workspace.refresh() }
@@ -115,7 +166,7 @@ struct TaskListView: View {
         if let state {
             ScreenStateView(state: state)
         } else {
-            List {
+            List(selection: $selection) {
                 if !diagnostics.isEmpty {
                     Section {
                         ForEach(diagnostics, id: \.projectID) { diagnostic in
@@ -131,6 +182,7 @@ struct TaskListView: View {
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
+                    .tag(row.id)
                     .swipeActions {
                         if !row.item.task.state.isTerminal {
                             Button("Done") { Task { await workspace.complete(row.item.task) } }
@@ -298,6 +350,65 @@ struct TaskRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+/// The actions a selection takes: a plan, a status, a tag, or a project, each
+/// one transaction for every selected task, refused whole if any one task
+/// cannot take it.
+struct BulkActionsButton: View {
+    let workspace: WorkspaceModel
+    let selection: [TaskLocator]
+    /// Called with the refusal, if any, and whether the action moved tasks.
+    let finished: (String?, Bool) -> Void
+
+    @State private var choosing = false
+    @State private var tagging = false
+    @State private var tag = ""
+    @State private var choosingProject = false
+    @State private var projects: [ProjectSummary] = []
+
+    var body: some View {
+        Button("Actions") { choosing = true }
+            .disabled(selection.isEmpty)
+            .accessibilityIdentifier("list.bulk")
+            .confirmationDialog("\(selection.count) selected", isPresented: $choosing, titleVisibility: .visible) {
+                Button("Add to Today") { run(.plan(.addToday)) }
+                Button("Add to Next") { run(.plan(.addNext)) }
+                Button("Move to Backlog") { run(.plan(.backlog)) }
+                Button("Start") { run(.state(.doing)) }
+                Button("Mark Done") { run(.state(.done)) }
+                Button("Add Tag…") {
+                    tag = ""
+                    afterDialogCloses { tagging = true }
+                }
+                Button("Move to Project…") {
+                    Task {
+                        projects = (try? await workspace.engine.projects())?.active ?? []
+                        afterDialogCloses { choosingProject = true }
+                    }
+                }
+            }
+            .alert("Add Tag", isPresented: $tagging) {
+                TextField("Tag", text: $tag)
+                    .accessibilityIdentifier("bulk.tag")
+                Button("Cancel", role: .cancel) {}
+                Button("Add") { run(.tags(add: [tag], remove: [])) }
+            }
+            .confirmationDialog("Move to Project", isPresented: $choosingProject, titleVisibility: .visible) {
+                ForEach(projects) { project in
+                    Button(project.name) { run(.move(projectID: project.id)) }
+                }
+            }
+    }
+
+    private func run(_ action: BulkAction) {
+        let targets = selection
+        let moves: Bool
+        if case .move = action { moves = true } else { moves = false }
+        Task {
+            finished(await workspace.bulk(targets, action).refusal, moves)
         }
     }
 }

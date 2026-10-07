@@ -163,6 +163,30 @@ final class WorkspaceModel {
         await attempt { _ = try await self.engine.transition(locator, to: state) }
     }
 
+    func checklist(_ locator: TaskLocator, _ action: ChecklistAction, seen: [ChecklistItem]) async -> String? {
+        await attempt { _ = try await self.engine.checklist(locator, action, seen: seen) }
+    }
+
+    func checkIn(_ locators: [TaskLocator], _ action: CheckInAction) async -> String? {
+        await attempt { _ = try await self.engine.checkIn(locators, action) }
+    }
+
+    func hierarchy(_ locator: TaskLocator, _ action: HierarchyAction) async -> String? {
+        await attempt { _ = try await self.engine.hierarchy(locator, action) }
+    }
+
+    /// Applies one action to a selection. A move reports where each task
+    /// went, which a screen showing one of them follows.
+    func bulk(_ locators: [TaskLocator], _ action: BulkAction) async -> (refusal: String?, moves: [AddressMove]) {
+        var moves: [AddressMove] = []
+        let refusal = await attempt { moves = try await self.engine.bulk(locators, action).moves }
+        return (refusal, moves)
+    }
+
+    func project(_ projectID: String?, _ action: ProjectAction) async -> String? {
+        await attempt { _ = try await self.engine.project(projectID, action) }
+    }
+
     /// Runs one mutation for a screen that shows its own refusal, so the
     /// refusal stays beside the draft it refused rather than in the banner.
     private func attempt(_ mutation: @escaping () async throws -> Void) async -> String? {

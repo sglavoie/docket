@@ -55,7 +55,9 @@ of its container. `bash scripts/verify_mobile_session.sh 10` runs it with the
 engine's browsing tests and the transport's join tests. `TT_UITEST_ONLY` names
 one test class to run alone; `bash scripts/verify_mobile_session.sh 11` runs
 `CaptureEditingUITests` that way, beside the Go tests that hold the desktop and
-the bridge to byte-identical capture and editing outcomes.
+the bridge to byte-identical capture and editing outcomes, and
+`bash scripts/verify_mobile_session.sh 12` runs `OrganizingUITests`, beside the
+bridge's single-device and two-device organizing tests.
 
 ## The app
 
@@ -73,6 +75,15 @@ population (active, parked, archived), and the saved lenses. Every list is one
 engine query with search, filters, and a sort. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
+
+A task's detail also edits its checklist in place (tick, add, edit, reorder,
+delete, promote to a subtask), schedules and acknowledges its check-in, adds
+a subtask, indents, outdents, reorders it among its siblings, and moves it to
+another project. **Select** on any list picks several tasks for one action:
+Today, Next, Backlog, Start, Done, a tag, or a project. A project list's
+settings rename, describe, and tag the project, park and archive it after a
+confirmation, and delete it after a confirmation that names everything the
+delete takes. **New Project** sits in Browse.
 
 Capture takes shorthand in the desktop's capture grammar, one task per line,
 previewed as it is typed and committed in one transaction, or a structured

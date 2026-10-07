@@ -204,6 +204,62 @@ public actor TTEngine {
         )
     }
 
+    // MARK: Organizing
+
+    /// Adds, edits, ticks, removes, moves, or promotes one checklist item.
+    /// `seen` is the checklist as the person read it.
+    public func checklist(
+        _ locator: TaskLocator,
+        _ action: ChecklistAction,
+        seen: [ChecklistItem],
+        requestID: String = UUID().uuidString
+    ) throws -> ChecklistMutation {
+        try send("command.checklist", payload: ChecklistPayload(task: locator, action: action, seen: seen), requestID: requestID)
+    }
+
+    /// Schedules, clears, or acknowledges check-ins.
+    public func checkIn(
+        _ locators: [TaskLocator],
+        _ action: CheckInAction,
+        requestID: String = UUID().uuidString
+    ) throws -> TasksMutation {
+        try send("command.check_in", payload: CheckInPayload(tasks: locators, action: action), requestID: requestID)
+    }
+
+    /// Changes one task's place in its project's outline.
+    public func hierarchy(
+        _ locator: TaskLocator,
+        _ action: HierarchyAction,
+        requestID: String = UUID().uuidString
+    ) throws -> HierarchyMutation {
+        try send("command.hierarchy", payload: HierarchyPayload(task: locator, action: action), requestID: requestID)
+    }
+
+    /// Applies one action to a whole selection as one transaction.
+    public func bulk(
+        _ locators: [TaskLocator],
+        _ action: BulkAction,
+        requestID: String = UUID().uuidString
+    ) throws -> TasksMutation {
+        try send("command.bulk", payload: BulkPayload(tasks: locators, action: action), requestID: requestID)
+    }
+
+    /// Reads one project, archived ones included, with what deleting it
+    /// would remove.
+    public func project(_ id: String) throws -> ProjectDetail {
+        try send("query.project", payload: ProjectIDPayload(projectID: id))
+    }
+
+    /// Creates, edits, retags, archives, restores, or deletes a project. A
+    /// nil `projectID` is only valid for `create`.
+    public func project(
+        _ projectID: String?,
+        _ action: ProjectAction,
+        requestID: String = UUID().uuidString
+    ) throws -> ProjectMutation {
+        try send("command.project", payload: ProjectPayload(projectID: projectID, action: action), requestID: requestID)
+    }
+
     // MARK: Transport
 
     private func send<Payload: Encodable, Result: Decodable>(
@@ -397,4 +453,168 @@ private struct EditPayload: Encodable {
 private struct PlanPayload: Encodable {
     var task: TaskLocator
     var action: PlanAction
+}
+
+private struct ChecklistPayload: Encodable {
+    var task: TaskLocator
+    var action: ChecklistAction
+    var seen: [ChecklistItem]
+
+    enum CodingKeys: String, CodingKey {
+        case task, action, text, index, to, checklist
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(task, forKey: .task)
+        switch action {
+        case .add(let text):
+            try container.encode("add", forKey: .action)
+            try container.encode(text, forKey: .text)
+            return
+        case .edit(let index, let text):
+            try container.encode("edit", forKey: .action)
+            try container.encode(index, forKey: .index)
+            try container.encode(text, forKey: .text)
+        case .toggle(let index):
+            try container.encode("toggle", forKey: .action)
+            try container.encode(index, forKey: .index)
+        case .remove(let index):
+            try container.encode("remove", forKey: .action)
+            try container.encode(index, forKey: .index)
+        case .move(let index, let to):
+            try container.encode("move", forKey: .action)
+            try container.encode(index, forKey: .index)
+            try container.encode(to, forKey: .to)
+        case .promote(let index):
+            try container.encode("promote", forKey: .action)
+            try container.encode(index, forKey: .index)
+        }
+        try container.encode(seen, forKey: .checklist)
+    }
+}
+
+private struct CheckInPayload: Encodable {
+    var tasks: [TaskLocator]
+    var action: CheckInAction
+
+    enum CodingKeys: String, CodingKey {
+        case tasks, action, date
+        case repeatDays = "repeat_days"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(tasks, forKey: .tasks)
+        switch action {
+        case .set(let date, let repeatDays):
+            try container.encode("set", forKey: .action)
+            try container.encode(date, forKey: .date)
+            if repeatDays != 0 { try container.encode(repeatDays, forKey: .repeatDays) }
+        case .clear:
+            try container.encode("clear", forKey: .action)
+        case .acknowledge:
+            try container.encode("acknowledge", forKey: .action)
+        }
+    }
+}
+
+private struct HierarchyPayload: Encodable {
+    var task: TaskLocator
+    var action: HierarchyAction
+
+    enum CodingKeys: String, CodingKey {
+        case task, action, title, parent
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(task, forKey: .task)
+        switch action {
+        case .addChild(let title):
+            try container.encode("add_child", forKey: .action)
+            try container.encode(title, forKey: .title)
+        case .setParent(let parent):
+            try container.encode("set_parent", forKey: .action)
+            try container.encode(parent, forKey: .parent)
+        case .clearParent: try container.encode("clear_parent", forKey: .action)
+        case .indent: try container.encode("indent", forKey: .action)
+        case .outdent: try container.encode("outdent", forKey: .action)
+        case .moveUp: try container.encode("move_up", forKey: .action)
+        case .moveDown: try container.encode("move_down", forKey: .action)
+        }
+    }
+}
+
+private struct BulkPayload: Encodable {
+    var tasks: [TaskLocator]
+    var action: BulkAction
+
+    enum CodingKeys: String, CodingKey {
+        case tasks, action, plan, state
+        case addTags = "add_tags"
+        case removeTags = "remove_tags"
+        case projectID = "project_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(tasks, forKey: .tasks)
+        switch action {
+        case .plan(let plan):
+            try container.encode("plan", forKey: .action)
+            try container.encode(plan, forKey: .plan)
+        case .state(let state):
+            try container.encode("state", forKey: .action)
+            try container.encode(state, forKey: .state)
+        case .tags(let add, let remove):
+            try container.encode("tags", forKey: .action)
+            if !add.isEmpty { try container.encode(add, forKey: .addTags) }
+            if !remove.isEmpty { try container.encode(remove, forKey: .removeTags) }
+        case .move(let projectID):
+            try container.encode("move", forKey: .action)
+            try container.encode(projectID, forKey: .projectID)
+        }
+    }
+}
+
+private struct ProjectIDPayload: Encodable {
+    var projectID: String
+
+    enum CodingKeys: String, CodingKey {
+        case projectID = "project_id"
+    }
+}
+
+private struct ProjectPayload: Encodable {
+    var projectID: String?
+    var action: ProjectAction
+
+    enum CodingKeys: String, CodingKey {
+        case action, name, description, tags, confirm
+        case projectID = "project_id"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(projectID, forKey: .projectID)
+        switch action {
+        case .create(let name):
+            try container.encode("create", forKey: .action)
+            try container.encode(name, forKey: .name)
+        case .edit(let name, let description, let tags):
+            try container.encode("edit", forKey: .action)
+            try container.encode(name, forKey: .name)
+            try container.encode(description, forKey: .description)
+            try container.encode(tags, forKey: .tags)
+        case .setTags(let tags):
+            try container.encode("set_tags", forKey: .action)
+            try container.encode(tags, forKey: .tags)
+        case .archive: try container.encode("archive", forKey: .action)
+        case .unarchive: try container.encode("unarchive", forKey: .action)
+        case .delete(let confirm):
+            try container.encode("delete", forKey: .action)
+            try container.encode(confirm, forKey: .confirm)
+        }
+    }
 }

@@ -21,11 +21,7 @@ import (
 // mutable slices are freshly allocated, so a mutation applied before a checked
 // commit can never alias and corrupt the cached RuntimeState snapshot.
 func ClonePlanningState(p *config.PlanningState) *config.PlanningState {
-	cp := *p
-	cp.Next = append([]config.ProjectTaskLocator(nil), p.GetNext()...)
-	cp.Next = append([]config.ProjectTaskLocator(nil), cp.Next...)
-	cp.Today = append([]config.ProjectTaskLocator(nil), p.Today...)
-	return &cp
+	return engine.ClonePlanning(p)
 }
 
 // PlanningArtifacts binds application-owned invariant mutations to the shell's

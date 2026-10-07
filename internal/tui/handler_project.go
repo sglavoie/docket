@@ -7,8 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -387,30 +387,12 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 	// any cache the reload rebuilds from.
 	m.anchorOutlinerCursorAfterProjectPark(updated.ID)
 
-	domains := cloneRuntimeDomains(m.domain.runtime)
-	if _, err := domains.RemoveProject(updated.ID, updated.Slug); err != nil {
-		m.feedback.err = err
-		return nil
-	}
-	artifacts, err := syncedDomainArtifacts(m.domain.runtime, domains.Catalog, domains.Planning)
+	deleted, err := engine.DeleteProject(m.domain.runtime, m.domain.service, &updated)
 	if err != nil {
 		m.feedback.err = err
 		return nil
 	}
-	transactionID, err := m.domain.service.DeleteProjectResult(app.DeleteProjectRequest{
-		Project:                &updated,
-		SystemUnfiledProjectID: m.domain.runtime.Catalog().SystemUnfiledProjectID,
-		DataDir:                m.domain.runtime.DataDir(),
-		Config:                 artifacts,
-	})
-	if err != nil {
-		m.feedback.err = err
-		return nil
-	}
-	if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
-		m.feedback.err = err
-		return nil
-	}
+	transactionID := deleted.TransactionID
 	m.syncProjectCache()
 
 	if m.currentProject != nil && m.currentProject.ID == updated.ID {

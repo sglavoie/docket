@@ -252,6 +252,12 @@ func newPair(t *testing.T) *pair {
 // artifact byte for byte.
 func (p *pair) requireSameWorkspace() {
 	p.t.Helper()
+	p.requireSameFiles(func(data []byte) []byte { return data })
+}
+
+// requireSameFiles compares the same files after normalize.
+func (p *pair) requireSameFiles(normalize func([]byte) []byte) {
+	p.t.Helper()
 	files := []string{filepath.Join(".tt", "planning.json")}
 	matches, err := filepath.Glob(filepath.Join(p.desktop.dataDir, "projects", "*", "tasks.md"))
 	if err != nil || len(matches) == 0 {
@@ -267,7 +273,7 @@ func (p *pair) requireSameWorkspace() {
 		if leftErr != nil || rightErr != nil {
 			p.t.Fatalf("read %s: desktop %v, mobile %v", file, leftErr, rightErr)
 		}
-		if !bytes.Equal(left, right) {
+		if left, right = normalize(left), normalize(right); !bytes.Equal(left, right) {
 			p.t.Fatalf("%s differs between desktop and mobile:\n--- desktop\n%s\n--- mobile\n%s", file, left, right)
 		}
 	}

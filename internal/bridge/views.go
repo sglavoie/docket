@@ -109,8 +109,10 @@ type projectView struct {
 	ID            string   `json:"id"`
 	Slug          string   `json:"slug"`
 	Name          string   `json:"name"`
+	Description   string   `json:"description,omitempty"`
 	Tags          []string `json:"tags"`
 	Archived      bool     `json:"archived"`
+	Parked        bool     `json:"parked"`
 	SystemUnfiled bool     `json:"system_unfiled"`
 }
 
@@ -119,8 +121,10 @@ func viewProject(state *config.RuntimeState, project *models.Project) projectVie
 		ID:            project.ID,
 		Slug:          project.Slug,
 		Name:          project.Name,
+		Description:   project.Description,
 		Tags:          append([]string{}, project.Tags...),
 		Archived:      project.Archived,
+		Parked:        models.ProjectTagsParked(project.Tags),
 		SystemUnfiled: state.IsSystemUnfiledProject(project.ID),
 	}
 }

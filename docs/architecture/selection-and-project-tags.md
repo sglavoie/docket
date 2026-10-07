@@ -480,3 +480,17 @@ paging is gated on `notesPreviewPageable` rather than on `notesPreviewVisible`:
 the pane can be on screen with nothing a page could move, and the narrower
 predicate is what the keys, the `?` help row, and the footer hint all read, so
 an unparsed note advertises no control and cannot have its offset written.
+
+### Project lifecycle
+
+`internal/engine/projects.go` is the one place a project is created, renamed,
+described, retagged, parked, archived, restored, or deleted. Each function
+prepares on a cloned catalog and planning state, commits through the
+application service's checked transaction and undo ledger, and refreshes the
+runtime state only after the commit. The desktop's project creator, project
+editor, and project delete call it, and the mobile bridge's `command.project`
+serves the same functions, so both frontends write the same catalog records,
+`tasks.md` rewrites, and directory moves. `engine.MeasureProjectImpact` counts
+the tasks, notes, and attachments a delete would take from the project's own
+directory, which is what lets an archived project be measured as honestly as an
+active one and what the bridge's guarded delete compares against.

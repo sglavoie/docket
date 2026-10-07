@@ -1051,6 +1051,96 @@ verify_session_11() {
 	note "session 11 verified"
 }
 
+verify_session_12() {
+	[ "$(uname -s)" = Darwin ] || fail "session 12 runs the iPhone organizing UI tests on an iOS simulator, on macOS only"
+	require_files \
+		internal/engine/projects.go \
+		internal/bridge/organize_ops.go \
+		internal/bridge/organize_test.go \
+		internal/bridge/organize_sync_test.go \
+		internal/mobileparity/organize_parity_test.go \
+		ios/TTMobile/App/OrganizeSections.swift \
+		ios/TTMobile/App/ProjectSettingsView.swift \
+		ios/TTMobileUITests/OrganizingUITests.swift
+
+	# The desktop's project hub commits through the engine's one project
+	# lifecycle, the same functions the bridge serves.
+	local delegate
+	for delegate in \
+		'engine.CreateProject(:internal/tui/projecthub/project_creator.go' \
+		'engine.EditProject(:internal/tui/projecthub/project_editor.go' \
+		'engine.DeleteProject(:internal/tui/handler_project.go'; do
+		grep -Fq "${delegate%%:*}" "${delegate#*:}" || fail "${delegate#*:} does not commit through ${delegate%%:*}"
+	done
+
+	# One device: checklists and their item identity, promotion, a repeating
+	# check-in and its acknowledgement, subtasks and the depth limit, blocked
+	# parent completion, moves carrying references, selection actions, the
+	# project lifecycle, and the confirmed delete.
+	run_go_suite bridge-organize ./internal/bridge/ '^TestBridgeOrganizesThroughTheSharedEngine$' \
+		TestBridgeOrganizesThroughTheSharedEngine/checklist_lifecycle \
+		TestBridgeOrganizesThroughTheSharedEngine/checklist_stale_selection_is_refused \
+		TestBridgeOrganizesThroughTheSharedEngine/checklist_promotion \
+		TestBridgeOrganizesThroughTheSharedEngine/recurring_check_in \
+		TestBridgeOrganizesThroughTheSharedEngine/subtasks_and_hierarchy \
+		TestBridgeOrganizesThroughTheSharedEngine/hierarchy_limit \
+		TestBridgeOrganizesThroughTheSharedEngine/blocked_parent_completion \
+		TestBridgeOrganizesThroughTheSharedEngine/move_keeps_references \
+		TestBridgeOrganizesThroughTheSharedEngine/bulk_actions \
+		TestBridgeOrganizesThroughTheSharedEngine/project_lifecycle \
+		TestBridgeOrganizesThroughTheSharedEngine/guarded_project_delete
+
+	# Two devices through the exchange, the phone over the bridge and the
+	# desktop through its own application calls: concurrent checklist edits,
+	# a recurring check-in acknowledged on either side, a move against a
+	# concurrent reference, a merge that would pass the depth limit, a parent
+	# finished while the other device added a subtask, and a delete confirmed
+	# before the other device's work arrived. Both copies must converge.
+	run_go_suite bridge-organize-sync ./internal/bridge/ '^TestBridgeOrganizingConvergesAcrossDevices$' \
+		TestBridgeOrganizingConvergesAcrossDevices/concurrent_checklist_edits \
+		TestBridgeOrganizingConvergesAcrossDevices/recurring_check_in \
+		TestBridgeOrganizingConvergesAcrossDevices/move_related_references \
+		TestBridgeOrganizingConvergesAcrossDevices/hierarchy_limit \
+		TestBridgeOrganizingConvergesAcrossDevices/blocked_parent_completion \
+		TestBridgeOrganizingConvergesAcrossDevices/destructive_confirmation
+
+	# Desktop and phone over two copies: the same acts leave the same task
+	# Markdown, planning, and catalog.
+	run_go_suite organize-parity ./internal/mobileparity/ '^TestDesktopAndMobileOrganizeAlike$' \
+		TestDesktopAndMobileOrganizeAlike/checklist \
+		TestDesktopAndMobileOrganizeAlike/check_in \
+		TestDesktopAndMobileOrganizeAlike/hierarchy \
+		TestDesktopAndMobileOrganizeAlike/moves \
+		TestDesktopAndMobileOrganizeAlike/bulk \
+		TestDesktopAndMobileOrganizeAlike/projects
+
+	# The engine rules the ops lean on: the frozen-checklist promotion guard
+	# and its depth limit, and the desktop project hub over the shared
+	# lifecycle.
+	run_go_suite app-promotion ./internal/app/ '^TestPromoteChecklistItem' \
+		TestPromoteChecklistItemRefusesChangedChecklist \
+		TestPromoteChecklistItemRefusesAtMaximumDepth \
+		TestPromoteChecklistItemRefusesUnreachableOwner
+	run_go_suite project-hub ./internal/tui/projecthub/ '.'
+
+	# The iPhone on a simulator against the gomobile-bound engine, each
+	# outcome read back from the seeded workspace's files.
+	note "running the TTMobile organizing UI suite"
+	TT_UITEST_ONLY=OrganizingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testChecklistEditingAndPromotion()' \
+		'testRecurringCheckInScheduleAndAcknowledge()' \
+		'testSubtasksHierarchyLimitAndBlockedCompletion()' \
+		'testMoveToProjectCarriesItsReferences()' \
+		'testBulkActionsOverASelection()' \
+		'testProjectLifecycleAndConfirmedDelete()'
+
+	note "session 12 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -1064,6 +1154,7 @@ case "$session" in
 9) verify_session_9 ;;
 10) verify_session_10 ;;
 11) verify_session_11 ;;
+12) verify_session_12 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

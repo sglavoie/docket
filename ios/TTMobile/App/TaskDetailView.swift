@@ -8,6 +8,8 @@ import TTEngine
 struct TaskDetailView: View {
     let workspace: WorkspaceModel
     let locator: TaskLocator
+    /// Where the task lives now; a move to another project changes it.
+    @State private var current: TaskLocator?
     @State private var detail: TaskDetail?
     @State private var state: ScreenState? = .loading("Loading task…")
     @State private var editing = false
@@ -22,6 +24,19 @@ struct TaskDetailView: View {
                 ScreenStateView(state: state)
             } else if let detail {
                 content(detail)
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            // The last refusal stays in view wherever the list is scrolled,
+            // since the control that raised it may be far down the screen.
+            if let failure {
+                Text(failure)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial)
+                    .accessibilityIdentifier("detail.failure")
             }
         }
         .navigationTitle(detail?.task.title ?? "Task")
@@ -39,7 +54,7 @@ struct TaskDetailView: View {
                 TaskEditSheet(workspace: workspace, task: task)
             }
         }
-        .task(id: workspace.generation) { await load() }
+        .task(id: LoadKey(generation: workspace.generation, locator: current ?? locator)) { await load() }
     }
 
     /// Plan and status, the two halves of the desktop's workflow chord: a plan
@@ -74,12 +89,6 @@ struct TaskDetailView: View {
                         Button(target.rawValue.capitalized) { act { await workspace.transition(task.locator, to: target) } }
                     }
                 }
-            if let failure {
-                Text(failure)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier("detail.failure")
-            }
         }
     }
 
@@ -109,16 +118,13 @@ struct TaskDetailView: View {
             if let ancestors = relations?.ancestors, !ancestors.isEmpty {
                 relationSection("Inside", ancestors, identifier: "detail.ancestor")
             }
-            if task.dueDate != nil || task.deferredUntil != nil || task.nextCheckIn != nil {
+            if task.dueDate != nil || task.deferredUntil != nil {
                 Section("Schedule") {
                     if let due = task.dueDate {
                         LabeledContent("Due", value: due.formatted(date: .abbreviated, time: .omitted))
                     }
                     if let deferred = task.deferredUntil {
                         LabeledContent("Deferred until", value: deferred.formatted(date: .abbreviated, time: .shortened))
-                    }
-                    if let checkIn = task.nextCheckIn {
-                        LabeledContent("Check-in", value: checkIn.formatted(date: .abbreviated, time: .omitted))
                     }
                 }
             }
@@ -127,13 +133,6 @@ struct TaskDetailView: View {
             }
             if let description = task.description, !description.isEmpty {
                 Section("Description") { Text(description) }
-            }
-            if let checklist = task.checklist, !checklist.isEmpty {
-                Section("Checklist") {
-                    ForEach(Array(checklist.enumerated()), id: \.offset) { _, item in
-                        Label(item.text, systemImage: item.done ? "checkmark.square" : "square")
-                    }
-                }
             }
             if let children = relations?.children, !children.isEmpty {
                 relationSection("Subtasks", children, identifier: "detail.child")
@@ -144,6 +143,27 @@ struct TaskDetailView: View {
             if let dependents = relations?.dependents, !dependents.isEmpty {
                 relationSection("Needed by", dependents, identifier: "detail.dependent")
             }
+            ChecklistSection(task: task) { action, seen in
+                act { await workspace.checklist(task.locator, action, seen: seen) }
+            }
+            if !task.state.isTerminal {
+                CheckInSection(task: task) { action in
+                    act { await workspace.checkIn([task.locator], action) }
+                }
+            }
+            OrganizeSection(
+                detail: detail, workspace: workspace,
+                hierarchy: { action in act { await workspace.hierarchy(task.locator, action) } },
+                move: { projectID in
+                    Task {
+                        let outcome = await workspace.bulk([task.locator], .move(projectID: projectID))
+                        failure = outcome.refusal
+                        if let moved = outcome.moves.first(where: { $0.from == task.locator }) {
+                            current = moved.to
+                        }
+                    }
+                }
+            )
             let extras = [
                 task.context.map { "@\($0)" },
                 task.tags.isEmpty ? nil : task.tags.map { "#\($0)" }.joined(separator: " "),
@@ -187,9 +207,14 @@ struct TaskDetailView: View {
         }
     }
 
+    private struct LoadKey: Hashable {
+        var generation: Int
+        var locator: TaskLocator
+    }
+
     private func load() async {
         do {
-            detail = try await workspace.engine.task(locator)
+            detail = try await workspace.engine.task(current ?? locator)
             state = nil
         } catch let failure as BridgeError where failure.code == .notFound {
             detail = nil

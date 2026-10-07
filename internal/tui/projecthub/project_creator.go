@@ -10,10 +10,9 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -121,57 +120,14 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 			return status.ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
 		}
 
-		// Create project
-		projectID := uuid.New().String()
-		projectPath := runtime.ProjectPath(slug)
-		project, err := models.NewProject(projectID, name, projectPath)
-		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
-		}
-
 		if manager == nil || service == nil {
 			return status.ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
 		}
-
-		if ensureErr := runtime.EnsureDataDir(); ensureErr != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", ensureErr)}
-		}
-
-		catalog := coordinator.CloneWorkspaceCatalog(runtime.Catalog())
-		if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
-		}
-		catalogArtifacts, err := coordinator.CatalogDomainArtifact(runtime, catalog)
-		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
-		}
-		document, err := storage.CanonicalProjectDocument(project, nil)
-		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
-		}
-		content, err := document.WriteCurrent()
-		if err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
-		}
-		requireAbsent := ""
-		artifacts := append(catalogArtifacts, storage.ArtifactChange{
-			Path:             storage.TasksFilePath(project.Path),
-			Data:             []byte(content),
-			Mode:             storage.FilePermissions,
-			ExpectedRevision: &requireAbsent,
-		})
-		transactionID, err := service.CommitProjectMutationResult(storage.OpsCommitRequest{
-			Artifacts:   artifacts,
-			ProjectIDs:  []string{project.ID},
-			UndoAction:  "Create Project",
-			UndoContext: project.Name,
-		})
+		created, err := engine.CreateProject(runtime, service, uuid.New().String(), name)
 		if err != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
-		if err := runtime.RefreshAfterCommit(); err != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
-		}
+		project, transactionID := created.Project, created.TransactionID
 
 		return ProjectCreatedMsg{Project: project, TransactionID: transactionID}
 	}

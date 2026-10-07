@@ -26,6 +26,7 @@ type Runtime struct {
 	service *app.Service
 	repo    *Repository
 	clock   app.Clock
+	ids     app.IDGenerator
 }
 
 // Open opens the workspace Config names, as a desktop launch or a headless
@@ -132,6 +133,9 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	if clock == nil {
 		clock = app.SystemClock()
 	}
+	if ids == nil {
+		ids = app.UUIDGenerator()
+	}
 	dataDir := state.DataDir()
 	var deps *config.RuntimeDependencies
 	owner := ""
@@ -145,7 +149,7 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	repo := NewRepository(dataDir, deps, ledger, owner)
 	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock, workspaceSchemas(state))).WithSyncMerger(syncmerge.Merger{})
 	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
-	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock}
+	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock, ids: ids}
 }
 
 // Recover completes the machine's interrupted transactions under a loaded

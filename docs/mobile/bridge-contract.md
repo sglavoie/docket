@@ -125,7 +125,11 @@ There is no bridge-only mutation path.
 | `command.transition` | yes | Lifecycle state change through the single lifecycle primitive. |
 | `command.plan` | yes | Today and Next membership. |
 | `command.check_in` | yes | Sets, clears, or acknowledges a check-in (`set`, `clear`, `acknowledge`). |
-| `command.checklist` | yes | Adds, edits, toggles, deletes, or promotes a checklist item. |
+| `command.checklist` | yes | Adds, edits, toggles, deletes, moves, or promotes a checklist item. |
+| `command.hierarchy` | yes | Adds a subtask, sets or clears a parent, indents, outdents, or moves a task among its siblings. |
+| `command.bulk` | yes | One planning, status, tag, or project action over a selection, as one transaction. |
+| `command.project` | yes | Creates, edits, retags (parking included), archives, restores, or deletes a project. |
+| `query.project` | no | One project, archived ones included, with what deleting it would remove. |
 | `command.comment` | yes | Task or project comment: `add`, `edit`, `delete`. |
 | `command.note` | yes | Creates, edits, moves, or deletes a note. |
 | `command.attachment` | yes | Adds or removes an attachment. Bytes travel as a file path under `runtime_dir`, never inline. |
@@ -158,6 +162,12 @@ from one the protocol never had. The current build serves these:
 | `command.edit` | `{task, title, description, resume_note, priority, tags, context, pinned, review, due, defer}`; only `task` is required | `{task, changed, committed}` |
 | `command.transition` | `{task, state}` | `{task, committed}` |
 | `command.plan` | `{task, action}`; `action` is `add_today`, `remove_today`, `add_next`, `remove_next`, or `backlog` | `{task, committed}` |
+| `command.checklist` | `{task, action, text, index, to, checklist}`; `action` is `add` (`text`), `edit` (`index`, `text`), `toggle`, `remove`, `promote` (`index`), or `move` (`index`, `to`); every action but `add` also sends `checklist`, the complete `[{text, done}]` as read | `{task, child, committed}`; `child` is the subtask a promotion made |
+| `command.check_in` | `{tasks, action, date, repeat_days}`; `action` is `set` (`date`, optional `repeat_days`), `clear`, or `acknowledge` (exactly one task) | `{tasks, moves, committed}` |
+| `command.hierarchy` | `{task, action, title, parent}`; `action` is `add_child` (`title`), `set_parent` (`parent`, same project), `clear_parent`, `indent`, `outdent`, `move_up`, or `move_down` | `{task, created, committed}` |
+| `command.bulk` | `{tasks, action, plan, state, add_tags, remove_tags, project_id}`; `action` is `plan` (`plan` as in `command.plan`), `state`, `tags` (`add_tags`, `remove_tags`), or `move` (`project_id`) | `{tasks, moves: [{from, to}], committed}` |
+| `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}}` |
+| `command.project` | `{action, project_id, name, description, tags, confirm}`; `action` is `create` (`name`), `edit` (any of `name`, `description`, `tags`), `set_tags` (`tags`, the complete set), `archive`, `unarchive`, or `delete` (`confirm`, the `impact` the confirmation showed) | `{project, committed}` |
 | `sync.status` | none | `{device_id, indexed, heads, outbox: [{txn_id, device_seq}], received, conflicts}` |
 | `sync.export_pending` | none | `{device_id, pending: [{txn_id, device_seq, manifest, blobs}], external}`; each file is `{path, source, digest, size}` |
 | `sync.import` | `{inbox_dir}`, absolute | `{results: [{path, txn_id, device_id, device_seq, outcome, reason, local_txn_id, missing, unavailable}]}` |
@@ -192,6 +202,31 @@ desktop's `@@` does.
 `command.plan` is the planning boundary the desktop's workflow chord uses.
 Today and Next are mutually exclusive, a terminal task joins neither, and
 `backlog` leaves both. Ordering is not served yet.
+
+The organizing ops call the use cases the desktop's keys call, so the shared
+engine judges both. A checklist item has no stored identity, so an action
+naming one by `index` carries the whole checklist as the client read it and
+is refused (`validation`, `field` `checklist`) when the stored checklist is
+no longer exactly that: an edit, tick, reorder, or import in the meantime
+never lands on a different item. `promote` turns the item into a subtask of
+its owner in one transaction. `command.check_in` writes one schedule across
+its selection; `acknowledge` is the review key, which moves a repeating
+check-in on from today, clears a one-off, and changes no state or deadline.
+`command.hierarchy` holds the depth limit and refuses a cycle. A parent with
+open subtasks refuses completion, alone or in a selection, with
+`incomplete_children`. `command.bulk` commits the whole selection or none of
+it; `move` takes the single task-line edit for one task and the batch for
+more, as the desktop does, and rewrites every reference to a moved task. A
+mutation's `committed.projects` names every project whose revision moved,
+including those a reference rewrite reached.
+
+`command.project` is the engine's one project lifecycle, the same functions
+the desktop's project hub commits through. The system Unfiled project is
+never renamed, parked, archived, or deleted (`refused`). `delete` is guarded:
+`confirm` must equal the project's current `impact`, whose `digest` covers
+the stored task Markdown, so a delete confirmed before more work arrived (from
+this device or an import) answers `stale_revision` with the current `impact`
+and deletes nothing.
 
 A `validation` refusal from the shared engine carries what it judged in
 `details`: `kind` is `invalid_input` with `field` and `reason`,

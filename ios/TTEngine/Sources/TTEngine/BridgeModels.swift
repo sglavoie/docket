@@ -79,12 +79,18 @@ public struct ProjectSummary: Decodable, Hashable, Sendable, Identifiable {
     public var id: String
     public var slug: String
     public var name: String
+    public var description: String?
     public var tags: [String]
     public var archived: Bool
+    /// Whether the project carries the `parked` tag, which keeps its work
+    /// out of the task workspace.
+    public var parked: Bool?
     public var systemUnfiled: Bool
 
+    public var isParked: Bool { parked ?? tags.contains("parked") }
+
     enum CodingKeys: String, CodingKey {
-        case id, slug, name, tags, archived
+        case id, slug, name, description, tags, archived, parked
         case systemUnfiled = "system_unfiled"
     }
 }
@@ -147,9 +153,14 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
 }
 
 /// One checklist row in stored order.
-public struct ChecklistItem: Decodable, Hashable, Sendable {
+public struct ChecklistItem: Codable, Hashable, Sendable {
     public var text: String
     public var done: Bool
+
+    public init(text: String, done: Bool) {
+        self.text = text
+        self.done = done
+    }
 }
 
 /// A task another task points at. A reference the workspace cannot resolve
@@ -547,4 +558,106 @@ public struct BridgeError: Error, Decodable, Hashable, Sendable, CustomStringCon
         case message, retryable, details
         case rawCode = "code"
     }
+}
+
+// MARK: Organizing
+
+/// A checklist action. Every action naming an item by position carries the
+/// checklist as it was read, so the engine refuses it if another edit moved
+/// the item.
+public enum ChecklistAction: Sendable {
+    case add(String)
+    case edit(index: Int, text: String)
+    case toggle(index: Int)
+    case remove(index: Int)
+    case move(index: Int, to: Int)
+    case promote(index: Int)
+}
+
+/// A checklist action's outcome: the owner, and the subtask a promotion made.
+public struct ChecklistMutation: Decodable, Hashable, Sendable {
+    public var task: TaskSnapshot
+    public var child: TaskSnapshot?
+    public var committed: CommittedEffect
+}
+
+/// A check-in action: one schedule over a selection, its clear, or one
+/// task's acknowledgement.
+public enum CheckInAction: Sendable {
+    /// `date` is a calendar day as `YYYY-MM-DD`; zero repeat days is a
+    /// one-off.
+    case set(date: String, repeatDays: Int)
+    case clear
+    case acknowledge
+}
+
+/// A change to a task's place in its project's outline.
+public enum HierarchyAction: Sendable {
+    case addChild(String)
+    case setParent(TaskLocator)
+    case clearParent
+    case indent
+    case outdent
+    case moveUp
+    case moveDown
+}
+
+public struct HierarchyMutation: Decodable, Hashable, Sendable {
+    public var task: TaskSnapshot
+    public var created: TaskSnapshot?
+    public var committed: CommittedEffect
+}
+
+/// One action over a selection of any size, one transaction for all of it.
+public enum BulkAction: Sendable {
+    case plan(PlanAction)
+    case state(WorkflowState)
+    case tags(add: [String], remove: [String])
+    case move(projectID: String)
+}
+
+/// A task's address before and after a move between projects.
+public struct AddressMove: Decodable, Hashable, Sendable {
+    public var from: TaskLocator
+    public var to: TaskLocator
+}
+
+/// What a selection action committed: each task as it now stands and every
+/// address a move changed.
+public struct TasksMutation: Decodable, Hashable, Sendable {
+    public var tasks: [TaskSnapshot]
+    public var moves: [AddressMove]
+    public var committed: CommittedEffect
+}
+
+/// What deleting a project would remove. A delete must echo the impact the
+/// person confirmed, digest included.
+public struct ProjectImpact: Codable, Hashable, Sendable {
+    public var tasks: Int
+    public var notes: Int
+    public var attachments: Int
+    public var digest: String
+}
+
+public struct ProjectDetail: Decodable, Hashable, Sendable {
+    public var project: ProjectSummary
+    public var impact: ProjectImpact
+}
+
+/// A project lifecycle action.
+public enum ProjectAction: Sendable {
+    case create(name: String)
+    /// Saves the name, description, and complete tag set together.
+    case edit(name: String, description: String, tags: [String])
+    case setTags([String])
+    case archive
+    case unarchive
+    /// Deletes the project and everything it owns, if it still holds exactly
+    /// what `confirm` describes.
+    case delete(confirm: ProjectImpact)
+}
+
+public struct ProjectMutation: Decodable, Hashable, Sendable {
+    public var project: ProjectSummary
+    public var committed: CommittedEffect
 }

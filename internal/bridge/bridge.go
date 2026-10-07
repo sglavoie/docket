@@ -62,10 +62,16 @@ var operations = map[string]op{
 	"query.task":            {run: (*Bridge).queryTask},
 	"query.lenses":          {run: (*Bridge).queryLenses},
 	"query.capture_preview": {run: (*Bridge).queryCapturePreview},
+	"query.project":         {run: (*Bridge).queryProject},
 	"command.capture":       {mutates: true, run: (*Bridge).commandCapture},
 	"command.edit":          {mutates: true, run: (*Bridge).commandEdit},
 	"command.transition":    {mutates: true, run: (*Bridge).commandTransition},
 	"command.plan":          {mutates: true, run: (*Bridge).commandPlan},
+	"command.checklist":     {mutates: true, run: (*Bridge).commandChecklist},
+	"command.check_in":      {mutates: true, run: (*Bridge).commandCheckIn},
+	"command.hierarchy":     {mutates: true, run: (*Bridge).commandHierarchy},
+	"command.bulk":          {mutates: true, run: (*Bridge).commandBulk},
+	"command.project":       {mutates: true, run: (*Bridge).commandProject},
 	"sync.status":           {run: (*Bridge).syncStatus},
 	"sync.export_pending":   {run: (*Bridge).syncExportPending},
 	"sync.import":           {mutates: true, run: (*Bridge).syncImport},
@@ -77,8 +83,7 @@ var operations = map[string]op{
 // build lacks from one the protocol never had.
 var reservedOperations = map[string]bool{
 	"query.notes": true, "query.note": true,
-	"command.check_in":  true,
-	"command.checklist": true, "command.comment": true, "command.note": true,
+	"command.comment": true, "command.note": true,
 	"command.attachment": true, "command.undo": true, "command.redo": true,
 	"conflict.list": true, "conflict.show": true, "conflict.resolve": true,
 }

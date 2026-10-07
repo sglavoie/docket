@@ -10,8 +10,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -249,15 +249,13 @@ func (m *ProjectEditorModel) focusCurrentField() {
 type ProjectEditorSave struct {
 	// Project and Name are read by the shell's park confirmation, which names the
 	// project the edit is about to rename.
-	Project      *models.Project
-	Name         string
-	runtime      *config.RuntimeState
-	appService   *app.Service
-	originalName string
-	newSlug      string
-	description  string
-	tags         []string
-	parks        bool
+	Project     *models.Project
+	Name        string
+	runtime     *config.RuntimeState
+	appService  *app.Service
+	description string
+	tags        []string
+	parks       bool
 }
 
 func (m *ProjectEditorModel) saveProject() tea.Cmd {
@@ -308,15 +306,13 @@ func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 		}
 	}
 	return &ProjectEditorSave{
-		Project:      m.project,
-		Name:         name,
-		runtime:      m.runtime,
-		appService:   m.appService,
-		originalName: m.originalName,
-		newSlug:      newSlug,
-		description:  strings.TrimSpace(m.descriptionInput.Value()),
-		tags:         tags,
-		parks:        models.ProjectTagsParked(tags) && !models.ProjectTagsParked(m.project.Tags),
+		Project:     m.project,
+		Name:        name,
+		runtime:     m.runtime,
+		appService:  m.appService,
+		description: strings.TrimSpace(m.descriptionInput.Value()),
+		tags:        tags,
+		parks:       models.ProjectTagsParked(tags) && !models.ProjectTagsParked(m.project.Tags),
 	}, nil
 }
 
@@ -324,62 +320,18 @@ func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 // edit clears its confirmation.
 func (s *ProjectEditorSave) Commit() tea.Msg {
 	project := s.Project
-	oldSlug := project.Slug
-
-	// Prepare on an isolated copy. Publication to the live project pointer
-	// happens only after the journal and workspace ledger both commit.
-	updated := *project
-	updated.Name = s.Name
-	updated.Slug = s.newSlug
-	updated.Description = s.description
-	updated.Tags = s.tags
-	updated.UpdatedAt = time.Now()
-
-	var tasksMarkdown []byte
-	var tasksExpectedRevision *string
-	// The rewrite renders the whole freshly loaded project, not its name and
-	// task list: tasks.md also holds the project's comments, and a rename that
-	// re-rendered only the tasks would drop them.
-	if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
-		content, renderErr := storage.WriteProjectMarkdown(&updated)
-		if renderErr != nil {
-			return status.ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
-		}
-		tasksMarkdown = []byte(content)
-		tasksExpectedRevision = expected
-	}
-
-	catalog := coordinator.CloneWorkspaceCatalog(s.runtime.Catalog())
-	if err := catalog.UpsertProject(&updated); err != nil {
-		return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
-	}
-
-	// One artifact set, one transaction: the directory move, the tasks.md
-	// rewrite, and the catalog record either all commit or none of them do.
-	configArts, err := coordinator.CatalogDomainArtifact(s.runtime, catalog)
-	if err != nil {
-		return status.ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
-	}
-
-	transactionID, err := s.appService.RenameProjectResult(app.RenameProjectRequest{
-		Project:                &updated,
-		SystemUnfiledProjectID: s.runtime.Catalog().SystemUnfiledProjectID,
-		DataDir:                s.runtime.DataDir(),
-		OldName:                s.originalName,
-		OldSlug:                oldSlug,
-		NewSlug:                s.newSlug,
-		TasksMarkdown:          tasksMarkdown,
-		TasksExpectedRevision:  tasksExpectedRevision,
-		Config:                 configArts,
+	saved, err := engine.EditProject(s.runtime, s.appService, project, engine.ProjectEdit{
+		Name:        s.Name,
+		Description: s.description,
+		Tags:        s.tags,
+		Now:         time.Now(),
 	})
 	if err != nil {
 		return status.ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 	}
-	if err := s.runtime.RefreshAfterCommit(); err != nil {
-		return status.ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
-	}
+	transactionID := saved.TransactionID
 
-	coordinator.CopyCatalogMetadata(project, &updated)
+	coordinator.CopyCatalogMetadata(project, saved.Project)
 	return ProjectUpdatedMsg{Project: project, Parked: s.parks, TransactionID: transactionID}
 }
 
