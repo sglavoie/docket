@@ -1508,7 +1508,9 @@ verify_session_16() {
 			fail "$(basename "$(dirname "$binary")") links the engine"
 		fi
 	done
-	if find "$app/PlugIns" -name 'TTBridgeCore*' | grep -q .; then
+	# PlugIns also holds the hosted device test bundle, which links the engine
+	# on purpose; only the two extensions are held to this.
+	if find "$app/PlugIns/TTShare.appex" "$app/PlugIns/TTWidgets.appex" -name 'TTBridgeCore*' | grep -q .; then
 		fail "an extension embeds the engine framework"
 	fi
 	note "the share extension and widgets are embedded and link no engine"
