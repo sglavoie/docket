@@ -37,24 +37,36 @@ func (l locator) app() app.TaskLocator {
 
 // taskView is one task as a client reads it.
 type taskView struct {
-	ProjectID      string     `json:"project_id"`
-	TaskID         string     `json:"task_id"`
-	ShortID        int        `json:"short_id"`
-	Title          string     `json:"title"`
-	Description    string     `json:"description,omitempty"`
-	State          string     `json:"state"`
-	Priority       int        `json:"priority"`
-	ParentID       string     `json:"parent_id,omitempty"`
-	Tags           []string   `json:"tags"`
-	Context        string     `json:"context,omitempty"`
-	Pinned         bool       `json:"pinned"`
-	Review         bool       `json:"review"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
-	StateChangedAt time.Time  `json:"state_changed_at"`
-	CompletedAt    *time.Time `json:"completed_at,omitempty"`
-	DueDate        *time.Time `json:"due_date,omitempty"`
-	DeferredUntil  *time.Time `json:"deferred_until,omitempty"`
+	ProjectID      string      `json:"project_id"`
+	TaskID         string      `json:"task_id"`
+	ShortID        int         `json:"short_id"`
+	Title          string      `json:"title"`
+	Description    string      `json:"description,omitempty"`
+	State          string      `json:"state"`
+	Priority       int         `json:"priority"`
+	ParentID       string      `json:"parent_id,omitempty"`
+	Tags           []string    `json:"tags"`
+	Context        string      `json:"context,omitempty"`
+	Pinned         bool        `json:"pinned"`
+	Review         bool        `json:"review"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	StateChangedAt time.Time   `json:"state_changed_at"`
+	CompletedAt    *time.Time  `json:"completed_at,omitempty"`
+	DueDate        *time.Time  `json:"due_date,omitempty"`
+	DeferredUntil  *time.Time  `json:"deferred_until,omitempty"`
+	ResumeNote     string      `json:"resume_note,omitempty"`
+	NextCheckIn    *time.Time  `json:"next_check_in,omitempty"`
+	Checklist      []checkItem `json:"checklist"`
+	Comments       int         `json:"comment_count"`
+	Attachments    int         `json:"attachment_count"`
+	Dependencies   int         `json:"dependency_count"`
+}
+
+// checkItem is one checklist row in stored order.
+type checkItem struct {
+	Text string `json:"text"`
+	Done bool   `json:"done"`
 }
 
 func viewTask(projectID string, task *models.Task) taskView {
@@ -76,6 +88,15 @@ func viewTask(projectID string, task *models.Task) taskView {
 		CompletedAt:    task.CompletedAt,
 		DueDate:        task.DueDate,
 		DeferredUntil:  task.DeferredUntil,
+		ResumeNote:     task.ResumeNote,
+		NextCheckIn:    task.NextCheckIn,
+		Checklist:      make([]checkItem, 0, len(task.Checklist)),
+		Comments:       len(task.Comments),
+		Attachments:    len(task.Attachments),
+		Dependencies:   len(task.Dependencies),
+	}
+	for _, item := range task.Checklist {
+		view.Checklist = append(view.Checklist, checkItem{Text: item.Text, Done: item.Done})
 	}
 	if task.ParentID != nil {
 		view.ParentID = *task.ParentID

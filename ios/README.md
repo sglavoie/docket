@@ -12,6 +12,7 @@ it runs under `just ci`.
 | `TTEngine/` | Swift package: the bridge models and the `TTEngine` actor |
 | `TTEngine/Frameworks/TTBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
 | `TTMobile/` | the app target |
+| `TTMobileUITests/` | the seeded browsing UI suite, on a simulator against the real engine |
 | `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
 | `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
 | `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
@@ -46,10 +47,34 @@ reopens it on a simulator. `TT_IOS_SIMULATOR` picks the simulator by UDID.
 `bash scripts/verify_mobile_session.sh 3` runs that suite and then checks the
 resulting Markdown through Go.
 
+`ios/scripts/test-ui.sh OUTPUT_DIR` runs the browsing UI suite. It enrolls a
+disposable copy of the fixture with the `tt` this tree builds, so the join test
+has an exchange folder to read. Each test then seeds its own root under
+`OUTPUT_DIR/work`, and the app reads that root from `TT_UITEST_ROOT` in place
+of its container. `bash scripts/verify_mobile_session.sh 10` runs it with the
+engine's browsing tests and the transport's join tests.
+
+## The app
+
+The first launch offers two choices: start a workspace kept on the iPhone, or
+join the one the Mac enrolled. Joining is `tt sync enroll` on the Mac, then
+picking that exchange folder. Each workspace lives under
+`Application Support/workspaces/<name>`, and the selection survives
+relaunches. A workspace an earlier build kept at `Application
+Support/workspace` is adopted as `workspace`. **Choose Another Workspace…** in
+the sync sheet returns to that choice without touching any files.
+
+Today, Inbox, and Browse are the tabs, and the capture button floats over all
+three. Browse holds Next, Due, All, Backlog, and Recent, every project by
+population (active, parked, archived), and the saved lenses. Every list is one
+engine query with search, filters, and a sort. A project's list follows the
+project's outline. A task's detail links its ancestors, subtasks,
+dependencies, and dependents.
+
 ## Sync exchange
 
-The app exchanges through a folder the user picks with **Sync > Choose
-Exchange Folder…**. It exchanges at launch, when it returns to the foreground,
+The app exchanges through a folder the user picks from the sync status button,
+under **Choose Exchange Folder…**. It exchanges at launch, when it returns to the foreground,
 after every commit, and on pull to refresh. The transport is
 [`apple/TTSync`](../apple/TTSync/Package.swift). Its contract suite runs on the
 Mac against the real engine:

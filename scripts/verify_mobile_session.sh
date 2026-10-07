@@ -899,6 +899,78 @@ verify_session_9() {
 	note "session 9 verified"
 }
 
+verify_session_10() {
+	[ "$(uname -s)" = Darwin ] || fail "session 10 runs the iPhone browsing UI tests on an iOS simulator, on macOS only"
+	require_files \
+		internal/bridge/browse_ops.go \
+		internal/bridge/browse_test.go \
+		apple/TTSync/Sources/TTSync/JoiningSyncEngine.swift \
+		apple/TTSync/Tests/TTSyncTests/JoinTests.swift \
+		ios/scripts/test-ui.sh \
+		ios/TTMobile/App/OnboardingView.swift \
+		ios/TTMobile/App/MainTabView.swift \
+		ios/TTMobile/App/BrowseView.swift \
+		ios/TTMobile/App/TaskListView.swift \
+		ios/TTMobile/App/TaskDetailView.swift \
+		ios/TTMobile/App/StateViews.swift \
+		ios/TTMobileUITests/BrowsingUITests.swift
+	grep -q 'TTMobileUITests' ios/project.yml || fail "ios/project.yml declares no UI test target"
+
+	# The engine half: every mode, lenses, the search box and its refusal,
+	# sorting, hierarchy, dependencies and an unavailable reference, and the
+	# onboarding join from a staged inbox.
+	run_go_suite bridge-browse ./internal/bridge/ \
+		'^(TestBridgeBrowsesASeededWorkspace|TestBridgeNamesAnUnavailableDependency|TestBridgeJoinsFromAStagedInbox)$' \
+		TestBridgeBrowsesASeededWorkspace/modes \
+		TestBridgeBrowsesASeededWorkspace/sort \
+		TestBridgeBrowsesASeededWorkspace/lenses_listed \
+		TestBridgeBrowsesASeededWorkspace/lens_reopens_its_query \
+		TestBridgeBrowsesASeededWorkspace/lens_narrowed_by_search \
+		TestBridgeBrowsesASeededWorkspace/lens_owns_its_axes \
+		TestBridgeBrowsesASeededWorkspace/search_text \
+		TestBridgeBrowsesASeededWorkspace/search_sigils \
+		TestBridgeBrowsesASeededWorkspace/search_refuses_by_name \
+		TestBridgeBrowsesASeededWorkspace/hierarchy \
+		TestBridgeBrowsesASeededWorkspace/dependencies \
+		TestBridgeNamesAnUnavailableDependency \
+		TestBridgeJoinsFromAStagedInbox/publishing_device_is_refused \
+		TestBridgeJoinsFromAStagedInbox/empty_inbox_delivers_nothing \
+		TestBridgeJoinsFromAStagedInbox/joined_copy_browses \
+		TestBridgeJoinsFromAStagedInbox/joined_copy_is_not_joined_twice
+
+	# The iPhone shell on a simulator against the gomobile-bound engine: seeded
+	# workspaces browsed offline, onboarding (create and join), workspace
+	# access, sync status, and the loading, empty, unavailable, and error
+	# states.
+	note "running the TTMobile UI suite"
+	ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+		cat "$work_dir/test-ui.log" >&2
+		fail "ios/scripts/test-ui.sh failed"
+	}
+	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+		'testSeededTodayInboxAndBrowseModes()' \
+		'testProjectsOutlineAndRelations()' \
+		'testLensesSearchFiltersAndSorting()' \
+		'testOpeningShowsLoadingThenContent()' \
+		'testOnboardingStartsAnEmptyWorkspaceAndCaptures()' \
+		'testUnavailableWorkspaceAndReference()' \
+		'testErrorStates()' \
+		'testJoinFromAnExchangeFolder()'
+
+	# The join through the shared Apple transport, each device a bridgehost
+	# engine, over the exchange the UI suite's desktop enrollment published.
+	local bridgehost="$work_dir/bridgehost"
+	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
+	require_files "$work_dir/ui/exchange/tt-sync/v1/workspace.json"
+	local class=TTSyncTests.JoinTests
+	TT_BRIDGEHOST="$bridgehost" TT_ENROLLED_EXCHANGE="$work_dir/ui/exchange" run_swift_suite transport-join apple/TTSync \
+		"$class/testJoinBuildsAWorkingCopyFromTheExchange" \
+		"$class/testJoinRefusesAFolderWithoutAnExchange" \
+		"$class/testFailedJoinLeavesNoWorkingCopy"
+
+	note "session 10 verified"
+}
+
 session=${1:-}
 case "$session" in
 1) verify_session_1 ;;
@@ -910,6 +982,7 @@ case "$session" in
 7) verify_session_7 ;;
 8) verify_session_8 ;;
 9) verify_session_9 ;;
+10) verify_session_10 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

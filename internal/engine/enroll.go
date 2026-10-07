@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -347,14 +348,10 @@ func Join(cfg JoinConfig) (*Runtime, *syncexchange.FolderReport, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	schemas := LiveSchemas()
-	schemas[synclog.SchemaCatalog] = config.SyncEnrolledConfigVersion
-	history := syncHistory(dataDir, owner, clock, schemas)
-	if history == nil {
-		return nil, nil, fmt.Errorf("join: this device has no sync identity")
+	svc, err := joiningCommits(dataDir, owner, clock)
+	if err != nil {
+		return nil, nil, err
 	}
-	svc := NewRepository(dataDir, nil, storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir}), owner).svc.
-		WithSyncHistory(history).WithSyncMerger(syncmerge.Merger{})
 	deviceName, _ := os.Hostname()
 	report, err := syncexchange.ExchangeFolder(svc, syncexchange.FolderOptions{
 		Folder:      cfg.Exchange,
@@ -370,6 +367,86 @@ func Join(cfg JoinConfig) (*Runtime, *syncexchange.FolderReport, error) {
 		return nil, report, err
 	}
 	rt, err := Open(Config{DataDir: dataDir, Machine: cfg.Machine, Clock: clock})
+	if err != nil {
+		return nil, report, fmt.Errorf("join: opening the joined working copy: %w", err)
+	}
+	return rt, report, nil
+}
+
+// joiningCommits is the commit boundary a join imports through: an empty
+// history that an enroll genesis may start, at the enrolled catalog schema.
+func joiningCommits(dataDir, owner string, clock app.Clock) (*storage.CommitService, error) {
+	schemas := LiveSchemas()
+	schemas[synclog.SchemaCatalog] = config.SyncEnrolledConfigVersion
+	history := syncHistory(dataDir, owner, clock, schemas)
+	if history == nil {
+		return nil, fmt.Errorf("join: this device has no sync identity")
+	}
+	return NewRepository(dataDir, nil, storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir}), owner).svc.
+		WithSyncHistory(history).WithSyncMerger(syncmerge.Merger{}), nil
+}
+
+// JoinInboxConfig is a device joining an enrolled workspace from history its
+// own transport already staged, as the iPhone does: Swift owns the coordinated
+// exchange-folder reads, so the engine sees only the verified inbox.
+type JoinInboxConfig struct {
+	// DataDir is the new local working copy; it must not exist yet, or be
+	// empty.
+	DataDir string
+	// Exchange names the exchange folder the transport read, recorded in the
+	// device-local enrollment record. The engine never reads it.
+	Exchange string
+	// WorkspaceID is the identity the exchange folder declares.
+	WorkspaceID string
+	// InboxDir is where the transport staged the exchange's manifests and
+	// blobs, laid out as the exchange is.
+	InboxDir string
+	Machine  Machine
+	Clock    app.Clock
+	IDs      app.IDGenerator
+}
+
+// JoinInbox builds this device's working copy of an enrolled workspace from a
+// staged inbox, exactly as Join does from a folder: an empty history imports
+// the genesis and everything after it through the verified import path, then
+// the working copy is recorded and opened. It refuses a device that already
+// publishes to the exchange and an inbox that never delivered the workspace,
+// leaving the working copy empty-handed rather than half-selected.
+func JoinInbox(cfg JoinInboxConfig) (*Runtime, *syncexchange.Report, error) {
+	if err := cfg.Machine.validate(); err != nil {
+		return nil, nil, err
+	}
+	if strings.TrimSpace(cfg.WorkspaceID) == "" || !filepath.IsAbs(cfg.InboxDir) {
+		return nil, nil, invalidConfig("join: a workspace id and an absolute inbox are required")
+	}
+	clock := cfg.Clock
+	if clock == nil {
+		clock = app.SystemClock()
+	}
+	owner := newManager(filepath.Clean(cfg.DataDir), cfg.Machine).TransactionOwner()
+	deviceID := owner
+	if deviceID == "" {
+		deviceID = transaction.DefaultMachineID()
+	}
+	if _, statErr := os.Stat(filepath.Join(cfg.InboxDir, "txns", deviceID)); statErr == nil {
+		return nil, nil, fmt.Errorf("join: device %s already publishes to this exchange folder; each device keeps one working copy, so use that one", deviceID)
+	}
+	dataDir, err := config.PrepareJoinedWorkingCopy(cfg.DataDir, cfg.Exchange, cfg.Machine.Home)
+	if err != nil {
+		return nil, nil, err
+	}
+	svc, err := joiningCommits(dataDir, owner, clock)
+	if err != nil {
+		return nil, nil, err
+	}
+	report, err := syncexchange.ImportInbox(svc, filepath.Clean(cfg.InboxDir))
+	if err != nil {
+		return nil, report, fmt.Errorf("join: %w", err)
+	}
+	if err := config.RecordJoinedEnrollment(dataDir, cfg.WorkspaceID, cfg.Exchange); err != nil {
+		return nil, report, err
+	}
+	rt, err := Open(Config{DataDir: dataDir, Machine: cfg.Machine, Clock: clock, IDs: cfg.IDs, RefuseMigration: true})
 	if err != nil {
 		return nil, report, fmt.Errorf("join: opening the joined working copy: %w", err)
 	}

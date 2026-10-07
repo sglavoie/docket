@@ -54,11 +54,13 @@ type op struct {
 // operations are the ops this engine build serves.
 var operations = map[string]op{
 	"workspace.open":      {opens: true, run: (*Bridge).workspaceOpen},
+	"workspace.join":      {opens: true, run: (*Bridge).workspaceJoin},
 	"workspace.status":    {run: (*Bridge).workspaceStatus},
 	"workspace.close":     {run: (*Bridge).workspaceClose},
 	"query.projects":      {run: (*Bridge).queryProjects},
 	"query.tasks":         {run: (*Bridge).queryTasks},
 	"query.task":          {run: (*Bridge).queryTask},
+	"query.lenses":        {run: (*Bridge).queryLenses},
 	"command.capture":     {mutates: true, run: (*Bridge).commandCapture},
 	"command.transition":  {mutates: true, run: (*Bridge).commandTransition},
 	"sync.status":         {run: (*Bridge).syncStatus},

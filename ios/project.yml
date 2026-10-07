@@ -47,6 +47,7 @@ targets:
     scheme:
       testTargets:
         - TTMobileDeviceTests
+        - TTMobileUITests
   # Hosted in the app, so it runs with the app's container and the exchange
   # folder bookmark the document picker left there. Physical iPhone only:
   # ios/scripts/record-icloud-exchange.sh drives it.
@@ -67,3 +68,17 @@ targets:
         product: TTEngine
       - package: TTSync
         product: TTSyncContract
+  # Seeded browsing UI tests on a simulator against the real gomobile engine.
+  # ios/scripts/test-ui.sh prepares the disposable workspaces and runs them.
+  TTMobileUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TTMobileUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.uitests
+        TEST_TARGET_NAME: TTMobile
+    dependencies:
+      - target: TTMobile

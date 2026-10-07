@@ -11,31 +11,54 @@ import TTSync
 @MainActor
 @Observable
 final class SyncModel {
+    /// How the exchange folder is reached: the document picker's bookmark, or
+    /// a folder this process may always read (a UI test's host folder).
+    enum FolderChoice: Sendable {
+        case picked(URL)
+        case direct(URL)
+    }
+
+    struct JoinFailure: Error, CustomStringConvertible {
+        let description: String
+    }
+
     private(set) var hasFolder = false
     private(set) var isExchanging = false
     private(set) var condition: ExchangeCondition?
     private(set) var outstandingUploads = 0
     private(set) var outstandingDownloads = 0
     private(set) var unavailable: [String] = []
+    private(set) var held: [String] = []
     private(set) var conflicts = 0
     private(set) var lastSuccessfulExchange: Date?
     private(set) var lastError: String?
+
+    /// Called on the main actor after a pass imported anything.
+    var onImport: (() -> Void)?
 
     private var transport: ExchangeTransport?
     private var pending = false
 
     /// Connects the transport to the open workspace and restores the picked
     /// folder, if any.
-    func attach(dataDirectory: URL, runtimeDirectory: URL, deviceID: String) {
+    func attach(location: WorkspaceLocation, deviceID: String, exchangeOverride: URL?) {
+        detach()
         do {
             let client = BridgeClient(call: { GoBridgeTransport().call($0) })
-            try client.open(dataDirectory: dataDirectory, runtimeDirectory: runtimeDirectory, deviceID: deviceID)
-            let bookmark = try ExchangeFolderBookmark.defaultURL()
-            hasFolder = FileManager.default.fileExists(atPath: bookmark.path)
+            try client.open(dataDirectory: location.data, runtimeDirectory: location.runtime, deviceID: deviceID)
+            let access: any FolderAccess
+            if let exchangeOverride {
+                access = DirectFolderAccess(folder: exchangeOverride)
+                hasFolder = true
+            } else {
+                let bookmark = try ExchangeFolderBookmark.defaultURL()
+                access = BookmarkFolderAccess(bookmarkFile: bookmark)
+                hasFolder = FileManager.default.fileExists(atPath: bookmark.path)
+            }
             transport = ExchangeTransport(
-                provider: CoordinatedFolderProvider(access: BookmarkFolderAccess(bookmarkFile: bookmark)),
+                provider: CoordinatedFolderProvider(access: access),
                 engine: try BridgeSyncEngine(client: client),
-                stateDirectory: runtimeDirectory.appendingPathComponent("sync-transport", isDirectory: true)
+                stateDirectory: location.runtime.appendingPathComponent("sync-transport", isDirectory: true)
             )
             if let state = try? transport?.state() {
                 apply(state)
@@ -43,6 +66,20 @@ final class SyncModel {
         } catch {
             lastError = String(describing: error)
         }
+    }
+
+    /// Forgets the transport; the workspace and the queues stay on disk.
+    func detach() {
+        transport = nil
+        hasFolder = false
+        condition = nil
+        outstandingUploads = 0
+        outstandingDownloads = 0
+        unavailable = []
+        held = []
+        conflicts = 0
+        lastSuccessfulExchange = nil
+        lastError = nil
     }
 
     /// Records the folder the document picker returned.
@@ -55,6 +92,42 @@ final class SyncModel {
         } catch {
             lastError = "the folder could not be kept: \(error.localizedDescription)"
         }
+    }
+
+    /// Builds `location` from the history an enrolled exchange holds. One
+    /// transport pass downloads and stages it; the engine's first import is
+    /// the join. The pass's queues are kept, so the opened workspace resumes
+    /// them rather than downloading again.
+    func join(choice: FolderChoice, location: WorkspaceLocation, deviceID: String) async throws {
+        let access: any FolderAccess
+        switch choice {
+        case .picked(let folder):
+            let bookmark = try ExchangeFolderBookmark.defaultURL()
+            try BookmarkFolderAccess.save(folder: folder, to: bookmark)
+            access = BookmarkFolderAccess(bookmarkFile: bookmark)
+        case .direct(let folder):
+            access = DirectFolderAccess(folder: folder)
+        }
+        try await Task.detached(priority: .userInitiated) {
+            let provider = CoordinatedFolderProvider(access: access)
+            try provider.checkAccess()
+            let workspaceID = try JoiningSyncEngine.workspaceID(in: provider)
+            try FileManager.default.createDirectory(at: location.runtime, withIntermediateDirectories: true)
+            let engine = JoiningSyncEngine(
+                client: BridgeClient(call: { GoBridgeTransport().call($0) }),
+                workspaceID: workspaceID, dataDirectory: location.data, runtimeDirectory: location.runtime,
+                deviceID: deviceID, exchange: try access.url().path
+            )
+            let transport = ExchangeTransport(
+                provider: provider, engine: engine,
+                stateDirectory: location.runtime.appendingPathComponent("sync-transport", isDirectory: true)
+            )
+            let report = try transport.exchange()
+            guard engine.joined else {
+                throw JoinFailure(description: report.errors.last
+                    ?? "The exchange has not delivered the workspace yet; iCloud may still be downloading it.")
+            }
+        }.value
     }
 
     /// Runs one exchange pass in the background; a request made during a pass
@@ -84,8 +157,12 @@ final class SyncModel {
             outstandingUploads = report.outstandingUploads
             outstandingDownloads = report.outstandingDownloads
             unavailable = report.unavailable
+            held = report.held
             lastSuccessfulExchange = report.lastSuccessfulExchange
             lastError = report.errors.last
+            if !report.imported.isEmpty {
+                onImport?()
+            }
         case .failure(let error):
             lastError = String(describing: error)
         }
@@ -100,6 +177,7 @@ final class SyncModel {
         outstandingUploads = state.uploads.count
         outstandingDownloads = state.downloads.count
         unavailable = Array(Set(state.downloads.flatMap(\.unavailable))).sorted()
+        held = state.downloads.filter { $0.outcome == "held" }.map(\.txnID)
         lastSuccessfulExchange = state.lastSuccessfulExchange
         lastError = state.lastError
     }

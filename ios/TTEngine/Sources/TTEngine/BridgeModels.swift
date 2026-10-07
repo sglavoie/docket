@@ -115,12 +115,19 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
     public var completedAt: Date?
     public var dueDate: Date?
     public var deferredUntil: Date?
+    public var resumeNote: String?
+    public var nextCheckIn: Date?
+    /// Absent from an engine older than the browsing ops, so optional.
+    public var checklist: [ChecklistItem]?
+    public var commentCount: Int?
+    public var attachmentCount: Int?
+    public var dependencyCount: Int?
 
     public var locator: TaskLocator { TaskLocator(projectID: projectID, taskID: taskID) }
     public var id: TaskLocator { locator }
 
     enum CodingKeys: String, CodingKey {
-        case title, description, state, priority, tags, context, pinned, review
+        case title, description, state, priority, tags, context, pinned, review, checklist
         case projectID = "project_id"
         case taskID = "task_id"
         case shortID = "short_id"
@@ -131,14 +138,93 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
         case completedAt = "completed_at"
         case dueDate = "due_date"
         case deferredUntil = "deferred_until"
+        case resumeNote = "resume_note"
+        case nextCheckIn = "next_check_in"
+        case commentCount = "comment_count"
+        case attachmentCount = "attachment_count"
+        case dependencyCount = "dependency_count"
     }
 }
 
-/// One task with its project and the project's revision.
+/// One checklist row in stored order.
+public struct ChecklistItem: Decodable, Hashable, Sendable {
+    public var text: String
+    public var done: Bool
+}
+
+/// A task another task points at. A reference the workspace cannot resolve
+/// keeps its stored locator and arrives with `available` false.
+public struct RelatedTask: Decodable, Hashable, Sendable, Identifiable {
+    public var projectID: String
+    public var taskID: String
+    public var available: Bool
+    public var title: String?
+    public var state: WorkflowState?
+    public var projectName: String?
+
+    public var locator: TaskLocator { TaskLocator(projectID: projectID, taskID: taskID) }
+    public var id: TaskLocator { locator }
+
+    enum CodingKeys: String, CodingKey {
+        case available, title, state
+        case projectID = "project_id"
+        case taskID = "task_id"
+        case projectName = "project_name"
+    }
+}
+
+/// What a task detail navigates: ancestors root first, direct children in
+/// stored order, the tasks this one depends on, and the computed dependents.
+public struct TaskRelations: Decodable, Hashable, Sendable {
+    public var ancestors: [RelatedTask]
+    public var children: [RelatedTask]
+    public var dependencies: [RelatedTask]
+    public var dependents: [RelatedTask]
+}
+
+/// One task with its project, the project's revision, and its relations.
 public struct TaskDetail: Decodable, Hashable, Sendable {
     public var task: TaskSnapshot
     public var project: ProjectSummary
     public var revision: String
+    public var relations: TaskRelations?
+}
+
+/// A manual order: a field and a direction. A nil field is the mode's own
+/// order.
+public struct TaskSort: Codable, Hashable, Sendable {
+    public var field: String?
+    public var ascending: Bool
+
+    public init(field: String? = nil, ascending: Bool = true) {
+        self.field = field
+        self.ascending = ascending
+    }
+}
+
+/// One saved lens: the projection it reopens into.
+public struct LensSummary: Decodable, Hashable, Sendable, Identifiable {
+    public var id: String
+    public var name: String
+    public var mode: String
+    public var scope: String?
+    public var query: String
+    public var sort: TaskSort
+}
+
+public struct LensList: Decodable, Hashable, Sendable {
+    public var lenses: [LensSummary]
+}
+
+/// The verdict on one staged manifest a join imported.
+public struct StagedImport: Decodable, Hashable, Sendable {
+    public var path: String
+    public var outcome: String
+    public var reason: String?
+}
+
+public struct StagedImportReport: Decodable, Hashable, Sendable {
+    public var results: [StagedImport]
 }
 
 public struct TaskQueryItem: Decodable, Hashable, Sendable {

@@ -28,6 +28,11 @@ public struct ExportedOutbox: Decodable, Sendable {
     public let deviceID: String
     public let pending: [OutgoingTransaction]
 
+    public init(deviceID: String, pending: [OutgoingTransaction]) {
+        self.deviceID = deviceID
+        self.pending = pending
+    }
+
     enum CodingKeys: String, CodingKey {
         case deviceID = "device_id"
         case pending
@@ -74,6 +79,14 @@ public struct EngineSyncStatus: Decodable, Sendable {
     public let outbox: [OutboxEntry]
     public let received: [String: UInt64]
     public let conflicts: [String]
+
+    public init(deviceID: String, heads: [String] = [], outbox: [OutboxEntry] = [], received: [String: UInt64] = [:], conflicts: [String] = []) {
+        self.deviceID = deviceID
+        self.heads = heads
+        self.outbox = outbox
+        self.received = received
+        self.conflicts = conflicts
+    }
 
     enum CodingKeys: String, CodingKey {
         case deviceID = "device_id"
@@ -127,6 +140,33 @@ public final class BridgeClient: @unchecked Sendable {
               let workspace = object["workspace"] as? String
         else {
             throw BridgeFailure(op: "workspace.open", code: "malformed", message: "no workspace in the reply")
+        }
+        lock.lock()
+        self.workspace = workspace
+        lock.unlock()
+        return object
+    }
+
+    /// Builds and opens this device's working copy of an enrolled workspace
+    /// from the history staged in `inbox`, and addresses every later request
+    /// to it. The reply carries the import report under "import".
+    @discardableResult
+    public func join(
+        dataDirectory: URL, runtimeDirectory: URL, deviceID: String,
+        workspaceID: String, exchange: String, inbox: URL
+    ) throws -> [String: Any] {
+        let result = try send("workspace.join", payload: [
+            "data_dir": dataDirectory.path,
+            "runtime_dir": runtimeDirectory.path,
+            "device_id": deviceID,
+            "workspace_id": workspaceID,
+            "exchange": exchange,
+            "inbox_dir": inbox.path,
+        ], addressed: false)
+        guard let object = try JSONSerialization.jsonObject(with: result) as? [String: Any],
+              let workspace = object["workspace"] as? String
+        else {
+            throw BridgeFailure(op: "workspace.join", code: "malformed", message: "no workspace in the reply")
         }
         lock.lock()
         self.workspace = workspace

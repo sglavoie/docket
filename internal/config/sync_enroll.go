@@ -599,6 +599,16 @@ func PrepareJoinedWorkingCopy(dataDir, exchange, machineHome string) (string, er
 // enrolled, the exchange folder it uses, and selects its working copy. The
 // working copy must already hold the enrolled catalog its history delivered.
 func RecordJoinedWorkingCopy(dataDir, workspaceID, exchange string) error {
+	if err := RecordJoinedEnrollment(dataDir, workspaceID, exchange); err != nil {
+		return err
+	}
+	return WriteActiveWorkspacePointer(dataDir, workspaceID)
+}
+
+// RecordJoinedEnrollment records the exchange folder a joined working copy
+// uses and selects nothing: a mobile app keeps its own workspace selection, so
+// it never writes the desktop's active-workspace pointer.
+func RecordJoinedEnrollment(dataDir, workspaceID, exchange string) error {
 	catalog, err := NewDomainFileStore(dataDir).LoadCatalogReadOnly()
 	if err != nil {
 		return fmt.Errorf("join: the exchange has not delivered the workspace yet: %w", err)
@@ -617,8 +627,5 @@ func RecordJoinedWorkingCopy(dataDir, workspaceID, exchange string) error {
 		ExchangeFolder: exchangeAbs,
 		EnrolledAt:     catalog.Sync.EnrolledAt,
 	}
-	if err := writeEnrollmentRecord(dataDir, record); err != nil {
-		return err
-	}
-	return WriteActiveWorkspacePointer(dataDir, workspaceID)
+	return writeEnrollmentRecord(dataDir, record)
 }

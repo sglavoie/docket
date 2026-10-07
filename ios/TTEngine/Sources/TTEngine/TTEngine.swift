@@ -57,6 +57,31 @@ public actor TTEngine {
         return status
     }
 
+    /// Builds this device's working copy of an enrolled workspace from the
+    /// history a transport staged in `inbox`, then opens it. The working copy
+    /// directory must not exist yet or be empty.
+    @discardableResult
+    public func join(
+        dataDirectory: URL,
+        runtimeDirectory: URL,
+        deviceID: String,
+        workspaceID: String,
+        exchange: String,
+        inbox: URL
+    ) throws -> WorkspaceStatus {
+        guard transport.bridgeVersion >= supportedBridgeVersion else {
+            throw TTEngineError.engineTooOld(engine: transport.bridgeVersion, required: supportedBridgeVersion)
+        }
+        let payload = JoinPayload(
+            dataDir: dataDirectory.path, runtimeDir: runtimeDirectory.path, deviceID: deviceID,
+            workspaceID: workspaceID, exchange: exchange, inboxDir: inbox.path
+        )
+        workspace = nil
+        let status: WorkspaceStatus = try send("workspace.join", payload: payload, addressed: false)
+        workspace = status.workspace
+        return status
+    }
+
     public func status() throws -> WorkspaceStatus {
         try send("workspace.status", payload: Empty())
     }
@@ -73,9 +98,27 @@ public actor TTEngine {
     }
 
     /// Evaluates one canonical query. `query` is the strict canonical clause
-    /// string; mode, scope, and sort sit beside it.
-    public func tasks(mode: String? = nil, scope: String? = nil, query: String? = nil) throws -> TaskQueryResult {
-        try send("query.tasks", payload: TasksPayload(mode: mode, scope: scope, query: query))
+    /// string; mode, scope, and sort sit beside it. `search` narrows the
+    /// result as the desktop's search box does, and `lens` reopens a saved
+    /// lens in place of mode, scope, query, and sort.
+    public func tasks(
+        mode: String? = nil,
+        scope: String? = nil,
+        query: String? = nil,
+        sort: TaskSort? = nil,
+        lens: String? = nil,
+        search: String? = nil
+    ) throws -> TaskQueryResult {
+        try send(
+            "query.tasks",
+            payload: TasksPayload(mode: mode, scope: scope, query: query, sort: sort, lens: lens, search: search)
+        )
+    }
+
+    /// The saved lenses in their stored order.
+    public func lenses() throws -> [LensSummary] {
+        let list: LensList = try send("query.lenses", payload: Empty())
+        return list.lenses
     }
 
     public func task(_ locator: TaskLocator) throws -> TaskDetail {
@@ -228,6 +271,27 @@ private struct TasksPayload: Encodable {
     var mode: String?
     var scope: String?
     var query: String?
+    var sort: TaskSort?
+    var lens: String?
+    var search: String?
+}
+
+private struct JoinPayload: Encodable {
+    var dataDir: String
+    var runtimeDir: String
+    var deviceID: String
+    var workspaceID: String
+    var exchange: String
+    var inboxDir: String
+
+    enum CodingKeys: String, CodingKey {
+        case exchange
+        case dataDir = "data_dir"
+        case runtimeDir = "runtime_dir"
+        case deviceID = "device_id"
+        case workspaceID = "workspace_id"
+        case inboxDir = "inbox_dir"
+    }
 }
 
 private struct TaskPayload: Encodable {

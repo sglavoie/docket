@@ -142,7 +142,7 @@ func (h *harness) call(op string, payload any, opts ...func(map[string]any)) res
 		"request_id":     fmt.Sprintf("req-%d", h.requests),
 		"op":             op,
 	}
-	if op != "workspace.open" && h.workspace != "" {
+	if op != "workspace.open" && op != "workspace.join" && h.workspace != "" {
 		envelope["workspace"] = h.workspace
 	}
 	if payload != nil {

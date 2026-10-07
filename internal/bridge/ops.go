@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/syncexchange"
 )
 
 type openPayload struct {
@@ -59,20 +60,85 @@ func (b *Bridge) workspaceOpen(request Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err = runtime.ReconcilePlanning(); err != nil {
+	if err := b.adopt(runtime, payload.DeviceID); err != nil {
 		return nil, err
+	}
+	return b.status()
+}
+
+// adopt makes an opened runtime the bridge's one workspace.
+func (b *Bridge) adopt(runtime *engine.Runtime, deviceID string) error {
+	if _, err := runtime.ReconcilePlanning(); err != nil {
+		return err
 	}
 	catalog := runtime.State().Catalog()
 	if catalog == nil || catalog.WorkspaceID == "" {
-		return nil, newError(CodeInternal, "workspace at %s carries no identity", payload.DataDir)
+		return newError(CodeInternal, "workspace at %s carries no identity", runtime.DataDir())
 	}
 	b.workspace = &openWorkspace{
 		runtime:  runtime,
 		id:       catalog.WorkspaceID,
-		deviceID: payload.DeviceID,
+		deviceID: deviceID,
 		replay:   newReplayCache(),
 	}
-	return b.status()
+	return nil
+}
+
+type joinPayload struct {
+	DataDir     string `json:"data_dir"`
+	RuntimeDir  string `json:"runtime_dir"`
+	DeviceID    string `json:"device_id"`
+	WorkspaceID string `json:"workspace_id"`
+	Exchange    string `json:"exchange"`
+	InboxDir    string `json:"inbox_dir"`
+}
+
+type joinResult struct {
+	statusResult
+	Import *syncexchange.Report `json:"import"`
+}
+
+// workspaceJoin builds this device's working copy of an enrolled workspace
+// from the history the transport staged in inbox_dir, then opens it. The
+// working copy must not exist yet or be empty; a join that delivered no
+// workspace is refused and opens nothing.
+func (b *Bridge) workspaceJoin(request Request) (any, error) {
+	var payload joinPayload
+	if err := decodePayload(request.Payload, &payload); err != nil {
+		return nil, err
+	}
+	switch {
+	case payload.DataDir == "" || payload.RuntimeDir == "" || payload.DeviceID == "" ||
+		payload.WorkspaceID == "" || payload.Exchange == "" || payload.InboxDir == "":
+		return nil, newError(CodeInvalidRequest, "data_dir, runtime_dir, device_id, workspace_id, exchange, and inbox_dir are required")
+	case !filepath.IsAbs(payload.DataDir) || !filepath.IsAbs(payload.InboxDir):
+		return nil, newError(CodeInvalidRequest, "data_dir and inbox_dir must be absolute")
+	}
+	b.workspace = nil
+	runtime, report, err := engine.JoinInbox(engine.JoinInboxConfig{
+		DataDir:     payload.DataDir,
+		Exchange:    payload.Exchange,
+		WorkspaceID: payload.WorkspaceID,
+		InboxDir:    payload.InboxDir,
+		Machine:     engine.ExplicitMachine(payload.RuntimeDir, payload.DeviceID),
+		Clock:       b.options.Clock,
+		IDs:         b.options.IDs,
+	})
+	if err != nil {
+		refusal := newError(CodeRefused, "%v", err)
+		if report != nil {
+			refusal = refusal.with("import", report)
+		}
+		return nil, refusal
+	}
+	if err := b.adopt(runtime, payload.DeviceID); err != nil {
+		return nil, err
+	}
+	status, err := b.status()
+	if err != nil {
+		return nil, err
+	}
+	return joinResult{statusResult: status, Import: report}, nil
 }
 
 func (b *Bridge) workspaceStatus(request Request) (any, error) {
@@ -161,6 +227,12 @@ type tasksPayload struct {
 	Scope string       `json:"scope,omitempty"`
 	Query string       `json:"query,omitempty"`
 	Sort  *sortPayload `json:"sort,omitempty"`
+	// Lens reopens a saved lens: its mode, scope, query, and sort, which is
+	// why it stands alone among those four.
+	Lens string `json:"lens,omitempty"`
+	// Search narrows whatever the rest selects, read as the desktop's search
+	// box reads it.
+	Search string `json:"search,omitempty"`
 }
 
 type queryItemView struct {
@@ -182,17 +254,9 @@ func (b *Bridge) queryTasks(request Request) (any, error) {
 	if err := decodePayload(request.Payload, &payload); err != nil {
 		return nil, err
 	}
-	parsed, err := models.ParseQuery(payload.Query)
+	query, err := b.tasksQuery(payload)
 	if err != nil {
-		return nil, newError(CodeValidation, "query: %v", err)
-	}
-	var sort models.QuerySort
-	if payload.Sort != nil {
-		sort = models.QuerySort{Field: models.QuerySortField(payload.Sort.Field), Ascending: payload.Sort.Ascending}
-	}
-	query, err := models.NewQuery(models.QueryMode(payload.Mode), payload.Scope, sort, parsed.Clauses...)
-	if err != nil {
-		return nil, newError(CodeValidation, "query: %v", err)
+		return nil, err
 	}
 	answer, err := b.workspace.runtime.Query(query)
 	if err != nil {
@@ -213,14 +277,52 @@ func (b *Bridge) queryTasks(request Request) (any, error) {
 	return result, nil
 }
 
+// tasksQuery builds the one query a tasks request names: a lens or the
+// explicit axes, narrowed by the search box.
+func (b *Bridge) tasksQuery(payload tasksPayload) (models.Query, error) {
+	search, refusal := compileSearch(payload.Search)
+	if refusal != nil {
+		return models.Query{}, refusal
+	}
+	if payload.Lens != "" {
+		if payload.Mode != "" || payload.Scope != "" || payload.Query != "" || payload.Sort != nil {
+			return models.Query{}, newError(CodeInvalidRequest, "lens names its own mode, scope, query, and sort")
+		}
+		lens, err := b.findLens(payload.Lens)
+		if err != nil {
+			return models.Query{}, err
+		}
+		query, err := lensQuery(lens)
+		if err != nil {
+			return models.Query{}, err
+		}
+		query.Clauses = append(query.Clauses, search...)
+		return query.Canonical(), nil
+	}
+	parsed, err := models.ParseQuery(payload.Query)
+	if err != nil {
+		return models.Query{}, newError(CodeValidation, "query: %v", err)
+	}
+	var sort models.QuerySort
+	if payload.Sort != nil {
+		sort = models.QuerySort{Field: models.QuerySortField(payload.Sort.Field), Ascending: payload.Sort.Ascending}
+	}
+	query, err := models.NewQuery(models.QueryMode(payload.Mode), payload.Scope, sort, append(parsed.Clauses, search...)...)
+	if err != nil {
+		return models.Query{}, newError(CodeValidation, "query: %v", err)
+	}
+	return query, nil
+}
+
 type taskPayload struct {
 	Task locator `json:"task"`
 }
 
 type taskResult struct {
-	Task     taskView    `json:"task"`
-	Project  projectView `json:"project"`
-	Revision string      `json:"revision"`
+	Task      taskView    `json:"task"`
+	Project   projectView `json:"project"`
+	Revision  string      `json:"revision"`
+	Relations relations   `json:"relations"`
 }
 
 // queryTask reads one task by its qualified identity, with the canonical
@@ -251,9 +353,10 @@ func (b *Bridge) readTask(target app.TaskLocator) (taskResult, error) {
 			with("project_id", target.ProjectID).with("task_id", target.TaskID)
 	}
 	return taskResult{
-		Task:     viewTask(ref.Project.ID, ref.Task),
-		Project:  viewProject(runtime.State(), ref.Project),
-		Revision: snapshot.Revision(ref.Project.ID),
+		Task:      viewTask(ref.Project.ID, ref.Task),
+		Project:   viewProject(runtime.State(), ref.Project),
+		Revision:  snapshot.Revision(ref.Project.ID),
+		Relations: taskRelations(snapshot, ref.Project, ref.Task),
 	}, nil
 }
 

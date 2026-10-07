@@ -10,8 +10,10 @@ struct SyncStatusSection: View {
     var body: some View {
         Section("Sync") {
             Text("Saved on this device")
+                .accessibilityIdentifier("sync.local")
             if !sync.hasFolder {
                 Text("No exchange folder chosen").foregroundStyle(.secondary)
+                    .accessibilityIdentifier("sync.noFolder")
             } else {
                 if let condition = sync.condition, condition != .reachable {
                     Text(describe(condition)).foregroundStyle(.orange)
@@ -20,6 +22,9 @@ struct SyncStatusSection: View {
                 LabeledContent("Waiting to download", value: "\(sync.outstandingDownloads)")
                 if !sync.unavailable.isEmpty {
                     LabeledContent("Content not downloaded yet", value: "\(sync.unavailable.count)")
+                }
+                if !sync.held.isEmpty {
+                    LabeledContent("Waiting for an update", value: "\(sync.held.count)")
                 }
                 LabeledContent("Conflicts", value: "\(sync.conflicts)")
                 LabeledContent("Last exchange") {

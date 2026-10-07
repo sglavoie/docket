@@ -111,11 +111,13 @@ There is no bridge-only mutation path.
 | Op | Mutates | Notes |
 | --- | --- | --- |
 | `workspace.open` | may recover | Payload is `{data_dir, runtime_dir, device_id, create_if_missing}`; the last is optional and bootstraps an empty directory. Recovers interrupted journals and refuses to migrate implicitly. |
+| `workspace.join` | yes | Builds and opens this device's working copy of an enrolled workspace from exchange history its transport staged. |
 | `workspace.status` | no | Reports schemas, revisions, and the sync state summary. |
 | `workspace.close` | no | Releases locks and caches. |
 | `query.projects` | no | Returns active, parked, and archived projects as separate populations, matching `TaskWorkspaceProjects` and `AvailableProjects`. |
 | `query.tasks` | no | Payload is `{mode, scope, query, sort}` in the canonical query grammar. |
 | `query.task` | no | Returns one task with its Peek document fields, including computed dependents. |
+| `query.lenses` | no | The saved lenses in stored order. |
 | `query.notes`, `query.note` | no | Notes are location-qualified. Archived projects are excluded. |
 | `command.capture` | yes | Capture grammar text and a destination. Multiline input is one transaction. |
 | `command.edit` | yes | Quick-edit grammar against one qualified task. |
@@ -144,10 +146,12 @@ from one the protocol never had. The current build serves these:
 | Op | Payload | Result |
 | --- | --- | --- |
 | `workspace.open`, `workspace.status` | as above; status takes none | `{workspace, data_dir, device_id, schemas, revisions}` |
+| `workspace.join` | `{data_dir, runtime_dir, device_id, workspace_id, exchange, inbox_dir}`; `data_dir` and `inbox_dir` absolute | the status fields and `import: {results}` |
 | `workspace.close` | none | `{closed}` |
 | `query.projects` | none | `{active, parked, archived}` |
-| `query.tasks` | `{mode, scope, query, sort: {field, ascending}}`, each optional; `query` is the strict canonical clause string | `{query, items: [{task, today, next}], diagnostics}` |
-| `query.task` | `{task}` | `{task, project, revision}` |
+| `query.tasks` | `{mode, scope, query, sort: {field, ascending}, lens, search}`, each optional; `query` is the strict canonical clause string; `lens` excludes the four before it | `{query, items: [{task, today, next}], diagnostics}` |
+| `query.task` | `{task}` | `{task, project, revision, relations: {ancestors, children, dependencies, dependents}}` |
+| `query.lenses` | none | `{lenses: [{id, name, mode, scope, query, sort}]}` |
 | `command.capture` | `{title, project_id, destination, priority, tags}`; only `title` is required | `{task, committed}` |
 | `command.transition` | `{task, state}` | `{task, committed}` |
 | `sync.status` | none | `{device_id, indexed, heads, outbox: [{txn_id, device_seq}], received, conflicts}` |
@@ -157,6 +161,33 @@ from one the protocol never had. The current build serves these:
 
 `command.capture` takes a literal title in this build: a sigil in it stays
 text. An absent `project_id` is the protected Unfiled project.
+
+`query.tasks` reads `search` the way the desktop's search box does. A value
+the grammar recognizes but cannot honor (`$ready`) refuses the query with
+`validation`, naming it. Every canonical token becomes its clause, and the
+rest is one free-text clause over the task's own prose. `lens` reopens a
+saved lens: its mode, scope, sort, and stored query, read the same way, so
+`search` can narrow it further. A lens whose scoped project is missing,
+archived, or parked answers `not_found`, like any scope outside the
+population.
+
+A task view also carries `resume_note`, `next_check_in`, `checklist`
+(`[{text, done}]` in stored order), `comment_count`, `attachment_count`, and
+`dependency_count`. Each `relations` entry is
+`{project_id, task_id, available, title, state, project_name}`: ancestors
+root first, direct children in stored order, the task's own dependencies,
+and the computed dependents. A reference the workspace cannot resolve, such
+as a deleted task or one in an archived project, keeps its stored locator and
+arrives with `available` false. It is never dropped.
+
+`workspace.join` is the iPhone's onboarding join. Swift's transport performs
+the coordinated reads of the exchange folder and stages its history into
+`inbox_dir`. The engine imports the genesis and everything after it into an
+empty `data_dir` through the verified import path, records `exchange` in the
+device-local enrollment record, and opens the working copy. It never writes
+the desktop's active-workspace pointer. A device that already publishes to
+the exchange, a non-empty `data_dir`, or an inbox that never delivered the
+workspace answers `refused` and leaves no workspace open.
 
 `sync.export_pending` first records any edit made outside a commit (see
 [External changes](sync-envelope.md#external-changes)), so the list includes
