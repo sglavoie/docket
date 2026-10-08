@@ -287,8 +287,14 @@ func (v *qualificationValidator) parse(label, value string) time.Time {
 	return at
 }
 
+// marker is device_qualification.py's Trial.marker: a scenario rerun after an
+// interrupted attempt records its attempt and uses titles suffixed "aN".
 func (v *qualificationValidator) marker(scenario, tag string) string {
-	return "q18 " + v.ev.RunID + " " + strings.ReplaceAll(scenario, "_", "-") + " " + tag
+	title := "q18 " + v.ev.RunID + " " + strings.ReplaceAll(scenario, "_", "-") + " " + tag
+	if attempt, _ := v.ev.Scenarios[scenario].Observations["attempt"].(float64); attempt > 1 {
+		title += fmt.Sprintf(" a%d", int(attempt))
+	}
+	return title
 }
 
 // header holds the trial to the builds under test.

@@ -134,8 +134,15 @@ class Trial:
         return run([binary or os.path.join(self.dir, "bin", "tt"), *args],
                    env={"HOME": self.home}, check=check, log=os.path.join(self.dir, "tt.log"))
 
+    # A scenario rerun after an interrupted attempt left its markers behind
+    # uses fresh ones, suffixed "aN"; the attempt is recorded so the
+    # validator derives the same titles.
+    attempts = {}
+
     def marker(self, scenario, tag):
-        return f"q18 {self.run_id} {scenario.replace('_', '-')} {tag}"
+        title = f"q18 {self.run_id} {scenario.replace('_', '-')} {tag}"
+        attempt = self.attempts.get(scenario, 1)
+        return f"{title} a{attempt}" if attempt > 1 else title
 
     # The Mac side.
 
@@ -727,7 +734,13 @@ def scenario_delayed(trial):
 Turn on Airplane Mode on the iPhone, then capture {phone!r} in tt.
 Keep Airplane Mode on: the Mac publishes next, and the iPhone has to stay
 offline for at least {DELAY_MIN_SECONDS // 60} minutes after that. You'll be told when.""")
-    wait_enter()
+    if RESUME_AFTER_IPHONE:
+        # The person already did this step for an earlier, interrupted run;
+        # the delivered checkpoint still has to find the task exactly once.
+        _pending.clear()
+        note(f"resuming: {phone!r} already captured on the iPhone with Airplane Mode on")
+    else:
+        wait_enter()
     mac_capture(trial, mac)
     if not trial.mac_exchange():
         fail("the Mac could not publish")
@@ -861,12 +874,26 @@ choose Keep Downloaded, and join again.""")
     record_enrollment(trial)
 
 
+RESUME_AFTER_IPHONE = False
+
+
 def cmd_scenario(args):
+    global RESUME_AFTER_IPHONE
+    RESUME_AFTER_IPHONE = "--resume-after-iphone" in args
+    attempt = 1
+    for a in args:
+        if a.startswith("--attempt="):
+            attempt = int(a.split("=", 1)[1])
+    args = [a for a in args if a != "--resume-after-iphone" and not a.startswith("--attempt=")]
     if not args or args[0] not in SCENARIO_RUNNERS:
-        fail("usage: scenario " + "|".join(SCENARIOS))
+        fail("usage: scenario " + "|".join(SCENARIOS) + " [--attempt=N] [--resume-after-iphone]")
     trial = Trial.current()
     name = args[0]
+    if attempt > 1:
+        trial.attempts[name] = attempt
     records, observations = SCENARIO_RUNNERS[name](trial)
+    if attempt > 1:
+        observations["attempt"] = attempt
     remarks = human("Anything unexpected in this scenario? Reply 'none' if nothing.").strip()
     if remarks.lower().rstrip(".") in ("none", "nothing", "no"):
         remarks = ""

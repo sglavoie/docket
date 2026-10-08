@@ -262,3 +262,43 @@ func TestQualificationValidatorRefusesIncompleteEvidence(t *testing.T) {
 		})
 	}
 }
+
+// TestQualificationValidatorReadsScenarioAttempts holds a rerun scenario to
+// the titles its recorded attempt implies: suffixed markers pass, and the
+// first attempt's unsuffixed ones no longer count.
+func TestQualificationValidatorReadsScenarioAttempts(t *testing.T) {
+	validate := func(ev *qualificationEvidence) []string {
+		data, err := json.Marshal(ev)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded qualificationEvidence
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		return validateQualification(t, &decoded, "src", "bridge", "tt")
+	}
+	rerun := func(suffix bool) *qualificationEvidence {
+		ev := syntheticQualification(t)
+		ev.Scenarios["delayed_delivery"].Observations["attempt"] = float64(2)
+		for i := range ev.Checkpoints {
+			c := &ev.Checkpoints[i]
+			if c.Scenario != "delayed_delivery" || !suffix {
+				continue
+			}
+			renamed := map[string]int{}
+			for title, n := range c.Markers {
+				renamed[title+" a2"] = n
+			}
+			c.Markers = renamed
+		}
+		return ev
+	}
+	if problems := validate(rerun(true)); len(problems) > 0 {
+		t.Fatalf("a second attempt with its own markers was refused:\n%s", strings.Join(problems, "\n"))
+	}
+	problems := validate(rerun(false))
+	if !slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, "delayed_delivery/delivered") }) {
+		t.Fatalf("a second attempt counted the first attempt's markers: %v", problems)
+	}
+}
