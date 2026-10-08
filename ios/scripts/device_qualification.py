@@ -151,6 +151,7 @@ class Trial:
             "workspace_id": status.get("workspace_id", ""),
             "outstanding_up": status.get("outstanding_up", 0),
             "outstanding_down": status.get("outstanding_down", 0),
+            "local_transactions": status.get("local_transactions", 0),
             "held": len(status.get("held") or []),
             "conflicts": len(report.get("conflicts") or []),
         }
@@ -240,6 +241,8 @@ class Trial:
                 "device_id": engine.get("device_id", ""),
                 "workspace_id": status.get("workspace_id", ""),
                 "outstanding_up": status.get("outstanding_up", 0),
+                "local_transactions": status.get("local_transactions", 0),
+                "received": status.get("received") or {},
                 "conflicts": len(engine.get("conflicts") or []),
                 "engine_error": newest.get("engine_error"),
                 "transport": {
@@ -251,6 +254,72 @@ class Trial:
             }
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
+
+
+def drive_tui(trial, keys, binary=None):
+    """Runs the Mac's trial tt in a pseudo-terminal, as a person at the
+    keyboard would, sends each key string in turn, then Ctrl+C."""
+    import pty
+    import select
+    import struct
+    import fcntl
+    import termios
+    env = {**os.environ, "HOME": trial.home, "TERM": "xterm-256color"}
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.execve(binary or os.path.join(trial.dir, "bin", "tt"),
+                  [binary or "tt", "--data-dir", trial.working], env)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 140, 0, 0))
+
+    def drain(seconds):
+        end = time.time() + seconds
+        while time.time() < end:
+            ready, _, _ = select.select([fd], [], [], 0.1)
+            if ready:
+                try:
+                    os.read(fd, 65536)
+                except OSError:
+                    return
+
+    drain(3.0)
+    for key in list(keys) + ["\x03"]:
+        os.write(fd, key.encode())
+        drain(1.5)
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    os.waitpid(pid, 0)
+    os.close(fd)
+
+
+def mac_capture(trial, line, binary=None):
+    """Captures one line on the Mac (`a`, the line, Enter) and checks that its
+    title now appears exactly once more."""
+    title = line.split(" &", 1)[0]
+    before = trial.marker_counts([title])[title]
+    drive_tui(trial, ["a", line, "\r"], binary)
+    after = trial.marker_counts([title])[title]
+    if after != before + 1:
+        fail(f"the Mac capture of {title!r} did not land: {before} -> {after} copies")
+    note(f"Mac: captured {title!r}")
+
+
+def mac_rename(trial, old, new, binary=None):
+    """Renames a task on the Mac: `/` search, Enter onto the result, `e` to
+    edit inline, clear the line, type the new title, Enter."""
+    drive_tui(trial, ["/", old, "\r", "e", "\x15", new, "\r"], binary)
+    counts = trial.marker_counts([old, new])
+    if counts[new] != 1 or counts[old] != 0:
+        fail(f"the Mac rename of {old!r} to {new!r} did not land: {counts}")
+    note(f"Mac: renamed {old!r} to {new!r}")
+
+
+def cmd_mac_capture(args):
+    """mac-capture LINE: one Mac capture in the trial, verified by count."""
+    if not args:
+        fail("usage: mac-capture LINE")
+    mac_capture(Trial.current(), " ".join(args))
 
 
 # Interaction.
@@ -313,12 +382,10 @@ def checkpoint(trial, scenario, label, markers=(), expect=None, attachments_min=
     markers = list(markers)
     while True:
         started = now() - datetime.timedelta(seconds=5)
-        if not expect.get("iphone_offline"):
-            trial.mac_exchange(expect.get("mac_binary"))
+        trial.mac_exchange(expect.get("mac_binary"))
         say(f"[{scenario} / {label}] {rounds_hint}\n{EXPORT}")
         wait_enter()
-        if not expect.get("iphone_offline"):
-            trial.mac_exchange(expect.get("mac_binary"))
+        trial.mac_exchange(expect.get("mac_binary"))
         iphone = trial.iphone_observation(started)
         mac = trial.mac_observation(expect.get("mac_binary"))
         counts = trial.marker_counts(markers)
@@ -365,8 +432,15 @@ def checkpoint_problems(trial, record, expect):
         problems.append(f"open conflicts: Mac {mac['conflicts']}, iPhone {iphone['conflicts']}")
     if conflicts == "both" and not (mac["conflicts"] and iphone["conflicts"]):
         problems.append(f"the genuine conflict is not preserved on both: Mac {mac['conflicts']}, iPhone {iphone['conflicts']}")
-    if iphone["outstanding_up"] < expect.get("iphone_outstanding_min", 0):
-        problems.append("the iPhone holds no unpublished work, so it was not offline when edited")
+    if expect.get("isolated"):
+        # iOS lets the app write its exchange files into the local iCloud
+        # Drive copy while offline, so unpublished work proves nothing.
+        # Isolation is what neither side could get: the Mac exchanged and
+        # still lacks the iPhone's markers (checked as absent), and the
+        # iPhone has not applied the Mac's latest transaction.
+        got = iphone.get("received", {}).get(mac["device_id"], 0)
+        if got >= mac.get("local_transactions", 0):
+            problems.append(f"the iPhone applied the Mac's transaction {got} of {mac.get('local_transactions', 0)}, so it was not cut off")
     if expect.get("iphone_unreachable"):
         transport = iphone["transport"]
         if transport["condition"] == "reachable" and not transport["last_error"]:
@@ -575,16 +649,16 @@ def scenario_airplane(trial):
     mac = [trial.marker(s, "mac-1")]
     say(f"""
 Turn on Airplane Mode on the iPhone (Wi-Fi off too). Keep the cable connected.
+Skip any of these you have already done in this trial.
 In tt on the iPhone capture two tasks titled exactly:
   {phone[0]}
   {phone[1]}
-and complete one existing task. On the Mac, in {trial.dir}/bin/tt-trial,
-capture one task titled exactly:
-  {mac[0]}""")
+and complete one existing task. The Mac captures its own task meanwhile.""")
+    if trial.marker_counts(mac)[mac[0]] == 0:
+        mac_capture(trial, mac[0])
     wait_enter()
     offline = checkpoint(trial, s, "offline", phone + mac,
-                         {"iphone_offline": True, "converged": False, "present": mac, "absent": phone,
-                          "iphone_outstanding_min": 1})
+                         {"converged": False, "present": mac, "absent": phone, "isolated": True})
     say("Turn Airplane Mode off on the iPhone and open tt.")
     wait_enter()
     online = checkpoint(trial, s, "online", phone + mac)
@@ -596,24 +670,26 @@ def scenario_simultaneous(trial):
     shared = trial.marker(s, "shared")
     phone_title, mac_title = trial.marker(s, "renamed-on-iphone"), trial.marker(s, "renamed-on-mac")
     phone_own, mac_own = trial.marker(s, "iphone-only"), trial.marker(s, "mac-only")
-    say(f"On the Mac, in tt-trial, capture a task titled exactly:\n  {shared}")
-    wait_enter()
-    base = checkpoint(trial, s, "base", [shared], rounds_hint="Wait for the shared task to appear on the iPhone first.")
+    mac_capture(trial, shared)
+    base = checkpoint(trial, s, "base", [shared], rounds_hint=f"Pull down to refresh until the task {shared!r} appears on the iPhone; don't rename it yet.")
     say(f"""
-Now edit the same task on both devices while they cannot exchange:
+Now edit the same task on the iPhone while it cannot exchange:
   1. Turn on Airplane Mode on the iPhone.
-  2. On the iPhone rename {shared!r} to {phone_title!r}, and capture {phone_own!r}.
-  3. On the Mac rename it to {mac_title!r}, and capture {mac_own!r}.
-  4. Turn Airplane Mode off and open tt on the iPhone.""")
+  2. In tt on the iPhone, rename {shared!r} to {phone_title!r}.
+  3. Capture a task titled {phone_own!r}.
+Leave Airplane Mode on for now; the Mac makes its own edit next.""")
+    wait_enter()
+    mac_rename(trial, shared, mac_title)
+    mac_capture(trial, mac_own)
+    say("Now turn Airplane Mode off on the iPhone and open tt.")
     wait_enter()
     both = [phone_own, mac_own]
     conflicted = checkpoint(trial, s, "conflicted", both + [phone_title, mac_title],
                             {"present": both, "converged": False, "conflicts": "both"},
                             rounds_hint="Both devices should now show one sync conflict. Do not resolve it yet.")
     say(f"""
-Resolve the conflict on either device, following "Troubleshooting" in {ROLLOUT_DOC}
-(on the iPhone: the sync sheet; on the Mac: tt-trial sync conflicts, then
-tt-trial sync resolve ID --version N). Keep one of the two titles.""")
+Resolve the conflict on the iPhone, following "Troubleshooting" in {ROLLOUT_DOC}:
+tap the sync status button, open the conflict, and keep one of the two titles.""")
     wait_enter()
     resolved = checkpoint(trial, s, "resolved", both + [phone_title, mac_title, shared], {"present": both})
     kept = [t for t in (phone_title, mac_title) if resolved["markers"].get(t) == 1]
@@ -627,9 +703,9 @@ def scenario_termination(trial):
     say(f"""
 On the iPhone, capture {phone[0]!r} and immediately swipe tt away in the App
 Switcher. Reopen tt, capture {phone[1]!r}, and swipe it away again right after
-saving, while it exchanges. Reopen tt once more.
-On the Mac, capture {mac!r} in tt-trial and quit it.""")
+saving, while it exchanges. Reopen tt once more.""")
     wait_enter()
+    mac_capture(trial, mac)
     interrupted = 0
     for delay in (0.2, 0.5, 1.0):
         process = subprocess.Popen([os.path.join(trial.dir, "bin", "tt"), "sync", "exchange", "--data-dir", trial.working],
@@ -648,10 +724,11 @@ def scenario_delayed(trial):
     s = "delayed_delivery"
     mac, phone = trial.marker(s, "mac-1"), trial.marker(s, "iphone-1")
     say(f"""
-Turn on Airplane Mode on the iPhone. On the Mac, capture {mac!r} in tt-trial.
-On the iPhone capture {phone!r}. Leave the iPhone offline for at least
-{DELAY_MIN_SECONDS // 60} minutes after the Mac publishes.""")
+Turn on Airplane Mode on the iPhone, then capture {phone!r} in tt.
+Keep Airplane Mode on: the Mac publishes next, and the iPhone has to stay
+offline for at least {DELAY_MIN_SECONDS // 60} minutes after that. You'll be told when.""")
     wait_enter()
+    mac_capture(trial, mac)
     if not trial.mac_exchange():
         fail("the Mac could not publish")
     published = now()
@@ -667,23 +744,33 @@ On the iPhone capture {phone!r}. Leave the iPhone offline for at least
 
 def scenario_revoked(trial):
     s = "revoked_access"
-    phone = trial.marker(s, "iphone-1")
+    phone, mac = trial.marker(s, "iphone-1"), trial.marker(s, "mac-1")
     say(f"""
 Revoke tt's access to the exchange folder on the iPhone, as "Troubleshooting"
 in {ROLLOUT_DOC} describes: Settings > your name > iCloud > iCloud Drive, turn
 off Sync this iPhone (or sign out of iCloud). Then open tt, capture {phone!r},
 and read the banner.""")
     wait_enter()
-    revoked = checkpoint(trial, s, "revoked", [phone],
-                         {"iphone_offline": True, "converged": False, "present": [], "absent": [phone],
-                          "iphone_outstanding_min": 1, "iphone_unreachable": True})
+    if trial.marker_counts([mac])[mac] == 0:
+        mac_capture(trial, mac)
+    revoked = checkpoint(trial, s, "revoked", [phone, mac],
+                         {"converged": False, "present": [mac], "absent": [phone], "isolated": True,
+                          "iphone_unreachable": True})
     banner = ask_yes("Did tt say your work is saved on the iPhone and offer Retry?")
     say("""
 Restore access: turn iCloud Drive syncing back on, open tt, and if it asks,
 Choose Exchange Folder… and pick the trial folder again, then Retry.""")
     wait_enter()
-    restored = checkpoint(trial, s, "restored", [phone])
+    restored = checkpoint(trial, s, "restored", [phone, mac])
     return [revoked, restored], {"saved_locally_banner": banner}
+
+
+def mac_opens(trial, title):
+    """Whether the iPhone's large attachment reached the Mac whole: a file of
+    at least the minimum size under the task's attachments, other than the
+    Mac's own."""
+    own = f"q18-{trial.run_id}-mac.bin"
+    return any(not a["path"].endswith(own) for a in trial.attachments(LARGE_MIN_BYTES))
 
 
 def scenario_large(trial):
@@ -694,14 +781,14 @@ def scenario_large(trial):
         handle.write(os.urandom(LARGE_MAC_BYTES))
     mac, phone = trial.marker(s, "mac"), trial.marker(s, "iphone")
     say(f"""
-On the Mac, in tt-trial, capture exactly this line (it attaches a 64 MiB file):
-  {mac} &{blob}
 On the iPhone, capture {phone!r} and attach a file of at least
-{LARGE_MIN_BYTES >> 20} MB to it (a video from Files works). Open both
-attachments on the other device once they arrive.""")
+{LARGE_MIN_BYTES >> 20} MB to it (a video from Files or Photos works). The Mac
+attaches its own 64 MiB file to {mac!r}. Once it arrives on the iPhone,
+open that attachment there.""")
+    mac_capture(trial, f"{mac} &{blob}")
     wait_enter()
     record = checkpoint(trial, s, "delivered", [mac, phone], attachments_min=LARGE_MIN_BYTES)
-    opened = ask_yes("Did each attachment open on the other device?")
+    opened = ask_yes("Did the Mac's 64 MiB attachment open on the iPhone?") and mac_opens(trial, phone)
     return [record], {"mac_attachment_sha256": sha256_file(blob), "mac_attachment_size": LARGE_MAC_BYTES,
                       "opened_on_peer": opened}
 
@@ -736,21 +823,21 @@ def scenario_upgrade(trial):
     pending, new_mac = trial.marker(s, "iphone-pending"), trial.marker(s, "mac-new")
     say(f"""
 The earlier build is installed on the iPhone. Open tt and capture {old_phone!r}.
-On the Mac capture {old_mac!r} with the earlier tt: {wrapper}
-Then turn on Airplane Mode and capture {pending!r} on the iPhone, so work is
-waiting to publish across the upgrade.""")
+Then turn on Airplane Mode and capture {pending!r}, so work is waiting to
+publish across the upgrade. Leave Airplane Mode on.""")
+    mac_capture(trial, old_mac, binary=old_tt)
     wait_enter()
     before = checkpoint(trial, s, "before", [old_phone, old_mac, pending],
-                        {"iphone_offline": True, "converged": False, "present": [old_mac], "absent": [pending],
+                        {"converged": False, "present": [old_mac], "absent": [pending],
                          "iphone_build": None, "mac_binary": old_tt})
     note("installing the current build over it")
     app = run(["ios/scripts/install-device.sh"], env={"TT_IOS_DEVICE": trial.state["iphone"]["udid"]}, log=log).stdout.strip()
     if app_executables(app) != trial.state["builds"]["app_executables"]:
         fail("the tree no longer builds the app this trial started with")
     say(f"""
-Upgraded. Open tt on the iPhone (it must still show {pending!r}), turn
-Airplane Mode off, and on the Mac capture {new_mac!r} in tt-trial (the
-current tt), following "Upgrade" in {ROLLOUT_DOC}.""")
+Upgraded, following "Upgrade" in {ROLLOUT_DOC}. Open tt on the iPhone: it must
+still show {pending!r}. Then turn Airplane Mode off.""")
+    mac_capture(trial, new_mac)
     wait_enter()
     after = checkpoint(trial, s, "after", [old_phone, old_mac, pending, new_mac])
     trial.state["procedures"]["upgrade"] = procedure_record("upgrade", ["before", "after"], {"from_commit": commit})
@@ -798,9 +885,10 @@ def cmd_day(_args):
     today = datetime.date.today().isoformat()
     mac, phone = trial.marker("day", today + " mac"), trial.marker("day", today + " iphone")
     say(f"""
-Daily-use checkpoint for {today}. Use both devices for real work in the trial
-today. Before running this, capture {mac!r} on the Mac (tt-trial) and
-{phone!r} on the iPhone.""")
+Daily-use checkpoint for {today}. Use tt on the iPhone in the trial workspace
+for real work today: capture, complete, edit, plan. Also capture {phone!r} on
+the iPhone. The Mac adds its own marker.""")
+    mac_capture(trial, mac)
     wait_enter()
     record = checkpoint(trial, "daily_use", today, [mac, phone])
     lost = ask_yes("Did any edit you made today go missing on either device?")
@@ -819,8 +907,9 @@ def cmd_procedure(args):
     name = args[0] if args else ""
     if name == "backup":
         backup = os.path.join(trial.dir, "backups", now().strftime("%Y%m%dT%H%M%SZ"))
-        say(f"Quit tt-trial on the Mac. The script now backs the working copy up as \"Backup\" in {ROLLOUT_DOC} says.")
-        wait_enter()
+        # The recorder's tt closes after every Mac step, so no commit is in
+        # flight; the backup follows "Backup" in the rollout guide.
+        trial.mac_exchange()
         run(["ditto", trial.working, os.path.join(backup, "working")])
         doctor = trial.tt("doctor", "--data-dir", os.path.join(backup, "working"), check=False)
         checks = {"backup": os.path.relpath(backup, trial.dir),
@@ -896,7 +985,7 @@ def cmd_finish(_args):
         os.remove(os.path.join(qualification_root(), "current"))
 
 
-COMMANDS = {"start": cmd_start, "enrollment": cmd_enrollment, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
+COMMANDS = {"start": cmd_start, "enrollment": cmd_enrollment, "mac-capture": cmd_mac_capture, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
             "status": cmd_status, "finish": cmd_finish}
 
 if __name__ == "__main__":

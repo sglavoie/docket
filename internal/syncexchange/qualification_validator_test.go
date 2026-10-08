@@ -72,7 +72,11 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 		if !rule.converged {
 			phone.Digest = "sha256:other"
 		}
-		phone.OutstandingUp = rule.minOutstanding
+		c.Mac.LocalTransactions = 5
+		phone.Received = map[string]uint64{"mac-device": 5}
+		if rule.isolated {
+			phone.Received["mac-device"] = 4
+		}
 		if rule.conflicts == "both" {
 			c.Mac.Conflicts, phone.Conflicts = 1, 1
 		}
@@ -204,7 +208,9 @@ func TestQualificationValidatorRefusesIncompleteEvidence(t *testing.T) {
 		"duplicate capture": {func(ev *qualificationEvidence) {
 			checkpoint(ev, "termination/relaunched").Markers["q18 "+ev.RunID+" termination mac-1"] = 2
 		}, "copies of \"mac-1\""},
-		"never offline":     {func(ev *qualificationEvidence) { checkpoint(ev, "airplane_mode/offline").IPhone.OutstandingUp = 0 }, "unpublished transactions"},
+		"never offline": {func(ev *qualificationEvidence) {
+			checkpoint(ev, "airplane_mode/offline").IPhone.Received["mac-device"] = 5
+		}, "was not cut off"},
 		"conflict not kept": {func(ev *qualificationEvidence) { checkpoint(ev, "simultaneous_edits/conflicted").IPhone.Conflicts = 0 }, "not preserved on both"},
 		"open conflict":     {func(ev *qualificationEvidence) { checkpoint(ev, "large_attachments/delivered").Mac.Conflicts = 1 }, "open conflicts"},
 		"access never revoked": {func(ev *qualificationEvidence) {

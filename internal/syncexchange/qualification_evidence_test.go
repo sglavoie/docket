@@ -30,18 +30,22 @@ const (
 )
 
 type qualificationDevice struct {
-	Digest          string            `json:"digest"`
-	DeviceID        string            `json:"device_id"`
-	WorkspaceID     string            `json:"workspace_id"`
-	OutstandingUp   int               `json:"outstanding_up"`
-	Conflicts       int               `json:"conflicts"`
-	ExportedAt      string            `json:"exported_at"`
-	AppExecutables  map[string]string `json:"app_executables"`
-	EngineError     *string           `json:"engine_error"`
-	OutstandingDown int               `json:"outstanding_down"`
-	Held            int               `json:"held"`
-	Location        string            `json:"location"`
-	Transport       struct {
+	Digest        string `json:"digest"`
+	DeviceID      string `json:"device_id"`
+	WorkspaceID   string `json:"workspace_id"`
+	OutstandingUp int    `json:"outstanding_up"`
+	// LocalTransactions is how many transactions this device authored, and
+	// Received the highest sequence it applied from each other device.
+	LocalTransactions uint64            `json:"local_transactions"`
+	Received          map[string]uint64 `json:"received"`
+	Conflicts         int               `json:"conflicts"`
+	ExportedAt        string            `json:"exported_at"`
+	AppExecutables    map[string]string `json:"app_executables"`
+	EngineError       *string           `json:"engine_error"`
+	OutstandingDown   int               `json:"outstanding_down"`
+	Held              int               `json:"held"`
+	Location          string            `json:"location"`
+	Transport         struct {
 		HasFolder          bool    `json:"has_folder"`
 		Condition          *string `json:"condition"`
 		LastError          *string `json:"last_error"`
@@ -134,13 +138,13 @@ type qualificationEvidence struct {
 
 // checkpointRule is what one recorded checkpoint must show.
 type checkpointRule struct {
-	converged      bool     // equal digests and nothing unpublished on either side
-	present        []string // marker tags the Mac holds exactly once
-	absent         []string // marker tags the Mac must not hold yet
-	conflicts      string   // "none" or "both"
-	minOutstanding int      // unpublished iPhone work: proof it was offline
-	unreachable    bool     // the iPhone could not reach the exchange
-	anyBuild       bool     // the iPhone ran an earlier build (upgrade's before)
+	converged   bool     // equal digests and nothing unpublished on either side
+	present     []string // marker tags the Mac holds exactly once
+	absent      []string // marker tags the Mac must not hold yet
+	conflicts   string   // "none" or "both"
+	isolated    bool     // the iPhone had not applied the Mac's latest transaction
+	unreachable bool     // the iPhone could not reach the exchange
+	anyBuild    bool     // the iPhone ran an earlier build (upgrade's before)
 }
 
 // qualificationRules mirrors ios/scripts/device_qualification.py: the
@@ -150,7 +154,7 @@ var qualificationRules = map[string][]struct {
 	rule  checkpointRule
 }{
 	"airplane_mode": {
-		{"offline", checkpointRule{present: []string{"mac-1"}, absent: []string{"iphone-1", "iphone-2"}, minOutstanding: 1}},
+		{"offline", checkpointRule{present: []string{"mac-1"}, absent: []string{"iphone-1", "iphone-2"}, isolated: true}},
 		{"online", checkpointRule{converged: true, present: []string{"iphone-1", "iphone-2", "mac-1"}, conflicts: "none"}},
 	},
 	"simultaneous_edits": {
@@ -165,8 +169,8 @@ var qualificationRules = map[string][]struct {
 		{"delivered", checkpointRule{converged: true, present: []string{"mac-1", "iphone-1"}, conflicts: "none"}},
 	},
 	"revoked_access": {
-		{"revoked", checkpointRule{absent: []string{"iphone-1"}, minOutstanding: 1, unreachable: true}},
-		{"restored", checkpointRule{converged: true, present: []string{"iphone-1"}, conflicts: "none"}},
+		{"revoked", checkpointRule{present: []string{"mac-1"}, absent: []string{"iphone-1"}, isolated: true, unreachable: true}},
+		{"restored", checkpointRule{converged: true, present: []string{"iphone-1", "mac-1"}, conflicts: "none"}},
 	},
 	"large_attachments": {
 		{"delivered", checkpointRule{converged: true, present: []string{"mac", "iphone"}, conflicts: "none"}},
@@ -371,7 +375,16 @@ func (v *qualificationValidator) verify(c qualificationCheckpoint, rule checkpoi
 	case "both":
 		v.check(c.Mac.Conflicts > 0 && p.Conflicts > 0, "%s: the conflict is not preserved on both: Mac %d iPhone %d", key, c.Mac.Conflicts, p.Conflicts)
 	}
-	v.check(p.OutstandingUp >= rule.minOutstanding, "%s: the iPhone held %d unpublished transactions, want at least %d", key, p.OutstandingUp, rule.minOutstanding)
+	if rule.isolated {
+		// iOS writes the exchange files into the local iCloud Drive copy
+		// even offline, so unpublished work proves nothing. Isolation is
+		// what neither side could get: the Mac, having exchanged, lacks the
+		// iPhone's markers (the absent rule), and the iPhone had not applied
+		// the Mac's latest transaction.
+		got := p.Received[c.Mac.DeviceID]
+		v.check(c.Mac.LocalTransactions > 0 && got < c.Mac.LocalTransactions,
+			"%s: the iPhone applied the Mac's transaction %d of %d, so it was not cut off", key, got, c.Mac.LocalTransactions)
+	}
 	if rule.unreachable {
 		reachable := p.Transport.Condition != nil && *p.Transport.Condition == "reachable"
 		v.check(!reachable || (p.Transport.LastError != nil && *p.Transport.LastError != ""), "%s: the iPhone still reached the exchange", key)
