@@ -1,8 +1,8 @@
 {
   "builds": {
-    "app_executables": "tt=sha256:3fafbb245c9f2074e0aea884c4ce9576850887861374a73880990a7df148c9b0;tt.debug.dylib=sha256:525a31f233b4902f7865e7a163d41675eead8e817ca26e8d72bc6cbd3fc91877",
-    "bridge_fingerprint": "064759834a8962d17ecccf34e90bb453de13a2b276a941364428bdbd77e819ca",
-    "source_fingerprint": "ea35bb112dd8078c5d297264eb53c57c710ba5a1d7e27b14c7d4b182261cc208",
+    "app_executables": "tt=sha256:3d13fdfdeee6d7ee07c85d5a927c8a841525ab516e727db6a6a71cd0b1b3e73a;tt.debug.dylib=sha256:76b461593d35375ff201f20eedd415bfafdf071f791a41791fab0b81d3eb3a57",
+    "bridge_fingerprint": "82821289838a8ede6d65e9313e66fb5505ad194a088c44ef5d3029c2be2b892f",
+    "source_fingerprint": "f73aece983fb5c21744d10083c90e933a7803bb73d0a0c59608fc28b54b170cc",
     "xcode": "Xcode 27.0 Build version 27A266a"
   },
   "format": "tt-mobile-reminder-evidence",
@@ -19,8 +19,8 @@
     "model": "Mac14,14",
     "os_version": "27.0.1"
   },
-  "recorded_at": "2026-10-07T17:47:44Z",
-  "run_id": "20261007T174350Z",
+  "recorded_at": "2026-10-08T01:08:45Z",
+  "run_id": "20261008T010320Z",
   "xcresult": {
     "devices": [
       "00008110-00167DCE260A801E"
@@ -31,17 +31,17 @@
     "skipped": 0,
     "tests": [
       {
-        "duration": 105.38165700435638,
+        "duration": 87.43256402015686,
         "name": "testAcknowledgingACheckInFromItsNotification()",
         "result": "Passed"
       },
       {
-        "duration": 44.835394978523254,
+        "duration": 45.38955104351044,
         "name": "testDeferringFromADeferralNotification()",
         "result": "Passed"
       },
       {
-        "duration": 45.357216000556946,
+        "duration": 46.51940405368805,
         "name": "testTappingANotificationOpensItsTask()",
         "result": "Passed"
       }

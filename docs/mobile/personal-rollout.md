@@ -98,6 +98,12 @@ phone downloads the history and opens the joined workspace. When the sync
 sheet says **Exchange reachable** with nothing waiting, both devices hold the
 same workspace.
 
+A folder the Mac just created may not have reached the iPhone yet. If the join
+says the folder holds no tt exchange, or that the exchange has not delivered the
+workspace yet, open the Files app, long-press the exchange folder, and choose
+**Keep Downloaded**. Wait until its files lose their cloud icons, then join
+again.
+
 A second Mac joins with
 `tt sync join --exchange DIR --working-copy DIR`.
 
@@ -175,7 +181,9 @@ Start with what each device says:
     Tap **Choose Exchange Folder…**, pick the same folder, and the queued work
     publishes.
   - **Waiting for the exchange folder to download**: iCloud has not delivered
-    it yet. Leave tt open on Wi-Fi.
+    it yet. Leave tt open on Wi-Fi. In the Files app, long-press the exchange
+    folder and choose **Keep Downloaded** so iCloud keeps every file on the
+    phone.
   - **That folder belongs to another workspace**: you picked the wrong folder.
 
   While an exchange fails, a banner says everything is saved on the iPhone and

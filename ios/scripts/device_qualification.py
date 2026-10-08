@@ -255,20 +255,49 @@ class Trial:
 
 # Interaction.
 
+# With TT_QUALIFICATION_MAILBOX set to an ASL plan directory, every prompt is
+# asked through that plan's mailbox (asl ask --wait) and the person's reply is
+# the answer; otherwise the prompts read the terminal.
+MAILBOX = os.environ.get("TT_QUALIFICATION_MAILBOX")
+MAILBOX_WAIT_ROUNDS = 12  # 30 minutes each
+_pending = []
+
+
 def say(text):
     print("\n" + text.strip() + "\n")
+    if MAILBOX:
+        _pending.append(text.strip())
+
+
+def human(question):
+    """One answer from the person."""
+    if not MAILBOX:
+        return input(question + " ")
+    body = "\n\n".join(_pending + [question])
+    _pending.clear()
+    argv = ["asl", "ask", MAILBOX, body, "--wait", "--wait-timeout", "1800", "--json"]
+    for _ in range(MAILBOX_WAIT_ROUNDS):
+        result = json.loads(run(argv, check=False).stdout or "{}")
+        if result.get("reply"):
+            return result["reply"].get("text", "")
+        if result.get("resolution"):
+            fail(f"the mailbox question was resolved without an answer: {result['resolution']}")
+        if not result.get("timed_out") or not result.get("question_id"):
+            fail(f"asl ask failed: {result}")
+        argv = ["asl", "ask", MAILBOX, "--question-id", result["question_id"], "--wait", "--wait-timeout", "1800", "--json"]
+    fail("no answer arrived through the mailbox")
 
 
 def wait_enter(prompt="Press Enter when done."):
-    input(prompt + " ")
+    human(prompt if not MAILBOX else "Reply 'done' when you have finished these steps.")
 
 
 def ask_yes(question):
     while True:
-        answer = input(question + " [y/n] ").strip().lower()
-        if answer in ("y", "yes"):
+        answer = human(question + " [y/n]").strip().lower()
+        if answer.startswith("y"):
             return True
-        if answer in ("n", "no"):
+        if answer.startswith("n"):
             return False
 
 
@@ -479,14 +508,22 @@ Join the trial on the iPhone, following "Enrollment" in {ROLLOUT_DOC}:
      Another Workspace so the one you have is left alone.
   2. Tap Join from an Exchange Folder… and pick iCloud Drive/{os.path.relpath(exchange, os.path.dirname(exchange_root))}.
 The Mac's trial tt is {wrapper}; open it any time to read or edit the trial.""")
+    record_enrollment(trial)
+
+
+def record_enrollment(trial):
+    """The join checkpoint and the enrollment procedure; `enrollment` reruns
+    it for the current trial when a pause interrupted it."""
     record = checkpoint(trial, "enrollment", "joined")
-    trial.state["checkpoints"].append(record)
+    trial.state["checkpoints"] = [c for c in trial.state["checkpoints"] if c["scenario"] != "enrollment"] + [record]
     snapshot_root = os.path.join(trial.home, ".tt", "enrollments")
     trial.state["procedures"]["enrollment"] = procedure_record(
         "enrollment", [record["label"]],
         {"snapshot_kept": os.path.isdir(snapshot_root) and bool(os.listdir(snapshot_root)),
          "original_content_untouched": digest_tree(trial.state["mac"]["original"]) == digest_tree(os.path.join(REPO, FIXTURE))})
     trial.save()
+    if record.get("problems"):
+        fail(f"the join checkpoint was recorded as failed: {record['problems']}; rerun `enrollment` after fixing the cause")
     note("enrollment recorded; run the scenarios next (record-device-qualification.sh status lists them)")
 
 
@@ -526,7 +563,7 @@ def section_digest(heading):
 
 def procedure_record(name, checkpoints, checks):
     followed = ask_yes(f'Did you follow "{PROCEDURES[name][3:]}" in {ROLLOUT_DOC} as written, and did it match what happened?')
-    remarks = "" if followed else input("What differed? ").strip()
+    remarks = "" if followed else human("What differed?").strip()
     return {"validated_at": stamp(), "document": ROLLOUT_DOC, "section": PROCEDURES[name],
             "section_sha256": section_digest(PROCEDURES[name]), "followed_as_written": followed,
             "remarks": remarks, "checkpoints": checkpoints, "checks": checks}
@@ -728,13 +765,24 @@ SCENARIO_RUNNERS = {
 }
 
 
+def cmd_enrollment(_args):
+    trial = Trial.current()
+    say(f"""
+The trial workspace should already be joined on the iPhone, from iCloud Drive/tt-qualification/{trial.run_id}.
+If tt says the exchange has not delivered the workspace yet, long-press that folder in Files,
+choose Keep Downloaded, and join again.""")
+    record_enrollment(trial)
+
+
 def cmd_scenario(args):
     if not args or args[0] not in SCENARIO_RUNNERS:
         fail("usage: scenario " + "|".join(SCENARIOS))
     trial = Trial.current()
     name = args[0]
     records, observations = SCENARIO_RUNNERS[name](trial)
-    remarks = input("Anything unexpected in this scenario? (blank for nothing) ").strip()
+    remarks = human("Anything unexpected in this scenario? Reply 'none' if nothing.").strip()
+    if remarks.lower().rstrip(".") in ("none", "nothing", "no"):
+        remarks = ""
     trial.state["checkpoints"] = [c for c in trial.state["checkpoints"] if c["scenario"] != name] + records
     trial.state["scenarios"][name] = {"recorded_at": stamp(), "checkpoints": [r["label"] for r in records],
                                       "observations": observations, "remarks": remarks}
@@ -757,7 +805,7 @@ today. Before running this, capture {mac!r} on the Mac (tt-trial) and
     record = checkpoint(trial, "daily_use", today, [mac, phone])
     lost = ask_yes("Did any edit you made today go missing on either device?")
     diverged = ask_yes("Did the devices ever show something different that you could not explain?")
-    remarks = input("Describe it (blank if nothing): ").strip() if lost or diverged else ""
+    remarks = human("Describe what happened.").strip() if lost or diverged else ""
     trial.state["checkpoints"] = [c for c in trial.state["checkpoints"]
                                   if not (c["scenario"] == "daily_use" and c["label"] == today)] + [record]
     trial.state["daily_use"] = [d for d in trial.state["daily_use"] if d["date"] != today] + [
@@ -848,10 +896,10 @@ def cmd_finish(_args):
         os.remove(os.path.join(qualification_root(), "current"))
 
 
-COMMANDS = {"start": cmd_start, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
+COMMANDS = {"start": cmd_start, "enrollment": cmd_enrollment, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
             "status": cmd_status, "finish": cmd_finish}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
-        fail("usage: record-device-qualification.sh start|scenario NAME|day|procedure NAME|status|finish")
+        fail("usage: record-device-qualification.sh start|enrollment|scenario NAME|day|procedure NAME|status|finish")
     COMMANDS[sys.argv[1]](sys.argv[2:])

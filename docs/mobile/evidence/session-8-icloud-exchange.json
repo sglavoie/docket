@@ -1,27 +1,27 @@
 {
   "builds": {
     "app_executables": {
-      "tt": "sha256:1c496d919a3f2ad915a91f06e98db60c9d2eb9542dfb34cc5c468267a5bb1513",
-      "tt.debug.dylib": "sha256:8377efaa089e3749c04063c480ddcd91c19f84aec5c90469511144ab72f1be28"
+      "tt": "sha256:83220fc9d7fb4b1b22fef0f8688fc2dc7bf269f8007c5165714104bd0c92a727",
+      "tt.debug.dylib": "sha256:2c6113f1f87c2d509b879429eecc8091d88766bac1df3dbb917ce4cd27727c24"
     },
-    "bridge_fingerprint": "1a0a400e3f4e483e18e5fa694de1f54d747d6995703d9d02136edd40c6e1831f",
-    "bridgehost_sha256": "600ebf022a358c3de168237c80250ed96e9acc82480337e9546301b779ed1501",
-    "helper_sha256": "4bfa994936d3cce175039f1871ea8754d205656686d9377ce9e79d3d0a519493",
-    "source_fingerprint": "ae600f601f55ad37df770fb440f4e3ee4e80eb1e28e102f5d3d2a83debb370fa"
+    "bridge_fingerprint": "82821289838a8ede6d65e9313e66fb5505ad194a088c44ef5d3029c2be2b892f",
+    "bridgehost_sha256": "823c6016c97d930e290acc26ac467e530b0a111e7fb92f7114062210f9d3285b",
+    "helper_sha256": "e3bc5eebfe6a231928ec3f6ac868b6b0634e7d456ad091d4e39d99d9dec2152b",
+    "source_fingerprint": "b6817d413f3240bd42ee13ac098db28fe618214fc31bbb8be42aedbdc0126222"
   },
   "exchange": {
     "folder": "/Users/sglavoie/Library/Mobile Documents/com~apple~CloudDocs/tt-sync-evidence",
     "provider": "iCloud Drive",
-    "run_folder": "runs/20261006T231019Z"
+    "run_folder": "runs/20261008T010905Z"
   },
   "format": "tt-sync-icloud-exchange-evidence",
   "format_version": 1,
   "iphone": {
     "app_executables": {
-      "tt": "sha256:1c496d919a3f2ad915a91f06e98db60c9d2eb9542dfb34cc5c468267a5bb1513",
-      "tt.debug.dylib": "sha256:8377efaa089e3749c04063c480ddcd91c19f84aec5c90469511144ab72f1be28"
+      "tt": "sha256:83220fc9d7fb4b1b22fef0f8688fc2dc7bf269f8007c5165714104bd0c92a727",
+      "tt.debug.dylib": "sha256:2c6113f1f87c2d509b879429eecc8091d88766bac1df3dbb917ce4cd27727c24"
     },
-    "data_directory": "/var/mobile/Containers/Data/Application/CB1F7FFA-3941-466B-AA36-AF17EF3C2ACF/Library/Application Support/contract-runs/20261006T231019Z/workspace",
+    "data_directory": "/var/mobile/Containers/Data/Application/5DCC07E0-5D7E-4B69-91EC-52EF4B8C4F60/Library/Application Support/contract-runs/20261008T010905Z/workspace",
     "folder": "/private/var/mobile/Library/Mobile Documents/com~apple~CloudDocs/tt-sync-evidence",
     "model": "iPhone14,2",
     "model_identifier": "iPhone14,2",
@@ -32,69 +32,69 @@
     "udid": "00008110-00167DCE260A801E"
   },
   "mac": {
-    "data_directory": "/var/folders/p3/qvz3zdtn5ggfs6pk_6jqbwhh0000gn/T/tt-icloud-exchange.7wT8C2/mac/workspace",
+    "data_directory": "/var/folders/p3/qvz3zdtn5ggfs6pk_6jqbwhh0000gn/T/tt-icloud-exchange.2m4I4F/mac/workspace",
     "model": "Mac14,14",
     "os_version": "27.0.1"
   },
   "originator": {
-    "attachment": "projects/atlas-launch/.attachments/contract-20261006T231019Z-originator.txt",
+    "attachment": "projects/atlas-launch/.attachments/contract-20261008T010905Z-originator.txt",
     "conditions_observed": [
       "reachable"
     ],
-    "device_id": "mac-20261006T231019Z",
+    "device_id": "mac-20261008T010905Z",
     "imported": [
-      "sha256:a548948293b9e3959502adab4366a3952811cbb43852718fd359e8d3e039f9bf",
-      "sha256:347f26fa93d4d4b2bd65e2580424ea5c6444bff8a73a243f7ea6dd01aaa40380"
+      "sha256:cfd55a4ad52e3d34c9f98e17ceabb40658cbe7c05dd3ffd84d12484e888c216a",
+      "sha256:e71a316b28293702ef27c91a33087abf1aa42c1fea03821f61b9d27303bf7bb3"
     ],
-    "last_successful_exchange": "2026-10-06T23:15:32Z",
-    "passes": 101,
+    "last_successful_exchange": "2026-10-08T01:10:08Z",
+    "passes": 16,
     "published": [
-      "sha256:31fd2f5d28b7b2ebaf212113ab3964747667ca22d748fd48aef76afe2a0edf22",
-      "sha256:6c2c938886158e113ac42ae97385ce99390307f2004656f496a52477969bd31e"
+      "sha256:f0033a88cca33f55697b740ad8edecc86c6b924fec6940a4894e9b604de90daf",
+      "sha256:8d74a8c396cda45d46afae860bd8d31fbd6c2f98b496ac6281d2659fa61dc324"
     ],
     "role": "originator",
-    "run_id": "20261006T231019Z",
-    "saw_peer_attachment": "projects/atlas-launch/.attachments/contract-20261006T231019Z-responder.txt",
-    "saw_peer_title": "tt sync contract 20261006T231019Z from responder",
-    "title": "tt sync contract 20261006T231019Z from originator",
+    "run_id": "20261008T010905Z",
+    "saw_peer_attachment": "projects/atlas-launch/.attachments/contract-20261008T010905Z-responder.txt",
+    "saw_peer_title": "tt sync contract 20261008T010905Z from responder",
+    "title": "tt sync contract 20261008T010905Z from originator",
     "unavailable_observed": [
-      "projects/atlas-launch/.attachments/contract-20261006T231019Z-responder.txt",
+      "projects/atlas-launch/.attachments/contract-20261008T010905Z-responder.txt",
       "projects/unfiled/tasks.md"
     ],
-    "workspace_digest": "sha256:6cb1911c4ab3c00e5717e5c6f4ee8c6832e71beefcd06b81a9d546e7533d1bf2",
+    "workspace_digest": "sha256:19f5a61e1253304da46df180f8749cee008ae9cb54f8c05e46a7c45881805651",
     "workspace_id": "806a60c1-081b-420d-a4a8-7733b6201f71"
   },
-  "recorded_at": "2026-10-06T23:15:41Z",
+  "recorded_at": "2026-10-08T01:10:16Z",
   "responder": {
-    "attachment": "projects/atlas-launch/.attachments/contract-20261006T231019Z-responder.txt",
+    "attachment": "projects/atlas-launch/.attachments/contract-20261008T010905Z-responder.txt",
     "conditions_observed": [
       "reachable",
       "waitingForExchange"
     ],
-    "device_id": "iphone-20261006T231019Z",
+    "device_id": "iphone-20261008T010905Z",
     "imported": [
-      "sha256:31fd2f5d28b7b2ebaf212113ab3964747667ca22d748fd48aef76afe2a0edf22",
-      "sha256:6c2c938886158e113ac42ae97385ce99390307f2004656f496a52477969bd31e"
+      "sha256:f0033a88cca33f55697b740ad8edecc86c6b924fec6940a4894e9b604de90daf",
+      "sha256:8d74a8c396cda45d46afae860bd8d31fbd6c2f98b496ac6281d2659fa61dc324"
     ],
-    "last_successful_exchange": "2026-10-06T23:10:58Z",
+    "last_successful_exchange": "2026-10-08T01:09:55Z",
     "passes": 5,
     "published": [
-      "sha256:a548948293b9e3959502adab4366a3952811cbb43852718fd359e8d3e039f9bf",
-      "sha256:347f26fa93d4d4b2bd65e2580424ea5c6444bff8a73a243f7ea6dd01aaa40380"
+      "sha256:cfd55a4ad52e3d34c9f98e17ceabb40658cbe7c05dd3ffd84d12484e888c216a",
+      "sha256:e71a316b28293702ef27c91a33087abf1aa42c1fea03821f61b9d27303bf7bb3"
     ],
     "role": "responder",
-    "run_id": "20261006T231019Z",
-    "saw_peer_attachment": "projects/atlas-launch/.attachments/contract-20261006T231019Z-originator.txt",
-    "saw_peer_title": "tt sync contract 20261006T231019Z from originator",
-    "title": "tt sync contract 20261006T231019Z from responder",
+    "run_id": "20261008T010905Z",
+    "saw_peer_attachment": "projects/atlas-launch/.attachments/contract-20261008T010905Z-originator.txt",
+    "saw_peer_title": "tt sync contract 20261008T010905Z from originator",
+    "title": "tt sync contract 20261008T010905Z from responder",
     "unavailable_observed": [
-      "projects/atlas-launch/.attachments/contract-20261006T231019Z-originator.txt",
+      "projects/atlas-launch/.attachments/contract-20261008T010905Z-originator.txt",
       "projects/unfiled/tasks.md"
     ],
-    "workspace_digest": "sha256:6cb1911c4ab3c00e5717e5c6f4ee8c6832e71beefcd06b81a9d546e7533d1bf2",
+    "workspace_digest": "sha256:19f5a61e1253304da46df180f8749cee008ae9cb54f8c05e46a7c45881805651",
     "workspace_id": "806a60c1-081b-420d-a4a8-7733b6201f71"
   },
-  "run_id": "20261006T231019Z",
+  "run_id": "20261008T010905Z",
   "workspace": {
     "fixture": "internal/compat/testdata/workspaces/representative",
     "seed_files": 11,
