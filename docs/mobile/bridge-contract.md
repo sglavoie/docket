@@ -141,7 +141,7 @@ There is no bridge-only mutation path.
 | `sync.export_pending` | no | Lists outbound manifests and blobs not yet published. |
 | `sync.import` | yes | Applies incoming manifests whose blobs and parents are all present. |
 | `sync.acknowledge` | yes | Records that the transport durably published an outbound manifest. |
-| `sync.diagnostics` | no | Status, outbox, and conflict structure for a diagnostics export, without file content. |
+| `sync.diagnostics` | no | Status, outbox, conflict structure, and the synced files' digest for a diagnostics export, without file content. |
 | `conflict.list`, `conflict.show` | no | Durable conflicts. |
 | `conflict.resolve` | yes | Resolves a conflict as a new transaction. |
 
@@ -184,7 +184,7 @@ from one the protocol never had. The current build serves these:
 | `sync.export_pending` | none | `{device_id, pending: [{txn_id, device_seq, manifest, blobs}], external}`; each file is `{path, source, digest, size}` |
 | `sync.import` | `{inbox_dir}`, absolute | `{results: [{path, txn_id, device_id, device_seq, outcome, reason, local_txn_id, missing, unavailable}]}` |
 | `sync.acknowledge` | `{txn_ids}` | `{acknowledged}` |
-| `sync.diagnostics` | `{device_names}`, optional | `{format, generated_at, device_id, status, outbox, conflicts: [{id, path, kind, base, current, versions: [{digest, available, writers}], details}]}` |
+| `sync.diagnostics` | `{device_names}`, optional | `{format, generated_at, device_id, workspace_digest, status, outbox, conflicts: [{id, path, kind, base, current, versions: [{digest, available, writers}], details}]}` |
 | `conflict.list` | `{device_names}`, optional: device id to the name its advertisement gives | `{conflicts: [{id, path, kind, project_id, label, base, current, versions, details, replaceable}]}`; `base` and `current` are `{digest, deleted, size, text, available}`, `base` null when the file did not exist; each version adds `index`, `current`, `writers: [{txn_id, device_id, device_name, this_device, change, created_at, files}]`, and `also_resolves: [{id, path, label}]` |
 | `conflict.show` | `{conflict_id, device_names}` | `{conflict}` as listed; a conflict no longer open is `not_found` |
 | `conflict.resolve` | `{conflict_id, choice, version, text}`; `choice` is `version` (`version`, the index), `current`, or `replace` (`text`, tasks or a note only) | `{txn_id, resolved: [{id, path, label}], remaining}`; a conflict that closed or changed since it was read is `stale_revision` with `details.conflicts`, the ids open now; an unknown choice or version, or text the readers refuse, is `validation` with `details.field` `resolution` |

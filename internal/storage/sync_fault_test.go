@@ -66,207 +66,229 @@ func rounds(s *faultSim, n int) {
 func TestSyncFaultScenarios(t *testing.T) {
 	devices := []string{"device-a", "device-b", "device-c"}
 
-	t.Run("delayed_delivery", func(t *testing.T) {
-		s := newFaultSim(t, "delayed_delivery", 101, faultConfig{MaxDelay: 6}, devices...)
-		for i := 0; i < 4; i++ {
-			for _, d := range s.authors() {
-				edits(s, d, 2)
-				s.publish(d)
-			}
-			rounds(s, 2)
-		}
-		s.finish(2)
-		requireStat(s, "delayed", "applied")
-	})
+	t.Run("delayed_delivery", func(t *testing.T) { faultDelayedDelivery(t, devices) })
 
-	t.Run("duplicated_delivery", func(t *testing.T) {
-		s := newFaultSim(t, "duplicated_delivery", 102, faultConfig{MaxDelay: 2, Duplicate: 1}, devices...)
-		for i := 0; i < 3; i++ {
-			for _, d := range s.authors() {
-				edits(s, d, 2)
-				s.publish(d)
-			}
-			rounds(s, 3)
-		}
-		s.finish(2)
-		requireStat(s, "sent_duplicate", "repeat_ignored")
-	})
+	t.Run("duplicated_delivery", func(t *testing.T) { faultDuplicatedDelivery(t, devices) })
 
-	t.Run("reordered_delivery", func(t *testing.T) {
-		s := newFaultSim(t, "reordered_delivery", 103, faultConfig{MaxDelay: 8}, devices...)
-		for i := 0; i < 3; i++ {
-			for _, d := range s.authors() {
-				edits(s, d, 3)
-				s.publish(d)
-			}
-		}
-		rounds(s, 10)
-		s.finish(2)
-		requireStat(s, "applied_out_of_order", "waiting_for_ancestor")
-	})
+	t.Run("reordered_delivery", func(t *testing.T) { faultReorderedDelivery(t, devices) })
 
-	t.Run("incomplete_delivery", func(t *testing.T) {
-		s := newFaultSim(t, "incomplete_delivery", 104, faultConfig{MaxDelay: 3, Truncate: 0.6, BlobLag: 0.7}, devices...)
-		for i := 0; i < 3; i++ {
-			for _, d := range s.authors() {
-				edits(s, d, 2)
-				s.publish(d)
-			}
-			rounds(s, 2)
-		}
-		s.finish(2)
-		requireStat(s, "refused_truncated", "blob_lagged", "waiting_for_blob")
-	})
+	t.Run("incomplete_delivery", func(t *testing.T) { faultIncompleteDelivery(t, devices) })
 
-	t.Run("corrupted_delivery", func(t *testing.T) {
-		s := newFaultSim(t, "corrupted_delivery", 105, faultConfig{MaxDelay: 2, Corrupt: 0.7, CorruptBlob: 0.5}, devices...)
-		for i := 0; i < 3; i++ {
-			for _, d := range s.authors() {
-				edits(s, d, 2)
-				s.publish(d)
-			}
-			rounds(s, 2)
-		}
-		s.finish(2)
-		requireStat(s, "refused_corrupted", "blob_corrupt_reads", "waiting_for_blob")
-	})
+	t.Run("corrupted_delivery", func(t *testing.T) { faultCorruptedDelivery(t, devices) })
 
-	t.Run("missing_ancestors", func(t *testing.T) {
-		s := newFaultSim(t, "missing_ancestors", 106, faultConfig{}, devices...)
-		a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
-		// a's chain reaches b newest first, so every transaction arrives before
-		// the ancestors it names; c receives b's reply to a chain it has none of.
-		edits(s, a, 6)
-		s.publish(a)
-		reverse(b.inbox)
-		for i := range b.inbox {
-			b.inbox[i].due = s.tick
-		}
-		c.offline = true
-		rounds(s, 8)
-		edits(s, b, 2)
-		s.publish(b)
-		c.offline = false
-		for i := range c.inbox {
-			if s.decode(c.inbox[i].txnID).DeviceID == "device-a" {
-				c.inbox[i].due = s.tick + 6
-			}
-		}
-		rounds(s, 8)
-		s.finish(2)
-		requireStat(s, "waiting_for_ancestor")
-	})
+	t.Run("missing_ancestors", func(t *testing.T) { faultMissingAncestors(t, devices) })
 
-	t.Run("prolonged_offline", func(t *testing.T) {
-		s := newFaultSim(t, "prolonged_offline", 107, faultConfig{MaxDelay: 2}, devices...)
-		a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
-		c.offline = true
-		s.logf("device-c goes offline")
-		for i := 0; i < 12; i++ {
-			edits(s, c, 3)
-			edits(s, a, 1)
-			edits(s, b, 1)
-			rounds(s, 1)
-		}
-		pending, err := c.history.Pending()
-		if err != nil || len(pending) < 30 {
-			s.fatalf("device-c holds %d unpublished transactions (%v), want a long offline history", len(pending), err)
-		}
-		s.logf("device-c comes back with %d unpublished transactions", len(pending))
-		c.offline = false
-		s.finish(2)
-		requireStat(s, "applied")
-	})
+	t.Run("prolonged_offline", func(t *testing.T) { faultProlongedOffline(t, devices) })
 
-	t.Run("three_device_concurrency", func(t *testing.T) {
-		s := newFaultSim(t, "three_device_concurrency", 108, faultConfig{MaxDelay: 3, Duplicate: 0.3}, devices...)
-		// Every device edits the same task, the same note, and its own task,
-		// with nothing exchanged in between.
+	t.Run("three_device_concurrency", func(t *testing.T) { faultThreeDeviceConcurrency(t, devices) })
+
+	t.Run("conflicting_resolutions", func(t *testing.T) { faultConflictingResolutions(t, devices) })
+
+	t.Run("ordinary_edit_keeps_conflict_open", faultOrdinaryEditKeepsConflictOpen)
+
+	t.Run("crash_restart", func(t *testing.T) { faultCrashRestart(t, devices) })
+}
+
+func faultDelayedDelivery(t *testing.T, devices []string) {
+	s := newFaultSim(t, "delayed_delivery", 101, faultConfig{MaxDelay: 6}, devices...)
+	for i := 0; i < 4; i++ {
 		for _, d := range s.authors() {
-			s.retitle(d, "atlas-launch", faultShipBeta)
-			s.appendNote(d)
-			s.capture(d)
-			s.plan(d)
+			edits(s, d, 2)
+			s.publish(d)
 		}
-		s.retitle(s.device("device-c"), "home-renovation", faultHomeTask1)
-		conflicts := s.finish(2)
-		if len(conflictsOn(conflicts, "tasks.md")) == 0 || len(conflictsOn(conflicts, "notes/")) == 0 {
-			s.fatalf("three concurrent edits of one task and one note left conflicts %v", conflictKeys(conflicts))
-		}
-		requireStat(s, "preserved_in_conflict")
-	})
+		rounds(s, 2)
+	}
+	s.finish(2)
+	requireStat(s, "delayed", "applied")
+}
 
-	t.Run("conflicting_resolutions", func(t *testing.T) {
-		s := newFaultSim(t, "conflicting_resolutions", 109, faultConfig{MaxDelay: 3, Duplicate: 0.4, Corrupt: 0.3}, devices...)
-		a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
+func faultDuplicatedDelivery(t *testing.T, devices []string) {
+	s := newFaultSim(t, "duplicated_delivery", 102, faultConfig{MaxDelay: 2, Duplicate: 1}, devices...)
+	for i := 0; i < 3; i++ {
 		for _, d := range s.authors() {
-			s.retitle(d, "atlas-launch", faultShipBeta)
+			edits(s, d, 2)
+			s.publish(d)
 		}
-		s.settle()
-		open := s.conflicts(a)
-		if len(open) != 1 {
-			s.fatalf("setup left conflicts %v, want one", conflictKeys(open))
+		rounds(s, 3)
+	}
+	s.finish(2)
+	requireStat(s, "sent_duplicate", "repeat_ignored")
+}
+
+func faultReorderedDelivery(t *testing.T, devices []string) {
+	s := newFaultSim(t, "reordered_delivery", 103, faultConfig{MaxDelay: 8}, devices...)
+	for i := 0; i < 3; i++ {
+		for _, d := range s.authors() {
+			edits(s, d, 3)
+			s.publish(d)
 		}
-		original := open[0]
-		// a and b resolve the same conflict differently while c, which has not
-		// resolved it, edits another task in the same document.
-		s.resolveRetitling(a, original, "atlas-launch", faultShipBeta)
-		s.resolveRetitling(b, original, "atlas-launch", faultShipBeta)
-		s.retitle(c, "atlas-launch", faultProofread)
-		s.settle()
-		competing := s.conflicts(c)
-		if len(competing) != 1 || competing[0].ID == original.ID {
-			s.fatalf("disagreeing resolutions left %v, want one new conflict", conflictKeys(competing))
+	}
+	rounds(s, 10)
+	s.finish(2)
+	requireStat(s, "applied_out_of_order", "waiting_for_ancestor")
+}
+
+func faultIncompleteDelivery(t *testing.T, devices []string) {
+	s := newFaultSim(t, "incomplete_delivery", 104, faultConfig{MaxDelay: 3, Truncate: 0.6, BlobLag: 0.7}, devices...)
+	for i := 0; i < 3; i++ {
+		for _, d := range s.authors() {
+			edits(s, d, 2)
+			s.publish(d)
 		}
-		// The new conflict competes both resolutions; c's concurrent edit of
-		// another task is a third maximal writer and merges in.
-		resolutions := map[string]bool{}
-		for _, candidate := range competing[0].Candidates {
-			for _, w := range candidate.Writers {
-				if m := s.decode(w); m.Kind == synclog.KindResolution {
-					resolutions[m.DeviceID] = true
-				}
+		rounds(s, 2)
+	}
+	s.finish(2)
+	requireStat(s, "refused_truncated", "blob_lagged", "waiting_for_blob")
+}
+
+func faultCorruptedDelivery(t *testing.T, devices []string) {
+	s := newFaultSim(t, "corrupted_delivery", 105, faultConfig{MaxDelay: 2, Corrupt: 0.7, CorruptBlob: 0.5}, devices...)
+	for i := 0; i < 3; i++ {
+		for _, d := range s.authors() {
+			edits(s, d, 2)
+			s.publish(d)
+		}
+		rounds(s, 2)
+	}
+	s.finish(2)
+	requireStat(s, "refused_corrupted", "blob_corrupt_reads", "waiting_for_blob")
+}
+
+func faultMissingAncestors(t *testing.T, devices []string) {
+	s := newFaultSim(t, "missing_ancestors", 106, faultConfig{}, devices...)
+	a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
+	// a's chain reaches b newest first, so every transaction arrives before
+	// the ancestors it names; c receives b's reply to a chain it has none of.
+	edits(s, a, 6)
+	s.publish(a)
+	reverse(b.inbox)
+	for i := range b.inbox {
+		b.inbox[i].due = s.tick
+	}
+	c.offline = true
+	rounds(s, 8)
+	edits(s, b, 2)
+	s.publish(b)
+	c.offline = false
+	for i := range c.inbox {
+		if s.decode(c.inbox[i].txnID).DeviceID == "device-a" {
+			c.inbox[i].due = s.tick + 6
+		}
+	}
+	rounds(s, 8)
+	s.finish(2)
+	requireStat(s, "waiting_for_ancestor")
+}
+
+func faultProlongedOffline(t *testing.T, devices []string) {
+	s := newFaultSim(t, "prolonged_offline", 107, faultConfig{MaxDelay: 2}, devices...)
+	a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
+	c.offline = true
+	s.logf("device-c goes offline")
+	for i := 0; i < 12; i++ {
+		edits(s, c, 3)
+		edits(s, a, 1)
+		edits(s, b, 1)
+		rounds(s, 1)
+	}
+	pending, err := c.history.Pending()
+	if err != nil || len(pending) < 30 {
+		s.fatalf("device-c holds %d unpublished transactions (%v), want a long offline history", len(pending), err)
+	}
+	s.logf("device-c comes back with %d unpublished transactions", len(pending))
+	c.offline = false
+	s.finish(2)
+	requireStat(s, "applied")
+}
+
+func faultThreeDeviceConcurrency(t *testing.T, devices []string) {
+	s := newFaultSim(t, "three_device_concurrency", 108, faultConfig{MaxDelay: 3, Duplicate: 0.3}, devices...)
+	// Every device edits the same task, the same note, and its own task,
+	// with nothing exchanged in between.
+	for _, d := range s.authors() {
+		s.retitle(d, "atlas-launch", faultShipBeta)
+		s.appendNote(d)
+		s.capture(d)
+		s.plan(d)
+	}
+	s.retitle(s.device("device-c"), "home-renovation", faultHomeTask1)
+	conflicts := s.finish(2)
+	if len(conflictsOn(conflicts, "tasks.md")) == 0 || len(conflictsOn(conflicts, "notes/")) == 0 {
+		s.fatalf("three concurrent edits of one task and one note left conflicts %v", conflictKeys(conflicts))
+	}
+	requireStat(s, "preserved_in_conflict")
+}
+
+func faultConflictingResolutions(t *testing.T, devices []string) {
+	s := newFaultSim(t, "conflicting_resolutions", 109, faultConfig{MaxDelay: 3, Duplicate: 0.4, Corrupt: 0.3}, devices...)
+	a, b, c := s.device("device-a"), s.device("device-b"), s.device("device-c")
+	for _, d := range s.authors() {
+		s.retitle(d, "atlas-launch", faultShipBeta)
+	}
+	s.settle()
+	open := s.conflicts(a)
+	if len(open) != 1 {
+		s.fatalf("setup left conflicts %v, want one", conflictKeys(open))
+	}
+	original := open[0]
+	// a and b resolve the same conflict differently while c, which has not
+	// resolved it, edits another task in the same document.
+	s.resolveRetitling(a, original, "atlas-launch", faultShipBeta)
+	s.resolveRetitling(b, original, "atlas-launch", faultShipBeta)
+	s.retitle(c, "atlas-launch", faultProofread)
+	s.settle()
+	competing := s.conflicts(c)
+	if len(competing) != 1 || competing[0].ID == original.ID {
+		s.fatalf("disagreeing resolutions left %v, want one new conflict", conflictKeys(competing))
+	}
+	// The new conflict competes both resolutions; c's concurrent edit of
+	// another task is a third maximal writer and merges in.
+	resolutions := map[string]bool{}
+	for _, candidate := range competing[0].Candidates {
+		for _, w := range candidate.Writers {
+			if m := s.decode(w); m.Kind == synclog.KindResolution {
+				resolutions[m.DeviceID] = true
 			}
 		}
-		if !resolutions["device-a"] || !resolutions["device-b"] {
-			s.fatalf("the new conflict competes resolutions from %v, want device-a's and device-b's", sortedKeys(resolutions))
-		}
-		if doc := s.doc(c, "atlas-launch"); !strings.Contains(findDocTask(doc, faultProofread).Title, "mk109x0006c") {
-			s.fatalf("c's concurrent edit did not merge: %q", findDocTask(doc, faultProofread).Title)
-		}
-		// c settles the dispute; everyone converges with nothing left open.
-		s.resolve(c, competing[0], -1)
-		if conflicts := s.finish(2); len(conflicts) != 0 {
-			s.fatalf("a final resolution left %v open", conflictKeys(conflicts))
-		}
-		requireStat(s, "resolutions")
-	})
+	}
+	if !resolutions["device-a"] || !resolutions["device-b"] {
+		s.fatalf("the new conflict competes resolutions from %v, want device-a's and device-b's", sortedKeys(resolutions))
+	}
+	if doc := s.doc(c, "atlas-launch"); !strings.Contains(findDocTask(doc, faultProofread).Title, "mk109x0006c") {
+		s.fatalf("c's concurrent edit did not merge: %q", findDocTask(doc, faultProofread).Title)
+	}
+	// c settles the dispute; everyone converges with nothing left open.
+	s.resolve(c, competing[0], -1)
+	if conflicts := s.finish(2); len(conflicts) != 0 {
+		s.fatalf("a final resolution left %v open", conflictKeys(conflicts))
+	}
+	requireStat(s, "resolutions")
+}
 
-	t.Run("ordinary_edit_keeps_conflict_open", func(t *testing.T) {
-		s := newFaultSim(t, "ordinary_edit_keeps_conflict_open", 110, faultConfig{MaxDelay: 1}, "device-a", "device-b")
-		a, b := s.device("device-a"), s.device("device-b")
-		s.retitle(a, "atlas-launch", faultShipBeta)
-		s.retitle(b, "atlas-launch", faultShipBeta)
-		s.settle()
-		// Editing another task of the merged document is not a resolution: the
-		// losing title must stay recoverable in an open conflict.
-		s.retitle(a, "atlas-launch", faultProofread)
-		s.appendNote(b)
-		conflicts := s.finish(2)
-		if len(conflictsOn(conflicts, "tasks.md")) != 1 {
-			s.fatalf("an ordinary edit after a merge left conflicts %v, want the title conflict still open", conflictKeys(conflicts))
-		}
-		requireStat(s, "preserved_in_conflict")
-	})
+func faultOrdinaryEditKeepsConflictOpen(t *testing.T) {
+	s := newFaultSim(t, "ordinary_edit_keeps_conflict_open", 110, faultConfig{MaxDelay: 1}, "device-a", "device-b")
+	a, b := s.device("device-a"), s.device("device-b")
+	s.retitle(a, "atlas-launch", faultShipBeta)
+	s.retitle(b, "atlas-launch", faultShipBeta)
+	s.settle()
+	// Editing another task of the merged document is not a resolution: the
+	// losing title must stay recoverable in an open conflict.
+	s.retitle(a, "atlas-launch", faultProofread)
+	s.appendNote(b)
+	conflicts := s.finish(2)
+	if len(conflictsOn(conflicts, "tasks.md")) != 1 {
+		s.fatalf("an ordinary edit after a merge left conflicts %v, want the title conflict still open", conflictKeys(conflicts))
+	}
+	requireStat(s, "preserved_in_conflict")
+}
 
-	t.Run("crash_restart", func(t *testing.T) {
-		s := newFaultSim(t, "crash_restart", 111, faultConfig{MaxDelay: 2, Crash: 0.35, Restart: 0.15}, devices...)
-		for step := 0; step < 30; step++ {
-			s.randomStep()
-		}
-		s.finish(2)
-		requireStat(s, "crashes", "restarts")
-	})
+func faultCrashRestart(t *testing.T, devices []string) {
+	s := newFaultSim(t, "crash_restart", 111, faultConfig{MaxDelay: 2, Crash: 0.35, Restart: 0.15}, devices...)
+	for step := 0; step < 30; step++ {
+		s.randomStep()
+	}
+	s.finish(2)
+	requireStat(s, "crashes", "restarts")
 }
 
 // TestSyncFaultPropertiesConverge runs seeded histories with every fault at

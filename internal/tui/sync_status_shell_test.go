@@ -29,12 +29,12 @@ func newEnrolledPair(t *testing.T) enrolledPair {
 	if err != nil {
 		t.Fatalf("open original: %v", err)
 	}
-	if _, err := original.Service().Capture(app.CaptureRequest{ProjectID: original.State().SystemUnfiledProject().ID, Title: "Shared task"}); err != nil {
-		t.Fatalf("capture: %v", err)
+	if _, serviceErr := original.Service().Capture(app.CaptureRequest{ProjectID: original.State().SystemUnfiledProject().ID, Title: "Shared task"}); serviceErr != nil {
+		t.Fatalf("capture: %v", serviceErr)
 	}
 	exchange := filepath.Join(root, "exchange")
-	if err := os.MkdirAll(exchange, 0o700); err != nil {
-		t.Fatal(err)
+	if mkdirErr := os.MkdirAll(exchange, 0o700); mkdirErr != nil {
+		t.Fatal(mkdirErr)
 	}
 	enrolled, err := engine.Enroll(engine.EnrollConfig{
 		Original:     original.DataDir(),

@@ -11,14 +11,13 @@ import (
 )
 
 // openAs opens the harness workspace under a named device.
-func (h *harness) openAs(deviceID string) statusResult {
+func (h *harness) openAs(deviceID string) {
 	h.t.Helper()
 	var status statusResult
 	h.ok(h.call("workspace.open", map[string]any{
 		"data_dir": h.dataDir, "runtime_dir": h.runtimeDir, "device_id": deviceID,
 	}), &status)
 	h.workspace = status.Workspace
-	return status
 }
 
 func (h *harness) exportPending() exportResult {
@@ -85,7 +84,18 @@ func onlyResult(t *testing.T, report syncexchange.Report) syncexchange.Result {
 // from the same workspace: export lists every file to publish, an import
 // applies a manifest only once every blob it names is staged and intact, and
 // missing content is reported as unavailable while the local files stay.
-func TestBridgeSyncExchangeImportsOnlyVerifiedContent(t *testing.T) {
+// exchangeFixture is one Mac capture exported for a phone that has not seen
+// it: the phone's tasks.md as it was, and an empty inbox to stage into.
+type exchangeFixture struct {
+	mac, phone *harness
+	outgoing   syncexchange.Outgoing
+	inbox      string
+	tasksPath  string
+	before     []byte
+}
+
+func newExchangeFixture(t *testing.T) exchangeFixture {
+	t.Helper()
 	mac := newHarness(t, representativeFixture)
 	phone := newHarness(t, representativeFixture)
 	mac.openAs("mac-device")
@@ -117,6 +127,12 @@ func TestBridgeSyncExchangeImportsOnlyVerifiedContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return exchangeFixture{mac: mac, phone: phone, outgoing: outgoing, inbox: inbox, tasksPath: tasksPath, before: before}
+}
+
+func TestBridgeSyncExchangeImportsOnlyVerifiedContent(t *testing.T) {
+	f := newExchangeFixture(t)
+	mac, phone, outgoing, inbox, tasksPath, before := f.mac, f.phone, f.outgoing, f.inbox, f.tasksPath, f.before
 
 	t.Run("manifest_without_content_waits", func(t *testing.T) {
 		stage(t, inbox, outgoing.Manifest, nil)

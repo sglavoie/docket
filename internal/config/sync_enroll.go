@@ -199,8 +199,8 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 		}
 		return resumed, resumeErr
 	}
-	if err := requireEmptyWorkingCopy(workingCopy); err != nil {
-		return nil, err
+	if emptyErr := requireEmptyWorkingCopy(workingCopy); emptyErr != nil {
+		return nil, emptyErr
 	}
 	snapshotRoot := opts.SnapshotRoot
 	if snapshotRoot == "" {
@@ -223,8 +223,8 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 				return snapErr
 			}
 			report.Snapshot = snapshot
-			if err := enrollStage("snapshot"); err != nil {
-				return err
+			if hookErr := enrollStage("snapshot"); hookErr != nil {
+				return hookErr
 			}
 			staging, copied, stageErr := stageWorkingCopy(entries, workingCopy)
 			if stageErr != nil {
@@ -232,8 +232,8 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 			}
 			report.FilesCopied = copied
 			enrolledAt := now().UTC()
-			if err := enrollStagedCatalog(staging, enrolledAt); err != nil {
-				return err
+			if catalogErr := enrollStagedCatalog(staging, enrolledAt); catalogErr != nil {
+				return catalogErr
 			}
 			record := &EnrollmentRecord{
 				Format:         EnrollmentRecordFormat,
@@ -244,14 +244,14 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 				Snapshot:       snapshot,
 				EnrolledAt:     enrolledAt,
 			}
-			if err := writeEnrollmentRecord(staging, record); err != nil {
-				return err
+			if recordErr := writeEnrollmentRecord(staging, record); recordErr != nil {
+				return recordErr
 			}
-			if err := validateSourceSnapshot(entries); err != nil {
-				return err
+			if validateErr := validateSourceSnapshot(entries); validateErr != nil {
+				return validateErr
 			}
-			if err := enrollStage("staged"); err != nil {
-				return err
+			if hookErr := enrollStage("staged"); hookErr != nil {
+				return hookErr
 			}
 			return publishWorkingCopy(staging, workingCopy)
 		})
@@ -357,12 +357,23 @@ func nearestExisting(path string) string {
 	}
 }
 
+// readableEnrollmentRecord is the enrollment record at workingCopy, or nil
+// when there is none or it cannot be read: resumeEnrollment leaves such a path
+// to requireEmptyWorkingCopy rather than failing on it.
+func readableEnrollmentRecord(workingCopy string) *EnrollmentRecord {
+	record, err := LoadEnrollmentRecord(workingCopy)
+	if err != nil {
+		return nil
+	}
+	return record
+}
+
 // resumeEnrollment recognizes a working copy an interrupted enrollment of this
 // same original already published, and reports it complete after selecting it
 // again. Anything else at that path is left to requireEmptyWorkingCopy.
 func resumeEnrollment(workingCopy, workspaceID, original string) (*EnrollReport, error) {
-	record, err := LoadEnrollmentRecord(workingCopy)
-	if err != nil || record == nil {
+	record := readableEnrollmentRecord(workingCopy)
+	if record == nil {
 		return nil, nil
 	}
 	if record.WorkspaceID != workspaceID || record.Original != original {
@@ -416,8 +427,8 @@ func snapshotOriginal(entries []workspaceEntry, original, root string, at time.T
 		return "", err
 	}
 	for _, partial := range stale {
-		if err := os.RemoveAll(partial); err != nil {
-			return "", fmt.Errorf("enroll: removing an interrupted snapshot %s: %w", partial, err)
+		if removeErr := os.RemoveAll(partial); removeErr != nil {
+			return "", fmt.Errorf("enroll: removing an interrupted snapshot %s: %w", partial, removeErr)
 		}
 	}
 	// A snapshot is never replaced: an earlier run's complete snapshot of the
@@ -432,11 +443,11 @@ func snapshotOriginal(entries []workspaceEntry, original, root string, at time.T
 	}
 	partial := final + snapshotPartialExt
 	report := &MoveReport{}
-	if err := createDestinationDirs(entries, partial, report); err != nil {
-		return "", err
+	if dirsErr := createDestinationDirs(entries, partial, report); dirsErr != nil {
+		return "", dirsErr
 	}
-	if err := copyDestinationFiles(entries, partial, report); err != nil {
-		return "", err
+	if copyErr := copyDestinationFiles(entries, partial, report); copyErr != nil {
+		return "", copyErr
 	}
 	type snapshotFile struct {
 		Path   string `json:"path"`

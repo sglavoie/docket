@@ -102,8 +102,8 @@ func TestRecordedICloudExchangeEvidence(t *testing.T) {
 		t.Fatalf("no recorded real iCloud exchange: %v (run ios/scripts/record-icloud-exchange.sh)", err)
 	}
 	var ev exchangeEvidence
-	if err := json.Unmarshal(data, &ev); err != nil {
-		t.Fatalf("evidence does not decode: %v", err)
+	if decodeErr := json.Unmarshal(data, &ev); decodeErr != nil {
+		t.Fatalf("evidence does not decode: %v", decodeErr)
 	}
 	check := func(ok bool, format string, args ...any) {
 		t.Helper()

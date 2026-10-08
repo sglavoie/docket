@@ -1745,6 +1745,85 @@ PY
 	note "session 17 verified"
 }
 
+verify_session_18() {
+	[ "$(uname -s)" = Darwin ] || fail "session 18 runs the mobile suites and checks real Mac/iPhone qualification evidence on macOS only"
+	require_files \
+		internal/synclog/digest.go \
+		internal/engine/diagnostics_digest_test.go \
+		internal/syncexchange/qualification_evidence_test.go \
+		internal/syncexchange/qualification_validator_test.go \
+		ios/scripts/install-device.sh \
+		ios/scripts/record-device-qualification.sh \
+		ios/scripts/device_qualification.py \
+		ios/scripts/qualification-fingerprint.sh \
+		docs/mobile/personal-rollout.md
+	command -v just >/dev/null || fail "just is required to run the mobile suites"
+	local heading
+	for heading in "## Enrollment" "## Backup" "## Recovery" "## Troubleshooting" "## Upgrade" "## Production enrollment"; do
+		grep -qxF "$heading" docs/mobile/personal-rollout.md || fail "docs/mobile/personal-rollout.md has no $heading section"
+	done
+
+	# The convergence measure the trial records: equal diagnostics digests
+	# after exchanging both ways, unequal with work unexchanged, and blind to
+	# device-local state.
+	run_go_suite diagnostics-digest ./internal/engine/ '^TestSyncDiagnosticsWorkspaceDigest$' \
+		TestSyncDiagnosticsWorkspaceDigest
+
+	# The gate refuses incomplete evidence: a complete synthetic trial passes
+	# and each omission, failure, stale build, or simulated device is refused.
+	run_go_suite qualification-validator ./internal/syncexchange/ '^TestQualificationValidatorRefusesIncompleteEvidence$' \
+		TestQualificationValidatorRefusesIncompleteEvidence \
+		TestQualificationValidatorRefusesIncompleteEvidence/stale_sources \
+		TestQualificationValidatorRefusesIncompleteEvidence/simulator \
+		TestQualificationValidatorRefusesIncompleteEvidence/missing_scenario \
+		TestQualificationValidatorRefusesIncompleteEvidence/diverged \
+		TestQualificationValidatorRefusesIncompleteEvidence/lost_edit \
+		TestQualificationValidatorRefusesIncompleteEvidence/duplicate_capture \
+		TestQualificationValidatorRefusesIncompleteEvidence/short_trial \
+		TestQualificationValidatorRefusesIncompleteEvidence/edited_procedure \
+		TestQualificationValidatorRefusesIncompleteEvidence/unresolved_failure
+
+	# The recorded real-device trial, held to the builds the current tree
+	# produces: the app's Swift sources, the iPhone bridge, and a reproducible
+	# tt for the Mac.
+	local source_fp bridge_fp tt_sha
+	source_fp=$(ios/scripts/qualification-fingerprint.sh) || fail "fingerprinting the app sources failed"
+	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
+	go build -trimpath -buildvcs=false -o "$work_dir/tt" . || fail "building tt failed"
+	tt_sha=$(shasum -a 256 "$work_dir/tt" | cut -d' ' -f1)
+	require_files docs/mobile/evidence/session-18-qualification.json
+	TT_QUALIFICATION_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" TT_QUALIFICATION_TT_SHA256="$tt_sha" \
+		run_go_suite qualification-evidence ./internal/syncexchange/ '^TestRecordedDeviceQualificationEvidence$' \
+		TestRecordedDeviceQualificationEvidence
+	note "real-device trial: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-18-qualification.json | head -1)"
+
+	# The earlier physical-device evidence still describes the current tree:
+	# the real iCloud exchange (session 8) and notification delivery (15).
+	(verify_session_8) || fail "the session-8 iCloud exchange evidence does not hold for the current tree"
+	(verify_session_15) || fail "the session-15 reminder evidence does not hold for the current tree"
+
+	# The mobile automated suites: the build, the four Swift suites, and the
+	# whole UI suite.
+	export TT_IOS_RESULTS="$work_dir/results" TT_IOS_RUN="$work_dir/run"
+	note "running just ios-build"
+	just ios-build >"$work_dir/ios-build.log" 2>&1 || { tail -40 "$work_dir/ios-build.log" >&2; fail "just ios-build failed"; }
+	[ "$(plutil -extract status raw -o - "$TT_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
+	note "running just ios-test all"
+	just ios-test all >"$work_dir/ios-test.log" 2>&1 || { tail -40 "$work_dir/ios-test.log" >&2; fail "just ios-test all failed"; }
+	require_suite_summary "$TT_IOS_RESULTS/all/summary.json" unit-shared unit-reminders bridge sync
+	note "running just ios-ui-test"
+	just ios-ui-test >"$work_dir/ios-ui-test.log" 2>&1 || { tail -60 "$work_dir/ios-ui-test.log" >&2; fail "just ios-ui-test failed"; }
+	require_xcresult_passed "$TT_IOS_RESULTS/ui-default/TTMobileUITests.xcresult" \
+		'testJoinFromAnExchangeFolder()' \
+		'testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics()' \
+		'testKeepingAVersionResolvesTheWholeChangeAndPublishesIt()' \
+		'testAttachmentImportResumesAfterTerminationAndShares()' \
+		'testSavedCapturesStayPendingUntilImportedAndLandOnce()' \
+		'testVoiceOverLabelsNameEveryControl()'
+
+	note "session 18 verified"
+}
+
 case "$session" in
 1) verify_session_1 ;;
 2) verify_session_2 ;;
@@ -1763,6 +1842,7 @@ case "$session" in
 15) verify_session_15 ;;
 16) verify_session_16 ;;
 17) verify_session_17 ;;
+18) verify_session_18 ;;
 "") fail "usage: verify_mobile_session.sh <session>" ;;
 *) fail "no verifier defined for session $session" ;;
 esac

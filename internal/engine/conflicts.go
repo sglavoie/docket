@@ -254,13 +254,16 @@ func (r *Runtime) ResolveSyncConflict(req ResolveRequest) (*ResolveResult, error
 // sync status, the conflicts' structure, and what the transport reported. It
 // names files, devices, and transactions, never file content.
 type SyncDiagnostics struct {
-	Format      string                   `json:"format"`
-	GeneratedAt time.Time                `json:"generated_at"`
-	DeviceID    string                   `json:"device_id"`
-	Status      *SyncStatus              `json:"status"`
-	Outbox      []string                 `json:"outbox"`
-	Conflicts   []DiagnosticConflict     `json:"conflicts"`
-	External    *storage.ExternalChanges `json:"external,omitempty"`
+	Format      string    `json:"format"`
+	GeneratedAt time.Time `json:"generated_at"`
+	DeviceID    string    `json:"device_id"`
+	// WorkspaceDigest digests the synced files (synclog.WorkspaceDigest):
+	// two devices that converged report the same value.
+	WorkspaceDigest string                   `json:"workspace_digest,omitempty"`
+	Status          *SyncStatus              `json:"status"`
+	Outbox          []string                 `json:"outbox"`
+	Conflicts       []DiagnosticConflict     `json:"conflicts"`
+	External        *storage.ExternalChanges `json:"external,omitempty"`
 }
 
 // DiagnosticConflict is a conflict without content.
@@ -302,6 +305,9 @@ func (r *Runtime) SyncDiagnostics(names map[string]string) (*SyncDiagnostics, er
 		return nil, err
 	}
 	report.DeviceID = history.DeviceID()
+	if report.WorkspaceDigest, err = synclog.WorkspaceDigest(r.DataDir()); err != nil {
+		return nil, err
+	}
 	for _, manifest := range pending {
 		report.Outbox = append(report.Outbox, manifest.TxnID)
 	}

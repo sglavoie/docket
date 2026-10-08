@@ -76,8 +76,8 @@ func TestSyncCommands(t *testing.T) {
 			t.Fatalf("sync status: %v", err)
 		}
 		var status engine.SyncStatus
-		if err := json.Unmarshal([]byte(stdout), &status); err != nil {
-			t.Fatalf("status JSON: %v\n%s", err, stdout)
+		if decodeErr := json.Unmarshal([]byte(stdout), &status); decodeErr != nil {
+			t.Fatalf("status JSON: %v\n%s", decodeErr, stdout)
 		}
 		if !status.Enrolled || !status.Genesis || status.OutstandingUp != 0 || status.Schemas["catalog"] != config.SyncEnrolledConfigVersion {
 			t.Fatalf("status = %+v", status)
@@ -100,8 +100,8 @@ func TestSyncCommands(t *testing.T) {
 		}
 
 		// Diagnostics: an exchange folder that went away is an issue.
-		if err := os.Rename(fixture.exchange, fixture.exchange+"-moved"); err != nil {
-			t.Fatal(err)
+		if renameErr := os.Rename(fixture.exchange, fixture.exchange+"-moved"); renameErr != nil {
+			t.Fatal(renameErr)
 		}
 		stdout, _, err = captureDoctorOutput(t, func() error { return runSyncDoctor(nil, nil) })
 		if err == nil || !strings.Contains(stdout, "!! exchange") {
@@ -124,9 +124,9 @@ func TestSyncCommands(t *testing.T) {
 		if err != nil || !strings.Contains(stdout, "not enrolled in sync") {
 			t.Fatalf("status: %v\n%s", err, stdout)
 		}
-		if _, _, err := captureDoctorOutput(t, func() error { return runSyncExchange(nil, nil) }); err == nil ||
-			!strings.Contains(err.Error(), "not enrolled") {
-			t.Fatalf("exchange on a workspace never enrolled = %v", err)
+		if _, _, exchangeErr := captureDoctorOutput(t, func() error { return runSyncExchange(nil, nil) }); exchangeErr == nil ||
+			!strings.Contains(exchangeErr.Error(), "not enrolled") {
+			t.Fatalf("exchange on a workspace never enrolled = %v", exchangeErr)
 		}
 		stdout, _, err = captureDoctorOutput(t, func() error { return runSyncDoctor(nil, nil) })
 		if err != nil || !strings.Contains(stdout, "not enrolled") {

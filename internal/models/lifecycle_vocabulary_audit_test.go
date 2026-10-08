@@ -45,8 +45,11 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 	}
 	allowedLegacyTagFiles := map[string]bool{
 		"internal/config/settings_section_colors.go": true,
-		"internal/template/template.go":              true,
-		"internal/workflow/rule.go":                  true,
+		// The sync diagnostics document's "status" is the device's sync
+		// status (bridge sync.diagnostics), not a task lifecycle.
+		"internal/engine/conflicts.go":  true,
+		"internal/template/template.go": true,
+		"internal/workflow/rule.go":     true,
 	}
 
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {

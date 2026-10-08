@@ -292,11 +292,11 @@ func runSyncExchange(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if !rt.State().Catalog().Enrolled() {
-		return errors.New(notEnrolledHint)
+		return fmt.Errorf("%s", notEnrolledHint)
 	}
 	if syncExchangeFolder != "" {
-		if err := config.SetEnrollmentExchangeFolder(rt.DataDir(), syncExchangeFolder); err != nil {
-			return err
+		if setErr := config.SetEnrollmentExchangeFolder(rt.DataDir(), syncExchangeFolder); setErr != nil {
+			return setErr
 		}
 	}
 	report, err := rt.SyncExchange(engine.SyncExchangeOptions{AppVersion: syncAppVersion()})

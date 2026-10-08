@@ -13,6 +13,11 @@ document here disagrees with `internal/` or with the fixtures under
 | Compatibility fixtures | `tt-compat-fixture` 1 | [fixture-contract.md](fixture-contract.md) |
 | Durable write paths | — | [write-path-inventory.md](write-path-inventory.md) |
 | App Group capture inbox and widget snapshot | `tt-capture/v1`, `tt-widget-snapshot/v1` | [capture-inbox.md](capture-inbox.md) |
+| Device qualification evidence | `tt-device-qualification-evidence` 1 | [personal-rollout.md](personal-rollout.md) |
+
+Installing the signed app, enrolling, backing up, recovering, troubleshooting,
+and upgrading, and the real-device trial that comes before enrolling a real
+workspace, are in [personal-rollout.md](personal-rollout.md).
 
 ## Desktop artifacts this baseline supports
 

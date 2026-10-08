@@ -204,11 +204,11 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	if external.TransactionID != "" || len(external.Held) > 0 {
 		report.External = external
 	}
-	if err := publish(committer, history, root, report); err != nil {
-		return err
+	if publishErr := publish(committer, history, root, report); publishErr != nil {
+		return publishErr
 	}
-	if err := advertise(history, root, opts, now()); err != nil {
-		return err
+	if advertiseErr := advertise(history, root, opts, now()); advertiseErr != nil {
+		return advertiseErr
 	}
 	peers, err := readPeers(root, history.DeviceID())
 	if err != nil {
@@ -216,8 +216,8 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	}
 	report.Peers = peers
 	inbox := filepath.Join(TransportDir(history), "inbox")
-	if err := fetch(history, root, inbox, report); err != nil {
-		return err
+	if fetchErr := fetch(history, root, inbox, report); fetchErr != nil {
+		return fetchErr
 	}
 	imported, err := ImportInbox(committer, inbox)
 	if err != nil {
@@ -233,6 +233,8 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 			report.OutstandingDown++
 		case Incomplete, Failed:
 			report.OutstandingDown++
+		default:
+			// Known, Invalid, and Foreign are neither waiting nor applied.
 		}
 	}
 	return pruneInbox(history, inbox, imported)
@@ -318,8 +320,8 @@ func publishFile(root string, file File) error {
 	if synclog.Digest(data) != file.Digest {
 		return fmt.Errorf("the local copy of %s does not match its digest", file.Path)
 	}
-	if err := writeExchangeFile(target, data); err != nil {
-		return err
+	if writeErr := writeExchangeFile(target, data); writeErr != nil {
+		return writeErr
 	}
 	written, err := os.ReadFile(target)
 	if err != nil || synclog.Digest(written) != file.Digest {
@@ -437,16 +439,18 @@ func fetch(history *synclog.History, root, inbox string, report *FolderReport) e
 		if _, known, lookupErr := history.Lookup(txnID); lookupErr != nil || known {
 			return lookupErr
 		}
-		data, readErr := os.ReadFile(abs)
-		if readErr != nil {
+		data, readable := readExchangeFile(abs)
+		if !readable {
+			// Listed but not delivered yet: fetched again on a later pass.
 			report.Unavailable = append(report.Unavailable, rel)
 			return nil
 		}
 		if err := stageInbox(inbox, rel, data); err != nil {
 			return err
 		}
-		manifest, decodeErr := synclog.DecodeManifest(data)
-		if decodeErr != nil {
+		manifest, decodable := decodeStagedManifest(data)
+		if !decodable {
+			// Staged as it is: the import reports it invalid.
 			return nil
 		}
 		for _, digest := range RequiredBlobs(manifest) {
@@ -494,6 +498,20 @@ func stageInbox(inbox, rel string, data []byte) error {
 	return nil
 }
 
+// readExchangeFile reads one listed exchange file; false means it cannot be
+// read yet, which the caller reports as unavailable rather than as an error.
+func readExchangeFile(abs string) ([]byte, bool) {
+	data, err := os.ReadFile(abs)
+	return data, err == nil
+}
+
+// decodeStagedManifest decodes a staged manifest; false means it is damaged
+// and is left for the import to report.
+func decodeStagedManifest(data []byte) (*synclog.Manifest, bool) {
+	manifest, err := synclog.DecodeManifest(data)
+	return manifest, err == nil
+}
+
 // pruneInbox removes the staged copies a pass spent: manifests applied, known,
 // or invalid (an invalid copy is fetched again), and blobs the history now
 // retains. Held, incomplete, and failing manifests stay for the next pass.
@@ -504,6 +522,8 @@ func pruneInbox(history *synclog.History, inbox string, report *Report) error {
 			if err := os.Remove(filepath.Join(inbox, filepath.FromSlash(result.Path))); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return fmt.Errorf("clearing the sync inbox: %w", err)
 			}
+		default:
+			// Held, incomplete, and failing manifests stay for the next pass.
 		}
 	}
 	blobs := filepath.Join(inbox, "blobs")

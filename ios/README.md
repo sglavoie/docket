@@ -284,3 +284,16 @@ team and the iPhone unlocked. Each run uses its own disposable workspace and its
 own `runs/<id>` folder. The script rewrites
 `docs/mobile/evidence/session-8-icloud-exchange.json`, which
 `bash scripts/verify_mobile_session.sh 8` holds to the current sources.
+
+## Device qualification and rollout
+
+`ios/scripts/install-device.sh` builds the app for a physical iPhone, signed by
+`TT_IOS_DEVELOPMENT_TEAM`, and installs it over the cable. Installing over an
+earlier build keeps the app's data. `ios/scripts/record-device-qualification.sh`
+runs the guided real-device trial (airplane mode, simultaneous edits,
+termination, delayed delivery, revoked folder access, large attachments, an
+upgrade, the rollout procedures, and at least a week of daily use) in a
+disposable workspace. It writes `docs/mobile/evidence/session-18-qualification.json`,
+which `bash scripts/verify_mobile_session.sh 18` holds to the current builds.
+[docs/mobile/personal-rollout.md](../docs/mobile/personal-rollout.md) is the
+guide, including when to enroll a real workspace.

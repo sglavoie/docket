@@ -47,6 +47,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/engine/repository.go:AvailableProjects":                              "mutation snapshots must resolve every non-archived project",
 	"internal/bridge/ops.go:TaskWorkspaceProjects":                                 "query.projects reports the base task workspace as its active population",
 	"internal/bridge/ops.go:AvailableProjects":                                     "query.projects reports the parked projects the task workspace excludes, apart from it",
+	"internal/engine/reminders.go:TaskWorkspaceProjects":                           "reminders plan over the base task workspace, so parked and archived projects raise none",
 	"internal/engine/query.go:AvailableProjects":                                   "a headless query loads every non-archived project, then narrows parked owners out unless a parked clause opens them",
 	"internal/tui/filterops/filter_pickers.go:TaskWorkspaceProjects":               "tag filter facet is derived from a task projection",
 	"internal/tui/filterops/filter_project_operations.go:AvailableProjects":        "the project tag vocabulary must name parked projects so a facet can widen back out",

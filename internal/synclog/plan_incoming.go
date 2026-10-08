@@ -287,8 +287,9 @@ func governingSchemas(kind EffectKind) []string {
 		return []string{SchemaCatalog, SchemaDomainEnvelope}
 	case EffectPlanning, EffectLenses:
 		return []string{SchemaDomainEnvelope}
+	default:
+		return nil
 	}
-	return nil
 }
 
 func baseMatches(current *vfile, base *string) bool {

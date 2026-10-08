@@ -438,9 +438,9 @@ func (s *faultSim) publish(d *simDevice) {
 	}
 	ids := make([]string, 0, len(pending))
 	for _, m := range pending {
-		data, err := m.Encode()
-		if err != nil {
-			s.fatalf("%s: encode: %v", d.name, err)
+		data, encodeErr := m.Encode()
+		if encodeErr != nil {
+			s.fatalf("%s: encode: %v", d.name, encodeErr)
 		}
 		for _, digest := range manifestDigests(m) {
 			blob, blobErr := d.history.Blob(digest)
@@ -1132,6 +1132,13 @@ func (s *faultSim) finish(observers int) []synclog.Conflict {
 
 // --- invariants ---
 
+// syncedPath reports a path synclog.Classify names and does not call
+// device-local; an unclassifiable path is not synced.
+func syncedPath(rel string) bool {
+	_, _, local, err := synclog.Classify(rel)
+	return err == nil && !local
+}
+
 func (s *faultSim) syncedFiles(d *simDevice) map[string]string {
 	out := map[string]string{}
 	err := filepath.WalkDir(d.root, func(path string, entry fs.DirEntry, err error) error {
@@ -1140,7 +1147,7 @@ func (s *faultSim) syncedFiles(d *simDevice) map[string]string {
 		}
 		rel, _ := filepath.Rel(d.root, path)
 		rel = filepath.ToSlash(rel)
-		if _, _, local, classifyErr := synclog.Classify(rel); classifyErr != nil || local {
+		if !syncedPath(rel) {
 			return nil
 		}
 		data, readErr := os.ReadFile(path)

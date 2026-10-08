@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import TTEngine
@@ -435,6 +436,7 @@ final class WorkspaceModel {
         var document = DiagnosticsDocument(
             exportedAt: Date(),
             app: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+            appExecutables: DiagnosticsDocument.appExecutableDigests(),
             workspace: location.name,
             transport: sync.diagnostics()
         )
@@ -536,6 +538,9 @@ struct DiagnosticsDocument: Encodable {
     var format = "tt-mobile-sync-diagnostics/v1"
     var exportedAt: Date
     var app: String
+    /// The running build's executables by name, so a device qualification
+    /// can tell which build wrote this export.
+    var appExecutables: [String: String]
     var workspace: String
     var transport: TransportDiagnostics
     var engine: JSONValue?
@@ -544,6 +549,19 @@ struct DiagnosticsDocument: Encodable {
     enum CodingKeys: String, CodingKey {
         case format, app, workspace, transport, engine
         case exportedAt = "exported_at"
+        case appExecutables = "app_executables"
         case engineError = "engine_error"
+    }
+
+    static func appExecutableDigests() -> [String: String] {
+        let bundle = Bundle.main.bundleURL
+        var out: [String: String] = [:]
+        guard let name = Bundle.main.executableURL?.lastPathComponent else { return out }
+        for rel in [name, "\(name).debug.dylib"] {
+            if let data = try? Data(contentsOf: bundle.appendingPathComponent(rel)) {
+                out[rel] = "sha256:" + SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            }
+        }
+        return out
     }
 }

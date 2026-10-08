@@ -78,8 +78,8 @@ func Enroll(cfg EnrollConfig) (*EnrollResult, error) {
 	}
 	result := &EnrollResult{Enrollment: enrollment}
 	if enrollHook != nil {
-		if err := enrollHook("genesis"); err != nil {
-			return result, err
+		if hookErr := enrollHook("genesis"); hookErr != nil {
+			return result, hookErr
 		}
 	}
 	rt, err := Open(Config{DataDir: enrollment.WorkingCopy, Machine: cfg.Machine, Clock: clock})
@@ -88,15 +88,15 @@ func Enroll(cfg EnrollConfig) (*EnrollResult, error) {
 	}
 	// Open records the genesis; asking again surfaces a refusal Open could
 	// only log, and is a no-op once it is recorded.
-	if err := rt.recordGenesis(); err != nil {
-		return result, err
+	if genesisErr := rt.recordGenesis(); genesisErr != nil {
+		return result, genesisErr
 	}
 	if genesis, genesisErr := rt.repo.svc.SyncHistory().Genesis(); genesisErr == nil && genesis != nil {
 		result.Genesis = genesis.TxnID
 	}
 	if enrollHook != nil {
-		if err := enrollHook("exchange"); err != nil {
-			return result, err
+		if hookErr := enrollHook("exchange"); hookErr != nil {
+			return result, hookErr
 		}
 	}
 	report, err := rt.SyncExchange(SyncExchangeOptions{Folder: enrollment.Exchange, AppVersion: cfg.AppVersion})
@@ -363,8 +363,8 @@ func Join(cfg JoinConfig) (*Runtime, *syncexchange.FolderReport, error) {
 	if err != nil {
 		return nil, report, fmt.Errorf("join: %w", err)
 	}
-	if err := config.RecordJoinedWorkingCopy(dataDir, workspaceID, cfg.Exchange); err != nil {
-		return nil, report, err
+	if recordErr := config.RecordJoinedWorkingCopy(dataDir, workspaceID, cfg.Exchange); recordErr != nil {
+		return nil, report, recordErr
 	}
 	rt, err := Open(Config{DataDir: dataDir, Machine: cfg.Machine, Clock: clock})
 	if err != nil {
@@ -443,8 +443,8 @@ func JoinInbox(cfg JoinInboxConfig) (*Runtime, *syncexchange.Report, error) {
 	if err != nil {
 		return nil, report, fmt.Errorf("join: %w", err)
 	}
-	if err := config.RecordJoinedEnrollment(dataDir, cfg.WorkspaceID, cfg.Exchange); err != nil {
-		return nil, report, err
+	if recordErr := config.RecordJoinedEnrollment(dataDir, cfg.WorkspaceID, cfg.Exchange); recordErr != nil {
+		return nil, report, recordErr
 	}
 	rt, err := Open(Config{DataDir: dataDir, Machine: cfg.Machine, Clock: clock, IDs: cfg.IDs, RefuseMigration: true})
 	if err != nil {

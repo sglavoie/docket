@@ -18,8 +18,8 @@ var recoveryGatewayInventory = map[string]string{
 	"internal/tui/domain_controller.go:AppModel.commitCatalogProjectMutation:CommitProjectArtifactsResult":      "returns the transaction ID to project pin and tag feedback",
 	"internal/tui/domain_controller.go:AppModel.commitRuntimeDomainsWithUndo:CommitProjectArtifactsResult":      "returns the transaction ID to project archive feedback",
 	"internal/tui/coordinator/feature_coordinator_task_item.go:TaskItemCoordinator.CommitProject:CommitProject": "emits BatchTransactionResultMsg with the transaction ID",
-	"internal/tui/projecthub/project_creator.go:ProjectCreatorModel.createProject:CommitProjectMutationResult":  "emits ProjectCreatedMsg with the transaction ID",
-	"internal/tui/projecthub/project_editor.go:ProjectEditorSave.Commit:RenameProjectResult":                    "emits ProjectUpdatedMsg with the transaction ID",
+	"internal/tui/projecthub/project_creator.go:ProjectCreatorModel.createProject:CreateProject":                "emits ProjectCreatedMsg with the transaction ID engine.CreateProject returns",
+	"internal/tui/projecthub/project_editor.go:ProjectEditorSave.Commit:EditProject":                            "emits ProjectUpdatedMsg with the transaction ID engine.EditProject returns",
 	"internal/tui/notes/project_note_commands.go:NoteMutationCmd:ApplyNoteBatch":                                "emits notes.ProjectNoteMutationResultMsg carrying NoteBatchResult.TransactionID",
 }
 
@@ -91,6 +91,8 @@ func collectRecoveryGatewayCalls(t *testing.T, root string) []string {
 		"CommitProjectArtifactsResult": true,
 		"CommitProjectMutationResult":  true,
 		"CommitWorkspaceBootstrap":     true,
+		"CreateProject":                true,
+		"EditProject":                  true,
 		"RenameProjectResult":          true,
 	}
 	var calls []string
