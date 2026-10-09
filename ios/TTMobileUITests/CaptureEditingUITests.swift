@@ -208,6 +208,111 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Tests
 
+    func testSwipePlanningAndLifecycleActions() throws {
+        let app = launch()
+        tab(app, "Inbox")
+        let bankID = "0a7e5d10-2c3b-4f6a-8e9d-000000000501"
+
+        row(app, "Call the bank").swipeRight()
+        require(app.buttons["task.swipe.today"], "the Today swipe action")
+        require(app.buttons["task.swipe.next"], "the Next swipe action")
+        XCTAssertFalse(try planning().contains(bankID), "revealing actions changed the plan")
+        app.buttons["task.swipe.today"].tap()
+        requireAbsent(row(app, "Call the bank"), "the planned task in Inbox")
+        tab(app, "Today")
+        require(row(app, "Call the bank"), "the planned task in Today")
+        row(app, "Call the bank").swipeRight()
+        XCTAssertEqual(app.buttons["task.swipe.today"].label, "Remove from Today")
+        app.buttons["task.swipe.next"].tap()
+        requireAbsent(row(app, "Call the bank"), "the task moved out of Today")
+
+        tab(app, "Browse")
+        app.buttons["browse.mode.next"].tap()
+        require(row(app, "Call the bank"), "the task in Next")
+        row(app, "Call the bank").swipeRight()
+        XCTAssertEqual(app.buttons["task.swipe.next"].label, "Remove from Next")
+        app.buttons["task.swipe.next"].tap()
+        requireAbsent(row(app, "Call the bank"), "the task removed from Next")
+        XCTAssertFalse(try planning().contains(bankID))
+
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
+        for _ in 0..<4 where !app.buttons["browse.project.unfiled"].exists { app.swipeUp() }
+        require(app.buttons["browse.project.unfiled"], "the Unfiled project")
+        app.buttons["browse.project.unfiled"].tap()
+        require(row(app, "Call the bank"), "the unplanned task in its project")
+        row(app, "Call the bank").swipeRight()
+        app.buttons["task.swipe.today"].tap()
+        eventually("the project row shows Today") { row(app, "Call the bank").label.contains("Today") }
+        row(app, "Call the bank").swipeRight()
+        app.buttons["task.swipe.today"].tap()
+        eventually("the project row no longer shows Today") { !row(app, "Call the bank").label.contains("Today") }
+        XCTAssertFalse(try planning().contains(bankID))
+
+        row(app, "Call the bank").swipeLeft()
+        require(app.buttons["task.swipe.done"], "the Done swipe action")
+        require(app.buttons["task.swipe.edit"], "the Edit swipe action")
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
+        XCTAssertTrue(try markdown("unfiled").contains("state: backlog"), "revealing actions changed the status")
+        app.buttons["task.swipe.startPause"].tap()
+        eventually("the task started") { row(app, "Call the bank").label.hasPrefix("doing,") }
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Pause")
+        app.buttons["task.swipe.startPause"].tap()
+        eventually("the task paused") { row(app, "Call the bank").label.hasPrefix("paused,") }
+        XCTAssertTrue(try markdown("unfiled").contains("state: paused"))
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
+        app.buttons["task.swipe.done"].tap()
+        requireAbsent(row(app, "Call the bank"), "the completed task in the open project list")
+        XCTAssertTrue(try markdown("unfiled").contains("state: done"))
+
+        // Lists show open tasks until the query explicitly includes completed work.
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("?completed\n")
+        require(row(app, "Call the bank"), "the completed task in search results")
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertFalse(app.buttons["task.swipe.today"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.next"].exists)
+        require(app.buttons["task.swipe.reopen"], "the Reopen swipe action")
+        XCTAssertFalse(app.buttons["task.swipe.done"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.startPause"].exists)
+        app.buttons["task.swipe.reopen"].tap()
+        eventually("the task reopened") { try markdown("unfiled").contains("state: inbox") }
+        tab(app, "Inbox")
+        require(row(app, "Call the bank"), "the reopened task in Inbox")
+    }
+
+    func testSwipeRefusalEditingAndSelection() throws {
+        let app = launch()
+        let before = try markdown("atlas-launch")
+        row(app, "Ship beta build").swipeLeft()
+        app.buttons["task.swipe.done"].tap()
+        let failure = app.staticTexts["list.failure"]
+        require(failure, "the swipe completion refusal")
+        XCTAssertTrue(failure.label.contains("open subtasks"), failure.label)
+        XCTAssertTrue(failure.label.contains("Write release notes"), failure.label)
+        XCTAssertEqual(try markdown("atlas-launch"), before)
+
+        row(app, "Ship beta build").swipeLeft()
+        app.buttons["task.swipe.edit"].tap()
+        require(app.buttons["edit.save"], "the edit sheet opened from a swipe")
+        type(app, "form.resume", "Check signing before upload")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the edit sheet")
+        XCTAssertFalse(failure.exists)
+        eventually("the swipe edit was saved") {
+            try block("Ship beta build", in: markdown("atlas-launch"))?.contains("Check signing before upload") == true
+        }
+
+        app.buttons["list.select"].tap()
+        row(app, "Ship beta build").swipeLeft()
+        XCTAssertFalse(app.buttons["task.swipe.done"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.edit"].exists)
+        row(app, "Ship beta build").swipeRight()
+        XCTAssertFalse(app.buttons["task.swipe.today"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.next"].exists)
+    }
+
     func testShorthandCaptureWithLivePreview() throws {
         let app = launch()
         openCapture(app)

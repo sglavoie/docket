@@ -87,7 +87,9 @@ struct TaskListView: View {
     @State private var sort = TaskSort()
     @State private var selecting = false
     @State private var selection = Set<TaskLocator>()
-    @State private var bulkFailure: String?
+    @State private var actionFailure: String?
+    @State private var acting = false
+    @State private var editingRow: TaskRow?
     @State private var managingProject = false
     @Environment(\.dismiss) private var dismiss
 
@@ -118,7 +120,7 @@ struct TaskListView: View {
                         // The selection's actions sit beside Done: a bottom
                         // bar would sit under the tab bar.
                         BulkActionsButton(workspace: workspace, selection: Array(selection)) { refusal, moved in
-                            bulkFailure = refusal
+                            actionFailure = refusal
                             // A moved task has a new address, so the selection
                             // naming the old one is spent; every other action
                             // leaves it in place for the next.
@@ -130,7 +132,7 @@ struct TaskListView: View {
                     Button(selecting ? "Done" : "Select") {
                         selecting.toggle()
                         selection = []
-                        bulkFailure = nil
+                        actionFailure = nil
                     }
                     .accessibilityIdentifier("list.select")
                     if source.lens == nil, !selecting {
@@ -153,8 +155,8 @@ struct TaskListView: View {
             }
             .environment(\.editMode, .constant(selecting ? .active : .inactive))
             .safeAreaInset(edge: .top) {
-                if let bulkFailure {
-                    Text(bulkFailure)
+                if let actionFailure {
+                    Text(actionFailure)
                         .font(.footnote)
                         .foregroundStyle(.red)
                         .padding(8)
@@ -162,6 +164,9 @@ struct TaskListView: View {
                         .background(.regularMaterial)
                         .accessibilityIdentifier("list.failure")
                 }
+            }
+            .sheet(item: $editingRow) { row in
+                TaskEditSheet(workspace: workspace, task: row.item.task)
             }
             .refreshable { await workspace.refresh() }
             .task(id: LoadKey(generation: workspace.generation, search: search, filter: filter, sort: sort)) {
@@ -209,10 +214,16 @@ struct TaskListView: View {
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
                     .accessibilityIdentifier("task.row")
                     .tag(row.id)
-                    .swipeActions {
-                        if !row.item.task.state.isTerminal {
-                            Button("Done") { Task { await workspace.complete(row.item.task) } }
-                                .tint(.green)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if !selecting {
+                            statusActions(row)
+                                .disabled(acting)
+                        }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        if !selecting, !row.item.task.state.isTerminal {
+                            planActions(row)
+                                .disabled(acting)
                         }
                     }
                 }
@@ -220,6 +231,65 @@ struct TaskListView: View {
             .accessibilityIdentifier("list.tasks")
             // The last row scrolls clear of the floating capture button.
             .contentMargins(.bottom, 72, for: .scrollContent)
+        }
+    }
+
+    @ViewBuilder
+    private func statusActions(_ row: TaskRow) -> some View {
+        let task = row.item.task
+        if task.state.isTerminal {
+            Button("Reopen", systemImage: "arrow.uturn.backward") {
+                act { await workspace.transition(task.locator, to: .inbox) }
+            }
+            .tint(.blue)
+            .accessibilityIdentifier("task.swipe.reopen")
+        } else {
+            Button("Done", systemImage: "checkmark") {
+                act { await workspace.transition(task.locator, to: .done) }
+            }
+            .tint(.green)
+            .accessibilityIdentifier("task.swipe.done")
+
+            Button(task.state == .doing ? "Pause" : "Start", systemImage: task.state == .doing ? "pause.fill" : "play.fill") {
+                act { await workspace.transition(task.locator, to: task.state == .doing ? .paused : .doing) }
+            }
+            .tint(.orange)
+            .accessibilityIdentifier("task.swipe.startPause")
+        }
+        Button("Edit", systemImage: "pencil") {
+            actionFailure = nil
+            editingRow = row
+        }
+        .tint(.gray)
+        .accessibilityIdentifier("task.swipe.edit")
+    }
+
+    @ViewBuilder
+    private func planActions(_ row: TaskRow) -> some View {
+        let item = row.item
+        Button(item.today ? "Remove Today" : "Today", systemImage: item.today ? "calendar.badge.minus" : "calendar") {
+            act { await workspace.plan(item.task.locator, item.today ? .removeToday : .addToday) }
+        }
+        .tint(.blue)
+        .accessibilityLabel(item.today ? "Remove from Today" : "Add to Today")
+        .accessibilityIdentifier("task.swipe.today")
+
+        Button(item.next ? "Remove Next" : "Next", systemImage: item.next ? "minus.circle" : "arrow.right.circle") {
+            act { await workspace.plan(item.task.locator, item.next ? .removeNext : .addNext) }
+        }
+        .tint(.indigo)
+        .accessibilityLabel(item.next ? "Remove from Next" : "Add to Next")
+        .accessibilityIdentifier("task.swipe.next")
+    }
+
+    /// Let the engine judge each action and keep refusals beside the list.
+    private func act(_ command: @escaping () async -> String?) {
+        guard !acting else { return }
+        acting = true
+        actionFailure = nil
+        Task {
+            actionFailure = await command()
+            acting = false
         }
     }
 

@@ -185,6 +185,13 @@ preceding search and appends a space. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
 
+Swipe left on a task for **Done**, **Start** (or **Pause** while doing), and
+**Edit**; completed and canceled tasks offer **Reopen** and **Edit**. Swipe
+right for **Today** and **Next**, or remove it from the plan it already has.
+Swipes reveal buttons without committing an action until tapped. These
+shortcuts are available outside selection mode, and an action the engine
+refuses is explained above the list.
+
 A task's detail also edits its checklist in place (tick, add, edit, reorder,
 delete, promote to a subtask), schedules and acknowledges its check-in, adds
 a subtask, indents, outdents, reorders it among its siblings, and moves it to
