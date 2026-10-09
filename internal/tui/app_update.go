@@ -95,6 +95,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	if handled, cmd := m.handleGlobalMessage(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleAutomaticSyncMessage(msg); handled {
+		return m, cmd
+	}
 	if handled, cmd := m.handleManageHubMessages(msg); handled {
 		return m, cmd
 	}

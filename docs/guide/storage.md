@@ -414,8 +414,16 @@ machine that opens it. Another desktop joins with
 `tt sync join --exchange DIR --working-copy DIR`, which builds its own local
 copy from the published history alone.
 
-`tt sync exchange` publishes what you committed and applies what other devices
-published; the Outliner's status strip shows a `sync:` line while anything is
+An enrolled desktop workspace exchanges automatically while `tt` is running,
+including inside tt.app: at launch, when the terminal regains focus, and every
+five seconds. Local saves are published on the next pass, and incoming changes
+refresh the Outliner when no editor, picker, selection, or child view is active.
+Unavailable folders and files are retried on later passes. Closing tt.app's
+window keeps its session syncing; quitting `tt` stops automatic exchange.
+Cloud delivery can take longer than the polling interval.
+
+`tt sync exchange` also runs a pass manually, publishing what you committed and
+applying what other devices published. The Outliner's status strip shows a `sync:` line while anything is
 waiting — work saved here and not yet published, work found and not yet
 applied, or a change held until a device updates `tt` — and counts open sync
 conflicts beside the merge conflicts, which `gc` lists. A file iCloud has not

@@ -222,8 +222,13 @@ defaults write io.github.sglavoie.tt ttDockBadge -bool false
 ```
 
 A bell while tt.app is in the background bounces the Dock icon once rather
-than beeping. tt itself reloads the workspace when its window comes back if
-another machine's sync changed it meanwhile (see `docs/guide/outliner-chrome.md`).
+than beeping. For an enrolled workspace, tt exchanges with mobile automatically
+at launch, on focus, and every five seconds while its session runs, including
+with the window hidden. Incoming changes refresh the Outliner after an active
+edit, picker, selection, or child view is closed. An unavailable exchange is
+retried automatically; the status strip reports failures and pending changes.
+Cloud delivery may take longer. Quit stops automatic sync; closing the window
+keeps it running. See `docs/guide/storage.md` for enrollment and sync status.
 
 ### Terminal config
 

@@ -1039,12 +1039,24 @@ func (m *AppModel) refreshSyncStatus() {
 	status, err := m.domain.syncStatus()
 	if err != nil {
 		logging.Warn("reading sync status: %v", err)
+		if m.automaticSync.err != nil {
+			m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
+		}
 		return
 	}
 	if status == nil || !status.Enrolled {
 		return
 	}
 	m.feedback.syncAdvisory = syncAdvisoryText(status, time.Now())
+	// A failure before reaching the transport (for example, a removed folder
+	// configuration) has no persisted report to show in the ordinary status.
+	if m.automaticSync.err != nil && (status.LastExchange == nil || status.LastExchange.Succeeded) {
+		pending := strings.TrimPrefix(m.feedback.syncAdvisory, "sync: ")
+		m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
+		if pending != "" {
+			m.feedback.syncAdvisory += " · " + pending
+		}
+	}
 	if len(status.Conflicts) == 0 || m.domain.syncConflicts == nil {
 		return
 	}

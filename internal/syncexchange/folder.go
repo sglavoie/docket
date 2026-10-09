@@ -159,6 +159,24 @@ func ExchangeFolder(committer FolderCommitter, opts FolderOptions) (*FolderRepor
 	if history == nil {
 		return nil, fmt.Errorf("syncexchange: exchange requires a sync history")
 	}
+	// Automatic and manual passes share the inbox and status file. Serialize
+	// the entire transport pass with a separate device-local lock; commits keep
+	// using their own workspace lock and remain possible during folder I/O.
+	dir := TransportDir(history)
+	if err := os.MkdirAll(dir, util.DirPermissions); err != nil {
+		return nil, err
+	}
+	var report *FolderReport
+	err := util.WithFileLock(filepath.Join(dir, "exchange.lock"), true, func() error {
+		var passErr error
+		report, passErr = exchangeFolderLocked(committer, opts)
+		return passErr
+	})
+	return report, err
+}
+
+func exchangeFolderLocked(committer FolderCommitter, opts FolderOptions) (*FolderReport, error) {
+	history := committer.SyncHistory()
 	now := opts.Now
 	if now == nil {
 		now = time.Now

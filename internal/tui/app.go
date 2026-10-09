@@ -150,6 +150,7 @@ type AppModel struct {
 	// externalReload is the workspace as it stood at the last focus loss, and
 	// whether a change made elsewhere is still owed. See lifecycle_controller.go.
 	externalReload externalReloadState
+	automaticSync  automaticSyncState
 
 	// notifications is a --notify run's arrival reporting. See lifecycle_controller.go.
 	notifications notificationState

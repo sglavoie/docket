@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/syncexchange"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
@@ -31,7 +32,7 @@ import (
 	"github.com/sglavoie/tt/internal/workspace"
 )
 
-// periodicSaveInterval is the cadence of the one recurring app timer. It is the
+// periodicSaveInterval is the cadence of the recurring maintenance timer. It is the
 // span a scenario advances to observe something only the tick can produce, such
 // as an outstanding-conflict count another machine's sync wrote.
 const periodicSaveInterval = 60 * time.Second
@@ -48,7 +49,7 @@ const periodicSaveInterval = 60 * time.Second
 // (app_init.go), and teardown is the deferred lock release beside the Bubble Tea
 // program. None of that is retained, so none of it belongs to a field.
 //
-// It also owns the scheduling of the one recurring timer, because the two places
+// It also owns the scheduling of the recurring maintenance timer, because the two places
 // that arm it — Init and the handler that re-arms it on each fire — must arm the
 // same one. App timers go through status.TickCmd and never tea.Tick, so the tick
 // stays virtualizable by the scenario harness; keeping the construction here is
@@ -121,8 +122,8 @@ func (c *lifecycleController) startupCmd() tea.Cmd {
 	return func() tea.Msg { return msg }
 }
 
-// periodicSaveCmd schedules the next periodic tick. It is the single
-// construction of the app's one recurring timer: Init arms it, and the handler
+// periodicSaveCmd schedules the next periodic maintenance tick. It is the single
+// construction of that timer: Init arms it, and the handler
 // for each fire re-arms it through this same call.
 func (c *lifecycleController) periodicSaveCmd() tea.Cmd {
 	return status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
@@ -328,7 +329,7 @@ func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if before != "" && before != m.workspaceFingerprint() {
 			m.externalReload.owed = true
 		}
-		return true, m.adoptExternalWorkspaceChange()
+		return true, tea.Batch(m.adoptExternalWorkspaceChange(), m.startAutomaticSync())
 	default:
 		return false, nil
 	}
@@ -816,5 +817,67 @@ func controlArrivalKind(kind pulse.ArrivalKind) string {
 		return control.ArrivalDeadline
 	default:
 		return control.ArrivalWake
+	}
+}
+
+// Automatic exchange for enrolled desktop sessions.
+
+const automaticSyncInterval = 5 * time.Second
+
+// Only enrolled sessions own this timer. Folder I/O runs on an independent
+// engine snapshot; all scheduling and view adoption stay on the UI goroutine.
+type automaticSyncState struct {
+	exchange func() (*syncexchange.FolderReport, error)
+	running  bool
+	err      error
+}
+
+type automaticSyncTickMsg struct{}
+type automaticSyncFinishedMsg struct {
+	changed bool
+	err     error
+}
+
+func (m *AppModel) automaticSyncTickCmd() tea.Cmd {
+	if m.automaticSync.exchange == nil || m.lifecycle.quitting {
+		return nil
+	}
+	return status.TickCmd(automaticSyncInterval, func(time.Time) tea.Msg {
+		return automaticSyncTickMsg{}
+	})
+}
+
+func (m *AppModel) startAutomaticSync() tea.Cmd {
+	sync := &m.automaticSync
+	if sync.exchange == nil || sync.running || m.lifecycle.quitting {
+		return nil
+	}
+	sync.running = true
+	exchange := sync.exchange
+	return func() tea.Msg {
+		report, err := exchange()
+		changed := report != nil && (report.Imported > 0 ||
+			(report.External != nil && report.External.TransactionID != ""))
+		return automaticSyncFinishedMsg{changed: changed, err: err}
+	}
+}
+
+func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
+	case automaticSyncTickMsg:
+		return true, tea.Batch(m.automaticSyncTickCmd(), m.adoptExternalWorkspaceChange(), m.startAutomaticSync())
+	case automaticSyncFinishedMsg:
+		m.automaticSync.running = false
+		m.automaticSync.err = msg.err
+		if msg.err != nil {
+			logging.Warn("automatic sync: %v", msg.err)
+		}
+		if msg.changed {
+			m.externalReload.owed = true
+		}
+		m.refreshOutstandingConflicts()
+		return true, m.adoptExternalWorkspaceChange()
+	default:
+		return false, nil
 	}
 }

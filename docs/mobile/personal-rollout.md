@@ -107,6 +107,13 @@ again.
 A second Mac joins with
 `tt sync join --exchange DIR --working-copy DIR`.
 
+Keep `tt` running on the Mac to exchange automatically: it syncs at launch,
+on focus, and every five seconds, including while tt.app's window is hidden.
+The iPhone exchanges at launch, on foreground, after saves, and on refresh.
+An offline folder is retried automatically on the Mac. iCloud delivery can
+take longer; `tt sync status` shows what is still waiting, and `tt sync exchange`
+remains available for a manual pass while `tt` is closed.
+
 ## Backup
 
 The working copy on the Mac is the copy to back up. The exchange folder holds

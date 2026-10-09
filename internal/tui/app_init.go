@@ -59,6 +59,7 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	app.domain.service = appService
 	app.domain.syncStatus = rt.SyncStatus
 	app.domain.syncConflicts = rt.SyncConflicts
+	app.automaticSync.exchange = rt.BackgroundSyncExchanger(engine.SyncExchangeOptions{AppVersion: AppVersion})
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 
@@ -277,7 +278,7 @@ func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoad
 }
 
 func (m *AppModel) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.lifecycle.periodicSaveCmd()}
+	cmds := []tea.Cmd{m.lifecycle.periodicSaveCmd(), m.automaticSyncTickCmd(), m.startAutomaticSync()}
 	if startupCmd := m.lifecycle.startupCmd(); startupCmd != nil {
 		cmds = append(cmds, startupCmd)
 	}
