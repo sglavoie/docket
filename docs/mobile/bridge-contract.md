@@ -116,6 +116,7 @@ There is no bridge-only mutation path.
 | `workspace.close` | no | Releases locks and caches. |
 | `query.projects` | no | Returns active, parked, and archived projects as separate populations, matching `TaskWorkspaceProjects` and `AvailableProjects`. |
 | `query.tasks` | no | Payload is `{mode, scope, query, sort}` in the canonical query grammar. |
+| `query.search_suggestions` | no | Completes the final search token using the current list's tag/context vocabulary and supported grammar values. |
 | `query.task` | no | Returns one task with its Peek document fields, including computed dependents. |
 | `query.lenses` | no | The saved lenses in stored order. |
 | `query.capture_preview` | no | Reads capture grammar text without committing: what each line would create, or each refused line. |
@@ -159,6 +160,7 @@ from one the protocol never had. The current build serves these:
 | `workspace.close` | none | `{closed}` |
 | `query.projects` | none | `{active, parked, archived}` |
 | `query.tasks` | `{mode, scope, query, sort: {field, ascending}, lens, search}`, each optional; `query` is the strict canonical clause string; `lens` excludes the four before it | `{query, items: [{task, today, next}], diagnostics}` |
+| `query.search_suggestions` | Same axes as `query.tasks`; `search` is the current input | `{suggestions: [{token, search}]}`; each `search` completes the final token and appends a space |
 | `query.task` | `{task}` | `{task, project, revision, relations: {ancestors, children, dependencies, dependents}, today, next, comments, attachments, attachment_dir}` |
 | `query.lenses` | none | `{lenses: [{id, name, mode, scope, query, sort}]}` |
 | `query.capture_preview` | `{text, project_id}`; `project_id` optional | `{project_id, lines: [{line, title, project_id, project_name, destination, plan, state, priority, tags, context, due, defer, pinned, review, parent_id, children, dependencies, attachments, comments}], errors: [{line, column, message}]}` |
@@ -283,12 +285,21 @@ state}]`. A refusal inside a capture batch also names its `line`.
 
 `query.tasks` reads `search` the way the desktop's search box does. A value
 the grammar recognizes but cannot honor (`$ready`) refuses the query with
-`validation`, naming it. Every canonical token becomes its clause, and the
-rest is one free-text clause over the task's own prose. `lens` reopens a
+`validation`, naming it. Every canonical token becomes its clause. Tag and
+context spellings are normalized as on capture, so `#Epic` matches `epic`,
+including in negated and explicit prefix searches. The remaining text is one
+free-text clause over the task's own prose. `lens` reopens a
 saved lens: its mode, scope, sort, and stored query, read the same way, so
 `search` can narrow it further. A lens whose scoped project is missing,
 archived, or parked answers `not_found`, like any scope outside the
 population.
+
+Search suggestions use the same mode, scope, filters, lens, and settled query
+prefix as the list, excluding the unfinished final token. Tags and contexts
+come from matching tasks; static values come from the search grammar and are
+offered only when the bridge can evaluate them. Exact matches, already-used
+values, and a trailing space produce no redundant completion. Selecting a
+suggestion preserves the preceding query text.
 
 A task view also carries `resume_note`, `next_check_in`, `checklist`
 (`[{text, done}]` in stored order), `comment_count`, `attachment_count`, and

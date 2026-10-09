@@ -60,6 +60,23 @@ func requireTitles(t *testing.T, label string, got, want []string) {
 	}
 }
 
+func TestBridgeSearchesTagsFromMobile(t *testing.T) {
+	h := newHarness(t, representativeFixture)
+	h.open(false)
+	var captured captureResult
+	h.ok(h.call("command.capture", map[string]any{"text": "Plan the launch #epic #source:github ##Home.Office"}), &captured)
+	for _, search := range []string{"#epic", "#Epic", "#EPIC", "#Epic launch", "#EP*", "#Source:GitHub", "##Home.Office", "#Epic -#Release", "#Epic -##Laptop"} {
+		t.Run(search, func(t *testing.T) {
+			requireTitles(t, search, h.titles(map[string]any{"mode": "all", "search": search}), []string{"Plan the launch"})
+		})
+	}
+	for _, search := range []string{"#epic -#Epic", "#epic -##Home.Office", `"#Epic"`, "#Epic unrelated"} {
+		t.Run(search, func(t *testing.T) {
+			requireTitles(t, search, h.titles(map[string]any{"mode": "all", "search": search}), nil)
+		})
+	}
+}
+
 // TestBridgeBrowsesASeededWorkspace walks the representative workspace the way
 // the iPhone's Today, Inbox, and Browse destinations do: every mode, saved
 // lenses, the search box, sorting, and the hierarchy and dependency relations a

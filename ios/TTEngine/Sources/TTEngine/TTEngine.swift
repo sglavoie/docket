@@ -117,6 +117,21 @@ public actor TTEngine {
         )
     }
 
+    /// Completes the last search token using the current list's vocabulary.
+    public func searchSuggestions(
+        mode: String? = nil,
+        scope: String? = nil,
+        query: String? = nil,
+        lens: String? = nil,
+        search: String
+    ) throws -> [SearchSuggestion] {
+        let result: SearchSuggestionsResult = try send(
+            "query.search_suggestions",
+            payload: TasksPayload(mode: mode, scope: scope, query: query, lens: lens, search: search)
+        )
+        return result.suggestions
+    }
+
     /// The saved lenses in their stored order.
     public func lenses() throws -> [LensSummary] {
         let list: LensList = try send("query.lenses", payload: Empty())

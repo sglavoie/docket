@@ -98,6 +98,32 @@ func compileSearch(search string) ([]models.QueryClause, *Error) {
 	}
 	parsed, remainder := models.PartitionQueryString(search)
 	clauses := slices.Clone(parsed.Clauses)
+	// The durable parser requires canonical tags, while the search box accepts
+	// the same spelling as capture (including keyboard capitalization). Quoted
+	// text has already been lifted into clauses, so normalize only whole tag or
+	// context tokens in the remainder before asking the durable parser again.
+	words := strings.Fields(remainder)
+	for i, word := range words {
+		prefix := strings.HasSuffix(word, "*")
+		tokenized := textgrammar.ParseSearch(strings.TrimSuffix(word, "*"))
+		if tokenized.Text != "" || len(tokenized.Tokens) != 1 {
+			continue
+		}
+		token := tokenized.Tokens[0]
+		switch token.Field { //nolint:exhaustive // Only tag and context spellings need normalization here.
+		case textgrammar.FieldTag, textgrammar.FieldRemoveTag, textgrammar.FieldContext, textgrammar.FieldRemoveContext:
+			value, err := models.NormalizeTaskTag(token.Value)
+			if err != nil {
+				continue
+			}
+			words[i] = token.Form + value
+			if prefix {
+				words[i] += "*"
+			}
+		}
+	}
+	normalized, remainder := models.PartitionQueryString(strings.Join(words, " "))
+	clauses = append(clauses, normalized.Clauses...)
 	if remainder = strings.TrimSpace(remainder); remainder != "" {
 		text, err := models.NewQueryClause(models.QueryFieldText, models.QueryPolarityPositive, models.QueryOperatorContains, remainder)
 		if err != nil {

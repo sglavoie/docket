@@ -296,6 +296,30 @@ final class BrowsingUITests: XCTestCase {
         clearSearch(app)
         require(text(app, "Call the bank"), "All after clearing the search")
 
+        for (query, token, title) in [("#fe", "#feature", "Ship beta build"),
+                                      ("Ship #FE", "#feature", "Ship beta build"),
+                                      ("##la", "##laptop", "Ship beta build"),
+                                      ("$wai", "$waiting", "Await signing certificate")] {
+            search(app, query)
+            let suggestion = app.buttons["search.suggestion.\(token)"]
+            require(suggestion, "the autocomplete suggestion for \(query)")
+            suggestion.tap()
+            require(text(app, title), "the selected suggestion's result")
+            requireAbsent(text(app, "Call the bank"), "a task outside the selected suggestion")
+            let expected = query.hasPrefix("Ship ") ? "Ship \(token) " : "\(token) "
+            XCTAssertEqual(app.searchFields.firstMatch.value as? String, expected)
+            clearSearch(app)
+            require(text(app, "Call the bank"), "All after clearing autocomplete")
+        }
+
+        for query in ["#feature", "#Feature", "#FEATURE"] {
+            search(app, query)
+            require(text(app, "Ship beta build"), "the tag search match for \(query)")
+            requireAbsent(text(app, "Call the bank"), "a task without the searched tag")
+            clearSearch(app)
+            require(text(app, "Call the bank"), "All after clearing the tag search")
+        }
+
         search(app, "$ready")
         require(app.staticTexts["state.error"], "a refused search")
         XCTAssertTrue(app.staticTexts["state.error.message"].label.contains("ready"))

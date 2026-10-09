@@ -150,7 +150,9 @@ the sync sheet returns to that choice without touching any files.
 Today, Inbox, and Browse are the tabs, and the capture button floats over all
 three. Browse holds Next, Due, All, Backlog, and Recent, every project by
 population (active, parked, archived), and the saved lenses. Every list is one
-engine query with search, filters, and a sort. A project's list follows the
+engine query with search, filters, and a sort. Search offers tappable
+completions for tags, contexts, and supported sigil values as you type; tags
+and contexts come from the current list. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
 

@@ -3,6 +3,15 @@ import Foundation
 /// The highest `bridge_version` these models speak.
 public let supportedBridgeVersion = 1
 
+public struct SearchSuggestion: Decodable, Hashable, Sendable {
+    public var token: String
+    public var search: String
+}
+
+struct SearchSuggestionsResult: Decodable {
+    var suggestions: [SearchSuggestion]
+}
+
 /// A task's qualified identity. The bridge never addresses a task by a bare
 /// id, a short id, or a title.
 public struct TaskLocator: Codable, Hashable, Sendable {

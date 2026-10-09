@@ -81,6 +81,7 @@ struct TaskListView: View {
     @State private var diagnostics: [QueryDiagnostic] = []
     @State private var state: ScreenState? = .loading("Loading…")
     @State private var search = ""
+    @State private var suggestions: [SearchSuggestion] = []
     @State private var filter = TaskFilter()
     @State private var sort = TaskSort()
     @State private var selecting = false
@@ -100,6 +101,16 @@ struct TaskListView: View {
         content
             .navigationTitle(source.title)
             .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search titles, #tags, $states…")
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .searchSuggestions {
+                ForEach(suggestions, id: \.token) { suggestion in
+                    Text(suggestion.token)
+                        .searchCompletion(suggestion.search)
+                        .accessibilityIdentifier("search.suggestion.\(suggestion.token)")
+                }
+            }
+            .onChange(of: search) { suggestions = [] }
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if selecting {
@@ -157,6 +168,8 @@ struct TaskListView: View {
                     try? await Task.sleep(for: .milliseconds(250))
                     if Task.isCancelled { return }
                 }
+                await loadSuggestions()
+                if Task.isCancelled { return }
                 await load()
             }
     }
@@ -251,13 +264,36 @@ struct TaskListView: View {
         .accessibilityIdentifier("list.sort")
     }
 
-    private func load() async {
-        if rows.isEmpty, state == nil {
-            state = .loading("Loading…")
-        }
+    private var queryClauses: String? {
         var clauses = filter.clauses
         if let population = source.population {
             clauses.insert(population, at: 0)
+        }
+        return clauses.isEmpty ? nil : clauses.joined(separator: " ")
+    }
+
+    private func loadSuggestions() async {
+        guard !search.isEmpty else {
+            suggestions = []
+            return
+        }
+        do {
+            let result = try await workspace.engine.searchSuggestions(
+                mode: source.lens == nil ? source.mode : nil,
+                scope: source.lens == nil ? source.scope : nil,
+                query: source.lens == nil ? queryClauses : nil,
+                lens: source.lens, search: search
+            )
+            if !Task.isCancelled { suggestions = result }
+        } catch {
+            // Suggestions are optional; the result query reports any refusal.
+            if !Task.isCancelled { suggestions = [] }
+        }
+    }
+
+    private func load() async {
+        if rows.isEmpty, state == nil {
+            state = .loading("Loading…")
         }
         let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
@@ -267,11 +303,12 @@ struct TaskListView: View {
             } else {
                 result = try await workspace.engine.tasks(
                     mode: source.mode, scope: source.scope,
-                    query: clauses.isEmpty ? nil : clauses.joined(separator: " "),
+                    query: queryClauses,
                     sort: sort.field == nil ? nil : sort,
                     search: trimmed.isEmpty ? nil : trimmed
                 )
             }
+            if Task.isCancelled { return }
             diagnostics = result.diagnostics
             let reordered = sort.field != nil || filter.isActive || !trimmed.isEmpty
             rows = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
@@ -283,12 +320,15 @@ struct TaskListView: View {
                 state = nil
             }
         } catch let failure as BridgeError where failure.code == .notFound {
+            if Task.isCancelled { return }
             rows = []
             state = .unavailable(title: "Not available", message: failure.message)
         } catch let failure as BridgeError where failure.code == .validation {
+            if Task.isCancelled { return }
             rows = []
             state = .error(title: "This search cannot run", message: failure.message)
         } catch {
+            if Task.isCancelled { return }
             rows = []
             state = .error(title: "Something went wrong", message: WorkspaceModel.describe(error))
         }
