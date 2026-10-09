@@ -164,7 +164,7 @@ struct NoteEditorView: View {
 
     private func load() async {
         guard !loaded else { return }
-        destinations = ((try? await workspace.engine.projects()).map { $0.active + $0.parked }) ?? []
+        destinations = ((try? await workspace.engine.projects()).map { ($0.active + $0.parked).sortedByName() }) ?? []
         if let filename {
             do {
                 let read = try await workspace.engine.note(at: location, filename: filename)

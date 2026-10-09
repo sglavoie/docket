@@ -95,8 +95,13 @@ public actor TTEngine {
 
     // MARK: Queries
 
+    /// Each population is alphabetized by its localized display name.
     public func projects() throws -> ProjectPopulations {
-        try send("query.projects", payload: Empty())
+        var populations: ProjectPopulations = try send("query.projects", payload: Empty())
+        populations.active = populations.active.sortedByName()
+        populations.parked = populations.parked.sortedByName()
+        populations.archived = populations.archived.sortedByName()
+        return populations
     }
 
     /// Evaluates one canonical query. `query` is the strict canonical clause

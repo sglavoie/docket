@@ -104,6 +104,16 @@ public struct ProjectSummary: Decodable, Hashable, Sendable, Identifiable {
     }
 }
 
+public extension Sequence where Element == ProjectSummary {
+    /// Display order shared by project lists and destination pickers.
+    func sortedByName() -> [ProjectSummary] {
+        sorted { lhs, rhs in
+            let order = lhs.name.localizedStandardCompare(rhs.name)
+            return order == .orderedSame ? lhs.id < rhs.id : order == .orderedAscending
+        }
+    }
+}
+
 /// The three project populations, reported apart.
 public struct ProjectPopulations: Decodable, Hashable, Sendable {
     public var active: [ProjectSummary]
