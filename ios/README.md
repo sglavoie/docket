@@ -47,6 +47,12 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 
 None of them needs Xcode open; see [Automation](#automation).
 
+The app icon and launch artwork reuse the desktop icon's renderer. Regenerate
+the committed PNGs with `swift macos/scripts/make-icons.swift --ios` after
+changing the artwork. The iPhone app icon fills an opaque 1024-pixel square;
+iOS supplies the corner mask and smaller icon sizes. `LaunchIcon` also appears
+while the workspace opens, on a background that follows light and dark mode.
+
 `ios/scripts/build-bridge.sh` publishes the XCFramework with a fingerprint of
 everything that decides its bytes: the gomobile pin, the Go toolchain, Xcode,
 the deployment target, `go.mod` and `go.sum`, the script, and every in-module

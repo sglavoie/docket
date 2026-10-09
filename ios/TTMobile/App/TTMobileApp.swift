@@ -35,7 +35,14 @@ struct RootView: View {
     var body: some View {
         switch workspace.phase {
         case .loading:
-            ScreenStateView(state: .loading("Opening your workspace…"))
+            VStack(spacing: 12) {
+                Image("LaunchIcon")
+                    .accessibilityHidden(true)
+                ProgressView("Opening your workspace…")
+                    .accessibilityIdentifier("state.loading")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color("LaunchBackground").ignoresSafeArea())
         case .onboarding:
             OnboardingView(workspace: workspace)
         case .ready:

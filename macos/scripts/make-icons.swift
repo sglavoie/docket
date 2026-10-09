@@ -8,6 +8,7 @@
 // The PNGs are committed, so this runs only when the artwork changes:
 //
 //   swift macos/scripts/make-icons.swift
+//   swift macos/scripts/make-icons.swift --ios   # iPhone icon and launch artwork
 //
 // Everything is drawn from code (no source image), on the macOS icon grid: an
 // 824-point rounded square centered in a 1024 canvas. The glyph is a shell
@@ -31,11 +32,11 @@ func rgb(_ hex: UInt32, _ alpha: CGFloat = 1) -> CGColor {
         alpha: alpha)
 }
 
-func bitmap(_ pixels: Int, _ draw: (CGContext) -> Void) -> Data {
+func bitmap(_ pixels: Int, opaque: Bool = false, _ draw: (CGContext) -> Void) -> Data {
     let space = CGColorSpace(name: CGColorSpace.sRGB)!
     let ctx = CGContext(
         data: nil, width: pixels, height: pixels, bitsPerComponent: 8, bytesPerRow: 0,
-        space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        space: space, bitmapInfo: (opaque ? CGImageAlphaInfo.noneSkipLast : .premultipliedLast).rawValue)!
     ctx.interpolationQuality = .high
     ctx.setShouldAntialias(true)
     draw(ctx)
@@ -73,17 +74,26 @@ func centered(_ path: CGPath, in rect: CGRect, dx: CGFloat = 0, dy: CGFloat = 0)
 // MARK: - App icon
 
 /// Draws the app icon on a 1024 canvas scaled to `pixels`.
-func appIcon(pixels: Int) -> Data {
-    bitmap(pixels) { ctx in
+func appIcon(pixels: Int, mobile: Bool = false) -> Data {
+    bitmap(pixels, opaque: mobile) { ctx in
         let scale = CGFloat(pixels) / 1024
         ctx.scaleBy(x: scale, y: scale)
+        // iOS applies its own corner mask. Fill the canvas with the desktop
+        // tile's artwork, without its transparent margin, rounding, or shadow.
+        if mobile {
+            ctx.scaleBy(x: 1024.0 / 824, y: 1024.0 / 824)
+            ctx.translateBy(x: -100, y: -100)
+        }
         let detailed = pixels > 32
 
         // Tile: 824 on the 1024 grid, corner radius 185, with a soft drop shadow.
         let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
-        let shape = CGPath(roundedRect: tile, cornerWidth: 185, cornerHeight: 185, transform: nil)
+        let radius: CGFloat = mobile ? 0 : 185
+        let shape = CGPath(roundedRect: tile, cornerWidth: radius, cornerHeight: radius, transform: nil)
         ctx.saveGState()
-        ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 28, color: rgb(0x000000, 0.35))
+        if !mobile {
+            ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 28, color: rgb(0x000000, 0.35))
+        }
         ctx.addPath(shape)
         ctx.setFillColor(rgb(0x1B2030))
         ctx.fillPath()
@@ -109,10 +119,12 @@ func appIcon(pixels: Int) -> Data {
         ctx.restoreGState()
 
         // Hairline edge so the tile holds on light and dark backgrounds.
-        ctx.addPath(shape)
-        ctx.setStrokeColor(rgb(0xFFFFFF, 0.10))
-        ctx.setLineWidth(4)
-        ctx.strokePath()
+        if !mobile {
+            ctx.addPath(shape)
+            ctx.setStrokeColor(rgb(0xFFFFFF, 0.10))
+            ctx.setLineWidth(4)
+            ctx.strokePath()
+        }
 
         let green = rgb(0xA6E3B8)
         let body = CGRect(x: 100, y: 100, width: 824, height: 700)
@@ -185,6 +197,32 @@ func writeJSON(_ object: Any, _ url: URL) {
 }
 
 let fm = FileManager.default
+
+if CommandLine.arguments.dropFirst().contains("--ios") {
+    let mobileAssets = macosDir.deletingLastPathComponent()
+        .appendingPathComponent("ios/TTMobile/Resources/Assets.xcassets")
+    let iconDir = mobileAssets.appendingPathComponent("AppIcon.appiconset")
+    let launchDir = mobileAssets.appendingPathComponent("LaunchIcon.imageset")
+    for dir in [iconDir, launchDir] {
+        try! fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+    let info: [String: Any] = ["author": "xcode", "version": 1]
+    writeJSON(["info": info], mobileAssets.appendingPathComponent("Contents.json"))
+    write(appIcon(pixels: 1024, mobile: true), iconDir.appendingPathComponent("AppIcon.png"))
+    writeJSON([
+        "images": [["filename": "AppIcon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"]],
+        "info": info,
+    ], iconDir.appendingPathComponent("Contents.json"))
+    var launchImages: [[String: String]] = []
+    for scale in [1, 2, 3] {
+        let name = "LaunchIcon@\(scale)x.png"
+        write(appIcon(pixels: 128 * scale), launchDir.appendingPathComponent(name))
+        launchImages.append(["filename": name, "idiom": "universal", "scale": "\(scale)x"])
+    }
+    writeJSON(["images": launchImages, "info": info], launchDir.appendingPathComponent("Contents.json"))
+    print("Wrote \(iconDir.path) and \(launchDir.path)")
+    exit(0)
+}
 
 let appIconDir = assets.appendingPathComponent("AppIcon.appiconset")
 try! fm.createDirectory(at: appIconDir, withIntermediateDirectories: true)
