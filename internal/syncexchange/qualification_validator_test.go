@@ -31,6 +31,8 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 		StartedAt: start.Format(time.RFC3339), FinishedAt: start.Add(9 * 24 * time.Hour).Format(time.RFC3339)}
 	ev.Builds.SourceFingerprint, ev.Builds.BridgeFingerprint, ev.Builds.TTSHA256 = "src", "bridge", "tt"
 	ev.Builds.AppExecutables = app
+	ev.Builds.Installs = []qualificationInstall{{At: start.Format(time.RFC3339), Reason: "start", AppExecutables: app,
+		SourceFingerprint: "src", BridgeFingerprint: "bridge"}}
 	ev.Signing.TeamIdentifier = "ABCDE12345"
 	ev.Signing.Authorities = []string{"Apple Development: Me (XYZ)", "Apple Worldwide Developer Relations Certification Authority"}
 	ev.Signing.Verified = true
@@ -225,7 +227,7 @@ func TestQualificationValidatorRefusesIncompleteEvidence(t *testing.T) {
 		}, "large attachments"},
 		"no upgrade": {func(ev *qualificationEvidence) {
 			ev.Scenarios["upgrade"].Observations["from_app_executables"] = map[string]any{"tt": "sha256:current", "tt.debug.dylib": "sha256:currentdylib"}
-		}, "which is the current build"},
+		}, "which is one of the trial's own installs"},
 		"other build": {func(ev *qualificationEvidence) {
 			checkpoint(ev, "upgrade/after").IPhone.AppExecutables = map[string]string{"tt": "sha256:x"}
 		}, "the iPhone ran"},
@@ -300,5 +302,119 @@ func TestQualificationValidatorReadsScenarioAttempts(t *testing.T) {
 	problems := validate(rerun(false))
 	if !slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, "delayed_delivery/delivered") }) {
 		t.Fatalf("a second attempt counted the first attempt's markers: %v", problems)
+	}
+}
+
+// TestQualificationValidatorHoldsCheckpointsToInstalls proves the build
+// binding survives a rebuild without loosening: a same-source reinstall is
+// honored from its moment on, an install built from other sources is refused,
+// and a checkpoint must show the install current at its time.
+func TestQualificationValidatorHoldsCheckpointsToInstalls(t *testing.T) {
+	validate := func(ev *qualificationEvidence) []string {
+		data, err := json.Marshal(ev)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded qualificationEvidence
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		return validateQualification(t, &decoded, "src", "bridge", "tt")
+	}
+	resigned := map[string]string{"tt": "sha256:resigned", "tt.debug.dylib": "sha256:resigneddylib"}
+	reinstall := func(ev *qualificationEvidence) time.Time {
+		// Reinstall just before the daily use, so every daily checkpoint
+		// comes after it.
+		at, _ := time.Parse(time.DateOnly, ev.DailyUse[0].Date)
+		ev.Builds.Installs = append(ev.Builds.Installs, qualificationInstall{At: at.Format(time.RFC3339), Reason: "reinstall",
+			AppExecutables: resigned, SourceFingerprint: "src", BridgeFingerprint: "bridge"})
+		return at
+	}
+	has := func(problems []string, want string) bool {
+		return slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, want) })
+	}
+
+	ev := syntheticQualification(t)
+	at := reinstall(ev)
+	for i := range ev.Checkpoints {
+		if exported, _ := time.Parse(time.RFC3339, ev.Checkpoints[i].IPhone.ExportedAt); !exported.Before(at) {
+			ev.Checkpoints[i].IPhone.AppExecutables = resigned
+		}
+	}
+	if problems := validate(ev); len(problems) > 0 {
+		t.Fatalf("a same-source reinstall was refused:\n%s", strings.Join(problems, "\n"))
+	}
+
+	ev = syntheticQualification(t)
+	reinstall(ev)
+	if problems := validate(ev); !has(problems, "the trial's install at that time") {
+		t.Fatalf("checkpoints after a reinstall still passed on the earlier build: %v", problems)
+	}
+
+	ev = syntheticQualification(t)
+	reinstall(ev)
+	ev.Builds.Installs[1].SourceFingerprint = "other"
+	if problems := validate(ev); !has(problems, "install 1 (reinstall) was built from sources other") {
+		t.Fatalf("an install from other sources was accepted: %v", problems)
+	}
+}
+
+// TestQualificationValidatorResumedUpgrade covers a resumed upgrade: the
+// person's iPhone markers from one attempt with the Mac's from a later one,
+// and an earlier app identified by its pre-qualification export when its
+// signed digests could not be kept.
+func TestQualificationValidatorResumedUpgrade(t *testing.T) {
+	validate := func(ev *qualificationEvidence) []string {
+		data, err := json.Marshal(ev)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded qualificationEvidence
+		if err := json.Unmarshal(data, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		return validateQualification(t, &decoded, "src", "bridge", "tt")
+	}
+	resumed := func() *qualificationEvidence {
+		ev := syntheticQualification(t)
+		obs := ev.Scenarios["upgrade"].Observations
+		obs["attempt"], obs["mac_attempt"] = float64(2), float64(3)
+		obs["from_app_executables"] = map[string]any{}
+		for i := range ev.Checkpoints {
+			c := &ev.Checkpoints[i]
+			if c.Scenario != "upgrade" {
+				continue
+			}
+			renamed := map[string]int{}
+			for title, n := range c.Markers {
+				suffix := " a2"
+				if strings.Contains(title, " mac-") {
+					suffix = " a3"
+				}
+				renamed[title+suffix] = n
+			}
+			c.Markers = renamed
+			if c.Label == "before" {
+				c.IPhone.AppExecutables, c.IPhone.Digest = nil, ""
+			}
+		}
+		return ev
+	}
+	if problems := validate(resumed()); len(problems) > 0 {
+		t.Fatalf("a resumed upgrade was refused:\n%s", strings.Join(problems, "\n"))
+	}
+	ev := resumed()
+	for i := range ev.Checkpoints {
+		if ev.Checkpoints[i].Scenario == "upgrade" && ev.Checkpoints[i].Label == "before" {
+			ev.Checkpoints[i].IPhone.Digest = "sha256:qualification"
+		}
+	}
+	if problems := validate(ev); !slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, "does not show the earlier app") }) {
+		t.Fatalf("a before export from the trial's own build passed as the earlier app: %v", problems)
+	}
+	ev = resumed()
+	delete(ev.Scenarios["upgrade"].Observations, "mac_attempt")
+	if problems := validate(ev); !slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, "upgrade/before") }) {
+		t.Fatalf("Mac markers from another attempt counted without the record naming it: %v", problems)
 	}
 }

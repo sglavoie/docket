@@ -116,11 +116,12 @@ leaves nothing waiting, with `tt` quit so no commit is in flight:
 ```sh
 tt sync exchange && tt sync status
 ditto ~/tt-synced ~/Backups/tt-synced-$(date +%Y%m%d)
-tt doctor --data-dir ~/Backups/tt-synced-$(date +%Y%m%d)
 ```
 
-`tt sync status` should show nothing outstanding, and `tt doctor` on the copy
-confirms it opens. The snapshot under `~/.tt/enrollments/` is the workspace as
+`tt sync status` should show nothing outstanding. A backup is only meant to be
+restored at the working copy's own path: its undo history records that path,
+so `tt doctor` run on the copy where it lies reports the history as pointing
+elsewhere. Check a backup by restoring it, as [Recovery](#recovery) describes. The snapshot under `~/.tt/enrollments/` is the workspace as
 it was before enrolling; keep it until you no longer need to go back.
 
 The iPhone needs no separate backup for work it has published, because joining
@@ -144,8 +145,11 @@ join from the exchange folder:
 tt sync join --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
 ```
 
-The new working copy is built from the published history alone and holds what
-every device had published. Work the old Mac never published is lost. `tt sync
+Then run `tt sync exchange` once: joining builds the working copy from the
+history it reads in one pass, and the first exchange brings in the rest. The
+new working copy then holds every task every device had published. It may
+store some tasks in a different order than your other devices, so its files are
+not byte-for-byte identical to theirs. Work the old Mac never published is lost. `tt sync
 join` refuses on the same Mac and user account, because that device already
 publishes to the folder and each device keeps one working copy.
 
@@ -179,7 +183,8 @@ Start with what each device says:
     or turn iCloud Drive back on.
   - **Choose the exchange folder again**: the app lost access to the folder.
     Tap **Choose Exchange Folder…**, pick the same folder, and the queued work
-    publishes.
+    publishes. This always happens after Sync this iPhone (Settings > your
+    name > iCloud > Drive) has been off; **Retry** cannot renew the access.
   - **Waiting for the exchange folder to download**: iCloud has not delivered
     it yet. Leave tt open on Wi-Fi. In the Files app, long-press the exchange
     folder and choose **Keep Downloaded** so iCloud keeps every file on the
@@ -188,6 +193,13 @@ Start with what each device says:
 
   While an exchange fails, a banner says everything is saved on the iPhone and
   offers **Retry**. Nothing is lost while access is missing; it waits.
+
+  If tt asks you to choose a workspace after you change iCloud settings, pick
+  the workspace you already have from the list. Do not tap **Join from an
+  Exchange Folder…** again: that builds a second copy beside it from whatever
+  iCloud has downloaded so far, and while iCloud is still catching up that copy
+  can be missing tasks. Your existing workspace keeps everything, including
+  work not yet published, and catches up by itself.
 
 A file iCloud has not downloaded yet is reported as unavailable and fetched on a
 later pass. A missing file never deletes anything. A change from a newer build

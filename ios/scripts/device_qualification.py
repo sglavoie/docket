@@ -138,10 +138,13 @@ class Trial:
     # uses fresh ones, suffixed "aN"; the attempt is recorded so the
     # validator derives the same titles.
     attempts = {}
+    mac_attempts = {}
 
     def marker(self, scenario, tag):
         title = f"q18 {self.run_id} {scenario.replace('_', '-')} {tag}"
         attempt = self.attempts.get(scenario, 1)
+        if tag.startswith("mac"):
+            attempt = self.mac_attempts.get(scenario, attempt)
         return f"{title} a{attempt}" if attempt > 1 else title
 
     # The Mac side.
@@ -305,6 +308,13 @@ def mac_capture(trial, line, binary=None):
     title now appears exactly once more."""
     title = line.split(" &", 1)[0]
     before = trial.marker_counts([title])[title]
+    if before == 1:
+        # A rerun of the same step after an interruption reuses its marker
+        # rather than adding a second copy.
+        note(f"Mac: {title!r} already exists; reusing it")
+        return
+    if before > 1:
+        fail(f"the Mac already holds {before} copies of {title!r}: rerun the scenario with the next --attempt")
     drive_tui(trial, ["a", line, "\r"], binary)
     after = trial.marker_counts([title])[title]
     if after != before + 1:
@@ -365,7 +375,11 @@ def human(question):
 
 
 def wait_enter(prompt="Press Enter when done."):
-    human(prompt if not MAILBOX else "Reply 'done' when you have finished these steps.")
+    answer = human(prompt if not MAILBOX else "Reply 'done' when you have finished these steps.")
+    if MAILBOX and not re.match(r"\s*(done|yes|y|ok|okay|finished|completed)\b", answer, re.I):
+        # Only an explicit completion counts; a refusal or a question must
+        # never be recorded as steps performed.
+        fail(f"the person did not confirm the steps: {answer!r}")
 
 
 def ask_yes(question):
@@ -387,8 +401,12 @@ def checkpoint(trial, scenario, label, markers=(), expect=None, attachments_min=
     retrying. Returns the recorded checkpoint."""
     expect = expect or {}
     markers = list(markers)
+    previous = None
     while True:
-        started = now() - datetime.timedelta(seconds=5)
+        # An export made after the previous round's prompt also counts: a
+        # person often exports first and answers the retry afterwards.
+        started = previous or now() - datetime.timedelta(seconds=5)
+        previous = now() - datetime.timedelta(seconds=5)
         trial.mac_exchange(expect.get("mac_binary"))
         say(f"[{scenario} / {label}] {rounds_hint}\n{EXPORT}")
         wait_enter()
@@ -410,16 +428,32 @@ def checkpoint(trial, scenario, label, markers=(), expect=None, attachments_min=
             return record
 
 
+def device_reachable(trial):
+    """Whether CoreDevice lists the trial's iPhone as connected right now."""
+    with tempfile.NamedTemporaryFile(suffix=".json") as out:
+        if run(["xcrun", "devicectl", "list", "devices", "--json-output", out.name], check=False).returncode != 0:
+            return False
+        devices = json.load(open(out.name))["result"]["devices"]
+    for device in devices:
+        if device["hardwareProperties"].get("udid") == trial.state["iphone"]["udid"]:
+            state = device.get("connectionProperties", {}).get("tunnelState", "")
+            return state not in ("unavailable", "disconnected", "")
+    return False
+
+
 def checkpoint_problems(trial, record, expect):
     """The same rules the Go validator applies, so a person sees a failure
     while there is still time to retry."""
     problems = []
     mac, iphone = record["mac"], record["iphone"]
     if iphone is None:
+        if not device_reachable(trial):
+            return ["the Mac cannot reach the iPhone over the cable (it shows as unavailable): unlock it, "
+                    "plug the cable in, tap Trust if asked, then retry"]
         return ["no iPhone diagnostics exported since this checkpoint began"]
     if iphone["workspace_id"] != trial.state["workspace"]["workspace_id"]:
         problems.append(f"the iPhone exported workspace {iphone['workspace_id']}, not the trial's")
-    builds = expect.get("iphone_build", trial.state["builds"]["app_executables"])
+    builds = expect.get("iphone_build", current_install(trial)["app_executables"])
     if builds is not None and iphone["app_executables"] != builds:
         problems.append("the iPhone is running a different build than the one installed for this step")
     present = expect.get("present", list(record["markers"]))
@@ -448,6 +482,16 @@ def checkpoint_problems(trial, record, expect):
         got = iphone.get("received", {}).get(mac["device_id"], 0)
         if got >= mac.get("local_transactions", 0):
             problems.append(f"the iPhone applied the Mac's transaction {got} of {mac.get('local_transactions', 0)}, so it was not cut off")
+    if "attachments" in record and expect.get("mac_attachment"):
+        sent = expect["mac_attachment"]
+        mine = [a for a in record["attachments"] if a["sha256"] == sent]
+        theirs = [a for a in record["attachments"] if a["sha256"] != sent]
+        if not mine:
+            problems.append("the Mac's own large attachment is no longer in the Mac workspace: was it removed on a device?")
+        if not theirs:
+            problems.append(f"no iPhone file of at least {LARGE_MIN_BYTES >> 20} MB has reached the Mac")
+    if expect.get("earlier_build") and (iphone.get("app_executables") or iphone.get("digest")):
+        problems.append("the iPhone export carries the qualification fields, so it came from the trial's build, not the earlier one")
     if expect.get("iphone_unreachable"):
         transport = iphone["transport"]
         if transport["condition"] == "reachable" and not transport["last_error"]:
@@ -504,6 +548,45 @@ def signing(app):
             "application_identifier": entitlements.get("application-identifier", "")}
 
 
+def current_install(trial):
+    """The latest install the trial recorded; a trial from before installs
+    were recorded falls back to its starting build."""
+    installs = trial.state["builds"].get("installs") or []
+    if installs:
+        return installs[-1]
+    return {"app_executables": trial.state["builds"]["app_executables"]}
+
+
+def record_install(trial, executables, reason, at=None):
+    """Records one install of the trial's own app. A rebuild re-signs the app,
+    so its executable digests change from install to install; what binds each
+    install to the trial is the source and bridge fingerprints it was built
+    from, which must still be the trial's."""
+    source = run(["ios/scripts/qualification-fingerprint.sh"]).stdout.strip()
+    bridge = run(["ios/scripts/build-bridge.sh", "--fingerprint"]).stdout.strip()
+    builds = trial.state["builds"]
+    if source != builds["source_fingerprint"] or bridge != builds["bridge_fingerprint"]:
+        fail(f"the tree changed since the trial started (sources {source}, bridge {bridge}): this install would not be the trial's app")
+    builds.setdefault("installs", []).append({"at": at or stamp(), "reason": reason, "app_executables": executables,
+                                              "source_fingerprint": source, "bridge_fingerprint": bridge})
+    trial.save()
+
+
+def install_current(trial, reason):
+    """Builds, signs, and installs the trial's app again through the rollout
+    guide's script, and records the install."""
+    log = os.path.join(trial.dir, "build.log")
+    app = run(["ios/scripts/install-device.sh"], env={"TT_IOS_DEVICE": trial.state["iphone"]["udid"]}, log=log).stdout.strip()
+    record_install(trial, app_executables(app), reason)
+    note(f"installed the trial's app again ({reason})")
+
+
+def cmd_reinstall(args):
+    """reinstall REASON: put the trial's own app back on the iPhone, for
+    example after another recorder installed a different build."""
+    install_current(Trial.current(), " ".join(args) or "reinstall")
+
+
 def install(trial, app):
     run(["xcrun", "devicectl", "device", "install", "app", "--device", trial.state["iphone"]["udid"], app],
         log=os.path.join(trial.dir, "devicectl.log"))
@@ -550,6 +633,7 @@ def cmd_start(_args):
             "bridge_fingerprint": run(["ios/scripts/build-bridge.sh", "--fingerprint"]).stdout.strip(),
             "tt_sha256": tt_sha,
             "app_executables": executables,
+            "installs": [],
         },
         "signing": signed,
         "mac": {"model": run(["sysctl", "-n", "hw.model"]).stdout.strip(),
@@ -565,6 +649,7 @@ def cmd_start(_args):
     with open(os.path.join(directory, "trial.json"), "w") as handle:
         json.dump(state, handle, indent=2, sort_keys=True)
     trial = Trial(directory)
+    record_install(trial, executables, "start", at=signed["installed_at"])
 
     shutil.copytree(os.path.join(REPO, FIXTURE), trial.state["mac"]["original"])
     os.makedirs(exchange, exist_ok=True)
@@ -642,10 +727,17 @@ def section_digest(heading):
     return "sha256:" + hashlib.sha256((heading + "\n" + match.group(1)).encode()).hexdigest()
 
 
-def procedure_record(name, checkpoints, checks):
-    followed = ask_yes(f'Did you follow "{PROCEDURES[name][3:]}" in {ROLLOUT_DOC} as written, and did it match what happened?')
-    remarks = "" if followed else human("What differed?").strip()
-    return {"validated_at": stamp(), "document": ROLLOUT_DOC, "section": PROCEDURES[name],
+def procedure_record(name, checkpoints, checks, performed_by="person"):
+    section = PROCEDURES[name][3:]
+    if performed_by == "recorder":
+        # The recorder ran the section's commands itself; the person did not
+        # see them, so they are not asked to vouch for them. The checks are
+        # the evidence.
+        followed, remarks = True, ""
+    else:
+        followed = ask_yes(f'Did you follow "{section}" in {ROLLOUT_DOC} as written, and did it match what happened?')
+        remarks = "" if followed else human("What differed?").strip()
+    return {"validated_at": stamp(), "document": ROLLOUT_DOC, "section": PROCEDURES[name], "performed_by": performed_by,
             "section_sha256": section_digest(PROCEDURES[name]), "followed_as_written": followed,
             "remarks": remarks, "checkpoints": checkpoints, "checks": checks}
 
@@ -759,10 +851,10 @@ def scenario_revoked(trial):
     s = "revoked_access"
     phone, mac = trial.marker(s, "iphone-1"), trial.marker(s, "mac-1")
     say(f"""
-Revoke tt's access to the exchange folder on the iPhone, as "Troubleshooting"
-in {ROLLOUT_DOC} describes: Settings > your name > iCloud > iCloud Drive, turn
-off Sync this iPhone (or sign out of iCloud). Then open tt, capture {phone!r},
-and read the banner.""")
+Revoked access, on the iPhone:
+  1. Settings > your name > iCloud > Drive, and turn off Sync this iPhone.
+  2. Open tt and capture a task titled exactly {phone!r}.
+  3. Read the banner tt shows. Keep Sync this iPhone off for now.""")
     wait_enter()
     if trial.marker_counts([mac])[mac] == 0:
         mac_capture(trial, mac)
@@ -770,9 +862,15 @@ and read the banner.""")
                          {"converged": False, "present": [mac], "absent": [phone], "isolated": True,
                           "iphone_unreachable": True})
     banner = ask_yes("Did tt say your work is saved on the iPhone and offer Retry?")
-    say("""
-Restore access: turn iCloud Drive syncing back on, open tt, and if it asks,
-Choose Exchange Folder… and pick the trial folder again, then Retry.""")
+    say(f"""
+Restore access on the iPhone:
+  1. Settings > your name > iCloud > Drive, and turn Sync this iPhone back on.
+  2. In Files, long-press iCloud Drive > tt-qualification > {trial.run_id} and choose Keep Downloaded.
+  3. Open tt. It should reopen the trial workspace by itself. If it asks you to choose a
+     workspace, pick the existing one from the list (not Join from an Exchange Folder…).
+  4. Turning sync off removed tt's permission to the folder, and Retry cannot renew it: tap the
+     sync status button, then Choose Exchange Folder…, pick iCloud Drive > tt-qualification >
+     {trial.run_id}, tap Open, then Exchange Now.""")
     wait_enter()
     restored = checkpoint(trial, s, "restored", [phone, mac])
     return [revoked, restored], {"saved_locally_banner": banner}
@@ -797,10 +895,11 @@ def scenario_large(trial):
 On the iPhone, capture {phone!r} and attach a file of at least
 {LARGE_MIN_BYTES >> 20} MB to it (a video from Files or Photos works). The Mac
 attaches its own 64 MiB file to {mac!r}. Once it arrives on the iPhone,
-open that attachment there.""")
+open that attachment there. Leave both attachments in place: don't remove either.""")
     mac_capture(trial, f"{mac} &{blob}")
     wait_enter()
-    record = checkpoint(trial, s, "delivered", [mac, phone], attachments_min=LARGE_MIN_BYTES)
+    record = checkpoint(trial, s, "delivered", [mac, phone], {"mac_attachment": sha256_file(blob)},
+                        attachments_min=LARGE_MIN_BYTES)
     opened = ask_yes("Did the Mac's 64 MiB attachment open on the iPhone?") and mac_opens(trial, phone)
     return [record], {"mac_attachment_sha256": sha256_file(blob), "mac_attachment_size": LARGE_MAC_BYTES,
                       "opened_on_peer": opened}
@@ -813,21 +912,32 @@ def scenario_upgrade(trial):
     if not ref or not team:
         fail("set TT_QUALIFICATION_UPGRADE_FROM to the commit of the build being upgraded from, and TT_IOS_DEVELOPMENT_TEAM")
     commit = run(["git", "rev-parse", ref + "^{commit}"]).stdout.strip()
-    source = os.path.join(trial.dir, "old-source")
-    if os.path.exists(source):
-        run(["git", "worktree", "remove", "--force", source], check=False)
-    run(["git", "worktree", "add", "--detach", source, commit])
-    try:
-        log = os.path.join(trial.dir, "build-old.log")
-        old_tt = os.path.join(trial.dir, "bin", "tt-old")
-        note(f"building tt and the app at {commit[:12]}")
-        build_mac(source, old_tt)
-        app, old_executables = build_app(source, trial.state["iphone"]["udid"], team, "ios/.cache/QualificationDerivedData", log)
-        install(trial, app)
-    finally:
-        run(["git", "worktree", "remove", "--force", source], check=False)
-    if old_executables == trial.state["builds"]["app_executables"]:
-        fail(f"{ref} builds the same app as the tree: pick the commit of an earlier build")
+    old_tt = os.path.join(trial.dir, "bin", "tt-old")
+    if RESUME_INSTALLED_OLD:
+        # An interrupted run already installed the earlier app on the iPhone
+        # and built the earlier tt. Its signed digests were not kept and a
+        # rebuild re-signs, so they are not recreated: the earlier app proves
+        # itself by its export, which predates the qualification fields.
+        if not os.path.exists(old_tt):
+            fail(f"no earlier tt at {old_tt} to resume with")
+        built = run([old_tt, "--version"], check=False).stdout.strip()
+        note(f"resuming with the earlier app already on the iPhone and {old_tt} ({built or 'no version'})")
+        old_executables = {}
+    else:
+        source = os.path.join(trial.dir, "old-source")
+        if os.path.exists(source):
+            run(["git", "worktree", "remove", "--force", source], check=False)
+        run(["git", "worktree", "add", "--detach", source, commit])
+        try:
+            log = os.path.join(trial.dir, "build-old.log")
+            note(f"building tt and the app at {commit[:12]}")
+            build_mac(source, old_tt)
+            app, old_executables = build_app(source, trial.state["iphone"]["udid"], team, "ios/.cache/QualificationDerivedData", log)
+            install(trial, app)
+        finally:
+            run(["git", "worktree", "remove", "--force", source], check=False)
+        if any(old_executables == i["app_executables"] for i in trial.state["builds"].get("installs", [])):
+            fail(f"{ref} builds the same app as the trial: pick the commit of an earlier build")
     wrapper = os.path.join(trial.dir, "bin", "tt-trial-old")
     with open(wrapper, "w") as handle:
         handle.write(f"#!/bin/sh\nHOME='{trial.home}' exec '{old_tt}' --data-dir '{trial.working}' \"$@\"\n")
@@ -835,18 +945,18 @@ def scenario_upgrade(trial):
     old_phone, old_mac = trial.marker(s, "iphone-old"), trial.marker(s, "mac-old")
     pending, new_mac = trial.marker(s, "iphone-pending"), trial.marker(s, "mac-new")
     say(f"""
-The earlier build is installed on the iPhone. Open tt and capture {old_phone!r}.
-Then turn on Airplane Mode and capture {pending!r}, so work is waiting to
-publish across the upgrade. Leave Airplane Mode on.""")
+{"(Already relayed: finish those steps, then reply done.)" if RESUME_INSTALLED_OLD else ""}The earlier build is installed on the iPhone. In this order:
+  1. Turn Airplane Mode OFF (Wi-Fi on), open tt, and capture {old_phone!r}.
+  2. Turn Airplane Mode ON, then capture {pending!r}, so work is waiting
+     to publish across the upgrade.
+  3. Leave Airplane Mode on.""")
     mac_capture(trial, old_mac, binary=old_tt)
     wait_enter()
     before = checkpoint(trial, s, "before", [old_phone, old_mac, pending],
                         {"converged": False, "present": [old_mac], "absent": [pending],
-                         "iphone_build": None, "mac_binary": old_tt})
+                         "iphone_build": None, "mac_binary": old_tt, "earlier_build": True})
     note("installing the current build over it")
-    app = run(["ios/scripts/install-device.sh"], env={"TT_IOS_DEVICE": trial.state["iphone"]["udid"]}, log=log).stdout.strip()
-    if app_executables(app) != trial.state["builds"]["app_executables"]:
-        fail("the tree no longer builds the app this trial started with")
+    install_current(trial, "upgrade")
     say(f"""
 Upgraded, following "Upgrade" in {ROLLOUT_DOC}. Open tt on the iPhone: it must
 still show {pending!r}. Then turn Airplane Mode off.""")
@@ -875,28 +985,43 @@ choose Keep Downloaded, and join again.""")
 
 
 RESUME_AFTER_IPHONE = False
+RESUME_INSTALLED_OLD = False
 
 
 def cmd_scenario(args):
     global RESUME_AFTER_IPHONE
+    global RESUME_INSTALLED_OLD
     RESUME_AFTER_IPHONE = "--resume-after-iphone" in args
-    attempt = 1
+    RESUME_INSTALLED_OLD = "--resume-installed-old" in args
+    attempt, mac_attempt = 1, None
     for a in args:
         if a.startswith("--attempt="):
             attempt = int(a.split("=", 1)[1])
-    args = [a for a in args if a != "--resume-after-iphone" and not a.startswith("--attempt=")]
+        if a.startswith("--mac-attempt="):
+            mac_attempt = int(a.split("=", 1)[1])
+    args = [a for a in args if not a.startswith("--")]
     if not args or args[0] not in SCENARIO_RUNNERS:
         fail("usage: scenario " + "|".join(SCENARIOS) + " [--attempt=N] [--resume-after-iphone]")
     trial = Trial.current()
     name = args[0]
     if attempt > 1:
         trial.attempts[name] = attempt
+    if mac_attempt:
+        trial.mac_attempts[name] = mac_attempt
     records, observations = SCENARIO_RUNNERS[name](trial)
     if attempt > 1:
         observations["attempt"] = attempt
+    if mac_attempt:
+        observations["mac_attempt"] = mac_attempt
     remarks = human("Anything unexpected in this scenario? Reply 'none' if nothing.").strip()
     if remarks.lower().rstrip(".") in ("none", "nothing", "no"):
         remarks = ""
+    # A rerun supersedes the earlier attempt's records but keeps them, so the
+    # evidence shows every attempt and why it was repeated.
+    earlier = [c for c in trial.state["checkpoints"] if c["scenario"] == name]
+    if earlier or name in trial.state["scenarios"]:
+        trial.state.setdefault("superseded", []).append(
+            {"scenario": name, "superseded_at": stamp(), "record": trial.state["scenarios"].get(name), "checkpoints": earlier})
     trial.state["checkpoints"] = [c for c in trial.state["checkpoints"] if c["scenario"] != name] + records
     trial.state["scenarios"][name] = {"recorded_at": stamp(), "checkpoints": [r["label"] for r in records],
                                       "observations": observations, "remarks": remarks}
@@ -932,39 +1057,71 @@ the iPhone. The Mac adds its own marker.""")
 def cmd_procedure(args):
     trial = Trial.current()
     name = args[0] if args else ""
+    earlier = trial.state["procedures"].get(name)
+    if earlier:
+        trial.state.setdefault("superseded_procedures", []).append({"procedure": name, "superseded_at": stamp(), "record": earlier})
     if name == "backup":
         backup = os.path.join(trial.dir, "backups", now().strftime("%Y%m%dT%H%M%SZ"))
-        # The recorder's tt closes after every Mac step, so no commit is in
-        # flight; the backup follows "Backup" in the rollout guide.
+        # "Backup" in the rollout guide: exchange so nothing waits, then copy
+        # the working copy whole. The recorder's tt closes after every step,
+        # so no commit is in flight.
         trial.mac_exchange()
         run(["ditto", trial.working, os.path.join(backup, "working")])
+        # tt doctor on the copy where it lies reports the device-local undo
+        # history as pointing at the original path; that is expected, and the
+        # copy is checked properly by the restore drill in "Recovery".
         doctor = trial.tt("doctor", "--data-dir", os.path.join(backup, "working"), check=False)
         checks = {"backup": os.path.relpath(backup, trial.dir),
                   "matches_working_copy": synced_digest(trial, os.path.join(backup, "working")) == trial.mac_observation()["digest"],
-                  "doctor_passes": doctor.returncode == 0}
-        trial.state["procedures"]["backup"] = procedure_record("backup", [], checks)
+                  "doctor_on_copy_in_place": [line.strip() for line in doctor.stdout.splitlines() if "escapes approved roots" in line]}
+        trial.state["procedures"]["backup"] = procedure_record("backup", [], checks, performed_by="recorder")
     elif name == "recovery":
         backups = sorted(os.listdir(os.path.join(trial.dir, "backups"))) if os.path.isdir(os.path.join(trial.dir, "backups")) else []
         if not backups:
             fail("record the backup procedure first")
         trial.mac_exchange()
+        mac_digest = trial.mac_observation()["digest"]
+        # A replacement Mac: a new HOME is a new device to tt. Join, then
+        # exchange until nothing more arrives, as the guide says.
         rejoined = os.path.join(trial.dir, "recovered", now().strftime("%Y%m%dT%H%M%SZ"))
         home = rejoined + "-home"
         os.makedirs(home)
-        joined = run([os.path.join(trial.dir, "bin", "tt"), "sync", "join", "--exchange", trial.exchange,
-                      "--working-copy", rejoined], env={"HOME": home}, check=False, log=os.path.join(trial.dir, "tt.log"))
-        restored = os.path.join(rejoined + "-restored")
-        run(["ditto", os.path.join(trial.dir, "backups", backups[-1], "working"), restored])
-        checks = {"rejoined_from_exchange": joined.returncode == 0 and synced_digest(trial, rejoined) == trial.mac_observation()["digest"],
-                  "restored_from_backup_opens": trial.tt("doctor", "--data-dir", restored, check=False).returncode == 0}
-        trial.state["procedures"]["recovery"] = procedure_record("recovery", [], checks)
+        tt = os.path.join(trial.dir, "bin", "tt")
+        joined = run([tt, "sync", "join", "--exchange", trial.exchange, "--working-copy", rejoined],
+                     env={"HOME": home}, check=False, log=os.path.join(trial.dir, "tt.log"))
+        for _ in range(5):
+            passed = run([tt, "sync", "exchange", "--data-dir", rejoined, "--json"], env={"HOME": home}, check=False,
+                         log=os.path.join(trial.dir, "tt.log"))
+            if passed.returncode != 0 or not json.loads(passed.stdout or "{}").get("imported"):
+                break
+        rejoined_digest = synced_digest(trial, rejoined, home)
+        # The same Mac, from the backup: move the working copy aside, put the
+        # backup at its path, check it there, then put the working copy back
+        # and prove it is unchanged.
+        aside = trial.working + ".recovery-aside"
+        before = trial.mac_observation()["digest"]
+        os.rename(trial.working, aside)
+        try:
+            run(["ditto", os.path.join(trial.dir, "backups", backups[-1], "working"), trial.working])
+            restored_doctor = trial.tt("doctor", "--data-dir", trial.working, check=False)
+            restored_digest = synced_digest(trial, trial.working)
+        finally:
+            shutil.rmtree(trial.working, ignore_errors=True)
+            os.rename(aside, trial.working)
+        checks = {"rejoined_from_exchange": joined.returncode == 0,
+                  "rejoined_same_tasks": task_records(rejoined) == task_records(trial.working),
+                  "rejoined_byte_identical": rejoined_digest == mac_digest,
+                  "restored_backup_passes_doctor_in_place": restored_doctor.returncode == 0 and "escapes approved roots" not in restored_doctor.stdout,
+                  "restored_backup_digest": restored_digest,
+                  "working_copy_unchanged_after_drill": trial.mac_observation()["digest"] == before}
+        trial.state["procedures"]["recovery"] = procedure_record("recovery", [], checks, performed_by="recorder")
     elif name == "troubleshooting":
         doctor = trial.tt("sync", "doctor", "--data-dir", trial.working, "--json", check=False)
         diagnostics = trial.tt("sync", "diagnostics", "--data-dir", trial.working, check=False)
         checks = {"sync_doctor_passes": doctor.returncode == 0,
                   "diagnostics_export": diagnostics.returncode == 0 and '"workspace_digest"' in diagnostics.stdout,
                   "revoked_access_recorded": "revoked_access" in trial.state["scenarios"]}
-        trial.state["procedures"]["troubleshooting"] = procedure_record("troubleshooting", [], checks)
+        trial.state["procedures"]["troubleshooting"] = procedure_record("troubleshooting", [], checks, performed_by="recorder")
     elif name in ("enrollment", "upgrade"):
         fail(f"{name} is recorded by `start` and `scenario upgrade`")
     else:
@@ -973,17 +1130,33 @@ def cmd_procedure(args):
     note(f"procedure {name} recorded: {trial.state['procedures'][name]['checks']}")
 
 
-def synced_digest(trial, directory):
+def synced_digest(trial, directory, home=None):
     """The synced-file digest tt reports for an enrolled directory, read under
-    a HOME of its own so this machine's identity and selection stay as they
-    are."""
-    home = tempfile.mkdtemp(dir=trial.dir, prefix="digest-home.")
+    a HOME of its own (or the device's own HOME) so this machine's identity
+    and selection stay as they are."""
+    scratch = None if home else tempfile.mkdtemp(dir=trial.dir, prefix="digest-home.")
     try:
         result = run([os.path.join(trial.dir, "bin", "tt"), "sync", "diagnostics", "--data-dir", directory],
-                     env={"HOME": home}, check=False, log=os.path.join(trial.dir, "tt.log"))
+                     env={"HOME": home or scratch}, check=False, log=os.path.join(trial.dir, "tt.log"))
         return json.loads(result.stdout).get("workspace_digest") if result.returncode == 0 else None
     finally:
-        shutil.rmtree(home, ignore_errors=True)
+        if scratch:
+            shutil.rmtree(scratch, ignore_errors=True)
+
+
+def task_records(directory):
+    """Every task heading with its metadata line, per project, ignoring the
+    order tasks are stored in: what two copies must agree on even when their
+    stored order differs."""
+    out = {}
+    projects = os.path.join(directory, "projects")
+    for slug in sorted(os.listdir(projects)):
+        path = os.path.join(projects, slug, "tasks.md")
+        if not os.path.exists(path):
+            continue
+        lines = open(path, encoding="utf-8").read().splitlines()
+        out[slug] = sorted(lines[i] + "\n" + lines[i + 1] for i in range(len(lines) - 1) if lines[i].startswith("## Task: "))
+    return out
 
 
 def cmd_status(_args):
@@ -1012,7 +1185,7 @@ def cmd_finish(_args):
         os.remove(os.path.join(qualification_root(), "current"))
 
 
-COMMANDS = {"start": cmd_start, "enrollment": cmd_enrollment, "mac-capture": cmd_mac_capture, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
+COMMANDS = {"start": cmd_start, "reinstall": cmd_reinstall, "enrollment": cmd_enrollment, "mac-capture": cmd_mac_capture, "scenario": cmd_scenario, "day": cmd_day, "procedure": cmd_procedure,
             "status": cmd_status, "finish": cmd_finish}
 
 if __name__ == "__main__":

@@ -79,6 +79,10 @@ type qualificationEvidence struct {
 		BridgeFingerprint string            `json:"bridge_fingerprint"`
 		TTSHA256          string            `json:"tt_sha256"`
 		AppExecutables    map[string]string `json:"app_executables"`
+		// Installs are every install of the trial's own app, oldest first.
+		// A rebuild re-signs the app, so its executable digests change; each
+		// install is bound by the fingerprints it was built from.
+		Installs []qualificationInstall `json:"installs"`
 	} `json:"builds"`
 	Signing struct {
 		TeamIdentifier        string   `json:"team_identifier"`
@@ -134,6 +138,14 @@ type qualificationEvidence struct {
 		Checks            map[string]any `json:"checks"`
 	} `json:"procedures"`
 	Failures []any `json:"failures"`
+}
+
+type qualificationInstall struct {
+	At                string            `json:"at"`
+	Reason            string            `json:"reason"`
+	AppExecutables    map[string]string `json:"app_executables"`
+	SourceFingerprint string            `json:"source_fingerprint"`
+	BridgeFingerprint string            `json:"bridge_fingerprint"`
 }
 
 // checkpointRule is what one recorded checkpoint must show.
@@ -291,10 +303,30 @@ func (v *qualificationValidator) parse(label, value string) time.Time {
 // interrupted attempt records its attempt and uses titles suffixed "aN".
 func (v *qualificationValidator) marker(scenario, tag string) string {
 	title := "q18 " + v.ev.RunID + " " + strings.ReplaceAll(scenario, "_", "-") + " " + tag
-	if attempt, _ := v.ev.Scenarios[scenario].Observations["attempt"].(float64); attempt > 1 {
+	obs := v.ev.Scenarios[scenario].Observations
+	attempt, _ := obs["attempt"].(float64)
+	// A resumed run can reuse the person's iPhone markers from one attempt
+	// while the Mac's come from a later one; the record names both.
+	if mac, ok := obs["mac_attempt"].(float64); ok && strings.HasPrefix(tag, "mac") {
+		attempt = mac
+	}
+	if attempt > 1 {
 		title += fmt.Sprintf(" a%d", int(attempt))
 	}
 	return title
+}
+
+// installAt is the executables of the trial's latest install made at or
+// before moment: what the iPhone must have been running then.
+func (v *qualificationValidator) installAt(moment time.Time) map[string]string {
+	var want map[string]string
+	for _, install := range v.ev.Builds.Installs {
+		at, err := time.Parse(time.RFC3339, install.At)
+		if err == nil && !at.After(moment) {
+			want = install.AppExecutables
+		}
+	}
+	return want
 }
 
 // header holds the trial to the builds under test.
@@ -307,6 +339,13 @@ func (v *qualificationValidator) header(wantSource, wantBridge, wantTT string) {
 	v.check(ev.Builds.BridgeFingerprint == wantBridge, "the trial ran bridge %s, the tree builds %s", ev.Builds.BridgeFingerprint, wantBridge)
 	v.check(ev.Builds.TTSHA256 == wantTT, "the trial ran tt %s, the tree builds %s", ev.Builds.TTSHA256, wantTT)
 	v.check(len(ev.Builds.AppExecutables) > 0, "no app build hashes")
+	v.check(len(ev.Builds.Installs) > 0 && maps.Equal(ev.Builds.Installs[0].AppExecutables, ev.Builds.AppExecutables),
+		"the trial's first install is not the build it started with")
+	for i, install := range ev.Builds.Installs {
+		v.check(install.SourceFingerprint == wantSource && install.BridgeFingerprint == wantBridge,
+			"install %d (%s) was built from sources %s and bridge %s, not the tree's", i, install.Reason, install.SourceFingerprint, install.BridgeFingerprint)
+		v.check(len(install.AppExecutables) > 0, "install %d records no executables", i)
+	}
 }
 
 // installation holds the signed personal install, the devices, and the
@@ -360,7 +399,8 @@ func (v *qualificationValidator) verify(c qualificationCheckpoint, rule checkpoi
 	exported := v.parse(key+" iPhone export", p.ExportedAt)
 	v.check(!exported.After(at) && at.Sub(exported) < 2*time.Hour, "%s: the iPhone export %s does not belong to this checkpoint", key, p.ExportedAt)
 	if !rule.anyBuild {
-		v.check(maps.Equal(p.AppExecutables, ev.Builds.AppExecutables), "%s: the iPhone ran %v, the trial installed %v", key, p.AppExecutables, ev.Builds.AppExecutables)
+		want := v.installAt(exported)
+		v.check(want != nil && maps.Equal(p.AppExecutables, want), "%s: the iPhone ran %v, the trial's install at that time was %v", key, p.AppExecutables, want)
 	}
 	for _, tag := range rule.present {
 		n := c.Markers[v.marker(c.Scenario, tag)]
@@ -454,9 +494,22 @@ func (v *qualificationValidator) observations(scenario string, obs map[string]an
 		for name, digest := range from {
 			old[name], _ = digest.(string)
 		}
-		v.check(len(old) > 0 && !maps.Equal(old, v.ev.Builds.AppExecutables), "the upgrade started from %v, which is the current build", old)
-		if before, ok := v.byKey[scenario+"/before"]; ok && before.IPhone != nil && len(before.IPhone.AppExecutables) > 0 {
-			v.check(maps.Equal(before.IPhone.AppExecutables, old), "before the upgrade the iPhone ran %v, not the earlier build", before.IPhone.AppExecutables)
+		before, haveBefore := v.byKey[scenario+"/before"]
+		if len(old) == 0 {
+			// The earlier build's signed digests were not kept and a rebuild
+			// re-signs, so the earlier app is identified by its export, which
+			// predates the qualification fields this trial's build reports.
+			v.check(haveBefore && before.IPhone != nil && len(before.IPhone.AppExecutables) == 0 && before.IPhone.Digest == "",
+				"no earlier build digests, and the before export does not show the earlier app either")
+		} else {
+			current := false
+			for _, install := range v.ev.Builds.Installs {
+				current = current || maps.Equal(old, install.AppExecutables)
+			}
+			v.check(!current, "the upgrade started from %v, which is one of the trial's own installs", old)
+			if haveBefore && before.IPhone != nil && len(before.IPhone.AppExecutables) > 0 {
+				v.check(maps.Equal(before.IPhone.AppExecutables, old), "before the upgrade the iPhone ran %v, not the earlier build", before.IPhone.AppExecutables)
+			}
 		}
 		fromCommit, _ := obs["from_commit"].(string)
 		v.check(regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(fromCommit), "upgrade from commit %q", fromCommit)
