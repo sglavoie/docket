@@ -20,15 +20,15 @@ struct NotesListView: View {
                     NavigationLink(value: Route.note(note.location, filename: note.filename)) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(note.title)
-                            Text(note.location.isGlobal ? "Global" : note.projectName ?? "Project")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             if !note.excerpt.isEmpty {
                                 Text(note.excerpt)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
+                            Text(note.location.isGlobal ? "Global" : note.projectName ?? "Project")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .accessibilityIdentifier("note.\(note.title)")

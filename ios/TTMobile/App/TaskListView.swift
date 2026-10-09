@@ -78,6 +78,7 @@ struct TaskListView: View {
     let source: ListSource
 
     @State private var rows: [TaskRow] = []
+    @State private var projectNames: [String: String] = [:]
     @State private var diagnostics: [QueryDiagnostic] = []
     @State private var state: ScreenState? = .loading("Loading…")
     @State private var search = ""
@@ -199,11 +200,12 @@ struct TaskListView: View {
                     }
                 }
                 ForEach(rows) { row in
+                    let projectName = projectNames[row.item.task.projectID]
                     NavigationLink(value: Route.task(row.item.task.locator)) {
-                        TaskRowView(item: row.item)
+                        TaskRowView(item: row.item, projectName: projectName)
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
-                    .accessibilityLabel(TaskRowView.spokenLabel(row.item))
+                    .accessibilityLabel(TaskRowView.spokenLabel(row.item, projectName: projectName))
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
                     .accessibilityIdentifier("task.row")
                     .tag(row.id)
@@ -308,7 +310,15 @@ struct TaskListView: View {
                     search: trimmed.isEmpty ? nil : trimmed
                 )
             }
+            var names: [String: String] = [:]
+            if source.projectID == nil {
+                let projects = try await workspace.engine.projects()
+                for project in projects.active + projects.parked + projects.archived {
+                    names[project.id] = project.name
+                }
+            }
             if Task.isCancelled { return }
+            projectNames = names
             diagnostics = result.diagnostics
             let reordered = sort.field != nil || filter.isActive || !trimmed.isEmpty
             rows = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
@@ -379,6 +389,7 @@ extension WorkflowState {
 
 struct TaskRowView: View {
     let item: TaskQueryItem
+    let projectName: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// The badges sit on one line until an accessibility text size, where
@@ -416,14 +427,20 @@ struct TaskRowView: View {
                 // Each badge takes the height its text needs rather than
                 // being clipped to the row's first guess.
                 .fixedSize(horizontal: false, vertical: true)
+                if let projectName {
+                    Text(projectName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
 
     /// What VoiceOver says for a row, in the order it is read: the state,
     /// the title, then each badge in words rather than its symbol or
-    /// abbreviation.
-    static func spokenLabel(_ item: TaskQueryItem) -> String {
+    /// abbreviation, followed by the project when the list spans projects.
+    static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue, item.task.title]
         if item.task.priority > 0 { parts.append("priority \(item.task.priority)") }
         if let due = item.task.dueDate { parts.append("due \(due.formatted(date: .abbreviated, time: .omitted))") }
@@ -431,6 +448,7 @@ struct TaskRowView: View {
         if item.next { parts.append("Next") }
         if item.task.pinned { parts.append("pinned") }
         if item.task.review { parts.append("review") }
+        if let projectName { parts.append(projectName) }
         return parts.joined(separator: ", ")
     }
 }
