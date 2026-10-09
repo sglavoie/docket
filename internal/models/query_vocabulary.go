@@ -62,6 +62,8 @@ const (
 	// QueryFieldDependency names one outgoing soft reference by durable locator.
 	// It is multi-valued, so its positive clauses intersect.
 	QueryFieldDependency QueryField = "dependency"
+	// QueryFieldAttachment matches whether a task holds attachments.
+	QueryFieldAttachment QueryField = "attachment"
 	// QueryFieldPriority carries both readings explicitly: Is for exactly that
 	// priority, AtLeast for that priority or more urgent, None for unset.
 	QueryFieldPriority QueryField = "priority"
@@ -187,6 +189,7 @@ type queryFieldSpec struct {
 var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldText, QueryJoinOR, []QueryOperator{QueryOperatorContains}, false},
 	{QueryFieldDependency, QueryJoinAND, []QueryOperator{QueryOperatorIs}, false},
+	{QueryFieldAttachment, QueryJoinOR, []QueryOperator{QueryOperatorPresent, QueryOperatorNone}, false},
 	{QueryFieldPriority, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorAtLeast, QueryOperatorNone}, false},
 	{QueryFieldTag, QueryJoinAND, []QueryOperator{QueryOperatorIs, QueryOperatorPrefix}, false},
 	{QueryFieldContext, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorPrefix, QueryOperatorNone}, false},

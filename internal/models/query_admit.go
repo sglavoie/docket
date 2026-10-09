@@ -86,6 +86,11 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		return slices.ContainsFunc(task.Dependencies, func(reference TaskReference) bool {
 			return reference.Locator() == clause.Value
 		})
+	case QueryFieldAttachment:
+		if clause.Operator == QueryOperatorNone {
+			return len(task.Attachments) == 0
+		}
+		return len(task.Attachments) > 0
 	case QueryFieldPriority:
 		return queryPriorityMatches(task, clause)
 	case QueryFieldTag:

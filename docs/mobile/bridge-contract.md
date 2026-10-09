@@ -116,7 +116,7 @@ There is no bridge-only mutation path.
 | `workspace.close` | no | Releases locks and caches. |
 | `query.projects` | no | Returns active, parked, and archived projects as separate populations, matching `TaskWorkspaceProjects` and `AvailableProjects`. |
 | `query.tasks` | no | Payload is `{mode, scope, query, sort}` in the canonical query grammar. |
-| `query.search_suggestions` | no | Completes the final search token using the current list's tag/context vocabulary and supported grammar values. |
+| `query.search_suggestions` | no | Completes the final search token using the current list's tags, contexts, projects, dates, and dependency references, plus supported grammar values. |
 | `query.task` | no | Returns one task with its Peek document fields, including computed dependents. |
 | `query.lenses` | no | The saved lenses in stored order. |
 | `query.capture_preview` | no | Reads capture grammar text without committing: what each line would create, or each refused line. |

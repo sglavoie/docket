@@ -102,8 +102,13 @@ func compileSearch(search string) ([]models.QueryClause, *Error) {
 	// the same spelling as capture (including keyboard capitalization). Quoted
 	// text has already been lifted into clauses, so normalize only whole tag or
 	// context tokens in the remainder before asking the durable parser again.
+	// Presence and clear aliases are lowered to their durable predicates too.
 	words := strings.Fields(remainder)
 	for i, word := range words {
+		if canonical := searchAlias(word); canonical != word {
+			words[i] = canonical
+			continue
+		}
 		prefix := strings.HasSuffix(word, "*")
 		tokenized := textgrammar.ParseSearch(strings.TrimSuffix(word, "*"))
 		if tokenized.Text != "" || len(tokenized.Tokens) != 1 {
@@ -132,6 +137,37 @@ func compileSearch(search string) ([]models.QueryClause, *Error) {
 		clauses = append(clauses, text)
 	}
 	return clauses, nil
+}
+
+// searchAlias maps the search grammar's presence and clear spellings to the
+// durable predicates. Negation inverts the same predicate as the positive form.
+func searchAlias(word string) string {
+	value, negative := strings.CutPrefix(word, "-")
+	if negative && (value == "*unpin" || value == "=unreview") {
+		return word
+	}
+	var canonical string
+	switch value {
+	case "@none":
+		canonical = "@0"
+	case "@@any":
+		canonical = "?deferred"
+	case "@@none":
+		canonical = "-?deferred"
+	case "*unpin":
+		canonical = "-*pin"
+	case "=unreview":
+		canonical = "-=review"
+	default:
+		return word
+	}
+	if negative {
+		if positive, ok := strings.CutPrefix(canonical, "-"); ok {
+			return positive
+		}
+		return "-" + canonical
+	}
+	return canonical
 }
 
 // lensQuery is the query a lens reopens into, its stored string read through

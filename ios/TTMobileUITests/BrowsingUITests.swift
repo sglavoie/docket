@@ -299,7 +299,12 @@ final class BrowsingUITests: XCTestCase {
         for (query, token, title) in [("#fe", "#feature", "Ship beta build"),
                                       ("Ship #FE", "#feature", "Ship beta build"),
                                       ("##la", "##laptop", "Ship beta build"),
-                                      ("$wai", "$waiting", "Await signing certificate")] {
+                                      ("$wai", "$waiting", "Await signing certificate"),
+                                      ("%AT", "%atlas-launch", "Ship beta build"),
+                                      ("Ship %at", "%atlas-launch", "Ship beta build"),
+                                      ("!", "!1", "Ship beta build"),
+                                      ("*p", "*pin", "Ship beta build"),
+                                      ("&a", "&any", "Ship beta build")] {
             search(app, query)
             let suggestion = app.buttons["search.suggestion.\(token)"]
             require(suggestion, "the autocomplete suggestion for \(query)")

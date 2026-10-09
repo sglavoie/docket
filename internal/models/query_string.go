@@ -41,6 +41,11 @@ func (c QueryClause) token() string {
 		return strconv.Quote(c.Value)
 	case QueryFieldDependency:
 		return "~" + c.Value
+	case QueryFieldAttachment:
+		if c.Operator == QueryOperatorNone {
+			return "&none"
+		}
+		return "&any"
 	case QueryFieldPriority:
 		return "!" + querySuffixedValue(c, queryClearValue, "+")
 	case QueryFieldTag:
@@ -238,6 +243,10 @@ func splitQueryToken(token string) (QueryField, QueryOperator, string, error) {
 		return QueryFieldText, QueryOperatorContains, value, nil
 	case strings.HasPrefix(token, "~"):
 		return QueryFieldDependency, QueryOperatorIs, strings.TrimPrefix(token, "~"), nil
+	case token == "&any":
+		return QueryFieldAttachment, QueryOperatorPresent, "", nil
+	case token == "&none":
+		return QueryFieldAttachment, QueryOperatorNone, "", nil
 	case strings.HasPrefix(token, "!"):
 		operator, value := splitSuffixedQueryValue(strings.TrimPrefix(token, "!"), "+", QueryOperatorAtLeast)
 		return QueryFieldPriority, operator, value, nil
