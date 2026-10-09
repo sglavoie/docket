@@ -135,6 +135,15 @@ ios-project:
 ios-build:
     ./ios/scripts/app.sh build
 
+# Build, sign, install, and launch on your paired iPhone, preserving its data
+[positional-arguments]
+ios-install team="" device="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export TT_IOS_DEVELOPMENT_TEAM="${1:-${TT_IOS_DEVELOPMENT_TEAM:-}}"
+    export TT_IOS_DEVICE="${2:-${TT_IOS_DEVICE:-}}"
+    exec ./ios/scripts/install-device.sh --launch
+
 # Run the Swift suites: unit, bridge (TTEngine on a simulator), sync, or all; summary in ios/.cache/results/<suite> (outside `just ci`)
 ios-test suite="all":
     ./ios/scripts/test-suites.sh {{ suite }} "${TT_IOS_RESULTS:-ios/.cache/results}/{{ suite }}"

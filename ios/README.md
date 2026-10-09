@@ -37,6 +37,7 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | `just ios-bridge` | Bind `mobile/ttbridge` into the device and simulator slices |
 | `just ios-project` | The bridge, then `TTMobile.xcodeproj` from `project.yml` |
 | `just ios-build` | `tt.app` for the simulator, with its result bundle and build diagnostics |
+| `just ios-install [TEAMID] [UDID]` | Build, sign, install, and launch on a paired iPhone, keeping its app data |
 | `just ios-test [unit\|bridge\|sync\|all]` | The Swift suites that are not UI tests, each on its own |
 | `just ios-ui-test [CLASS] [default\|small]` | The simulator UI suite, or one class, on the default or small-screen simulator |
 | `just ios-run [FIXTURE] [light\|dark] [TEXT_SIZE] [default\|small]` | Launch the app over a fresh copy of a fixture |
@@ -46,6 +47,31 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | `just ios-stop` | Stop the app `ios-run` launched |
 
 None of them needs Xcode open; see [Automation](#automation).
+
+### Redeploy to your iPhone
+
+Connect and unlock your paired iPhone, then run from the repository:
+
+```sh
+just ios-install
+```
+
+This rebuilds the Go bridge when its sources changed, regenerates the Xcode
+project, builds and verifies the signed app, installs it over the existing
+copy, and launches it. Workspaces, drafts, and settings stay in the app's
+container. It uses the signing team from the previous device build.
+
+For the first install on this Mac, use `just ios-install TEAMID` (or export
+`TT_IOS_DEVELOPMENT_TEAM`). Xcode must have your signing account configured,
+and the iPhone must trust this Mac and have Developer Mode enabled. If more
+than one iPhone is paired, use `just ios-install TEAMID UDID`; run
+`xcrun devicectl list devices` to find its UDID. You can also select it with
+`TT_IOS_DEVICE`. The recipe refuses to choose an arbitrary phone.
+
+Build and device logs are kept in `ios/.cache/results/device-install.*/`
+(or beneath `TT_IOS_RESULTS`); failures print the log path and its last lines.
+An installation failure stops before launch. If installation succeeds but
+launch fails, the message says so and you can open tt on the phone.
 
 The app icon and launch artwork reuse the desktop icon's renderer. Regenerate
 the committed PNGs with `swift macos/scripts/make-icons.swift --ios` after
@@ -295,9 +321,10 @@ own `runs/<id>` folder. The script rewrites
 
 ## Device qualification and rollout
 
-`ios/scripts/install-device.sh` builds the app for a physical iPhone, signed by
-`TT_IOS_DEVELOPMENT_TEAM`, and installs it over the cable. Installing over an
-earlier build keeps the app's data. `ios/scripts/record-device-qualification.sh`
+`just ios-install` uses `ios/scripts/install-device.sh` to build and sign the
+app, install it over the earlier copy, and launch it, keeping the app's data.
+The signing team comes from `TT_IOS_DEVELOPMENT_TEAM`, the recipe's optional
+argument, or the previous device build. `ios/scripts/record-device-qualification.sh`
 runs the guided real-device trial (airplane mode, simultaneous edits,
 termination, delayed delivery, revoked folder access, large attachments, an
 upgrade, the rollout procedures, and at least a week of daily use) in a
