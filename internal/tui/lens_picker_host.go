@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/conflict"
@@ -181,11 +184,6 @@ func (m *AppModel) closeNamedLensOverlays() {
 // rows and its loader; reading the store and mounting the overlay live here, so
 // the AppModel stays the one place overlays are created and torn down.
 //
-// The store is read directly rather than through an internal/app port, for the
-// same reason the status strip's count is: nothing on this path validates,
-// mutates, or commits, so there is no application-layer policy for a port to
-// hold.
-
 // conflictStore is the workspace's bundle directory. It is nil only for a model
 // with no runtime, which is what the Hub's preview painter builds.
 func (m *AppModel) conflictStore() *storage.ConflictStore {
@@ -224,4 +222,57 @@ func (m *AppModel) openConflictBrowser() tea.Msg {
 	}
 	m.conflictBrowser = browser
 	return nil
+}
+
+// resolveBrowserConflict runs through the runtime's existing commit paths.
+// Keeping the overlay mounted until completion also defers background refresh.
+func (m *AppModel) resolveBrowserConflict(req conflict.ResolveMsg) tea.Cmd {
+	if m.conflictBrowser == nil || req.Browser != m.conflictBrowser {
+		return nil
+	}
+	message := "Conflict resolved"
+	var err error
+	if req.Sync {
+		if m.domain.resolveSyncConflict == nil {
+			err = fmt.Errorf("sync resolution is unavailable")
+		} else {
+			var result *engine.ResolveResult
+			result, err = m.domain.resolveSyncConflict(engine.ResolveRequest{ConflictID: req.ID, Choice: req.Choice, Version: req.Version, Text: req.Text})
+			if err == nil {
+				message = fmt.Sprintf("Resolved %d sync conflict(s)", len(result.Resolved))
+			}
+		}
+	} else if m.domain.resolveProjectConflict == nil {
+		err = fmt.Errorf("project conflict resolution is unavailable")
+	} else {
+		var result *storage.ConflictResolveResult
+		result, err = m.domain.resolveProjectConflict(req.ID, storage.ConflictResolution(req.Choice), req.Text)
+		if err == nil && result.RetryRequired {
+			message = "Conflict cleared. Retry the original operation."
+		}
+	}
+	if err != nil && !errors.Is(err, storage.ErrRemoteReconflict) {
+		m.conflictBrowser.ResolutionFailed(err)
+		m.refreshOutstandingConflicts()
+		return nil
+	}
+	// A successful resolution or a replacement conflict invalidates the listing.
+	// Refresh task/planning/note views through the same path as external edits.
+	m.conflictBrowser = nil
+	m.externalReload.owed, m.externalReload.quiet = true, true
+	refresh := m.adoptExternalWorkspaceChange()
+	m.refreshOutstandingConflicts()
+	var reopen tea.Cmd
+	if m.feedback.outstandingConflictCount() > 0 {
+		msg := m.openConflictBrowser()
+		if msg != nil {
+			reopen = func() tea.Msg { return msg }
+		}
+	}
+	if err != nil {
+		m.setWarningStatus("Newer edits conflict. Review the newly recorded conflict.")
+	} else {
+		m.setSuccessStatus(message)
+	}
+	return tea.Batch(refresh, reopen, m.statusReadingTimeout(), m.syncAfterLocalCommit())
 }

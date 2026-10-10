@@ -301,18 +301,20 @@ floating over the list, so the rows it pushes off are rows the strip was already
 entitled to, and it never takes the last one.
 [`search-and-lenses.md`](search-and-lenses.md) has the readout and its peels.
 
-`gc` answers the question that indicator raises. It opens a read-only overlay
-listing every recorded bundle newest first — its short id, the project, how many
-conflicts it holds, the action that hit it, and when it was recorded. `Enter`
-inspects one, showing exactly what `tt conflict show` prints: the revisions on
-each side, whether the original operation still has to be retried, and every
-conflicting field with its base, local, and remote values. The pane scrolls with
-the ordinary list keys, `Esc` steps back to the list, and a second `Esc` closes
-the overlay. Nothing here resolves anything: the browser reads the store and the
-record it inspects is reread at the moment you open it, so a bundle another
-terminal resolved in the meantime refuses rather than painting a stale record.
-Resolving stays in `tt conflict resolve`. With no unresolved conflicts, `gc`
-says so in the strip instead of opening an empty overlay.
+`gc` opens the conflict browser in the TUI and desktop app. It lists recorded
+bundles newest first, followed by sync conflicts. `Enter` inspects the selected
+conflict; `d` toggles a Git-style diff against the current content (recorded
+remote content for project bundles). `b` switches to or from the base comparison. Project bundles offer
+`l` to keep local and `r` to keep the current remote; sync conflicts use `[`/`]`
+to select a version, `v` to keep it, and `c` to keep the current content. `e`
+opens the in-app merge editor where text replacement is supported. `Ctrl+S`
+reviews the merged result, and `Enter` confirms a resolution. Related files
+and retry requirements are shown before confirmation. Errors retain the draft.
+
+The pane scrolls with the ordinary list keys. `Esc` backs out one level at a
+time and asks before discarding edits. With no unresolved conflicts, `gc`
+says so in the strip instead of opening an empty overlay. See
+[conflict resolution](storage.md) for the complete workflow.
 
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds

@@ -149,6 +149,16 @@ func MergeOrRecordConflict(store *ConflictStore, project *models.Project, base, 
 // original conflict left intact. Pre-policy bundles with no marker fail closed as
 // retry-only because their original transaction shape is unknown.
 func ResolveConflict(store *ConflictStore, commit *CommitService, id string, resolution ConflictResolution, mergedFilePath string) (*ConflictResolveResult, error) {
+	return resolveConflict(store, commit, id, resolution, mergedFilePath, nil)
+}
+
+// ResolveConflictText validates and commits a merge composed in an application.
+// It uses the same retry policy and revision checks as file-based resolution.
+func ResolveConflictText(store *ConflictStore, commit *CommitService, id, text string) (*ConflictResolveResult, error) {
+	return resolveConflict(store, commit, id, ResolveUseFile, "", &text)
+}
+
+func resolveConflict(store *ConflictStore, commit *CommitService, id string, resolution ConflictResolution, mergedFilePath string, mergedText *string) (*ConflictResolveResult, error) {
 	bundle, err := store.Load(id)
 	if err != nil {
 		return nil, err
@@ -191,7 +201,12 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 		return result, nil
 	}
 
-	resolved, err := resolvedDocument(bundle, resolution, mergedFilePath)
+	var resolved *ProjectDocument
+	if mergedText != nil {
+		resolved, err = parseResolvedText(*mergedText)
+	} else {
+		resolved, err = resolvedDocument(bundle, resolution, mergedFilePath)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -285,17 +300,21 @@ func resolvedDocument(bundle *ConflictBundle, resolution ConflictResolution, mer
 		if err != nil {
 			return nil, fmt.Errorf("reading merged file: %w", err)
 		}
-		doc, err := ParseProjectDocument(string(content))
-		if err != nil {
-			return nil, fmt.Errorf("parsing merged file: %w", err)
-		}
-		if conflicts := auditMergedDocument(doc); len(conflicts) > 0 {
-			return nil, fmt.Errorf("merged file failed validation: %s", conflicts[0].Detail)
-		}
-		return doc, nil
+		return parseResolvedText(string(content))
 	default:
 		return nil, fmt.Errorf("unknown conflict resolution %q", resolution)
 	}
+}
+
+func parseResolvedText(text string) (*ProjectDocument, error) {
+	doc, err := ParseProjectDocument(text)
+	if err != nil {
+		return nil, fmt.Errorf("parsing merged file: %w", err)
+	}
+	if conflicts := auditMergedDocument(doc); len(conflicts) > 0 {
+		return nil, fmt.Errorf("merged file failed validation: %s", conflicts[0].Detail)
+	}
+	return doc, nil
 }
 
 // projectFromDocument reconstructs a models.Project ready for commit from a

@@ -520,7 +520,7 @@ func (c *conflictReader) bytes(blob *string, path string) ([]byte, error) {
 	if disk, diskErr := os.ReadFile(c.history.WorkspacePath(path)); diskErr == nil && synclog.Digest(disk) == *blob {
 		return disk, nil
 	}
-	return nil, fmt.Errorf("%w: version %s is not on this device: %w", ErrInvalidResolution, shortDigest(*blob), err)
+	return nil, fmt.Errorf("%w: version %s is unavailable on this device; sync and reopen the conflict", ErrInvalidResolution, shortDigest(*blob))
 }
 
 // kept is what keeping candidate writes. A structured file keeps the

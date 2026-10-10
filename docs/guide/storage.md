@@ -46,11 +46,32 @@ status strip above the footer carries a state indicator counting the workspace's
 unresolved merge conflicts and naming the command that reviews them. It is
 recounted at launch and once a minute, so a conflict another machine recorded
 while you were working appears on its own, and the line disappears once the last
-bundle is resolved. `gc` opens a read-only overlay over the same store, listing
-the recorded bundles and showing one in the form `tt conflict show` prints; see
-[`outliner-chrome.md`](outliner-chrome.md). Resolving stays in the CLI. The count can be hidden
-with `tt --no-advisories` or `View → Advisories`, which changes nothing about the
-bundles themselves.
+bundle is resolved. `gc` opens the conflict browser in both the TUI and desktop
+app. `Enter` inspects a conflict and `d` toggles Git-style unified diffs, with
+context lines, hunk ranges, red removals, and green additions. Project bundles
+show recorded-remote-to-local changes; `b` switches to comparisons against the
+base. Press `l` to keep local,
+`r` to keep the current remote state, or `e` to edit a merged result in the app.
+Retry-only bundles offer `r`, followed by retrying the original operation.
+
+For sync conflicts, `[` and `]` select a competing version; `d` compares it with
+the current workspace file, initially selecting a competing version. `b` toggles
+comparison against the base. When there is no common base, that comparison
+shows the whole file as additions; the current-file comparison shows the actual
+differences between versions. Press `v` to keep that version or `c` to keep the current workspace
+content. The confirmation lists any other conflicted files that choosing the
+version will also resolve. Text conflicts support `e` to compose a merge starting
+from the selected version; binary or unavailable content is identified explicitly.
+
+In the merge editor, arrows, Home/End, Page Up/Down, Backspace/Delete, and paste
+edit the full text. `Ctrl+S` previews the result as a diff, then `Enter` confirms
+and saves. `Esc` cancels confirmation or returns from the editor while retaining
+the draft; `e` resumes it. Leaving an edited conflict asks before discarding the
+draft. Validation errors and stale conflicts keep the draft available. Every
+resolution checks for newer edits before committing and refreshes the conflict
+count and workspace views. See [`outliner-chrome.md`](outliner-chrome.md).
+The count can be hidden with `tt --no-advisories` or `View → Advisories`, which
+changes nothing about the bundles themselves.
 
 A bundle stores its three documents as the markdown of the schema that was live
 the day it was recorded, and migrations never rewrite them. So a bundle that
@@ -451,9 +472,10 @@ folder, the history, and which device needs an update.
 
 When two devices change the same thing while apart, both versions are kept as a
 sync conflict until you choose; nothing is decided by timestamp. `gc` shows each
-one read-only, and `tt sync conflicts ID` prints it in full: the version both
+one with diff and resolution controls, and `tt sync conflicts ID` prints it in full: the version both
 sides started from, every competing version with the device and the kind of
-change that wrote it, and what the workspace holds meanwhile. Resolve it with
+change that wrote it, and what the workspace holds meanwhile. Resolve it in `gc`
+as described above, or with
 `tt sync resolve ID --version N`, which keeps that version's side of what
 conflicted and everything else both devices changed; when the same change also
 left conflicts in other files, their versions from that change are kept too, in

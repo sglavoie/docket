@@ -3,6 +3,7 @@ package bridge
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/tt/internal/syncmerge"
 )
 
 // TestBridgeResolvesSyncConflictsFromEitherDevice drives conflict resolution
@@ -30,6 +32,8 @@ func TestBridgeResolvesSyncConflictsFromEitherDevice(t *testing.T) {
 	t.Run("replacement_text", conflictReplacementText)
 	t.Run("coupled_changes_resolve_together", conflictCoupledChanges)
 	t.Run("stale_resolution_is_refused", conflictStaleResolution)
+	t.Run("missing_derived_result", conflictMissingDerivedResult)
+	t.Run("external_edit_invalidates_resolution", conflictExternalEditInvalidatesResolution)
 	t.Run("resolution_racing_an_edit_keeps_both", conflictResolutionRacesEdit)
 	t.Run("competing_resolutions_keep_both", conflictCompetingResolutions)
 	t.Run("transport_failure_keeps_local_content", conflictTransportFailure)
@@ -37,6 +41,91 @@ func TestBridgeResolvesSyncConflictsFromEitherDevice(t *testing.T) {
 }
 
 const atlasTasks = "projects/atlas-launch/tasks.md"
+
+// History can derive a merged result that was never retained, while the
+// working file still contains a competing version. Resolution must read and
+// guard the actual working file, not require that synthetic blob.
+func conflictMissingDerivedResult(t *testing.T) {
+	for _, choice := range []string{engine.ResolveVersion, engine.ResolveCurrent, engine.ResolveReplace} {
+		t.Run(choice, func(t *testing.T) {
+			p := newPair(t)
+			ship := task(atlasProject, shipBetaTask)
+			p.phone.retitle(ship, "Ship beta build (phone)")
+			p.phone.retitle(task(atlasProject, proofreadTask), "Proofread (phone)")
+			p.desktop.retitle(ship, "Ship beta build (desktop)")
+			p.desktop.retitle(task(atlasProject, screenshotsTask), "Screenshots (desktop)")
+			p.settle()
+			view := viewOn(t, p.desktop.conflictViews(), atlasTasks)
+			current := view.Versions[versionHolding(t, view, "Ship beta build (desktop)")]
+			history := p.desktop.bridge.workspace.runtime.SyncCommits().SyncHistory()
+			derived, err := history.OpenConflicts(syncmerge.Merger{})
+			if err != nil || len(derived) != 1 || derived[0].ResultBlob == nil {
+				t.Fatalf("derived conflicts: %+v, %v", derived, err)
+			}
+			for _, version := range view.Versions {
+				if version.Digest == *derived[0].ResultBlob {
+					t.Fatal("fixture needs a synthetic result distinct from both candidates")
+				}
+			}
+			if err := os.WriteFile(filepath.Join(p.desktop.dataDir, atlasTasks), []byte(*current.Text), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(history.BlobPath(*derived[0].ResultBlob)); err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			view = viewOn(t, p.desktop.conflictViews(), atlasTasks)
+			if view.Current == nil || !view.Current.Available || view.Current.Text == nil || *view.Current.Text != *current.Text {
+				t.Fatalf("current content does not describe the working file: %+v", view.Current)
+			}
+			request := engine.ResolveRequest{ConflictID: view.ID, Choice: choice, Version: versionHolding(t, view, "Ship beta build (phone)"), Text: strings.Replace(*current.Text, "Ship beta build (desktop)", "Ship beta build (merged)", 1)}
+			result := p.desktop.desktopResolve(request)
+			if result.Remaining != 0 || len(p.settle()) != 0 {
+				t.Fatal("resolution did not close the conflict on both devices")
+			}
+			want := "Ship beta build (desktop)"
+			switch choice {
+			case engine.ResolveVersion:
+				want = "Ship beta build (phone)"
+				requireTitle(t, p, task(atlasProject, proofreadTask), "Proofread (phone)")
+			case engine.ResolveReplace:
+				want = "Ship beta build (merged)"
+			}
+			requireTitle(t, p, ship, want)
+			requireTitle(t, p, task(atlasProject, screenshotsTask), "Screenshots (desktop)")
+		})
+	}
+}
+
+func conflictExternalEditInvalidatesResolution(t *testing.T) {
+	p, _ := titleConflict(t)
+	view := viewOn(t, p.desktop.conflictViews(), atlasTasks)
+	changed := strings.ReplaceAll(*view.Current.Text, "Ship beta build", "Edited outside the app")
+	path := filepath.Join(p.desktop.dataDir, atlasTasks)
+	if err := os.WriteFile(path, []byte(changed), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := p.desktop.bridge.workspace.runtime.ResolveSyncConflict(engine.ResolveRequest{ConflictID: view.ID, Choice: engine.ResolveCurrent})
+	if !errors.Is(err, engine.ErrConflictStale) {
+		t.Fatalf("old confirmation accepted an external edit: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != changed {
+		t.Fatalf("external edit changed after refusal: %v", err)
+	}
+	updated := viewOn(t, p.desktop.conflictViews(), atlasTasks)
+	if updated.ID == view.ID || updated.Current.Text == nil || *updated.Current.Text != changed {
+		t.Fatal("reopening did not bind the conflict to the new working file")
+	}
+	p.desktop.desktopResolve(engine.ResolveRequest{ConflictID: updated.ID, Choice: engine.ResolveCurrent})
+	if len(p.settle()) != 0 {
+		t.Fatal("keeping the reopened external edit did not resolve the conflict")
+	}
+	for _, h := range []*harness{p.phone, p.desktop} {
+		if got := string(syncedFiles(t, h.dataDir)[atlasTasks]); got != changed {
+			t.Fatal("keeping current did not preserve the exact external edit")
+		}
+	}
+}
 
 // retitle edits a task's title through command.edit on either device.
 func (h *harness) retitle(target locator, title string) {

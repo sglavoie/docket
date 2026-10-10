@@ -588,6 +588,8 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// The peel already wrote the population fields; only the reload the facet
 		// owes is left, and it is the shell's because the projects are.
 		return true, m.filters.ProjectFilterReloadCmd(m, typed.Status)
+	case conflict.ResolveMsg:
+		return true, m.resolveBrowserConflict(typed)
 	case conflict.ConflictBrowserClosedMsg:
 		m.conflictBrowser = nil
 		return true, nil

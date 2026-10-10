@@ -138,7 +138,7 @@ func TestSyncStatusReachesTheStripAndTheConflictBrowser(t *testing.T) {
 		model.conflictBrowser.HandleKey(tea.KeyPressMsg{Code: 'j', Text: "j"})
 		inspected += model.conflictBrowser.RenderWithin(200, 60)
 	}
-	for _, want := range []string{"Started from:", "Shared task", "Desk title", "Laptop title", ", this device", "edit outside tt on", "tt sync resolve"} {
+	for _, want := range []string{"Started from:", "Shared task", "Desk title", "Laptop title", ", this device", "edit outside tt on", "v keep selected version"} {
 		if !strings.Contains(inspected, want) {
 			t.Fatalf("the inspected sync conflict lacks %q:\n%s", want, inspected)
 		}

@@ -18,8 +18,8 @@
     { "type": "key", "label": "gc browses the bundles the count named", "key": "g" },
     { "type": "key", "key": "c" },
     { "type": "assert", "assert": "contains", "value": "Merge Conflicts" },
-    { "type": "assert", "label": "the browser says up front that resolving stays in the CLI", "assert": "contains", "value": "Read-only" },
-    { "type": "assert", "assert": "contains", "value": "tt conflict resolve" },
+    { "type": "assert", "label": "the browser offers conflict resolution", "assert": "contains", "value": "Enter to inspect" },
+    { "type": "assert", "assert": "contains", "value": "resolve" },
     { "type": "assert", "label": "an overlay with no PresentationID leaves the route where it was", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
 

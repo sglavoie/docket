@@ -68,8 +68,10 @@ func (r ConflictRecord) OperationRetryRequired() bool {
 // applied by the resolver; commit-origin and pre-policy bundles are retry-only.
 type ConflictBundle struct {
 	Record ConflictRecord
-	Base   *ProjectDocument
-	Local  *ProjectDocument
+	// Preserve the stored bytes for diffs, including bundles from older schemas.
+	BaseText, LocalText, RemoteText string
+	Base                            *ProjectDocument
+	Local                           *ProjectDocument
 	// BaseUnreadable and LocalUnreadable name why a stored document could not be
 	// parsed at the current schema; empty means readable, or absent. A bundle is
 	// durable state whose documents were rendered at whatever schema was live the
@@ -187,20 +189,24 @@ func (s *ConflictStore) Load(id string) (*ConflictBundle, error) {
 		return nil, fmt.Errorf("resolving conflict directory: %w", err)
 	}
 
-	base, baseUnreadable, err := loadDocumentFile(filepath.Join(dir, conflictBaseFileName))
+	base, baseUnreadable, baseText, err := loadDocumentFile(filepath.Join(dir, conflictBaseFileName))
 	if err != nil {
 		return nil, fmt.Errorf("loading base document: %w", err)
 	}
-	local, localUnreadable, err := loadDocumentFile(filepath.Join(dir, conflictLocalFileName))
+	local, localUnreadable, localText, err := loadDocumentFile(filepath.Join(dir, conflictLocalFileName))
 	if err != nil {
 		return nil, fmt.Errorf("loading local document: %w", err)
 	}
-	if _, _, err = loadDocumentFile(filepath.Join(dir, conflictRemoteFileName)); err != nil {
+	_, _, remoteText, err := loadDocumentFile(filepath.Join(dir, conflictRemoteFileName))
+	if err != nil {
 		return nil, fmt.Errorf("loading remote document: %w", err)
 	}
 
 	return &ConflictBundle{
 		Record:          *record,
+		BaseText:        baseText,
+		LocalText:       localText,
+		RemoteText:      remoteText,
 		Base:            base,
 		Local:           local,
 		BaseUnreadable:  baseUnreadable,
@@ -256,19 +262,19 @@ func documentMarkdown(doc *ProjectDocument) (string, error) {
 // A document that reads but does not parse degrades the same way, returning the
 // reason instead of an error: the bundle's metadata and its remote resolution
 // owe nothing to a document written at a retired schema.
-func loadDocumentFile(path string) (*ProjectDocument, string, error) {
+func loadDocumentFile(path string) (*ProjectDocument, string, string, error) {
 	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
-		return nil, "", nil
+		return nil, "", "", nil
 	}
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	document, err := ParseProjectDocument(string(content))
 	if err != nil {
-		return nil, unreadableDocumentReason(string(content), err), nil
+		return nil, unreadableDocumentReason(string(content), err), string(content), nil
 	}
-	return document, "", nil
+	return document, "", string(content), nil
 }
 
 // unreadableDocumentReason explains a stored document the current parser refuses.

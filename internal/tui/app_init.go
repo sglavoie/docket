@@ -59,6 +59,8 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	app.domain.service = appService
 	app.domain.syncStatus = rt.SyncStatus
 	app.domain.syncConflicts = rt.SyncConflicts
+	app.domain.resolveSyncConflict = rt.ResolveSyncConflict
+	app.domain.resolveProjectConflict = rt.ResolveProjectConflict
 	app.automaticSync.exchange = rt.BackgroundSyncExchanger(engine.SyncExchangeOptions{AppVersion: AppVersion})
 	app.automaticSync.localSequence = rt.SyncLocalSequenceReader()
 	app.features = coordinator.NewFeatureCoordinators(appService)

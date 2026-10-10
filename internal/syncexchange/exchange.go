@@ -69,7 +69,7 @@ type Outgoing struct {
 	Blobs     []File `json:"blobs"`
 }
 
-// Pending lists the device's outbox in device_seq order, each transaction
+// Pending lists the device's outbox in dependency order, each transaction
 // with the stored manifest record and every blob it names, all verified
 // against their content addresses before they are offered.
 func Pending(history *synclog.History) ([]Outgoing, error) {

@@ -1129,12 +1129,12 @@ func syncConflictEntries(views []engine.ConflictView) []conflict.SyncConflictEnt
 	}
 	entries := make([]conflict.SyncConflictEntry, 0, len(views))
 	for _, view := range views {
-		entry := conflict.SyncConflictEntry{ID: view.ID, Path: view.Path, Kind: view.Kind, Label: view.Label, Base: syncConflictContent(view.Base)}
+		entry := conflict.SyncConflictEntry{ID: view.ID, Path: view.Path, Kind: view.Kind, Label: view.Label, Base: syncConflictContent(view.Base), BaseText: conflictEditableText(view.Base), CurrentText: conflictEditableText(view.Current), Replaceable: view.Replaceable}
 		if view.Current != nil {
 			entry.Result = view.Current.Digest
 		}
 		for _, candidate := range view.Versions {
-			version := conflict.SyncConflictVersion{Blob: candidate.Digest, Content: syncConflictContent(&candidate.ConflictContent), Current: candidate.Current}
+			version := conflict.SyncConflictVersion{Index: candidate.Index, Text: conflictEditableText(&candidate.ConflictContent), Blob: candidate.Digest, Content: syncConflictContent(&candidate.ConflictContent), Current: candidate.Current}
 			for _, writer := range candidate.Writers {
 				version.Writers = append(version.Writers, conflict.SyncConflictWriter{
 					TxnID: writer.TxnID, Device: writer.DeviceID, DeviceName: writer.DeviceName,
@@ -1172,4 +1172,16 @@ func syncConflictContent(content *engine.ConflictContent) []string {
 		return []string{fmt.Sprintf("(%d bytes, not text)", content.Size)}
 	}
 	return strings.Split(strings.TrimRight(*content.Text, "\n"), "\n")
+}
+
+// A deletion is an empty diff input; unavailable/binary content has no text.
+func conflictEditableText(content *engine.ConflictContent) *string {
+	if content == nil || content.Deleted {
+		empty := ""
+		return &empty
+	}
+	if !content.Available {
+		return nil
+	}
+	return content.Text
 }

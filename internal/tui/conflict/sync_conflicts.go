@@ -18,15 +18,19 @@ type SyncConflictEntry struct {
 	// Base is the content every version started from, line by line.
 	Base     []string
 	Versions []SyncConflictVersion
-	// Result is the version the workspace holds meanwhile: the primary one,
-	// chosen the same way on every device and never by a timestamp.
-	Result  string
-	Details []string
+	// Result is the digest of the actual file currently in the workspace.
+	Result      string
+	Details     []string
+	BaseText    *string
+	CurrentText *string
+	Replaceable bool
 }
 
 // SyncConflictVersion is one competing version: its content digest, or empty
 // for a deletion, its content, and the changes that wrote it.
 type SyncConflictVersion struct {
+	Index   int
+	Text    *string
 	Blob    string
 	Content []string
 	Current bool
@@ -64,8 +68,8 @@ func syncConflictRowSummary(entry SyncConflictEntry) string {
 
 // syncConflictDetailLines is the detail pane for a sync conflict: what the
 // file is, what differs, the version both sides started from, every
-// competing version with the device and change that wrote it, and the command
-// that resolves it.
+// competing version with the device and change that wrote it, and the available
+// resolution controls.
 func syncConflictDetailLines(entry SyncConflictEntry) []string {
 	lines := []string{
 		"Sync conflict " + strings.TrimPrefix(entry.ID, "sha256:"),
@@ -97,10 +101,13 @@ func syncConflictDetailLines(entry SyncConflictEntry) []string {
 		}
 		lines = append(lines, syncConflictBody(version.Content)...)
 	}
-	short := syncConflictShort(entry.ID)
+	hint := "v keep selected version · c keep current"
+	if entry.Replaceable {
+		hint += " · e edit merged result"
+	}
 	return append(lines, "",
 		"Every version is kept in the sync history; nothing was lost.",
-		"Resolve with tt sync resolve "+short+" --version N, --current, or --file PATH.")
+		hint)
 }
 
 func syncConflictWriterLine(writer SyncConflictWriter) string {

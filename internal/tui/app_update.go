@@ -514,6 +514,9 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 // leaving them out keeps every path a paste already took unchanged. Returning
 // true while either is mounted is what stops the fall-through.
 func (m *AppModel) handleActivePasteOverlay(msg tea.PasteMsg) (bool, tea.Cmd) {
+	if m.conflictBrowser != nil {
+		return true, m.conflictBrowser.HandlePaste(msg)
+	}
 	if m.checkInSetup != nil && m.checkInSetup.busy {
 		return true, nil
 	}

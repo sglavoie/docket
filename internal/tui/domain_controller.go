@@ -73,7 +73,9 @@ type domainController struct {
 	syncStatus func() (*engine.SyncStatus, error)
 	// syncConflicts reads the open sync conflicts with their base, versions,
 	// and the devices and changes that wrote them, for the conflict browser.
-	syncConflicts func(map[string]string) ([]engine.ConflictView, error)
+	syncConflicts          func(map[string]string) ([]engine.ConflictView, error)
+	resolveSyncConflict    func(engine.ResolveRequest) (*engine.ResolveResult, error)
+	resolveProjectConflict func(string, storage.ConflictResolution, string) (*storage.ConflictResolveResult, error)
 
 	// projects preserves the loaded models.Project pointers used by open views.
 	// RuntimeState deliberately rehydrates fresh catalog models on every read;

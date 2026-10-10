@@ -364,3 +364,59 @@ func TestResolveConflict_RemoteAdvancedRemergeConflicts(t *testing.T) {
 		t.Fatal("fresh conflict should capture the newer remote revision, not the stale one")
 	}
 }
+
+func TestResolveConflictTextValidatesBeforeWriting(t *testing.T) {
+	env := newConflictTestEnv(t)
+	base := env.setDisk(t, mergeTestDoc("Alpha", mergeTestTask("t1", "base")))
+	local := cloneEdit(base, func(tk *models.Task) { tk.Title = "local" })
+	remote := env.setDisk(t, cloneEdit(base, func(tk *models.Task) { tk.Title = "remote" }))
+	id, err := RecordMergeConflict(env.store, env.project, base, local, remote, nil, "rename", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, invalidErr := ResolveConflictText(env.store, env.svc, id, "invalid project text"); invalidErr == nil {
+		t.Fatal("invalid merge accepted")
+	}
+	if _, loadErr := env.store.Load(id); loadErr != nil {
+		t.Fatal("invalid merge removed conflict")
+	}
+	if got := env.onDiskDoc(t).Tasks[0].Title; got != "remote" {
+		t.Fatalf("invalid merge wrote %q", got)
+	}
+	merged := cloneEdit(base, func(tk *models.Task) { tk.Title = "hand merged" })
+	text, err := merged.WriteCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := ResolveConflictText(env.store, env.svc, id, text)
+	if err != nil || !result.Committed {
+		t.Fatalf("commit: %+v %v", result, err)
+	}
+	if got := env.onDiskDoc(t).Tasks[0].Title; got != "hand merged" {
+		t.Fatalf("merged title: %q", got)
+	}
+	if _, err := env.store.Load(id); err == nil {
+		t.Fatal("resolved bundle retained")
+	}
+}
+
+func TestResolveConflictTextHonorsRetryPolicy(t *testing.T) {
+	env := newConflictTestEnv(t)
+	base := env.setDisk(t, mergeTestDoc("Alpha", mergeTestTask("t1", "base")))
+	local := cloneEdit(base, func(tk *models.Task) { tk.Title = "local" })
+	remote := env.setDisk(t, cloneEdit(base, func(tk *models.Task) { tk.Title = "remote" }))
+	_, id, err := MergeOrRecordConflict(env.store, env.project, base, local, remote, "rename", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text, err := local.WriteCurrent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ResolveConflictText(env.store, env.svc, id, text); !errors.Is(err, ErrConflictRetryRequired) {
+		t.Fatalf("retry policy: %v", err)
+	}
+	if got := env.onDiskDoc(t).Tasks[0].Title; got != "remote" {
+		t.Fatal("partial transaction applied")
+	}
+}

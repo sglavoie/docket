@@ -1,6 +1,7 @@
 package syncmerge_test
 
 import (
+	"bytes"
 	"slices"
 	"testing"
 
@@ -8,6 +9,63 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/synclog"
 )
+
+// An older device identity can leave indexed transactions in the same working
+// copy without advancing the active device's cached heads. A resolution must
+// acknowledge those writers too, or each attempt becomes another competitor.
+func TestResolutionAcknowledgesAllIndexedBranches(t *testing.T) {
+	c := newCluster(t, "device-a", "device-b")
+	a, b := c.r("device-a"), c.r("device-b")
+	for _, r := range []*replica{a, b} {
+		r.editDoc("atlas-launch", func(doc *storage.ProjectDocument) {
+			findTask(t, doc, shipBeta).Title = "Title from " + r.device
+		})
+	}
+	// Copying the peer's retained history reproduces the shared index with
+	// device-local tracking that has not incorporated that branch.
+	copyTree(t, b.history.Dir(), a.history.Dir())
+	conflicts, conflictErr := a.svc.SyncConflicts()
+	if conflictErr != nil || len(conflicts) != 1 {
+		t.Fatalf("setup conflicts: %+v, %v", conflicts, conflictErr)
+	}
+	current := a.read(conflicts[0].Path)
+	if _, err := a.svc.CommitSyncResolution(conflicts[0].ID, current); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range []*replica{a, c.open(a.device, a.root)} {
+		if open, err := r.svc.SyncConflicts(); err != nil || len(open) != 0 {
+			t.Fatalf("keeping current created another conflict: %+v, %v", open, err)
+		}
+		if !bytes.Equal(current, r.read(conflicts[0].Path)) {
+			t.Fatal("keeping current changed the file")
+		}
+	}
+	b.pull(a)
+	if open := requireConverged(t, []*replica{a, b}); len(open) != 0 {
+		t.Fatalf("resolution reopened on the peer: %+v", open)
+	}
+	// The old identity's branch may never have reached the exchange. The active
+	// outbox must carry it so a fresh peer can apply the resolution on its own.
+	pending, err := a.history.Pending()
+	if err != nil || len(pending) != 3 {
+		t.Fatalf("resolution did not queue its retained ancestors: %d, %v", len(pending), err)
+	}
+	observer := c.clone("new-peer")
+	observer.receive(a.history, pending...)
+	if open := requireConverged(t, []*replica{a, observer}); len(open) != 0 {
+		t.Fatalf("fresh peer did not receive the full resolution: %+v", open)
+	}
+	var published []string
+	for _, m := range pending {
+		published = append(published, m.TxnID)
+	}
+	if err := a.svc.CommitSyncPublished(published); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := a.history.Pending(); err != nil || len(pending) != 0 {
+		t.Fatalf("ancestor publication did not drain the active outbox: %d, %v", len(pending), err)
+	}
+}
 
 // settleOrders is how many genesis observers receive each scenario's
 // transactions, each in its own order: forward, reversed, and seeded shuffles.

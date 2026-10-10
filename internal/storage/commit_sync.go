@@ -190,13 +190,14 @@ func expectSyncedBytes(path string, want *string) error {
 	return nil
 }
 
-// SyncConflicts derives the sync conflicts the device's history leaves open,
-// identical on every device holding the same transactions.
+// SyncConflicts derives open conflicts and binds each to its current on-disk
+// content. IDs agree on devices with the same history and working files, and
+// change when an intervening edit changes the resolution's write precondition.
 func (s *CommitService) SyncConflicts() ([]synclog.Conflict, error) {
 	if s.history == nil {
 		return nil, fmt.Errorf("storage: sync conflicts require a sync history")
 	}
-	return s.history.OpenConflicts(s.merger)
+	return s.history.WorkspaceConflicts(s.merger)
 }
 
 // CommitSyncResolution resolves an open sync conflict by writing data to its

@@ -206,6 +206,21 @@ func transactionWrites(m *Manifest) map[string]keyWrite {
 	return out
 }
 
+// heads are the tips of all indexed branches, independent of device-local
+// tracking state. Parenting these tips acknowledges every known transaction.
+func (g *graph) heads() []string {
+	heads := make(map[string]bool, len(g.txns))
+	for _, m := range g.txns {
+		heads[m.TxnID] = true
+	}
+	for _, m := range g.txns {
+		for _, parent := range m.Parents {
+			delete(heads, parent)
+		}
+	}
+	return sortedKeys(heads)
+}
+
 // all is the set of every transaction in the graph.
 func (g *graph) all() bitset {
 	set := newBitset(len(g.txns))

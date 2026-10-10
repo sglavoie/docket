@@ -244,7 +244,7 @@ overwrote the surface's own guidance with the message, which is why a Notes or
 Help frame could be left with a success line and no statement of `Esc back`.
 
 The outstanding-conflict indicator leads the strip because it is the one durable
-line there: it stands until the CLI resolves the last bundle, while the two
+line there: it stands until the last bundle is resolved, while the two
 below it come and go, so a transient line arriving never moves it to another
 row. It is not part of `WorkspacePulse` — `workspacePulseLevel` is a contiguous
 ordinal ladder and `ComputeWorkspacePulse` takes no filesystem-derived input, so
@@ -259,7 +259,7 @@ through an `internal/app` port, following the TUI's existing direct
 `storage.LoadProject` reads: counting bundles validates, mutates, and commits
 nothing, so there is no application-layer policy for a port to hold. A nil
 accessor is inert, which is what keeps the Hub's preview painter and
-struct-literal test models indicator-free. Resolution stays in the CLI.
+struct-literal test models indicator-free. Resolution is available through the conflict overlay and CLI.
 
 The pulse the title row does carry has one home, and that is a correction rather
 than a restatement. `OutlinerModel` embeds `listsurface.BaseSearchableView`,
@@ -303,7 +303,7 @@ operations is not an advisory, nor is the query readout, nor the refusal that
 explains a population where every project failed to load — a silent empty screen
 is worse than a line a flag cannot reach.
 
-`ConflictBrowserModel` is that count's read-only companion, and it is an overlay
+`ConflictBrowserModel` is that count's browser and resolver, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 `RenderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
 one in `dimmedOverlayRenderers`, and one `ConflictBrowserClosedMsg` case in
@@ -317,8 +317,13 @@ direct-store access the indicator uses, settles `feedback.outstandingConflicts` 
 read, and refuses with a status rather than mounting an empty box. Inspecting a
 row calls `ConflictStore.Load` instead of reusing the listed record, so a bundle
 the CLI resolved in another terminal refuses instead of painting a record that is
-gone. The overlay registers no operations, has no `Space` sheet, and calls no
-mutating store method: resolution stays in `tt conflict resolve`.
+gone. The overlay registers no operations and has no `Space` sheet. It sends a
+frozen `conflict.ResolveMsg` to the shell after confirmation. The shell resolves
+through `engine.Runtime.ResolveSyncConflict` or `ResolveProjectConflict`, sharing
+the runtime's transaction service, sync history, and undo ledger. Success reloads
+the listing and workspace views; validation and stale-state errors retain the
+editor draft. Diffs use stored text, including documents from older schemas.
+The merge editor retains raw text without tab expansion or line limits.
 
 The query readout is the strip's fourth line and the expansion of the
 operational title rather than a rival to it. Collapsed it renders nothing, since

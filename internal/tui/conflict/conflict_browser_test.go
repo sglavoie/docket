@@ -105,7 +105,7 @@ func TestConflictDetailLinesRenderTheCLIRecord(t *testing.T) {
 		"remote:  Publish the release notes",
 		"[2] hierarchy",
 		"detail:  both sides reparented this task",
-		"Clear with: tt conflict resolve 11111111 --use remote",
+		"r keep current state and clear; retry the original operation",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("detail pane missing %q\n%s", want, body)
@@ -122,7 +122,7 @@ func TestConflictDetailLinesOfferEverySideWhenApplying(t *testing.T) {
 	record := conflictBrowserFixture("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", false)
 	body := strings.Join(conflictDetailLines(record), "\n")
 
-	if want := "Resolve with: tt conflict resolve aaaaaaaa --use local|remote|file"; !strings.Contains(body, want) {
+	if want := "l keep local · r keep current remote · e edit merged result"; !strings.Contains(body, want) {
 		t.Errorf("detail pane missing %q\n%s", want, body)
 	}
 	if strings.Contains(body, "Retry:") {
@@ -142,7 +142,7 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 	list := browser.Render(120)
 	for _, want := range []string{
 		conflictBrowserTitle,
-		conflictBrowserReadOnlyLine,
+		conflictBrowserIntro,
 		"11111111",
 		"Rich Project",
 		"99999999",
@@ -164,7 +164,7 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 	if !strings.Contains(detail, "Conflict 11111111-2222-3333-4444-555555555555") {
 		t.Errorf("detail pane did not render the inspected record\n%s", detail)
 	}
-	if strings.Contains(detail, conflictBrowserReadOnlyLine) {
+	if strings.Contains(detail, conflictBrowserIntro) {
 		t.Errorf("detail pane kept the list's header line\n%s", detail)
 	}
 
@@ -204,7 +204,7 @@ func TestConflictBrowserScrollsTheDetailPane(t *testing.T) {
 
 	pressConflictBrowserKey(t, browser, syntheticKey('G'))
 	tail := browser.RenderWithin(120, 20)
-	if !strings.Contains(tail, "Clear with: tt conflict resolve") {
+	if !strings.Contains(tail, "r keep current state and clear") {
 		t.Errorf("end of the detail pane did not reach the closing command\n%s", tail)
 	}
 
@@ -289,7 +289,7 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 		t.Fatal(err)
 	}
 	list := browser.RenderWithin(120, 40)
-	for _, want := range []string{"projects/unfiled/tasks.md", "sync conflict · 2 versions", conflictBrowserReadOnlySyncLine[:20]} {
+	for _, want := range []string{"projects/unfiled/tasks.md", "sync conflict · 2 versions", conflictBrowserIntro} {
 		if !strings.Contains(list, want) {
 			t.Fatalf("list does not show %q:\n%s", want, list)
 		}
@@ -303,7 +303,7 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 	for _, want := range []string{"Sync conflict abcdef0123456789", "Tasks in Unfiled", "[1] content 11111111 · held meanwhile", "[2] content 22222222",
 		"edit on desk, this device at 2026-10-06T09:00:00Z · aaaaaaaa", "edit outside tt on Laptop (laptop) · bbbbbbbb",
 		"Started from:", "│ ## Task: Shared task", "│ ## Task: Laptop title", "keeping it also keeps this change's Today and Next",
-		"Holding:   content 11111111", "task title: competing edits", "nothing was lost", "tt sync resolve abcdef01"} {
+		"Holding:   content 11111111", "task title: competing edits", "nothing was lost", "v keep selected version"} {
 		if !strings.Contains(detail, want) {
 			t.Fatalf("detail does not show %q:\n%s", want, detail)
 		}

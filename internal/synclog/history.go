@@ -330,8 +330,9 @@ func (h *History) Transaction(txnID string) (*Manifest, error) {
 	return DecodeManifest(data)
 }
 
-// Pending returns the outgoing transactions awaiting publication, in
-// device_seq order, each verified against its content address.
+// Pending returns outgoing transactions awaiting publication, with parents
+// before descendants, each verified against its content address. A resolution
+// may also queue retained local ancestors authored by an older device identity.
 func (h *History) Pending() ([]*Manifest, error) {
 	state, err := h.LoadState()
 	if err != nil || state == nil {

@@ -1,9 +1,4 @@
-// Package conflict is the read-only merge-conflict browser the `gc` chord
-// raises. It holds the overlay alone: reading the store and mounting it are the
-// shell's, in conflict_browser_host.go, and the status strip's outstanding count
-// is the outliner's, in conflict_indicator.go. That split is why this package is
-// a sibling of `outliner` rather than a dependency of it — the shell owns the
-// edge, and the strip's line never imports the browser.
+// Package conflict provides the merge-conflict browser and resolution editor.
 package conflict
 
 import (
@@ -23,30 +18,10 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// The conflict browser is the read-only companion to the status strip's
-// outstanding-conflict count: the strip says how many bundles `.tt/conflicts/`
-// holds, and this overlay says what is in them. Like the lens picker it is a
-// transient overlay rather than a routed view — no PresentationID, no
-// InputStrategy, no manifest entry — but it goes one step further and registers
-// no operations of its own, because it offers no act to register. Enter reads,
-// Esc unwinds, and nothing on this surface writes.
-//
-// Resolution deliberately stays in the CLI. Adopting one side of a three-way
-// merge is a destructive decision the transaction model already expresses in
-// `tt conflict resolve`, so the overlay names that command rather than
-// duplicating it: every detail pane ends with the exact line to run.
-
 const (
 	conflictBrowserItemPrefix = "conflict-browser:"
 	conflictBrowserTitle      = "Merge Conflicts"
-	// conflictBrowserReadOnlyLine heads the list so the one thing this surface
-	// cannot do is stated before the rows rather than discovered by pressing keys
-	// that do nothing.
-	conflictBrowserReadOnlyLine = "Read-only — resolve with tt conflict resolve"
-	// conflictBrowserReadOnlySyncLine replaces it when sync conflicts are listed,
-	// which that command does not resolve: their every version is kept, and
-	// nothing on this surface writes.
-	conflictBrowserReadOnlySyncLine = "Read-only — resolve bundles with tt conflict resolve, sync conflicts with tt sync resolve"
+	conflictBrowserIntro      = "Enter to inspect, compare changes, and resolve"
 	// conflictBrowserShortIDWidth matches the CLI's own shortening, so an id read
 	// off this list can be typed straight into `tt conflict resolve`.
 	conflictBrowserShortIDWidth = 8
@@ -74,9 +49,7 @@ const (
 	conflictBrowserMinBodyRows   = 4
 )
 
-// ConflictBrowserClosedMsg dismisses the browser. It is the only message the
-// overlay raises, because reading a bundle changes nothing the shell has to
-// apply.
+// ConflictBrowserClosedMsg dismisses the browser.
 type ConflictBrowserClosedMsg struct{}
 
 // ConflictBrowserModel lists the recorded conflict bundles and inspects one of
@@ -101,6 +74,15 @@ type ConflictBrowserModel struct {
 	detailLines  int
 	detailHeight int
 	notice       string
+	bundle       *storage.ConflictBundle
+	syncEntry    *SyncConflictEntry
+	version      int
+	diff         bool
+	diffBase     bool
+	confirmation *ResolveMsg
+	busy         bool
+	discard      bool
+	editor       *mergeEditor
 }
 
 // NewConflictBrowserModel builds the browser over one listing. The loader is
@@ -186,8 +168,7 @@ func conflictShortRevision(revision string) string {
 	return revision
 }
 
-// conflictBrowserRowTitle leads with the short id, because that is the token the
-// CLI command underneath this list takes.
+// conflictBrowserRowTitle identifies the bundle and its project.
 func conflictBrowserRowTitle(record storage.ConflictRecord) string {
 	name := strings.TrimSpace(record.ProjectName)
 	if name == "" {
@@ -216,10 +197,7 @@ func conflictBrowserRowSummary(record storage.ConflictRecord) string {
 	return strings.Join(parts, " · ")
 }
 
-// conflictDetailLines is the detail pane, and it is `tt conflict show`'s output
-// as a slice: the same fields, in the same order, with the same omissions and
-// the same closing command. Keeping it a pure function of the record is what
-// lets the two surfaces be compared without running either one.
+// conflictDetailLines describes the recorded inputs and available resolutions.
 func conflictDetailLines(record storage.ConflictRecord) []string {
 	lines := []string{
 		"Conflict " + record.ID,
@@ -265,15 +243,12 @@ func conflictDetailLines(record storage.ConflictRecord) []string {
 	return append(lines, "", conflictResolveHint(record))
 }
 
-// conflictResolveHint is the closing line of both this pane and `tt conflict
-// show`: a retry-only bundle can only be cleared by adopting remote, and an
-// applying one offers all three sides.
+// conflictResolveHint offers only resolutions the transaction policy permits.
 func conflictResolveHint(record storage.ConflictRecord) string {
-	short := conflictBrowserShortID(record.ID)
 	if record.OperationRetryRequired() {
-		return "Clear with: tt conflict resolve " + short + " --use remote"
+		return "r keep current state and clear; retry the original operation"
 	}
-	return "Resolve with: tt conflict resolve " + short + " --use local|remote|file"
+	return "l keep local · r keep current remote · e edit merged result"
 }
 
 // inspecting reports whether the detail pane owns the overlay. The rendered
@@ -313,6 +288,26 @@ func (model *ConflictBrowserModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		return nil, true, ConflictBrowserClosedMsg{}
 	}
 	if model.inspecting() {
+		if model.busy {
+			return nil, false, nil
+		}
+		if model.confirmation != nil {
+			return model.handleConfirmation(msg.String())
+		}
+		if model.discard {
+			switch msg.String() {
+			case "y":
+				model.closeDetail()
+				model.discard = false
+			case "n", "esc":
+				model.discard = false
+				model.rebuildDetail()
+			}
+			return nil, false, nil
+		}
+		if model.editorActive() {
+			return model.handleEditorKey(msg)
+		}
 		return model.handleDetailKey(msg.String())
 	}
 	return model.handleListKey(msg.String())
@@ -346,8 +341,34 @@ func (model *ConflictBrowserModel) handleListKey(key string) (tea.Cmd, bool, tea
 func (model *ConflictBrowserModel) handleDetailKey(key string) (tea.Cmd, bool, tea.Msg) {
 	page := max(model.detailHeight-1, 1)
 	switch key {
+	case "d":
+		model.diff = !model.diff
+		model.rebuildDetail()
+	case "b":
+		model.diffBase = !model.diffBase
+		model.diff = true
+		model.rebuildDetail()
+	case "[", "]":
+		if model.syncEntry != nil && len(model.syncEntry.Versions) > 0 {
+			delta := 1
+			if key == "[" {
+				delta = -1
+			}
+			model.version = (model.version + delta + len(model.syncEntry.Versions)) % len(model.syncEntry.Versions)
+			model.rebuildDetail()
+		}
+	case "l", "r", "v", "c":
+		model.chooseResolution(key)
+	case "e":
+		model.openEditor()
 	case "esc":
-		model.closeDetail()
+		if model.hasDraft() {
+			model.discard = true
+			model.detail = []string{"Discard the edited merge?", "y discard · n/Esc keep draft"}
+			model.detailOffset = 0
+		} else {
+			model.closeDetail()
+		}
 	case "up", "k", "ctrl+p":
 		model.scrollDetail(-1)
 	case "down", "j", "ctrl+n":
@@ -365,6 +386,10 @@ func (model *ConflictBrowserModel) handleDetailKey(key string) (tea.Cmd, bool, t
 }
 
 func (model *ConflictBrowserModel) closeDetail() {
+	model.bundle, model.syncEntry = nil, nil
+	model.editor, model.confirmation = nil, nil
+	model.diff = false
+	model.diffBase = false
 	model.detail = nil
 	model.detailOffset = 0
 	model.detailLines = 0
@@ -386,7 +411,15 @@ func (model *ConflictBrowserModel) inspectCursor() (tea.Cmd, bool, tea.Msg) {
 	if item, ok := model.surface.CurrentItem(); ok {
 		if entry, isSync := item.Data.(SyncConflictEntry); isSync {
 			model.notice = ""
-			model.detail = syncConflictDetailLines(entry)
+			model.syncEntry = &entry
+			model.version = 0
+			for i, version := range entry.Versions {
+				if !version.Current {
+					model.version = i
+					break
+				}
+			}
+			model.rebuildDetail()
 			model.detailOffset = 0
 			return nil, false, nil
 		}
@@ -402,7 +435,8 @@ func (model *ConflictBrowserModel) inspectCursor() (tea.Cmd, bool, tea.Msg) {
 		return nil, false, status.StatusMsg(model.notice)
 	}
 	model.notice = ""
-	model.detail = conflictDetailLines(bundle.Record)
+	model.bundle = bundle
+	model.rebuildDetail()
 	model.detailOffset = 0
 	return nil, false, nil
 }
@@ -429,31 +463,40 @@ func (model *ConflictBrowserModel) RenderWithin(width, height int) string {
 	contentWidth := max(innerWidth-4, 12)
 
 	header := make([]string, 0, 2)
-	if model.notice != "" {
-		header = append(header, theme.ErrorStatusStyle.Render(
-			textfit.TruncateToVisualWidth(model.notice, contentWidth),
-		))
+	if model.notice != "" && (!model.inspecting() || model.editorActive() && model.confirmation == nil) {
+		noticeLines := textfit.WrapText(model.notice, contentWidth)
+		for _, line := range noticeLines[:min(len(noticeLines), 4)] {
+			header = append(header, theme.ErrorStatusStyle.Render(line))
+		}
 	}
 	if !model.inspecting() {
-		line := conflictBrowserReadOnlyLine
-		if len(model.syncConflicts) > 0 {
-			line = conflictBrowserReadOnlySyncLine
-		}
+		line := conflictBrowserIntro
 		for _, wrapped := range textfit.WrapText(line, contentWidth) {
 			header = append(header, theme.MutedStyle.Render(wrapped))
 		}
 	}
 
-	// Halo, frame, title, the header block's separating row, and the footer
-	// consume nine rows before any header line of its own.
+	footer := chrome.RenderGuidanceText(model.guidanceSpec(), contentWidth)
+	// Halo/frame, title and footer, plus the header's separating blank row.
+	overhead := 5 + lipgloss.Height(footer)
+	if len(header) > 0 {
+		overhead += len(header) + 1
+	}
 	bodyHeight := 0
 	if height > 0 {
-		bodyHeight = max(height-(9+len(header)), 1)
+		bodyHeight = max(height-overhead, 1)
 	}
 
 	content := model.renderList(contentWidth, bodyHeight)
 	if model.inspecting() {
 		content = model.renderDetail(contentWidth, bodyHeight)
+		if model.editorActive() && model.confirmation == nil {
+			editorHeight := 24
+			if bodyHeight > 0 {
+				editorHeight = min(editorHeight, bodyHeight)
+			}
+			content = model.editor.render(contentWidth, editorHeight)
+		}
 	}
 	if len(header) > 0 {
 		content = strings.Join(header, "\n") + "\n\n" + content
@@ -464,7 +507,7 @@ func (model *ConflictBrowserModel) RenderWithin(width, height int) string {
 		content,
 		innerWidth,
 		title,
-		chrome.RenderGuidanceText(model.guidanceSpec(), max(innerWidth-4, 1)),
+		footer,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
@@ -481,13 +524,23 @@ func (model *ConflictBrowserModel) renderList(width, bodyHeight int) string {
 // The wrapped count and the window height are recorded here because this is the
 // only place either is known, and the scroll keys clamp against them.
 func (model *ConflictBrowserModel) renderDetail(width, bodyHeight int) string {
-	wrapped := make([]string, 0, len(model.detail))
-	for _, line := range model.detail {
+	lines := model.detail
+	if model.notice != "" {
+		lines = append([]string{model.notice, ""}, lines...)
+	}
+	wrapped := make([]string, 0, len(lines))
+	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			wrapped = append(wrapped, "")
 			continue
 		}
-		wrapped = append(wrapped, textfit.WrapText(line, width)...)
+		for _, part := range textfit.WrapText(line, width) {
+			if model.notice != "" && line == model.notice {
+				wrapped = append(wrapped, theme.ErrorStatusStyle.Render(part))
+			} else {
+				wrapped = append(wrapped, paintDiffLine(line, part))
+			}
+		}
 	}
 	paneHeight := min(max(len(wrapped), conflictBrowserMinBodyRows), conflictBrowserMaxDetailRows)
 	if bodyHeight > 0 {
@@ -501,29 +554,30 @@ func (model *ConflictBrowserModel) renderDetail(width, bodyHeight int) string {
 	return strings.Join(window, "\n")
 }
 
-// guidanceSpec returns the footer spec alone: this overlay always draws a
-// footer, so there is no "no guidance" case for a caller to branch on. Both
-// states reuse the same three bindings under different labels, because the keys
-// genuinely do not change — only what they move.
+// guidanceSpec names the controls of the active resolution step.
 func (model *ConflictBrowserModel) guidanceSpec() chrome.GuidanceSpec {
 	if model == nil || model.surface == nil {
 		return chrome.GuidanceSpec{}
 	}
-	inspecting := model.inspecting()
-	moveLabel := "navigate"
-	escapeLabel := "close"
-	if inspecting {
-		moveLabel = "scroll"
-		escapeLabel = "back"
+	if model.confirmation != nil {
+		return chrome.RequiredExitGuidanceSpec("Enter confirm", "Esc cancel")
+	}
+	if model.discard {
+		return chrome.RequiredExitGuidanceSpec("y discard", "n/Esc keep draft")
+	}
+	if model.editorActive() {
+		return chrome.RequiredExitGuidanceSpec("Ctrl+S review merge", "Esc back (keep draft)")
+	}
+	if model.inspecting() {
+		return chrome.RequiredExitGuidanceSpec("d diff/details", "Esc back", "b current/base diff", model.resolutionKeys(), model.scrollKeys())
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
 		keymap.Bind("j", "Move through the conflicts", "Navigation",
-			keymap.WithFooter(10, moveLabel, false), keymap.WithFooterKey("j/k or ↑/↓")),
+			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
 		keymap.Bind("enter", "Inspect the conflict", "Actions",
-			keymap.WithGate(func() bool { return !inspecting }),
 			keymap.WithFooter(1, "inspect", true), keymap.WithFooterKey("Enter")),
 		keymap.Bind("esc", "Unwind the conflict browser", "Navigation",
-			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
+			keymap.WithFooter(2, "close", true), keymap.WithFooterKey("Esc")),
 	}}
 	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(false), km, nil)
 	return spec

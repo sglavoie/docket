@@ -103,8 +103,62 @@ func (h *History) PlanLocal(kind Kind, localTxnID string, ops []transaction.Op) 
 		}
 		effects = append(effects, effect)
 	}
+	if kind == KindResolution {
+		// Conflict inspection uses the shared index, while Heads belongs to one
+		// device identity and can omit branches retained by another identity in
+		// this working copy. Resolving must descend from the same complete
+		// history we inspected, including every competing writer.
+		if err = h.prepareResolutionAncestry(state); err != nil {
+			return nil, err
+		}
+	}
 	plan, _, err := h.recordLocal(state, kind, localTxnID, effects, o)
 	return plan, err
+}
+
+// prepareResolutionAncestry also queues local records from previously unseen
+// branches. An older device identity's outbox may never have been published;
+// sending a resolution without those parents would leave peers waiting forever.
+func (h *History) prepareResolutionAncestry(state *State) error {
+	g, err := h.loadGraph(nil)
+	if err != nil {
+		return err
+	}
+	acknowledged := newBitset(len(g.txns))
+	for _, head := range state.Heads {
+		if i, ok := g.index[head]; ok {
+			acknowledged.union(g.anc[i])
+		}
+	}
+	queued := make(map[string]OutboxEntry, len(state.Outbox))
+	for _, entry := range state.Outbox {
+		queued[entry.TxnID] = entry
+	}
+	for i, m := range g.txns {
+		if acknowledged.has(i) || m.DeviceID == h.deviceID {
+			continue
+		}
+		entry, _, err := h.Lookup(m.TxnID)
+		if err != nil {
+			return err
+		}
+		if entry.Origin == "local" {
+			queued[m.TxnID] = OutboxEntry{TxnID: m.TxnID, DeviceSeq: m.DeviceSeq, Record: entry.Record}
+		}
+	}
+	// Keep prerequisites ahead of their descendants in the publication queue.
+	state.Outbox = nil
+	for _, m := range g.txns {
+		if entry, ok := queued[m.TxnID]; ok {
+			state.Outbox = append(state.Outbox, entry)
+			delete(queued, m.TxnID)
+		}
+	}
+	if len(queued) != 0 {
+		return fmt.Errorf("synclog: outbox names a transaction absent from the history index")
+	}
+	state.Heads = g.heads()
+	return nil
 }
 
 // recordLocal mints the outgoing record of effects, which already name their

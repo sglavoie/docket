@@ -408,7 +408,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreSyncNow, "Sync Now", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "exchange", "publish", "sync"),
 		// The browser reads the same directory the status strip counts, so the key
 		// that opens it is the strip's line made actionable rather than a surface of
-		// its own. It stays read-only: resolving is `tt conflict resolve`.
+		// its own. The overlay owns diff, merge editing, and resolution.
 		core(
 			OperationCoreConflicts,
 			"Merge Conflicts",

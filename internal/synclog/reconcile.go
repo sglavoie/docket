@@ -95,7 +95,8 @@ type Merger interface {
 // Conflict is a derived, content-addressed record of competing changes to one
 // key. Candidates name every competing value and the transactions that wrote
 // it; their bytes stay retained in the history, so each competing edit remains
-// recoverable. Result is what the workspace holds meanwhile.
+// recoverable. ResultBlob is the history's materialized result; WorkspaceConflicts
+// replaces it with the observed working-file digest for inspection and resolution.
 type Conflict struct {
 	Format     string              `json:"format"`
 	ID         string              `json:"id"`
@@ -845,4 +846,39 @@ func (h *History) OpenConflicts(merger Merger) ([]Conflict, error) {
 		return nil, err
 	}
 	return state.conflicts, nil
+}
+
+// WorkspaceConflicts binds the derived conflicts to the files a user can
+// actually inspect and resolve. A local edit can leave the working file at a
+// candidate while materialization computes a different, unretained merge. That
+// synthetic result is neither a readable current version nor a valid write
+// precondition. Include the observed file digest in the conflict ID so changes
+// after inspection are still refused, including edits made outside tt.
+// OpenConflicts remains the deterministic history-only projection.
+func (h *History) WorkspaceConflicts(merger Merger) ([]Conflict, error) {
+	conflicts, err := h.OpenConflicts(merger)
+	if err != nil {
+		return nil, err
+	}
+	current := make(map[string]*string)
+	for i := range conflicts {
+		conflict := &conflicts[i]
+		digest, read := current[conflict.Path]
+		if !read {
+			data, readErr := os.ReadFile(h.WorkspacePath(conflict.Path))
+			switch {
+			case os.IsNotExist(readErr):
+			case readErr != nil:
+				return nil, fmt.Errorf("reading current conflict content: %w", readErr)
+			default:
+				digest = digestPtr(Digest(data))
+			}
+			current[conflict.Path] = digest
+		}
+		conflict.ResultBlob = digest
+		if err := conflict.seal(); err != nil {
+			return nil, err
+		}
+	}
+	return conflicts, nil
 }
