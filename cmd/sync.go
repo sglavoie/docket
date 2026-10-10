@@ -263,6 +263,9 @@ func printSyncStatus(dataDir string, status *engine.SyncStatus) {
 	if last := status.LastExchange; last != nil && !last.Succeeded && len(last.Errors) > 0 {
 		fmt.Printf("  last attempt:  failed at %s: %s\n", last.At.Local().Format("2006-01-02 15:04:05"), last.Errors[0])
 	}
+	if last := status.LastExchange; last != nil && last.Succeeded && len(last.Errors) > 0 {
+		fmt.Printf("  exchange errors: %s\n", strings.Join(last.Errors, "; "))
+	}
 	if last := status.LastExchange; last != nil && len(last.Unavailable) > 0 {
 		fmt.Printf("  unavailable:   %s not downloaded yet\n", Pluralize(len(last.Unavailable), "file", "files"))
 	}
@@ -424,6 +427,8 @@ func diagnoseSync(rt *engine.Runtime) ([]syncFinding, error) {
 		switch {
 		case !last.Succeeded:
 			findings = append(findings, issue("last pass", "failed at %s: %s", last.At.Local().Format(time.RFC3339), strings.Join(last.Errors, "; ")))
+		case len(last.Errors) > 0:
+			findings = append(findings, issue("last pass", "completed with errors: %s", strings.Join(last.Errors, "; ")))
 		case status.LastSuccess.IsZero():
 		default:
 			findings = append(findings, note("last pass", "succeeded at %s", status.LastSuccess.Local().Format(time.RFC3339)))

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -114,6 +115,9 @@ type FolderOptions struct {
 	// DeviceName and AppVersion fill this device's advertisement.
 	DeviceName string
 	AppVersion string
+	// RequestDownloads asks the folder provider to deliver unavailable absolute
+	// paths. Nil uses the platform provider (iCloud on macOS).
+	RequestDownloads func([]string) error
 	// Now is the pass clock; nil is the system clock.
 	Now func() time.Time
 }
@@ -194,6 +198,7 @@ func exchangeFolderLocked(committer FolderCommitter, opts FolderOptions) (*Folde
 		Errors:      []string{},
 	}
 	err := exchangePass(committer, history, opts, report, now)
+	requestUnavailableDownloads(opts, report)
 	if err != nil {
 		report.Errors = append(report.Errors, err.Error())
 	}
@@ -211,6 +216,12 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	root := filepath.Join(opts.Folder, filepath.FromSlash(ExchangeRoot))
 	if info, err := os.Stat(opts.Folder); err != nil || !info.IsDir() {
 		return fmt.Errorf("the exchange folder %s is not reachable", opts.Folder)
+	}
+	for _, path := range []string{".", "workspace.json"} {
+		if exchangeFileUnavailable(filepath.Join(root, path)) {
+			report.Unavailable = append(report.Unavailable, path)
+			return fmt.Errorf("the exchange %s is not downloaded yet", path)
+		}
 	}
 	if err := ensureIdentity(root, opts.WorkspaceID); err != nil {
 		return err
@@ -396,6 +407,9 @@ func sameJSON(a, b any) bool {
 // readPeers lists the other devices' advertisements. One that is unreadable
 // or not downloaded is skipped: advertisements inform and never gate.
 func readPeers(root, self string) ([]DeviceAdvertisement, error) {
+	if exchangeFileUnavailable(filepath.Join(root, "devices")) {
+		return []DeviceAdvertisement{}, nil
+	}
 	entries, err := os.ReadDir(filepath.Join(root, "devices"))
 	if errors.Is(err, fs.ErrNotExist) {
 		return []DeviceAdvertisement{}, nil
@@ -409,8 +423,8 @@ func readPeers(root, self string) ([]DeviceAdvertisement, error) {
 		if entry.IsDir() || !strings.HasSuffix(name, ".json") || strings.HasPrefix(name, ".") || strings.TrimSuffix(name, ".json") == self {
 			continue
 		}
-		data, readErr := os.ReadFile(filepath.Join(root, "devices", name))
-		if readErr != nil {
+		data, readable := readExchangeFile(filepath.Join(root, "devices", name))
+		if !readable {
 			continue
 		}
 		var ad DeviceAdvertisement
@@ -437,6 +451,14 @@ func fetch(history *synclog.History, root, inbox string, report *FolderReport) e
 		}
 		if entry.IsDir() {
 			if abs != txns && filepath.Base(abs) == history.DeviceID() {
+				return filepath.SkipDir
+			}
+			if cloudDataless(abs) {
+				rel, relErr := filepath.Rel(root, abs)
+				if relErr != nil {
+					return relErr
+				}
+				report.Unavailable = append(report.Unavailable, filepath.ToSlash(rel))
 				return filepath.SkipDir
 			}
 			return nil
@@ -477,9 +499,9 @@ func fetch(history *synclog.History, root, inbox string, report *FolderReport) e
 			}
 			blobRel := BlobPath(digest)
 			blobAbs := filepath.Join(root, filepath.FromSlash(blobRel))
-			blob, err := os.ReadFile(blobAbs)
-			if err != nil {
-				if placeholderExists(blobAbs) {
+			blob, readable := readExchangeFile(blobAbs)
+			if !readable {
+				if exchangeFileUnavailable(blobAbs) {
 					report.Unavailable = append(report.Unavailable, blobRel)
 				}
 				continue
@@ -519,6 +541,9 @@ func stageInbox(inbox, rel string, data []byte) error {
 // readExchangeFile reads one listed exchange file; false means it cannot be
 // read yet, which the caller reports as unavailable rather than as an error.
 func readExchangeFile(abs string) ([]byte, bool) {
+	if exchangeFileUnavailable(abs) {
+		return nil, false
+	}
 	data, err := os.ReadFile(abs)
 	return data, err == nil
 }
@@ -563,6 +588,37 @@ func pruneInbox(history *synclog.History, inbox string, report *Report) error {
 		}
 		return nil
 	})
+}
+
+// requestUnavailableDownloads submits a bounded, deduplicated batch each pass.
+// A request is not delivery: entries stay unavailable until a later pass can
+// read and verify them. Provider failures remain visible in the saved report.
+func requestUnavailableDownloads(opts FolderOptions, report *FolderReport) {
+	slices.Sort(report.Unavailable)
+	report.Unavailable = slices.Compact(report.Unavailable)
+	if len(report.Unavailable) == 0 {
+		return
+	}
+	root, err := filepath.Abs(filepath.Join(opts.Folder, filepath.FromSlash(ExchangeRoot)))
+	if err != nil {
+		report.Errors = append(report.Errors, "locating cloud downloads: "+err.Error())
+		return
+	}
+	paths := make([]string, 0, min(len(report.Unavailable), 128))
+	for _, rel := range report.Unavailable[:min(len(report.Unavailable), 128)] {
+		paths = append(paths, filepath.Join(root, filepath.FromSlash(rel)))
+	}
+	request := opts.RequestDownloads
+	if request == nil {
+		request = requestCloudDownloads
+	}
+	if err := request(paths); err != nil {
+		report.Errors = append(report.Errors, err.Error())
+	}
+}
+
+func exchangeFileUnavailable(path string) bool {
+	return placeholderExists(path) || cloudDataless(path)
 }
 
 // placeholderTarget maps an iCloud placeholder (".name.icloud") to the path

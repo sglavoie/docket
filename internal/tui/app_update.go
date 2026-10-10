@@ -45,6 +45,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			// would risk a second panic with no recover left above it.
 			return
 		}
+		outCmd = tea.Batch(outCmd, m.syncAfterLocalCommit())
 		m.observeCheckInFeedbackMessage(msg)
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
 		if interactive || isInteractionInput(msg) {

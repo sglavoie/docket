@@ -60,6 +60,7 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	app.domain.syncStatus = rt.SyncStatus
 	app.domain.syncConflicts = rt.SyncConflicts
 	app.automaticSync.exchange = rt.BackgroundSyncExchanger(engine.SyncExchangeOptions{AppVersion: AppVersion})
+	app.automaticSync.localSequence = rt.SyncLocalSequenceReader()
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 
@@ -124,6 +125,10 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	app.crossOutliner.ApplyOpenOptions(outliner.OutlinerOpenOptions{Mode: chrome.ModeAll, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
 
+	app.automaticSync.fingerprint = app.workspaceFingerprint()
+	if app.automaticSync.localSequence != nil {
+		app.automaticSync.sequence, _ = app.automaticSync.localSequence()
+	}
 	return app, nil
 }
 

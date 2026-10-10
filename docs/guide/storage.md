@@ -416,10 +416,21 @@ copy from the published history alone.
 
 An enrolled desktop workspace exchanges automatically while `tt` is running,
 including inside tt.app: at launch, when the terminal regains focus, and every
-five seconds. Local saves are published on the next pass, and incoming changes
-refresh the Outliner when no editor, picker, selection, or child view is active.
-Unavailable folders and files are retried on later passes. Closing tt.app's
-window keeps its session syncing; quitting `tt` stops automatic exchange.
+five seconds. Local saves trigger an exchange immediately; a save or focus event
+while a pass is running queues one follow-up pass. The periodic poll also detects
+changes another process already applied to the working copy, without requiring
+a focus change. Incoming changes refresh the Outliner when no editor, picker,
+selection, ranked search, or child view is active. Polling preserves any current
+save or undo feedback.
+
+On macOS, an exchange requests iCloud downloads for cloud-only files it finds,
+including the workspace identity, incoming history, and its content. The request
+runs in the background through the system Foundation API; it requires no extra
+helper installation. It does not wait for delivery or treat a request as a
+completed download. Files are verified and imported on a later pass, and download
+request failures appear in sync status. Other platforms leave file delivery to
+the shared-folder provider. Unavailable folders and files are retried on later
+passes. Closing tt.app's window keeps its session syncing; quitting `tt` stops automatic exchange.
 Cloud delivery can take longer than the polling interval.
 
 In the Outliner, press `gs` (or choose **Go → Sync Now**) to exchange immediately.

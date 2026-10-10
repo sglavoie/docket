@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/tt/internal/syncexchange"
 )
 
 // enrolledPair enrolls a workspace on one device and joins it from another,
@@ -165,6 +166,9 @@ func TestSyncAdvisoryTextNamesEachStateApart(t *testing.T) {
 		status engine.SyncStatus
 		want   string
 	}{
+		{"download_request_failed", engine.SyncStatus{Enrolled: true, LastSuccess: now,
+			LastExchange: &syncexchange.FolderReport{Succeeded: true, Unavailable: []string{"manifest"}, Errors: []string{"provider offline"}}},
+			"sync: 1 file waiting to download · exchange errors (tt sync doctor) · exchanged <1m ago"},
 		{"nothing_waiting", engine.SyncStatus{Enrolled: true, LastSuccess: now.Add(-time.Hour)}, ""},
 		{"unpublished", engine.SyncStatus{Enrolled: true, OutstandingUp: 2, LastSuccess: now.Add(-5 * time.Minute)},
 			"sync: 2 saved here, not yet published · exchanged 5m ago"},

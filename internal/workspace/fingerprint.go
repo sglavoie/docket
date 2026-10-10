@@ -14,8 +14,9 @@ import (
 
 // Fingerprint digests the stat identity — path, size, modification time — of
 // the files a workspace reload reads: the `.tt/*.json` domains under dataDir
-// and each project's tasks.md. It is the signal Loader already trusts, so a
-// file Loader would not reparse is a file that changes no fingerprint. It reads
+// and each project's tasks.md, plus the sync tracking state. The latter
+// catches imports of notes and attachments already applied by another process.
+// The signal uses the same stat identity as Loader. It reads
 // no file content, and a missing file is part of the identity rather than an
 // error. An empty dataDir has no fingerprint.
 func Fingerprint(dataDir string, projects []*models.Project) string {
@@ -23,6 +24,8 @@ func Fingerprint(dataDir string, projects []*models.Project) string {
 		return ""
 	}
 	paths, _ := filepath.Glob(filepath.Join(dataDir, ".tt", "*.json"))
+	syncStates, _ := filepath.Glob(filepath.Join(dataDir, ".tt", "sync", "devices", "*", "state.json"))
+	paths = append(paths, syncStates...)
 	for _, project := range projects {
 		if project != nil && project.Path != "" {
 			paths = append(paths, storage.TasksFilePath(project.Path))

@@ -301,7 +301,8 @@ type externalReloadState struct {
 	blurFingerprint string
 	// owed records a detected change the shell could not yet adopt because the
 	// user was mid-interaction. The periodic tick and the next focus retry it.
-	owed bool
+	owed  bool
+	quiet bool // Polling must not replace a save/undo message with a reload notice.
 }
 
 // workspaceFingerprint is workspace.Fingerprint over the runtime's data dir
@@ -329,7 +330,7 @@ func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if before != "" && before != m.workspaceFingerprint() {
 			m.externalReload.owed = true
 		}
-		return true, tea.Batch(m.adoptExternalWorkspaceChange(), m.startAutomaticSync())
+		return true, tea.Batch(m.adoptExternalWorkspaceChange(), m.requestAutomaticSync())
 	default:
 		return false, nil
 	}
@@ -377,17 +378,29 @@ func (m *AppModel) adoptExternalWorkspaceChange() tea.Cmd {
 	if !m.externalReload.owed || !m.safeToAdoptExternalChange() {
 		return nil
 	}
+	fingerprint := m.workspaceFingerprint()
+	if !m.refreshRuntime() && m.domain.runtime != nil && m.domain.runtime.DataDir() != "" {
+		return nil // Keep the reload owed; a transient read failure is retried.
+	}
 	m.externalReload.owed = false
-	m.refreshRuntime()
 	for id := range m.domain.projects {
-		m.reloadProjectByID(id)
+		if !m.reloadProjectByID(id) {
+			m.externalReload.owed = true
+		}
 	}
 	m.rebuildPlanningFromRuntime()
 	m.refreshLoadedTaskWorkspace()
 	m.refreshOutstandingConflicts()
 	cmds := m.refreshTaskViews(true, true)
-	m.setInfoStatus("Reloaded: the workspace changed on disk")
-	cmds = append(cmds, m.statusReadingTimeout())
+	cmds = append(cmds, m.requestNoteSearchIndexLoad())
+	if !m.externalReload.owed {
+		m.automaticSync.fingerprint = fingerprint
+	}
+	if !m.externalReload.quiet {
+		m.setInfoStatus("Reloaded: the workspace changed on disk")
+		cmds = append(cmds, m.statusReadingTimeout())
+	}
+	m.externalReload.quiet = false
 	return tea.Batch(cmds...)
 }
 
@@ -827,10 +840,14 @@ const automaticSyncInterval = 5 * time.Second
 // Only enrolled sessions own this timer. Folder I/O runs on an independent
 // engine snapshot; all scheduling and view adoption stay on the UI goroutine.
 type automaticSyncState struct {
-	exchange func() (*syncexchange.FolderReport, error)
-	running  bool
-	manual   bool // An explicit request wants completion feedback, even for a running pass.
-	err      error
+	exchange      func() (*syncexchange.FolderReport, error)
+	running       bool
+	pending       bool
+	localSequence func() (uint64, error)
+	sequence      uint64
+	fingerprint   string
+	manual        bool // An explicit request wants completion feedback, even for a running pass.
+	err           error
 }
 
 type automaticSyncTickMsg struct{}
@@ -867,6 +884,7 @@ func (m *AppModel) startAutomaticSync() tea.Cmd {
 func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case automaticSyncTickMsg:
+		m.pollExternalWorkspaceChanges()
 		return true, tea.Batch(m.automaticSyncTickCmd(), m.adoptExternalWorkspaceChange(), m.startAutomaticSync())
 	case automaticSyncFinishedMsg:
 		m.automaticSync.running = false
@@ -879,8 +897,13 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.changed || m.automaticSync.manual {
 			m.externalReload.owed = true
 		}
+		m.pollExternalWorkspaceChanges()
 		m.refreshOutstandingConflicts()
 		cmd := m.adoptExternalWorkspaceChange()
+		if m.automaticSync.pending {
+			m.automaticSync.pending = false
+			cmd = tea.Batch(cmd, m.startAutomaticSync())
+		}
 		if m.automaticSync.manual {
 			m.automaticSync.manual = false
 			return true, tea.Batch(cmd, m.reportManualSync(msg.report, msg.err))
@@ -942,7 +965,7 @@ func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error
 		parts = append(parts, fmt.Sprintf("%d conflicts (gc to review)", count))
 	}
 	if m.externalReload.owed {
-		parts = append(parts, "view refresh pending until the Outliner is idle")
+		parts = append(parts, "view refresh pending")
 	}
 	message := strings.Join(parts, " · ")
 	if len(report.Errors) > 0 || len(report.Held) > 0 || (report.External != nil && len(report.External.Held) > 0) {
@@ -951,4 +974,42 @@ func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error
 		m.setInfoStatus(message)
 	}
 	return m.statusReadingTimeout()
+}
+
+// requestAutomaticSync coalesces explicit events into one follow-up pass. The
+// periodic timer uses startAutomaticSync directly, so a slow provider does not
+// create a permanent stream of queued retries merely by missing a timer tick.
+func (m *AppModel) requestAutomaticSync() tea.Cmd {
+	if m.automaticSync.exchange == nil || m.lifecycle.quitting {
+		return nil
+	}
+	if m.automaticSync.running {
+		m.automaticSync.pending = true
+		return nil
+	}
+	return m.startAutomaticSync()
+}
+
+func (m *AppModel) syncAfterLocalCommit() tea.Cmd {
+	sync := &m.automaticSync
+	if sync.localSequence == nil || m.lifecycle.quitting {
+		return nil
+	}
+	sequence, err := sync.localSequence()
+	if err != nil || sequence == sync.sequence {
+		return nil
+	}
+	sync.sequence = sequence
+	return m.requestAutomaticSync()
+}
+
+func (m *AppModel) pollExternalWorkspaceChanges() {
+	if m.automaticSync.exchange == nil || m.automaticSync.running {
+		return
+	}
+	fingerprint := m.workspaceFingerprint()
+	if fingerprint != m.automaticSync.fingerprint {
+		m.externalReload.owed = true
+		m.externalReload.quiet = true
+	}
 }

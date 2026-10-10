@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/tt/internal/syncexchange"
 )
 
 // syncCommandFixture is one desktop with a workspace to enroll, driven through
@@ -154,4 +156,33 @@ func TestSyncCommands(t *testing.T) {
 			t.Fatal("a refused enrollment created the working copy")
 		}
 	})
+}
+
+func TestSyncCommandsReportDownloadRequestFailure(t *testing.T) {
+	fixture := newSyncCommandFixture(t)
+	fixture.enroll(t)
+	setCommandDataDir(t, fixture.workingCopy)
+	rt, err := openSyncRuntime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := struct {
+		Last        syncexchange.FolderReport `json:"last"`
+		LastSuccess time.Time                 `json:"last_success"`
+	}{Last: syncexchange.FolderReport{Succeeded: true, Errors: []string{"iCloud download request refused"}}, LastSuccess: time.Now()}
+	data, err := json.Marshal(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if writeErr := os.WriteFile(syncexchange.StatusPath(rt.SyncCommits().SyncHistory()), data, 0o600); writeErr != nil {
+		t.Fatal(writeErr)
+	}
+	out, _, err := captureDoctorOutput(t, func() error { return runSyncStatus(nil, nil) })
+	if err != nil || !strings.Contains(out, "iCloud download request refused") {
+		t.Fatalf("status hid download error: %s (%v)", out, err)
+	}
+	out, _, err = captureDoctorOutput(t, func() error { return runSyncDoctor(nil, nil) })
+	if err == nil || !strings.Contains(out, "iCloud download request refused") {
+		t.Fatalf("doctor hid download error: %s (%v)", out, err)
+	}
 }

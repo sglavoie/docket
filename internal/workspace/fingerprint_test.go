@@ -53,3 +53,26 @@ func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 		t.Fatal("touching a domain file left the fingerprint unchanged")
 	}
 }
+
+func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
+	dataDir := t.TempDir()
+	before := Fingerprint(dataDir, nil)
+	state := filepath.Join(dataDir, ".tt", "sync", "devices", "desktop", "state.json")
+	if err := os.MkdirAll(filepath.Dir(state), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(state, []byte(`{"received":{"phone":1}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	firstImport := Fingerprint(dataDir, nil)
+	if firstImport == before {
+		t.Fatal("first import left the fingerprint unchanged")
+	}
+	later := time.Now().Add(time.Second)
+	if err := os.Chtimes(state, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if Fingerprint(dataDir, nil) == firstImport {
+		t.Fatal("later import left the fingerprint unchanged")
+	}
+}

@@ -26,6 +26,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/tui/conflict"
@@ -1079,6 +1080,14 @@ func syncAdvisoryText(status *engine.SyncStatus, now time.Time) string {
 	}
 	if last := status.LastExchange; last != nil && !last.Succeeded {
 		parts = append(parts, "last exchange failed (tt sync doctor)")
+	}
+	if last := status.LastExchange; last != nil {
+		if len(last.Unavailable) > 0 {
+			parts = append(parts, util.Count(len(last.Unavailable), "file")+" waiting to download")
+		}
+		if last.Succeeded && len(last.Errors) > 0 {
+			parts = append(parts, "exchange errors (tt sync doctor)")
+		}
 	}
 	if status.OutstandingUp > 0 {
 		parts = append(parts, fmt.Sprintf("%d saved here, not yet published", status.OutstandingUp))

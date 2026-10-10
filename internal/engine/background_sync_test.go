@@ -68,3 +68,44 @@ func TestBackgroundSyncKeepsFrontendSnapshotIndependent(t *testing.T) {
 	exchangeNow(t, peer)
 	requireSameTree(t, "after concurrent saves and exchanges", syncedDigests(t, desk.DataDir()), syncedDigests(t, peer.DataDir()))
 }
+
+func TestSyncLocalSequenceDistinguishesSavesFromExchange(t *testing.T) {
+	env := newEnrollEnvironment(t)
+	env.enroll(t)
+	desk := env.open(t, env.workingCopy, enrollingDevice)
+	peer := env.join(t)
+	read := desk.SyncLocalSequenceReader()
+	sequence := func() uint64 {
+		t.Helper()
+		value, err := read()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	initial := sequence()
+	captureIn(t, desk, "Local save")
+	if sequence() != initial+1 {
+		t.Fatal("local save did not advance the sequence")
+	}
+	exchangeNow(t, desk)
+	if sequence() != initial+1 {
+		t.Fatal("publication looked like another local save")
+	}
+	exchangeNow(t, peer)
+	captureIn(t, peer, "Incoming save")
+	exchangeNow(t, peer)
+	exchangeNow(t, desk)
+	if sequence() != initial+1 {
+		t.Fatal("incoming transaction looked like a local save")
+	}
+	if _, err := desk.Service().Capture(app.CaptureRequest{ProjectID: "missing", Title: "Rejected"}); err == nil {
+		t.Fatal("invalid capture succeeded")
+	}
+	if sequence() != initial+1 {
+		t.Fatal("failed mutation advanced the sequence")
+	}
+	if env.open(t, env.original, "plain").SyncLocalSequenceReader() != nil {
+		t.Fatal("unenrolled workspace installed a commit observer")
+	}
+}
