@@ -820,7 +820,7 @@ func controlArrivalKind(kind pulse.ArrivalKind) string {
 	}
 }
 
-// Automatic exchange for enrolled desktop sessions.
+// Automatic and manual exchange share one worker for enrolled desktop sessions.
 
 const automaticSyncInterval = 5 * time.Second
 
@@ -829,11 +829,13 @@ const automaticSyncInterval = 5 * time.Second
 type automaticSyncState struct {
 	exchange func() (*syncexchange.FolderReport, error)
 	running  bool
+	manual   bool // An explicit request wants completion feedback, even for a running pass.
 	err      error
 }
 
 type automaticSyncTickMsg struct{}
 type automaticSyncFinishedMsg struct {
+	report  *syncexchange.FolderReport
 	changed bool
 	err     error
 }
@@ -858,7 +860,7 @@ func (m *AppModel) startAutomaticSync() tea.Cmd {
 		report, err := exchange()
 		changed := report != nil && (report.Imported > 0 ||
 			(report.External != nil && report.External.TransactionID != ""))
-		return automaticSyncFinishedMsg{changed: changed, err: err}
+		return automaticSyncFinishedMsg{report: report, changed: changed, err: err}
 	}
 }
 
@@ -872,12 +874,81 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.err != nil {
 			logging.Warn("automatic sync: %v", msg.err)
 		}
-		if msg.changed {
+		// A manual request also picks up changes a separate CLI exchange already
+		// applied, even when this pass has nothing left to import.
+		if msg.changed || m.automaticSync.manual {
 			m.externalReload.owed = true
 		}
 		m.refreshOutstandingConflicts()
-		return true, m.adoptExternalWorkspaceChange()
+		cmd := m.adoptExternalWorkspaceChange()
+		if m.automaticSync.manual {
+			m.automaticSync.manual = false
+			return true, tea.Batch(cmd, m.reportManualSync(msg.report, msg.err))
+		}
+		return true, cmd
 	default:
 		return false, nil
 	}
+}
+
+// startManualSync joins an in-flight pass rather than starting overlapping I/O.
+// Scheduling and feedback belong to Update; the worker only returns a report.
+func (m *AppModel) startManualSync() tea.Cmd {
+	if m.lifecycle.quitting {
+		return nil
+	}
+	if m.automaticSync.exchange == nil {
+		m.setWarningStatus("This workspace is not enrolled in sync; use tt sync enroll or tt sync join")
+		return m.statusReadingTimeout()
+	}
+	m.automaticSync.manual = true
+	if m.automaticSync.running {
+		m.setInfoStatus("Sync already in progress…")
+	} else {
+		m.setInfoStatus("Syncing…")
+	}
+	return tea.Batch(m.startAutomaticSync(), m.statusReadingTimeout())
+}
+
+func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error) tea.Cmd {
+	if err != nil {
+		m.setWarningStatus("Sync failed: " + err.Error() + " (tt sync doctor)")
+		return m.statusReadingTimeout()
+	}
+	if report == nil {
+		m.setWarningStatus("Sync returned no result; check tt sync status")
+		return m.statusReadingTimeout()
+	}
+	parts := []string{fmt.Sprintf("Sync: %d published, %d imported", len(report.Published), report.Imported)}
+	if report.OutstandingUp > 0 {
+		parts = append(parts, fmt.Sprintf("%d waiting to publish", report.OutstandingUp))
+	}
+	if report.OutstandingDown > 0 {
+		parts = append(parts, fmt.Sprintf("%d waiting to apply", report.OutstandingDown))
+	}
+	if len(report.Unavailable) > 0 {
+		parts = append(parts, "files not downloaded yet")
+	}
+	if len(report.Held) > 0 {
+		parts = append(parts, "update tt to apply held changes (tt sync status)")
+	}
+	if report.External != nil && len(report.External.Held) > 0 {
+		parts = append(parts, "local edits held (tt sync status)")
+	}
+	if len(report.Errors) > 0 {
+		parts = append(parts, "exchange errors (tt sync doctor)")
+	}
+	if count := len(m.feedback.syncConflicts); count > 0 {
+		parts = append(parts, fmt.Sprintf("%d conflicts (gc to review)", count))
+	}
+	if m.externalReload.owed {
+		parts = append(parts, "view refresh pending until the Outliner is idle")
+	}
+	message := strings.Join(parts, " · ")
+	if len(report.Errors) > 0 || len(report.Held) > 0 || (report.External != nil && len(report.External.Held) > 0) {
+		m.setWarningStatus(message)
+	} else {
+		m.setInfoStatus(message)
+	}
+	return m.statusReadingTimeout()
 }

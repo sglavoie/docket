@@ -130,6 +130,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				menuSeparator(),
 				{OperationID: operation.OperationCoreNotes},
 				{OperationID: operation.OperationCoreNamedLenses},
+				{OperationID: operation.OperationCoreSyncNow},
 				{OperationID: operation.OperationCoreConflicts, Label: "Conflict Browser"},
 				menuSeparator(),
 				{OperationID: operation.OperationCoreCursorTop, Label: "Top"},

@@ -56,6 +56,7 @@ const (
 	OperationCoreRangeSelect        OperationID = "tui.core.range-select"
 	OperationCoreSelectAll          OperationID = "tui.core.select-all"
 	OperationCoreNamedLenses        OperationID = "tui.core.named-lenses"
+	OperationCoreSyncNow            OperationID = "tui.core.sync-now"
 	OperationCoreConflicts          OperationID = "tui.core.conflicts"
 	OperationCoreQueryReadout       OperationID = "tui.core.query-readout"
 	OperationCoreNotes              OperationID = "tui.core.notes"

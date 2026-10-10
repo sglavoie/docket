@@ -422,9 +422,15 @@ Unavailable folders and files are retried on later passes. Closing tt.app's
 window keeps its session syncing; quitting `tt` stops automatic exchange.
 Cloud delivery can take longer than the polling interval.
 
-`tt sync exchange` also runs a pass manually, publishing what you committed and
-applying what other devices published. The Outliner's status strip shows a `sync:` line while anything is
-waiting — work saved here and not yet published, work found and not yet
+In the Outliner, press `gs` (or choose **Go → Sync Now**) to exchange immediately.
+The footer shows progress, then how much was published and imported, any work
+still waiting, and failures or conflicts that need attention. It also refreshes
+the workspace from disk, waiting until any active selection or editor is closed.
+A pass already in progress is reused. `?` lists the shortcut.
+
+`tt sync exchange` runs the same exchange from the command line, publishing what
+you committed and applying what other devices published. The Outliner's status
+strip shows a `sync:` line while anything is waiting — work saved here and not yet published, work found and not yet
 applied, or a change held until a device updates `tt` — and counts open sync
 conflicts beside the merge conflicts, which `gc` lists. A file iCloud has not
 downloaded yet is reported as unavailable and fetched on a later exchange; a

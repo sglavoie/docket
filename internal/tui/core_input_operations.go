@@ -336,6 +336,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		// The picker is a shell overlay rather than a route, so opening it mounts
 		// the model here and returns whatever command that mount raised.
 		message = commandMessage(m.openNamedLensPicker())
+	case operation.OperationCoreSyncNow:
+		message = commandMessage(m.startManualSync())
 	case operation.OperationCoreConflicts:
 		// Like the picker the browser is a shell overlay rather than a route, and
 		// the mount itself decides whether there is anything to show.

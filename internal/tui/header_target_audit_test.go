@@ -100,6 +100,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.select-all":             "target-free",
 	"tui.core.select-pinned-project":  "target-free",
 	"tui.core.select-project":         "target-free",
+	"tui.core.sync-now":               "target-free",
 	"tui.core.today":                  "reject",
 	"tui.core.toggle-project-groups":  "target-free",
 	"tui.core.toggle-sections":        "target-free",

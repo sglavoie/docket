@@ -351,6 +351,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// `~` is the reference sigil everywhere else, so the relationship walk
 			// spells itself the same way under the go-to chord.
 			{OperationID: OperationCoreGotoRelation, Sequence: []string{"g", "~"}, DisplayKey: "g~", HintLabel: "related task"},
+			{OperationID: OperationCoreSyncNow, Sequence: []string{"g", "s"}, DisplayKey: "gs", HintLabel: "sync now"},
 			// Conflicts joins the go-to chord rather than claiming a root key: what
 			// the strip already names as workspace state is something the user goes
 			// to look at, and root `c` appends a checklist item.
