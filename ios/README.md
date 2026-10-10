@@ -5,6 +5,13 @@ queries; Swift calls them through the versioned bridge in
 [`docs/mobile/bridge-contract.md`](../docs/mobile/bridge-contract.md). None of
 it runs under `just ci`.
 
+Capture offers sigil suggestions as you type, including when opened through
+the quick-capture link. Swipe the suggestion row to see more and tap to insert
+at the cursor. Tags and contexts come from the workspace; parent and child
+references follow the current line's project, and dependencies can cross
+projects. Links offer existing URLs or a URL prefix, and comments offer a
+placeholder you can type over. The rest of the draft stays intact.
+
 ## Layout
 
 | Path | Holds |

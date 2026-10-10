@@ -208,6 +208,52 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Tests
 
+    func testCaptureAutocompleteAllSigils() throws {
+        let app = launch()
+        let cases: [(String, String)] = [
+            ("!", "!1"), ("#rel", "#release"), ("##lap", "##laptop"),
+            ("@tomo", "@tomorrow"), ("@@+2h", "@@+2h"), ("$tod", "$today"),
+            ("*p", "*pin"), ("=rev", "=review"), ("%atl", "%atlas-launch"),
+            (">Ship", ">1"), ("<Ship", "<1"), ("~home-renovation:1", "~home-renovation:1"),
+            ("&https://example.com/atlas", "&https://example.com/atlas/release"), (";", ";comment;")
+        ]
+        for (partial, token) in cases {
+            openCapture(app)
+            let prefix = partial.hasPrefix("%") ? "Suggested " : "Suggested %atlas-launch "
+            type(app, "capture.text", prefix + partial)
+            let suggestion = app.buttons["capture.suggestion.\(token)"]
+            require(suggestion, "completion for \(partial)")
+            suggestion.tap()
+            XCTAssertEqual(value(app, "capture.text"), prefix + token + " ")
+            if partial == ";" {
+                input(app, "capture.text").typeText("Remember #literal")
+                XCTAssertEqual(value(app, "capture.text"), prefix + ";Remember #literal; ")
+            }
+            app.buttons["capture.cancel"].tap()
+            requireAbsent(app.buttons["capture.save"], "the dismissed capture")
+        }
+    }
+
+    func testCaptureAutocompleteSavesCompletedMetadata() throws {
+        let app = launch()
+        app.open(URL(string: "tt://capture")!)
+        require(app.buttons["capture.save"], "capture opened by the quick-capture link")
+        type(app, "capture.text", "Autocomplete 🥛 #rel")
+        for (partial, token) in [("", "#release"), ("##lap", "##laptop"), ("$tod", "$today")] {
+            if !partial.isEmpty { input(app, "capture.text").typeText(partial) }
+            let suggestion = app.buttons["capture.suggestion.\(token)"]
+            require(suggestion, token)
+            suggestion.tap()
+        }
+        XCTAssertEqual(value(app, "capture.text"), "Autocomplete 🥛 #release ##laptop $today ")
+        app.buttons["capture.save"].tap()
+        requireAbsent(app.buttons["capture.save"], "the saved capture")
+        eventually("completed metadata persisted") {
+            guard let task = self.block("Autocomplete 🥛", in: try self.markdown("unfiled")) else { return false }
+            return task.contains("tags: release") && task.contains("context: laptop") && task.contains("state: backlog")
+        }
+    }
+
     func testSwipePlanningAndLifecycleActions() throws {
         let app = launch()
         tab(app, "Inbox")

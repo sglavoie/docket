@@ -16,7 +16,11 @@ struct CaptureSheet: View {
     @State private var preview: CapturePreview?
     @State private var failure: String?
     @State private var saving = false
-    @FocusState private var focused: Bool
+    @State private var focused = false
+    @State private var selection = NSRange(location: 0, length: 0)
+    @State private var composing = false
+    @State private var suggestions: [CaptureSuggestion] = []
+    @State private var suggestedFor: SuggestionKey?
 
     private static let destinations: [CaptureDestination] = [.inbox, .today, .next, .backlog, .doing, .waiting, .someday]
 
@@ -93,6 +97,7 @@ struct CaptureSheet: View {
                     loaded = true
                     if let saved = workspace.drafts?.loadCapture(), !saved.isEmpty {
                         draft = saved
+                        selection = NSRange(location: (saved.text as NSString).length, length: 0)
                         restored = true
                     }
                 }
@@ -113,6 +118,23 @@ struct CaptureSheet: View {
                 guard !Task.isCancelled else { return }
                 preview = await workspace.previewCapture(text: draft.text, projectID: draft.projectID)
             }
+            .task(id: suggestionKey) {
+                let key = suggestionKey
+                suggestions = []
+                suggestedFor = nil
+                guard key.mode == .quick, key.focused, !key.composing, key.selection.length == 0 else { return }
+                do {
+                    try await Task.sleep(for: .milliseconds(100))
+                    let result = try await workspace.engine.captureSuggestions(
+                        text: key.text, caret: key.selection.location, projectID: key.projectID
+                    )
+                    guard !Task.isCancelled, key == suggestionKey else { return }
+                    suggestions = result
+                    suggestedFor = key
+                } catch {
+                    // Suggestions are optional; preview and save report engine failures.
+                }
+            }
         }
     }
 
@@ -120,6 +142,20 @@ struct CaptureSheet: View {
         var text: String
         var projectID: String?
         var mode: CaptureDraft.Mode
+    }
+
+    private struct SuggestionKey: Equatable {
+        var text: String
+        var selection: NSRange
+        var projectID: String?
+        var mode: CaptureDraft.Mode
+        var focused: Bool
+        var composing: Bool
+    }
+
+    private var suggestionKey: SuggestionKey {
+        SuggestionKey(text: draft.text, selection: selection, projectID: draft.projectID,
+                      mode: draft.mode, focused: focused, composing: composing)
     }
 
     private var canSave: Bool {
@@ -132,14 +168,41 @@ struct CaptureSheet: View {
     @ViewBuilder
     private var quick: some View {
         Section {
-            TextField("Buy milk #errand @tomorrow $today", text: $draft.text, axis: .vertical)
-                .lineLimit(3...8)
-                .focused($focused)
-                .textInputAutocapitalization(.sentences)
-                .autocorrectionDisabled()
-                .accessibilityIdentifier("capture.text")
+            CaptureTextEditor(text: $draft.text, selection: $selection, focused: $focused, composing: $composing)
+                .overlay(alignment: .topLeading) {
+                    if draft.text.isEmpty {
+                        Text("Buy milk #errand @tomorrow $today")
+                            .foregroundStyle(.tertiary)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
+            if suggestedFor == suggestionKey, !suggestions.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack {
+                        ForEach(suggestions, id: \.token) { suggestion in
+                            Button {
+                                guard suggestedFor == suggestionKey else { return }
+                                suggestions = []
+                                suggestedFor = nil
+                                draft.text = suggestion.text
+                                selection = NSRange(location: suggestion.caret, length: suggestion.selectionLength)
+                                focused = true
+                            } label: {
+                                Text(suggestion.label)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 8)
+                                    .background(.tint.opacity(0.1), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("capture.suggestion.\(suggestion.token)")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("capture.suggestions")
+            }
         } footer: {
-            Text("One task per line. !1–3 priority, #tag, ##context, @due, @@defer, $status or $today/$next, %project, >parent, *pin, =review.")
+            Text("One task per line. !1–3 priority, #tag, ##context, @due, @@defer, $status or $today/$next, %project, >parent, <child, ~dependency, *pin, =review, &link, ;comment;. Swipe suggestions to see more; tap to insert.")
         }
         if let preview, !preview.errors.isEmpty || !preview.lines.isEmpty {
             Section("Preview") {

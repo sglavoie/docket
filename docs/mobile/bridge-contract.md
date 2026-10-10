@@ -120,6 +120,7 @@ There is no bridge-only mutation path.
 | `query.task` | no | Returns one task with its Peek document fields, including computed dependents. |
 | `query.lenses` | no | The saved lenses in stored order. |
 | `query.capture_preview` | no | Reads capture grammar text without committing: what each line would create, or each refused line. |
+| `query.capture_suggestions` | no | Completes a capture sigil at the caret using grammar values and workspace vocabulary. |
 | `query.notes`, `query.note` | no | Notes are location-qualified. Archived projects are excluded. |
 | `command.capture` | yes | Capture grammar text, or one structured task. Multiline input is one transaction. |
 | `command.edit` | yes | Structured field edit of one qualified task, through the inline editor's use case. |
@@ -164,6 +165,7 @@ from one the protocol never had. The current build serves these:
 | `query.task` | `{task}` | `{task, project, revision, relations: {ancestors, children, dependencies, dependents}, today, next, comments, attachments, attachment_dir}` |
 | `query.lenses` | none | `{lenses: [{id, name, mode, scope, query, sort}]}` |
 | `query.capture_preview` | `{text, project_id}`; `project_id` optional | `{project_id, lines: [{line, title, project_id, project_name, destination, plan, state, priority, tags, context, due, defer, pinned, review, parent_id, children, dependencies, attachments, comments}], errors: [{line, column, message}]}` |
+| `query.capture_suggestions` | `{text, caret, project_id}`; `project_id` optional; `caret` is a UTF-16 offset | `{suggestions: [{token, label, text, caret, selection_length}]}`; each item supplies the replacement draft and UTF-16 selection |
 | `command.capture` | `{text, project_id}`, or `{title, project_id, description, resume_note, destination, priority, tags, context, due, defer, pinned, review}` with `title` required | `{task, tasks, committed}` |
 | `command.edit` | `{task, title, description, resume_note, priority, tags, context, pinned, review, due, defer}`; only `task` is required | `{task, changed, committed}` |
 | `command.transition` | `{task, state}` | `{task, committed}` |
@@ -239,6 +241,15 @@ open work. A notification's actions are ordinary commands: `command.check_in`
 `query.capture_preview` answers a draft rather than failing on it: a refused
 draft returns ok with its `errors` and no `lines`. `plan` is `today` or `next`
 for a planning destination; `state` is the status the task would hold.
+
+`query.capture_suggestions` replaces the active token, preserving surrounding
+text and other lines. Parent and child suggestions use the current line's
+`%project` or the selected source project; dependencies can cross projects.
+Comments and quoted or escaped attachment paths protect their embedded sigils.
+All capture sigils are supported: links offer existing URLs and URL prefixes;
+comments offer a selected placeholder or a closing delimiter. Clients discard
+replies after the text, selection, or source project changes and apply a
+suggestion only while its originating draft and selection still match.
 
 `command.edit` applies every field it names as one transaction through
 `EditTaskLine`, the inline editor's use case, so each field passes that
