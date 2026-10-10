@@ -10,6 +10,45 @@ import (
 	"github.com/sglavoie/tt/internal/synclog"
 )
 
+// Retained history can include another device identity's branch before its
+// materialized merge has been written to this device's workspace. The tracked
+// digests still describe the actual, recorded files and must permit the next
+// incoming transaction to reconcile all retained branches.
+func TestIncomingReconcilesIndexedBranchesAgainstTrackedWorkspace(t *testing.T) {
+	for _, changesPlanning := range []bool{false, true} {
+		name := "unrelated_incoming"
+		if changesPlanning {
+			name = "planning_incoming"
+		}
+		t.Run(name, func(t *testing.T) {
+			c := newCluster(t, "device-a", "device-b", "device-c")
+			a, b, peer := c.r("device-a"), c.r("device-b"), c.r("device-c")
+			a.commit(a.planningArtifact(func(p *config.PlanningState) {
+				p.Today = append(p.Today, config.ProjectTaskLocator{ProjectID: atlasID, TaskID: awaitCert})
+			}))
+			b.commit(b.planningArtifact(func(p *config.PlanningState) {
+				p.Today = append(p.Today, config.ProjectTaskLocator{ProjectID: atlasID, TaskID: darkIcons})
+			}))
+			copyTree(t, b.history.Dir(), a.history.Dir())
+			if changesPlanning {
+				peer.commit(peer.planningArtifact(func(p *config.PlanningState) { p.Next = nil }))
+			} else {
+				peer.editDoc("atlas-launch", func(doc *storage.ProjectDocument) {
+					findTask(t, doc, shipBeta).Priority = 3
+				})
+			}
+			observed, err := a.svc.CommitExternalChanges()
+			if err != nil || observed.Imported != nil || len(observed.Held) != 0 {
+				t.Fatalf("recorded workspace was treated as an external edit: %+v, %v", observed, err)
+			}
+			a.pull(peer)
+			observer := c.clone("observer")
+			observer.pull(a, b, peer)
+			requireConverged(t, []*replica{a, observer})
+		})
+	}
+}
+
 // An older device identity can leave indexed transactions in the same working
 // copy without advancing the active device's cached heads. A resolution must
 // acknowledge those writers too, or each attempt becomes another competitor.

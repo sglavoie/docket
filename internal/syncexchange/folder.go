@@ -260,7 +260,11 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 		case Held:
 			report.Held = append(report.Held, result)
 			report.OutstandingDown++
-		case Incomplete, Failed:
+		case Failed:
+			report.OutstandingDown++
+			report.Errors = append(report.Errors, fmt.Sprintf("applying %s from %s seq %d: %s",
+				result.TxnID, result.DeviceID, result.DeviceSeq, result.Reason))
+		case Incomplete:
 			report.OutstandingDown++
 		default:
 			// Known, Invalid, and Foreign are neither waiting nor applied.

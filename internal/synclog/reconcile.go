@@ -743,11 +743,14 @@ func (h *History) PlanReconcile(m *Manifest, blobs BlobSource, merger Merger, lo
 	return plan, nil
 }
 
-// planWrites stages the workspace writes and deletions that turn the resolved
-// workspace before into after, refusing a touched file whose bytes are not
-// what before says this device holds. It retains every replaced and written
-// blob, tracks the written digests, and records each touched path's expected
-// bytes and every directory a write needs.
+// planWrites brings the paths named by the resolved history to their after
+// values, checking writes against this device's tracked workspace. Retained
+// branches can make before differ from what this device actually committed;
+// treating that reconstructed value as the disk precondition would strand
+// recorded work. Paths unchanged between before and after still need applying
+// when their tracked value differs. Paths outside both histories are left alone.
+// Every replaced and written blob is retained, and every write is guarded by
+// the tracked digest so an unrecorded edit is still refused.
 func (h *History) planWrites(o *overlay, mz *materializer, before, after *materialized, state *State, plan *ReconcilePlan) ([]transaction.Op, error) {
 	oldFiles, newFiles := before.physical(), after.physical()
 	paths := make([]string, 0, len(oldFiles)+len(newFiles))
@@ -763,7 +766,7 @@ func (h *History) planWrites(o *overlay, mz *materializer, before, after *materi
 	var effectOps []transaction.Op
 	dirs := map[string]bool{}
 	for _, rel := range paths {
-		oldDigest, hadOld := oldFiles[rel]
+		oldDigest, hadOld := state.Tracked[rel]
 		newDigest, hasNew := newFiles[rel]
 		if hadOld == hasNew && oldDigest == newDigest {
 			continue
