@@ -6,7 +6,7 @@ queries; Swift calls them through the versioned bridge in
 it runs under `just ci`.
 
 Capture offers sigil suggestions as you type, including when opened through
-the quick-capture link. A scrollable row above the keyboard offers every sigil;
+the quick-capture link. Two opaque rows above the keyboard offer every sigil;
 tap a symbol to insert it at the cursor, then type or choose a suggestion.
 Swipe the suggestion row to see more and tap to insert
 at the cursor. Tags and contexts come from the workspace; parent and child
