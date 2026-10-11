@@ -128,6 +128,7 @@ There is no bridge-only mutation path.
 | `command.plan` | yes | Today and Next membership. |
 | `command.check_in` | yes | Sets, clears, or acknowledges a check-in (`set`, `clear`, `acknowledge`). |
 | `command.checklist` | yes | Adds, edits, toggles, deletes, moves, or promotes a checklist item. |
+| `command.reorder` | yes | Saves Today, Next, or sibling order in one transaction. |
 | `command.hierarchy` | yes | Adds a subtask, sets or clears a parent, indents, outdents, or moves a task among its siblings. |
 | `command.bulk` | yes | One planning, status, tag, or project action over a selection, as one transaction. |
 | `command.project` | yes | Creates, edits, retags (parking included), archives, restores, or deletes a project. |
@@ -172,6 +173,7 @@ from one the protocol never had. The current build serves these:
 | `command.plan` | `{task, action}`; `action` is `add_today`, `remove_today`, `add_next`, `remove_next`, or `backlog` | `{task, committed}` |
 | `command.checklist` | `{task, action, text, index, to, checklist}`; `action` is `add` (`text`), `edit` (`index`, `text`), `toggle`, `remove`, `promote` (`index`), or `move` (`index`, `to`); every action but `add` also sends `checklist`, the complete `[{text, done}]` as read | `{task, child, committed}`; `child` is the subtask a promotion made |
 | `command.check_in` | `{tasks, action, date, repeat_days}`; `action` is `set` (`date`, optional `repeat_days`), `clear`, or `acknowledge` (exactly one task) | `{tasks, moves, committed}` |
+| `command.reorder` | `{task, kind, order}`; `kind` is `today`, `next`, or `siblings`; `order` is at least two unique locators including `task` | `{tasks, moves, committed}` |
 | `command.hierarchy` | `{task, action, title, parent}`; `action` is `add_child` (`title`), `set_parent` (`parent`, same project), `clear_parent`, `indent`, `outdent`, `move_up`, or `move_down` | `{task, created, committed}` |
 | `command.bulk` | `{tasks, action, plan, state, add_tags, remove_tags, project_id}`; `action` is `plan` (`plan` as in `command.plan`), `state`, `tags` (`add_tags`, `remove_tags`), or `move` (`project_id`) | `{tasks, moves: [{from, to}], committed}` |
 | `query.project` | `{project_id}` | `{project, impact: {tasks, notes, attachments, digest}, comments}` |
@@ -272,6 +274,14 @@ never lands on a different item. `promote` turns the item into a subtask of
 its owner in one transaction. `command.check_in` writes one schedule across
 its selection; `acknowledge` is the review key, which moves a repeating
 check-in on from today, clears a one-off, and changes no state or deadline.
+`command.reorder` permutes the named tasks in one transaction. Siblings must
+share their project and parent; unnamed siblings keep their stored slots.
+Today and Next require existing membership and preserve unnamed members in
+place, including parked or hidden tasks. A reorder cannot add planning membership
+or change a task's project or parent. `query.tasks` accepts sort field `manual`
+to read planning or stored project order without a priority, date, or title key;
+its direction is ignored. Other default query orders remain unchanged.
+
 `command.hierarchy` holds the depth limit and refuses a cycle. A parent with
 open subtasks refuses completion, alone or in a selection, with
 `incomplete_children`. `command.bulk` commits the whole selection or none of

@@ -329,42 +329,57 @@ func (s *Service) ReconcilePlanning() (bool, error) {
 // ClearToday removes every Daily Plan entry through the same checked,
 // ledger-backed planning transaction used by task-scoped planning actions.
 func (s *Service) ClearToday() error {
-	return s.applyPlanningOrder(PlanningReconcileRequest{ClearToday: true}, "Clear Today")
+	_, err := s.applyPlanningOrder(PlanningReconcileRequest{ClearToday: true}, "Clear Today")
+	return err
 }
 
 // ReorderNext replaces the explicit Next order while preserving any valid
 // member omitted by a stale caller at the end.
 func (s *Service) ReorderNext(order []TaskLocator) error {
-	return s.applyPlanningOrder(PlanningReconcileRequest{
-		Next: append([]TaskLocator(nil), order...), SetNext: true,
-	}, "Reorder Next")
+	_, err := s.ReorderPlanning(PlanningHorizonNext, order)
+	return err
 }
 
 // ReorderToday replaces the workspace-wide Today order while retaining any
 // valid omitted member at the end.
 func (s *Service) ReorderToday(order []TaskLocator) error {
-	return s.applyPlanningOrder(PlanningReconcileRequest{
-		TodayOrder: append([]TaskLocator(nil), order...), SetTodayOrder: true,
-	}, "Reorder Today")
+	_, err := s.ReorderPlanning(PlanningHorizonToday, order)
+	return err
 }
 
-func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction string) error {
+// ReorderPlanning also reports the transaction for clients that acknowledge
+// each durable mutation, such as the mobile bridge.
+func (s *Service) ReorderPlanning(horizon PlanningHorizon, order []TaskLocator) (string, error) {
+	switch horizon {
+	case PlanningHorizonNext:
+		return s.applyPlanningOrder(PlanningReconcileRequest{
+			Next: append([]TaskLocator(nil), order...), SetNext: true,
+		}, "Reorder Next")
+	case PlanningHorizonToday:
+		return s.applyPlanningOrder(PlanningReconcileRequest{
+			TodayOrder: append([]TaskLocator(nil), order...), SetTodayOrder: true,
+		}, "Reorder Today")
+	default:
+		return "", invalidInput("planning", "unknown planning horizon")
+	}
+}
+
+func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction string) (string, error) {
 	builder := s.defaultedPlanningArtifacts(nil)
 	if builder == nil {
-		return fmt.Errorf("app: planning mutations require a planning artifact builder")
+		return "", fmt.Errorf("app: planning mutations require a planning artifact builder")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Targets = planningTargetsForSnapshot(snap)
 	req.Complete = true
 	artifacts, err := planningArtifactsForRequest(req, builder)
 	if err != nil {
-		return err
+		return "", err
 	}
-	_, err = s.commitPlanningOnly(artifacts, nil, undoAction, "")
-	return err
+	return s.commitPlanningOnly(artifacts, nil, undoAction, "")
 }
 
 // planningTargetsForSnapshot enumerates every task the snapshot can see, which

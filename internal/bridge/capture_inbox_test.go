@@ -508,7 +508,7 @@ func TestBridgeAnswersAWidgetSnapshot(t *testing.T) {
 		list widgetList
 	}{{"today", snapshot.Today}, {"inbox", snapshot.Inbox}} {
 		var tasks tasksResult
-		h.ok(h.call("query.tasks", map[string]any{"mode": view.mode}), &tasks)
+		h.ok(h.call("query.tasks", map[string]any{"mode": view.mode, "sort": map[string]any{"field": "manual"}}), &tasks)
 		if view.list.Count != len(tasks.Items) || len(view.list.Tasks) != min(3, len(tasks.Items)) {
 			t.Fatalf("%s: count %d rows %d, the tab holds %d", view.mode, view.list.Count, len(view.list.Tasks), len(tasks.Items))
 		}

@@ -221,7 +221,7 @@ func TestNewQueryValidatesEveryAxisAndClause(t *testing.T) {
 	if _, err := NewQuery("weekly", "", QuerySort{}); err == nil {
 		t.Fatal("an unknown mode was accepted")
 	}
-	if _, err := NewQuery(QueryModeAll, "", QuerySort{Field: "manual"}); err == nil {
+	if _, err := NewQuery(QueryModeAll, "", QuerySort{Field: "unknown-sort"}); err == nil {
 		t.Fatal("an unknown sort field was accepted")
 	}
 	broken := Query{Clauses: []QueryClause{{Field: QueryFieldState, Operator: QueryOperatorIs, Value: "review"}}}

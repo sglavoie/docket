@@ -68,7 +68,8 @@ type QueryResult struct {
 //
 // The order is the mode's: priority first everywhere but Due (deadline first)
 // and Recent (newest touch first), with planning order or stored order breaking
-// ties. A named Sort replaces the primary key. Sections, hierarchy, and folds
+// ties. Manual sort uses those orders without the primary key. A named field
+// Sort replaces the primary key. Sections, hierarchy, and folds
 // are presentation and stay with the frontend.
 func (r *Runtime) Query(query models.Query) (QueryResult, error) {
 	if err := query.Validate(); err != nil {

@@ -79,6 +79,7 @@ var operations = map[string]op{
 	"command.plan":              {mutates: true, run: (*Bridge).commandPlan},
 	"command.checklist":         {mutates: true, run: (*Bridge).commandChecklist},
 	"command.check_in":          {mutates: true, run: (*Bridge).commandCheckIn},
+	"command.reorder":           {mutates: true, run: (*Bridge).commandReorder},
 	"command.hierarchy":         {mutates: true, run: (*Bridge).commandHierarchy},
 	"command.bulk":              {mutates: true, run: (*Bridge).commandBulk},
 	"command.project":           {mutates: true, run: (*Bridge).commandProject},

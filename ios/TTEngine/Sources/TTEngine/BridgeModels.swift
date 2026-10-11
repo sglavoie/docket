@@ -693,3 +693,8 @@ public struct ProjectMutation: Decodable, Hashable, Sendable {
     public var project: ProjectSummary
     public var committed: CommittedEffect
 }
+
+/// The durable ordering domain a list edits.
+public enum TaskOrder: String, Encodable, Sendable {
+    case today, next, siblings
+}

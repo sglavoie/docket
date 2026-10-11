@@ -52,7 +52,9 @@ type QuerySortField string
 
 // Canonical sort field tokens. QuerySortDefault is the mode's own order.
 const (
-	QuerySortDefault  QuerySortField = ""
+	QuerySortDefault QuerySortField = ""
+	// QuerySortManual uses planning order or stored project order, without a field key.
+	QuerySortManual   QuerySortField = "manual"
 	QuerySortPriority QuerySortField = "priority"
 	QuerySortDue      QuerySortField = "due"
 	QuerySortCreated  QuerySortField = "created"
@@ -62,6 +64,7 @@ const (
 )
 
 var allQuerySortFields = []QuerySortField{
+	QuerySortManual,
 	QuerySortPriority,
 	QuerySortDue,
 	QuerySortCreated,

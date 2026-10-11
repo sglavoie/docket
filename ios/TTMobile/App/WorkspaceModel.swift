@@ -296,6 +296,10 @@ final class WorkspaceModel {
         await attempt { _ = try await self.engine.checkIn(locators, action) }
     }
 
+    func reorder(_ locator: TaskLocator, in kind: TaskOrder, order: [TaskLocator]) async -> String? {
+        await attempt { _ = try await self.engine.reorder(locator, in: kind, order: order) }
+    }
+
     func hierarchy(_ locator: TaskLocator, _ action: HierarchyAction) async -> String? {
         await attempt { _ = try await self.engine.hierarchy(locator, action) }
     }

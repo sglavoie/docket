@@ -194,6 +194,13 @@ preceding search and appends a space. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
 
+Long-press a task and drag it to reorder. Today and Next save a workspace-wide
+order; Inbox and project lists reorder siblings within the same project, keeping
+subtasks with their parent. These lists use manual order by default. All and
+Backlog offer **Manual order** in Sort. Clear searches and filters and leave
+selection mode before dragging; field-sorted lists, Due, Recent, and saved lenses
+keep their query order. Reordering is saved on the iPhone and synced normally.
+
 Swipe left on a task for **Done**, **Start** (or **Pause** while doing), and
 **Edit**; completed and canceled tasks offer **Reopen** and **Edit**. Swipe
 right for **Today** and **Next**, or remove it from the plan it already has.

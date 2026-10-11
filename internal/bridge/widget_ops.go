@@ -85,7 +85,7 @@ func (b *Bridge) queryWidgetSnapshot(request Request) (any, error) {
 		mode models.QueryMode
 		into *widgetList
 	}{{models.QueryMode("today"), &result.Today}, {models.QueryMode("inbox"), &result.Inbox}} {
-		query, err := models.NewQuery(view.mode, "", models.QuerySort{})
+		query, err := models.NewQuery(view.mode, "", models.QuerySort{Field: models.QuerySortManual, Ascending: true})
 		if err != nil {
 			return nil, err
 		}

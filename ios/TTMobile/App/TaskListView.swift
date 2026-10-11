@@ -214,6 +214,7 @@ struct TaskListView: View {
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
                     .accessibilityIdentifier("task.row")
                     .tag(row.id)
+                    .moveDisabled(!canReorder)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if !selecting {
                             statusActions(row)
@@ -227,10 +228,78 @@ struct TaskListView: View {
                         }
                     }
                 }
+                .onMove(perform: moveRows)
             }
             .accessibilityIdentifier("list.tasks")
             // The last row scrolls clear of the floating capture button.
             .contentMargins(.bottom, 72, for: .scrollContent)
+        }
+    }
+
+    private var supportsManualOrder: Bool {
+        source.lens == nil && source.mode != "due" && source.mode != "recent"
+    }
+
+    private var effectiveSort: TaskSort? {
+        if sort.field != nil { return sort }
+        if source.outline || ["today", "next", "inbox"].contains(source.mode ?? "") {
+            return TaskSort(field: "manual")
+        }
+        return nil
+    }
+
+    private var canReorder: Bool {
+        supportsManualOrder && effectiveSort?.field == "manual"
+            && !selecting && !acting && !filter.isActive
+            && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && diagnostics.isEmpty
+    }
+
+    /// Native List moves begin with a long press, without entering selection
+    /// mode. A project drag changes sibling order, never parentage.
+    private func moveRows(from offsets: IndexSet, to destination: Int) {
+        guard canReorder, offsets.count == 1, let from = offsets.first,
+              rows.indices.contains(from), (0...rows.count).contains(destination),
+              destination != from, destination != from + 1 else { return }
+        let moved = rows[from]
+        let kind: TaskOrder = source.mode == "today" ? .today : source.mode == "next" ? .next : .siblings
+        var proposed = rows
+        proposed.move(fromOffsets: offsets, toOffset: destination)
+        var order: [TaskRow]
+        if kind == .siblings {
+            let task = moved.item.task
+            let peer: (TaskRow) -> Bool = {
+                $0.item.task.projectID == task.projectID && $0.item.task.parentID == task.parentID
+            }
+            // Find the sibling whose branch contains the drop location. This
+            // keeps a parent's descendants attached when dragging past them.
+            let crossed = destination > from
+                ? Array(rows[(from + 1)..<destination])
+                : Array(rows[destination..<from])
+            guard crossed.contains(where: peer) else {
+                actionFailure = "Move tasks among siblings in the same project."
+                return
+            }
+            order = proposed.filter(peer)
+            if order.map(\.id) == rows.filter(peer).map(\.id) { return }
+            // Permute only sibling slots; outline() then moves whole branches.
+            var peers = order.makeIterator()
+            proposed = rows.map { peer($0) ? peers.next()! : $0 }
+            if source.outline {
+                proposed = Self.outline(proposed.map(\.item))
+            }
+        } else {
+            order = proposed
+        }
+        rows = proposed
+        acting = true
+        actionFailure = nil
+        Task {
+            actionFailure = await workspace.reorder(moved.id, in: kind, order: order.map(\.id))
+            // Requery on both success and refusal, so an optimistic move can
+            // never survive a rejected write or hide another device's edits.
+            await load()
+            acting = false
         }
     }
 
@@ -323,12 +392,15 @@ struct TaskListView: View {
         Menu {
             Picker("Sort by", selection: $sort.field) {
                 Text("Default order").tag(String?.none)
+                if supportsManualOrder {
+                    Text("Manual order").tag(Optional("manual"))
+                }
                 ForEach(["priority", "due", "created", "updated", "status", "title"], id: \.self) { field in
                     Text(field.capitalized).tag(Optional(field))
                 }
             }
             Toggle("Ascending", isOn: $sort.ascending)
-                .disabled(sort.field == nil)
+                .disabled(sort.field == nil || sort.field == "manual")
         } label: {
             Image(systemName: "arrow.up.arrow.down.circle")
         }
@@ -376,7 +448,7 @@ struct TaskListView: View {
                 result = try await workspace.engine.tasks(
                     mode: source.mode, scope: source.scope,
                     query: queryClauses,
-                    sort: sort.field == nil ? nil : sort,
+                    sort: effectiveSort,
                     search: trimmed.isEmpty ? nil : trimmed
                 )
             }
@@ -390,7 +462,7 @@ struct TaskListView: View {
             if Task.isCancelled { return }
             projectNames = names
             diagnostics = result.diagnostics
-            let reordered = sort.field != nil || filter.isActive || !trimmed.isEmpty
+            let reordered = (sort.field != nil && sort.field != "manual") || filter.isActive || !trimmed.isEmpty
             rows = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
             if rows.isEmpty, diagnostics.isEmpty {
                 state = trimmed.isEmpty && !filter.isActive

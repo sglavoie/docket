@@ -224,6 +224,118 @@ final class OrganizingUITests: XCTestCase {
 
     // MARK: Tests
 
+    func testLongPressReordersTodayAndSurvivesRelaunch() throws {
+        var app = launch()
+        let ship = row(app, "Ship beta build")
+        let tiles = row(app, "Order bathroom tiles")
+        require(ship, "Today's first task")
+        require(tiles, "Today's second task")
+        XCTAssertLessThan(ship.frame.minY, tiles.frame.minY)
+        tiles.press(forDuration: 1, thenDragTo: ship)
+        eventually("the dragged Today order") {
+            self.row(app, "Order bathroom tiles").frame.minY < self.row(app, "Ship beta build").frame.minY
+        }
+        eventually("the planning order was saved") {
+            let text = try self.planning()
+            let tiles = try XCTUnwrap(text.range(of: "000000000202"))
+            let ship = try XCTUnwrap(text.range(of: "000000000101"))
+            return tiles.lowerBound < ship.lowerBound
+        }
+        XCTAssertFalse(app.staticTexts["detail.title"].exists, "dragging opened task detail")
+        app.terminate()
+        app = launch()
+        require(row(app, "Ship beta build"), "Today after relaunch")
+        XCTAssertLessThan(row(app, "Order bathroom tiles").frame.minY, row(app, "Ship beta build").frame.minY)
+        // Ordinary taps still navigate after adding the long-press gesture.
+        openTask(app, "Order bathroom tiles")
+    }
+
+    func testLongPressReordersProjectSiblings() throws {
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.project.home-renovation")
+        let paint = row(app, "Pick paint colors")
+        let tiles = row(app, "Order bathroom tiles")
+        require(paint, "the first sibling")
+        require(tiles, "the second sibling")
+        tiles.press(forDuration: 1, thenDragTo: paint)
+        eventually("the sibling order was saved") {
+            let text = try self.markdown("home-renovation")
+            return try XCTUnwrap(text.range(of: "Task: Order bathroom tiles")).lowerBound
+                < XCTUnwrap(text.range(of: "Task: Pick paint colors")).lowerBound
+        }
+        eventually("the reordered project") {
+            self.row(app, "Order bathroom tiles").frame.minY < self.row(app, "Pick paint colors").frame.minY
+        }
+    }
+
+    func testLongPressReordersNext() throws {
+        let file = workspace.appendingPathComponent(".tt/planning.json")
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        var data = try XCTUnwrap(document["data"] as? [String: Any])
+        data["next"] = data["today"]
+        data["today"] = [] as [String]
+        document["data"] = data
+        try JSONSerialization.data(withJSONObject: document).write(to: file)
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.mode.next")
+        let ship = row(app, "Ship beta build")
+        let tiles = row(app, "Order bathroom tiles")
+        require(ship, "the first Next task")
+        require(tiles, "the second Next task")
+        tiles.press(forDuration: 1, thenDragTo: ship)
+        eventually("Next's dragged order was saved") {
+            let text = try self.planning()
+            return try XCTUnwrap(text.range(of: "000000000202")).lowerBound
+                < XCTUnwrap(text.range(of: "000000000101")).lowerBound
+        }
+        eventually("Next displays the saved order") { tiles.frame.minY < ship.frame.minY }
+    }
+
+    func testLongPressMovesParentWithItsSubtasks() throws {
+        // A small outline keeps the entire drag visible on every simulator.
+        let file = workspace.appendingPathComponent("projects/home-renovation/tasks.md")
+        let text = try String(contentsOf: file, encoding: .utf8)
+        let child = """
+        ### Task: Compare paint samples
+        <!-- id: 0a7e5d10-2c3b-4f6a-8e9d-000000000203, short_id: 3, state: backlog, priority: 0, parent: 0a7e5d10-2c3b-4f6a-8e9d-000000000201, created: 2026-09-10T09:00:00Z, updated: 2026-09-10T09:00:00Z, state_changed: 2026-09-10T09:00:00Z -->
+
+
+        """
+        try text.replacingOccurrences(of: "## Task: Order bathroom tiles", with: child + "## Task: Order bathroom tiles")
+            .write(to: file, atomically: true, encoding: .utf8)
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.project.home-renovation")
+        let paint = row(app, "Pick paint colors")
+        let tiles = row(app, "Order bathroom tiles")
+        require(tiles, "the last sibling")
+        // Drop past the last row's bottom; its center can resolve to the
+        // insertion slot before it, which is still inside the first branch.
+        paint.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 1, thenDragTo: tiles.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.1)))
+        let outline = XCTAttachment(string: app.debugDescription)
+        outline.name = "Outline after dragging the parent"
+        outline.lifetime = .keepAlways
+        add(outline)
+        eventually("the parent and child moved together") {
+            let child = self.row(app, "Compare paint samples")
+            return tiles.frame.minY < paint.frame.minY && paint.frame.minY < child.frame.minY
+        }
+        XCTAssertEqual(row(app, "Compare paint samples").value as? String, "level 1")
+        eventually("the branch order was saved") {
+            let text = try self.markdown("home-renovation")
+            let tiles = try XCTUnwrap(text.range(of: "Task: Order bathroom tiles"))
+            let paint = try XCTUnwrap(text.range(of: "Task: Pick paint colors"))
+            // Storage permutes sibling slots; the explicit parent identity,
+            // rather than adjacent Markdown headings, defines the branch.
+            let child = try XCTUnwrap(self.taskLine("Compare paint samples", in: text))
+            return tiles.lowerBound < paint.lowerBound
+                && child.contains("parent: 0a7e5d10-2c3b-4f6a-8e9d-000000000201")
+        }
+    }
+
     func testChecklistEditingAndPromotion() throws {
         let app = launch()
         openTask(app, "Ship beta build")

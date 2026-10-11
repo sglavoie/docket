@@ -201,6 +201,11 @@ public actor TTEngine {
         try send("command.edit", payload: EditPayload(task: locator, edit: edit), expect: expect, requestID: requestID)
     }
 
+    /// Saves a drag's final order through the shared ordering transaction.
+    public func reorder(_ task: TaskLocator, in kind: TaskOrder, order: [TaskLocator]) throws -> TasksMutation {
+        try send("command.reorder", payload: ReorderPayload(task: task, kind: kind, order: order))
+    }
+
     /// Applies one planning action.
     public func plan(
         _ locator: TaskLocator,
@@ -645,4 +650,10 @@ private struct ProjectPayload: Encodable {
             try container.encode(confirm, forKey: .confirm)
         }
     }
+}
+
+private struct ReorderPayload: Encodable {
+    var task: TaskLocator
+    var kind: TaskOrder
+    var order: [TaskLocator]
 }
