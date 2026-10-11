@@ -542,6 +542,14 @@ struct TaskRowView: View {
             : AnyLayout(HStackLayout(spacing: 8))
     }
 
+    private var metadata: String {
+        var parts = [item.task.state.rawValue.capitalized]
+        if item.today { parts.append("Today") }
+        if item.next { parts.append("Next") }
+        if let projectName, !projectName.isEmpty { parts.append(projectName) }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: item.task.state.symbol)
@@ -550,48 +558,48 @@ struct TaskRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.task.title)
                     .strikethrough(item.task.state.isTerminal)
-                badgeLayout {
-                    if item.task.priority > 0 {
-                        Text("P\(item.task.priority)").foregroundStyle(.orange)
-                    }
-                    if let due = item.task.dueDate {
-                        Label(due.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                            .labelStyle(DueLabelStyle(compact: dynamicTypeSize.isAccessibilitySize))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if item.today { Text("Today") }
-                    if item.next { Text("Next") }
-                    if item.task.pinned { Image(systemName: "pin.fill") }
-                    if item.task.review { Image(systemName: "flag.fill") }
+                Text(metadata)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !item.task.tags.isEmpty {
+                    Text(item.task.tags.map { "#\($0)" }.joined(separator: " "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                // Each badge takes the height its text needs rather than
-                // being clipped to the row's first guess.
-                .fixedSize(horizontal: false, vertical: true)
                 if let context = item.task.context, !context.isEmpty {
                     Text("##\(context)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if let projectName {
-                    Text(projectName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Text(item.task.state.rawValue.capitalized)
+                if item.task.priority > 0 || item.task.dueDate != nil || item.task.pinned || item.task.review {
+                    badgeLayout {
+                        if item.task.priority > 0 {
+                            Text("P\(item.task.priority)").foregroundStyle(.orange)
+                        }
+                        if let due = item.task.dueDate {
+                            Label(due.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                                .labelStyle(DueLabelStyle(compact: dynamicTypeSize.isAccessibilitySize))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if item.task.pinned { Image(systemName: "pin.fill") }
+                        if item.task.review { Image(systemName: "flag.fill") }
+                    }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    // Each badge takes the height its text needs rather than
+                    // being clipped to the row's first guess.
                     .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
 
     /// What VoiceOver says for a row, in the order it is read: the state,
     /// the title, then each badge in words rather than its symbol or
-    /// abbreviation, followed by the context and then the project when the
+    /// abbreviation, followed by tags, context and then the project when the
     /// list spans projects.
     static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue, item.task.title]
@@ -601,6 +609,7 @@ struct TaskRowView: View {
         if item.next { parts.append("Next") }
         if item.task.pinned { parts.append("pinned") }
         if item.task.review { parts.append("review") }
+        if !item.task.tags.isEmpty { parts.append("tags \(item.task.tags.joined(separator: ", "))") }
         if let context = item.task.context, !context.isEmpty { parts.append("context \(context)") }
         if let projectName { parts.append(projectName) }
         return parts.joined(separator: ", ")
