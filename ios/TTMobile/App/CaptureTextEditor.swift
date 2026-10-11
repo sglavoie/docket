@@ -26,6 +26,15 @@ struct CaptureTextEditor: UIViewRepresentable {
         view.accessibilityIdentifier = "capture.text"
         view.accessibilityLabel = "Capture text"
         view.accessibilityHint = "One task per line. Type a sigil to show suggestions."
+        view.inputAccessoryView = CaptureSigilBar { [weak view, weak coordinator = context.coordinator] symbol in
+            guard let view, view.markedTextRange == nil else { return }
+            // Keep UIKit's selection, undo, and input notifications intact. A
+            // separator makes the shortcut useful immediately after a title.
+            let prefix = (view.text as NSString).substring(to: view.selectedRange.location)
+            let separator = prefix.last.map { $0.isWhitespace ? "" : " " } ?? ""
+            view.insertText(separator + symbol)
+            coordinator?.textViewDidChange(view)
+        }
         return view
     }
 
@@ -80,4 +89,57 @@ struct CaptureTextEditor: UIViewRepresentable {
             if !updating { parent.focused = false }
         }
     }
+}
+
+/// Attached to the editor so the shortcuts stay within reach as the form
+/// scrolls, and disappear when another field takes keyboard focus.
+private final class CaptureSigilBar: UIInputView {
+    init(insert: @escaping (String) -> Void) {
+        super.init(frame: CGRect(x: 0, y: 0, width: 0, height: 52), inputViewStyle: .keyboard)
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.showsHorizontalScrollIndicator = true
+        scroll.accessibilityIdentifier = "capture.sigils"
+        addSubview(scroll)
+
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.spacing = 6
+        row.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(row)
+
+        let sigils = [
+            ("#", "Tag"), ("@", "Due date"), ("!", "Priority"),
+            ("$", "Status or plan"), ("%", "Project"), ("##", "Context"),
+            ("@@", "Defer"), (">", "Parent"), ("<", "Child"),
+            ("~", "Dependency"), ("*", "Pin"), ("=", "Review"),
+            ("&", "Link"), (";", "Comment")
+        ]
+        for (symbol, name) in sigils {
+            var configuration = UIButton.Configuration.tinted()
+            configuration.title = symbol
+            configuration.cornerStyle = .capsule
+            let button = UIButton(configuration: configuration, primaryAction: UIAction { _ in insert(symbol) })
+            button.accessibilityIdentifier = "capture.sigil.\(symbol)"
+            button.accessibilityLabel = "\(name), \(symbol)"
+            button.accessibilityHint = "Inserts the sigil at the cursor."
+            button.titleLabel?.adjustsFontForContentSizeCategory = true
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+            row.addArrangedSubview(button)
+        }
+
+        NSLayoutConstraint.activate([
+            scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor),
+            scroll.topAnchor.constraint(equalTo: topAnchor),
+            scroll.bottomAnchor.constraint(equalTo: bottomAnchor),
+            row.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 8),
+            row.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -8),
+            row.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 4),
+            row.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -4),
+            row.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor, constant: -8)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }

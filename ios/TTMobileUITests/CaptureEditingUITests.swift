@@ -208,6 +208,15 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Tests
 
+    private func insertSigil(_ app: XCUIApplication, _ symbol: String) {
+        let bar = app.scrollViews["capture.sigils"]
+        require(bar, "the keyboard sigil shortcuts")
+        let button = app.buttons["capture.sigil.\(symbol)"]
+        for _ in 0..<5 where !button.isHittable { bar.swipeLeft() }
+        XCTAssertTrue(button.isHittable, "the \(symbol) shortcut is unreachable")
+        button.tap()
+    }
+
     func testCaptureAutocompleteAllSigils() throws {
         let app = launch()
         let cases: [(String, String)] = [
@@ -220,7 +229,12 @@ final class CaptureEditingUITests: XCTestCase {
         for (partial, token) in cases {
             openCapture(app)
             let prefix = partial.hasPrefix("%") ? "Suggested " : "Suggested %atlas-launch "
-            type(app, "capture.text", prefix + partial)
+            type(app, "capture.text", prefix)
+            let symbol = partial.hasPrefix("##") || partial.hasPrefix("@@")
+                ? String(partial.prefix(2)) : String(partial.prefix(1))
+            insertSigil(app, symbol)
+            input(app, "capture.text").typeText(String(partial.dropFirst(symbol.count)))
+            XCTAssertEqual(value(app, "capture.text"), prefix + partial)
             let suggestion = app.buttons["capture.suggestion.\(token)"]
             require(suggestion, "completion for \(partial)")
             suggestion.tap()
@@ -238,7 +252,9 @@ final class CaptureEditingUITests: XCTestCase {
         let app = launch()
         app.open(URL(string: "tt://capture")!)
         require(app.buttons["capture.save"], "capture opened by the quick-capture link")
-        type(app, "capture.text", "Autocomplete 🥛 #rel")
+        type(app, "capture.text", "Autocomplete 🥛")
+        insertSigil(app, "#")
+        input(app, "capture.text").typeText("rel")
         for (partial, token) in [("", "#release"), ("##lap", "##laptop"), ("$tod", "$today")] {
             if !partial.isEmpty { input(app, "capture.text").typeText(partial) }
             let suggestion = app.buttons["capture.suggestion.\(token)"]
