@@ -497,6 +497,12 @@ struct TaskRowView: View {
                 // Each badge takes the height its text needs rather than
                 // being clipped to the row's first guess.
                 .fixedSize(horizontal: false, vertical: true)
+                if let context = item.task.context, !context.isEmpty {
+                    Text("##\(context)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let projectName {
                     Text(projectName)
                         .font(.caption)
@@ -513,7 +519,8 @@ struct TaskRowView: View {
 
     /// What VoiceOver says for a row, in the order it is read: the state,
     /// the title, then each badge in words rather than its symbol or
-    /// abbreviation, followed by the project when the list spans projects.
+    /// abbreviation, followed by the context and then the project when the
+    /// list spans projects.
     static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue, item.task.title]
         if item.task.priority > 0 { parts.append("priority \(item.task.priority)") }
@@ -522,6 +529,7 @@ struct TaskRowView: View {
         if item.next { parts.append("Next") }
         if item.task.pinned { parts.append("pinned") }
         if item.task.review { parts.append("review") }
+        if let context = item.task.context, !context.isEmpty { parts.append("context \(context)") }
         if let projectName { parts.append(projectName) }
         return parts.joined(separator: ", ")
     }
