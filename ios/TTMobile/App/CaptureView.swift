@@ -48,15 +48,6 @@ struct CaptureSheet: View {
                 case .quick: quick
                 case .form: form
                 }
-                Section {
-                    Picker("Project", selection: $draft.projectID) {
-                        Text("Unfiled").tag(String?.none)
-                        ForEach(projects.filter { !$0.systemUnfiled }) { project in
-                            Text(project.name).tag(Optional(project.id))
-                        }
-                    }
-                    .accessibilityIdentifier("capture.project")
-                }
             }
             .navigationTitle("Capture")
             .navigationBarTitleDisplayMode(.inline)
@@ -112,11 +103,11 @@ struct CaptureSheet: View {
                     workspace.drafts?.saveCapture(draft)
                 }
             }
-            .task(id: PreviewKey(text: draft.text, projectID: draft.projectID, mode: draft.mode)) {
+            .task(id: PreviewKey(text: draft.text, mode: draft.mode)) {
                 guard draft.mode == .quick else { return }
                 try? await Task.sleep(for: .milliseconds(150))
                 guard !Task.isCancelled else { return }
-                preview = await workspace.previewCapture(text: draft.text, projectID: draft.projectID)
+                preview = await workspace.previewCapture(text: draft.text, projectID: nil)
             }
             .task(id: suggestionKey) {
                 let key = suggestionKey
@@ -126,7 +117,7 @@ struct CaptureSheet: View {
                 do {
                     try await Task.sleep(for: .milliseconds(100))
                     let result = try await workspace.engine.captureSuggestions(
-                        text: key.text, caret: key.selection.location, projectID: key.projectID
+                        text: key.text, caret: key.selection.location, projectID: nil
                     )
                     guard !Task.isCancelled, key == suggestionKey else { return }
                     suggestions = result
@@ -140,21 +131,19 @@ struct CaptureSheet: View {
 
     private struct PreviewKey: Equatable {
         var text: String
-        var projectID: String?
         var mode: CaptureDraft.Mode
     }
 
     private struct SuggestionKey: Equatable {
         var text: String
         var selection: NSRange
-        var projectID: String?
         var mode: CaptureDraft.Mode
         var focused: Bool
         var composing: Bool
     }
 
     private var suggestionKey: SuggestionKey {
-        SuggestionKey(text: draft.text, selection: selection, projectID: draft.projectID,
+        SuggestionKey(text: draft.text, selection: selection,
                       mode: draft.mode, focused: focused, composing: composing)
     }
 
@@ -251,6 +240,15 @@ struct CaptureSheet: View {
                 }
             }
             .accessibilityIdentifier("capture.destination")
+            // Quick capture has no picker: %project is its one route, and the
+            // preview names where each line lands.
+            Picker("Project", selection: $draft.projectID) {
+                Text("Unfiled").tag(String?.none)
+                ForEach(projects.filter { !$0.systemUnfiled }) { project in
+                    Text(project.name).tag(Optional(project.id))
+                }
+            }
+            .accessibilityIdentifier("capture.project")
         }
     }
 
@@ -260,7 +258,7 @@ struct CaptureSheet: View {
         Task {
             let refusal: String? = switch draft.mode {
             case .quick:
-                await workspace.capture(text: draft.text, projectID: draft.projectID)
+                await workspace.capture(text: draft.text, projectID: nil)
             case .form:
                 await workspace.capture(draft.fields.capture(projectID: draft.projectID, destination: draft.destination))
             }

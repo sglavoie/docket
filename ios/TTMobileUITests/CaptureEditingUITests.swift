@@ -398,6 +398,15 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertEqual(draftFiles(), [], "a committed capture left a draft behind")
     }
 
+    func testQuickCaptureRoutesByItsSigilAlone() throws {
+        let app = launch()
+        openCapture(app)
+        type(app, "capture.text", "Book the venue %atlas-launch")
+        let lines = app.descendants(matching: .any).matching(identifier: "capture.preview.line")
+        eventually("the preview named the sigil's project") { lines.firstMatch.label.contains("Atlas Launch") }
+        XCTAssertFalse(app.descendants(matching: .any)["capture.project"].exists, "quick capture drew a project picker")
+    }
+
     func testRefusedCaptureKeepsItsDraftAcrossARelaunch() throws {
         var app = launch()
         openCapture(app)
