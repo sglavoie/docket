@@ -113,7 +113,9 @@ Each device keeps its own history under `<data>/.tt/sync/`. It is never
 exchanged as files; only the manifests and blobs it holds are published.
 `internal/synclog` plans every change to it as journal operations, and
 `storage.CommitService` stages them in the manifest of the transaction they
-describe, so nothing here is ever written on its own.
+describe, so no record here is ever written on its own. The two exceptions hold
+no history: the transport's inbox and status under `transport/`, and the
+observation stat cache.
 
 ```text
 .tt/sync/
@@ -125,6 +127,19 @@ describe, so nothing here is ever written on its own.
     ├── txns/<seq>-<hash>.json                     # immutable outgoing manifests
     └── incoming/<author>/<seq>-<hash>.json        # immutable receipts, each with its manifest
 ```
+
+- **Stat cache.** `stat-cache.json`, beside those directories, is what lets an
+  observation pass over an unchanged workspace without reading it. It maps each
+  synced path to the size, modification time, and digest it was last read at,
+  and a file still showing both is not read again. A modification time not
+  safely older than the walk that recorded it is read again anyway, which is
+  git's racy rule widened by two seconds for filesystems with coarse
+  timestamps, and a path whose reused digest differs from `tracked` is read
+  before it is judged, so a cache entry is never what a change is recorded
+  from. The cache is written on its own, outside the journal: it accounts for
+  no transaction, a missing, unreadable, or future-dated one means one full
+  walk, and deleting it changes no result. A rewrite that preserves both a
+  file's size and an old modification time is the one change it cannot see.
 
 - **Recording.** Every `CommitService` entry point, and the ledger's undo and
   redo, records when a history is attached; the engine attaches one to every

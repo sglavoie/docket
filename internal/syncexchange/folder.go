@@ -440,11 +440,31 @@ func readPeers(root, self string) ([]DeviceAdvertisement, error) {
 	return peers, nil
 }
 
+// fetchHistory is what a fetch reads of this device's history.
+type fetchHistory interface {
+	DeviceID() string
+	LoadState() (*synclog.State, error)
+	Lookup(txnID string) (synclog.IndexEntry, bool, error)
+	Blob(digest string) ([]byte, error)
+}
+
 // fetch stages, into the device-local inbox, every manifest another device
 // published that this one has not applied, with whatever of its content is
 // in the folder and intact. Missing and placeholder content is left for a
 // later pass; ImportInbox decides what is complete.
-func fetch(history *synclog.History, root, inbox string, report *FolderReport) error {
+func fetch(history fetchHistory, root, inbox string, report *FolderReport) error {
+	state, stateErr := history.LoadState()
+	if stateErr != nil {
+		return stateErr
+	}
+	// Delivery is gap-free, so a sequence at or below the highest one applied
+	// from its author is already here: its name alone says so, and neither its
+	// index entry nor its manifest is read. A device that has recorded nothing
+	// has received nothing.
+	var received map[string]uint64
+	if state != nil {
+		received = state.Received
+	}
 	txns := filepath.Join(root, "txns")
 	walkErr := filepath.WalkDir(txns, func(abs string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -476,8 +496,8 @@ func fetch(history *synclog.History, root, inbox string, report *FolderReport) e
 			report.Unavailable = append(report.Unavailable, placeholder)
 			return nil
 		}
-		deviceID, _, txnID, ok := ParseManifestPath(rel)
-		if !ok || deviceID == history.DeviceID() {
+		deviceID, seq, txnID, ok := ParseManifestPath(rel)
+		if !ok || deviceID == history.DeviceID() || seq <= received[deviceID] {
 			return nil
 		}
 		if _, known, lookupErr := history.Lookup(txnID); lookupErr != nil || known {
@@ -542,13 +562,16 @@ func stageInbox(inbox, rel string, data []byte) error {
 	return nil
 }
 
+// readFolderFile reads one file of the exchange folder.
+var readFolderFile = os.ReadFile
+
 // readExchangeFile reads one listed exchange file; false means it cannot be
 // read yet, which the caller reports as unavailable rather than as an error.
 func readExchangeFile(abs string) ([]byte, bool) {
 	if exchangeFileUnavailable(abs) {
 		return nil, false
 	}
-	data, err := os.ReadFile(abs)
+	data, err := readFolderFile(abs)
 	return data, err == nil
 }
 

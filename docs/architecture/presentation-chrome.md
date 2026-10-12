@@ -261,6 +261,25 @@ nothing, so there is no application-layer policy for a port to hold. A nil
 accessor is inert, which is what keeps the Hub's preview painter and
 struct-literal test models indicator-free. Resolution is available through the conflict overlay and CLI.
 
+Sync conflicts are the count's other half and are refreshed apart from the
+bundles, because reading them is not a directory listing: the sync status port
+derives the open conflicts from the whole history. `refreshOutstandingConflicts`
+reads both halves, and runs at launch, when a reload adopts a change, when `gc`
+opens or resolves, and after an exchange pass that could have moved the status:
+one that imported or observed a change, published anything (a resolution among
+what it may have published), was asked for by hand, or whose
+`automaticSyncOutcome` differs from the pass before it. That outcome spells
+everything the `sync:` line reads apart from its age, so a pass that starts or
+stops failing, or changes what is waiting either way, is read once and its
+repetitions are not. Every other pass only moves the cached status's
+last-success time and redraws the line through `renderSyncAdvisory`. In a
+session exchanging on its own timer the 60s tick takes
+`recountOutstandingConflicts`, which recounts the bundles against the sync
+conflicts last read and never calls the port; a session with no exchange timer
+still reads both halves on that tick. What another process imported is noticed
+through `workspace.Fingerprint`, which covers the sync tracking state: the
+change owes a reload, and adopting it reads both halves.
+
 The pulse the title row does carry has one home, and that is a correction rather
 than a restatement. `OutlinerModel` embeds `listsurface.BaseSearchableView`,
 which embeds `pulse.WorkspacePulseState`, so the promoted `SetWorkspacePulse`

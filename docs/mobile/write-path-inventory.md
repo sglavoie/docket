@@ -141,6 +141,12 @@ phone's capture inbox (`internal/bridge/capture_inbox_ops.go`): the receipts tha
 keep a saved capture from importing twice, the status beside a refused one,
 and the removal of imported entries from the App Group container.
 
+The observation stat cache (`History.saveStatCache`, `.tt/sync/stat-cache.json`)
+is here too, although it sits inside the workspace: it remembers the size,
+modification time, and digest each synced file was last read at, so an
+observation reads only the files that changed. It is derived from those files
+alone, accounts for no transaction, and is safe to delete.
+
 **Sync integration point:** none, ever.
 
 ## Commit entry points

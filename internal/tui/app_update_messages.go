@@ -202,7 +202,13 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// Conflict bundles are written by another process on another machine, so
 		// no local mutation can announce one; the periodic tick is what makes the
 		// indicator appear, and what clears it once the CLI resolves the last one.
-		m.refreshOutstandingConflicts()
+		// A session exchanging on its own timer leaves the sync half to its
+		// passes, which read it again whenever one could have changed it.
+		if m.automaticSync.exchange != nil {
+			m.recountOutstandingConflicts()
+		} else {
+			m.refreshOutstandingConflicts()
+		}
 		// A change adopted on focus but refused mid-interaction is retried here,
 		// so putting the picker down is enough to see it.
 		return true, tea.Batch(m.lifecycle.periodicSaveCmd(), m.adoptExternalWorkspaceChange(), m.notifyArrivals(msg.At))

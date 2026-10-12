@@ -485,10 +485,10 @@ no seam refreshes a count. It states the total and, whenever nonzero, the hidden
 half in both spellings, since a compact row shedding that number is what a bulk
 gesture would be surprised by; the visible half is `Q`'s and appears only beside
 a nonzero hidden one. An outstanding-conflict count, sync conflicts
-included, leads that strip, refreshed at launch and on the 60s tick with no
-`internal/app` port; the pulse ladder stays closed to it
-and resolving stays in the CLI. `gc` browses them read-only, as an
-overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
+included, leads that strip with no `internal/app` port; the pulse ladder
+stays closed to it. An idle sync pass and an enrolled 60s tick
+never reread sync status. `gc` browses and resolves, an overlay with no
+`PresentationID`, `InputStrategy`, or manifest entry.
 
 That count is an advisory: ambient workspace state, not an answer to a
 keystroke. Only the load-failure notice and `sync:` line join it. Every advisory routes

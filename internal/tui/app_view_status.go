@@ -978,19 +978,31 @@ func countOutstandingConflicts(dataDir string) int {
 	return len(records)
 }
 
-// refreshOutstandingConflicts recounts the workspace's conflict bundles. It runs
-// at launch and on the existing 60s periodic tick, which is the same cadence the
-// rest of the shell's workspace state is refreshed on; it arms no timer of its
-// own.
+// refreshOutstandingConflicts recounts the workspace's conflict bundles and
+// re-reads the sync status beside them. It runs at launch, when a reload adopts
+// a change, when `gc` opens or resolves, and after an exchange pass that could
+// have moved either; it arms no timer of its own.
 func (m *AppModel) refreshOutstandingConflicts() {
 	if m == nil || m.domain.runtime == nil {
 		return
 	}
-	m.feedback.outstandingConflicts = countOutstandingConflicts(m.domain.runtime.DataDir())
-	// Sync status rides the same cadence: what another device delivered or
-	// left in conflict is equally invisible to a local mutation.
+	// What another device delivered or left in conflict is as invisible to a
+	// local mutation as a bundle another process wrote.
 	m.refreshSyncStatus()
-	m.feedback.outstandingConflicts += len(m.feedback.syncConflicts)
+	m.recountOutstandingConflicts()
+}
+
+// recountOutstandingConflicts recounts the conflict bundles against the sync
+// conflicts last read and redraws the sync line from the status last read. It
+// is the 60s tick's whole refresh in a session exchanging on its own timer:
+// deriving sync conflicts costs a walk of the history, and there every pass
+// that could have changed them has already read them again.
+func (m *AppModel) recountOutstandingConflicts() {
+	if m == nil || m.domain.runtime == nil {
+		return
+	}
+	m.renderSyncAdvisory()
+	m.feedback.outstandingConflicts = countOutstandingConflicts(m.domain.runtime.DataDir()) + len(m.feedback.syncConflicts)
 }
 
 // The count itself lives on the feedback cluster, which also supplies the
@@ -1033,7 +1045,7 @@ func (m *AppModel) refreshSyncStatus() {
 	if m == nil {
 		return
 	}
-	m.feedback.syncAdvisory, m.feedback.syncConflicts = "", nil
+	m.feedback.syncStatus, m.feedback.syncAdvisory, m.feedback.syncConflicts = nil, "", nil
 	if m.domain.syncStatus == nil {
 		return
 	}
@@ -1048,6 +1060,27 @@ func (m *AppModel) refreshSyncStatus() {
 	if status == nil || !status.Enrolled {
 		return
 	}
+	m.feedback.syncStatus = status
+	m.renderSyncAdvisory()
+	if len(status.Conflicts) == 0 || m.domain.syncConflicts == nil {
+		return
+	}
+	views, err := m.domain.syncConflicts(nil)
+	if err != nil {
+		logging.Warn("reading sync conflicts: %v", err)
+		return
+	}
+	m.feedback.syncConflicts = syncConflictEntries(views)
+}
+
+// renderSyncAdvisory redraws the strip's sync line from the status last read,
+// which is what keeps its age and the failure of a pass current between reads.
+// With no status read it leaves the line as the last read left it.
+func (m *AppModel) renderSyncAdvisory() {
+	status := m.feedback.syncStatus
+	if status == nil {
+		return
+	}
 	m.feedback.syncAdvisory = syncAdvisoryText(status, time.Now())
 	// A failure before reaching the transport (for example, a removed folder
 	// configuration) has no persisted report to show in the ordinary status.
@@ -1058,15 +1091,6 @@ func (m *AppModel) refreshSyncStatus() {
 			m.feedback.syncAdvisory += " · " + pending
 		}
 	}
-	if len(status.Conflicts) == 0 || m.domain.syncConflicts == nil {
-		return
-	}
-	views, err := m.domain.syncConflicts(nil)
-	if err != nil {
-		logging.Warn("reading sync conflicts: %v", err)
-		return
-	}
-	m.feedback.syncConflicts = syncConflictEntries(views)
 }
 
 // syncAdvisoryText is the strip's sync line. Local saves, outgoing and

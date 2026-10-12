@@ -848,6 +848,9 @@ type automaticSyncState struct {
 	fingerprint   string
 	manual        bool // An explicit request wants completion feedback, even for a running pass.
 	err           error
+	// outcome is what the last finished pass left for the sync line to say; a
+	// pass repeating it has nothing new for the status to report.
+	outcome string
 }
 
 type automaticSyncTickMsg struct{}
@@ -898,7 +901,22 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.externalReload.owed = true
 		}
 		m.pollExternalWorkspaceChanges()
-		m.refreshOutstandingConflicts()
+		// Reading the sync status derives the open conflicts from the whole
+		// history, so only a pass that could have moved it pays for one: it
+		// changed history, published (a resolution among what it may have
+		// published), was asked for, or left the sync line something new to
+		// say. Any other pass only keeps that line's age current.
+		outcome := automaticSyncOutcome(msg.report, msg.err)
+		published := msg.report != nil && len(msg.report.Published) > 0
+		if msg.changed || published || m.automaticSync.manual || outcome != m.automaticSync.outcome {
+			m.refreshOutstandingConflicts()
+		} else {
+			if status := m.feedback.syncStatus; status != nil && msg.report != nil && msg.report.Succeeded {
+				status.LastSuccess = msg.report.At
+			}
+			m.renderSyncAdvisory()
+		}
+		m.automaticSync.outcome = outcome
 		cmd := m.adoptExternalWorkspaceChange()
 		if m.automaticSync.pending {
 			m.automaticSync.pending = false
@@ -912,6 +930,26 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 	default:
 		return false, nil
 	}
+}
+
+// automaticSyncOutcome spells everything of a finished pass the sync line
+// reads apart from its age: whether it failed, what is still waiting either
+// way, and the updates its holds and peers call for.
+func automaticSyncOutcome(report *syncexchange.FolderReport, err error) string {
+	if report == nil {
+		return fmt.Sprintf("failed=%t", err != nil)
+	}
+	upgrades := make([]string, 0, len(report.Held))
+	for _, held := range report.Held {
+		upgrades = append(upgrades, held.Upgrade)
+	}
+	schemas := make([]string, 0, len(report.Peers))
+	for _, peer := range report.Peers {
+		schemas = append(schemas, fmt.Sprintf("%s=%v", peer.DeviceID, peer.Schemas))
+	}
+	return fmt.Sprintf("failed=%t succeeded=%t up=%d down=%d unavailable=%d errors=%d held=%q peers=%q",
+		err != nil, report.Succeeded, report.OutstandingUp, report.OutstandingDown,
+		len(report.Unavailable), len(report.Errors), upgrades, schemas)
 }
 
 // startManualSync joins an in-flight pass rather than starting overlapping I/O.

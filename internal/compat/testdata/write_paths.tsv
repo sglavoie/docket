@@ -59,6 +59,7 @@ internal/syncexchange/folder.go:pruneInbox	sync-transport	removes spent copies f
 internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local transport status for status surfaces; never exchanged
 internal/syncexchange/folder.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
 internal/syncexchange/folder.go:writeExchangeFile	sync-transport	writes immutable content-addressed history the identity and this device advertisement into the exchange folder
+internal/synclog/stat_cache.go:History.saveStatCache	machine-local	device-local observation stat cache under .tt/sync; derived from the synced files it names and safe to delete; never exchanged
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
 internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
 internal/tui/handler_task_crud.go:removeTaskContentBuffer	external-editor	removes the task content buffer after an external edit

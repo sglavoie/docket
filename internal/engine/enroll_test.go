@@ -474,7 +474,9 @@ func enrollmentAnIncompatiblePeerHoldsAndNamesTheUpgrade(t *testing.T) {
 	// Holding kept the inbox copy and rewrote no historical record.
 	after := treeDigests(t, historyDir)
 	for rel, digest := range recordsBefore {
-		if strings.HasPrefix(rel, "devices/desk-b/state.json") || strings.HasPrefix(rel, "transport/") {
+		// The tracking state, the transport's files, and the observation stat
+		// cache are mutable device-local state, not records.
+		if strings.HasPrefix(rel, "devices/desk-b/state.json") || strings.HasPrefix(rel, "transport/") || rel == "stat-cache.json" {
 			continue
 		}
 		if after[rel] != digest {

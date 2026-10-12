@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -90,10 +89,31 @@ func (h *History) baseline(state *State, o *overlay) error {
 	return nil
 }
 
-// walkSynced calls fn with every regular synced file in the workspace. It
-// does not descend into device-local directories, and it passes over files
-// the history cannot classify, which are not part of the synced workspace.
+// walkSynced calls fn with every regular synced file in the workspace and its
+// bytes.
 func (h *History) walkSynced(fn func(rel string, data []byte) error) error {
+	return h.walkSyncedFiles(func(rel, abs string, _ fs.FileInfo) error {
+		data, err := h.readSynced(rel, abs)
+		if err != nil {
+			return err
+		}
+		return fn(rel, data)
+	})
+}
+
+func (h *History) readSynced(rel, abs string) ([]byte, error) {
+	data, err := readSyncedFile(abs)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s for sync observation: %w", rel, err)
+	}
+	return data, nil
+}
+
+// walkSyncedFiles calls fn with every regular synced file in the workspace
+// and its stat identity, reading none. It does not descend into device-local
+// directories, and it passes over files the history cannot classify, which
+// are not part of the synced workspace.
+func (h *History) walkSyncedFiles(fn func(rel, abs string, info fs.FileInfo) error) error {
 	err := filepath.WalkDir(h.dataDir, func(abs string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -115,11 +135,11 @@ func (h *History) walkSynced(fn func(rel string, data []byte) error) error {
 		if !synced(rel) {
 			return nil
 		}
-		data, err := os.ReadFile(abs)
+		info, err := d.Info()
 		if err != nil {
 			return fmt.Errorf("reading %s for sync observation: %w", rel, err)
 		}
-		return fn(rel, data)
+		return fn(rel, abs, info)
 	})
 	if err != nil && !isNotExist(err) {
 		return err
@@ -219,22 +239,29 @@ func (h *History) PlanGenesis(v Validator, localTxnID string) (*ObservePlan, err
 
 // observe records every synced file whose bytes differ from state's index as
 // one outgoing transaction of txnKind, holding the ones the validator refuses.
+// Only files the stat cache cannot vouch for are read.
 func (h *History) observe(state *State, o *overlay, v Validator, txnKind Kind, localTxnID string) (*ObservePlan, error) {
-	current := map[string][]byte{}
-	if err := h.walkSynced(func(rel string, data []byte) error {
-		current[rel] = data
-		return nil
-	}); err != nil {
+	current, err := h.digestSynced()
+	if err != nil {
 		return nil, err
 	}
-	paths := make([]string, 0, len(current))
-	for rel, data := range current {
-		if state.Tracked[rel] != Digest(data) {
+	var paths []string
+	for rel, digest := range current.digests {
+		if state.Tracked[rel] == digest {
+			continue
+		}
+		// A reused digest only says where to look: the change is judged by the
+		// bytes, so read them and compare again.
+		_, exists, readErr := current.bytes(h, rel)
+		if readErr != nil {
+			return nil, readErr
+		}
+		if exists && state.Tracked[rel] != current.digests[rel] {
 			paths = append(paths, rel)
 		}
 	}
 	for rel := range state.Tracked {
-		if _, exists := current[rel]; !exists {
+		if _, exists := current.digests[rel]; !exists {
 			paths = append(paths, rel)
 		}
 	}
@@ -255,7 +282,7 @@ func (h *History) observe(state *State, o *overlay, v Validator, txnKind Kind, l
 		if classifyErr != nil || local {
 			continue
 		}
-		data, exists := current[rel]
+		data, exists := current.contents[rel]
 		effect, reason := h.judge(state, v, rel, kind, slug, data, exists, diskCatalog, indexedCatalog)
 		if reason != "" {
 			held = append(held, HeldChange{Path: rel, Kind: kind, Reason: reason})

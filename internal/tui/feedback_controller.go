@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/help"
 )
@@ -87,10 +88,12 @@ type feedbackController struct {
 
 	// syncConflicts are an enrolled workspace's open sync conflicts, counted in
 	// outstandingConflicts beside the bundles and listed by the browser after
-	// them; syncAdvisory is the strip's sync line. Both are refreshed on the
-	// conflict count's own cadence and read by no render from disk.
+	// them; syncAdvisory is the strip's sync line, drawn from syncStatus, the
+	// status last read. All three are refreshed together and read by no render
+	// from disk.
 	syncConflicts []conflict.SyncConflictEntry
 	syncAdvisory  string
+	syncStatus    *engine.SyncStatus
 
 	// hideAdvisories suppresses every ambient advisory for this session: the
 	// conflict count and the load-failure notices alike. Both the machine-local
