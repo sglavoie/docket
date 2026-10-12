@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
@@ -73,119 +74,139 @@ func (b *Bridge) queryCaptureSuggestions(request Request) (any, error) {
 	if routes := parsed.TokensFor(textgrammar.FieldProject); len(routes) > 0 {
 		effective = capturetext.ResolveProject(routes[len(routes)-1].Value, projects)
 	}
-	partial := payload.Text[start+len(def.Trigger) : caret]
-	type candidate struct {
-		value, label string
-		score        int
-	}
-	var candidates []candidate
-	seen := map[string]bool{}
-	add := func(value, label string) {
-		if seen[value] {
-			return
-		}
-		for _, token := range used {
-			if strings.EqualFold(token.Value, value) {
-				return
-			}
-		}
-		score := fuzzy.Score(value+" "+label, partial)
-		if score > 0 {
-			seen[value] = true
-			candidates = append(candidates, candidate{value, label, score})
-		}
-	}
+	candidates := &captureCandidates{used: used, partial: payload.Text[start+len(def.Trigger) : caret], seen: map[string]bool{}}
 	for _, value := range def.Values {
-		add(value, def.Trigger+value)
+		candidates.add(value, def.Trigger+value)
 	}
 	for _, project := range projects {
 		if project == nil || project.Archived {
 			continue
 		}
 		if def.Field == textgrammar.FieldProject {
-			add(project.Slug, "%"+project.Slug+" · "+project.Name)
+			candidates.add(project.Slug, "%"+project.Slug+" · "+project.Name)
 		}
 		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			switch def.Field { //nolint:exhaustive // Other fields use registry values or templates below.
-			case textgrammar.FieldTag:
-				for _, tag := range task.Tags {
-					add(tag, "#"+tag)
-				}
-			case textgrammar.FieldContext:
-				if task.Context != "" {
-					add(task.Context, "##"+task.Context)
-				}
-			case textgrammar.FieldParent, textgrammar.FieldChild, textgrammar.FieldDependency:
-				if task.IsComplete() || effective == nil || (def.Field != textgrammar.FieldDependency && project.ID != effective.ID) {
-					continue
-				}
-				alreadyUsed := false
-				for _, token := range used {
-					ref, resolveErr := capturetext.ResolveDependencyReference(token.Value, effective, projects)
-					if resolveErr == nil && ref.Resolved && ref.Locator.ProjectID == project.ID && ref.Locator.TaskID == task.ID {
-						alreadyUsed = true
-					}
-				}
-				if alreadyUsed {
-					continue
-				}
-				value := fmt.Sprint(task.ShortID)
-				if project.ID != effective.ID {
-					value = project.Slug + ":" + value
-				}
-				add(value, def.Trigger+value+" · "+task.Title+" · "+project.Name)
-			case textgrammar.FieldAttachment:
-				for _, attachment := range task.Attachments {
-					if attachment.IsURL {
-						add(attachment.Filename, "&"+attachment.Filename)
-					}
-				}
+			if task != nil {
+				candidates.addTask(def, project, task, effective, projects)
 			}
 		}
 	}
+	candidates.addTemplates(def)
+	sort.SliceStable(candidates.list, func(i, j int) bool {
+		if candidates.list[i].score != candidates.list[j].score {
+			return candidates.list[i].score > candidates.list[j].score
+		}
+		return candidates.list[i].value < candidates.list[j].value
+	})
+	for _, candidate := range candidates.list {
+		result.Suggestions = append(result.Suggestions, candidates.suggestion(payload.Text, start, end, def, candidate))
+	}
+	return result, nil
+}
+
+type captureCandidate struct {
+	value, label string
+	score        int
+}
+
+// captureCandidates collects the values one sigil at the caret could complete
+// to, each once, skipping what the line already carries.
+type captureCandidates struct {
+	used    []textgrammar.Token
+	partial string
+	seen    map[string]bool
+	list    []captureCandidate
+}
+
+func (c *captureCandidates) add(value, label string) {
+	if c.seen[value] {
+		return
+	}
+	for _, token := range c.used {
+		if strings.EqualFold(token.Value, value) {
+			return
+		}
+	}
+	score := fuzzy.Score(value+" "+label, c.partial)
+	if score > 0 {
+		c.seen[value] = true
+		c.list = append(c.list, captureCandidate{value, label, score})
+	}
+}
+
+// addTask offers what one task contributes to def's field.
+func (c *captureCandidates) addTask(def textgrammar.Definition, project *models.Project, task *models.Task, effective *models.Project, projects []*models.Project) {
+	switch def.Field { //nolint:exhaustive // Other fields use registry values or templates.
+	case textgrammar.FieldTag:
+		for _, tag := range task.Tags {
+			c.add(tag, "#"+tag)
+		}
+	case textgrammar.FieldContext:
+		if task.Context != "" {
+			c.add(task.Context, "##"+task.Context)
+		}
+	case textgrammar.FieldParent, textgrammar.FieldChild, textgrammar.FieldDependency:
+		if task.IsComplete() || effective == nil || (def.Field != textgrammar.FieldDependency && project.ID != effective.ID) {
+			return
+		}
+		for _, token := range c.used {
+			ref, resolveErr := capturetext.ResolveDependencyReference(token.Value, effective, projects)
+			if resolveErr == nil && ref.Resolved && ref.Locator.ProjectID == project.ID && ref.Locator.TaskID == task.ID {
+				return
+			}
+		}
+		value := fmt.Sprint(task.ShortID)
+		if project.ID != effective.ID {
+			value = project.Slug + ":" + value
+		}
+		c.add(value, def.Trigger+value+" · "+task.Title+" · "+project.Name)
+	case textgrammar.FieldAttachment:
+		for _, attachment := range task.Attachments {
+			if attachment.IsURL {
+				c.add(attachment.Filename, "&"+attachment.Filename)
+			}
+		}
+	}
+}
+
+// addTemplates offers the values no task stores: a link scheme to start from
+// and the comment's closing delimiter.
+func (c *captureCandidates) addTemplates(def textgrammar.Definition) {
 	if def.Field == textgrammar.FieldAttachment {
 		for _, scheme := range []string{"https://", "http://"} {
-			if strings.HasPrefix(scheme, partial) {
-				add(scheme, "&"+scheme+" — add a link")
+			if strings.HasPrefix(scheme, c.partial) {
+				c.add(scheme, "&"+scheme+" — add a link")
 			}
 		}
 	}
 	if def.Field == textgrammar.FieldComment {
-		if partial == "" {
-			add("comment;", "Add a comment")
-		} else if !strings.Contains(partial, ";") {
-			add(partial+";", "Finish comment")
+		if c.partial == "" {
+			c.add("comment;", "Add a comment")
+		} else if !strings.Contains(c.partial, ";") {
+			c.add(c.partial+";", "Finish comment")
 		}
 	}
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].score != candidates[j].score {
-			return candidates[i].score > candidates[j].score
-		}
-		return candidates[i].value < candidates[j].value
-	})
-	for _, candidate := range candidates {
-		token := def.Trigger + candidate.value
-		insert := token + " "
-		replaceEnd := end
-		if replaceEnd < len(payload.Text) && payload.Text[replaceEnd] == ' ' {
-			replaceEnd++
-		}
-		if def.Field == textgrammar.FieldAttachment && (candidate.value == "https://" || candidate.value == "http://") {
-			insert = token
-			replaceEnd = end
-		}
-		prefix := payload.Text[:start] + insert
-		suggestion := captureSuggestion{Token: token, Label: candidate.label, Text: prefix + payload.Text[replaceEnd:], Caret: utf16Length(prefix)}
-		if def.Field == textgrammar.FieldComment && partial == "" {
-			suggestion.Caret = utf16Length(payload.Text[:start]) + 1
-			suggestion.SelectionLength = len("comment")
-		}
-		result.Suggestions = append(result.Suggestions, suggestion)
+}
+
+// suggestion is text with the span from start to end replaced by candidate.
+func (c *captureCandidates) suggestion(text string, start, end int, def textgrammar.Definition, candidate captureCandidate) captureSuggestion {
+	token := def.Trigger + candidate.value
+	insert := token + " "
+	replaceEnd := end
+	if replaceEnd < len(text) && text[replaceEnd] == ' ' {
+		replaceEnd++
 	}
-	return result, nil
+	if def.Field == textgrammar.FieldAttachment && (candidate.value == "https://" || candidate.value == "http://") {
+		insert = token
+		replaceEnd = end
+	}
+	prefix := text[:start] + insert
+	suggestion := captureSuggestion{Token: token, Label: candidate.label, Text: prefix + text[replaceEnd:], Caret: utf16Length(prefix)}
+	if def.Field == textgrammar.FieldComment && c.partial == "" {
+		suggestion.Caret = utf16Length(text[:start]) + 1
+		suggestion.SelectionLength = len("comment")
+	}
+	return suggestion
 }
 
 func utf16Length(value string) int { return len(utf16.Encode([]rune(value))) }

@@ -54,6 +54,7 @@ internal/storage/markdown_load_save.go:CreateProjectDir	commit-journal	test-doub
 internal/storage/markdown_load_save.go:SaveProject	commit-journal	raw tasks.md save reached only by the audited fallback; production saves commit through CommitService
 internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-double repository path; production delete is PlanProjectDelete through the journal
 internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
+internal/syncexchange/folder.go:ExchangeFolder	sync-transport	creates the device-local transport directory that holds the exchange lock; never exchanged
 internal/syncexchange/folder.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
 internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local transport status for status surfaces; never exchanged
 internal/syncexchange/folder.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal

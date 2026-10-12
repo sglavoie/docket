@@ -24,7 +24,7 @@ func TestFolderExchangeReportsFailedImportAndRetriesAfterRepair(t *testing.T) {
 		t.Fatal(err)
 	}
 	invalid := []byte("an unfinished external edit\n")
-	if err := os.WriteFile(path, invalid, 0o600); err != nil {
+	if err = os.WriteFile(path, invalid, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	opts := syncexchange.FolderOptions{Folder: env.exchange, WorkspaceID: desk.State().Catalog().WorkspaceID}
@@ -39,10 +39,10 @@ func TestFolderExchangeReportsFailedImportAndRetriesAfterRepair(t *testing.T) {
 	if err != nil || persisted == nil || len(persisted.Errors) != 1 || persisted.Errors[0] != report.Errors[0] {
 		t.Fatalf("status and doctor cannot see the import failure: %+v, %v", persisted, err)
 	}
-	if data, err := os.ReadFile(path); err != nil || !bytes.Equal(data, invalid) {
-		t.Fatalf("the blocked import overwrote the external edit: %q, %v", data, err)
+	if data, readErr := os.ReadFile(path); readErr != nil || !bytes.Equal(data, invalid) {
+		t.Fatalf("the blocked import overwrote the external edit: %q, %v", data, readErr)
 	}
-	if err := os.WriteFile(path, original, 0o600); err != nil {
+	if err = os.WriteFile(path, original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	report, err = syncexchange.ExchangeFolder(desk.SyncCommits(), opts)
