@@ -67,7 +67,9 @@ struct ConflictsSection: View {
 
 /// One conflict: what differs, the version every side started from, each
 /// competing version with the device and change that wrote it, and the ways
-/// to end it. Keeping a version also keeps that change's side of the other
+/// to end it. A version reads as a diff against that starting version, so
+/// what a device changed stands apart from the file around it; its whole
+/// text is one tap away. Keeping a version also keeps that change's side of the other
 /// files it touched, so a change that spanned files is resolved whole. A
 /// resolution read before an edit is refused rather than written over it;
 /// the conflict is read again and the replacement draft is kept.
@@ -82,6 +84,8 @@ struct ConflictDetailView: View {
     @State private var failure: String?
     @State private var gone = false
     @State private var expanded: Set<String> = []
+    @State private var diffs: [Int: ConflictDiff] = [:]
+    @State private var whole: Set<Int> = []
     @State private var replacing = false
     @State private var draft = ""
     @State private var replacementFailure: String?
@@ -160,8 +164,21 @@ struct ConflictDetailView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("conflict.version.\(version.index).also")
             }
-            contentView(version.content, key: "v\(version.index)", missing: "This version deletes the file.")
-                .accessibilityIdentifier("conflict.version.\(version.index).text")
+            if let diff = diffs[version.index], !whole.contains(version.index) {
+                ConflictDiffView(diff: diff, created: conflict.base == nil || conflict.base?.deleted == true)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    .accessibilityIdentifier("conflict.version.\(version.index).text")
+            } else {
+                contentView(version.content, key: "v\(version.index)", missing: "This version deletes the file.")
+                    .accessibilityIdentifier("conflict.version.\(version.index).text")
+            }
+            if diffs[version.index] != nil {
+                Button(whole.contains(version.index) ? "Show Changes" : "Show Whole File") {
+                    if whole.contains(version.index) { whole.remove(version.index) } else { whole.insert(version.index) }
+                }
+                .font(.footnote)
+                .accessibilityIdentifier("conflict.version.\(version.index).whole")
+            }
             Button("Keep This Version") { Task { await resolve(.version(version.index)) } }
                 .accessibilityIdentifier("conflict.keep.\(version.index)")
                 .disabled(working)
@@ -249,6 +266,7 @@ struct ConflictDetailView: View {
         switch await workspace.conflicts() {
         case .success(let conflicts):
             if let match = conflicts.first(where: { $0.id == id }) ?? conflicts.first(where: { $0.path == path }) {
+                if match != conflict { diffs = versionDiffs(match) }
                 conflict = match
                 gone = false
             } else {
@@ -258,6 +276,24 @@ struct ConflictDetailView: View {
         case .failure(let refusal):
             failure = refusal.message
         }
+    }
+
+    /// Each version against the starting version, where both are text. A
+    /// version that deletes the file, or either side this iPhone cannot read
+    /// as text, has no diff and keeps its plain description.
+    private func versionDiffs(_ conflict: SyncConflict) -> [Int: ConflictDiff] {
+        var base: String?
+        if let content = conflict.base, !content.deleted {
+            guard let text = content.text else { return [:] }
+            base = text
+        }
+        var diffs: [Int: ConflictDiff] = [:]
+        for version in conflict.versions where !version.content.deleted {
+            if let text = version.content.text {
+                diffs[version.index] = ConflictDiff(from: base, to: text)
+            }
+        }
+        return diffs
     }
 
     private func resolve(_ choice: ConflictChoice) async {
@@ -297,6 +333,109 @@ struct ConflictDetailView: View {
     private func describe(_ detail: ConflictDetail) -> String {
         let subject = [detail.subject, detail.field].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         return subject.isEmpty ? detail.detail : subject + ": " + detail.detail
+    }
+}
+
+/// A version as a unified diff against the starting version: a count of what
+/// changed, then each hunk under its `@@` header with removed lines in red
+/// and added lines in green. The `+` and `−` markers carry the same meaning
+/// without color, and VoiceOver reads the changes as one passage.
+struct ConflictDiffView: View {
+    let diff: ConflictDiff
+    /// The file did not exist before, so every line is new.
+    let created: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            summary
+                .padding(.horizontal, 12)
+                .padding(.bottom, diff.isEmpty ? 0 : 6)
+            ForEach(Array(diff.hunks.enumerated()), id: \.offset) { _, hunk in
+                Text(hunk.header)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 3)
+                    .background(Color.blue.opacity(0.10))
+                ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
+                    row(line)
+                }
+            }
+        }
+        .font(.caption.monospaced())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
+    }
+
+    @ViewBuilder
+    private var summary: some View {
+        if diff.isEmpty {
+            Text("Same lines as the starting version.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        } else {
+            HStack(spacing: 8) {
+                Text("+\(diff.added)").foregroundStyle(.green)
+                Text("−\(diff.removed)").foregroundStyle(.red)
+                Text(created ? "new file" : "against the starting version")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .fontWeight(.semibold)
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ line: ConflictDiff.Line) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(marker(line.kind)).foregroundStyle(tint(line.kind))
+            VStack(alignment: .leading, spacing: 0) {
+                // An unchanged line only orients, and a task's metadata
+                // comment wraps over a screenful: changed lines are whole,
+                // context is cut short, and the whole file holds the rest.
+                Text(line.text.isEmpty ? " " : line.text)
+                    .lineLimit(line.kind == .context ? 2 : nil)
+                    .foregroundStyle(line.kind == .context ? .secondary : .primary)
+                if line.missingNewline {
+                    Text("No newline at end of file").italic().foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 1)
+        .background(tint(line.kind).opacity(line.kind == .context ? 0 : 0.16))
+    }
+
+    private func marker(_ kind: ConflictDiff.Kind) -> String {
+        switch kind {
+        case .context: " "
+        case .added: "+"
+        case .removed: "−"
+        }
+    }
+
+    private func tint(_ kind: ConflictDiff.Kind) -> Color {
+        switch kind {
+        case .context: .secondary
+        case .added: .green
+        case .removed: .red
+        }
+    }
+
+    private var spoken: String {
+        if diff.isEmpty { return "Same lines as the starting version." }
+        var lines = ["\(diff.added) added, \(diff.removed) removed" + (created ? ", new file" : "")]
+        for hunk in diff.hunks {
+            for line in hunk.lines {
+                switch line.kind {
+                case .context: lines.append(line.text)
+                case .added: lines.append("Added: " + line.text)
+                case .removed: lines.append("Removed: " + line.text)
+                }
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 }
 

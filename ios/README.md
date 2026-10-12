@@ -327,7 +327,9 @@ go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
 The sync sheet lists the open conflicts from the phone's own history, so they
 read with the exchange unreachable. A conflict shows what differs, the version
 every side started from, and each competing version with the device and change
-that wrote it. **Keep This Version** keeps that side of what conflicted and the
+that wrote it. A version reads as a diff against that starting version, removed
+lines in red and added lines in green under `@@` hunk headers, and **Show Whole
+File** swaps in its full text. **Keep This Version** keeps that side of what conflicted and the
 rest of what both devices changed, plus the same change's side of any other
 file it touched; **Keep What This iPhone Has Now** and, for tasks and notes,
 **Write a Replacement…** resolve it otherwise. A conflict that changed after it
