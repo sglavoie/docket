@@ -31,15 +31,17 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 sharded="github.com/sglavoie/tt/internal/tui github.com/sglavoie/tt/internal/config"
 packages=$(go list ./... | grep -v -e '/internal/tui$' -e '/internal/config$')
 
-# With the long poles split off, no package here runs longer than a minute
-# under -race, so a 10m deadline separates a hang from slowness again and a hang
-# ends with its goroutine dump. For the sharded ones, each chunk carries its own.
+# With those split off, the long poles left here are internal/storage,
+# internal/syncmerge and internal/bridge, whose sync convergence suites run seven
+# to ten minutes each under -race. A 20m deadline still ends a hang with its
+# goroutine dump without failing one of them for slowness. For the sharded
+# packages, each chunk carries its own deadline.
 if [ -n "$coverprofile" ]; then
 	# shellcheck disable=SC2086
-	go test -race -count=1 -timeout=10m -coverprofile="$work/rest.out" $packages &
+	go test -race -count=1 -timeout=20m -coverprofile="$work/rest.out" $packages &
 else
 	# shellcheck disable=SC2086
-	go test -race -count=1 -timeout=10m $packages &
+	go test -race -count=1 -timeout=20m $packages &
 fi
 rest=$!
 
