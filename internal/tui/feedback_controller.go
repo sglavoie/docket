@@ -94,6 +94,10 @@ type feedbackController struct {
 	syncConflicts []conflict.SyncConflictEntry
 	syncAdvisory  string
 	syncStatus    *engine.SyncStatus
+	// syncRefreshOwed records that the last refresh failed to read the status
+	// or the conflicts under it, which leaves all three empty rather than
+	// current: the next exchange pass reads again whatever else it found.
+	syncRefreshOwed bool
 
 	// hideAdvisories suppresses every ambient advisory for this session: the
 	// conflict count and the load-failure notices alike. Both the machine-local

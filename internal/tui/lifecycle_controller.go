@@ -905,10 +905,11 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// history, so only a pass that could have moved it pays for one: it
 		// changed history, published (a resolution among what it may have
 		// published), was asked for, or left the sync line something new to
-		// say. Any other pass only keeps that line's age current.
+		// say, or the last read failed and is still owed. Any other pass only
+		// keeps that line's age current.
 		outcome := automaticSyncOutcome(msg.report, msg.err)
 		published := msg.report != nil && len(msg.report.Published) > 0
-		if msg.changed || published || m.automaticSync.manual || outcome != m.automaticSync.outcome {
+		if msg.changed || published || m.automaticSync.manual || outcome != m.automaticSync.outcome || m.feedback.syncRefreshOwed {
 			m.refreshOutstandingConflicts()
 		} else {
 			if status := m.feedback.syncStatus; status != nil && msg.report != nil && msg.report.Succeeded {

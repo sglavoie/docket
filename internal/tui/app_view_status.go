@@ -1040,18 +1040,22 @@ func (m *AppModel) rememberFeedbackSince(before footerFlashProbe) {
 // feedback cluster: the strip's sync line and the open sync conflicts the
 // conflict count and `gc` include. A workspace that is not enrolled, a shell
 // with no runtime, and a status that cannot be read all report nothing: an
-// indicator that cannot be read must not be asserted.
+// indicator that cannot be read must not be asserted. A read that failed is
+// owed again, at either port, so the next exchange pass repeats it however
+// little that pass changed.
 func (m *AppModel) refreshSyncStatus() {
 	if m == nil {
 		return
 	}
 	m.feedback.syncStatus, m.feedback.syncAdvisory, m.feedback.syncConflicts = nil, "", nil
+	m.feedback.syncRefreshOwed = false
 	if m.domain.syncStatus == nil {
 		return
 	}
 	status, err := m.domain.syncStatus()
 	if err != nil {
 		logging.Warn("reading sync status: %v", err)
+		m.feedback.syncRefreshOwed = true
 		if m.automaticSync.err != nil {
 			m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
 		}
@@ -1068,6 +1072,7 @@ func (m *AppModel) refreshSyncStatus() {
 	views, err := m.domain.syncConflicts(nil)
 	if err != nil {
 		logging.Warn("reading sync conflicts: %v", err)
+		m.feedback.syncRefreshOwed = true
 		return
 	}
 	m.feedback.syncConflicts = syncConflictEntries(views)
