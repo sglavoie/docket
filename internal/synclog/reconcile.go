@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -202,8 +203,10 @@ func (mz *materializer) version(digest *string) (Version, error) {
 	return Version{Exists: true, Data: data}, nil
 }
 
-// resolve resolves key within an ancestor-closed set, memoized, since the
-// result depends only on the key's writers inside set. The conflict it reports
+// resolve resolves key within an ancestor-closed set, memoized by the key's
+// maximal writers inside set, since the result depends only on the key's
+// writers inside set and, the set being ancestor-closed, those are exactly the
+// maximal writers and the writers they descend from. The conflict it reports
 // is the one merging the current maximal writers leaves; openConflicts finds
 // the ones earlier merges left.
 func (mz *materializer) resolve(key string, set bitset) (resolution, error) {
@@ -219,7 +222,7 @@ func (mz *materializer) resolve(key string, set bitset) (resolution, error) {
 		return resolution{value: mz.g.writes[maximal[0]][key].value}, nil
 	}
 
-	memoKey := key + "|" + writerSignature(mz.g, key, set)
+	memoKey := key + "|" + maximalSignature(maximal)
 	if cached, ok := mz.memo[memoKey]; ok {
 		return cached, nil
 	}
@@ -319,15 +322,12 @@ func (mz *materializer) openConflicts(key string, set bitset, current *string, t
 			resolutions = append(resolutions, w)
 		}
 	}
-	for _, w := range mz.g.writers[key] {
-		if !set.has(w) {
+	for i, w := range mz.g.writers[key] {
+		if !set.has(w) || !mz.g.mergesPredecessors(key, i) {
 			continue
 		}
 		before := append(bitset{}, mz.g.anc[w]...)
 		before[w/64] &^= 1 << (uint(w) % 64)
-		if len(mz.g.maximal(key, before)) < 2 {
-			continue
-		}
 		r, err := mz.resolve(key, before)
 		if err != nil {
 			return nil, err
@@ -350,17 +350,30 @@ func (mz *materializer) openConflicts(key string, set bitset, current *string, t
 	return out, nil
 }
 
-// resolved reports whether one of resolutions strictly descends from every
-// writer competing in conflict.
+// resolved reports whether one of resolutions, which are in topological order,
+// strictly descends from every writer competing in conflict. Only a resolution
+// ordered after the newest of those writers can, and the newest resolutions
+// are the likeliest to, so they are asked first.
 func (mz *materializer) resolved(conflict *Conflict, resolutions []int) bool {
-	for _, r := range resolutions {
+	var writers []int
+	newest := -1
+	for _, candidate := range conflict.Candidates {
+		for _, writer := range candidate.Writers {
+			w, ok := mz.g.index[writer]
+			if !ok {
+				return false
+			}
+			writers = append(writers, w)
+			newest = max(newest, w)
+		}
+	}
+	for i := len(resolutions) - 1; i >= 0 && resolutions[i] > newest; i-- {
+		anc := mz.g.anc[resolutions[i]]
 		all := true
-		for _, candidate := range conflict.Candidates {
-			for _, writer := range candidate.Writers {
-				w, ok := mz.g.index[writer]
-				if !ok || w == r || !mz.g.anc[r].has(w) {
-					all = false
-				}
+		for _, w := range writers {
+			if !anc.has(w) {
+				all = false
+				break
 			}
 		}
 		if all {
@@ -610,12 +623,13 @@ func (mz *materializer) place(key string, set bitset, slugs map[string]string) s
 	return "projects/" + slug + "/" + rest
 }
 
-func writerSignature(g *graph, key string, set bitset) string {
+// maximalSignature names an ancestor-closed set by its maximal writers of one
+// key, which decide every writer of that key the set holds.
+func maximalSignature(maximal []int) string {
 	var b strings.Builder
-	for _, w := range g.writers[key] {
-		if set.has(w) {
-			fmt.Fprintf(&b, "%d,", w)
-		}
+	for _, w := range maximal {
+		b.WriteString(strconv.Itoa(w))
+		b.WriteByte(',')
 	}
 	return b.String()
 }

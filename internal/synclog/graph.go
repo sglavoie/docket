@@ -3,6 +3,7 @@ package synclog
 import (
 	"fmt"
 	"io/fs"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,6 +19,8 @@ type graph struct {
 	anc     []bitset
 	writes  []map[string]keyWrite
 	writers map[string][]int
+	// keyIndexes caches each key's keyIndex, built on first use.
+	keyIndexes map[string]*keyIndex
 }
 
 // keyWrite is what one transaction left at one logical key.
@@ -45,6 +48,37 @@ func (b bitset) union(other bitset) {
 	for i := range b {
 		b[i] |= other[i]
 	}
+}
+
+// countAnd is how many members b and other share.
+func (b bitset) countAnd(other bitset) int {
+	n := 0
+	for i := range b {
+		n += bits.OnesCount64(b[i] & other[i])
+	}
+	return n
+}
+
+// countAndNewest is how many members b and other share and the largest of
+// them, -1 when they share none.
+func (b bitset) countAndNewest(other bitset) (count, newest int) {
+	newest = -1
+	for i := range b {
+		if shared := b[i] & other[i]; shared != 0 {
+			count += bits.OnesCount64(shared)
+			newest = i*64 + bits.Len64(shared) - 1
+		}
+	}
+	return count, newest
+}
+
+// countAnd3 is how many members b, x and y all share.
+func (b bitset) countAnd3(x, y bitset) int {
+	n := 0
+	for i := range b {
+		n += bits.OnesCount64(b[i] & x[i] & y[i])
+	}
+	return n
 }
 
 func (b bitset) intersect(other bitset) bitset {
@@ -139,7 +173,7 @@ func buildGraph(manifests []*Manifest) (*graph, error) {
 			ready = append(ready, id)
 		}
 	}
-	g := &graph{index: map[string]int{}, writers: map[string][]int{}}
+	g := &graph{index: map[string]int{}, writers: map[string][]int{}, keyIndexes: map[string]*keyIndex{}}
 	for len(ready) > 0 {
 		sort.Strings(ready)
 		id := ready[0]
@@ -246,29 +280,136 @@ func (g *graph) without(txnID string) bitset {
 	return set
 }
 
-// maximal returns the writers of key inside set that no other writer inside
-// set descends from, in topological order.
-func (g *graph) maximal(key string, set bitset) []int {
-	var inside []int
-	for _, w := range g.writers[key] {
-		if set.has(w) {
-			inside = append(inside, w)
+// keyIndex is what the predecessor scan needs to know about one key's writers
+// without walking them: which transactions they are, and how many of them each
+// one descends from.
+type keyIndex struct {
+	// mask holds every writer of the key.
+	mask bitset
+	// reach[i] is how many writers of the key are in writers[key][i]'s
+	// ancestry, itself included.
+	reach []int
+	// roots are the writers that descend from no other writer.
+	roots []int
+}
+
+// keyIndex builds key's index on first use. A graph is never changed after
+// buildGraph, so the index stands for the graph's lifetime.
+func (g *graph) keyIndex(key string) *keyIndex {
+	if ki, ok := g.keyIndexes[key]; ok {
+		return ki
+	}
+	writers := g.writers[key]
+	ki := &keyIndex{mask: newBitset(len(g.txns)), reach: make([]int, len(writers))}
+	for _, w := range writers {
+		ki.mask.set(w)
+	}
+	position := make(map[int]int, len(writers))
+	for i, w := range writers {
+		ki.reach[i] = g.reach(ki, position, w)
+		position[w] = i
+		if ki.reach[i] == 1 {
+			ki.roots = append(ki.roots, w)
 		}
+	}
+	g.keyIndexes[key] = ki
+	return ki
+}
+
+// reachHops bounds how far reach follows single parents before it counts.
+const reachHops = 8
+
+// reach is how many of a key's writers are in writer w's ancestry, itself
+// included. A transaction with one parent adds only itself to that parent's
+// ancestry, so w is one more than the nearest writer up a run of single
+// parents, whose position already holds its count; a transaction merging
+// several parents, or a run longer than reachHops, is counted outright.
+func (g *graph) reach(ki *keyIndex, position map[int]int, w int) int {
+	at := w
+	for hop := 0; hop < reachHops; hop++ {
+		parents := g.txns[at].Parents
+		if len(parents) == 0 {
+			return 1
+		}
+		if len(parents) > 1 {
+			break
+		}
+		at = g.index[parents[0]]
+		if i, writes := position[at]; writes {
+			return ki.reach[i] + 1
+		}
+	}
+	return g.anc[w].countAnd(ki.mask)
+}
+
+// maximal returns the writers of key inside set that no other writer inside
+// set descends from, in topological order. It walks the writers newest first:
+// one inside set is maximal unless a maximal already found descends from it,
+// and the walk ends once the found maximals' ancestry accounts for every
+// writer inside set, so a linear history stops at its newest writer.
+func (g *graph) maximal(key string, set bitset) []int {
+	writers := g.writers[key]
+	if len(writers) == 1 {
+		if set.has(writers[0]) {
+			return []int{writers[0]}
+		}
+		return nil
+	}
+	ki := g.keyIndex(key)
+	total, newest := ki.mask.countAndNewest(set)
+	if total == 0 {
+		return nil
 	}
 	var out []int
-	for _, w := range inside {
-		dominated := false
-		for _, other := range inside {
-			if other != w && g.anc[other].has(w) {
-				dominated = true
-				break
-			}
+	// covered is the ancestry of every maximal found so far, and accounted how
+	// many writers inside set it holds. It borrows the first maximal's own
+	// ancestry and is copied only once a second joins it.
+	var covered bitset
+	accounted := 0
+	// writers is in topological order, so the newest writer inside set is found
+	// by its index and nothing newer than it is walked.
+	for i := sort.SearchInts(writers, newest); i >= 0 && accounted < total; i-- {
+		w := writers[i]
+		if !set.has(w) || (covered != nil && covered.has(w)) {
+			continue
 		}
-		if !dominated {
-			out = append(out, w)
+		out = append(out, w)
+		switch len(out) {
+		case 1:
+			covered = g.anc[w]
+		case 2:
+			covered = append(bitset{}, covered...)
+			covered.union(g.anc[w])
+		default:
+			covered.union(g.anc[w])
 		}
+		accounted = covered.countAnd3(ki.mask, set)
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
 	}
 	return out
+}
+
+// mergesPredecessors reports whether writers[key][i] was written over two or
+// more maximal writers of key: whether its strict ancestry holds a merge. It
+// asks the newest writer in that ancestry alone, which is the one maximal the
+// walk in maximal would find first: every other writer there is either beneath
+// it or a second maximal.
+func (g *graph) mergesPredecessors(key string, i int) bool {
+	ki := g.keyIndex(key)
+	before := ki.reach[i] - 1
+	if before < 2 {
+		return false
+	}
+	writers := g.writers[key]
+	anc := g.anc[writers[i]]
+	for j := i - 1; j >= 0; j-- {
+		if anc.has(writers[j]) {
+			return ki.reach[j] != before
+		}
+	}
+	return false
 }
 
 // genesis is the value a key had before any known transaction wrote it: the
@@ -284,22 +425,10 @@ func (g *graph) genesis(key string) (keyWrite, bool) {
 	return g.writes[roots[0]][key], true
 }
 
-// maximalRoots are the writers of key that descend from no other writer.
+// maximalRoots are the writers of key that descend from no other writer, in
+// topological order.
 func (g *graph) maximalRoots(key string) []int {
-	var out []int
-	for _, w := range g.writers[key] {
-		root := true
-		for _, other := range g.writers[key] {
-			if other != w && g.anc[w].has(other) {
-				root = false
-				break
-			}
-		}
-		if root {
-			out = append(out, w)
-		}
-	}
-	return out
+	return append([]int(nil), g.keyIndex(key).roots...)
 }
 
 func (g *graph) keys() []string {
