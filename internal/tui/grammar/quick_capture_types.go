@@ -84,6 +84,10 @@ type QuickCaptureInput struct {
 	DefaultParentID   *string // Composer's implicit parent, used for duplicate-hint ranking.
 	allProjects       []*models.Project
 	skipProjectSyntax bool // When true, %project syntax is disabled
+	// HostDrawsRoute is set by a host that states the effective route on a row
+	// of its own, which lets the preview stay silent about a default
+	// destination instead of repeating that row.
+	HostDrawsRoute bool
 
 	// Layout
 	Width int // Available width for preview wrapping

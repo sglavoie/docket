@@ -1309,7 +1309,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// stops a fourth label style returning beside the three this replaced. The
 	// mechanism lives in docs/architecture/search-filters-and-sorting.md. No
 	// rule elsewhere was trimmed to pay for it.
-	const budget = 75413
+	// Raise from 75413 to 75662 for capture saying its destination once. 249
+	// bytes buy the rule the pane under the route row is held to: the `To:`
+	// counts belong to a batch spanning projects and one predicate answers the
+	// measurement and the render, and the preview's Route group is omitted only
+	// by a host that draws the route row, so the shared preview cannot repeat
+	// that row in the composer or lose it elsewhere. The mechanism lives in
+	// docs/architecture/capture-and-outline-editor.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 75662
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

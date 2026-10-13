@@ -76,6 +76,53 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	}
 }
 
+// TestRenderPreview_HostRouteRowOwnsTheDefaultDestination holds the Route group
+// to what a host's own route row cannot say. A host drawing that row has already
+// named a default destination, so the preview repeats nothing; an explicit
+// sigil, a deferral, and a project target are each the line's own answer and
+// keep the group, and a host drawing no such row keeps it always.
+func TestRenderPreview_HostRouteRowOwnsTheDefaultDestination(t *testing.T) {
+	parentID := "parent"
+	deferUntil := time.Now().Add(48 * time.Hour)
+	for _, tc := range []struct {
+		name      string
+		preview   *QuickCaptureResult
+		wantRoute string
+	}{
+		{name: "default inbox", preview: &QuickCaptureResult{Title: "Plain"}},
+		{name: "default child backlog", preview: &QuickCaptureResult{Title: "Child", ParentID: &parentID}},
+		{name: "explicit destination", wantRoute: "$today",
+			preview: &QuickCaptureResult{Title: "Plan it", Destination: app.CaptureDestinationToday, DestinationSet: true}},
+		{name: "project target", wantRoute: "Web App",
+			preview: &QuickCaptureResult{Title: "Elsewhere", TargetProjectName: "Web App"}},
+		{name: "deferred", wantRoute: "(deferred)",
+			preview: &QuickCaptureResult{Title: "Later", DeferUntil: &deferUntil, DeferSet: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			editor := makePreviewInput(t, tc.preview, "", 0)
+			if got := ansi.Strip(editor.renderPreview()); !strings.Contains(got, "Route") {
+				t.Fatalf("a host drawing no route row lost the Route group:\n%s", got)
+			}
+
+			composer := makePreviewInput(t, tc.preview, "", 0)
+			composer.HostDrawsRoute = true
+			got := ansi.Strip(composer.renderPreview())
+			if tc.wantRoute == "" {
+				if strings.Contains(got, "Route") || strings.Contains(got, "(default)") {
+					t.Fatalf("the preview repeats the host's route row:\n%s", got)
+				}
+				if compact := ansi.Strip(composer.renderCompactPreview()); strings.Contains(compact, "(default)") {
+					t.Fatalf("the compact preview repeats the host's route row:\n%s", compact)
+				}
+				return
+			}
+			if !strings.Contains(got, "Route") || !strings.Contains(got, tc.wantRoute) {
+				t.Fatalf("the preview dropped a route the host row does not state (want %q):\n%s", tc.wantRoute, got)
+			}
+		})
+	}
+}
+
 func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Capture for other team",

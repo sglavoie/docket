@@ -199,6 +199,10 @@ plan and the status it implies is one the word does not spell. A draft with no
 `$destination` and no `%project` reads whatever it would default to, a draft
 whose lines disagree about an axis reads `Mixed` for that axis alone, and the
 preview beneath it echoes the `$today` token rather than repeating the pair.
+That preview's `Route` line appears only when the line under the cursor says
+something of its own — a `$destination`, a `%project`, or a deferral, which
+lands the task in Backlog — so a line taking the default adds no second copy of
+the route row.
 Both wear the colors the
 Outliner already uses: the project its own color, the plan and the status their
 section badges, the preview's state glyph the badge the new row will carry,
@@ -235,9 +239,11 @@ appear beside the existing-task hint; changing either line refreshes it.
 With multiple tasks, the preview starts with the task count and source
 line number (`3 tasks · Line 2`) and shows only the line under the cursor.
 Moving between lines updates it; a blank line keeps the batch summary without
-a task preview. When every line parses, a second summary row counts destinations
-in first-appearance order, for example `To: web 2 · unfiled 1`. It follows
-`%project` overrides and `Ctrl+P` changes. Narrow panels keep whole destinations
+a task preview. When every line parses and the batch spans more than one
+project, a second summary row counts destinations in first-appearance order, for
+example `To: web 2 · unfiled 1`. It follows `%project` overrides and `Ctrl+P`
+changes, and a batch landing in one project draws no such row, since the route
+row already names that project. Narrow panels keep whole destinations
 and name any overflow as `+N projects`; an invalid batch omits the destination
 counts until its errors are corrected. When planning memberships differ, an
 additional row shows `Plan: Today 2 · Next 1 · Unplanned 1`, omitting zero counts.

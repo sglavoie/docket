@@ -110,8 +110,15 @@ The panel's height is what its content asks for. `composerPanelContentRows` is
 that demand: `composerPanelFixedRows` for the divider and the route row, the
 input's own wrapped line count, the error block when there is one, and the pane
 under it — the suggestion list's items while autocomplete is open, one row for a
-multiline draft's summary, and otherwise the grouped preview's height through
-`grammar.QuickCaptureInput.PreviewBlockRows`. `composerPanelShareRows` turns that
+multiline draft's summary, one more for its `To:` destination counts when
+`batchSpansProjects` says the batch lands in more than one project, and otherwise
+the grouped preview's height through
+`grammar.QuickCaptureInput.PreviewBlockRows`. That predicate is read by the
+measurement and the render alike, and a single-project batch draws no counts
+because the route row already names its project. The preview answers to the same
+row: the composer sets `QuickCaptureInput.HostDrawsRoute`, which omits the
+`Route` group for a default destination with no project target, while an
+explicit sigil, a deferral, or a `%project` keeps it. `composerPanelShareRows` turns that
 into the share the host is told about, between `composerPanelMinRows` — the two
 fixed rows and one input line, which a blank capture is — and
 `composerPanelMaxRows`, the fourteen-row ceiling the bounded paths were written

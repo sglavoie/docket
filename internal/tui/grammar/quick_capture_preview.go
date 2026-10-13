@@ -81,7 +81,6 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		return nil, false
 	}
 
-	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
@@ -117,25 +116,9 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		groups = append(groups, previewGroup{label: "Notice", chunks: []string{q.batchDuplicateHint}})
 	}
 
-	destinationLabel := destinationDefinition.Trigger + string(destination)
-	switch {
-	case deferred:
-		destinationLabel += " (deferred)"
-	case !q.Preview.DestinationSet:
-		destinationLabel += " (default)"
+	if route, shown := q.previewRouteGroup(previewTask, destination, deferred); shown {
+		groups = append(groups, route)
 	}
-	// The glyph is the row's own state badge, so a capture previews the mark
-	// its row will wear, and the label wears the same inline badge as the
-	// composer's route row. A planning sigil answers two questions with one
-	// token — `$today` is a membership in a collection and a Backlog status —
-	// but the route row directly above this preview already states that pair
-	// under its Plan and Status labels, so the preview names the token alone
-	// rather than saying the same two words a second time.
-	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
-	if q.Preview.TargetProjectName != "" {
-		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.TargetProject).Render(q.Preview.TargetProjectName))
-	}
-	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
 
 	// Children sits directly after Route because both answer where the task lands.
 	// The parser already deduped aliases in first-reference order, so one chunk per
@@ -217,6 +200,38 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 
 	return groups, true
+}
+
+// previewRouteGroup is the Route group, or shown=false where the host's own
+// route row already says all of it.
+func (q *QuickCaptureInput) previewRouteGroup(previewTask *models.Task, destination app.CaptureDestination, deferred bool) (group previewGroup, shown bool) {
+	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
+	destinationLabel := destinationDefinition.Trigger + string(destination)
+	switch {
+	case deferred:
+		destinationLabel += " (deferred)"
+	case !q.Preview.DestinationSet:
+		destinationLabel += " (default)"
+	}
+	// The glyph is the row's own state badge, so a capture previews the mark
+	// its row will wear, and the label wears the same inline badge as the
+	// composer's route row. A planning sigil answers two questions with one
+	// token — `$today` is a membership in a collection and a Backlog status —
+	// but the route row directly above this preview already states that pair
+	// under its Plan and Status labels, so the preview names the token alone
+	// rather than saying the same two words a second time.
+	routeChunks := []string{theme.GetTaskStateBadge(previewTask) + " " + CapturePlanAccentStyle(destination).Render(destinationLabel)}
+	if q.Preview.TargetProjectName != "" {
+		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.TargetProject).Render(q.Preview.TargetProjectName))
+	}
+	// A default destination in the host's own project is the whole of what that
+	// route row says, so the group would repeat it; an explicit sigil, a deferral,
+	// or a project target is this line's own answer and stays.
+	routeIsDefault := !deferred && !q.Preview.DestinationSet && q.Preview.TargetProjectName == ""
+	if q.HostDrawsRoute && routeIsDefault {
+		return previewGroup{}, false
+	}
+	return previewGroup{label: "Route", chunks: routeChunks}, true
 }
 
 // The marker uses the autocomplete vocabulary; tags and contexts remain separate.

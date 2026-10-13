@@ -350,9 +350,16 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 			t.Fatalf("growth lost draft line %q:\n%s", line, multiline)
 		}
 	}
-	if got := lipgloss.Height(multiline); got != composerPanelMinRows+5 {
+	// One project and the default destination are the route row's to say, so
+	// the pane under the draft is the count and the task alone.
+	if got := lipgloss.Height(multiline); got != composerPanelMinRows+4 {
 		t.Fatalf("three draft lines, summary, and preview took %d rows, want %d:\n%s",
-			got, composerPanelMinRows+5, multiline)
+			got, composerPanelMinRows+4, multiline)
+	}
+	for _, repeated := range []string{"To: ", "Route", "(default)"} {
+		if strings.Contains(multiline, repeated) {
+			t.Fatalf("the pane repeats the route row with %q:\n%s", repeated, multiline)
+		}
 	}
 
 	// The ceiling holds whatever the draft says, and the host keeps its floor.
@@ -895,6 +902,19 @@ func TestBatchCaptureDestinationSummaryFollowsDraftAndProject(t *testing.T) {
 	if got := m.batchDestinationSummary(); got != "To: web 3" {
 		t.Fatalf("project switch left stale summary: %q", got)
 	}
+	// One project is what the route row already names, so the counts give
+	// their row back, in the measurement and in the render alike.
+	m.AC.Clear()
+	if m.batchSpansProjects() {
+		t.Fatalf("a single-project batch still claims a destination row: %v", m.batchDestinations)
+	}
+	single := ansi.Strip(m.renderComposerPanelPreview(m.composerPanelPaneContentRows()))
+	if strings.Contains(single, "To: ") {
+		t.Fatalf("a single-project batch repeats the route row: %s", single)
+	}
+	if got, want := lipgloss.Height(single), m.composerPanelPaneContentRows(); got != want {
+		t.Fatalf("pane measured %d rows and rendered %d: %s", want, got, single)
+	}
 	m.Update(tea.PasteMsg{Content: "\nInvalid %missing"})
 	m.AC.Clear()
 	if len(m.batchDestinations) != 0 || m.batchInvalidLines != 1 {
@@ -942,7 +962,7 @@ func TestBatchPlanSummaryUsesResolvedCaptureRequests(t *testing.T) {
 			if view := ansi.Strip(m.renderComposerPanelPreview(5)); !strings.Contains(view, tc.want) {
 				t.Fatalf("roomy preview omitted plans: %s", view)
 			}
-			if view := ansi.Strip(m.renderComposerPanelPreview(3)); strings.Contains(view, tc.want) {
+			if view := ansi.Strip(m.renderComposerPanelPreview(2)); strings.Contains(view, tc.want) {
 				t.Fatalf("plans displaced the task preview: %s", view)
 			}
 			m.Width = 20

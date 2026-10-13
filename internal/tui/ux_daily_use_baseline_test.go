@@ -410,12 +410,17 @@ func TestUXDailyUseCapturePanelIsSizedByItsContent(t *testing.T) {
 			if !strings.Contains(screen, "3 tasks · Line 3") {
 				t.Fatalf("multiline capture lost its current-line summary:\n%s", screen)
 			}
-			if !strings.Contains(screen, "To: ") {
-				t.Fatalf("multiline capture lost destination counts:\n%s", screen)
+			// The draft lands in one project at the default destination, which the
+			// route row already says, so neither the destination counts nor a Route
+			// group spends a row repeating it.
+			for _, repeated := range []string{"To: ", "(default)"} {
+				if strings.Contains(screen, repeated) {
+					t.Fatalf("multiline capture repeats its route row with %q:\n%s", repeated, screen)
+				}
 			}
 			full := uxDailyUseCaptureDividerRow(t, driver)
-			if grew := empty - full; grew != len(uxDailyUseDraftLines)+3 {
-				t.Fatalf("a %d-line draft raised the divider from row %d to row %d, want draft rows plus the count, destinations, and current-line preview",
+			if grew := empty - full; grew != len(uxDailyUseDraftLines)+1 {
+				t.Fatalf("a %d-line draft raised the divider from row %d to row %d, want draft rows plus the count and current-line preview",
 					len(uxDailyUseDraftLines), empty, full)
 			}
 

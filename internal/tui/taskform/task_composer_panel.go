@@ -129,7 +129,7 @@ func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 		if m.nonblankLineCount() > 1 {
 			rows++
 		}
-		if len(m.batchDestinations) > 0 {
+		if m.batchSpansProjects() {
 			rows++
 		}
 		if m.batchPlanSummaryFits() {
@@ -377,7 +377,7 @@ func (m *TaskComposerModel) renderComposerPanelPreview(rows int) string {
 			summaryText += fmt.Sprintf(" · %d lines need attention", m.batchInvalidLines)
 		}
 		summary := theme.MutedStyle.Render(textfit.TruncateToVisualWidth(summaryText, m.Width))
-		if rows > 1 && len(m.batchDestinations) > 0 {
+		if rows > 1 && m.batchSpansProjects() {
 			summary = joinPanelBlocks(summary, theme.MutedStyle.Render(m.batchDestinationSummary()))
 			rows--
 		}
@@ -411,6 +411,14 @@ func joinPanelBlocks(above, below string) string {
 }
 
 // Pack whole destinations, reserving space for an explicit overflow count.
+// batchSpansProjects is the one test for the destination counts, read by the
+// measurement and the render alike. A batch landing in a single project is
+// already named whole by the route row above, so the counts earn their row only
+// when there is more than one project to tell apart.
+func (m *TaskComposerModel) batchSpansProjects() bool {
+	return len(m.batchDestinations) > 1
+}
+
 func (m *TaskComposerModel) batchDestinationSummary() string {
 	for shown := len(m.batchDestinations); shown >= 0; shown-- {
 		parts := append([]string(nil), m.batchDestinations[:shown]...)
