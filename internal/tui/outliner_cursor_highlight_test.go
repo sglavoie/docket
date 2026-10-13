@@ -500,7 +500,7 @@ func TestWaitingRowWearsNoTint(t *testing.T) {
 	outlinerView.SetSize(80, 24)
 	outlinerView.PeekMode = true
 	peek := ansi.Strip(strings.Join(outlinerView.PeekDocumentBodyForRow(row), "\n"))
-	if !strings.Contains(peek, "waiting 2d") {
+	if !strings.Contains(peek, "Waiting 2d") {
 		t.Fatalf("Peek did not carry the age the row stopped naming:\n%s", peek)
 	}
 }

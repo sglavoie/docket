@@ -436,9 +436,9 @@ func (m *OutlinerModel) peekPlanningMembership(row OutlinerRow) string {
 	planning := m.Runtime.Planning()
 	switch {
 	case slices.Contains(planning.GetToday(), locator):
-		return "today"
+		return chrome.PlanStatusValue("today")
 	case slices.Contains(planning.GetNext(), locator):
-		return "next"
+		return chrome.PlanStatusValue("next")
 	}
 	return ""
 }

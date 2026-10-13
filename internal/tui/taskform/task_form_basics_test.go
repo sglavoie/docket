@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
@@ -126,10 +129,31 @@ func TestTaskForm_BasicsTab_RendersLabels(t *testing.T) {
 	m := newTestTaskForm()
 	m.activeTab = formTabBasics
 	view := m.View().Content
-	for _, label := range []string{"Title:", "Description:", "Priority:", "Parent:", "State:", "Flags:", "Tags:"} {
+	for _, label := range []string{"Title:", "Description:", "Priority:", "Parent:", "Status:", "Flags:", "Tags:"} {
 		if !strings.Contains(view, label) {
 			t.Errorf("Basics tab should contain label %q; got:\n%s", label, view)
 		}
+	}
+}
+
+// The status row spells the vocabulary Peek and the capture route share: the
+// shared label and a capitalized value, never the canonical lowercase token.
+func TestTaskForm_BasicsTab_SpellsTheStatusVocabulary(t *testing.T) {
+	m := newTestTaskForm()
+	m.activeTab = formTabBasics
+	m.draft.state = models.StateWaiting
+	var row string
+	for _, line := range strings.Split(ansi.Strip(m.View().Content), "\n") {
+		if strings.Contains(line, chrome.StatusFieldLabel+":") {
+			row = line
+		}
+	}
+	if got := strings.Join(strings.Fields(row), " "); !strings.Contains(got, "Status: Waiting") {
+		t.Fatalf("status row = %q, want it to read `Status: Waiting`", got)
+	}
+	m.focusIndex = 4
+	if got := m.helpPaneHeader(); got != chrome.StatusFieldLabel {
+		t.Fatalf("help pane names the status field %q, want %q", got, chrome.StatusFieldLabel)
 	}
 }
 

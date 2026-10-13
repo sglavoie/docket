@@ -5,15 +5,18 @@
   "actions": [
     { "type": "assert", "label": "the row says the task is blocked and nothing more", "assert": "contains", "value": "⊘ Alpha waiting on vendor" },
     { "type": "assert", "label": "how long it has been blocked is Peek's", "assert": "not_contains", "value": "waiting 12d" },
+    { "type": "assert", "label": "how long it has been blocked is Peek's", "assert": "not_contains", "value": "Waiting 12d" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "put the cursor on the waiting task", "key": "end" },
     { "type": "key", "label": "open Peek on it", "key": "b" },
-    { "type": "assert", "label": "a blocked task says how long it has been blocked", "assert": "contains", "value": "waiting 12d" },
+    { "type": "assert", "label": "a blocked task says how long it has been blocked", "assert": "contains", "value": "Waiting 12d" },
     { "type": "assert", "label": "the age is not the touch time", "assert": "not_contains", "value": "waiting now" },
+    { "type": "assert", "label": "the age is not the touch time", "assert": "not_contains", "value": "Waiting now" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Esc closes Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "waiting 12d" },
+    { "type": "assert", "assert": "not_contains", "value": "Waiting 12d" },
 
     { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
@@ -28,8 +31,9 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "reopen Peek on the same task", "key": "b" },
-    { "type": "assert", "label": "commenting bumps UpdatedAt, not the state clock", "assert": "contains", "value": "waiting 12d" },
+    { "type": "assert", "label": "commenting bumps UpdatedAt, not the state clock", "assert": "contains", "value": "Waiting 12d" },
     { "type": "assert", "assert": "not_contains", "value": "waiting now" },
+    { "type": "assert", "assert": "not_contains", "value": "Waiting now" },
     { "type": "assert", "label": "the comment reached the same task's document", "assert": "contains", "value": "Comments: 1" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

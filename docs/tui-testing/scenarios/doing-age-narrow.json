@@ -5,17 +5,19 @@
   "actions": [
     { "type": "assert", "label": "the state badge is what says the work is active", "assert": "contains", "value": "▶   Build login form" },
     { "type": "assert", "label": "the age beside it is Peek's now, at every width", "assert": "not_contains", "value": "doing now" },
+    { "type": "assert", "label": "the age beside it is Peek's now, at every width", "assert": "not_contains", "value": "Doing now" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the narrow row spends the reclaimed columns on the title", "width": 60, "height": 24 },
     { "type": "assert", "label": "the active task title remains readable", "assert": "not_clipped", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "doing now" },
+    { "type": "assert", "assert": "not_contains", "value": "Doing now" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Doing section header", "key": "j" },
     { "type": "key", "label": "past the project header onto the active row", "key": "j" },
     { "type": "key", "label": "open Peek on the active task", "key": "b" },
-    { "type": "assert", "label": "Peek names the state and how long it has held it", "assert": "contains", "value": "doing now" },
+    { "type": "assert", "label": "Peek names the state and how long it has held it", "assert": "contains", "value": "Doing now" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -137,8 +138,8 @@ func TestPeekStatusValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 		days  int
 		want  string
 	}{
-		{models.StateWaiting, 12, "waiting 12d"},
-		{models.StateDoing, 9, "doing 9d"},
+		{models.StateWaiting, 12, "Waiting 12d"},
+		{models.StateDoing, 9, "Doing 9d"},
 	} {
 		task := &models.Task{
 			ID:             "aged",
@@ -162,7 +163,7 @@ func TestPeekStatusValueCarriesTheWaitingAndDoingAges(t *testing.T) {
 			WorkflowState:  state,
 			StateChangedAt: now.AddDate(0, 0, -12),
 		}
-		if got := inlinePeekStatusValue(other, now); got != state.String() {
+		if got := inlinePeekStatusValue(other, now); got != chrome.PlanStatusValue(state.String()) {
 			t.Fatalf("status %q wore an age: %q", state, got)
 		}
 	}

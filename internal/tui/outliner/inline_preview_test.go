@@ -64,7 +64,7 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 		Indent: "  ",
 		Width:  40,
 	})
-	if got := peekWindowText(lines); got != "  Status: backlog" {
+	if got := peekWindowText(lines); got != "  Status: Backlog" {
 		t.Fatalf("empty Peek = %q", got)
 	}
 	// The window is still the dock's fixed height: a task with one line to say
@@ -399,7 +399,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	}
 
 	doc := inlinePeekDocumentFor(inlinePeekOptions{
-		Task: task, Breadcrumb: "Launch platform ›", Planning: "today", Width: 80,
+		Task: task, Breadcrumb: "Launch platform ›", Planning: "Today", Width: 80,
 		Window:           testPeekWindow(),
 		Dependencies:     []DependencyDetail{{Label: "Platform #7 Blocking work", State: "doing"}},
 		Dependents:       []DependencyDetail{{Label: "Platform #9 Waiting work", State: "waiting"}},
@@ -409,7 +409,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	order := []string{
 		"Rework the sync path",
 		"Parent: Launch platform",
-		"Plan: today · Status: doing 4h · Priority: 2 medium · Pinned · Review",
+		"Plan: Today · Status: Doing 4h · Priority: 2 medium · Pinned · Review",
 		"Due: " + chrome.DueGrammarValue(task) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
 			" · Check-in: " + checkIn.Format(time.DateOnly) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
 		"Repeat: off",
@@ -466,30 +466,30 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 		planning string
 		want     string
 	}{
-		{"bare task", &models.Task{}, "", "Status: backlog"},
+		{"bare task", &models.Task{}, "", "Status: Backlog"},
 		{
 			"doing carries its age",
 			&models.Task{WorkflowState: models.StateDoing, StateChangedAt: now.Add(-50 * time.Hour)},
 			"",
-			"Status: doing 2d",
+			"Status: Doing 2d",
 		},
 		{
 			"waiting carries its age",
 			&models.Task{WorkflowState: models.StateWaiting, StateChangedAt: now.Add(-90 * time.Minute)},
 			"",
-			"Status: waiting 1h",
+			"Status: Waiting 1h",
 		},
 		{
 			"a quiet state has no age to give",
 			&models.Task{WorkflowState: models.StateSomeday, StateChangedAt: now.Add(-90 * time.Hour)},
 			"",
-			"Status: someday",
+			"Status: Someday",
 		},
 		{
 			"an unset priority names none",
 			&models.Task{WorkflowState: models.StateInbox},
 			"",
-			"Status: inbox",
+			"Status: Inbox",
 		},
 		{
 			// The pair the session is about: planning for Today leaves the task in
@@ -497,14 +497,14 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			// side rather than one of them.
 			"a task planned for today reports both halves",
 			&models.Task{WorkflowState: models.StateBacklog},
-			"today",
-			"Plan: today · Status: backlog",
+			"Today",
+			"Plan: Today · Status: Backlog",
 		},
 		{
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
-			"next",
-			"Plan: next · Status: paused · Priority: 1 high · Pinned · Review",
+			"Next",
+			"Plan: Next · Status: Paused · Priority: 1 high · Pinned · Review",
 		},
 	}
 	for _, tc := range cases {
@@ -640,7 +640,7 @@ func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	}
 	// The chain follows the title and precedes everything else: both are identity,
 	// and a reader looking for where a promoted row belongs reads them together.
-	if withParent != "Child\nParent: Launch platform › User authentication\nStatus: backlog" {
+	if withParent != "Child\nParent: Launch platform › User authentication\nStatus: Backlog" {
 		t.Fatalf("identity block = %q", withParent)
 	}
 }
@@ -728,7 +728,7 @@ func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
 
 	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "Status: backlog\nContext: [platform-core]\nTags: #bug" {
+	if body != "Status: Backlog\nContext: [platform-core]\nTags: #bug" {
 		t.Fatalf("context and tags body = %q", body)
 	}
 

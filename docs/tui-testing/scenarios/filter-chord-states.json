@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "open the state filter picker", "key": "f" },
     { "type": "key", "key": "w" },
-    { "type": "assert", "assert": "contains", "value": "Filter by State" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Status" },
     { "type": "assert", "assert": "contains", "value": "keep matching tasks" },
     { "type": "assert", "assert": "no_layout_issues" },
 

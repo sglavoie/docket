@@ -410,7 +410,7 @@ Waiting, read off `StateChangedAt` — then the priority as a number under the s
 `ValidatePriority` gate the badge takes, and the two boolean axes as bare capitalized words,
 since a label beside `Pinned` would say it twice. Plan leads rather than trails
 because the two are one question asked twice and the pair is only readable as a
-pair: `Plan: today · Status: backlog` says where the work was committed and what
+pair: `Plan: Today · Status: Backlog` says where the work was committed and what
 state it still holds, where `today` alone reads as a tenth state. The words are
 `chrome`'s, not this line's, so the workflow chord's headings, the capture route
 row, and this line cannot drift into three synonyms; every line here is the

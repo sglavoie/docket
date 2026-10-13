@@ -130,9 +130,9 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder, bodyWidth in
 
 	// 4: State
 	b.field(4)
-	b.WriteString(chrome.RenderFormLabelWithWidth("State:", lw, m.focusIndex == 4))
+	b.WriteString(chrome.RenderFormLabelWithWidth(chrome.StatusFieldLabel+":", lw, m.focusIndex == 4))
 	{
-		val := m.draft.state.String()
+		val := chrome.PlanStatusValue(m.draft.state.String())
 		if m.focusIndex == 4 {
 			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {

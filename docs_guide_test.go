@@ -33,7 +33,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"Plan: `wn` toggle Next, `wt` toggle Today",
 		"Status: `wi` Inbox, `wb` Backlog, `wg` Doing, `ww` Waiting, `wp` Paused, " +
 			"`wm` Someday, `wd` Done, `wc` Canceled",
-		"planning a task for Today leaves it in Backlog and Peek says `Plan: today · Status: backlog`",
+		"planning a task for Today leaves it in Backlog and Peek says `Plan: Today · Status: Backlog`",
 		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; " +
 			"`-` and `+` step the deadline one day earlier and one day later; " +

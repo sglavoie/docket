@@ -367,7 +367,7 @@ func inlinePeekStatusLines(task *models.Task, planning string, now time.Time, in
 // held it. StateChangedAt is what it reads, so commenting on a blocked task does
 // not reset how long it has been blocked.
 func inlinePeekStatusValue(task *models.Task, now time.Time) string {
-	state := task.State().String()
+	state := chrome.PlanStatusValue(task.State().String())
 	if !task.IsInState(models.StateDoing) && !task.IsInState(models.StateWaiting) {
 		return state
 	}

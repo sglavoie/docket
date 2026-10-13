@@ -72,7 +72,7 @@ while those three counters wait for the rebuild that makes their rows visible.
 Waiting and Doing ages read the state clock, never the touch time, and they are
 one value on one surface: `inlinePeekStatusValue` appends
 `FormatRecencyAge(task.StateChangedAt, now)` to the state for those two states
-alone, so Peek says `waiting 12d` or `doing now` and the row says neither. A
+alone, so Peek says `Waiting 12d` or `Doing now` and the row says neither. A
 comment, a tag, or a reparent on a blocked task therefore cannot reset how long
 it has been blocked, and the state badge on the row carries the fact while the
 age carries the duration. A Waiting deadline remains the ordinary

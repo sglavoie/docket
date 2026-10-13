@@ -230,7 +230,7 @@ func (c *Controller) NewFilterStatesPicker(shell Shell,
 	return valuepicker.NewOperationValuePickerModel(
 		request,
 		operation.ValueProviderFilterStates,
-		"Filter by State",
+		"Filter by Status",
 		"keep matching tasks",
 		source,
 		true,

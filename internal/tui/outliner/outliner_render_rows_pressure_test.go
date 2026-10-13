@@ -69,7 +69,7 @@ func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 			// Every one of them is still a keypress away. Peek is the whole document,
 			// which is what makes dropping them from the row a relocation.
 			peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, width), "\n"))
-			for _, want := range []string{"abcdefghijklmnop", "release", "doing 120d", "×3", "1/2 done", "quote.pdf", "2"} {
+			for _, want := range []string{"abcdefghijklmnop", "release", "Doing 120d", "×3", "1/2 done", "quote.pdf", "2"} {
 				if !strings.Contains(peek, want) {
 					t.Fatalf("%d-column Peek lost %q:\n%s", width, want, peek)
 				}

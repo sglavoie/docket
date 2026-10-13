@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -55,7 +56,7 @@ func (m *TaskFormModel) renderFormHelpPane() string {
 func (m *TaskFormModel) helpPaneHeader() string {
 	switch m.activeTab {
 	case formTabBasics:
-		names := []string{"Title", "Description", "Priority", "Parent", "State", "Flags", "Tags", "Context"}
+		names := []string{"Title", "Description", "Priority", "Parent", chrome.StatusFieldLabel, "Flags", "Tags", "Context"}
 		if m.focusIndex < len(names) {
 			return names[m.focusIndex]
 		}

@@ -114,7 +114,7 @@ func TestNestedRowSupportingDetailStaysReadableInPeek(t *testing.T) {
 	peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 60), "\n"))
 	for _, want := range []string{
 		"Confirm the vendor security questionnaire",
-		"waiting 11d",
+		"Waiting 11d",
 		"Checklist: 1/2 done",
 		"Context: [platform]",
 		"Tags: #backend",

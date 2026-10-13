@@ -39,7 +39,7 @@ func newLoadedTaskForm() *TaskFormModel {
 func formFieldWitness(tab, focus int) string {
 	switch tab {
 	case formTabBasics:
-		return []string{"Title:", "Description:", "Priority:", "Parent:", "State:", "Flags:", "Tags:", "Context:"}[focus]
+		return []string{"Title:", "Description:", "Priority:", "Parent:", "Status:", "Flags:", "Tags:", "Context:"}[focus]
 	case formTabSchedule:
 		return []string{"Due:", "Next check-in:", "Repeat:"}[focus]
 	case formTabChildren:
