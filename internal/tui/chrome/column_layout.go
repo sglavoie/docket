@@ -10,6 +10,22 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+// ColumnLayout holds pre-computed fixed-width column measurements for a single
+// render pass. When non-nil, badge columns are padded to fixed widths so
+// metadata aligns vertically across all rows. Nil = current variable behavior.
+type ColumnLayout struct {
+	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
+	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
+	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
+	HasPriority   bool
+	HasStatus     bool
+	// HasFold reports that some row of the projection draws a fold glyph, so
+	// every other task row reserves that column blank and the titles share one.
+	// ComputeBadgeWidths never sets it: a fold is a fact about a row, not about
+	// a task, so the caller walking the rows does.
+	HasFold bool
+}
+
 // BadgeWidthOpts configures which badge columns ComputeBadgeWidths should
 // measure. Consumers explicitly enable each column so the helper can serve
 // both single-project (no Project column) and cross-project surfaces.
@@ -19,8 +35,8 @@ type BadgeWidthOpts struct {
 
 	// ProjectNameFor, when non-nil, enables the Project column. The function
 	// returns the project display name for a task; an empty return skips
-	// that task. MaxProjectLen truncates the name (0 → default 12) and the
-	// final rendered badge is "[name]".
+	// that task. MaxProjectLen truncates the name and the final rendered badge
+	// is "[name]"; the caller owns that cap, so there is no default here.
 	ProjectNameFor func(task *models.Task) string
 	MaxProjectLen  int
 }
@@ -30,10 +46,6 @@ type BadgeWidthOpts struct {
 func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout {
 	if len(tasks) == 0 {
 		return nil
-	}
-	maxProjLen := opts.MaxProjectLen
-	if maxProjLen <= 0 {
-		maxProjLen = 12
 	}
 	cl := &ColumnLayout{}
 	hasTasks := false
@@ -81,7 +93,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 			if name != "" {
 				w, ok := projectWidths[name]
 				if !ok {
-					truncated := textfit.TruncateToVisualWidth(name, maxProjLen)
+					truncated := textfit.TruncateToVisualWidth(name, opts.MaxProjectLen)
 					w = lipgloss.Width(theme.MutedStyle.Render(fmt.Sprintf("[%s]", truncated)))
 					projectWidths[name] = w
 				}

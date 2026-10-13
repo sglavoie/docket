@@ -1294,7 +1294,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// docs/architecture/operation-grammar.md and
 	// docs/architecture/selection-and-project-tags.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 75108
+	// Raise from 75108 to 75280 for the row's fold column. 172 bytes buy two
+	// facts about the one row geometry: a projection holding anything foldable
+	// keeps that column blank on every other task row and a nil layout keeps
+	// none, so a renderer padding a leaf itself would misalign the inline
+	// editor, and the ranked label's slug cap has one source, which is what
+	// stops a second default returning to the badge measurement. The mechanism
+	// lives in docs/architecture/row-indicators.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 75280
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

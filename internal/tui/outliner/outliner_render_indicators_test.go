@@ -341,3 +341,20 @@ func TestReviewLaneRowDropsTheBareReviewOnly(t *testing.T) {
 		}
 	}
 }
+
+// TestDependencyCensusKeepsAChipsLeadingGap holds the bare census to the
+// distance a padded chip keeps: one column of its own ahead of the separator,
+// alone or after a chip.
+func TestDependencyCensusKeepsAChipsLeadingGap(t *testing.T) {
+	alone := taskIndicatorSegments{dependencies: "~1/2"}.render()
+	if alone != "  ~1/2" {
+		t.Fatalf("lone census = %q, want two leading columns", alone)
+	}
+	after := taskIndicatorSegments{due: " due ", dependencies: "~1/2"}.render()
+	if after != "  due   ~1/2" {
+		t.Fatalf("census after a chip = %q, want the chip's gap", after)
+	}
+	if got := (taskIndicatorSegments{due: " due "}).render(); got != "  due " {
+		t.Fatalf("a row without a census changed: %q", got)
+	}
+}

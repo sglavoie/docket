@@ -484,7 +484,8 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 }
 
 // ComputeOutlinerRowLayout is the one measurement of a projection's shared row
-// geometry: the badge columns the leading segments align in. It reads the whole
+// geometry: the fold column and the badge columns the leading segments align in.
+// It reads the whole
 // row set it is handed rather than the slice a window happens to show, which is
 // what keeps the titles where they are while the list scrolls — a measurement
 // taken from the window would move every row's title each time a wider badge
@@ -500,6 +501,7 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 		return nil
 	}
 	tasks := make([]*models.Task, 0, len(rows))
+	hasFold := false
 	var slugs map[*models.Task]string
 	if m.showsRankedProjectLabel() {
 		slugs = make(map[*models.Task]string, len(rows))
@@ -509,8 +511,9 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 			continue
 		}
 		tasks = append(tasks, row.Task)
+		hasFold = hasFold || rowDrawsFold(row)
 		if slugs != nil {
-			slugs[row.Task] = m.rankedProjectSlug(row)
+			slugs[row.Task] = m.rankedProjectSlug(row, rowWidth)
 		}
 	}
 	if len(tasks) == 0 {
@@ -519,9 +522,13 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 	opts := chrome.BadgeWidthOpts{IncludeStatus: true}
 	if slugs != nil {
 		opts.ProjectNameFor = func(task *models.Task) string { return slugs[task] }
-		opts.MaxProjectLen = rankedProjectLabelMaxSlug
+		opts.MaxProjectLen = rankedProjectLabelMaxSlug(rowWidth)
 	}
-	return chrome.ComputeBadgeWidths(tasks, opts)
+	layout := chrome.ComputeBadgeWidths(tasks, opts)
+	if layout != nil {
+		layout.HasFold = hasFold
+	}
+	return layout
 }
 
 type outlinerViewport struct {

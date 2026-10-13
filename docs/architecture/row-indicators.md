@@ -222,11 +222,30 @@ is useful.
 The flat ranked list across several projects draws no project header, so its
 rows carry the one project label a task row still wears: `taskProjectLabel`
 puts the header's bold `[slug]`, in the same `ProjectColorStyle`, between the
-badges and the title, capped at twelve columns of slug. `ComputeOutlinerRowLayout`
-measures the widest label into `ColumnLayout.ProjectWidth` and every label pads
-to it, so the titles start in one column; it is part of `titlePrefix`, so the
-inline editor opens after it. A single-project scope keeps its focused header
-and no label.
+badges and the title. `rankedProjectLabelMaxSlug` is the one cap on that slug —
+a fifth of the row, never under twelve columns and never over twenty-four — so
+a long slug is cut at the floor and spelled out where the row has the room;
+`chrome.ComputeBadgeWidths` takes it as `MaxProjectLen` and keeps no default of
+its own. `ComputeOutlinerRowLayout` measures the widest label into
+`ColumnLayout.ProjectWidth` and every label pads to it, so the titles start in
+one column; it is part of `titlePrefix`, so the inline editor opens after it. A
+single-project scope keeps its focused header and no label.
+
+The fold glyph is a column of the same layout. `ComputeOutlinerRowLayout` sets
+`ColumnLayout.HasFold` when any task row of the projection has something to
+fold — `rowDrawsFold`, a shown child or a checklist, the predicate the glyph
+itself reads — and `renderTaskFoldIndicator` then returns two blank columns on
+a row that has nothing, where it used to return none and let that row's state
+glyph and title sit two columns left of its neighbors'. The blanks are the
+`foldIndicator` segment, so they are in `gutter()` and reach `titlePrefix()`,
+the inline editor, and the Hub's preview painter with no second copy. A nil
+layout, which is every row narrower than `MinColumnAlignWidth`, reserves
+nothing, and so does a projection in which nothing folds.
+
+The census is the one indicator that is bare text rather than a padded chip, so
+`taskIndicatorSegments.render` gives it the leading column a chip's padding
+would have brought: it sits two columns from a title and three from a chip
+ahead of it, the distances two chips keep.
 
 The search match cue sits above that ladder rather than in it. A projected row
 whose hit came from a field the title cannot show carries one muted

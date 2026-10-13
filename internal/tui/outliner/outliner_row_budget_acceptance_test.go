@@ -88,7 +88,9 @@ func TestNestedRowUnderALongProjectNameKeepsItsEssentials(t *testing.T) {
 			}
 			// The title is what the width is allowed to take, and only after the
 			// ladder has run: a clipped title still reads as its own first words.
-			if !strings.Contains(plain, "Confirm the") {
+			// The census keeps a chip's leading gap, which is one of the columns
+			// the 60-column title gives up.
+			if !strings.Contains(plain, "Confirm th") {
 				t.Fatalf("%d-column nested row spent nothing on the title: %q", width, plain)
 			}
 			// And the long project name never reaches the task row at all, so it

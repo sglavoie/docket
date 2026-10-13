@@ -9,7 +9,7 @@
     { "type": "text", "label": "reparent it under the intake below it, which is a move inside its own lane", "text": " >2" },
     { "type": "key", "label": "the typed reference is complete, so Enter commits the reparent", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "label": "the row kept its lane and took its new place under the successor", "assert": "contains", "value": "└── ◌ Alpha intake ready for triage" },
+    { "type": "assert", "label": "the row kept its lane and took its new place under the successor", "assert": "contains", "value": "└──   ◌ Alpha intake ready for triage" },
     { "type": "assert", "label": "the correlated transaction advertises undo", "assert": "status_contains", "value": "u undo" },
     { "type": "assert", "label": "a task its own block still holds is followed, so the vacated origin is recorded", "assert": "status_contains", "value": "Ctrl+O origin" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -23,7 +23,7 @@
     { "type": "key", "label": "undo the correlated transaction", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid" },
     { "type": "wait" },
-    { "type": "assert", "label": "the reparent is taken back whole", "assert": "contains", "value": "├── ◌ Alpha intake ready for triage" },
+    { "type": "assert", "label": "the reparent is taken back whole", "assert": "contains", "value": "├──   ◌ Alpha intake ready for triage" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "back onto that same intake, past the lane and its project header", "key": "home" },

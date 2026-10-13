@@ -97,9 +97,13 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 	return theme.MutedStyle.Render("  " + marker)
 }
 
-// rankedProjectLabelMaxSlug bounds the slug a ranked row spells, so a long
-// one costs the titles beside it no more than twelve columns.
-const rankedProjectLabelMaxSlug = 12
+// rankedProjectLabelMaxSlug bounds the slug a ranked row spells: a fifth of the
+// row, never under twelve columns and never over twenty-four, so a long slug is
+// cut at the floor and spelled out where the row has the room. It is the one
+// source of that cap; the render and ComputeOutlinerRowLayout both read it.
+func rankedProjectLabelMaxSlug(rowWidth int) int {
+	return min(max(rowWidth/5, 12), 24)
+}
 
 // showsRankedProjectLabel reports whether task rows lead their title with the
 // project: the ranked list across several projects, the one cross-project
@@ -110,22 +114,22 @@ func (m *OutlinerModel) showsRankedProjectLabel() bool {
 
 // rankedProjectSlug is the bare slug a ranked row names, bounded to the label's
 // ceiling so the render and ComputeOutlinerRowLayout measure one string.
-func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow) string {
+func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string {
 	if row.ProjectID == "" {
 		return ""
 	}
 	slug, _ := m.projectSlugForRow(row)
-	return textfit.TruncateToVisualWidth(slug, rankedProjectLabelMaxSlug)
+	return textfit.TruncateToVisualWidth(slug, rankedProjectLabelMaxSlug(rowWidth))
 }
 
 // taskProjectLabel is the `[slug]` the project header would have drawn, in the
 // same bold project color, padded to the projection's widest label so every
 // ranked title starts in one column.
-func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, colLayout *chrome.ColumnLayout) string {
+func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	if !m.showsRankedProjectLabel() {
 		return ""
 	}
-	slug := m.rankedProjectSlug(row)
+	slug := m.rankedProjectSlug(row, rowWidth)
 	if slug == "" {
 		return ""
 	}
@@ -183,7 +187,7 @@ func taskMatchSourceCue(row OutlinerRow) string {
 func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout, paint cursorPaint) taskRowSegments {
 	task := row.Task
 	bg := paint.gutterBg()
-	foldIndicator := m.renderTaskFoldIndicator(row, bg)
+	foldIndicator := m.renderTaskFoldIndicator(row, colLayout, bg)
 	statusIcon := m.renderTaskStatusIcon(task)
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = theme.PadBadge(statusIcon, colLayout.StatusWidth)
@@ -218,7 +222,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
-		projectLabel:    m.taskProjectLabel(row, colLayout),
+		projectLabel:    m.taskProjectLabel(row, rowWidth, colLayout),
 		pinMarker:       m.taskPinnedMarker(row),
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
@@ -278,24 +282,34 @@ func (m *OutlinerModel) rowIdentity(row OutlinerRow) taskref.TaskIdentity {
 	return identity
 }
 
+// rowDrawsFold reports whether a task row has anything `h`/`l` could fold: a
+// child the projection shows, or a checklist. It is the one predicate the glyph
+// and the projection-wide fold column both read.
+func rowDrawsFold(row OutlinerRow) bool {
+	return row.Task != nil && (row.HasVisibleChildren || len(row.Task.Checklist) > 0)
+}
+
 // renderTaskFoldIndicator reports the fold `h`/`l` would act on next. Children
 // answer first because the ladder collapses the checklist before them, so a task
 // whose only foldable content is its checklist is the one that reports the
-// checklist's own state.
-func (m *OutlinerModel) renderTaskFoldIndicator(row OutlinerRow, bg color.Color) string {
+// checklist's own state. A row with nothing to fold keeps the column blank when
+// the projection holds one that has, so every title starts in one column; a nil
+// layout reserves nothing.
+func (m *OutlinerModel) renderTaskFoldIndicator(row OutlinerRow, colLayout *chrome.ColumnLayout, bg color.Color) string {
 	task := row.Task
 	if task == nil {
 		return ""
 	}
-	identity := m.rowIdentity(row)
-	var expanded bool
-	switch {
-	case row.HasVisibleChildren:
-		expanded = m.IsExpanded(identity)
-	case len(task.Checklist) > 0:
-		expanded = m.IsChecklistExpanded(identity)
-	default:
+	if !rowDrawsFold(row) {
+		if colLayout != nil && colLayout.HasFold {
+			return gutterSpace(bg) + gutterSpace(bg)
+		}
 		return ""
+	}
+	identity := m.rowIdentity(row)
+	expanded := m.IsChecklistExpanded(identity)
+	if row.HasVisibleChildren {
+		expanded = m.IsExpanded(identity)
 	}
 	if expanded {
 		return gutterPiece(bg, theme.MutedStyle, theme.IconExpanded) + gutterSpace(bg)
@@ -338,10 +352,17 @@ type taskIndicatorSegments struct {
 }
 
 func (segments taskIndicatorSegments) render() string {
+	// The deadline and the review are chips carrying a column of padding each
+	// side; the census is bare text, so it is given the leading column a chip
+	// would have brought and sits the same distance from whatever precedes it.
+	dependencies := segments.dependencies
+	if dependencies != "" {
+		dependencies = " " + dependencies
+	}
 	rendered := listsurface.JoinGroupParts(
 		segments.review,
 		segments.due,
-		segments.dependencies,
+		dependencies,
 	)
 	if rendered == "" {
 		return ""

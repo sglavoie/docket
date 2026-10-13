@@ -11,7 +11,7 @@
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~0/1" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff  ~0/1" },
 
     { "type": "key", "label": "open the reference picker on the row itself", "key": "~" },
     { "type": "assert", "assert": "contains", "value": "Set Dependencies: Alpha migration kickoff" },
@@ -47,8 +47,8 @@
 
     { "type": "assert", "label": "one transaction, so one status line naming the ledger action", "assert": "status_contains", "value": "Set Dependencies: #1 Alpha migration kickoff" },
     { "type": "assert", "assert": "count_contains", "value": "Set Dependencies: #1 Alpha migration kickoff", "count": 1 },
-    { "type": "assert", "label": "the count is over stored locators, and it moved", "assert": "contains", "value": "Alpha migration kickoff ~0/2" },
-    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff ~0/1" },
+    { "type": "assert", "label": "the count is over stored locators, and it moved", "assert": "contains", "value": "Alpha migration kickoff  ~0/2" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff  ~0/1" },
 
     { "type": "resize", "label": "wide enough for one line to name both targets", "width": 140, "height": 35 },
     { "type": "key", "label": "Peek is the only surface that names them", "key": "b" },

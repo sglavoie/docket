@@ -736,11 +736,13 @@ Row and Peek budget:
   so no label competes with the title. The cross-project ranked list is the one
   exception, since it draws no header: `taskProjectLabel` leads each title with
   the header's own bold `[slug]` in the project color, padded to
-  `ColumnLayout.ProjectWidth` so the titles share a column. The match cue is shed ahead of the whole
+  `ColumnLayout.ProjectWidth` so the titles share a column, its slug cut by
+  `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.
-- `ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns —
-  measured over the whole projection and never a window or a cursor, so titles
-  hold still while the list scrolls; the inline editor and the Hub preview
+- `ComputeOutlinerRowLayout` is the one task-row geometry — the fold column and
+  the badge columns — measured over the whole projection and never a window or
+  a cursor, so titles hold still while the list scrolls. `HasFold` keeps that
+  column blank on a row with nothing to fold, and a nil layout reserves none; the inline editor and the Hub preview
   painter read that same layout.
 - `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent
   and its width, so the title budget reaches the caret by construction and never

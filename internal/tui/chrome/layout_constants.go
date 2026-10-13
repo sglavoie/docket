@@ -3,17 +3,6 @@ package chrome
 // Layout constants for TUI rendering dimensions and spacing.
 // These replace hardcoded magic numbers throughout the view code.
 
-// ColumnLayout holds pre-computed fixed-width column measurements for a single
-// render pass. When non-nil, badge columns are padded to fixed widths so
-// metadata aligns vertically across all rows. Nil = current variable behavior.
-type ColumnLayout struct {
-	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
-	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
-	ProjectWidth  int // max rendered "[project]" badge visual width (cross-project views); 0 when not in use
-	HasPriority   bool
-	HasStatus     bool
-}
-
 const (
 	// MinTerminalWidth is the minimum terminal width required to render the TUI.
 	MinTerminalWidth = 60

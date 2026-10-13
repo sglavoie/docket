@@ -97,6 +97,25 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 	}
 }
 
+// TestComputeBadgeWidthsProjectHasNoDefaultCap holds the cap to its one source:
+// a caller that names no MaxProjectLen gets no twelve-column default.
+func TestComputeBadgeWidthsProjectHasNoDefaultCap(t *testing.T) {
+	t1 := &models.Task{ID: "1", WorkflowState: models.StateBacklog}
+	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
+		ProjectNameFor: func(*models.Task) string { return "a-long-project-name" },
+		MaxProjectLen:  16,
+	})
+	if cl == nil || cl.ProjectWidth != 18 {
+		t.Fatalf("ProjectWidth = %+v, want 18 ('[' + 16 + ']')", cl)
+	}
+	cl = ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
+		ProjectNameFor: func(*models.Task) string { return "a-long-project-name" },
+	})
+	if cl == nil || cl.ProjectWidth != 2 {
+		t.Fatalf("ProjectWidth = %+v, want 2: an unset cap spells no name", cl)
+	}
+}
+
 func TestComputeBadgeWidthsProjectEmptyName(t *testing.T) {
 	t1 := &models.Task{ID: "1", WorkflowState: models.StateBacklog}
 	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{

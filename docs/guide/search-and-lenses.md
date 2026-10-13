@@ -98,8 +98,10 @@ facets, and query, and disappear when nothing matching is withheld.
 
 The ranked list has no project headings, so across several projects each row
 opens with its project's `[slug]`, in the color that project's heading wears in
-the main view, and the titles line up after it. Scoped to one project, the
-heading at the top names it and the rows carry no label.
+the main view, and the titles line up after it. A long slug is shortened to a
+fifth of the row — at least twelve columns and at most twenty-four — so a wide
+terminal spells out what a narrow one cuts. Scoped to one project, the heading
+at the top names it and the rows carry no label.
 
 A chord and a typed query are two ways of writing the same narrowing, so the
 title row shows what you narrowed by in the sigil spelling you would have typed:

@@ -195,6 +195,13 @@ deadline says when something is actually due; the deadline goes last. The order
 is short because the budget is short — the counts, ages, and markers that used
 to fill the lower rungs did not move down it, they left the row for Peek.
 
+Wherever one task in the list can be folded — it shows a child, or it has a
+checklist — every task row keeps the two columns the `▾`/`▸` glyph takes, blank
+on a row with nothing to fold, so state glyphs and titles line up down the
+list. A list in which nothing folds keeps those columns for its titles, and so
+does a terminal under 60 columns. The reference count stands two columns clear
+of the title, the gap the deadline and review chips keep.
+
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
 that the row has a parent the outline above it does not show. Nested rows carry
