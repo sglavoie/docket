@@ -94,6 +94,13 @@ final class ControlWireTests: XCTestCase {
         XCTAssertEqual(TTPulseBadge.label(for: TTPulse(inbox: 1, today: 0, overdue: 4, done: 0)), "4")
         XCTAssertNil(TTPulseBadge.label(for: TTPulse(inbox: 5, today: 5, overdue: 0, done: 5)))
     }
+
+    func testPulseSummaryNamesWhatIsOwedAndOmitsZeros() {
+        XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 3, today: 2, overdue: 1, done: 9)),
+                       "Inbox 3 · Today 2 · Overdue 1")
+        XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 4, overdue: 0, done: 0)), "Today 4")
+        XCTAssertNil(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 0, overdue: 0, done: 7)))
+    }
 }
 
 final class ControlNotificationTests: XCTestCase {
@@ -411,6 +418,22 @@ final class QuickCapturePanelTests: XCTestCase {
         panel.close()
         panel.show()
         XCTAssertEqual(panel.panel.frame.height, originalHeight, accuracy: 1)
+    }
+
+    /// The status line keeps the keys; the sigil examples show only while the
+    /// field is empty, as its placeholder.
+    func testTheHintKeepsTheKeysAndThePlaceholderTheSigils() throws {
+        let panel = QuickCapturePanel()
+        panel.show()
+        defer { panel.close() }
+        let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
+        let field = try XCTUnwrap(labels.first { $0.isEditable })
+        XCTAssertEqual(field.placeholderString, QuickCapturePanel.placeholder)
+        XCTAssertTrue(labels.contains { $0.stringValue == QuickCapturePanel.hint })
+        for sigil in ["#tag", "@date", "%project", "$state", "!1"] {
+            XCTAssertTrue(QuickCapturePanel.placeholder.contains(sigil), sigil)
+            XCTAssertFalse(QuickCapturePanel.hint.contains(sigil), sigil)
+        }
     }
 
     /// A tt without a control socket still opens the panel, which names the

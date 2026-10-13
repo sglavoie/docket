@@ -25,7 +25,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: action)
     }
 
-    static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc cancel · #tag  @date  %project  $state  !1"
+    static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc cancel"
+    /// The sigil examples, read only while the field is empty.
+    static let placeholder = "Capture a task  #tag  @date  %project  $state  !1"
 
     /// The most suggestion rows shown at once; the rest scroll.
     static let visibleSuggestions = 7
@@ -159,7 +161,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         background.state = .active
 
         field.font = .systemFont(ofSize: 20)
-        field.placeholderString = "Capture a task"
+        field.placeholderString = Self.placeholder
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none

@@ -1,8 +1,8 @@
 import AppKit
 
 /// The programmatic main menu: the app, Edit, View, Window, and Help menus, so
-/// About, Preferences, Hide, Quit, Copy, Paste, Select All, the zoom keys, and
-/// Minimize keep their standard shortcuts, and are discoverable, without a nib. The Edit items target the first responder, the
+/// About, Preferences, Hide, Quit, Copy, Paste, Select All, the zoom keys, full
+/// screen, and Minimize keep their standard shortcuts, and are discoverable, without a nib. The Edit items target the first responder, the
 /// terminal surface. A shortcut both an item and a consumed Ghostty binding
 /// claim is the item's, so Cmd+, opens Preferences rather than Ghostty's
 /// config.
@@ -16,7 +16,8 @@ enum MainMenu {
     /// The user guide, read on GitHub: an installed app carries no docs tree.
     static let guideURL = URL(string: "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")!
 
-    static func make() -> NSMenu {
+    /// `captureHotKey` is the live quick-capture shortcut, shown on its item.
+    static func make(captureHotKey: HotKeyCombo? = nil) -> NSMenu {
         let main = NSMenu()
 
         let appItem = NSMenuItem()
@@ -26,6 +27,7 @@ enum MainMenu {
         appMenu.addItem(withTitle: "Preferences…", action: showPreferences, keyEquivalent: ",")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quick Capture…", action: quickCapture, keyEquivalent: "")
+            .setShortcut(captureHotKey)
         appMenu.addItem(withTitle: "Relaunch tt", action: relaunch, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide tt", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -57,13 +59,24 @@ enum MainMenu {
         viewMenu.addItem(withTitle: "Actual Size", action: #selector(Ghostty.SurfaceView.resetZoom(_:)), keyEquivalent: "0")
         viewMenu.addItem(withTitle: "Zoom In", action: #selector(Ghostty.SurfaceView.zoomIn(_:)), keyEquivalent: "=")
         viewMenu.addItem(withTitle: "Zoom Out", action: #selector(Ghostty.SurfaceView.zoomOut(_:)), keyEquivalent: "-")
+        viewMenu.addItem(.separator())
+        // AppKit retitles it Exit Full Screen while the window is in one.
+        let fullScreen = viewMenu.addItem(withTitle: "Enter Full Screen",
+                                          action: #selector(NSWindow.toggleFullScreen(_:)),
+                                          keyEquivalent: "f")
+        fullScreen.keyEquivalentModifierMask = [.control, .command]
         viewItem.submenu = viewMenu
         main.addItem(viewItem)
 
         let windowItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
         windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenu.addItem(.separator())
+        windowMenu.addItem(withTitle: "Bring All to Front",
+                           action: #selector(NSApplication.arrangeInFront(_:)),
+                           keyEquivalent: "")
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
         NSApp.windowsMenu = windowMenu
@@ -76,6 +89,12 @@ enum MainMenu {
         NSApp.helpMenu = helpMenu
 
         return main
+    }
+
+    /// Brings Quick Capture's shortcut in `menu` in line with the live one.
+    static func showCaptureHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
+        guard let appMenu = menu?.items.first?.submenu else { return }
+        appMenu.items.first { $0.action == quickCapture }?.setShortcut(combo)
     }
 
     private static let shortcutModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]

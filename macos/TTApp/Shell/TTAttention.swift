@@ -75,6 +75,17 @@ enum TTPulseBadge {
     }
 }
 
+/// The status menu's line for a pulse: the counts still owed, zero ones left
+/// out, or none when nothing is.
+enum TTPulseSummary {
+    static func line(for pulse: TTPulse) -> String? {
+        let parts = [("Inbox", pulse.inbox), ("Today", pulse.today), ("Overdue", pulse.overdue)]
+            .filter { $0.1 > 0 }
+            .map { "\($0.0) \($0.1)" }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
 /// Shows tt's notifications through the Notification Center. Authorization is
 /// asked for on the first one, not at launch, so a user who never gets one is
 /// never prompted. A notification arriving while tt is already in front is not

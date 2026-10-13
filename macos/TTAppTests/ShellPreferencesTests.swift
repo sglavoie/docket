@@ -289,6 +289,9 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     var isTerminalFrontmost = false
     var canRelaunchTerminal = true
     var isLaunchAtLoginEnabled = false
+    var pulseSummary: String?
+    var toggleHotKey: HotKeyCombo?
+    var captureHotKey: HotKeyCombo?
     var calls: [String] = []
     func toggleTerminal() { calls.append("toggle") }
     func relaunchTerminal() { calls.append("relaunch") }
@@ -304,7 +307,7 @@ final class StatusItemTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(controller.statusItem.button?.image).isTemplate)
 
         controller.refreshMenu()
-        let titles = controller.menu.items.filter { !$0.isSeparatorItem }.map(\.title)
+        let titles = controller.menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
         XCTAssertEqual(titles, ["Show tt", "Quick Capture…", "Relaunch tt", "Preferences…", "Launch at Login", "Quit tt"])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
 
@@ -312,7 +315,7 @@ final class StatusItemTests: XCTestCase {
         delegate.isLaunchAtLoginEnabled = true
         delegate.canRelaunchTerminal = false
         controller.refreshMenu()
-        XCTAssertEqual(controller.menu.items[0].title, "Hide tt")
+        XCTAssertNotNil(controller.menu.item(withTitle: "Hide tt"))
         // Always offered: the panel itself says when tt cannot take a capture.
         XCTAssertTrue(controller.menu.item(withTitle: "Quick Capture…")?.isEnabled ?? false)
         XCTAssertFalse(controller.menu.item(withTitle: "Relaunch tt")?.isEnabled ?? true)
@@ -323,6 +326,53 @@ final class StatusItemTests: XCTestCase {
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
         XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login"])
+    }
+
+    /// The pulse leads the menu as a line that runs nothing, and takes no row
+    /// until tt has reported one.
+    func testMenuLeadsWithThePulseOnceOneArrives() throws {
+        let delegate = FakeStatusDelegate()
+        let controller = StatusItemController(delegate: delegate)
+        controller.refreshMenu()
+        XCTAssertTrue(controller.menu.items[0].isHidden)
+        XCTAssertTrue(controller.menu.items[1].isHidden)
+        XCTAssertTrue(controller.menu.items[1].isSeparatorItem)
+
+        delegate.pulseSummary = "Inbox 3 · Today 2 · Overdue 1"
+        controller.refreshMenu()
+        let pulse = controller.menu.items[0]
+        XCTAssertEqual(pulse.title, "Inbox 3 · Today 2 · Overdue 1")
+        XCTAssertFalse(pulse.isHidden)
+        XCTAssertFalse(pulse.isEnabled)
+        XCTAssertNil(pulse.action)
+        XCTAssertFalse(controller.menu.items[1].isHidden)
+        XCTAssertEqual(controller.menu.items[2].title, "Show tt")
+
+        delegate.pulseSummary = nil
+        controller.refreshMenu()
+        XCTAssertTrue(controller.menu.items[0].isHidden)
+        XCTAssertTrue(controller.menu.items[1].isHidden)
+    }
+
+    func testMenuShowsTheLiveShortcuts() throws {
+        let delegate = FakeStatusDelegate()
+        let controller = StatusItemController(delegate: delegate)
+        controller.refreshMenu()
+        let toggle = try XCTUnwrap(controller.menu.item(withTitle: "Show tt"))
+        let capture = try XCTUnwrap(controller.menu.item(withTitle: "Quick Capture…"))
+        XCTAssertEqual([toggle.keyEquivalent, capture.keyEquivalent], ["", ""])
+
+        delegate.toggleHotKey = TTHotKeyPreference.default
+        delegate.captureHotKey = HotKeyCombo(string: "opt+space")
+        controller.refreshMenu()
+        XCTAssertEqual(toggle.keyEquivalent, "t")
+        XCTAssertEqual(toggle.keyEquivalentModifierMask, [.control, .option, .command])
+        XCTAssertEqual(capture.keyEquivalent, " ")
+        XCTAssertEqual(capture.keyEquivalentModifierMask, [.option])
+
+        delegate.toggleHotKey = nil
+        controller.refreshMenu()
+        XCTAssertEqual(toggle.keyEquivalent, "")
     }
 
     func testRightAndControlClicksOpenTheMenu() throws {

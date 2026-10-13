@@ -135,9 +135,14 @@ or Raycast rule that focused Ghostty for tt can go.
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
 opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Preferences…, Launch at
-Login, Quit. The Dock icon's menu has Quick Capture… and Relaunch tt.
-Its tooltip is tt's window title, the workspace pulse
-(`tt · inbox 2 · today 3 · overdue 1`).
+Login, Quit. Show/Hide and Quick Capture… show their global shortcuts while
+those are registered, as Quick Capture… does in the app menu; a shortcut that is
+off, or that another app holds, is not shown. The Dock icon's menu has Quick
+Capture… and Relaunch tt.
+Once tt has reported its pulse, the menu leads with it as one line that runs
+nothing (`Inbox 2 · Today 3 · Overdue 1`), leaving out any count at zero and the
+whole line when all three are. The icon's tooltip is tt's window title, that
+same pulse (`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
 it. Preferences also chooses whether tt appears in the Dock and menu bar, the
 Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
@@ -167,7 +172,9 @@ updated tt is picked up by quitting and reopening the app, not by Relaunch tt.
 
 `Ctrl+Opt+Cmd+A` by default (after tt's own `a`) opens a capture field over
 whatever app is in front, without bringing tt forward. Type a line in the
-composer's grammar — `#tag`, `@date`, `%project`, `$state`, `!1` — and Enter
+composer's grammar — `#tag`, `@date`, `%project`, `$state`, `!1`, which the
+empty field shows as its placeholder while the line under it names the keys —
+and Enter
 sends it to tt, which captures it into Unfiled's Inbox unless the line says
 otherwise and offers `u undo` the next time you look. A line tt refuses stays in
 the field with tt's reason under it. Typing a sigil lists what tt's composer
@@ -263,7 +270,9 @@ as one surface. Before tt sets it, the title bar uses the Ghostty config's
 
 Edit has Copy, Paste, and Select All, and nothing else: tt owns every other
 edit, undo included, through its own keys. View names the zoom keys (Actual
-Size, Zoom In, Zoom Out), and Help › tt Guide opens the user guide on GitHub.
+Size, Zoom In, Zoom Out) and Enter Full Screen (`Ctrl+Cmd+F`); Window has
+Minimize, Zoom, Close, and Bring All to Front; and Help › tt Guide opens the
+user guide on GitHub.
 The app menu also carries Relaunch tt. Peek's attachment links (OSC 8) open
 with `Cmd`-click.
 
@@ -348,3 +357,5 @@ Staying pinned is fine; upgrade deliberately:
      Ghostty.app.
    - The global shortcut toggles tt from another app; closing and reopening
      keeps the session; `q` follows the exit preference.
+   - Each global shortcut fires once with tt in front, and once from the open
+     status menu, whose items show them.

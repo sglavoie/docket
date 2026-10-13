@@ -55,6 +55,18 @@ struct HotKeyCombo: Equatable, Hashable {
             + (Self.keys[keyCode]?.symbol ?? "?")
     }
 
+    /// The combo as a menu item spells one: the key's character and its AppKit
+    /// modifiers. Carbon takes the press before any menu sees it, so the item
+    /// shows the shortcut without answering it a second time.
+    var menuKeyEquivalent: (key: String, modifiers: NSEvent.ModifierFlags) {
+        var flags: NSEvent.ModifierFlags = []
+        if modifiers & UInt32(controlKey) != 0 { flags.insert(.control) }
+        if modifiers & UInt32(optionKey) != 0 { flags.insert(.option) }
+        if modifiers & UInt32(shiftKey) != 0 { flags.insert(.shift) }
+        if modifiers & UInt32(cmdKey) != 0 { flags.insert(.command) }
+        return (Self.menuKeys[keyCode] ?? Self.keys[keyCode]?.symbol.lowercased() ?? "", flags)
+    }
+
     static func carbonModifiers(_ flags: NSEvent.ModifierFlags) -> UInt32 {
         var bits: UInt32 = 0
         if flags.contains(.control) { bits |= UInt32(controlKey) }
@@ -125,6 +137,24 @@ struct HotKeyCombo: Equatable, Hashable {
         return Dictionary(uniqueKeysWithValues: table.map { (UInt32($0.key), (name: $0.value.0, symbol: $0.value.1)) })
     }()
 
+    /// The keys a menu spells with something other than their lowercased symbol.
+    private static let menuKeys: [UInt32: String] = {
+        func unicode(_ code: Int) -> String { String(UnicodeScalar(UInt32(code)).map(Character.init) ?? " ") }
+        var table: [Int: String] = [
+            kVK_Return: "\r", kVK_Tab: "\t", kVK_Space: " ",
+            kVK_Delete: "\u{8}", kVK_ForwardDelete: "\u{7f}", kVK_Escape: "\u{1b}",
+            kVK_LeftArrow: unicode(NSLeftArrowFunctionKey), kVK_RightArrow: unicode(NSRightArrowFunctionKey),
+            kVK_UpArrow: unicode(NSUpArrowFunctionKey), kVK_DownArrow: unicode(NSDownArrowFunctionKey),
+            kVK_Home: unicode(NSHomeFunctionKey), kVK_End: unicode(NSEndFunctionKey),
+            kVK_PageUp: unicode(NSPageUpFunctionKey), kVK_PageDown: unicode(NSPageDownFunctionKey),
+        ]
+        for (code, entry) in keys where isFunctionKey(code) {
+            guard let number = Int(entry.name.dropFirst()) else { continue }
+            table[Int(code)] = unicode(NSF1FunctionKey + number - 1)
+        }
+        return Dictionary(uniqueKeysWithValues: table.map { (UInt32($0.key), $0.value) })
+    }()
+
     private static let keyCodesByName: [String: UInt32] =
         Dictionary(uniqueKeysWithValues: keys.map { ($0.value.name, $0.key) })
 }
@@ -165,6 +195,15 @@ enum TTHotKeyPreference {
     }
 }
 
+extension NSMenuItem {
+    /// Shows `combo` as this item's shortcut; nil shows none.
+    func setShortcut(_ combo: HotKeyCombo?) {
+        let equivalent = combo?.menuKeyEquivalent
+        keyEquivalent = equivalent?.key ?? ""
+        keyEquivalentModifierMask = equivalent?.modifiers ?? []
+    }
+}
+
 /// Registers one global shortcut with Carbon's `RegisterEventHotKey`, which
 /// needs no Accessibility permission, and calls `onPress` on the main thread.
 final class HotKeyCenter {
@@ -193,6 +232,11 @@ final class HotKeyCenter {
 
     var onPress: (() -> Void)?
     private(set) var registration: Registration = .none
+    /// The shortcut that is live right now; nil while off, refused, or being recorded.
+    var registeredCombo: HotKeyCombo? {
+        guard case .registered(let combo) = registration else { return nil }
+        return combo
+    }
     /// What Carbon reports back on a press of this center's shortcut.
     var hotKeyID: EventHotKeyID { EventHotKeyID(signature: Self.signature, id: id) }
     private let id: UInt32

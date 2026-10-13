@@ -196,8 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         toggleQuickCapture()
     }
 
-    /// tt's title is its pulse: the status item's tooltip carries it whole,
-    /// and the Dock badge its overdue count when Preferences asks for one,
+    /// tt's title is its pulse: the status item's tooltip carries it whole, its
+    /// menu leads with the counts, and the Dock badge its overdue count when Preferences asks for one,
     /// read from the control socket's pulse when tt reports one.
     private func showTitle(_ title: String) {
         statusItem?.statusItem.button?.toolTip = title.isEmpty ? "tt" : title
@@ -312,6 +312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if recording {
                 self.hotKeys?.unregister()
                 self.captureHotKeys?.unregister()
+                self.refreshMenuShortcuts()
             } else {
                 self.registerHotKey(self.preferencesModel.hotKey)
                 self.registerCaptureHotKey(self.preferencesModel.captureHotKey)
@@ -346,14 +347,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         preferencesModel.hotKeyProblem = Self.register(combo, on: hotKeys)
     }
 
+    /// The status menu reads its shortcuts as it opens; the main menu is told.
+    private func refreshMenuShortcuts() {
+        MainMenu.showCaptureHotKey(captureHotKey, in: NSApp.mainMenu)
+    }
+
     private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
         guard let captureHotKeys else { return }
         if let combo, combo == preferencesModel.hotKey {
             captureHotKeys.unregister()
             preferencesModel.captureHotKeyProblem = "\(combo.displayString) already shows and hides tt. Choose another shortcut."
+            refreshMenuShortcuts()
             return
         }
         preferencesModel.captureHotKeyProblem = Self.register(combo, on: captureHotKeys)
+        refreshMenuShortcuts()
     }
 
     /// Registers `combo` and returns what Preferences should say about it.
@@ -438,6 +446,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     var canRelaunchTerminal: Bool { terminal != nil }
 
     var isLaunchAtLoginEnabled: Bool { LoginItem.isEnabled }
+
+    var pulseSummary: String? { lastPulse.flatMap(TTPulseSummary.line(for:)) }
+
+    var toggleHotKey: HotKeyCombo? { hotKeys?.registeredCombo }
+
+    var captureHotKey: HotKeyCombo? { captureHotKeys?.registeredCombo }
 
     /// The global shortcut and a left click on the status item: show and
     /// focus tt, or hide it when it is already in front.

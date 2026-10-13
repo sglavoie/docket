@@ -74,13 +74,41 @@ final class MainMenuTests: XCTestCase {
     /// The zoom keys Ghostty already answers are named, so they can be found.
     func testViewMenuNamesTheZoomKeys() throws {
         let view = try XCTUnwrap(submenu(MainMenu.make(), "View"))
-        XCTAssertEqual(titles(view), ["Actual Size", "Zoom In", "Zoom Out"])
-        XCTAssertEqual(view.items.map(\.keyEquivalent), ["0", "=", "-"])
-        XCTAssertEqual(view.items.map(\.action), [
+        XCTAssertEqual(titles(view), ["Actual Size", "Zoom In", "Zoom Out", "Enter Full Screen"])
+        let items = view.items.filter { !$0.isSeparatorItem }
+        XCTAssertEqual(items.map(\.keyEquivalent), ["0", "=", "-", "f"])
+        XCTAssertEqual(items.map(\.action), [
             #selector(Ghostty.SurfaceView.resetZoom(_:)),
             #selector(Ghostty.SurfaceView.zoomIn(_:)),
             #selector(Ghostty.SurfaceView.zoomOut(_:)),
+            #selector(NSWindow.toggleFullScreen(_:)),
         ])
+        XCTAssertEqual(items.last?.keyEquivalentModifierMask, [.control, .command])
+    }
+
+    func testWindowMenuHasTheStandardItems() throws {
+        let window = try XCTUnwrap(submenu(MainMenu.make(), "Window"))
+        XCTAssertEqual(titles(window), ["Minimize", "Zoom", "Close", "Bring All to Front"])
+        XCTAssertEqual(window.item(withTitle: "Zoom")?.action, #selector(NSWindow.performZoom(_:)))
+        XCTAssertEqual(window.item(withTitle: "Bring All to Front")?.action,
+                       #selector(NSApplication.arrangeInFront(_:)))
+    }
+
+    /// Quick Capture shows the live global shortcut, and none once it is off.
+    func testQuickCaptureShowsItsGlobalShortcut() throws {
+        let combo = try XCTUnwrap(HotKeyCombo(string: "ctrl+opt+cmd+a"))
+        let main = MainMenu.make(captureHotKey: combo)
+        let capture = try XCTUnwrap(main.items.first?.submenu?.item(withTitle: "Quick Capture…"))
+        XCTAssertEqual(capture.keyEquivalent, "a")
+        XCTAssertEqual(capture.keyEquivalentModifierMask, [.control, .option, .command])
+
+        MainMenu.showCaptureHotKey(try XCTUnwrap(HotKeyCombo(string: "shift+cmd+f5")), in: main)
+        XCTAssertEqual(capture.keyEquivalent, String(UnicodeScalar(UInt32(NSF5FunctionKey))!))
+        XCTAssertEqual(capture.keyEquivalentModifierMask, [.shift, .command])
+
+        MainMenu.showCaptureHotKey(nil, in: main)
+        XCTAssertEqual(capture.keyEquivalent, "")
+        XCTAssertEqual(MainMenu.make().items.first?.submenu?.item(withTitle: "Quick Capture…")?.keyEquivalent, "")
     }
 
     func testHelpMenuOpensTheGuide() throws {

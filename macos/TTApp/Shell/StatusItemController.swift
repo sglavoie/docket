@@ -6,6 +6,11 @@ protocol StatusItemDelegate: AnyObject {
     var isTerminalFrontmost: Bool { get }
     var canRelaunchTerminal: Bool { get }
     var isLaunchAtLoginEnabled: Bool { get }
+    /// The workspace pulse as one line; nil while tt has reported none.
+    var pulseSummary: String? { get }
+    /// The live global shortcuts, shown beside the items they run.
+    var toggleHotKey: HotKeyCombo? { get }
+    var captureHotKey: HotKeyCombo? { get }
     func toggleTerminal()
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
@@ -20,6 +25,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     let menu = NSMenu()
     private weak var delegate: StatusItemDelegate?
 
+    /// Read-only, so it is disabled and runs nothing.
+    private let pulseItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let pulseSeparator = NSMenuItem.separator()
     private let toggleItem = NSMenuItem(title: "Show tt", action: #selector(toggle(_:)), keyEquivalent: "")
     private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
     private let relaunchItem = NSMenuItem(title: "Relaunch tt", action: #selector(relaunch(_:)), keyEquivalent: "")
@@ -35,6 +43,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         for item in [toggleItem, captureItem, relaunchItem, preferencesItem, loginItem] {
             item.target = self
         }
+        pulseItem.isEnabled = false
+        pulseItem.isHidden = true
+        pulseSeparator.isHidden = true
+        menu.addItem(pulseItem)
+        menu.addItem(pulseSeparator)
         menu.addItem(toggleItem)
         menu.addItem(captureItem)
         menu.addItem(relaunchItem)
@@ -74,8 +87,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// Brings the menu's titles and states in line with the app.
     func refreshMenu() {
+        let pulse = delegate?.pulseSummary ?? ""
+        pulseItem.title = pulse
+        pulseItem.isHidden = pulse.isEmpty
+        pulseSeparator.isHidden = pulse.isEmpty
         let frontmost = delegate?.isTerminalFrontmost ?? false
         toggleItem.title = frontmost ? "Hide tt" : "Show tt"
+        toggleItem.setShortcut(delegate?.toggleHotKey)
+        captureItem.setShortcut(delegate?.captureHotKey)
         relaunchItem.isEnabled = delegate?.canRelaunchTerminal ?? false
         loginItem.state = (delegate?.isLaunchAtLoginEnabled ?? false) ? .on : .off
     }
