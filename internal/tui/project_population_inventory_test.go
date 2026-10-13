@@ -35,7 +35,6 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/lifecycle_controller.go:TaskWorkspaceProjects":                   "--notify reports arrivals in the base task workspace, the population whose rows show them",
 	"internal/tui/app_init.go:taskWorkspaceProjects":                               "startup Today/Next hydration is a task projection",
 	"internal/tui/app_manage_hub.go:availableProjects":                             "Notes owner refresh after a workspace lifecycle change",
-	"internal/tui/app_daily_plan.go:taskWorkspaceProjects":                         "pinned task collection is a task projection",
 	"internal/tui/app_projects.go:AvailableProjects":                               "availableProjects wrapper over the parked-inclusive population",
 	"internal/tui/shell_ports.go:availableProjects":                                "the exported port spelling the clusters below the shell read the parked-inclusive population through",
 	"internal/tui/shell_ports.go:taskWorkspaceProjects":                            "the exported port spelling the clusters below the shell read the base task workspace through",

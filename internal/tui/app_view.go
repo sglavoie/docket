@@ -71,6 +71,18 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 			injector.SetCompletionActivity(m.completionActivity)
 		}
 	}
+	// A hosted panel draws no title, so the pulse on screen is its host's, and
+	// the host is not the active view: it is handed the current one here or it
+	// keeps the count it held when the panel opened.
+	if frame, ok := m.hostedPanelFrame(); ok && frame.layout.HostDrawn {
+		policy, classified := route.ChromePolicyForPresentation(frame.host)
+		if injector, ok := frame.view.(pulse.WorkspacePulseAware); classified && policy.WorkspacePulseEligible() && ok {
+			injector.SetWorkspacePulse(m.workspacePulse)
+		}
+		if injector, ok := frame.view.(pulse.CompletionActivityAware); classified && policy.WorkspacePulseEligible() && ok {
+			injector.SetCompletionActivity(m.completionActivity)
+		}
+	}
 	resultView := tea.NewView("")
 	if current := m.activeView(); current != nil {
 		resultView = current.View()

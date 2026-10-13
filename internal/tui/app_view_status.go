@@ -393,27 +393,22 @@ func suppressGuidanceRows(content string, width int) string {
 }
 
 // surfaceFooterContent builds what the shell footer says on behalf of the
-// active surface: its contextual guidance, else the pinned-task bar, else the
-// breadcrumb row with its help hint. It is one occupant, so suppression takes
-// it whole — while a modal owns every key, the breadcrumb's Esc preview names a
-// destination that press would not reach.
+// active surface: its contextual guidance, else the breadcrumb row with its
+// help hint. It is one occupant, so suppression takes it whole — while a modal
+// owns every key, the breadcrumb's Esc preview names a destination that press
+// would not reach.
 func (m *AppModel) surfaceFooterContent() string {
 	// Show the current view's contextual guidance if it provides any (e.g. the
-	// capture views). This sits above the pinned-task bar and generic breadcrumb
-	// but below the transient loading/error/status overlays handled by the
-	// caller, so a temporary status message still replaces capture controls and
-	// the controls return once it clears.
+	// capture views). This sits above the generic breadcrumb but below the
+	// transient loading/error/status overlays handled by the caller, so a
+	// temporary status message still replaces capture controls and the controls
+	// return once it clears.
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(route.ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
 				return chrome.RenderGuidanceText(spec, m.viewNav.width)
 			}
 		}
-	}
-
-	// Show pinned tasks bar if any tasks are pinned.
-	if pinnedBar := m.renderPinnedTasksBar(m.viewNav.width); pinnedBar != "" {
-		return pinnedBar
 	}
 
 	status := m.buildBreadcrumb()

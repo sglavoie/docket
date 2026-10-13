@@ -36,9 +36,9 @@ type ShellFrameMetrics struct {
 	// the footer carries neither.
 	FeedbackRows int
 	// ControlRows is what the live controls cost: an unfinished chord's
-	// which-key row, or the active surface's guidance, pinned bar, or
-	// breadcrumb. A suppressed occupant still costs its own rows, because
-	// suppression blanks it rather than dropping it.
+	// which-key row, or the active surface's guidance or breadcrumb. A
+	// suppressed occupant still costs its own rows, because suppression blanks
+	// it rather than dropping it.
 	ControlRows int
 }
 

@@ -1,19 +1,13 @@
 package tui
 
 import (
-	"cmp"
 	"fmt"
-	"sort"
-	"strings"
 	"time"
-
-	"github.com/sglavoie/tt/internal/tui/chrome"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -248,71 +242,4 @@ func (m *AppModel) toggleRedoTimestamp(kind toggleUndoKind) time.Time {
 	default:
 		return time.Time{}
 	}
-}
-
-type pinnedTaskInfo struct {
-	ShortID     int
-	ProjectName string
-	PinnedAt    time.Time
-	Task        *models.Task
-}
-
-func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
-	projects := m.taskWorkspaceProjects()
-	var pinned []pinnedTaskInfo
-	now := time.Now()
-
-	for _, project := range projects {
-		if project.Tasks == nil {
-			if err := storage.LoadProject(project); err != nil {
-				continue
-			}
-		}
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			if task.Pinned && !task.IsTerminalState() && !task.IsDeferredAt(now) {
-				info := pinnedTaskInfo{
-					ShortID:     task.ShortID,
-					ProjectName: project.Name,
-					Task:        task,
-				}
-				if task.PinnedAt != nil {
-					info.PinnedAt = *task.PinnedAt
-				}
-				pinned = append(pinned, info)
-			}
-		}
-	}
-
-	sort.SliceStable(pinned, func(i, j int) bool {
-		switch {
-		case !pinned[i].PinnedAt.IsZero() && pinned[j].PinnedAt.IsZero():
-			return true
-		case pinned[i].PinnedAt.IsZero() && !pinned[j].PinnedAt.IsZero():
-			return false
-		case !pinned[i].PinnedAt.Equal(pinned[j].PinnedAt):
-			return pinned[i].PinnedAt.After(pinned[j].PinnedAt)
-		}
-		if c := cmp.Compare(strings.ToLower(pinned[i].ProjectName), strings.ToLower(pinned[j].ProjectName)); c != 0 {
-			return c < 0
-		}
-		if c := cmp.Compare(pinned[i].ShortID, pinned[j].ShortID); c != 0 {
-			return c < 0
-		}
-		return pinned[i].Task.ID < pinned[j].Task.ID
-	})
-
-	return pinned
-}
-
-// renderPinnedTasksBar supplies the visible pin population to shared chrome.
-func (m *AppModel) renderPinnedTasksBar(width int) string {
-	pinned := m.collectPinnedTasks()
-	tasks := make([]*models.Task, 0, len(pinned))
-	for _, item := range pinned {
-		tasks = append(tasks, item.Task)
-	}
-	return chrome.RenderPinnedTasksBar(tasks, width)
 }

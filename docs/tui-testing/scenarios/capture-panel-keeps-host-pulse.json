@@ -1,0 +1,23 @@
+{
+  "name": "capture-panel-keeps-host-pulse",
+  "fixture": "busy",
+  "size": "120x35",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "workspace: inbox 5 · overdue 1" },
+    { "type": "key", "label": "open capture over the outline", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "label": "the panel draws no title, so the host under it still carries the pulse", "assert": "contains", "value": "workspace: inbox 5 · overdue 1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "text", "text": "Pulse probe one" },
+    { "type": "key", "label": "create and keep the panel open", "key": "ctrl+n" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "label": "the host's pulse counts the capture while the panel is still over it", "assert": "contains", "value": "workspace: inbox 6 · overdue 1" },
+    { "type": "assert", "assert": "not_contains", "value": "workspace: inbox 5" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the pulse survives the panel at the floor too", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "workspace: inbox 6 · overdue 1" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

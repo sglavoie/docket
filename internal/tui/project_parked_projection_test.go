@@ -139,17 +139,6 @@ func TestParkedProjectLeavesPinnedProjections(t *testing.T) {
 			t.Fatalf("Pinned section projects the parked task %q", row.Task.ID)
 		}
 	}
-
-	shell := &AppModel{
-		domain: domainController{
-			runtime:  runtime,
-			projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
-		},
-	}
-	pinned := shell.collectPinnedTasks()
-	if len(pinned) != 1 || pinned[0].Task.ID != activePin.ID {
-		t.Fatalf("collectPinnedTasks = %+v, want only the base workspace pin", pinned)
-	}
 }
 
 func assertIDs(t *testing.T, got []string, want ...string) {

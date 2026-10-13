@@ -158,7 +158,11 @@ is corrected on the next update instead of silently clipping its cursor row away
 
 The panel has no title row, so it also has no workspace pulse: the host under it
 is still painting its own, and `TestPresentationChromeHostedPanelLeavesThePulseToItsHost`
-holds the composition to exactly one. `chrome.RenderLabeledDivider` is the
+holds the composition to exactly one. That host is not the active view, so
+`AppModel.View` hands it the shell's current pulse beside the active view's
+whenever the layout is `HostDrawn`; without that it keeps the count it held when
+the panel opened, and a `Ctrl+N` capture would leave the title one behind the
+rows under it. `chrome.RenderLabeledDivider` is the
 heading form it uses instead — `── Capture ─────`, one row, the plain rule when
 there is no room for a label. The label names the act and stops there: the
 destination is the route row's, which `Ctrl+P` rewrites, so a second copy on the

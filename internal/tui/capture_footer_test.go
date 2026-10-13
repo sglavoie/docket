@@ -55,38 +55,6 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	}
 }
 
-// TestCaptureFooterSurvivesPinnedTasks confirms that a pinned task cannot
-// replace the capture controls: the contextual footer sits above the pinned
-// bar in the status-bar precedence, so with Quick Capture active the footer
-// shows the capture actions rather than the pinned task strip.
-func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.viewNav.width = 80
-	app.viewNav.height = 24
-
-	const sentinel = "PINNED_SENTINEL_TASK"
-	project.Tasks[0].Title = sentinel
-	project.Tasks[0].Pinned = true
-
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
-	if !handled {
-		t.Fatal("ShowTaskComposerMsg should be handled")
-	}
-
-	// Sanity: the project genuinely has a pinned task available to the bar.
-	if len(app.collectPinnedTasks()) == 0 {
-		t.Fatal("expected a pinned task to be collectable for the test setup")
-	}
-
-	statusBar := ansi.Strip(app.renderStatusBar())
-	if !strings.Contains(statusBar, "Enter create") {
-		t.Fatalf("expected capture controls in status bar, got:\n%s", statusBar)
-	}
-	if strings.Contains(statusBar, sentinel) {
-		t.Fatalf("pinned task must not replace capture controls, got:\n%s", statusBar)
-	}
-}
-
 // TestCaptureFooterKeepsControlsBesideATemporaryStatus is the transient
 // boundary: a temporary app status message takes a row of its own above the
 // contextual footer rather than the footer's place, and when it clears the

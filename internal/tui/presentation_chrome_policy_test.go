@@ -224,13 +224,15 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 func TestPresentationChromeHostedPanelLeavesThePulseToItsHost(t *testing.T) {
 	model := typedTestApp(t)
 	model.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 30})
-	model.crossOutliner.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4})
 
 	handled, _ := model.handleViewMessages(model.captureComposerMessage(model.currentProject, model.taskWorkspaceProjects()))
 	if !handled || model.currentView() != presentation.ViewTaskComposer {
 		t.Fatalf("composer did not open: handled=%v view=%v", handled, model.currentView())
 	}
-	model.taskComposer.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4})
+	// The count arrives after the panel opened, and only the shell holds it: the
+	// host is not the active view, so it shows this pulse only if View hands it
+	// one.
+	model.workspacePulse = pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}
 	model.syncHostedPanelHost()
 
 	plain := ansi.Strip(model.View().Content)

@@ -29,8 +29,8 @@ type ViewCapabilities interface {
 }
 
 // ContextualGuidanceProvider is implemented by views that supply structured
-// guidance for the app shell. The shell renders it above the pinned-task bar
-// and generic breadcrumb but below transient loading/error/status overlays.
+// guidance for the app shell. The shell renders it above the generic
+// breadcrumb but below transient loading/error/status overlays.
 // Returning ok=false lets the shell fall through to lower-priority chrome.
 type ContextualGuidanceProvider interface {
 	ContextualGuidance() (spec chrome.GuidanceSpec, ok bool)
