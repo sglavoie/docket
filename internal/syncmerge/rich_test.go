@@ -798,8 +798,15 @@ func testUndoRemoteEditRefusesStaleUndo(t *testing.T) {
 	if len(a.outgoing()) != pending {
 		t.Fatal("a refused undo published a transaction")
 	}
-	if _, ok, selectErr := a.ledger.SelectNewestUndo(storage.GlobalScope()); selectErr != nil || !ok {
-		t.Fatalf("a refused undo consumed its entry: %v %v", ok, selectErr)
+	// The remote edit recorded no ledger entry, so nothing can bring the file
+	// back to the image this one left: it is retired rather than left selected,
+	// where it would wall off every older entry.
+	var retired *storage.RetiredEntryError
+	if !errors.As(err, &retired) {
+		t.Fatalf("undo over a remote edit: %v, want the entry retired", err)
+	}
+	if _, ok, selectErr := a.ledger.SelectNewestUndo(storage.GlobalScope()); selectErr != nil || ok {
+		t.Fatalf("a retired undo entry is still selected: %v %v", ok, selectErr)
 	}
 	replicas := settleClean(t, c)
 	for _, r := range replicas {

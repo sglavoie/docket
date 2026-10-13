@@ -3,6 +3,7 @@ package status
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -36,7 +37,11 @@ func formatUndoRedoRestoreErrorMessage(label string, err error) string {
 	action := undoRedoRestoreActionLabel(label)
 	detail := strings.ToLower(err.Error())
 
+	var retired *storage.RetiredEntryError
 	switch {
+	case errors.As(err, &retired):
+		return fmt.Sprintf("%s unavailable: %q was changed outside this history (%s), so it was dropped; press again for the entry before it",
+			action, retired.Entry.Description(), filepath.Base(retired.Conflict.Path))
 	case IsExhaustedHistory(err):
 		return fmt.Sprintf("%s failed: no %s history is available for this workspace", action, label)
 	case strings.Contains(detail, "diverged") || strings.Contains(detail, "does not match"):

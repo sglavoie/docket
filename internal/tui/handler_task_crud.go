@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -405,6 +406,13 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 		// a spurious failure.
 		if status.IsExhaustedHistory(err) {
 			return status.NothingToRestoreCmd(redo)
+		}
+		// A retired entry changed nothing durable but did leave the ledger, so
+		// the session memories keyed to it are put down with it.
+		var retired *storage.RetiredEntryError
+		if errors.As(err, &retired) {
+			m.undoFocus.ForgetRetired(retired.Entry.TransactionID, redo)
+			m.dueClocks.ForgetRetired(retired.Entry.TransactionID, redo)
 		}
 		return status.ErrorCmd("%s", status.FormatUndoRedoRestoreError(label, err))
 	}

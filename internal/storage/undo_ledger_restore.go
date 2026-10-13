@@ -109,7 +109,7 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 		return withOrderedFileLocks(lockPaths, func() error {
 			manifest, prepareErr := l.prepareRestoreTransaction(journal, lf, entry, idx, redo)
 			if prepareErr != nil {
-				return prepareErr
+				return l.retireDriftedEntry(journal, lf, entry, idx, redo, prepareErr)
 			}
 			if commitErr := commitJournal(journal, manifest); commitErr != nil {
 				return fmt.Errorf("committing %s transaction: %w", label, commitErr)

@@ -96,7 +96,7 @@ func TestSyncedLedgerFileLosesEntriesButNeverCorrupts(t *testing.T) {
 // preflightRestoreImage compares the on-disk content against the image the entry
 // expects to find before it plans anything. The second machine's edit makes that
 // comparison fail, so the restore is refused whole rather than overwriting work it
-// has no record of.
+// has no record of, and the entry that can no longer apply is retired.
 func TestRestoreFailsClosedWhenAnotherMachineChangedTheFile(t *testing.T) {
 	ledger, root := newTestLedger(t)
 	target := filepath.Join(root, "projects", "alpha", "tasks.md")
@@ -114,10 +114,15 @@ func TestRestoreFailsClosedWhenAnotherMachineChangedTheFile(t *testing.T) {
 	if got := readFile(t, target); got != "written by the other machine" {
 		t.Fatalf("target content = %q, want the other machine's write untouched", got)
 	}
-	// Refusing must not consume the entry: the history is still there once the
-	// divergence is resolved.
-	if count, countErr := ledger.UndoCount(GlobalScope()); countErr != nil || count != 1 {
-		t.Fatalf("UndoCount after the refusal = (%d, %v), want (1, nil)", count, countErr)
+	// The ledger holds no record of the other machine's write, so the file can
+	// never return to the image this entry expects. The refusal retires it rather
+	// than leave it selected ahead of every older entry.
+	var retired *RetiredEntryError
+	if !errors.As(err, &retired) {
+		t.Fatalf("Undo error = %v, want the entry retired", err)
+	}
+	if count, countErr := ledger.UndoCount(GlobalScope()); countErr != nil || count != 0 {
+		t.Fatalf("UndoCount after the refusal = (%d, %v), want (0, nil)", count, countErr)
 	}
 }
 

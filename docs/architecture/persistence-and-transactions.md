@@ -189,6 +189,21 @@ notes, and attachment topology. Every successful forward mutation clears redo.
 Failed operations record nothing. Undo is convenience history in the same
 workspace, not an independent backup.
 
+An entry keeps its `Seq` on both stacks. Undo takes the highest on the undo
+stack, so redo takes the lowest on the redo stack: the last entry undone, and the
+only one whose before-image the file currently holds.
+
+A restore preflights every image and refuses on drift before staging a byte. What
+happens to the refused entry depends on whether the ledger can explain the drift.
+A scoped restore can select an entry older than one outside its scope that wrote
+the same file; that entry is blocked behind the newer one, and the refusal leaves
+it in place. Drift no pending entry accounts for came from outside the ledger — a
+sync import and an external edit record no entry — so the file can never return
+to the image the entry expects. `retireDriftedEntry` drops that entry in a
+ledger-only journal transaction and returns `RetiredEntryError`, which unwraps to
+the `ArtifactConflictError` naming the file. Left selected, it would have been
+chosen by every later restore and walled off all older history behind it.
+
 Deleting a project is the widest single transaction the product commits, and it
 is built from the same primitive as every other. A delete op is `os.Remove`: one
 entry, and never a non-empty directory. `PlanProjectDelete` therefore enumerates

@@ -91,6 +91,26 @@ func (e *ArtifactConflictError) Error() string {
 
 func (e *ArtifactConflictError) Unwrap() error { return ErrStaleArtifact }
 
+// RetiredEntryError reports an undo or redo that was refused because an artifact
+// changed outside the ledger, and that the entry was dropped from history as a
+// result, so the next restore reaches the one behind it. Nothing on disk
+// changed. It unwraps to the *ArtifactConflictError that names the artifact.
+type RetiredEntryError struct {
+	Entry    LedgerEntry
+	Redo     bool
+	Conflict *ArtifactConflictError
+}
+
+func (e *RetiredEntryError) Error() string {
+	label := "undo"
+	if e.Redo {
+		label = "redo"
+	}
+	return fmt.Sprintf("storage: %s entry %q retired: %v", label, e.Entry.Description(), e.Conflict)
+}
+
+func (e *RetiredEntryError) Unwrap() error { return e.Conflict }
+
 // RevisionConflictError is the concrete stale-revision conflict returned when a
 // changeset's expected revision does not match the current on-disk revision. It
 // unwraps to ErrStaleRevision so callers can match the class while still

@@ -39,7 +39,7 @@ func TestLedgerRestoreAtomicPreflightRejectsMissingBlob(t *testing.T) {
 
 // TestLedgerRestoreAtomicRevisionDrift rejects an undo when any grouped target
 // no longer matches the entry's after-image. Preflight detects the drift before
-// the earlier artifact can be restored.
+// the earlier artifact can be restored, and the unrestorable entry is retired.
 func TestLedgerRestoreAtomicRevisionDrift(t *testing.T) {
 	ledger, root := newTestLedger(t)
 	first := filepath.Join(root, "projects", "alpha", "tasks.md")
@@ -57,7 +57,9 @@ func TestLedgerRestoreAtomicRevisionDrift(t *testing.T) {
 	}
 	assertLedgerRestoreContent(t, first, "alpha after")
 	assertLedgerRestoreContent(t, second, "concurrent edit")
-	assertLedgerRestoreStacks(t, ledger, 1, 0)
+	// No ledger entry explains the drift, so the entry is retired: it moves to
+	// neither stack, and no artifact was written on the way.
+	assertLedgerRestoreStacks(t, ledger, 0, 0)
 	assertJournalClean(t, root)
 }
 

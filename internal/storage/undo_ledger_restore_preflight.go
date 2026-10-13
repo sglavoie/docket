@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -66,6 +67,80 @@ func (l *WorkspaceLedger) prepareRestoreTransaction(
 		return nil, fmt.Errorf("preparing ledger restore transaction: %w", err)
 	}
 	return manifest, nil
+}
+
+// retireDriftedEntry drops a selected entry whose restore was refused because an
+// artifact no longer holds the image the entry left there, and reports both
+// facts as one *RetiredEntryError. Nothing the ledger holds can explain that
+// drift — a sync import and an external edit record no entry — so the image is
+// never coming back, and an entry that can never restore would otherwise stay
+// selected and wall off every older one behind it.
+//
+// Drift a pending entry does explain is left alone and reported as it always
+// was: a scoped restore can select an entry older than one outside its scope
+// that wrote the same file, and that entry is blocked, not dead. Any other
+// failure, including a retirement that could not be written, is returned
+// unchanged with the ledger as found.
+func (l *WorkspaceLedger) retireDriftedEntry(
+	journal *transaction.Journal,
+	lf *ledgerFile,
+	entry LedgerEntry,
+	idx int,
+	redo bool,
+	cause error,
+) error {
+	var conflict *ArtifactConflictError
+	if !errors.As(cause, &conflict) || driftExplainedByLedger(lf, entry, conflict.Path, redo) {
+		return cause
+	}
+	if redo {
+		lf.RedoEntries = removeEntryAt(lf.RedoEntries, idx)
+	} else {
+		lf.Entries = removeEntryAt(lf.Entries, idx)
+	}
+	ledgerData, err := encodeLedgerFile(lf)
+	if err != nil {
+		return cause
+	}
+	manifest, err := journal.Prepare([]transaction.Op{{
+		Kind: transaction.OpWrite, Target: l.ledgerPath(), Data: ledgerData, Mode: FilePermissions,
+	}})
+	if err != nil {
+		return cause
+	}
+	if err := commitJournal(journal, manifest); err != nil {
+		return cause
+	}
+	l.gcBlobs(lf)
+	return &RetiredEntryError{Entry: entry, Redo: redo, Conflict: conflict}
+}
+
+// driftExplainedByLedger reports whether an entry that must be restored before
+// this one also wrote path: a newer one still on the undo stack, or, for a redo,
+// an older one still waiting on the redo stack.
+func driftExplainedByLedger(lf *ledgerFile, entry LedgerEntry, path string, redo bool) bool {
+	path = filepath.Clean(path)
+	writes := func(candidate LedgerEntry) bool {
+		for _, image := range candidate.Artifacts {
+			if filepath.Clean(image.Path) == path {
+				return true
+			}
+		}
+		return false
+	}
+	for _, candidate := range lf.Entries {
+		if candidate.Seq > entry.Seq && writes(candidate) {
+			return true
+		}
+	}
+	if redo {
+		for _, candidate := range lf.RedoEntries {
+			if candidate.Seq < entry.Seq && writes(candidate) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // preflightRestoreOps validates both retained images and every current file or

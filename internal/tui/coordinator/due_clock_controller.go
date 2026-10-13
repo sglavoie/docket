@@ -347,3 +347,23 @@ func dueStepClockOf(due *time.Time) (app.DueStepClock, bool) {
 	}
 	return app.DueStepClock{Hour: hour, Minute: minute}, true
 }
+
+// ForgetRetired drops the memory of one entry the ledger retired without
+// restoring it. The ledger no longer holds that entry, so leaving it on top
+// would break the subsequence the top-of-stack match relies on and leave every
+// older entry uncorrelated. Nothing is applied: a retired entry changed no
+// durable state.
+func (c *DueClockController) ForgetRetired(transactionID string, redo bool) {
+	if c == nil || transactionID == "" {
+		return
+	}
+	source := &c.undo
+	if redo {
+		source = &c.redo
+	}
+	entries := *source
+	if len(entries) == 0 || entries[len(entries)-1].transactionID != transactionID {
+		return
+	}
+	*source = entries[:len(entries)-1]
+}

@@ -161,6 +161,89 @@ func TestWorkspaceLedger_RedoReplaysInTheOrderUndone(t *testing.T) {
 	}
 }
 
+// TestWorkspaceLedger_DriftedEntryIsRetired covers the entry a change outside
+// the ledger made unrestorable — a sync import or an external edit records none.
+// The refusal changes no file and drops the entry, so the one behind it is the
+// next undo instead of being walled off for good.
+func TestWorkspaceLedger_DriftedEntryIsRetired(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	alpha := filepath.Join(root, "projects", "alpha", "tasks.md")
+	beta := filepath.Join(root, "projects", "beta", "tasks.md")
+	writeFile(t, alpha, "a2")
+	mustRecord(t, ledger, "txn-1", "alpha", alpha, "a1", "a2")
+	writeFile(t, beta, "b2")
+	mustRecord(t, ledger, "txn-2", "beta", beta, "b1", "b2")
+	writeFile(t, beta, "b-remote")
+
+	_, err := ledger.Undo(GlobalScope())
+	var retired *RetiredEntryError
+	if !errors.As(err, &retired) || retired.Entry.TransactionID != "txn-2" || retired.Redo {
+		t.Fatalf("undo over a drifted file: %v, want txn-2 retired", err)
+	}
+	var conflict *ArtifactConflictError
+	if !errors.As(err, &conflict) || conflict.Path != beta {
+		t.Fatalf("retirement does not name the drifted artifact: %v", err)
+	}
+	if got := readFile(t, beta); got != "b-remote" {
+		t.Fatalf("a refused undo wrote %q over the outside change", got)
+	}
+	if count, countErr := ledger.UndoCount(GlobalScope()); countErr != nil || count != 1 {
+		t.Fatalf("UndoCount = %d (%v), want the one older entry", count, countErr)
+	}
+	if _, err := ledger.Undo(GlobalScope()); err != nil {
+		t.Fatalf("Undo of the older entry: %v", err)
+	}
+	if got := readFile(t, alpha); got != "a1" {
+		t.Fatalf("after undo = %q, want a1", got)
+	}
+
+	// The redo stack retires on the same terms.
+	writeFile(t, alpha, "a-remote")
+	if _, err := ledger.Redo(GlobalScope()); !errors.As(err, &retired) || retired.Entry.TransactionID != "txn-1" || !retired.Redo {
+		t.Fatalf("redo over a drifted file: %v, want txn-1 retired", err)
+	}
+	if count, countErr := ledger.RedoCount(GlobalScope()); countErr != nil || count != 0 {
+		t.Fatalf("RedoCount = %d (%v), want none", count, countErr)
+	}
+	if got := readFile(t, alpha); got != "a-remote" {
+		t.Fatalf("a refused redo wrote %q over the outside change", got)
+	}
+}
+
+// TestWorkspaceLedger_DriftExplainedByANewerEntryIsNotRetired holds retirement
+// to drift nothing in the ledger accounts for. A scoped undo can select an entry
+// older than one outside its scope that wrote the same file; that entry is
+// blocked behind the newer one, not dead, and must survive the refusal.
+func TestWorkspaceLedger_DriftExplainedByANewerEntryIsNotRetired(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	shared := filepath.Join(root, ".tt", "planning.json")
+	writeFile(t, shared, "s2")
+	mustRecord(t, ledger, "txn-1", "alpha", shared, "s1", "s2")
+	writeFile(t, shared, "s3")
+	mustRecord(t, ledger, "txn-2", "beta", shared, "s2", "s3")
+
+	_, err := ledger.Undo(LedgerScope{ProjectID: "alpha"})
+	var conflict *ArtifactConflictError
+	if !errors.As(err, &conflict) {
+		t.Fatalf("scoped undo behind a newer entry: %v, want an artifact conflict", err)
+	}
+	var retired *RetiredEntryError
+	if errors.As(err, &retired) {
+		t.Fatalf("an entry blocked by a newer one was retired: %v", err)
+	}
+	if count, countErr := ledger.UndoCount(GlobalScope()); countErr != nil || count != 2 {
+		t.Fatalf("UndoCount = %d (%v), want both entries kept", count, countErr)
+	}
+	for _, want := range []string{"s2", "s1"} {
+		if _, err := ledger.Undo(GlobalScope()); err != nil {
+			t.Fatalf("Undo to %s: %v", want, err)
+		}
+		if got := readFile(t, shared); got != want {
+			t.Fatalf("after undo = %q, want %s", got, want)
+		}
+	}
+}
+
 // TestWorkspaceLedger_UndoCreateAndDeleteImages covers the absent-state ends: an
 // undo that removes a created file and a redo that recreates it.
 func TestWorkspaceLedger_UndoCreateAndDeleteImages(t *testing.T) {

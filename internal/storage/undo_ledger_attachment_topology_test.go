@@ -304,7 +304,8 @@ func TestWorkspaceLedger_DirectoryPreflightRejectsTypeDriftAtomically(t *testing
 	if got := readFile(t, other); got != "after" {
 		t.Fatalf("unrelated file changed despite failed preflight: %q", got)
 	}
-	assertLedgerRestoreStacks(t, ledger, 1, 0)
+	// The drift is unexplained by the ledger, so the entry is retired.
+	assertLedgerRestoreStacks(t, ledger, 0, 0)
 }
 
 func TestLedgerDirectoryImagesParticipateInArtifactScope(t *testing.T) {

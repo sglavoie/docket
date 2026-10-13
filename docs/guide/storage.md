@@ -13,6 +13,12 @@ answer both keys against that one ledger, and each refreshes what it is showing
 rather than leaving a reversed row on screen. No surface offers the `u undo` a
 recovery toast advertises and then consumes the key in silence.
 
+An undo or redo is refused when a file it would restore was changed by something
+the ledger did not record — a change synced from another device, or an edit made
+outside `tt`. Nothing is written, and that entry is dropped from history, since
+the file can no longer return to the state the entry expects. The message names
+the entry and the file; press the key again to reach the entry before it.
+
 Workspace commits validate paths and revisions, stage a durable manifest, and
 publish every affected artifact atomically. Startup rolls an interrupted
 prepared transaction forward before loading the workspace. Concurrent edits
