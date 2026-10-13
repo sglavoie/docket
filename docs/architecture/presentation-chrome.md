@@ -541,7 +541,11 @@ of the Outliner's view-local modals take. A resolved dropdown goes through
 open label's `StartCol`, so the bar row and the title carrying the workspace pulse
 are never covered and the box lands under the label it belongs to; the relation
 picker goes through the bottom-anchored `chrome.OverlayPopupDimmed`, fitted to the
-same `outlinerModalBudget`, so it keeps that header too. Both dim the host through
+same `outlinerModalBudget`, so it keeps that header too. That centered path
+alone tidies its sides: a margin under eight columns is painted with
+`theme.OverlayHaloStyle` on the popup's rows, since a sliver of a row cut
+mid-word reads as debris, while a wider margin and every anchored popup keep the
+host. Both dim the host through
 one `DimContent` call over the composed frame, so the compositing is one pass and
 a modal never renders another modal's frame as its base.
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -92,6 +93,21 @@ func TestRenderScrollbar_ThumbInMiddle(t *testing.T) {
 	if firstThumb <= 0 || lastThumb >= len(lines)-1 {
 		t.Errorf("expected thumb in middle region, got firstThumb=%d lastThumb=%d (total lines=%d)",
 			firstThumb, lastThumb, len(lines))
+	}
+
+	// The track is its own glyph, so the thumb is still found once color is gone.
+	for i, line := range lines {
+		want := theme.ScrollbarTrackStyle.Render("│")
+		if i >= firstThumb && i <= lastThumb {
+			continue
+		}
+		if line != want {
+			t.Errorf("track line %d = %q, want %q", i, line, want)
+		}
+	}
+	plain := strings.Split(ansi.Strip(result), "\n")
+	if plain[0] != "│" || plain[firstThumb] != "▐" || plain[len(plain)-1] != "│" {
+		t.Errorf("uncolored scrollbar does not separate thumb from track: %q", plain)
 	}
 }
 

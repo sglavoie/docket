@@ -50,6 +50,8 @@
     { "type": "assert", "assert": "not_contains", "value": "bug › question" },
     { "type": "assert", "assert": "contains", "value": "jump  s semantic · c contexts · t tags" },
     { "type": "assert", "assert": "contains", "value": "[ ] question" },
+    { "type": "assert", "label": "a two-column margin is the picker's halo, so the folded lanes behind it leave no glyph beside the box", "assert": "not_contains", "value": "▸" },
+    { "type": "assert", "label": "the open lanes survive only on the rows the picker does not occupy", "assert": "count_contains", "value": "▾", "count": 2 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "room returns and so does the whole legend", "width": 100, "height": 35 },

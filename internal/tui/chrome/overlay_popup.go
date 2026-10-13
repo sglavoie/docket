@@ -19,16 +19,51 @@ func DimContent(content string) string {
 	return strings.Join(lines, "\n")
 }
 
+// overlayFlankMinColumns is the narrowest side margin still worth showing the
+// host through. Anything under it is a sliver of a row cut mid-word, which
+// reads as debris rather than as the view the popup stands on.
+const overlayFlankMinColumns = 8
+
 // OverlayPopupDimmed dims the base content before placing the popup at
-// bottom-center. Popup renderers own their complete frame and symmetric halo.
+// bottom-center. Popup renderers own their complete frame and symmetric halo;
+// a side margin narrower than overlayFlankMinColumns is painted with that same
+// halo on the popup's rows instead of cutting the host through.
 func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
 	if popup == "" {
 		return base
 	}
-	startCol := max((baseWidth-PopupWidth(popup))/2, 0)
+	popupWidth := PopupWidth(popup)
+	startCol := max((baseWidth-popupWidth)/2, 0)
 	fitted := FitOverlayPopupHeight(popup, baseHeight)
 	startRow := bottomPopupTopRow(baseHeight, lipgloss.Height(fitted))
+	left, right := startCol, max(baseWidth-startCol-popupWidth, 0)
+	if left >= overlayFlankMinColumns {
+		left = 0
+	}
+	if right >= overlayFlankMinColumns {
+		right = 0
+	}
+	if left > 0 || right > 0 {
+		fitted = flankOverlayPopup(fitted, popupWidth, left, right)
+		startCol -= left
+	}
 	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol)
+}
+
+// flankOverlayPopup widens every popup row by left and right halo cells, the
+// cell renderOverlayHalo rings the frame with, so the widened popup is still
+// one rectangle.
+func flankOverlayPopup(popup string, popupWidth, left, right int) string {
+	leftFlank := theme.OverlayHaloStyle.Render(strings.Repeat(" ", left))
+	rightFlank := theme.OverlayHaloStyle.Render(strings.Repeat(" ", right))
+	lines := strings.Split(popup, "\n")
+	for i, line := range lines {
+		if lineWidth := lipgloss.Width(line); lineWidth < popupWidth {
+			line += strings.Repeat(" ", popupWidth-lineWidth)
+		}
+		lines[i] = leftFlank + line + rightFlank
+	}
+	return strings.Join(lines, "\n")
 }
 
 // OverlayPopupDimmedAt is the same compositing under an explicit anchor, for a

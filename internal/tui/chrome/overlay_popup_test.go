@@ -142,6 +142,81 @@ func TestOverlayPopupDimmedPreservesNestedModalFrames(t *testing.T) {
 	}
 }
 
+// A centered popup that leaves only a sliver of the host on a side paints that
+// sliver with its own halo, since a few columns of a row cut mid-word read as
+// debris; a margin wide enough to read keeps the host, and so does every row
+// the popup does not occupy.
+func TestOverlayPopupDimmedPaintsNarrowFlanksAndKeepsWideOnes(t *testing.T) {
+	const baseHeight = 12
+	popup := RenderOverlayBox("one\ntwo", 16, "", "",
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
+	popupWidth := lipgloss.Width(popup)
+	popupTop := baseHeight - lipgloss.Height(popup)
+
+	for _, tc := range []struct {
+		name      string
+		margin    int
+		wantFlank bool
+	}{
+		{name: "narrow", margin: overlayFlankMinColumns - 1, wantFlank: true},
+		{name: "wide", margin: overlayFlankMinColumns, wantFlank: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			baseWidth := popupWidth + 2*tc.margin
+			baseLine := strings.Repeat(".", baseWidth)
+			base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
+
+			plain := strings.Split(ansi.Strip(OverlayPopupDimmed(base, popup, baseWidth, baseHeight)), "\n")
+			if got := len(plain); got != baseHeight {
+				t.Fatalf("composed height = %d, want %d", got, baseHeight)
+			}
+			for row, line := range plain {
+				if got := lipgloss.Width(line); got != baseWidth {
+					t.Fatalf("line %d width = %d, want %d", row, got, baseWidth)
+				}
+				if row < popupTop {
+					if line != baseLine {
+						t.Fatalf("row %d above the popup was written over: %q", row, line)
+					}
+					continue
+				}
+				want := strings.Repeat(".", tc.margin)
+				if tc.wantFlank {
+					want = strings.Repeat(" ", tc.margin)
+				}
+				left := ansi.Cut(line, 0, tc.margin)
+				right := ansi.Cut(line, tc.margin+popupWidth, baseWidth)
+				if left != want || right != want {
+					t.Fatalf("row %d flanks = %q / %q, want %q", row, left, right, want)
+				}
+			}
+			border := ansi.Cut(plain[popupTop+1], tc.margin, tc.margin+popupWidth)
+			if !strings.HasPrefix(border, " ╭") || !strings.HasSuffix(border, "╮ ") {
+				t.Fatalf("the box left the center: %q", border)
+			}
+		})
+	}
+}
+
+// The flank is the halo's own cell, not blank host: the ring and the painted
+// margin are one surface.
+func TestOverlayPopupDimmedFlankWearsTheHalo(t *testing.T) {
+	originalHaloStyle := theme.OverlayHaloStyle
+	theme.OverlayHaloStyle = lipgloss.NewStyle().Background(lipgloss.Color("#112233"))
+	t.Cleanup(func() { theme.OverlayHaloStyle = originalHaloStyle })
+
+	popup := RenderOverlayBox("one", 16, "", "", lipgloss.NewStyle())
+	baseWidth := lipgloss.Width(popup) + 6
+	base := strings.Repeat(strings.Repeat(".", baseWidth)+"\n", 7) + strings.Repeat(".", baseWidth)
+
+	lines := strings.Split(OverlayPopupDimmed(base, popup, baseWidth, 8), "\n")
+	flank := theme.OverlayHaloStyle.Render("   ")
+	last := lines[len(lines)-1]
+	if !strings.HasPrefix(last, flank) || !strings.HasSuffix(last, flank) {
+		t.Fatalf("narrow flank is not the halo cell: %q", last)
+	}
+}
+
 // A popup that hangs off something the host is still drawing anchors where it
 // was told to, keeps every row above that anchor as the host wrote it, and dims
 // the rest — the whole difference between a modal that replaced the view and one
