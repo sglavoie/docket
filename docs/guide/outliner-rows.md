@@ -100,13 +100,13 @@ some, and a value shown whole one keypress away is worth more than an
 abbreviation shown always.
 
 A deferral is one of those, and it is read in two places depending on which way
-it points. Peek's schedule line reads `defer <date>` while it is still pending,
+it points. Peek's schedule line reads `Defer: <date>` while it is still pending,
 and the date carries a clock whenever the task comes back partway
-through a day: a deferral to a whole day stays a bare `defer Sep 2`, one that
-returns later today reads as `defer 15:04`, and one on another day as
-`defer Sep 2 15:04`, with the year added when it falls outside this one. Once
+through a day: a deferral to a whole day stays a bare `Defer: Sep 2`, one that
+returns later today reads as `Defer: 15:04`, and one on another day as
+`Defer: Sep 2 15:04`, with the year added when it falls outside this one. Once
 the deferral lapses it stops being something the task owes, so it moves to
-Peek's history line, which says `woke <age>` for three days: a task that
+Peek's history line, which says `Woke: <age>` for three days: a task that
 came back is work again and a past-dated `defer` would read as still hidden.
 After that the field disappears and the task is ordinary work.
 
@@ -163,7 +163,7 @@ entered Doing rather than from its last touch. It reports how long work has
 stayed active without spending a row column on an age that is never itself the
 thing you act on.
 
-From the third deferral onward, Peek's history line also reads `deferred ×N`.
+From the third deferral onward, Peek's history line also reads `Deferred: ×N`.
 Moving the date of a still-pending deferral does not add to the count; deferring
 the task again after it woke does.
 
@@ -283,19 +283,19 @@ show for this row.`; `b` closes it again from any row. On a task, Peek
 follows navigation and reads, in this order: the task's whole title, the ancestor
 chain of a promoted row as `Parent: Launch platform › User authentication`, a
 status line reading
-`plan today · status doing 4h · priority 1 · pinned · review`
+`Plan: today · Status: doing 4h · Priority: 1 high · Pinned · Review`
 with empty fields omitted (only Doing and Waiting carry an age, and it counts
 from the last state change rather than the last edit). The plan comes first and
 is the collection you committed the task to, Today or Next; the status is the
 lifecycle state it holds. They are two answers, not one, which is why a task
-planned for Today reads `plan today · status backlog` and a task in no
+planned for Today reads `Plan: today · Status: backlog` and a task in no
 collection has no plan half at all. Then a schedule line reading
-`due 2026-08-14 · defer Sep 2 · check-in 2026-08-20 · repeat 7d`
-with empty fields omitted too (a one-off schedule reads `repeat off`), the resume
+`Due: 2026-08-14 · Defer: Sep 2 · Check-in: 2026-08-20 · Repeat: 7d`
+with empty fields omitted too (a one-off schedule reads `Repeat: off`), the resume
 note, the description, a `Checklist: 1/4 done` count,
-attachment names, a comment count, a `Dependencies 1/3:` list, a `Dependents 2:`
+attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
 list, the task's context, its tags, and last of all a history line reading
-`created 12d · updated 2d · last review 3d · woke 1d · deferred ×3`.
+`Created: 12d · Updated: 2d · Last review: 3d · Woke: 1d · Deferred: ×3`.
 A URL or `path:line` attachment name is also a link (OSC 8) in a terminal that
 follows them — `Cmd`-click in Ghostty and tt.app — so a shortened
 `GH owner/repo#123` opens the issue, and every wrapped row of a long URL opens

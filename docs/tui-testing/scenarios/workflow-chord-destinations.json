@@ -90,7 +90,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
     { "type": "key", "label": "the planned task reports both halves in Peek", "key": "b" },
-    { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "plan today · status backlog" },
+    { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "Plan: today · Status: backlog" },
     { "type": "key", "label": "close the dock again", "key": "b" },
 
     { "type": "key", "key": "w" },

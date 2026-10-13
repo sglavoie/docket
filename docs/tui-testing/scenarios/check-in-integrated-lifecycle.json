@@ -53,12 +53,12 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "due 2020-04-01 15:30"
+      "value": "Due: 2020-04-01 15:30"
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "check-in 2020-04-01"
+      "value": "Check-in: 2020-04-01"
     },
     {
       "type": "key",
@@ -197,7 +197,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "status doing"
+      "value": "Status: doing"
     },
     {
       "type": "key",
@@ -222,12 +222,12 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "repeat 3d"
+      "value": "Repeat: 3d"
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "last review"
+      "value": "Last review:"
     },
     {
       "type": "key",
@@ -341,17 +341,17 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "last review"
+      "value": "Last review:"
     },
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "check-in 20"
+      "value": "Check-in: 20"
     },
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "repeat 3d"
+      "value": "Repeat: 3d"
     },
     {
       "type": "assert",

@@ -74,8 +74,8 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "b" },
     { "type": "wait" },
-    { "type": "assert", "label": "the finished member took the deadline too; the deadline is owed work, so it is on the schedule line rather than beside the task's spent instants, and the day itself is the Tomorrow preset's, so the line is matched up to the date rather than spelling a day that moves", "assert": "contains", "value": "  due " },
-    { "type": "assert", "label": "the schedule names what is owed and the history what is spent, so the two never share a line", "assert": "contains", "value": "created now · updated now" },
+    { "type": "assert", "label": "the finished member took the deadline too; the deadline is owed work, so it is on the schedule line rather than beside the task's spent instants, and the day itself is the Tomorrow preset's, so the line is matched up to the date rather than spelling a day that moves", "assert": "contains", "value": "  Due: " },
+    { "type": "assert", "label": "the schedule names what is owed and the history what is spent, so the two never share a line", "assert": "contains", "value": "Created: now · Updated: now" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
     { "type": "key", "label": "and one entry takes the whole batch back", "key": "u" },
@@ -83,7 +83,7 @@
     { "type": "assert", "assert": "not_contains", "value": "⊡ Tomorrow" },
     { "type": "key", "key": "b" },
     { "type": "wait" },
-    { "type": "assert", "label": "and the undo took it back off the schedule line, which owes nothing now and is therefore absent", "assert": "not_contains", "value": "  due " },
+    { "type": "assert", "label": "and the undo took it back off the schedule line, which owes nothing now and is therefore absent", "assert": "not_contains", "value": "  Due: " },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

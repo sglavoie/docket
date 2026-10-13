@@ -1302,7 +1302,14 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// stops a second default returning to the badge measurement. The mechanism
 	// lives in docs/architecture/row-indicators.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 75280
+	// Raise from 75280 to 75413 for Peek's one label grammar. 133 bytes buy the
+	// rule a new Peek line is held to: every labeled line is `Label: value`
+	// joined by a middot, the two boolean axes are bare capitalized flags, and
+	// a list's count follows its colon rather than preceding it, which is what
+	// stops a fourth label style returning beside the three this replaced. The
+	// mechanism lives in docs/architecture/search-filters-and-sorting.md. No
+	// rule elsewhere was trimmed to pay for it.
+	const budget = 75413
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

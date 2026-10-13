@@ -164,7 +164,7 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 	// The document rather than the page: both entries are in Peek whatever page
 	// the pane happens to be showing, which is the whole of what paging bought.
 	lines := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 200), "\n"))
-	if !strings.Contains(lines, "Dependencies 0/2: Alpha #2 Agree the schema (backlog)") {
+	if !strings.Contains(lines, "Dependencies: 0/2 · Alpha #2 Agree the schema (backlog)") {
 		t.Fatalf("Peek did not name the first outgoing reference:\n%s", lines)
 	}
 	if !strings.Contains(lines, "Beta #1 Publish the contract (waiting)") {
@@ -176,7 +176,7 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 		t.Fatal("fixture produced no row for the referenced task")
 	}
 	targetLines := ansi.Strip(strings.Join(peekDocumentBody(outliner, target, 200), "\n"))
-	if !strings.Contains(targetLines, "Dependents 1: Alpha #1 Wire the importer (doing)") {
+	if !strings.Contains(targetLines, "Dependents: 1 · Alpha #1 Wire the importer (doing)") {
 		t.Fatalf("Peek did not name the incoming references:\n%s", targetLines)
 	}
 	// The referenced task stores nothing, so it carries no Dependencies line and

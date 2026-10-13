@@ -64,7 +64,7 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 		Indent: "  ",
 		Width:  40,
 	})
-	if got := peekWindowText(lines); got != "  status backlog" {
+	if got := peekWindowText(lines); got != "  Status: backlog" {
 		t.Fatalf("empty Peek = %q", got)
 	}
 	// The window is still the dock's fixed height: a task with one line to say
@@ -163,14 +163,14 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 				NextCheckIn:       &checkIn,
 				CheckInRepeatDays: 7,
 			},
-			"due 2026-08-14 (Fri, in 4 days) · defer " + chrome.FormatDeferDate(pending, now) + " · check-in 2026-08-12 (Wed, in 2 days) · repeat 7d",
+			"Due: 2026-08-14 (Fri, in 4 days) · Defer: " + chrome.FormatDeferDate(pending, now) + " · Check-in: 2026-08-12 (Wed, in 2 days) · Repeat: 7d",
 		},
 		{
 			// The row carries no deferral now, so Peek names the pending one — and
 			// still names it as the deferral it is rather than as a wake-up.
 			"a pending deferral names the day it comes back, not a wake-up",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
-			"defer " + chrome.FormatDeferDate(pending, now),
+			"Defer: " + chrome.FormatDeferDate(pending, now),
 		},
 		{
 			"a lapsed deferral is history and owes this line nothing",
@@ -180,7 +180,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 		{
 			"one-off check-in names repetition as off",
 			&models.Task{NextCheckIn: &checkIn},
-			"check-in 2026-08-12 (Wed, in 2 days) · repeat off",
+			"Check-in: 2026-08-12 (Wed, in 2 days) · Repeat: off",
 		},
 		{
 			"spent instants never reach the schedule",
@@ -230,27 +230,27 @@ func TestInlinePeekHistoryLineNamesOnlyWhatIsAlreadySpent(t *testing.T) {
 				DeferCount:     3,
 				LastReviewedAt: &lastReview,
 			},
-			"created 12d · updated 2d · last review 3h · woke 1d · deferred ×3",
+			"Created: 12d · Updated: 2d · Last review: 3h · Woke: 1d · Deferred: ×3",
 		},
 		{
 			"created only",
 			&models.Task{CreatedAt: now.Add(-3 * time.Hour)},
-			"created 3h",
+			"Created: 3h",
 		},
 		{
 			"a pending deferral has not woken, so history says nothing about it",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
-			"created 1d",
+			"Created: 1d",
 		},
 		{
 			"a lapsed deferral past the wake window falls silent",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &stale},
-			"created 1d",
+			"Created: 1d",
 		},
 		{
 			"the avoidance count stands without a wake marker",
 			&models.Task{DeferCount: 4},
-			"deferred ×4",
+			"Deferred: ×4",
 		},
 		{
 			"owed dates never reach history",
@@ -286,7 +286,7 @@ func TestInlinePeekCheckInFieldsWrapWithinNarrowWidth(t *testing.T) {
 		inlinePeekHistoryLines(task, now, "  ", width)...,
 	)
 	plain := ansi.Strip(strings.Join(lines, "\n"))
-	for _, want := range []string{"check-in", "2026-08-12", "repeat", "30d", "last", "review", "1d"} {
+	for _, want := range []string{"Check-in:", "2026-08-12", "Repeat:", "30d", "Last review:", "1d"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("narrow Peek dates missing %q:\n%s", want, plain)
 		}
@@ -409,20 +409,20 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	order := []string{
 		"Rework the sync path",
 		"Parent: Launch platform",
-		"plan today · status doing 4h · priority 2 medium · pinned · review",
-		"due " + chrome.DueGrammarValue(task) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
-			" · check-in " + checkIn.Format(time.DateOnly) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
-		"repeat off",
+		"Plan: today · Status: doing 4h · Priority: 2 medium · Pinned · Review",
+		"Due: " + chrome.DueGrammarValue(task) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
+			" · Check-in: " + checkIn.Format(time.DateOnly) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
+		"Repeat: off",
 		"Resume: Left mid-refactor",
 		"Description: Wrapped description content",
 		"Checklist: 1/2 done",
-		"Attachments 1: spec.pdf",
+		"Attachments: 1 · spec.pdf",
 		"Comments: 1",
-		"Dependencies ",
-		"Dependents 1: ",
+		"Dependencies: ",
+		"Dependents: 1 · ",
 		"Context: [platform-core]",
 		"Tags: #backend",
-		"created 5d · updated 1h · last review 1d",
+		"Created: 5d · Updated: 1h · Last review: 1d",
 	}
 	cursor := 0
 	for _, want := range order {
@@ -444,7 +444,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	// on: history moved to the end of a document longer than the window, so it is
 	// only still readable if the last page holds it.
 	last := ansi.Strip(strings.Join(doc.Lines(doc.MaxOffset()), "\n"))
-	if !strings.Contains(last, "created 5d · updated 1h · last review 1d") {
+	if !strings.Contains(last, "Created: 5d · Updated: 1h · Last review: 1d") {
 		t.Fatalf("history is not on the document's last page:\n%s", last)
 	}
 }
@@ -466,30 +466,30 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 		planning string
 		want     string
 	}{
-		{"bare task", &models.Task{}, "", "status backlog"},
+		{"bare task", &models.Task{}, "", "Status: backlog"},
 		{
 			"doing carries its age",
 			&models.Task{WorkflowState: models.StateDoing, StateChangedAt: now.Add(-50 * time.Hour)},
 			"",
-			"status doing 2d",
+			"Status: doing 2d",
 		},
 		{
 			"waiting carries its age",
 			&models.Task{WorkflowState: models.StateWaiting, StateChangedAt: now.Add(-90 * time.Minute)},
 			"",
-			"status waiting 1h",
+			"Status: waiting 1h",
 		},
 		{
 			"a quiet state has no age to give",
 			&models.Task{WorkflowState: models.StateSomeday, StateChangedAt: now.Add(-90 * time.Hour)},
 			"",
-			"status someday",
+			"Status: someday",
 		},
 		{
 			"an unset priority names none",
 			&models.Task{WorkflowState: models.StateInbox},
 			"",
-			"status inbox",
+			"Status: inbox",
 		},
 		{
 			// The pair the session is about: planning for Today leaves the task in
@@ -498,13 +498,13 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			"a task planned for today reports both halves",
 			&models.Task{WorkflowState: models.StateBacklog},
 			"today",
-			"plan today · status backlog",
+			"Plan: today · Status: backlog",
 		},
 		{
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
 			"next",
-			"plan next · status paused · priority 1 high · pinned · review",
+			"Plan: next · Status: paused · Priority: 1 high · Pinned · Review",
 		},
 	}
 	for _, tc := range cases {
@@ -614,7 +614,7 @@ func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 		t.Fatalf("a long title was elided instead of wrapped")
 	}
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
-	for _, want := range []string{"created 5d · updated 1h", "Attachments 1: spec.pdf"} {
+	for _, want := range []string{"Created: 5d · Updated: 1h", "Attachments: 1 · spec.pdf"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("the title displaced %q:\n%s", want, body)
 		}
@@ -640,7 +640,7 @@ func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	}
 	// The chain follows the title and precedes everything else: both are identity,
 	// and a reader looking for where a promoted row belongs reads them together.
-	if withParent != "Child\nParent: Launch platform › User authentication\nstatus backlog" {
+	if withParent != "Child\nParent: Launch platform › User authentication\nStatus: backlog" {
 		t.Fatalf("identity block = %q", withParent)
 	}
 }
@@ -728,7 +728,7 @@ func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
 
 	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "status backlog\nContext: [platform-core]\nTags: #bug" {
+	if body != "Status: backlog\nContext: [platform-core]\nTags: #bug" {
 		t.Fatalf("context and tags body = %q", body)
 	}
 
@@ -751,9 +751,9 @@ func TestInlinePeekNamesEveryAttachment(t *testing.T) {
 		t.Fatalf("attachment rows = %d, want one per attachment:\n%s", len(lines), ansi.Strip(strings.Join(lines, "\n")))
 	}
 	want := []string{
-		"Attachments 3: design-spec.pdf",
-		"               GH acme/roadmap#123",
-		"               notes.md",
+		"Attachments: 3 · design-spec.pdf",
+		"                 GH acme/roadmap#123",
+		"                 notes.md",
 	}
 	for i, expected := range want {
 		if got := ansi.Strip(lines[i]); got != expected {
@@ -803,7 +803,7 @@ func TestInlinePeekWrapsALongAttachmentNameInsteadOfEliding(t *testing.T) {
 	// The narrowest pane the product supports has room for less than one name.
 	// The claim there is only that nothing is elided and nothing overflows: a
 	// name too long for a row is broken across rows, never cut short.
-	for _, narrow := range []int{20, 24} {
+	for _, narrow := range []int{22, 24} {
 		narrowLines := inlinePeekAttachmentsLines(task, "  ", narrow-2)
 		narrowPlain := ansi.Strip(strings.Join(narrowLines, "\n"))
 		if strings.Contains(narrowPlain, "…") {

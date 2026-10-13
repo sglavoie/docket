@@ -15,9 +15,9 @@ instead of a truncated copy and a whole one.
 
 A deferral is therefore state-dependent prose in the Peek body rather than
 a row segment, and its two halves sit on different lines because they point
-opposite ways. `inlinePeekScheduleLine` names `defer <date>` while
+opposite ways. `inlinePeekScheduleLine` names `Defer: <date>` while
 `IsDeferredAt(now)` holds, since that is work the task still owes; once the
-instant lapses `inlinePeekHistoryLine` names `woke <age>` for `DeferWakeWindow`
+instant lapses `inlinePeekHistoryLine` names `Woke: <age>` for `DeferWakeWindow`
 (72h, defined in `internal/tui/query/primary_view_shared.go`), since a wake is
 something that already happened; after that neither line carries it.
 `taskWokeRecently` is the one lapsed-deferral predicate and `FormatRecencyAge`
@@ -147,7 +147,7 @@ workflow-state symbol and badge background, tinting its foreground with the
 highest-precedence semantic tag. The capture preview borrows that same badge.
 
 Repeated deferral starts at `DeferCount >= 3` and is Peek's alone:
-`inlinePeekHistoryLine` appends `deferred ×N` — avoidance is something the task
+`inlinePeekHistoryLine` appends `Deferred: ×N` — avoidance is something the task
 has already spent, not something it owes — so it opens no section of its own in
 the Peek body and costs the row nothing at any width. `taskHasRepeatedDeferrals`
 stays the one threshold predicate.

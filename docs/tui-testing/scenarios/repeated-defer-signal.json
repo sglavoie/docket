@@ -5,11 +5,11 @@
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "label": "the repeatedly deferred task is an ordinary row", "assert": "contains", "value": "Alpha back from a break" },
-    { "type": "assert", "label": "the avoidance count is supporting detail, so no width buys it a place on the row", "assert": "not_contains", "value": "deferred ×3" },
+    { "type": "assert", "label": "the avoidance count is supporting detail, so no width buys it a place on the row", "assert": "not_contains", "value": "×3" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the narrow row spends its columns on the title instead", "width": 60, "height": 24 },
     { "type": "assert", "label": "the repeated task title remains readable under pressure", "assert": "not_clipped", "value": "Alpha back from a break" },
-    { "type": "assert", "assert": "not_contains", "value": "deferred ×3" },
+    { "type": "assert", "assert": "not_contains", "value": "×3" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 35 },
     { "type": "key", "label": "search for the repeatedly deferred task", "key": "/" },
@@ -19,11 +19,11 @@
     { "type": "key", "key": "r" },
     { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
     { "type": "key", "label": "Peek keeps the count, on the history line the rest of the task's spent instants share", "key": "b" },
-    { "type": "assert", "label": "avoidance is something the task already spent, so it rides the history line that closes the document and never the schedule", "assert": "contains", "value": "created now · updated now · woke 1d · deferred ×3" },
+    { "type": "assert", "label": "avoidance is something the task already spent, so it rides the history line that closes the document and never the schedule", "assert": "contains", "value": "Created: now · Updated: now · Woke: 1d · Deferred: ×3" },
     { "type": "assert", "label": "this window is a share of the frame, so the whole document is already on it", "assert": "contains", "value": "0 above · 0 below" },
     { "type": "key", "label": "the dock swallows a page at its boundary and moves nothing", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
-    { "type": "assert", "assert": "contains", "value": "deferred ×3" },
+    { "type": "assert", "assert": "contains", "value": "Deferred: ×3" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

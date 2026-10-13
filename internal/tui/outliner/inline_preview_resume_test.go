@@ -74,7 +74,7 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 		if strings.Contains(plain, "…") {
 			t.Fatalf("width %d elided the note instead of wrapping it:\n%s", width, plain)
 		}
-		if got := strings.Join(strings.Fields(plain), " "); got != "Selected status backlog Resume: "+note {
+		if got := strings.Join(strings.Fields(plain), " "); got != "Selected Status: backlog Resume: "+note {
 			t.Fatalf("width %d did not carry the whole note:\n%s", width, got)
 		}
 		if page := doc.Lines(0); len(page) != testPeekWindowRows+inlinePeekPositionRows {

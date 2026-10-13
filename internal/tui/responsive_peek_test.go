@@ -262,7 +262,7 @@ func TestOutlinerRowsKeepTheDeadlineAndSendSupportingSignalsToPeek(t *testing.T)
 		}
 	}
 	for _, unwanted := range []string{"woke", "1/2", "#73"} {
-		if strings.Contains(plain, unwanted) {
+		if strings.Contains(strings.ToLower(plain), unwanted) {
 			t.Fatalf("row spent a column on %q:\n%s", unwanted, plain)
 		}
 	}
@@ -270,7 +270,7 @@ func TestOutlinerRowsKeepTheDeadlineAndSendSupportingSignalsToPeek(t *testing.T)
 	outlinerView.PeekMode = true
 	peek := ansi.Strip(strings.Join(
 		outlinerView.PeekDocumentBodyForRow(outlinerView.Rows[outlinerView.Cursor]), "\n"))
-	for _, want := range []string{"woke", "Checklist: 1/2 done"} {
+	for _, want := range []string{"Woke: ", "Checklist: 1/2 done"} {
 		if !strings.Contains(peek, want) {
 			t.Fatalf("Peek did not carry %q the row stopped naming:\n%s", want, peek)
 		}

@@ -403,24 +403,24 @@ rather than elided, so a chain six levels deep is read to its end by scrolling.
 
 The two summary lines beneath them are what the row abbreviates or drops
 entirely. `inlinePeekStatusLine` leads with the planning collection under
-`chrome.PlanFieldKey` and follows it with the lifecycle state under
-`chrome.StatusFieldKey`, spelled in words rather than as a glyph — with the age
+`chrome.PlanFieldLabel` and follows it with the lifecycle state under
+`chrome.StatusFieldLabel`, spelled in words rather than as a glyph — with the age
 appended for the two states whose age is a question about the work, Doing and
 Waiting, read off `StateChangedAt` — then the priority as a number under the same
-`ValidatePriority` gate the badge takes, and the two boolean axes as bare words,
-since a label beside `pinned` would say it twice. Plan leads rather than trails
+`ValidatePriority` gate the badge takes, and the two boolean axes as bare capitalized words,
+since a label beside `Pinned` would say it twice. Plan leads rather than trails
 because the two are one question asked twice and the pair is only readable as a
-pair: `plan today · status backlog` says where the work was committed and what
+pair: `Plan: today · Status: backlog` says where the work was committed and what
 state it still holds, where `today` alone reads as a tenth state. The words are
 `chrome`'s, not this line's, so the workflow chord's headings, the capture route
-row, and this line cannot drift into three synonyms; the keys here are the
-lowercase `label value` idiom the schedule and history lines beneath already use. `inlinePeekScheduleLine` follows it with what the task still
+row, and this line cannot drift into three synonyms; every line here is the
+one `Label: value` idiom the schedule and history lines beneath share. `inlinePeekScheduleLine` follows it with what the task still
 owes: the deadline, a deferral still pending, and the next check-in with its
 repeat. The task's spent instants are not there — `inlinePeekHistoryLine` carries
 created, updated, last review, a recent wake, and a repeated deferral, and it is
 the last section in the document, because nothing in it is owed and a reader
 consults it after deciding what to do rather than on the way to that decision.
-All three are `label value` pairs joined by middots on one wrapped line
+All three are `Label: value` pairs joined by middots on one wrapped line
 rather than a section each, because a column of six one-word facts would spend
 the whole window saying what fits in two, and an empty value is no field, which
 is how each line omits what the task does not carry. All three key on stored
@@ -480,9 +480,9 @@ sole-owner paths, which is what keeps the outline pageable with a Peek open.
 The reference lists sit above tags because Peek is the only surface that names a
 reference at all — the row carries `~S/N`, and there is no panel behind it the
 way `;` and `&` stand behind comments and attachments.
-`inlinePeekReferenceLines` renders `Dependencies S/N` from the task's stored list
+`inlinePeekReferenceLines` renders `Dependencies: S/N ·` from the task's stored list
 in stored order, carrying the row's own census through `inlinePeekOptions` rather
-than recounting it, and `Dependents N` from `incomingDependencyDetails`, which
+than recounting it, and `Dependents: N ·` from `incomingDependencyDetails`, which
 reads the same index's reverse map for tasks referring back. Each label carries
 its count so a reader sees the size of the set before reading it; the outgoing
 label takes no trailing `?`, because every entry below names its own state in

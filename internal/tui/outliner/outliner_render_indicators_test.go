@@ -36,8 +36,8 @@ func TestPeekSeparatesPendingFromWokenDeferral(t *testing.T) {
 		want     string
 		section  string
 	}{
-		{"pending", now.AddDate(0, 0, 3), "defer ", "schedule"},
-		{"woken inside the window", now.Add(-30 * time.Hour), "woke ", "history"},
+		{"pending", now.AddDate(0, 0, 3), "Defer: ", "schedule"},
+		{"woken inside the window", now.Add(-30 * time.Hour), "Woke: ", "history"},
 		{"woken past the window", now.Add(-query.DeferWakeWindow - time.Hour), "", ""},
 	}
 	for _, tc := range cases {
@@ -49,7 +49,7 @@ func TestPeekSeparatesPendingFromWokenDeferral(t *testing.T) {
 			}
 			if tc.section == "" {
 				for name, line := range lines {
-					if strings.Contains(line, "defer") || strings.Contains(line, "woke") {
+					if strings.Contains(line, "Defer") || strings.Contains(line, "Woke") {
 						t.Fatalf("lapsed deferral past the wake window still rendered %q on the %s line", line, name)
 					}
 				}
@@ -62,7 +62,7 @@ func TestPeekSeparatesPendingFromWokenDeferral(t *testing.T) {
 				if name == tc.section {
 					continue
 				}
-				if strings.Contains(line, "defer") || strings.Contains(line, "woke") {
+				if strings.Contains(line, "Defer") || strings.Contains(line, "Woke") {
 					t.Fatalf("the %s line also named the deferral: %q", name, line)
 				}
 			}
@@ -83,19 +83,19 @@ func TestRepeatedDeferralCountStartsAtThirdDeferralInPeek(t *testing.T) {
 		wantField    string
 	}{
 		{count: repeatedDeferralThreshold - 1, wantRepeated: false, wantField: ""},
-		{count: repeatedDeferralThreshold, wantRepeated: true, wantField: "deferred ×3"},
-		{count: 12, wantRepeated: true, wantField: "deferred ×12"},
+		{count: repeatedDeferralThreshold, wantRepeated: true, wantField: "Deferred: ×3"},
+		{count: 12, wantRepeated: true, wantField: "Deferred: ×12"},
 	} {
 		task := &models.Task{DeferCount: tc.count}
 		if got := taskHasRepeatedDeferrals(task); got != tc.wantRepeated {
 			t.Errorf("count %d repeated = %v, want %v", tc.count, got, tc.wantRepeated)
 		}
-		if schedule := ansi.Strip(inlinePeekScheduleLine(task, now)); strings.Contains(schedule, "deferred") {
+		if schedule := ansi.Strip(inlinePeekScheduleLine(task, now)); strings.Contains(schedule, "Deferred") {
 			t.Errorf("count %d put the avoidance count on the schedule line: %q", tc.count, schedule)
 		}
 		plain := ansi.Strip(inlinePeekHistoryLine(task, now))
 		if tc.wantField == "" {
-			if strings.Contains(plain, "deferred") {
+			if strings.Contains(plain, "Deferred") {
 				t.Errorf("count %d named a repeated deferral: %q", tc.count, plain)
 			}
 			continue
@@ -117,11 +117,11 @@ func TestTaskRowCarriesNoDeferralAtAnyCount(t *testing.T) {
 	for _, count := range []int{0, repeatedDeferralThreshold - 1, repeatedDeferralThreshold, 12} {
 		task := &models.Task{DeferCount: count, DeferredUntil: &pending}
 		segments := outliner.renderTaskIndicatorSegments(OutlinerRow{Task: task}, now)
-		rendered := ansi.Strip(segments.render())
+		rendered := strings.ToLower(ansi.Strip(segments.render()))
 		if strings.Contains(rendered, "defer") || strings.Contains(rendered, "woke") {
 			t.Fatalf("count %d row indicators named a deferral: %q", count, rendered)
 		}
-		if peek := ansi.Strip(inlinePeekScheduleLine(task, now)); !strings.Contains(peek, "defer") {
+		if peek := ansi.Strip(inlinePeekScheduleLine(task, now)); !strings.Contains(peek, "Defer: ") {
 			t.Fatalf("count %d lost the deferral entirely; Peek schedule line = %q", count, peek)
 		}
 	}

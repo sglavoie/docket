@@ -689,7 +689,8 @@ Row and Peek budget:
   The deferral instant keys both. Title and ancestor chain are uncompacted.
   Status spells plan (collection), state with Doing/Waiting age off
   `StateChangedAt`, priority, pinned, and review; stored values key it, so ticks
-  never reset the window.
+  never reset the window. Every labeled line is `Label: value` joined by ` · `;
+  `Pinned` and `Review` are bare flags, and a list's count follows its colon.
   Checklist and comments stay counts; their items are rows and their panel.
   A search `Match:` excerpt may quote checklist/comments: use the projection's
   source, remainder and case mode, mark elision, key on query and excerpt.

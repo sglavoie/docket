@@ -17,14 +17,6 @@ const (
 	StatusFieldLabel = "Status"
 )
 
-// PlanFieldKey and StatusFieldKey are the same two words in the lowercase
-// `label value` idiom Peek's three summary lines are written in. A surface picks
-// the spelling its neighbors already use and never a third word.
-const (
-	PlanFieldKey   = "plan"
-	StatusFieldKey = "status"
-)
-
 // PlanHintGroup and StatusHintGroup are those same two words as a heading over
 // the entries they open. The colon is what makes a heading read as one beside
 // `key label` entries that carry none.

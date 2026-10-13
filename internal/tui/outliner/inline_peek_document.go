@@ -210,7 +210,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
 
 	// The two summary lines follow, densest first: what the task is right now,
-	// then what it still owes. Both are `label value` pairs on one wrapped line
+	// then what it still owes. Both are `Label: value` pairs on one wrapped line
 	// rather than a section each, because a row of six one-word facts would spend
 	// the whole window saying what fits in two. The task's spent instants are not
 	// here: they are history, and history is the last thing in the document.
@@ -236,12 +236,12 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// Each label carries its own count — the outgoing one the row's very numbers
 	// — so a reader sees the whole size of the set before reading it. No `?`
 	// follows the fraction here: every entry below names its own state in full.
-	dependencyLabel := "Dependencies " + opts.DependencyCensus.counts() + ": "
+	dependencyLabel := "Dependencies: " + opts.DependencyCensus.counts() + " · "
 	add(
 		"dependencies:"+inlinePeekReferenceKey(opts.Dependencies),
 		inlinePeekReferenceLines(dependencyLabel, opts.Dependencies, opts.Indent, width),
 	)
-	dependentLabel := fmt.Sprintf("Dependents %d: ", len(opts.Dependents))
+	dependentLabel := fmt.Sprintf("Dependents: %d · ", len(opts.Dependents))
 	add(
 		"dependents:"+inlinePeekReferenceKey(opts.Dependents),
 		inlinePeekReferenceLines(dependentLabel, opts.Dependents, opts.Indent, width),
@@ -294,7 +294,7 @@ func inlinePeekTitleLines(task *models.Task, indent string, width int) []string 
 	return inlinePeekHangingLines("", textfit.WrapText(title, width), indent, width, paint)
 }
 
-// inlinePeekFields collects `label value` pairs into one dense line. Peek has
+// inlinePeekFields collects `Label: value` pairs into one dense line. Peek has
 // three such lines — what the task is, what it still owes, and what it has
 // already spent — and they share this so a label reads the same way on all
 // three: muted label, keyed value, a middot between fields. An empty value is
@@ -309,10 +309,10 @@ func (f *inlinePeekFields) add(label, value string) {
 	if value == "" {
 		return
 	}
-	f.parts = append(f.parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
+	f.parts = append(f.parts, theme.HelpStyle.Render(label+": ")+theme.HelpKeyStyle.Render(value))
 }
 
-// flag is a field that is its own value. Pinned and review are booleans a task
+// flag is a field that is its own value. Pinned and Review are booleans a task
 // either wears or does not, so a label beside one would say the word twice.
 func (f *inlinePeekFields) flag(word string) {
 	f.parts = append(f.parts, theme.HelpKeyStyle.Render(word))
@@ -342,18 +342,18 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 		return ""
 	}
 	var fields inlinePeekFields
-	fields.add(chrome.PlanFieldKey, planning)
-	fields.add(chrome.StatusFieldKey, inlinePeekStatusValue(task, now))
+	fields.add(chrome.PlanFieldLabel, planning)
+	fields.add(chrome.StatusFieldLabel, inlinePeekStatusValue(task, now))
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
-		fields.add("priority", strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
+		fields.add("Priority", strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
 	}
 	if task.Pinned {
-		fields.flag("pinned")
+		fields.flag("Pinned")
 	}
 	if task.Review {
-		fields.flag("review")
+		fields.flag("Review")
 	}
 	return fields.line()
 }
@@ -435,20 +435,20 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 	}
 	var fields inlinePeekFields
 	if task.DueDate != nil {
-		fields.add("due", chrome.DueGrammarValue(task)+" ("+chrome.DayGloss(*task.DueDate, now)+")")
+		fields.add("Due", chrome.DueGrammarValue(task)+" ("+chrome.DayGloss(*task.DueDate, now)+")")
 	}
 	// The pending half of the deferral alone. Its lapsed half is a wake that
 	// already happened, so it is history and is named there instead.
 	if task.DeferredUntil != nil && task.IsDeferredAt(now) {
-		fields.add("defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
+		fields.add("Defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		fields.add("check-in", task.NextCheckIn.Format(time.DateOnly)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
+		fields.add("Check-in", task.NextCheckIn.Format(time.DateOnly)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
 			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)
 		}
-		fields.add("repeat", repeat)
+		fields.add("Repeat", repeat)
 	}
 	return fields.line()
 }
@@ -484,18 +484,18 @@ func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
 		return ""
 	}
 	var fields inlinePeekFields
-	fields.add("created", query.FormatRecencyAge(task.CreatedAt, now))
-	fields.add("updated", query.FormatRecencyAge(task.UpdatedAt, now))
+	fields.add("Created", query.FormatRecencyAge(task.CreatedAt, now))
+	fields.add("Updated", query.FormatRecencyAge(task.UpdatedAt, now))
 	if task.LastReviewedAt != nil {
-		fields.add("last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
+		fields.add("Last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
 	}
 	// The lapsed half of the deferral: a task that came back is work again, and
 	// the row carries no deferral at all, so this is where the wake is said.
 	if taskWokeRecently(task, now) {
-		fields.add("woke", query.FormatRecencyAge(*task.DeferredUntil, now))
+		fields.add("Woke", query.FormatRecencyAge(*task.DeferredUntil, now))
 	}
 	if taskHasRepeatedDeferrals(task) {
-		fields.add("deferred", fmt.Sprintf("×%d", task.DeferCount))
+		fields.add("Deferred", fmt.Sprintf("×%d", task.DeferCount))
 	}
 	return fields.line()
 }
@@ -544,7 +544,7 @@ func inlinePeekAttachmentsLines(task *models.Task, indent string, width int) []s
 			count++
 		}
 	}
-	label := fmt.Sprintf("Attachments %d: ", count)
+	label := fmt.Sprintf("Attachments: %d · ", count)
 	bodyWidth := max(width-lipgloss.Width(label), 1)
 	chunks := make([]string, 0, count)
 	for _, attachment := range task.Attachments {

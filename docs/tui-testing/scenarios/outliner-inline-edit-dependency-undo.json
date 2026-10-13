@@ -25,7 +25,7 @@
     { "type": "assert", "label": "the count follows the stored set", "assert": "contains", "value": "~0/1" },
     { "type": "assert", "assert": "not_contains", "value": "~0/2" },
     { "type": "key", "label": "and Peek names what survived", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies: 0/1 · Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "assert", "assert": "not_contains", "value": "Renew passport (backlog)" },
     { "type": "assert", "assert": "no_layout_issues" },
 

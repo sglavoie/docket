@@ -13,7 +13,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "~0/1" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies: 0/1 · Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "key", "key": "b" },
 
     { "type": "key", "label": "step onto the referenced project's header", "key": "j" },
@@ -48,7 +48,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies: 0/1 · Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "assert", "assert": "not_contains", "value": "(unavailable)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

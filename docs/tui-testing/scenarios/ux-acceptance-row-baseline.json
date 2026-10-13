@@ -52,7 +52,7 @@
     { "type": "assert", "label": "and the whole title is recovered by the document the row clipped", "assert": "contains", "value": "Restore the overdue billing reconciliation export before the audit closes" },
     { "type": "key", "label": "page into the body", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "Checklist: 1/2 done" },
-    { "type": "assert", "assert": "contains", "value": "Attachments 1: reconciliation-brief.md" },
+    { "type": "assert", "assert": "contains", "value": "Attachments: 1 · reconciliation-brief.md" },
     { "type": "key", "label": "and on to the tail", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "Comments: 1" },
     { "type": "assert", "assert": "contains", "value": "Context: [finance]" },
