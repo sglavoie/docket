@@ -615,14 +615,12 @@ func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState,
 		parts = append(parts, "Plan: "+plan)
 	}
 	parts = append(parts, "Status: "+state)
+	now := time.Now()
 	var due string
 	for i, req := range reqs {
 		value := ""
 		if req.Due != nil {
-			value = req.Due.Format("Mon, Jan 2 2006")
-			if clock := chrome.FormatDueClock(&models.Task{DueDate: req.Due}); clock != "" {
-				value += " " + clock
-			}
+			value = chrome.FormatWeekdayDate(*req.Due, now, (&models.Task{DueDate: req.Due}).DueHasTime())
 		}
 		if i == 0 {
 			due = value
@@ -641,7 +639,7 @@ func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState,
 			if req.Defer == nil {
 				return ""
 			}
-			return req.Defer.Local().Format("Mon, Jan 2 2006 15:04")
+			return chrome.FormatWeekdayDate(req.Defer.Local(), now, true)
 		}},
 		{"Priority", func(req app.CaptureRequest) string {
 			if req.Priority == models.PriorityUnset {

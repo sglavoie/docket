@@ -24,7 +24,7 @@ func TestFormDueDatePresetsShowResolvedDatesAtMinimumWidth(t *testing.T) {
 			if preset.isClear {
 				continue
 			}
-			want := preset.label + " [" + preset.key() + "] · " + util.StartOfDay(now).AddDate(0, 0, preset.daysFromNow).Format("Mon Jan 2, 2006")
+			want := preset.label + " [" + preset.key() + "] · " + chrome.FormatWeekdayDate(util.StartOfDay(now).AddDate(0, 0, preset.daysFromNow), now, false)
 			if !strings.Contains(plain, want) {
 				t.Errorf("missing resolved preset %q:\n%s", want, plain)
 			}

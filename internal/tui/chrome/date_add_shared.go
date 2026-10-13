@@ -105,11 +105,7 @@ func (a *DateAdder) DatePreview() string {
 	if err != nil {
 		return ""
 	}
-	layout := "Mon, Jan 2 2006"
-	if a.allowsTime {
-		layout += " 15:04"
-	}
-	return date.Format(layout)
+	return FormatWeekdayDate(date, time.Now(), a.allowsTime)
 }
 
 // parse resolves the typed expression against the granularity this adder

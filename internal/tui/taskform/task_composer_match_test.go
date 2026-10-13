@@ -116,7 +116,7 @@ func TestCaptureInspectionUsesExistingTaskScheduleAndQualifiedPlan(t *testing.T)
 	if strings.Contains(text, "Plan:") {
 		t.Fatalf("used draft or other project's plan: %s", text)
 	}
-	for _, want := range []string{"Status: Backlog", "Defer until: 14:00", "Check-in: Wed, Jan 2 2030", "Repeat: every 7 days"} {
+	for _, want := range []string{"Status: Backlog", "Defer until: 14:00", "Check-in: Wed Jan 2", "Repeat: every 7 days"} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("missing %q in %s", want, text)
 		}

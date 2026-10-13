@@ -60,23 +60,37 @@ func FormatDeferDate(deferredUntil, now time.Time) string {
 	}
 }
 
-// DayGloss names a calendar day against now for a reader rather than a parser:
-// its weekday and how far it is, "Fri, in 6 days" or "Mon, 2 days ago". Peek
-// appends it to the grammar value, which stays exactly what `@` would accept.
+// FormatWeekdayDate is the one weekday spelling of a resolved date: "Mon Jan 2",
+// with the year when it is not now's and the hh:mm clock when the value is
+// timed. Timed is the caller's fact, never read off the clock, because a
+// deadline timed at midnight is indistinguishable from a bare day in a
+// time.Time.
+func FormatWeekdayDate(value, now time.Time, timed bool) string {
+	layout := "Mon Jan 2"
+	if value.Year() != now.Year() {
+		layout += " 2006"
+	}
+	if timed {
+		layout += " 15:04"
+	}
+	return value.Format(layout)
+}
+
+// DayGloss names how far a calendar day is from now for a reader rather than a
+// parser: "in 6 days" or "2 days ago". Peek appends it to the weekday date,
+// which already names the day itself.
 func DayGloss(day, now time.Time) string {
 	day = day.In(now.Location())
-	var distance string
 	switch days := util.DaysBetween(now, day); {
 	case days == 0:
-		distance = "today"
+		return "today"
 	case days == 1:
-		distance = "tomorrow"
+		return "tomorrow"
 	case days == -1:
-		distance = "yesterday"
+		return "yesterday"
 	case days > 1:
-		distance = "in " + util.Count(days, "day")
+		return "in " + util.Count(days, "day")
 	default:
-		distance = util.Count(-days, "day") + " ago"
+		return util.Count(-days, "day") + " ago"
 	}
-	return day.Format("Mon") + ", " + distance
 }

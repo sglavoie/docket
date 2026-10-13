@@ -131,10 +131,10 @@ func TestDeferPresetsOfferHoursMorningAndDaysAcrossDSTTransitions(t *testing.T) 
 
 func TestDatePresetSecondaryTextNamesTheDayAndOnlyClocksAnInstant(t *testing.T) {
 	midnight := time.Date(2026, 3, 14, 0, 0, 0, 0, time.Local)
-	if got, want := OperationDateSecondaryText(midnight), "Sat Mar 14"; got != want {
+	if got, want := OperationDateSecondaryText(midnight, midnight), "Sat Mar 14"; got != want {
 		t.Errorf("midnight secondary = %q, want %q", got, want)
 	}
-	if got, want := OperationDateSecondaryText(midnight.Add(20*time.Hour+15*time.Minute)), "Sat Mar 14 20:15"; got != want {
+	if got, want := OperationDateSecondaryText(midnight.Add(20*time.Hour+15*time.Minute), midnight), "Sat Mar 14 20:15"; got != want {
 		t.Errorf("intra-day secondary = %q, want %q", got, want)
 	}
 }

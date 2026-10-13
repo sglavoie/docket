@@ -53,12 +53,12 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Due: 2020-04-01 15:30"
+      "value": "Due: Wed Apr 1 2020 15:30"
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Check-in: 2020-04-01"
+      "value": "Check-in: Wed Apr 1 2020"
     },
     {
       "type": "key",

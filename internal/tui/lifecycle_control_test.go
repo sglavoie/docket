@@ -184,8 +184,8 @@ func TestControlPreviewUsesCaptureRoutingWithoutCommitting(t *testing.T) {
 		want []string
 	}{
 		{"", []string{"Project: " + project.Name, "Status: Inbox"}},
-		{"Buy milk %" + project.Slug + " $today @2099-01-02", []string{"Project: " + project.Name, "Plan: Today", "Status: Backlog", "Due: Fri, Jan 2 2099"}},
-		{"Buy milk @today", []string{"Plan: Today", "Status: Backlog", "Due: " + time.Now().Format("Mon, Jan 2 2006")}},
+		{"Buy milk %" + project.Slug + " $today @2099-01-02", []string{"Project: " + project.Name, "Plan: Today", "Status: Backlog", "Due: Fri Jan 2 2099"}},
+		{"Buy milk @today", []string{"Plan: Today", "Status: Backlog", "Due: " + time.Now().Format("Mon Jan 2")}},
 		{"Buy milk $doing", []string{"Status: Doing"}},
 		{"Buy milk @@tomorrow", []string{"Status: Backlog"}},
 	} {

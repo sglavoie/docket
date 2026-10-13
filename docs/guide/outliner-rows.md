@@ -290,7 +290,7 @@ is the collection you committed the task to, Today or Next; the status is the
 lifecycle state it holds. They are two answers, not one, which is why a task
 planned for Today reads `Plan: Today · Status: Backlog` and a task in no
 collection has no plan half at all. Then a schedule line reading
-`Due: 2026-08-14 · Defer: Sep 2 · Check-in: 2026-08-20 · Repeat: 7d`
+`Due: Fri Aug 14 (in 4 days) · Defer: Sep 2 · Check-in: Thu Aug 20 (in 10 days) · Repeat: 7d`
 with empty fields omitted too (a one-off schedule reads `Repeat: off`), the resume
 note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`

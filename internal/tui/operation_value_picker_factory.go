@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -122,11 +123,7 @@ func (m *AppModel) newOperationValuePicker(
 		// shows it: a date no preset spells opens on Clear, where one reflexive
 		// Enter would erase a value the picker never displayed.
 		if due != nil {
-			layout := "Mon Jan 2"
-			if refs[0].Task.DueHasTime() {
-				layout = "Mon Jan 2 15:04"
-			}
-			subtitle += " · due " + due.Format(layout)
+			subtitle += " · due " + chrome.FormatWeekdayDate(*due, time.Now(), refs[0].Task.DueHasTime())
 		}
 		return valuepicker.NewOperationValuePickerModel(
 			request,

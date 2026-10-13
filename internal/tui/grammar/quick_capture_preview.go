@@ -247,15 +247,7 @@ func captureVocabularyMarker(value string, vocabulary []string) string {
 // captureDuePreview keeps the resolved weekday and clock visible before save.
 // Only dates outside the current year need the extra year qualifier.
 func captureDuePreview(due, now time.Time) string {
-	layout := "Mon, Jan 2"
-	if due.Year() != now.Year() {
-		layout += " 2006"
-	}
-	value := due.Format(layout)
-	if clock := chrome.FormatDueClock(&models.Task{DueDate: &due}); clock != "" {
-		value += " " + clock
-	}
-	return value
+	return chrome.FormatWeekdayDate(due, now, (&models.Task{DueDate: &due}).DueHasTime())
 }
 
 // renderPreview formats the parsed preview into labeled groups so the user can

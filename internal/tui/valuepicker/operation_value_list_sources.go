@@ -84,11 +84,8 @@ func datePresetKeyMarker(deferred bool, presetID string) string {
 // OperationDateSecondaryText names an instant the way a picker row and a search
 // alias both need it. A bare clock is never enough: "+8h" at 20:00 lands
 // tomorrow, and a lone "04:00" would silently claim today.
-func OperationDateSecondaryText(value time.Time) string {
-	if value.Equal(util.StartOfDay(value)) {
-		return value.Format("Mon Jan 2")
-	}
-	return value.Format("Mon Jan 2 15:04")
+func OperationDateSecondaryText(value, now time.Time) string {
+	return chrome.FormatWeekdayDate(value, now, !value.Equal(util.StartOfDay(value)))
 }
 
 // The two date sections share preset names, so a row's identity carries its
@@ -110,7 +107,8 @@ func DateListItemID(deferred bool, presetID string) listsurface.ListItemID {
 }
 
 func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, disabledReason string) []listsurface.ListItem {
-	presets := OperationDatePresets(deferred, time.Now())
+	now := time.Now()
+	presets := OperationDatePresets(deferred, now)
 	items := make([]listsurface.ListItem, 0, len(presets))
 	for _, preset := range presets {
 		var date *time.Time
@@ -118,7 +116,7 @@ func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, di
 		if !preset.clear {
 			value := preset.value()
 			date = &value
-			secondary = OperationDateSecondaryText(value)
+			secondary = OperationDateSecondaryText(value, now)
 		}
 		items = append(items, listsurface.ListItem{
 			ID:             DateListItemID(deferred, preset.id),

@@ -30,7 +30,7 @@
     { "type": "key", "label": "re-enter typed entry", "key": "a" },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "text", "text": "2027-03-15" },
-    { "type": "assert", "label": "preview resolves before submission", "assert": "contains", "value": "Mon, Mar 15 2027" },
+    { "type": "assert", "label": "preview resolves before submission", "assert": "contains", "value": "Mon Mar 15 2027" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

@@ -351,7 +351,7 @@ func (model *CheckInEditorModel) Render(width int) string {
 		content.WriteString(chrome.RenderFormLabelWithWidth("Next check-in:", 17, model.focus == checkInFieldNext))
 		content.WriteString(model.dateInput.View())
 		if day, err := util.ParseCheckInDateAt(model.dateInput.Value(), model.now()); err == nil && !model.clear {
-			content.WriteString("\n" + theme.MutedStyle.Render("Resolves to "+day.Format("Mon Jan 2, 2006")))
+			content.WriteString("\n" + theme.MutedStyle.Render("Resolves to "+chrome.FormatWeekdayDate(day, model.now(), false)))
 		}
 		content.WriteString("\n")
 		content.WriteString(chrome.RenderFormLabelWithWidth("Repeat:", 17, model.focus == checkInFieldRepeat))
@@ -390,7 +390,7 @@ func (model *CheckInEditorModel) renderDatePicker(width int) string {
 		label := preset.label
 		if !preset.clear {
 			if day, err := util.AddCalendarDays(now, preset.days); err == nil {
-				label += " · " + day.Format("Mon Jan 2, 2006")
+				label += " · " + chrome.FormatWeekdayDate(day, now, false)
 			}
 		}
 		line := "  " + label

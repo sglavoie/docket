@@ -62,17 +62,13 @@ func (m *TaskComposerModel) matchingTaskDocument(task *models.Task, project *mod
 		lines = append(lines, "Priority: "+models.PriorityName(task.Priority))
 	}
 	if task.DueDate != nil {
-		date := task.DueDate.Format("Mon, Jan 2 2006")
-		if clock := chrome.FormatDueClock(task); clock != "" {
-			date += " " + clock
-		}
-		lines = append(lines, "Due: "+date)
+		lines = append(lines, "Due: "+chrome.FormatWeekdayDate(*task.DueDate, now, task.DueHasTime()))
 	}
 	if task.IsDeferredAt(now) {
 		lines = append(lines, "Defer until: "+chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		lines = append(lines, "Check-in: "+task.NextCheckIn.Format("Mon, Jan 2 2006"))
+		lines = append(lines, "Check-in: "+chrome.FormatWeekdayDate(*task.NextCheckIn, now, false))
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
 			repeat = fmt.Sprintf("every %d days", task.CheckInRepeatDays)

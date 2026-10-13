@@ -163,7 +163,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 				NextCheckIn:       &checkIn,
 				CheckInRepeatDays: 7,
 			},
-			"Due: 2026-08-14 (Fri, in 4 days) · Defer: " + chrome.FormatDeferDate(pending, now) + " · Check-in: 2026-08-12 (Wed, in 2 days) · Repeat: 7d",
+			"Due: Fri Aug 14 (in 4 days) · Defer: " + chrome.FormatDeferDate(pending, now) + " · Check-in: Wed Aug 12 (in 2 days) · Repeat: 7d",
 		},
 		{
 			// The row carries no deferral now, so Peek names the pending one — and
@@ -180,7 +180,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 		{
 			"one-off check-in names repetition as off",
 			&models.Task{NextCheckIn: &checkIn},
-			"Check-in: 2026-08-12 (Wed, in 2 days) · Repeat: off",
+			"Check-in: Wed Aug 12 (in 2 days) · Repeat: off",
 		},
 		{
 			"spent instants never reach the schedule",
@@ -286,7 +286,7 @@ func TestInlinePeekCheckInFieldsWrapWithinNarrowWidth(t *testing.T) {
 		inlinePeekHistoryLines(task, now, "  ", width)...,
 	)
 	plain := ansi.Strip(strings.Join(lines, "\n"))
-	for _, want := range []string{"Check-in:", "2026-08-12", "Repeat:", "30d", "Last review:", "1d"} {
+	for _, want := range []string{"Check-in:", "Wed Aug 12", "Repeat:", "30d", "Last review:", "1d"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("narrow Peek dates missing %q:\n%s", want, plain)
 		}
@@ -399,7 +399,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	}
 
 	doc := inlinePeekDocumentFor(inlinePeekOptions{
-		Task: task, Breadcrumb: "Launch platform ›", Planning: "Today", Width: 80,
+		Task: task, Breadcrumb: "Launch platform ›", Planning: "Today", Width: 100,
 		Window:           testPeekWindow(),
 		Dependencies:     []DependencyDetail{{Label: "Platform #7 Blocking work", State: "doing"}},
 		Dependents:       []DependencyDetail{{Label: "Platform #9 Waiting work", State: "waiting"}},
@@ -410,8 +410,8 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 		"Rework the sync path",
 		"Parent: Launch platform",
 		"Plan: Today · Status: Doing 4h · Priority: 2 medium · Pinned · Review",
-		"Due: " + chrome.DueGrammarValue(task) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
-			" · Check-in: " + checkIn.Format(time.DateOnly) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
+		"Due: " + chrome.FormatWeekdayDate(due, time.Now(), task.DueHasTime()) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
+			" · Check-in: " + chrome.FormatWeekdayDate(checkIn, time.Now(), false) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
 		"Repeat: off",
 		"Resume: Left mid-refactor",
 		"Description: Wrapped description content",

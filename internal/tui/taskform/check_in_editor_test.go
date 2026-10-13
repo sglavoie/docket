@@ -247,11 +247,11 @@ func TestCheckInDatePreviewMatchesSavedRelativeDate(t *testing.T) {
 	model.HandlePaste(tea.PasteMsg{Content: "+30d"})
 	model.repeatInput.SetValue("7")
 	rendered := model.Render(60)
-	if !strings.Contains(rendered, "Mon Mar 2, 2026") || !strings.Contains(rendered, "7 days after you acknowledge.") {
+	if !strings.Contains(rendered, "Resolves to Mon Mar 2") || !strings.Contains(rendered, "7 days after you acknowledge.") {
 		t.Fatalf("missing date or repeat preview: %s", rendered)
 	}
 	model.HandleKey(checkInEditorKey("enter"))
-	if rendered := model.Render(60); !strings.Contains(rendered, "+30 days · Mon Mar 2, 2026") || strings.Contains(rendered, "+month") {
+	if rendered := model.Render(60); !strings.Contains(rendered, "+30 days · Mon Mar 2") || strings.Contains(rendered, "+month") {
 		t.Fatalf("preset hides its interval or resolved date: %s", rendered)
 	}
 	model.HandleKey(checkInEditorKey("esc"))

@@ -435,7 +435,7 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 	}
 	var fields inlinePeekFields
 	if task.DueDate != nil {
-		fields.add("Due", chrome.DueGrammarValue(task)+" ("+chrome.DayGloss(*task.DueDate, now)+")")
+		fields.add("Due", chrome.FormatWeekdayDate(*task.DueDate, now, task.DueHasTime())+" ("+chrome.DayGloss(*task.DueDate, now)+")")
 	}
 	// The pending half of the deferral alone. Its lapsed half is a wake that
 	// already happened, so it is history and is named there instead.
@@ -443,7 +443,7 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 		fields.add("Defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		fields.add("Check-in", task.NextCheckIn.Format(time.DateOnly)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
+		fields.add("Check-in", chrome.FormatWeekdayDate(*task.NextCheckIn, now, false)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
 			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)

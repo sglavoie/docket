@@ -121,7 +121,7 @@ func (p *formDueDatePicker) renderAt(width int, current *time.Time, now time.Tim
 
 	var titleText string
 	if current != nil {
-		titleText = fmt.Sprintf("Set Due Date: %s", current.Format("Mon Jan 2, 2006"))
+		titleText = fmt.Sprintf("Set Due Date: %s", chrome.FormatWeekdayDate(*current, now, false))
 	} else {
 		titleText = "Set Due Date"
 	}
@@ -164,7 +164,7 @@ func (p *formDueDatePicker) renderAt(width int, current *time.Time, now time.Tim
 		line := fmt.Sprintf(" %s%s %s", currentMark, e.label, keyHint)
 		if !e.isClear {
 			date := today.AddDate(0, 0, e.daysFromNow)
-			line += theme.MutedStyle.Render(" · " + date.Format("Mon Jan 2, 2006"))
+			line += theme.MutedStyle.Render(" · " + chrome.FormatWeekdayDate(date, now, false))
 		}
 		lineWidth := lipgloss.Width(line)
 		if lineWidth < innerWidth-4 {

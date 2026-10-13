@@ -146,20 +146,25 @@ func TestDateAdderPreviewAndErrorCorrection(t *testing.T) {
 		t.Fatal("editing retained a stale refusal")
 	}
 	adder.AddDateInput.SetValue("2027-03-15")
-	if got := adder.DatePreview(); got != "Mon, Mar 15 2027" {
+	if got := adder.DatePreview(); got != "Mon Mar 15 2027" {
 		t.Fatalf("preview = %q", got)
 	}
 	adder.AddDateInput.SetValue("fri")
-	if got := adder.DatePreview(); !strings.HasPrefix(got, "Fri, ") {
+	if got := adder.DatePreview(); !strings.HasPrefix(got, "Fri ") {
 		t.Fatalf("weekday preview = %q", got)
 	}
 	instant := NewInstantDateAdder()
 	instant.AddDateInput.SetValue("2027-03-15")
-	if got := instant.DatePreview(); got != "Mon, Mar 15 2027 00:00" {
+	if got := instant.DatePreview(); got != "Mon Mar 15 2027 00:00" {
 		t.Fatalf("instant preview = %q", got)
 	}
 	instant.AddDateInput.SetValue("+4h")
-	if _, err := time.Parse("Mon, Jan 2 2006 15:04", instant.DatePreview()); err != nil {
-		t.Fatalf("hour offset did not preview a date and clock: %v", err)
+	// The year is spelled only when it differs from now's, so either layout is
+	// a date and a clock.
+	preview := instant.DatePreview()
+	if _, err := time.Parse("Mon Jan 2 15:04", preview); err != nil {
+		if _, err := time.Parse("Mon Jan 2 2006 15:04", preview); err != nil {
+			t.Fatalf("hour offset did not preview a date and clock: %q", preview)
+		}
 	}
 }

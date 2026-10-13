@@ -20,10 +20,10 @@ func TestCaptureDuePreview(t *testing.T) {
 		due  time.Time
 		want string
 	}{
-		{"date only", time.Date(2026, 12, 31, 0, 0, 0, 0, time.Local), "Thu, Dec 31"},
-		{"timed", time.Date(2026, 12, 31, 15, 30, 0, 0, time.Local), "Thu, Dec 31 15:30"},
-		{"next year", time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local), "Fri, Jan 1 2027"},
-		{"previous year timed", time.Date(2025, 12, 31, 9, 5, 0, 0, time.Local), "Wed, Dec 31 2025 09:05"},
+		{"date only", time.Date(2026, 12, 31, 0, 0, 0, 0, time.Local), "Thu Dec 31"},
+		{"timed", time.Date(2026, 12, 31, 15, 30, 0, 0, time.Local), "Thu Dec 31 15:30"},
+		{"next year", time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local), "Fri Jan 1 2027"},
+		{"previous year timed", time.Date(2025, 12, 31, 9, 5, 0, 0, time.Local), "Wed Dec 31 2025 09:05"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := captureDuePreview(tc.due, now); got != tc.want {
@@ -38,7 +38,7 @@ func TestCaptureTimedDeadlineSurvivesCompactPreview(t *testing.T) {
 	q := makePreviewInput(t, &QuickCaptureResult{Title: "Ship release", DueDate: &due}, "", 56)
 	for _, preview := range []string{q.renderPreview(), q.renderCompactPreview()} {
 		plain := ansi.Strip(preview)
-		if !strings.Contains(plain, "@Fri, Jan 1") || !strings.Contains(plain, "15:30") {
+		if !strings.Contains(plain, "@Fri Jan 1") || !strings.Contains(plain, "15:30") {
 			t.Fatalf("preview lost deadline details:\n%s", plain)
 		}
 	}
