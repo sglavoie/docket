@@ -452,6 +452,34 @@ one cursor and not under the next, and a reservation following the measurement
 raw would hand the dock's position back to the cursor. `peekDockFooterWrapRows`
 is that floor — one row, while the dock is open — and a footer taller than it is
 still charged in full.
+The pinned context row is the one thing inside that window that is not a row.
+`indexSectionHeaderRows` records, from `finalizeModeRows`, where each lane's
+header landed, keyed by the section half of `OutlinerRowGroup`; it runs there
+rather than where a header is appended because the Pinned separator, the
+checklist expansion, and the focused project header all move rows afterwards.
+`sectionHeaderAbove` reads that index and the first window row's own group, so
+"is this lane's header above the window" is answered without scanning for one,
+and it distrusts an index the rows no longer bear out. `pinnedContextWindow`,
+called by `ComputeOutlinerViewport` alone, then decides the window: it tries the
+full height, and where that window opens inside a lane it windows one row fewer
+through the same `PersistentIndexWindow` call and reports `pinned`. Both heights
+are tried against the stored offset, never one against the other's result, so an
+idle frame writes back the offset it found and `k` from the last row does not
+scroll. `VisibleRows` is unchanged — the screen rows the list occupies — so
+`outlinerListRows`, the dock, the strip, and the scrollbar measure what they
+measured before, while `startIdx`/`endIdx` on `LastViewport` are the smaller
+window; `VisibleRowWindow`, `CursorScrollOffset`, and the hosted-panel anchor
+therefore place the cursor among the rows actually drawn, and `zt` seats it on
+the first row under the pinned one. Two windows give the row back: one the
+smaller height opens exactly on a header starts on that header at full height,
+and at the end of the list, where that would leave the last screen row blank,
+the full window stands unpinned. `renderPinnedContextRow` builds the line from
+`renderSectionHeader` with the header row's name and count, the project slug
+from the first window row's `Group.ProjectID`, a muted accent, and the trailing
+rule that still sets it apart in a profile carrying no color; it is padded or
+cut to exactly `rowWidth`. Either single-project form, the ranked list, and any
+first row carrying no section pin nothing.
+
 Opening Peek moves the list once and nothing the cursor does afterwards moves it
 again. `writePeekDock` pads the list block out to `VisibleRows` before writing
 the dock, so a projection shorter than its window leaves the dock at the screen

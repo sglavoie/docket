@@ -173,8 +173,26 @@ func (m *OutlinerModel) restoreTimeDrivenCursor() {
 func (m *OutlinerModel) finalizeModeRows() {
 	m.expandChecklistRows()
 	m.prependFocusedProjectHeader()
+	m.indexSectionHeaderRows()
 	m.pruneInvisibleSelections()
 	m.ClampCursor()
+}
+
+// indexSectionHeaderRows records where each lane's header landed. It runs here
+// rather than where a header is appended because three later writers move rows:
+// the Pinned separator, the checklist expansion, and the focused header above,
+// so this is the first point an index names the row it was taken from.
+func (m *OutlinerModel) indexSectionHeaderRows() {
+	clear(m.sectionHeaderRows)
+	for index, row := range m.Rows {
+		if !row.IsSectionHeader || row.Group.SectionKey == "" {
+			continue
+		}
+		if m.sectionHeaderRows == nil {
+			m.sectionHeaderRows = make(map[string]int)
+		}
+		m.sectionHeaderRows[row.Group.SectionKey] = index
+	}
 }
 
 // prependFocusedProjectHeader puts one actionable project header above the

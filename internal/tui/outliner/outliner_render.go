@@ -41,6 +41,12 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	colLayout := m.ComputeOutlinerRowLayout(m.Rows, viewport.rowWidth)
 
 	var rowBuilder strings.Builder
+	if viewport.pinned {
+		rowBuilder.WriteString(m.renderPinnedContextRow(viewport))
+		if viewport.startIdx < viewport.endIdx {
+			rowBuilder.WriteString("\n")
+		}
+	}
 	for i := viewport.startIdx; i < viewport.endIdx; i++ {
 		row := m.Rows[i]
 		selected := i == m.Cursor
@@ -236,11 +242,46 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	return gutter, content
 }
 
-func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
-	displayName := row.SectionName
-	if displayName == "" {
-		displayName = models.StateGroupBacklog.Label()
+// sectionHeaderLabel is the name a section header spells and the mark that
+// leads it, read by the header row and by the pinned context row alike so the
+// two cannot name one lane differently.
+func sectionHeaderLabel(row OutlinerRow) (name, prefix string) {
+	name = row.SectionName
+	if name == "" {
+		name = models.StateGroupBacklog.Label()
 	}
+	if row.IsComputedHeader {
+		prefix = "◷ "
+	}
+	return name, prefix
+}
+
+// renderPinnedContextRow draws the one line that stands in for a lane header
+// the window scrolled past: the lane's own name and count, then the project the
+// window's first row belongs to, read off that row's group. It is context and
+// not a row, so it is muted, wears no zebra stripe, and is never the cursor's;
+// the trailing rule is what still sets it apart where a profile carries no
+// color. The line is exactly rowWidth.
+func (m *OutlinerModel) renderPinnedContextRow(viewport outlinerViewport) string {
+	header := m.Rows[viewport.pinnedHeader]
+	name, prefix := sectionHeaderLabel(header)
+	if projectID := m.Rows[viewport.startIdx].Group.ProjectID; projectID != "" {
+		slug, _ := m.projectSlugForRow(OutlinerRow{ProjectID: projectID})
+		name += " › [" + slug + "]"
+	}
+	gutter, content := renderSectionHeader(sectionHeaderOpts{
+		Name:        name,
+		Count:       header.SectionCount,
+		AccentColor: theme.MutedStyle.Padding(0, 1),
+		Width:       viewport.rowWidth,
+		Prefix:      prefix,
+	})
+	line := textfit.TruncateToVisualWidth(gutter+content, viewport.rowWidth)
+	return line + strings.Repeat(" ", max(viewport.rowWidth-lipgloss.Width(line), 0))
+}
+
+func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
+	displayName, prefix := sectionHeaderLabel(row)
 
 	sectionStyle := theme.GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	if row.StateGroup.IsValid() {
@@ -248,10 +289,6 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	}
 	if row.PromotedTag == reviewLaneKey {
 		sectionStyle = theme.ViewModeReviewStyle
-	}
-	prefix := ""
-	if row.IsComputedHeader {
-		prefix = "◷ "
 	}
 
 	paint := m.cursorPaintFor(selected)
@@ -536,6 +573,22 @@ type outlinerViewport struct {
 	startIdx    int
 	endIdx      int
 	rowWidth    int
+	// pinned reports that the list's first screen row is the pinned context
+	// row rather than a row of the window, and pinnedHeader is the section
+	// header it stands in for. VisibleRows still counts that screen row, so
+	// startIdx and endIdx then span one row fewer.
+	pinned       bool
+	pinnedHeader int
+}
+
+// drawnRows is the screen rows the window fills: its own rows and the pinned
+// context row above them.
+func (v outlinerViewport) drawnRows() int {
+	drawn := v.endIdx - v.startIdx
+	if v.pinned {
+		drawn++
+	}
+	return drawn
 }
 
 // renderOutlinerTreeContent renders the full-width Outliner tree constrained to
@@ -649,7 +702,7 @@ func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewp
 	if len(dock) == 0 {
 		return
 	}
-	for drawn := viewport.endIdx - viewport.startIdx; drawn < viewport.VisibleRows; drawn++ {
+	for drawn := viewport.drawnRows(); drawn < viewport.VisibleRows; drawn++ {
 		b.WriteString("\n")
 	}
 	for _, line := range dock {
@@ -1270,19 +1323,73 @@ func (m *OutlinerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
 func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int) outlinerViewport {
 	visibleRows := m.outlinerListRows(extraFooterLines)
 
-	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &m.ViewScrollOffset)
-	rowWidth := width
+	window := m.pinnedContextWindow(visibleRows)
+	window.VisibleRows = visibleRows
+	window.rowWidth = width
 	if len(m.Rows) > visibleRows {
-		rowWidth = width - 1
+		window.rowWidth = width - 1
 	}
 
-	m.LastViewport = outlinerViewport{
-		VisibleRows: visibleRows,
-		startIdx:    startIdx,
-		endIdx:      endIdx,
-		rowWidth:    rowWidth,
-	}
+	m.LastViewport = window
 	return m.LastViewport
+}
+
+// pinnedContextWindow decides the row window and whether its first screen row
+// is spent on the pinned context row. A window that opens inside a lane whose
+// header scrolled above it gives that row up and windows one row fewer, through
+// the same PersistentIndexWindow call over the smaller height, so the cursor is
+// kept visible beneath the pinned row by the rule that keeps it visible
+// anywhere. Both heights are tried against the stored offset rather than one
+// against the other's result, so a frame that changes nothing writes the offset
+// it found.
+//
+// The remaining case is the smaller window opening exactly on a header: nothing
+// is left to pin, so the row is given back to the window, which then starts on
+// that header. At the end of the list that window would come up a row short, and
+// there the full window stands instead, unpinned, since a blank row would hide a
+// row to name a lane one line above it.
+func (m *OutlinerModel) pinnedContextWindow(visibleRows int) outlinerViewport {
+	full := m.ViewScrollOffset
+	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
+	if _, scrolledPast := m.sectionHeaderAbove(startIdx); !scrolledPast || visibleRows < 2 {
+		m.ViewScrollOffset = full
+		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}
+	}
+	startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows-1, &m.ViewScrollOffset)
+	header, scrolledPast := m.sectionHeaderAbove(startIdx)
+	if !scrolledPast && startIdx+visibleRows > len(m.Rows) {
+		m.ViewScrollOffset = full
+		startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
+		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}
+	}
+	if !scrolledPast {
+		return outlinerViewport{startIdx: startIdx, endIdx: startIdx + visibleRows}
+	}
+	return outlinerViewport{startIdx: startIdx, endIdx: endIdx, pinned: true, pinnedHeader: header}
+}
+
+// sectionHeaderAbove answers whether the row at index sits in a lane whose
+// header is above it, and where that header is. It reads the row's own group
+// and the index the projection recorded, never the rows between them. Either
+// single-project form answers no, as does a row carrying no section — the
+// ranked list, a separator, a projection that emits no lanes — and an index the
+// rows no longer bear out is not trusted.
+func (m *OutlinerModel) sectionHeaderAbove(index int) (int, bool) {
+	if index <= 0 || index >= len(m.Rows) || !m.groupsRowsByProject() {
+		return 0, false
+	}
+	key := m.Rows[index].Group.SectionKey
+	if key == "" {
+		return 0, false
+	}
+	header, ok := m.sectionHeaderRows[key]
+	if !ok || header >= index {
+		return 0, false
+	}
+	if row := m.Rows[header]; !row.IsSectionHeader || row.Group.SectionKey != key {
+		return 0, false
+	}
+	return header, true
 }
 
 // visibleRowWindow returns the half-open row range the last render drew,

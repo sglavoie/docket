@@ -718,6 +718,11 @@ func uxDailyUseIntegratedProjectFieldColumns(plain string) []int {
 		if index < 0 {
 			continue
 		}
+		// The pinned context row names the project after its lane, so its
+		// bracket follows the lane's name and is no row's project field.
+		if strings.Contains(line, " › [release-") {
+			continue
+		}
 		column := ansi.StringWidth(line[:index])
 		if !seen[column] {
 			seen[column] = true

@@ -15,20 +15,23 @@
 
     { "type": "key", "label": "zt puts the cursor row at the top", "key": "z" },
     { "type": "key", "key": "t" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 211" },
+    { "type": "assert", "label": "under the pinned context row, which takes the first list row of a window opening inside a lane", "assert": "contains", "value": "▾  Doing › [release-project]  (35)" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 190" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 211" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 060" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "zz centers the same row", "key": "z" },
     { "type": "key", "key": "z" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 095" },
+    { "type": "assert", "label": "measured over the rows the pinned context leaves", "assert": "contains", "value": "Release acceptance item 116" },
     { "type": "assert", "assert": "contains", "value": "Release acceptance item 001" },
-    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 074" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 095" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "zb puts the same row at the bottom", "key": "z" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Release acceptance item 130" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 151" },
+    { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 130" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 102" },
     { "type": "assert", "assert": "no_layout_issues" },
 

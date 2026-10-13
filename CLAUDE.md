@@ -402,6 +402,14 @@ the last 30 days`.
 render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
+A window opening inside a lane whose header scrolled above it spends its first
+screen row on the pinned context row, and `pinnedContextWindow` is where that is
+decided: `VisibleRows` still counts the row, `startIdx`/`endIdx` span one fewer,
+and every reader of the window reads that pair. `sectionHeaderAbove` answers
+from the row's own group and the index `finalizeModeRows` records, never a scan.
+The row is muted, exactly `rowWidth`, and never the cursor's; the ranked list,
+either single-project form, and a zero-group first row pin nothing.
+
 A preview pane splits through `ListSurfacePreviewGeometry` and paints through
 `RenderListSurfacePreview`, never a per-surface copy of either. The render owns
 the tail clamp; `Ctrl+F`/`Ctrl+B` page it, never `Ctrl+D`/`Ctrl+U`, which stay

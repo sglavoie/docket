@@ -351,6 +351,22 @@ reads as more of the same mark. Every other list — the pickers, the tag and
 parent selectors, notes, the project hub — still inverts the whole row, because a
 flat list row has no margins to paint.
 
+A list scrolled into the middle of a lane says which lane it is showing. When
+the lane's header is above the window, the first list row becomes a pinned
+context row naming the lane, the project the window opens in, and the lane's
+count:
+
+```text
+▾  Waiting › [release-catalog]  (212) ──────────────────────
+```
+
+It is muted, closed with a rule, and never the cursor's: it is not a row, so
+`k` from the row under it scrolls the list rather than landing on it, and the
+real header is still where `gg` or `N` finds it. It costs one list row while it
+is drawn and none otherwise — a window that opens on a lane header, or one that
+has not scrolled, shows the header itself. The flat `/` result list and a view
+scoped to one project draw none.
+
 Every tag carries a color, and it is the same color everywhere a tag is rendered
 as itself: the `Tags:` line in Peek, and every row of
 the tag list the composer's expanded detail opens. Nothing needs configuring — a

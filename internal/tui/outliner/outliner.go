@@ -50,6 +50,11 @@ type OutlinerModel struct {
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move ViewScrollOffset.
 	LastViewport outlinerViewport
+	// sectionHeaderRows names each lane's header row by the section half of
+	// OutlinerRowGroup. It is rebuilt with the rows, so the window authority can
+	// tell a header scrolled above the window from the row's own group rather
+	// than by scanning upward for one.
+	sectionHeaderRows map[string]int
 	// hostBudget is the loan outstanding while a bounded panel is drawn over this
 	// list: where the window stood when the panel took its rows, held as a
 	// position in the document rather than a number of them.

@@ -1317,7 +1317,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// that row in the composer or lose it elsewhere. The mechanism lives in
 	// docs/architecture/capture-and-outline-editor.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 75662
+	// Raise from 75662 to 76209 for the pinned lane context row. 547 bytes buy
+	// the rule the one change inside the window authority is held to: the
+	// screen-row count is unchanged while the reported window is one row
+	// shorter, so a reader of the window that recomputed either would seat the
+	// cursor under the pinned row, and the lane is found from the row's group
+	// and a recorded index rather than by the upward scan the group invariant
+	// forbids. The mechanism lives in docs/architecture/presentation-chrome.md.
+	// No rule elsewhere was trimmed to pay for it.
+	const budget = 76209
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
