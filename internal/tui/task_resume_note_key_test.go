@@ -259,8 +259,8 @@ func TestResumeNoteKeyEscCancelsAndUnchangedTextCommitsNothing(t *testing.T) {
 // between the values this one prompt collects. Reading them off the built prompt
 // rather than the constructor is what proves the factory wired the right pair.
 func TestResumeNotePromptCarriesItsOwnOptions(t *testing.T) {
-	if got := operationhost.ResumeNoteTextPromptOptions(); !got.AcceptsEmpty || got.MaxLength != models.MaxResumeNoteLength {
-		t.Fatalf("resume options = %#v, want an empty-accepting prompt bounded by the model", got)
+	if got := operationhost.ResumeNoteTextPromptOptions(); !got.AcceptsEmpty || got.MaxLength != models.MaxResumeNoteLength || got.SubtitleLabel != "Task" {
+		t.Fatalf("resume options = %#v, want an empty-accepting prompt bounded by the model whose subtitle names the task", got)
 	}
 	if got := operationhost.NameTextPromptOptions(); got.AcceptsEmpty || got.MaxLength != 200 {
 		t.Fatalf("name options = %#v, want the unchanged 200-character non-empty rule", got)

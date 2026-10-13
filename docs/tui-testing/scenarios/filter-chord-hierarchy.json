@@ -6,6 +6,8 @@
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "key", "label": "open the filter chord", "key": "f" },
     { "type": "assert", "label": "the which-key row offers the hierarchy facet", "assert": "contains", "value": "h hierarchy" },
+    { "type": "assert", "label": "the reference facet is named by a word like its siblings", "assert": "contains", "value": "~ references" },
+    { "type": "assert", "assert": "not_contains", "value": "?blocked/?blocking" },
 
     { "type": "key", "label": "open the hierarchy picker", "key": "h" },
     { "type": "assert", "assert": "contains", "value": "Filter by Hierarchy" },

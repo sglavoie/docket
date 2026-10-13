@@ -79,8 +79,7 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 			CapturePasteHint(),
 			NewGuidanceHint("Ctrl+J/K scroll", 2, false),
 			NewGuidanceHint("PgUp/PgDn page", 3, false),
-			NewGuidanceHint("? close syntax", 0, true),
-			NewGuidanceHint("Esc close syntax", 0, true),
+			NewGuidanceHint("?/Esc close syntax", 0, true),
 		}
 		spec.Supplemental = fmt.Sprintf("%d%%", scrollPercent)
 	case helpExpanded:
@@ -88,8 +87,7 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 			NewGuidanceHint("Enter create", 0, true),
 			NewGuidanceHint("Ctrl+E create & edit", 1, false),
 			CapturePasteHint(),
-			NewGuidanceHint("? close syntax", 0, true),
-			NewGuidanceHint("Esc close syntax", 0, true),
+			NewGuidanceHint("?/Esc close syntax", 0, true),
 		}
 	default:
 		spec.Hints = []GuidanceHint{

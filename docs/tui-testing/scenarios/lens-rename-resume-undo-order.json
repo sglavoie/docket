@@ -52,6 +52,8 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "r" },
+    { "type": "assert", "label": "the subtitle is the task, and is labeled as one", "assert": "contains", "value": "Task: Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "Current: Build login form" },
     { "type": "text", "text": "stopped at the OAuth callback stub" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Set Resume Note: #3 Build login form" },

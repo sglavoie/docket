@@ -93,7 +93,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "close syntax"
+      "value": "?/Esc close syntax"
     },
     {
       "type": "assert",

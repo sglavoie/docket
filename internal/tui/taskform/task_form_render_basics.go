@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -44,16 +45,7 @@ func (m *TaskFormModel) renderBasicsTabCollapsed(b *formBodyBuilder, bodyWidth i
 	// 1: Priority
 	b.field(1)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 1))
-	{
-		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
-		lbl := formPriorityLabel(m.draft.priority)
-		val := fmt.Sprintf("%s %s", icon, lbl)
-		if m.focusIndex == 1 {
-			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
-		} else {
-			b.WriteString(val)
-		}
-	}
+	b.WriteString(renderFormPriorityValue(m.draft.priority, m.focusIndex == 1))
 	b.WriteString("\n")
 
 	// 2: Expand row
@@ -109,16 +101,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded(b *formBodyBuilder, bodyWidth in
 	// 2: Priority
 	b.field(2)
 	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
-	{
-		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
-		lbl := formPriorityLabel(m.draft.priority)
-		val := fmt.Sprintf("%s %s", icon, lbl)
-		if m.focusIndex == 2 {
-			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
-		} else {
-			b.WriteString(val)
-		}
-	}
+	b.WriteString(renderFormPriorityValue(m.draft.priority, m.focusIndex == 2))
 	b.WriteString("\n")
 
 	// 3: Parent
@@ -218,6 +201,27 @@ func renderFormFlagsValue(pinned, review, focused bool) string {
 		return theme.SelectorOptionSelectedStyle.Render(val)
 	}
 	return val
+}
+
+// renderFormPriorityValue renders a priority as a row value. Unset has no icon,
+// so it is the muted placeholder every other empty row shows rather than a
+// label standing one column in behind the icon it lacks.
+func renderFormPriorityValue(priority int, focused bool) string {
+	val := formPriorityValue(priority)
+	if priority == models.PriorityUnset || !focused {
+		return val
+	}
+	return theme.SelectorOptionSelectedStyle.Render(val)
+}
+
+// formPriorityValue is the one spelling of a priority the form and its picker
+// share: muted (none) for unset, else the priority's icon and label.
+func formPriorityValue(priority int) string {
+	if priority == models.PriorityUnset {
+		return theme.MutedStyle.Render("(none)")
+	}
+	icon := theme.GetPriorityStyle(priority).Render(theme.PriorityIcon(priority))
+	return icon + " " + formPriorityLabel(priority)
 }
 
 // formPriorityLabel returns the human-readable label for a priority value.

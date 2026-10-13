@@ -37,7 +37,7 @@ func TestCaptureFooterSpecContainsRequiredActions(t *testing.T) {
 		{
 			name:         "help",
 			helpExpanded: true,
-			required:     []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? close syntax", "Esc close syntax"},
+			required:     []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "?/Esc close syntax"},
 		},
 		{
 			name:           "confirmation",
@@ -73,7 +73,7 @@ func TestCaptureFooterSpecStatePriority(t *testing.T) {
 	if got := CaptureGuidanceSpec(false, true, true, false, 0, true); GuidanceHintText(got.Hints[0]) != "Tab/Enter accept" {
 		t.Fatalf("autocomplete must take precedence over help, got %+v", got.Hints)
 	}
-	if got := CaptureGuidanceSpec(false, false, true, false, 0, true); GuidanceHintText(got.Hints[len(got.Hints)-1]) != "Esc close syntax" {
+	if got := CaptureGuidanceSpec(false, false, true, false, 0, true); GuidanceHintText(got.Hints[len(got.Hints)-1]) != "?/Esc close syntax" {
 		t.Fatalf("expanded syntax expected, got %+v", got.Hints)
 	}
 }
@@ -114,7 +114,7 @@ func TestCaptureFooterSyntaxOverflowAdvertisesScrolling(t *testing.T) {
 		entries = append(entries, GuidanceHintText(hint))
 	}
 	guidance := strings.Join(entries, FooterHelpSeparator)
-	for _, want := range []string{"Ctrl+J/K scroll", "PgUp/PgDn page", "? close syntax", "Esc close syntax"} {
+	for _, want := range []string{"Ctrl+J/K scroll", "PgUp/PgDn page", "?/Esc close syntax"} {
 		if !strings.Contains(guidance, want) {
 			t.Errorf("overflow syntax guidance = %q, want %q", guidance, want)
 		}

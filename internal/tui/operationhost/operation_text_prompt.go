@@ -60,11 +60,13 @@ func NameTextPromptOptions() OperationTextPromptOptions {
 // emptying the buffer is how a note is cleared, and it carries the model's own
 // bound rather than the name prompt's: models.ValidateResumeNote is what the
 // stored note must pass, and a prompt that let a longer note be typed would be
-// promising something the writer refuses.
+// promising something the writer refuses. Its subtitle is the task's title, not
+// the stored note the buffer already holds, so it says so.
 func ResumeNoteTextPromptOptions() OperationTextPromptOptions {
 	return OperationTextPromptOptions{
-		MaxLength:    models.MaxResumeNoteLength,
-		AcceptsEmpty: true,
+		MaxLength:     models.MaxResumeNoteLength,
+		AcceptsEmpty:  true,
+		SubtitleLabel: "Task",
 	}
 }
 

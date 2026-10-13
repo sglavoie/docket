@@ -81,14 +81,13 @@ func (p *formPriorityPicker) render(width, current int) string {
 
 	var content strings.Builder
 	for i, e := range formPriorityEntries {
-		icon := theme.GetPriorityStyle(e.priority).Render(theme.PriorityIcon(e.priority))
 		isCurrent := e.priority == current
 		currentMark := "  "
 		if isCurrent {
 			currentMark = "● "
 		}
 		keyHint := theme.MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
-		line := fmt.Sprintf(" %s%s %s %s", currentMark, icon, e.label, keyHint)
+		line := fmt.Sprintf(" %s%s %s", currentMark, formPriorityValue(e.priority), keyHint)
 		lineWidth := lipgloss.Width(line)
 		if lineWidth < innerWidth-4 {
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)
