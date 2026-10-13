@@ -1,0 +1,34 @@
+{
+  "name": "footer-hints-at-the-floor",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "hold the workflow prefix at the narrowest terminal tt runs in", "key": "w" },
+    { "type": "assert", "label": "the two planning collections still lead under Plan", "assert": "contains", "value": "Plan: n next · t today" },
+    { "type": "assert", "label": "and the lifecycle states open under Status", "assert": "contains", "value": "Status: i inbox" },
+    { "type": "assert", "assert": "contains", "value": "b backlog" },
+    { "type": "assert", "assert": "contains", "value": "g doing" },
+    { "type": "assert", "assert": "contains", "value": "w waiting" },
+    { "type": "assert", "assert": "contains", "value": "p paused" },
+    { "type": "assert", "assert": "contains", "value": "m someday" },
+    { "type": "assert", "label": "the third row is what keeps Done, the entry a day is closed with", "assert": "contains", "value": "d done" },
+    { "type": "assert", "assert": "contains", "value": "c canceled" },
+    { "type": "assert", "label": "the way out survives beside all ten", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the chord", "key": "esc" },
+    { "type": "assert", "label": "the footer gives its rows back", "assert": "not_contains", "value": "Status: i inbox" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open capture over the same floor", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Enter create" },
+    { "type": "assert", "assert": "contains", "value": "Ctrl+N create another" },
+    { "type": "assert", "assert": "contains", "value": "Ctrl+E create & edit" },
+    { "type": "assert", "assert": "contains", "value": "? syntax" },
+    { "type": "assert", "label": "the project switch outranks the entries drawn ahead of it", "assert": "contains", "value": "Ctrl+P project" },
+    { "type": "assert", "label": "and paste, which the terminal already answers, is the first entry shed", "assert": "not_contains", "value": "Ctrl+V paste" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

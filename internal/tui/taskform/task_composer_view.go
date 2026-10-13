@@ -272,19 +272,25 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// promise something only an edit can deliver.
 		spec = chrome.RequiredExitGuidanceSpec(
 			"Enter create", chrome.DraftEscapeHint(m.HasDraft()),
-			"Alt+N next problem", "Alt+P previous problem", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax",
+			"Alt+N next problem", "Alt+P previous problem", "Ctrl+E create & edit",
 		)
+		spec.Hints = append(spec.Hints, chrome.CapturePasteHint())
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(10, "? syntax")...)
 	}
 	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
 		if task, _, _ := m.MatchingCaptureTask(); task != nil {
 			spec.Hints = append(spec.Hints, chrome.NewGuidanceHint("Ctrl+O inspect match", 0, false))
 		}
 		spec.Hints = append(spec.Hints, chrome.NewGuidanceHint("Ctrl+N create another", 0, false))
-		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100,
-			"Shift+Enter new line", m.expansionHint(),
-		)...)
+		// Selection order is not display order: the project switch outranks the
+		// two entries drawn ahead of it, since a capture filed to the wrong
+		// project is the mistake this footer can still prevent.
+		spec.Hints = append(spec.Hints,
+			chrome.NewGuidanceHint("Shift+Enter new line", 102, false),
+			chrome.NewGuidanceHint(m.expansionHint(), 101, false),
+		)
 		if m.Preset.AllowProjectSwitch && len(m.Preset.AllProjects) > 1 {
-			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(102, "Ctrl+P project")...)
+			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100, "Ctrl+P project")...)
 		}
 	}
 	// No supplemental naming the panel: the divider above already opens with

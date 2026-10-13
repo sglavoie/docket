@@ -118,8 +118,9 @@ workspace pulse disappears first; the comparison then sheds `(30d)`, then
 `median`, and finally disappears before required interaction context shortens.
 
 Contextual guidance is made of complete `key action` entries. Browse states use
-one row; editing, adding, confirming, autocomplete, expanded detail, and pending
-chords may use two. Required commit and cancellation controls survive before
+one row; editing, adding, confirming, autocomplete, and expanded detail may use
+two, and a pending chord may use three, which is what lets `w` name all ten of
+its destinations, Done included, at the narrowest terminal. Required commit and cancellation controls survive before
 optional hints, and they survive whole at the narrowest terminal `tt` runs in,
 so the way out of a state is never half a sentence. Transient pickers and action
 sheets own their local guidance while leaving the host title and workspace pulse

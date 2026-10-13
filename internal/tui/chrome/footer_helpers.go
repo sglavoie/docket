@@ -33,11 +33,28 @@ type GuidanceHint struct {
 // GuidanceSpec describes the persistent controls for one interaction state.
 // Hints retain declaration order when rendered. Supplemental is optional
 // state data (for example a scroll percentage), not an action. Rows is clamped
-// to the product's one- or two-row guidance budget; zero means one row.
+// to the product's guidance budget of one to MaxGuidanceRows; zero means one
+// row.
 type GuidanceSpec struct {
 	Hints        []GuidanceHint
 	Supplemental string
 	Rows         int
+}
+
+// MaxGuidanceRows is the tallest guidance block the packer will lay out. Only a
+// pending chord asks for it: its entries are the whole answer to the prefix
+// just pressed, so shedding one hides a key rather than a convenience.
+const MaxGuidanceRows = 3
+
+// capturePastePriority ranks `Ctrl+V paste` behind every other optional capture
+// hint, the composer's own included: the terminal's paste already works, so it
+// is the entry a narrow footer can best afford to lose.
+const capturePastePriority = 1000
+
+// CapturePasteHint is that entry, for the capture states built outside
+// CaptureGuidanceSpec.
+func CapturePasteHint() GuidanceHint {
+	return NewGuidanceHint("Ctrl+V paste", capturePastePriority, false)
 }
 
 // CaptureGuidanceSpec selects the controls for the composer's current
@@ -59,9 +76,9 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 		spec.Hints = []GuidanceHint{
 			NewGuidanceHint("Enter create", 0, true),
 			NewGuidanceHint("Ctrl+E create & edit", 1, false),
-			NewGuidanceHint("Ctrl+V paste", 2, false),
-			NewGuidanceHint("Ctrl+J/K scroll", 3, false),
-			NewGuidanceHint("PgUp/PgDn page", 4, false),
+			CapturePasteHint(),
+			NewGuidanceHint("Ctrl+J/K scroll", 2, false),
+			NewGuidanceHint("PgUp/PgDn page", 3, false),
 			NewGuidanceHint("? close syntax", 0, true),
 			NewGuidanceHint("Esc close syntax", 0, true),
 		}
@@ -70,7 +87,7 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 		spec.Hints = []GuidanceHint{
 			NewGuidanceHint("Enter create", 0, true),
 			NewGuidanceHint("Ctrl+E create & edit", 1, false),
-			NewGuidanceHint("Ctrl+V paste", 2, false),
+			CapturePasteHint(),
 			NewGuidanceHint("? close syntax", 0, true),
 			NewGuidanceHint("Esc close syntax", 0, true),
 		}
@@ -78,8 +95,8 @@ func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, synta
 		spec.Hints = []GuidanceHint{
 			NewGuidanceHint("Enter create", 0, true),
 			NewGuidanceHint("Ctrl+E create & edit", 1, false),
-			NewGuidanceHint("Ctrl+V paste", 2, false),
-			NewGuidanceHint("? syntax", 3, false),
+			CapturePasteHint(),
+			NewGuidanceHint("? syntax", 2, false),
 			NewGuidanceHint(DraftEscapeHint(hasDraft), 0, true),
 		}
 	}
@@ -258,10 +275,7 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	if width <= 0 {
 		width = 80
 	}
-	rows := 1
-	if spec.Rows >= 2 {
-		rows = 2
-	}
+	rows := min(max(spec.Rows, 1), MaxGuidanceRows)
 
 	type candidate struct {
 		index   int

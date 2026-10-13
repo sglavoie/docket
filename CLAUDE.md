@@ -183,7 +183,9 @@ destination, since the eight lifecycle ones spell their own status, and the
 preview leaves it to that row; Peek leads its summary with it. That division is `HintGroup`/`GuidanceHint.Group` metadata
 over the one binding, changing no sequence and no dispatch, and a heading rides
 its run's first entry rather than standing alone, so the packer cannot strand
-one over members it shed.
+one over members it shed. A pending chord alone asks for
+`chrome.MaxGuidanceRows`, three, which holds all ten at the floor; `HintKeep`
+ranks `wd` with its run's head, shed last and never drawn under `Plan:`.
 
 The active interaction owns guidance. `route.ActiveGuidanceOwner` resolves it in
 dispatch order — shell confirmation, shell-mounted modal, pending chord, then
@@ -442,6 +444,10 @@ falls to the compact wrapped run rather than clipping the grouped one, because a
 truncated group list reads as a complete one. `Ctrl+F` is the composer's other
 presentation and declares no layout, so the expanded form owns the whole content
 area.
+
+Capture's footer sheds by `Priority`, moving no drawn entry: it keeps `Ctrl+N`,
+`Ctrl+E`, `? syntax`, `Ctrl+P`, `Ctrl+F`, `Shift+Enter`, and
+`chrome.CapturePasteHint` last.
 
 Capture completion and syntax help follow the caret; feedback recall holds 20
 session events. Details: `docs/architecture/capture-and-outline-editor.md`.

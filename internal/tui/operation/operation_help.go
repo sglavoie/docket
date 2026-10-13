@@ -205,11 +205,13 @@ func DisplayKeysForOperation(strategy InputStrategy, operationID OperationID) st
 // ChordHint is one which-key entry: the single next key and what it does.
 // Group is the presentation division the binding declared, carried on every
 // member rather than on the first of a run, so a projection decides where a
-// heading falls and the registry only says what belongs together.
+// heading falls and the registry only says what belongs together. Keep is the
+// binding's HintKeep, read the same way.
 type ChordHint struct {
 	Key    string
 	Label  string
 	Group  string
+	Keep   bool
 	Dimmed bool
 }
 
@@ -251,13 +253,13 @@ func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 		if !registry.chordSubtreeIsApplicable(strategy, child, ctx) {
 			continue
 		}
-		var label, group string
+		var hint ChordHint
 		if child.terminal() {
-			label, group = registry.chordTerminalHint(strategy, child, ctx)
+			hint = registry.chordTerminalHint(strategy, child, ctx)
 		} else {
-			label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
+			hint.Label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
 		}
-		hint := ChordHint{Key: key, Label: label, Group: group}
+		hint.Key = key
 		if decorate != nil {
 			path := append(append([]string(nil), prefix...), key)
 			hint = decorate(path, hint)
@@ -274,23 +276,25 @@ func (registry *OperationRegistry) chordTerminalHint(
 	strategy InputStrategy,
 	node *inputChordNode,
 	ctx CommandContext,
-) (string, string) {
+) ChordHint {
 	for _, index := range node.bindings {
 		binding := strategy.Bindings[index]
 		descriptor, exists := registry.Descriptor(binding.OperationID)
 		if !exists || !descriptor.Applicable(ctx) {
 			continue
 		}
+		hint := ChordHint{Group: binding.HintGroup, Keep: binding.HintKeep}
 		switch {
 		case binding.HintLabel != "":
-			return binding.HintLabel, binding.HintGroup
+			hint.Label = binding.HintLabel
 		case binding.FooterLabel != "":
-			return binding.FooterLabel, binding.HintGroup
+			hint.Label = binding.FooterLabel
 		default:
-			return strings.ToLower(descriptor.Label), binding.HintGroup
+			hint.Label = strings.ToLower(descriptor.Label)
 		}
+		return hint
 	}
-	return "", ""
+	return ChordHint{}
 }
 
 func (registry *OperationRegistry) chordNodeForPrefix(id InputStrategyID, prefix []string) *inputChordNode {

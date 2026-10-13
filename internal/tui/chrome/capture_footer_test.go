@@ -78,6 +78,35 @@ func TestCaptureFooterSpecStatePriority(t *testing.T) {
 	}
 }
 
+// TestCaptureFooterShedsPasteFirst holds the one reprioritisation every capture
+// state shares: paste is drawn where it always was and selected last, so it is
+// the entry a narrow footer loses before any other.
+func TestCaptureFooterShedsPasteFirst(t *testing.T) {
+	for name, spec := range map[string]GuidanceSpec{
+		"normal":          CaptureGuidanceSpec(false, false, false, false, 0, false),
+		"syntax":          CaptureGuidanceSpec(false, false, true, false, 0, false),
+		"syntax overflow": CaptureGuidanceSpec(false, false, true, true, 50, false),
+	} {
+		paste, found := -1, false
+		for index, hint := range spec.Hints {
+			if GuidanceHintText(hint) == "Ctrl+V paste" {
+				paste, found = index, true
+			}
+		}
+		if !found {
+			t.Fatalf("%s guidance declares no paste entry: %+v", name, spec.Hints)
+		}
+		if GuidanceHintText(spec.Hints[paste-1]) != "Ctrl+E create & edit" {
+			t.Fatalf("%s guidance moved paste out of its drawn position: %+v", name, spec.Hints)
+		}
+		for index, hint := range spec.Hints {
+			if index != paste && !hint.Required && hint.Priority >= spec.Hints[paste].Priority {
+				t.Fatalf("%s guidance ranks %q behind paste", name, GuidanceHintText(hint))
+			}
+		}
+	}
+}
+
 func TestCaptureFooterSyntaxOverflowAdvertisesScrolling(t *testing.T) {
 	spec := CaptureGuidanceSpec(false, false, true, true, 73, true)
 	entries := make([]string, 0, len(spec.Hints))

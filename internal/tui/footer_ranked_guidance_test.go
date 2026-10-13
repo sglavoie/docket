@@ -12,18 +12,19 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines holds the shell's
-// chord footer to the minimum terminal width. It stays in the shell because
+// TestPendingChordGuidanceUsesAtMostThreeNonwrappingHintLines holds the shell's
+// chord footer to the minimum terminal width, where the three-row budget is what
+// lets the workflow chord name every one of its ten entries. It stays in the shell because
 // pendingChordGuidanceSpec takes a ChordHint, which belongs to the operation
 // layer above chrome; chrome's own packing invariants live beside the packer in
 // internal/tui/chrome/footer_helpers_test.go.
-func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
+func TestPendingChordGuidanceUsesAtMostThreeNonwrappingHintLines(t *testing.T) {
 	hints := workflowChordHintsForTest()
 
 	spec := pendingChordGuidanceSpec("w", hints)
 	lines := chrome.GuidanceLines(spec, chrome.MinTerminalWidth)
-	if len(lines) == 0 || len(lines) > 2 {
-		t.Fatalf("pending chord lines = %d, want 1..2: %q", len(lines), lines)
+	if len(lines) == 0 || len(lines) > chrome.MaxGuidanceRows {
+		t.Fatalf("pending chord lines = %d, want 1..%d: %q", len(lines), chrome.MaxGuidanceRows, lines)
 	}
 	for _, line := range lines {
 		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
@@ -39,7 +40,7 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		entry := hint.Key + " " + hint.Label
 		index := strings.Index(joined, entry)
 		if index < 0 {
-			continue
+			t.Fatalf("pending chord lines shed %q at the minimum width: %q", entry, lines)
 		}
 		if index <= last {
 			t.Fatalf("declaration order changed around %q in %q", entry, joined)
@@ -48,8 +49,8 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	}
 
 	rendered := chrome.RenderGuidance(spec, chrome.MinTerminalWidth)
-	if got := lipgloss.Height(rendered); got > 3 {
-		t.Fatalf("pending chord footer height = %d, want divider plus at most two rows", got)
+	if got := lipgloss.Height(rendered); got > chrome.MaxGuidanceRows+1 {
+		t.Fatalf("pending chord footer height = %d, want divider plus at most three rows", got)
 	}
 	for line := range strings.SplitSeq(rendered, "\n") {
 		if got := lipgloss.Width(line); got > chrome.MinTerminalWidth {
@@ -84,6 +85,37 @@ func TestPendingChordGuidanceNeverStrandsADivisionHeading(t *testing.T) {
 	}
 }
 
+// TestPendingChordGuidanceShedsDoneLastOfItsRun holds the selection order the
+// floor never exercises: every width down to the one that can no longer hold
+// the Status heading's own entry. Done is the entry a day is closed with, so
+// while that run is drawn at all Done is in it, and it never outlives the
+// heading it belongs under.
+func TestPendingChordGuidanceShedsDoneLastOfItsRun(t *testing.T) {
+	hints := workflowChordHintsForTest()
+
+	shedSomething := false
+	for width := chrome.MinTerminalWidth; width >= 12; width-- {
+		joined := ansi.Strip(strings.Join(chrome.GuidanceLines(pendingChordGuidanceSpec("w", hints), width), "\n"))
+		hasStatus := strings.Contains(joined, chrome.StatusHintGroup+" i inbox")
+		hasDone := strings.Contains(joined, "d done")
+		if hasDone && !hasStatus {
+			t.Fatalf("width %d draws Done outside its Status run:\n%s", width, joined)
+		}
+		if strings.Contains(joined, "b backlog") && !hasDone {
+			t.Fatalf("width %d shed Done ahead of another Status entry:\n%s", width, joined)
+		}
+		if hasDone && !strings.Contains(joined, "c canceled") {
+			shedSomething = true
+		}
+		if hasDone && strings.Index(joined, "d done") < strings.Index(joined, "i inbox") {
+			t.Fatalf("width %d moved Done out of lifecycle order:\n%s", width, joined)
+		}
+	}
+	if !shedSomething {
+		t.Fatal("no swept width kept Done while shedding a later entry, so the priority was never exercised")
+	}
+}
+
 // workflowChordHintsForTest is the workflow chord as its strategy declares it:
 // the two planning collections under Plan, then the eight lifecycle states
 // under Status, each entry carrying its own group so the shell decides where a
@@ -98,7 +130,7 @@ func workflowChordHintsForTest() []operation.ChordHint {
 		{Key: "w", Label: "waiting", Group: chrome.StatusHintGroup},
 		{Key: "p", Label: "paused", Group: chrome.StatusHintGroup},
 		{Key: "m", Label: "someday", Group: chrome.StatusHintGroup},
-		{Key: "d", Label: "done", Group: chrome.StatusHintGroup},
+		{Key: "d", Label: "done", Group: chrome.StatusHintGroup, Keep: true},
 		{Key: "c", Label: "canceled", Group: chrome.StatusHintGroup},
 	}
 }

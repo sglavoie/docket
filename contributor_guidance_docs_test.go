@@ -1274,7 +1274,17 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// trimmed to pay for it.
 	// Caret-aware capture/help and bounded feedback recall add two rules;
 	// their mechanisms remain in the architecture guide.
-	const budget = 74488
+	// Raise from 74488 to 74835 for the footer's shed order. 347 bytes buy two
+	// rules nothing in the code says out loud. A pending chord is the one spec
+	// asking for the packer's third row, and `HintKeep` ranks `wd` with the head
+	// of its own run rather than first, since an entry kept ahead of the one
+	// carrying `Status:` would be drawn under `Plan:`. And capture's footer
+	// sheds by priority while drawing in declaration order, so a contributor
+	// reordering the hints to change what a narrow row keeps moves entries and
+	// changes nothing about which one goes. The mechanism lives in
+	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
+	// pay for it.
+	const budget = 74835
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

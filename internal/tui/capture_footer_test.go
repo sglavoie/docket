@@ -7,19 +7,32 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
-// TestCaptureFooterWrapsAt60ColumnsWithoutTruncation verifies that the full
-// normal-state capture footer survives the 60-column minimum width: every
-// action wraps onto additional footer rows rather than being clipped. A render
-// audit confirms no required text was truncated, and all five actions remain
-// present in the composed output.
+// TestCaptureFooterWrapsAt60ColumnsWithoutTruncation verifies that the
+// normal-state capture footer survives the 60-column minimum width: its actions
+// wrap onto a second footer row rather than being clipped, and a render audit
+// confirms no required text was truncated. Two rows cannot hold every entry
+// there, so the claim is also which one goes: the project switch stays wherever
+// there is a second project to switch to, and paste, which the terminal already
+// answers, is the first entry shed.
 func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.viewNav.width = 60
 	app.viewNav.height = 20
+	preset, ok := app.captureComposerPreset(project, app.taskWorkspaceProjects())
+	if !ok {
+		t.Fatal("capture preset should resolve for the test project")
+	}
+	// The workspace holds one project, so the second is supplied here: the
+	// switch is advertised only where there is somewhere to switch to.
+	preset.AllProjects = []*models.Project{project, testutil.NewTestProjectWithTasks("Other Project")}
 
-	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
+	handled, _ := app.handleViewMessages(taskform.ShowTaskComposerMsg{Preset: preset})
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
@@ -30,10 +43,15 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	}
 
 	plain := ansi.Strip(content)
-	for _, action := range []string{"Enter create", "Ctrl+E create & edit", "Ctrl+V paste", "? syntax", "Esc cancel"} {
+	for _, action := range []string{
+		"Enter create", "Ctrl+E create & edit", "? syntax", "Esc cancel", "Ctrl+N create another", "Ctrl+P project",
+	} {
 		if !strings.Contains(plain, action) {
 			t.Fatalf("expected capture action %q at 60 columns, got:\n%s", action, plain)
 		}
+	}
+	if strings.Contains(plain, "Ctrl+V paste") {
+		t.Fatalf("paste must be the first capture action shed at 60 columns, got:\n%s", plain)
 	}
 }
 

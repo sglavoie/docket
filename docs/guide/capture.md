@@ -133,7 +133,7 @@ validated before one atomic transaction is committed.
   the Comments one.
 
 Creating work in Doing or Waiting without a check-in interrupts nothing. The
-footer says so once the creation commits — `No check-in: <task> · menu: Set up
+footer says so once the creation commits — `No check-in: <task> · Ctrl+M: Set up
 check-ins`, or `No check-in: N tasks` when one capture committed several — and
 the route it names is the keyless **Set up check-ins** menu entry, not a key,
 because the new task may not be under the cursor. A creation that already
@@ -275,6 +275,14 @@ values. The `Ctrl+F` hint names the unsupported action while you type, or
 says `single task only` for a multiline batch. Pressing it still names the
 unsupported action and keeps the original draft intact;
 submit that line with `Enter` to keep all its attributes.
+
+The capture footer has two rows, and a narrow terminal cannot hold every entry
+in them. `Enter create` and the `Esc` entry always stay. The rest are kept in
+this order, whatever order they are drawn in: `Ctrl+N create another`,
+`Ctrl+E create & edit`, `? syntax`, `Ctrl+P project` when there is a second
+project to switch to, the `Ctrl+F` entry, `Shift+Enter new line`, and last
+`Ctrl+V paste`, which is the first to go because the terminal's own paste
+already works. A key the footer shed still answers.
 
 The expanded form's due-date presets show the resolved weekday and calendar
 date beside each shortcut. `+30 days` adds exactly 30 calendar days, matching

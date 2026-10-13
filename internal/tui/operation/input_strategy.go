@@ -33,7 +33,9 @@ const (
 // HintGroup names the presentation division a which-key row draws this binding
 // under. It is metadata over the one declaration, never a second key list: it
 // changes no sequence, no operation identity, and no dispatch path, and an empty
-// group means the binding stands ungrouped.
+// group means the binding stands ungrouped. HintKeep is the same kind of
+// metadata: it asks a which-key row too narrow for its whole run to shed this
+// binding last of that run, and moves it nowhere in the row.
 //
 // SharedKey admits the binding onto a key path another operation already owns.
 // Every binding on that path must declare it, and resolution picks the first
@@ -49,6 +51,7 @@ type OperationKeyBinding struct {
 	FooterLabel    string
 	HintLabel      string
 	HintGroup      string
+	HintKeep       bool
 	PresetValue    any
 	HasPresetValue bool
 	SharedKey      bool

@@ -285,7 +285,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "waiting", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateWaiting, HasPresetValue: true},
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "paused", HintGroup: chrome.StatusHintGroup, PresetValue: models.StatePaused, HasPresetValue: true},
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateSomeday, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateDone, HasPresetValue: true},
+			{OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, PresetValue: models.StateDone, HasPresetValue: true},
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateCanceled, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "0"}, DisplayKey: "f!0-3", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "1"}, DisplayKey: "f!0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},

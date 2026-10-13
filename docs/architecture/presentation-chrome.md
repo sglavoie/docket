@@ -67,9 +67,19 @@ then disappears before required interaction context is truncated.
 
 `GuidanceHint` and `GuidanceSpec` are the persistent control grammar. Providers
 emit complete key/label entries with priority and required status. Browse states
-have a one-row budget; edit, add, confirm, autocomplete, expanded-detail, and
-pending-chord states may use two. The renderer reserves required entries first,
+have a one-row budget; edit, add, confirm, autocomplete, and expanded-detail
+states may use two. A pending chord alone asks for `chrome.MaxGuidanceRows`,
+three, which is the clamp `guidanceSegmentLines` applies to every spec: a
+chord's entries are the whole answer to the prefix just pressed, and three rows
+are what hold the `w` chord's ten at `chrome.MinTerminalWidth`. The footer
+already grows upward and `ShellFrameMetrics` measures it, so no view reserves
+anything for the third row. The renderer reserves required entries first,
 preserves provider order, and drops supplemental state before controls.
+Selection order is `Priority` and never display order, so a provider
+reprioritises without moving an entry: capture draws `Ctrl+V paste` where it
+always stood and ranks it behind every other optional hint through
+`chrome.CapturePasteHint`, and the composer ranks `Ctrl+P project` ahead of the
+`Ctrl+F` and `Shift+Enter` entries drawn before it.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
@@ -85,6 +95,13 @@ head it charges the key to and preserves it through the cut, and
 first member of a run carries one — the shell compares each hint's group against
 the previous one — so the row reads `Plan: n next · t today · Status: i inbox`
 rather than repeating the word ten times.
+
+`OperationKeyBinding.HintKeep` is the one exception to a chord selecting in
+declaration order, and `wd` alone declares it. `pendingChordGuidanceSpec` gives
+such an entry the priority of its run's first member: behind the entry carrying
+the heading, so Done is never drawn under `Plan:`, and ahead of every other
+member of that run, so a footer too narrow for all eight states sheds Done
+last. Its slot in the row does not move.
 
 #### One active instruction set
 

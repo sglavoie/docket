@@ -194,22 +194,31 @@ func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 // rest of the run stays bare. The heading rides that entry rather than standing
 // as a hint of its own, so the packer keeps or drops the two together and a
 // division the row cannot show is never announced.
+//
+// A chord's entries are the whole answer to the prefix just pressed, so it asks
+// for the packer's full budget. Selection follows declaration order except for
+// an entry its binding asked to keep, which ranks with the head of its own run:
+// behind the entry carrying the heading, so it is never drawn under another
+// division's name, and ahead of every other member of that run.
 func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome.GuidanceSpec {
-	spec := chrome.GuidanceSpec{Rows: 2}
+	spec := chrome.GuidanceSpec{Rows: chrome.MaxGuidanceRows}
 	if prefix = strings.TrimSpace(prefix); prefix != "" {
 		spec.Hints = append(spec.Hints, chrome.GuidanceHint{Key: prefix + "…"})
 	}
-	group := ""
+	group, runPriority := "", 0
 	for index, hint := range hints {
-		heading := ""
-		if hint.Group != group {
-			heading, group = hint.Group, hint.Group
+		heading, priority := "", index+1
+		if hint.Group != group || index == 0 {
+			heading, group, runPriority = hint.Group, hint.Group, priority
+		}
+		if hint.Keep {
+			priority = runPriority
 		}
 		spec.Hints = append(spec.Hints, chrome.GuidanceHint{
 			Key:      hint.Key,
 			Label:    hint.Label,
 			Group:    heading,
-			Priority: index + 1,
+			Priority: priority,
 			Dimmed:   hint.Dimmed,
 		})
 	}
