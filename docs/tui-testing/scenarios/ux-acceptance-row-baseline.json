@@ -9,12 +9,12 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "launch is Active Projects, All", "assert": "contains", "value": "Active Projects · All" },
 
-    { "type": "assert", "label": "every lifecycle lane the fixture populates is grouped", "assert": "contains", "value": "▾  @ Pinned  (1)" },
-    { "type": "assert", "assert": "contains", "value": "▾  @ Doing  (2)" },
-    { "type": "assert", "label": "Review is promoted as an All-mode lane, not a state", "assert": "contains", "value": "▾  @ Review  (1)" },
-    { "type": "assert", "assert": "contains", "value": "▾  @ Inbox  (3)" },
-    { "type": "assert", "assert": "contains", "value": "▾  @ Backlog  (6)" },
-    { "type": "assert", "assert": "contains", "value": "▾  @ Waiting  (2)" },
+    { "type": "assert", "label": "every lifecycle lane the fixture populates is grouped", "assert": "contains", "value": "▾  Pinned  (1)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Doing  (2)" },
+    { "type": "assert", "label": "Review is promoted as an All-mode lane, not a state", "assert": "contains", "value": "▾  Review  (1)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Inbox  (3)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Backlog  (6)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Waiting  (2)" },
 
     { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform-delivery]", "count": 6 },
     { "type": "assert", "assert": "count_contains", "value": "[ux-client-rollout]", "count": 2 },
@@ -63,7 +63,7 @@
 
     { "type": "resize", "label": "a wider terminal keeps the same composition", "width": 120, "height": 40 },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "assert", "assert": "contains", "value": "▾  @ Review  (1)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Review  (1)" },
     { "type": "assert", "label": "120 columns is enough for the title the deadline used to crowd out", "assert": "not_clipped", "value": "Restore the overdue billing reconciliation export before the audit closes" }
   ]
 }

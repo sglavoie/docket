@@ -4,15 +4,15 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "toggle the first task", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "key", "label": "move past a task without selecting it", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "reach a later task", "key": "j" },
     { "type": "key", "label": "toggle a non-adjacent task", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "label": "the row moved over stays unselected", "assert": "contains", "value": "[ ]" },
     { "type": "key", "label": "toggle the same task back off", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

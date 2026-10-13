@@ -7,7 +7,7 @@
     { "type": "key", "label": "down past its first project heading", "key": "j" },
     { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "@ Review" },
+    { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "Review  (" },
 
     { "type": "key", "label": "edit the row in place, the sigil route to the review flag", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
@@ -16,7 +16,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line" },
     { "type": "assert", "label": "the cursor was on the intended task", "assert": "contains", "value": "Alpha migration kickoff" },
-    { "type": "assert", "assert": "contains", "value": "@ Review" },
+    { "type": "assert", "assert": "contains", "value": "Review  (" },
     { "type": "assert", "label": "the review flag draws exactly one row", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -27,7 +27,7 @@
     { "type": "key", "label": "plan the flagged task into Next", "key": "n" },
     { "type": "wait" },
     { "type": "assert", "label": "planning moves the row instead of copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
-    { "type": "assert", "label": "Next outranks the review flag, emptying the lane", "assert": "not_contains", "value": "@ Review" },
+    { "type": "assert", "label": "Next outranks the review flag, emptying the lane", "assert": "not_contains", "value": "Review  (" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "planning moved the row again, so walk back to it", "key": "home" },
@@ -36,7 +36,7 @@
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "leave Next again", "key": "n" },
     { "type": "wait" },
-    { "type": "assert", "label": "the flag was never mutated, so Review reclaims the row", "assert": "contains", "value": "@ Review" },
+    { "type": "assert", "label": "the flag was never mutated, so Review reclaims the row", "assert": "contains", "value": "Review  (" },
     { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 }
   ]
 }

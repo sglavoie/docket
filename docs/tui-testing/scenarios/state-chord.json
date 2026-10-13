@@ -23,7 +23,7 @@
     { "type": "assert", "label": "the route is the keyless menu entry, never a key aimed at the cursor", "assert": "contains", "value": "Ctrl+M: Set up check-ins" },
     { "type": "assert", "label": "nothing opened, so the chord left the outline standing", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change Status" },
-    { "type": "assert", "assert": "contains", "value": "@ Waiting  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Waiting  (2)" },
     { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -41,11 +41,11 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "select the cursored task and enter multi-select", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "park the selection in Someday", "key": "m" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "@ Someday  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Someday  (2)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

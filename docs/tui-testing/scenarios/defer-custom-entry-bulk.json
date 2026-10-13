@@ -8,7 +8,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move past the Inbox group and project headers", "key": "j" },
     { "type": "key", "label": "select a second, non-adjacent task", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
 
     { "type": "key", "label": "open the date picker over the selection", "key": "@" },
     { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In" },

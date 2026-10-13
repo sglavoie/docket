@@ -28,7 +28,7 @@
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff  ~0/1?" },
 
     { "type": "key", "label": "a visual selection is the target, never the cursor", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "key", "key": "~" },
     { "type": "assert", "label": "the picker addresses the selection and names its size", "assert": "contains", "value": "Set Dependencies: 1 selected task" },
     { "type": "assert", "label": "a stored reference nobody can read is still every selected task's to drop", "assert": "contains", "value": "unavailable" },
@@ -36,10 +36,10 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "leave the picker without emitting a patch", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "leave the selection", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "assert": "not_contains", "value": "Multi-select" },
     { "type": "assert", "label": "the stored set is exactly what it was", "assert": "contains", "value": "Alpha migration kickoff  ~0/1?" },
 
     { "type": "key", "label": "now open the picker off the row itself", "key": "~" },

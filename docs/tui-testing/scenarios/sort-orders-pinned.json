@@ -16,7 +16,7 @@
     { "type": "key", "label": "past both lanes and their project headers to Build login form", "key": "down" },
     { "type": "key", "label": "pin Build login form", "key": "*" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "@ Pinned  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Pinned  (2)" },
     { "type": "assert", "label": "at one priority the newest pin leads", "assert": "contains", "value": "├── ▶   Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "└── ¿   Explore social login" },
 

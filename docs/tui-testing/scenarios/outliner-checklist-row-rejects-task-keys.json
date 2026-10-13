@@ -60,15 +60,15 @@
     { "type": "assert", "assert": "contains", "value": "Move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "a selection names task rows only", "key": "v" },
-    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "assert": "not_contains", "value": "Multi-select" },
     { "type": "assert", "assert": "contains", "value": "Move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "so does a range", "key": "V" },
-    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "assert": "not_contains", "value": "Multi-select" },
     { "type": "assert", "assert": "contains", "value": "Move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "and so does Select All", "key": "ctrl+a" },
-    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "assert": "not_contains", "value": "Multi-select" },
     { "type": "assert", "assert": "contains", "value": "Move the cursor to a task row to use this action" },
 
     { "type": "assert", "label": "no picker, editor, or Peek ever took the screen", "assert": "view", "value": "CrossProjectOutliner" },

@@ -18,7 +18,7 @@
     { "type": "assert", "label": "the launch fails closed to no lens", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "label": "and silently: a stale hint is not an error the user is owed", "assert": "not_contains", "value": "no longer available" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "label": "exactly as a lens-free launch draws it, Backlog folded", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+    { "type": "assert", "label": "exactly as a lens-free launch draws it, Backlog folded", "assert": "contains", "value": "▸  Backlog  (3)" },
     { "type": "command", "label": "opening it shows the rest of the unlensed workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" },

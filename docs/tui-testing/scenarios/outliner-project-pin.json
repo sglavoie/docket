@@ -34,7 +34,7 @@
     { "type": "key", "label": "unfolding seats the cursor on a task, so the same key means the task's pin", "key": "l" },
     { "type": "key", "key": "*" },
     { "type": "wait" },
-    { "type": "assert", "label": "the task moved into the Pinned lane, which only a task pin builds", "assert": "contains", "value": "@ Pinned  (1)" },
+    { "type": "assert", "label": "the task moved into the Pinned lane, which only a task pin builds", "assert": "contains", "value": "Pinned  (1)" },
     { "type": "key", "label": "fold the cursor's own group to read the project marker again", "key": "h" },
     { "type": "assert", "label": "and the project's own marker is untouched by it", "assert": "contains", "value": "* [client-alpha]" },
     { "type": "assert", "assert": "no_layout_issues" }

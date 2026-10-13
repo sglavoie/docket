@@ -8,7 +8,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "key", "label": "open the common-action menu for the frozen selection", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
 
@@ -29,7 +29,7 @@
     { "type": "key", "label": "dismiss bulk actions without mutating", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Bulk Actions" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

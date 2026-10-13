@@ -45,7 +45,7 @@
     { "type": "assert", "label": "a lens refused whole never installs a partial projection", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "assert": "not_contains", "value": "Client Beta · All" },
     { "type": "assert", "label": "the launch lands where a lens-free launch would have", "assert": "contains", "value": "Active Projects · 1 parked" },
-    { "type": "assert", "label": "a lens-free launch folds Backlog, whose count no longer holds the parked project's task", "assert": "contains", "value": "▸  @ Backlog  (3)" },
+    { "type": "assert", "label": "a lens-free launch folds Backlog, whose count no longer holds the parked project's task", "assert": "contains", "value": "▸  Backlog  (3)" },
     { "type": "key", "label": "open the lane", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "and silently: the pointer is a hint, not a record the user is owed an error about", "assert": "not_contains", "value": "which is parked" },

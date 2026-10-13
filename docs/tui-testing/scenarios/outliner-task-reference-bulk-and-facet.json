@@ -10,7 +10,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "onto the Client Beta task", "key": "j" },
     { "type": "key", "label": "and select that one too", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
 
     { "type": "key", "label": "one picker edits the whole selection", "key": "~" },
     { "type": "assert", "assert": "contains", "value": "Set Dependencies: 2 selected tasks" },
@@ -49,7 +49,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "key", "key": "~" },
     { "type": "assert", "label": "a reference both tasks store arrives checked", "assert": "contains", "value": "[x] Renew passport" },
     { "type": "assert", "label": "and one only part of the selection stores arrives in neither state", "assert": "contains", "value": "[-] Finish the distributed systems book" },

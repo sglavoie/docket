@@ -14,7 +14,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Flagged task" },
-    { "type": "assert", "label": "the new task renders in the All-mode Review lane", "assert": "contains", "value": "@ Review  (1)" },
+    { "type": "assert", "label": "the new task renders in the All-mode Review lane", "assert": "contains", "value": "Review  (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },
@@ -26,7 +26,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #1 Flagged task" },
-    { "type": "assert", "label": "the Review lane is gone", "assert": "not_contains", "value": "@ Review" },
+    { "type": "assert", "label": "the Review lane is gone", "assert": "not_contains", "value": "Review  (" },
     { "type": "assert", "label": "the task itself survived the clear", "assert": "contains", "value": "Flagged task" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

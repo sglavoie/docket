@@ -28,7 +28,7 @@
     { "type": "key", "label": "select the newest capture", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select a second", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "label": "the selection strip fits the minimum width", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open Move to Project over the selection", "key": "%" },

@@ -12,7 +12,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Due Date: due today" },
     { "type": "assert", "label": "due today plans Today", "assert": "contains", "value": "⊡ Today" },
-    { "type": "assert", "assert": "contains", "value": "@ Today  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Today  (1)" },
     { "type": "assert", "assert": "contains", "value": "today 1" },
     { "type": "restart", "label": "relaunch over durable state alone" },
     { "type": "assert", "label": "the membership was persisted", "assert": "contains", "value": "⊡ Today" },

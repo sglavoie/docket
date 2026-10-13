@@ -7,16 +7,16 @@
     { "type": "assert", "label": "nothing has refused yet", "assert": "not_contains", "value": "Outline edit needs All, Inbox, or Backlog" },
 
     { "type": "key", "label": "enter visual selection", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
 
     { "type": "key", "label": "Outline Edit is inapplicable under a selection", "key": "O" },
-    { "type": "assert", "label": "the selection survives untouched", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
+    { "type": "assert", "label": "the selection survives untouched", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "assert", "label": "the mode refusal never fires here", "assert": "not_contains", "value": "Outline edit needs All, Inbox, or Backlog" },
     { "type": "assert", "label": "no editor and no error surface opened", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "leave visual selection", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "assert": "not_contains", "value": "Multi-select" },
 
     { "type": "key", "label": "go to Today", "key": "g" },
     { "type": "key", "key": "t" },

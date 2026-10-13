@@ -10,7 +10,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "All draws the Pinned section", "assert": "contains", "value": "@ Pinned  (1)" },
+    { "type": "assert", "label": "All draws the Pinned section", "assert": "contains", "value": "Pinned  (1)" },
     { "type": "assert", "label": "the lane's own row stays bare", "assert": "not_contains", "value": "* Pinned marker task" },
     { "type": "assert", "assert": "no_layout_issues" },
 

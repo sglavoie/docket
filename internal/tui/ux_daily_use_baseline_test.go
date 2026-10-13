@@ -260,10 +260,10 @@ func TestUXDailyUseSelectionCountsAreStatedOnce(t *testing.T) {
 			}
 
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
-			if stated := strings.Count(screen, "MULTI-SELECT"); stated != 1 {
+			if stated := strings.Count(screen, "Multi-select"); stated != 1 {
 				t.Fatalf("the selection is stated %d times, want exactly one:\n%s", stated, screen)
 			}
-			summary := uxDailyUseScreenLine(t, screen, "MULTI-SELECT")
+			summary := uxDailyUseScreenLine(t, screen, "Multi-select")
 			if !strings.Contains(summary, fmt.Sprintf("(%d hidden)", counts.Hidden)) {
 				t.Fatalf("the summary drops the hidden half of %+v:\n%s", counts, summary)
 			}
@@ -272,7 +272,7 @@ func TestUXDailyUseSelectionCountsAreStatedOnce(t *testing.T) {
 			// the one directly under the title rather than anything the shell pins at
 			// the bottom.
 			rows := strings.Split(screen, "\n")
-			if len(rows) < 2 || !strings.Contains(rows[1], "MULTI-SELECT") {
+			if len(rows) < 2 || !strings.Contains(rows[1], "Multi-select") {
 				t.Fatalf("the summary is not the context row under the title:\n%s", screen)
 			}
 			if footer := uxClarityFooter(driver); strings.Contains(footer, "Visual selection") {

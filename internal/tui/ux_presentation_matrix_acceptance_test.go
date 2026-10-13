@@ -83,7 +83,7 @@ func assertUXLaunchPresentation(t *testing.T, driver *UITestDriver, view *outlin
 		// and the ASCII profile alike; the workspace pulse is not, since its
 		// ladder drops entries.
 		"Active Projects · All",
-		"@ Doing",
+		"Doing  (",
 		"[ux-",
 	)
 

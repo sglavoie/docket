@@ -144,7 +144,7 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 		Surface: "Outliner",
 		Scope:   scopeLabel,
 		Mode:    "All",
-		Context: []string{theme.SelectionCountStyle.Render("MULTI-SELECT: 3 selected")},
+		Context: []string{theme.SelectionCountStyle.Render("Multi-select: 3 selected")},
 		Pace:    &TodayPaceReadout{OpenCount: 8, MedianPerDay: 3},
 		Pulse:   &pulse,
 	}, 40)
@@ -153,7 +153,7 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 	if lipgloss.Width(rendered) > 40 || strings.Contains(rendered, "\n") {
 		t.Fatalf("narrow interaction title did not fit one row: width=%d %q", lipgloss.Width(rendered), plain)
 	}
-	if !strings.Contains(plain, "MULTI-SELECT") {
+	if !strings.Contains(plain, "Multi-select") {
 		t.Fatalf("interaction context was removed before pulse: %q", plain)
 	}
 	if strings.Contains(plain, "workspace:") {

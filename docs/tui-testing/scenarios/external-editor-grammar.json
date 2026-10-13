@@ -14,7 +14,7 @@
     { "type": "command", "label": "return a buffer whose title carries capture sigils", "command": "external editor sigils" },
     { "type": "assert", "label": "the edit committed as one task-line transaction", "assert": "status_contains", "value": "Edit Task Line: #3 Harness edited title" },
     { "type": "assert", "label": "that one transaction is undoable as a whole", "assert": "status_contains", "value": "u undo" },
-    { "type": "assert", "label": "the destination sigil placed the task in Next", "assert": "contains", "value": "@ Next  (1)" },
+    { "type": "assert", "label": "the destination sigil placed the task in Next", "assert": "contains", "value": "Next  (1)" },
     { "type": "assert", "label": "the sigils were consumed, not stored", "assert": "contains", "value": "Harness edited title" },
     { "type": "assert", "assert": "not_contains", "value": "$next" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

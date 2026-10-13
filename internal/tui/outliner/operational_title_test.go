@@ -58,7 +58,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		{name: "multiselect", configure: func(m *OutlinerModel) {
 			m.MultiSelectMode = true
 			m.Selected = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
-		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected"}},
+		}, wantNarrow: []string{"Multi-select"}, wantWide: []string{"Multi-select: 1 selected"}},
 		{name: "combined interaction context", configure: func(m *OutlinerModel) {
 			m.MultiSelectMode = true
 			m.Selected = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
@@ -67,7 +67,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.Filter.Priority = 1
 			adoptFilterCarriers(m)
 			m.Focus.CrossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
-		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
+		}, wantNarrow: []string{"Multi-select"}, wantWide: []string{"Multi-select: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
 	}
 
 	for _, mode := range chrome.OutlinerModeCatalog() {

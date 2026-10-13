@@ -37,7 +37,7 @@
     { "type": "wait" },
     { "type": "key", "label": "undo the bulk completion", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Bulk Change Status: Done" },
-    { "type": "assert", "label": "the selection the user still holds survives the restore", "assert": "contains", "value": "MULTI-SELECT: 3 selected" },
+    { "type": "assert", "label": "the selection the user still holds survives the restore", "assert": "contains", "value": "Multi-select: 3 selected" },
     {
       "type": "assert",
       "label": "a bulk gesture named no single target, so its undo offers no focus hint at all",

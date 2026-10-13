@@ -7,10 +7,10 @@
     { "type": "key", "label": "move through a header", "key": "j" },
     { "type": "key", "label": "move through the project header", "key": "j" },
     { "type": "key", "label": "extend to the next task", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "key", "label": "freeze the range", "key": "esc" },
     { "type": "key", "label": "move without reshaping the frozen selection", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

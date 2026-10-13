@@ -15,7 +15,7 @@ import (
 )
 
 // TestOutlinerMultiSelectStatusFitsHeight guards Bug 3: a long status line and a
-// "[MULTI-SELECT: n selected]" badge on the title both wrap in a narrow tree
+// `Multi-select: n selected` entry on the context row both wrap in a narrow tree
 // pane, and the height budget used to reserve a fixed 2 lines for the status and
 // 1 for the title, so the wrapped rows pushed the render past the pane height.
 // The status renders in the shell-pinned strip instead, so the tree content plus
@@ -56,7 +56,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	m.SetSize(72, paneHeight)
 	m.RebuildRows()
 	m.MultiSelectMode = true
-	m.SetStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
+	m.SetStatus("Change Status: 3 tasks moved to Doing, 2 of them hidden by the current view · u undo")
 
 	// 39 mirrors the ~55% tree pane width the split-pane layout allots at 72
 	// cols, which forces both the status line and the title badge to wrap.
@@ -87,12 +87,12 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 		}
 	}
 
-	// Multi-select must remain functional: the badge and status hints render.
+	// Multi-select must remain functional: the summary and the feedback render.
 	plain := ansi.Strip(rendered)
-	if !strings.Contains(plain, "MULTI-SELECT") {
+	if !strings.Contains(plain, "Multi-select") {
 		t.Errorf("multi-select badge missing from render:\n%s", plain)
 	}
-	if !strings.Contains(ansi.Strip(strip), "Space=toggle") {
+	if !strings.Contains(ansi.Strip(strip), "Change Status") {
 		t.Errorf("multi-select status hint missing from strip:\n%s", ansi.Strip(strip))
 	}
 }
@@ -166,10 +166,10 @@ func TestMultiSelectStatesItselfOnceOnTheContextRow(t *testing.T) {
 		t.Fatalf("the readout value does not carry all three numbers: %q", entry.Value)
 	}
 	full, compact := ansi.Strip(entry.Row), ansi.Strip(entry.RowCompact)
-	if full != "MULTI-SELECT: 3 selected (2 hidden)" {
+	if full != "Multi-select: 3 selected (2 hidden)" {
 		t.Fatalf("the full spelling is %q", full)
 	}
-	if compact != "MULTI-SELECT: 3 (2 hidden)" {
+	if compact != "Multi-select: 3 (2 hidden)" {
 		t.Fatalf("the compact spelling sheds the hidden count: %q", compact)
 	}
 

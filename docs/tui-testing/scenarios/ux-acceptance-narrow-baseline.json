@@ -12,7 +12,8 @@
     { "type": "assert", "label": "the smallest supported terminal keeps the navigation ranks", "assert": "contains", "value": "Enter zoom · h/Left collapse · s sections · Tab next mode" },
     { "type": "assert", "label": "and drops the lowest-ranked ones whole", "assert": "not_contains", "value": "P projects" },
     { "type": "assert", "assert": "not_contains", "value": "? help" },
-    { "type": "assert", "label": "grouping survives the width the titles do not", "assert": "contains", "value": "▾  @ Pinned  (1)" },
+    { "type": "assert", "label": "grouping survives the width the titles do not", "assert": "contains", "value": "▾  Pinned  (1)" },
+    { "type": "assert", "label": "a lane header is its name alone, with no sigil ahead of it", "assert": "not_contains", "value": "@ Pinned" },
     { "type": "assert", "label": "and the group header names its project whole", "assert": "contains", "value": "[ux-platform-delivery]" },
 
     { "type": "resize", "width": 80, "height": 24 },

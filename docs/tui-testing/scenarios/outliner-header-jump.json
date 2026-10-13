@@ -31,7 +31,7 @@
 
     { "type": "key", "label": "the ranked toggle narrows the same query back into the mode", "key": "o" },
     { "type": "key", "key": "r" },
-    { "type": "assert", "label": "the narrowed mode emits its own section header again", "assert": "contains", "value": "@ Backlog" },
+    { "type": "assert", "label": "the narrowed mode emits its own section header again", "assert": "contains", "value": "Backlog  (" },
     { "type": "key", "label": "and n reaches it", "key": "n" },
     { "type": "assert", "assert": "not_contains", "value": "No sections to jump between" },
     { "type": "assert", "assert": "no_layout_issues" }

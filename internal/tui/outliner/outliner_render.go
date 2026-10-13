@@ -202,7 +202,7 @@ type sectionHeaderOpts struct {
 	Collapsed   bool
 	AccentColor lipgloss.Style // applied to the name portion
 	Width       int            // if > 0, trailing ─ fill is added
-	Prefix      string         // inserted between indicator and name (e.g. "@ ")
+	Prefix      string         // inserted between indicator and name (e.g. "◷ ")
 	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
 }
 
@@ -249,7 +249,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	if row.PromotedTag == reviewLaneKey {
 		sectionStyle = theme.ViewModeReviewStyle
 	}
-	prefix := "@ "
+	prefix := ""
 	if row.IsComputedHeader {
 		prefix = "◷ "
 	}
@@ -409,9 +409,9 @@ func (m *OutlinerModel) RenderOutlinerChecklistRow(row OutlinerRow, selected boo
 }
 
 // noteRowGlyph marks a note in a mixed result list. It is a literal here rather
-// than an icons registry key for the same reason the section header's `@` is: it
-// names a row kind this renderer draws, not an entity the rest of the product
-// has to spell the same way.
+// than an icons registry key for the same reason the computed section header's
+// `◷` is: it names a row kind this renderer draws, not an entity the rest of
+// the product has to spell the same way.
 const noteRowGlyph = "≡"
 
 // renderOutlinerNoteRow draws one row of the search projection's notes tier. It
@@ -939,8 +939,8 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 func (m *OutlinerModel) selectionContextEntry() ViewContextEntry {
 	counts := m.SelectionCounts()
 	value := fmt.Sprintf("%d selected", counts.Total)
-	full := fmt.Sprintf("MULTI-SELECT: %d selected", counts.Total)
-	compact := fmt.Sprintf("MULTI-SELECT: %d", counts.Total)
+	full := fmt.Sprintf("Multi-select: %d selected", counts.Total)
+	compact := fmt.Sprintf("Multi-select: %d", counts.Total)
 	if counts.Hidden > 0 {
 		value = fmt.Sprintf("%d total · %d visible · %d hidden", counts.Total, counts.Visible, counts.Hidden)
 		hidden := fmt.Sprintf(" (%d hidden)", counts.Hidden)

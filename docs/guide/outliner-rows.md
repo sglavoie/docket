@@ -375,7 +375,7 @@ the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
 selection survives at zero members until `Esc` leaves the mode.
 
 How many tasks you are holding is stated in exactly one place: the second header
-row, as `MULTI-SELECT: 5 selected`, with `(2 hidden)` after it whenever the view
+row, as `Multi-select: 5 selected`, with `(2 hidden)` after it whenever the view
 is not showing all of them. Nothing repeats it lower down, which is what keeps
 the status strip free for what your next bulk gesture has to say. A narrow
 terminal shortens that segment before it drops it, and the hidden count is the

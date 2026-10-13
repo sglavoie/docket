@@ -37,7 +37,7 @@
     { "type": "key", "label": "select a second", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select a third, leaving the last row unselected", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 3 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 3 selected" },
 
     { "type": "key", "label": "open Move to Project over the whole selection", "key": "%" },
     { "type": "assert", "label": "one picker names the selection, not a task", "assert": "contains", "value": "Move to Project: 3 selected tasks" },
@@ -51,7 +51,7 @@
     { "type": "assert", "assert": "contains", "value": "[client-alpha] (3)" },
     { "type": "assert", "label": "the unselected capture stayed behind", "assert": "contains", "value": "[unfiled] (1)" },
     { "type": "assert", "assert": "contains", "value": "Sort the desk drawer" },
-    { "type": "assert", "label": "the move invalidated every identity the selection held", "assert": "not_contains", "value": "MULTI-SELECT" },
+    { "type": "assert", "label": "the move invalidated every identity the selection held", "assert": "not_contains", "value": "Multi-select" },
 
     { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: 3 tasks → client-alpha" },

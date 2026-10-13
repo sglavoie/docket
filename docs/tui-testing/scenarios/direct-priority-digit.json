@@ -39,7 +39,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move to an Inbox task", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
-    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
 
     { "type": "key", "label": "prioritize the whole selection", "key": "!" },
     { "type": "key", "key": "1" },
