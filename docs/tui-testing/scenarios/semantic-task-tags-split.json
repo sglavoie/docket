@@ -35,13 +35,17 @@
     { "type": "assert", "label": "the clear row is offered even where no context is in use", "assert": "contains", "value": "No context" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "resize", "label": "the explainer wraps instead of disappearing at narrow widths", "width": 80, "height": 24 },
-    { "type": "assert", "assert": "contains", "value": "bug › question" },
-    { "type": "assert", "label": "the complete summary remains visible inside the constrained overlay", "assert": "contains", "value": "strongest first." },
+    { "type": "resize", "label": "a terminal too short for every row gives the legend's rows to the list", "width": 80, "height": 24 },
+    { "type": "assert", "label": "the legend is given up before a list row is", "assert": "not_contains", "value": "bug › question" },
+    { "type": "assert", "assert": "not_contains", "value": "strongest first." },
     { "type": "assert", "label": "the section itself survives the narrow terminal", "assert": "contains", "value": "SEMANTIC" },
+    { "type": "assert", "label": "all six rows the legend would have summarized are on screen instead", "assert": "contains", "value": "[ ] idea  An unrefined thought. Lowest precedence." },
+    { "type": "assert", "label": "the jump hint names live keys, so it stays", "assert": "contains", "value": "jump  s semantic · c contexts · t tags" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "resize", "label": "room returns and so does the whole legend", "width": 100, "height": 35 },
+    { "type": "assert", "assert": "contains", "value": "bug › question" },
+    { "type": "assert", "assert": "contains", "value": "strongest first." },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the semantic section leads the picker, so the cursor already rests on bug", "key": "space" },

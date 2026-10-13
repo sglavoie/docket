@@ -379,7 +379,9 @@ kind of value rather than a place on screen, so in `#` they still reach a row
 the `APPLIED` section borrowed, and a section emptied by that promotion answers
 with the promoted row instead of refusing. `f#` promotes nothing, so its jumps
 are unchanged. A hint line inside the overlay names the sections that picker
-actually has — which is what drops `c` from the `f#` hint. `CONTEXTS` therefore means one thing
+actually has — which is what drops `c` from the `f#` hint. The sentence above it
+naming the semantic order is shown while there is room: a terminal too short for
+both gives its rows to the list and keeps the hint. `CONTEXTS` therefore means one thing
 only: in `#` those are the `##name` radio rows that write the field, listed above
 the tag rows the section also collects.
 

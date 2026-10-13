@@ -513,7 +513,9 @@ The note names what was committed and routes to the keyless, target-free
 `Set up check-ins` menu entry. It never names `@` or `Space`, because those
 operate on the cursor and the committed task may be a lane away by the time the
 line is read. A single task is named by a title truncated to
-`checkInFeedbackTitleWidth`; two or more are counted. `committedCheckInTitles`
+`checkInFeedbackTitleWidth`, 24 columns and the twin of the 24 runes
+`stateChangeTitleRunes` gives a status change, which is what lets that line and
+its note fit 100 columns whole; two or more are counted. `committedCheckInTitles`
 reloads each committed project and re-reads the stored task, so a target
 scheduled or moved out of active work between commit and render drops out of the
 count silently and an unreadable project contributes nothing. That recheck is
@@ -523,7 +525,11 @@ population.
 `feedbackController.appendNote` is how the note rides whatever line is already
 speaking: it splices ahead of the `· u undo` and `· Ctrl+O origin` suffixes, so
 the recovery grammar's endings stay last and the toast advances no `seq`,
-leaving the handler's own severity and flash decision untouched. With nothing to
+leaving the handler's own severity and flash decision untouched.
+`splitRecoverySuffix` is the one place those two endings are spelled, and
+`fitRecoveryFeedback` reads it at render: a line wider than its row elides its
+head with `…` and keeps the endings whole, since the keys are the half a reader
+can still press, while a line carrying neither is cut from the right. With nothing to
 ride, the note publishes itself through `setInfoStatus`, which is quiet. Taking
 no keyboard is also why the note asks nothing of interaction ownership: feedback
 is observed on every commit, owned or not.

@@ -35,7 +35,7 @@ type checkInFeedbackController struct {
 // footer is one line and the route is the actionable half of the sentence, so a
 // long title is shortened here rather than allowed to truncate the sentence's
 // tail away; the whole title is on the row and in Peek.
-const checkInFeedbackTitleWidth = 32
+const checkInFeedbackTitleWidth = 24
 
 // observeCheckInFeedbackMessage records the committed evidence a note is
 // derived from. These are results, never requests: the note answers what the

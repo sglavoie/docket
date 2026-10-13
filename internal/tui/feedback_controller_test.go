@@ -11,6 +11,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // TestFeedbackClusterHasOneHome pins the status and feedback cluster to its
@@ -224,6 +226,58 @@ func TestFeedbackControllerAppendDetailKeepsRecoveryControlsTrailing(t *testing.
 	const want = "Archive: Website · 3 tasks parked · u undo · Ctrl+O origin"
 	if controller.message != want {
 		t.Fatalf("message = %q, want %q", controller.message, want)
+	}
+}
+
+// TestFeedbackLineTooWideKeepsItsRecoveryControls pins which half a too-wide
+// line gives up. The keys are what a reader can still act on, so the head is
+// elided and both endings survive whole, at every width down to the floor; a
+// line carrying neither ending is cut from the right as it always was.
+func TestFeedbackLineTooWideKeepsItsRecoveryControls(t *testing.T) {
+	t.Parallel()
+
+	const head = "✓ Status: Draft the quarterly plan → Waiting · No check-in: Draft the quarterly plan · Ctrl+M: Set up check-ins"
+	for _, suffix := range []string{" · u undo", " · u undo · Ctrl+O origin", " · Ctrl+O origin"} {
+		for _, width := range []int{60, 72, 80, 100} {
+			got := fitRecoveryFeedback(head+suffix, width)
+			if w := lipgloss.Width(got); w != width {
+				t.Fatalf("width %d suffix %q: fitted to %d columns: %q", width, suffix, w, got)
+			}
+			if !strings.HasSuffix(got, "…"+suffix) {
+				t.Fatalf("width %d: %q does not end in the elided head and %q", width, got, suffix)
+			}
+			if !strings.HasPrefix(got, "✓ Status: Draft") {
+				t.Fatalf("width %d: %q lost the start of its head", width, got)
+			}
+		}
+	}
+
+	whole := "✓ Status: Plan → Done · u undo"
+	if got := fitRecoveryFeedback(whole, 60); got != whole {
+		t.Fatalf("a line that fits must be untouched, got %q", got)
+	}
+	if got, want := fitRecoveryFeedback(head, 40), "✓ Status: Draft the quarterly plan → Wa…"; got != want {
+		t.Fatalf("a line with no recovery controls = %q, want the tail cut %q", got, want)
+	}
+	// Too narrow for any head beside the controls: the ordinary cut still fits.
+	if got := fitRecoveryFeedback(head+" · u undo", 9); lipgloss.Width(got) > 9 {
+		t.Fatalf("a row narrower than the controls overflowed: %q", got)
+	}
+}
+
+// TestFooterFeedbackRowKeepsUndoAtTheFloor is the same rule read off the row the
+// shell actually paints, styled and filled to the terminal's width.
+func TestFooterFeedbackRowKeepsUndoAtTheFloor(t *testing.T) {
+	app := typedTestApp(t)
+	app.viewNav.width = 60
+	app.feedback.announce("Status: Draft the quarterly planning document → Waiting · No check-in · Ctrl+M: Set up check-ins · u undo", false, time.Now())
+
+	row := ansi.Strip(app.footerFeedbackLine())
+	if got := lipgloss.Width(row); got != 60 {
+		t.Fatalf("feedback row is %d columns, want 60: %q", got, row)
+	}
+	if !strings.HasSuffix(strings.TrimRight(row, " "), "… · u undo") {
+		t.Fatalf("feedback row lost its recovery control: %q", row)
 	}
 }
 

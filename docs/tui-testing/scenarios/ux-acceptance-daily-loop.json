@@ -934,7 +934,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Change Status: Chase the signed vendor addendum → Doing"
+      "value": "Change Status: Chase the signed vendor… → Doing"
     },
     {
       "type": "assert",
@@ -967,7 +967,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Change Status: Chase the signed vendor addendum → Done"
+      "value": "Change Status: Chase the signed vendor… → Done"
     },
     {
       "type": "assert",

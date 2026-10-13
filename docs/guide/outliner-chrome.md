@@ -320,7 +320,9 @@ says so in the strip instead of opening an empty overlay. See
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
-relocated task.
+relocated task. When that line is wider than the terminal, the sentence is
+shortened with `…` and the keys stay whole at its end, so a narrow window never
+hides the way back.
 
 Undoing or redoing tells you where the work went. When the entry you took back
 was aimed at one task — a state change, a reorder, an indent, a row edit, a

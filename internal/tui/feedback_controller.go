@@ -5,10 +5,12 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // feedbackController is the shell's status and feedback cluster: the one line
@@ -190,12 +192,10 @@ func (c *feedbackController) appendDetail(detail string) {
 	if detail == "" || c.undoCb == nil {
 		return
 	}
-	origin := strings.HasSuffix(c.message, " · Ctrl+O origin")
-	c.message = strings.TrimSuffix(c.message, " · Ctrl+O origin")
-	c.message = strings.TrimSuffix(c.message, " · u undo")
-	c.message += " · " + detail + " · u undo"
+	head, _, origin := splitRecoverySuffix(c.message)
+	c.message = head + " · " + detail + recoveryUndoSuffix
 	if origin {
-		c.message += " · Ctrl+O origin"
+		c.message += recoveryOriginSuffix
 	}
 }
 
@@ -212,18 +212,54 @@ func (c *feedbackController) appendNote(note string) bool {
 	if note == "" || strings.TrimSpace(c.message) == "" {
 		return false
 	}
-	origin := strings.HasSuffix(c.message, " · Ctrl+O origin")
-	c.message = strings.TrimSuffix(c.message, " · Ctrl+O origin")
-	undo := strings.HasSuffix(c.message, " · u undo")
-	c.message = strings.TrimSuffix(c.message, " · u undo")
-	c.message += " · " + note
+	head, undo, origin := splitRecoverySuffix(c.message)
+	c.message = head + " · " + note
 	if undo {
-		c.message += " · u undo"
+		c.message += recoveryUndoSuffix
 	}
 	if origin {
-		c.message += " · Ctrl+O origin"
+		c.message += recoveryOriginSuffix
 	}
 	return true
+}
+
+// The recovery grammar's two endings, in the order a line carries them. They
+// are spelled here alone: every splice and every fit reads splitRecoverySuffix.
+const (
+	recoveryUndoSuffix   = " · u undo"
+	recoveryOriginSuffix = " · Ctrl+O origin"
+)
+
+// splitRecoverySuffix peels the recovery controls off the end of a feedback
+// line, reporting which of the two it carried.
+func splitRecoverySuffix(message string) (head string, undo, origin bool) {
+	head, origin = strings.CutSuffix(message, recoveryOriginSuffix)
+	head, undo = strings.CutSuffix(head, recoveryUndoSuffix)
+	return head, undo, origin
+}
+
+// fitRecoveryFeedback fits one feedback line to width. A line ending in the
+// recovery controls gives up its head instead of its tail, since the keys are
+// the half a reader can still act on and the head names something the row and
+// Peek still show. A line carrying neither, or a row too narrow to hold them
+// beside any head at all, is cut from the right as before.
+func fitRecoveryFeedback(text string, width int) string {
+	if lipgloss.Width(text) <= width {
+		return text
+	}
+	head, undo, origin := splitRecoverySuffix(text)
+	suffix := ""
+	if undo {
+		suffix += recoveryUndoSuffix
+	}
+	if origin {
+		suffix += recoveryOriginSuffix
+	}
+	headWidth := width - lipgloss.Width(suffix)
+	if suffix == "" || headWidth < 2 {
+		return textfit.TruncateToVisualWidth(text, width)
+	}
+	return textfit.TruncateToVisualWidth(head, headWidth) + suffix
 }
 
 // armFlash starts a divider flash at the given severity and returns the

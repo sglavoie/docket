@@ -117,7 +117,9 @@ entry — never `@` or `Space`, which read a cursor the committed task may have
 left. It publishes once per transaction ID from the one deferred closure, so a
 reload, a redraw, and a duplicate delivery all say nothing, and it rides the line
 already speaking through `appendNote`, spliced ahead of `u undo` and advancing no
-`seq`, so it takes no keyboard and asks nothing of interaction ownership. Titles
+`seq`, so it takes no keyboard and asks nothing of interaction ownership.
+`splitRecoverySuffix` alone spells those two endings, and a line wider than its
+row elides its head through `fitRecoveryFeedback`, never its keys. Titles
 are re-read from the committed projects at publish, so a target scheduled or
 retired in the meantime drops out silently. Scheduling is therefore always
 explicit, and a check-in save judges locator and non-terminal state alone: no
@@ -583,7 +585,8 @@ Check-in names Enter as the editor route. It commits the row `SetCursorToID`
 lands on through the `SelectedValue` path `Enter` takes, so a filtered-out preset
 is a miss and a disabled one keeps its own reason. Its hint rides
 `PrimaryMarker`, never searchable text. The overlay reserves the guidance it
-rendered, never a fixed row count.
+rendered, never a fixed row count, and a budget short of the list's rows drops
+the tag legends whole before a row, keeping the jump hint, which names live keys.
 
 `FreezeAppliedValuesFirst` is the applied-first order and `ValueProviderTags`
 alone takes it: the factory calls it after `ConfigureValueMembership`, so it

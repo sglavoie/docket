@@ -60,20 +60,56 @@ func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 	}
 }
 
+// TestSemanticTagPickerReservesHeightForWrappedExplainer holds both halves of
+// the height budget: the legend is whole wherever the list also fits, and at
+// the floor it is the legend, not the list, that gives up its rows. The jump
+// hint names live keys, so it stays at both sizes.
 func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
-	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	rendered := picker.RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight)
-	if got := lipgloss.Height(rendered); got > chrome.MinTerminalHeight {
-		t.Fatalf("picker height = %d, want <= %d", got, chrome.MinTerminalHeight)
+	unboxed := func(rendered string) string {
+		// A wrapped explainer puts the border columns between its own words.
+		return strings.Join(strings.Fields(strings.ReplaceAll(ansi.Strip(rendered), "│", " ")), " ")
 	}
-	plain := ansi.Strip(rendered)
-	// The explainer needs three lines at this width, so the border columns sit
-	// between its own words: drop them before checking the text survived.
-	unboxed := strings.ReplaceAll(plain, "│", " ")
-	if got := strings.Join(strings.Fields(unboxed), " "); !strings.Contains(got, "semantic bug › question › epic › story › feature › idea") ||
-		!strings.Contains(got, strings.Join(strings.Fields(valuepicker.SemanticTaskTagExplainerSummary), " ")) {
-		t.Fatalf("picker dropped wrapped explainer:\n%s", plain)
-	}
+	legend := "semantic bug › question › epic › story › feature › idea"
+	summary := strings.Join(strings.Fields(valuepicker.SemanticTaskTagExplainerSummary), " ")
+
+	t.Run("the legend is whole where the list fits beside it", func(t *testing.T) {
+		picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+		rendered := picker.RenderWithin(100, 35)
+		if got := lipgloss.Height(rendered); got > 35 {
+			t.Fatalf("picker height = %d, want <= 35", got)
+		}
+		got := unboxed(rendered)
+		if !strings.Contains(got, legend) || !strings.Contains(got, summary) {
+			t.Fatalf("picker dropped the legend with room to spare:\n%s", ansi.Strip(rendered))
+		}
+		if !strings.Contains(got, "jump s semantic") {
+			t.Fatalf("picker dropped the jump hint:\n%s", ansi.Strip(rendered))
+		}
+	})
+
+	t.Run("the list wins at the floor", func(t *testing.T) {
+		picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+		rendered := picker.RenderWithin(chrome.MinTerminalWidth, chrome.MinTerminalHeight)
+		if got := lipgloss.Height(rendered); got > chrome.MinTerminalHeight {
+			t.Fatalf("picker height = %d, want <= %d", got, chrome.MinTerminalHeight)
+		}
+		got := unboxed(rendered)
+		if strings.Contains(got, "bug › question") || strings.Contains(got, summary) {
+			t.Fatalf("picker kept the legend over list rows at the floor:\n%s", ansi.Strip(rendered))
+		}
+		if !strings.Contains(got, "jump s semantic") {
+			t.Fatalf("picker dropped the jump hint, which names live keys:\n%s", ansi.Strip(rendered))
+		}
+		shown := 0
+		for _, name := range []string{"] bug", "] question", "] epic", "] story", "] feature", "] idea"} {
+			if strings.Contains(got, name) {
+				shown++
+			}
+		}
+		if shown < 3 {
+			t.Fatalf("picker shows %d semantic rows at the floor, want the rows the legend gave up:\n%s", shown, ansi.Strip(rendered))
+		}
+	})
 }
 
 func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused bool) *valuepicker.OperationValuePickerModel {

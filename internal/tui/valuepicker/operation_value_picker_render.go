@@ -194,24 +194,24 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		return rendered
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)
-	explainers := make([]string, 0, 3)
+	// The legends restate what the vocabulary means; the jump hint names keys
+	// that are live right now. They are kept apart so the first can be given up
+	// without the second.
+	legends := make([]string, 0, 2)
 	if explainer := projecthub.BehavioralProjectTagExplainer(model.provider, explainerWidth); explainer != "" {
-		explainers = append(explainers, explainer)
+		legends = append(legends, explainer)
 	}
 	if explainer := SemanticTaskTagExplainer(model.provider, explainerWidth); explainer != "" {
-		explainers = append(explainers, explainer)
+		legends = append(legends, explainer)
 	}
-	if hint := TaskTagCategoryJumpHint(
-		model.provider, model.surface.Items(), explainerWidth,
-	); hint != "" {
-		explainers = append(explainers, hint)
-	}
-	explainerBlock := strings.Join(explainers, "\n\n")
+	jumpHint := TaskTagCategoryJumpHint(model.provider, model.surface.Items(), explainerWidth)
 
 	guidance, _ := model.GuidanceSpec()
 	guidanceText := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
 
-	listHeight := min(max(len(model.surface.Rows()), 6), 15)
+	rowCount := len(model.surface.Rows())
+	listHeight := min(max(rowCount, 6), 15)
+	explainerBlock := joinExplainerBlocks(legends, jumpHint)
 	if height > 0 {
 		// Halo, frame, title, search, and the search/list gap consume eight rows.
 		// The footer is measured rather than assumed to be one, so a picker that
@@ -219,11 +219,18 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		// that move between them — takes that row out of the list instead of out
 		// of the terminal. A present explainer adds its own rows plus one
 		// separating row.
-		reservedRows := 8 + lipgloss.Height(guidanceText)
-		if explainerBlock != "" {
-			reservedRows += 1 + lipgloss.Height(explainerBlock)
+		chromeRows := 8 + lipgloss.Height(guidanceText)
+		available := height - chromeRows - explainerBlockRows(explainerBlock)
+		// The list outranks the legends: a choice that scrolled out of a
+		// one-row window is not recoverable from a sentence about the
+		// vocabulary, while every row still spells its own summary. So a
+		// budget that cannot show the rows the picker holds gives the legends'
+		// rows to the list, and whatever is rendered is what is reserved.
+		if len(legends) > 0 && available < min(rowCount, listHeight) {
+			explainerBlock = joinExplainerBlocks(nil, jumpHint)
+			available = height - chromeRows - explainerBlockRows(explainerBlock)
 		}
-		listHeight = min(listHeight, max(height-reservedRows, 1))
+		listHeight = min(listHeight, max(available, 1))
 	}
 	query := model.surface.Query().Raw
 	search := ""
@@ -264,4 +271,23 @@ func (model *OperationValuePickerModel) appendDateGuidance(km *keymap.KeyMap, se
 		keymap.Bind("a", "Type a specific "+noun, "Actions", keymap.WithGate(func() bool { return !searching }), keymap.WithFooter(4, "set "+noun, false)),
 		keymap.Bind("0", "Apply a date preset by its key", "Actions", keymap.WithGate(func() bool { return !searching && count > 0 }), keymap.WithFooter(6, "pick", false), keymap.WithFooterKey("preset key")),
 	)
+}
+
+// joinExplainerBlocks stacks the blocks drawn beneath a picker's list, legends
+// first and the jump hint last, skipping whichever is absent.
+func joinExplainerBlocks(legends []string, jumpHint string) string {
+	blocks := append([]string(nil), legends...)
+	if jumpHint != "" {
+		blocks = append(blocks, jumpHint)
+	}
+	return strings.Join(blocks, "\n\n")
+}
+
+// explainerBlockRows is what a block beneath the list costs the height budget:
+// its own rows plus the one separating it from the list, or nothing when absent.
+func explainerBlockRows(block string) int {
+	if block == "" {
+		return 0
+	}
+	return 1 + lipgloss.Height(block)
 }

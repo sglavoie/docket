@@ -32,7 +32,7 @@
     { "type": "key", "label": "completing it is a departure: All draws no terminal work, so the block the keypress was aimed from no longer holds it", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change Status: Alpha intake ready for triage → Done" },
+    { "type": "assert", "assert": "status_contains", "value": "Change Status: Alpha intake ready for … → Done" },
     { "type": "assert", "label": "nothing was vacated for a jump to return from, so a departure advertises no origin", "assert": "not_contains", "value": "Ctrl+O origin" },
     { "type": "key", "label": "and the sweep continued onto the successor the departure left behind", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Detail line belonging to the successor intake." },

@@ -1284,7 +1284,17 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// changes nothing about which one goes. The mechanism lives in
 	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
 	// pay for it.
-	const budget = 74835
+	// Raise from 74835 to 75108 for what a short frame gives up first. 273 bytes
+	// buy two rules of sacrifice a contributor would otherwise get backwards. A
+	// feedback line wider than its row loses its head and keeps `u undo` and
+	// `Ctrl+O origin`, which one helper spells, so a new ending added inline at
+	// a splice site would be the one the fit cuts. And a tag picker short of its
+	// list's rows drops its legends before a row and keeps the jump hint, the
+	// reverse of the reservation it replaces. The mechanisms live in
+	// docs/architecture/operation-grammar.md and
+	// docs/architecture/selection-and-project-tags.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 75108
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

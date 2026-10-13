@@ -202,13 +202,13 @@ func (m *AppModel) footerChromeContent() string {
 func (m *AppModel) footerFeedbackLine() string {
 	switch {
 	case m.feedback.err != nil:
-		return m.renderFooterMessageRow(theme.ErrorStatusStyle.Render(icons.Get("error") + " " + sentenceCaseFeedback(m.feedback.err.Error())))
+		return m.renderFooterMessageRow(theme.ErrorStatusStyle, icons.Get("error")+" "+sentenceCaseFeedback(m.feedback.err.Error()))
 	case m.feedback.message == "":
 		return ""
 	case m.feedback.info:
-		return m.renderFooterMessageRow(theme.InfoStatusStyle.Render("· " + m.feedback.message))
+		return m.renderFooterMessageRow(theme.InfoStatusStyle, "· "+m.feedback.message)
 	default:
-		return m.renderFooterMessageRow(theme.SuccessStyle.Render(icons.Get("success") + " " + m.feedback.message))
+		return m.renderFooterMessageRow(theme.SuccessStyle, icons.Get("success")+" "+m.feedback.message)
 	}
 }
 
@@ -229,13 +229,14 @@ func sentenceCaseFeedback(text string) string {
 
 // renderFooterMessageRow left-aligns one status line and fills the rest of the
 // row with the flash wash, so a message never ends in a hole the wash does not
-// cover.
-func (m *AppModel) renderFooterMessageRow(msg string) string {
+// cover. The text is fitted before it is styled, because the recovery controls
+// a too-wide line must keep are recognized by their spelling.
+func (m *AppModel) renderFooterMessageRow(style lipgloss.Style, text string) string {
 	width := m.viewNav.width
 	if width <= 0 {
 		width = 80
 	}
-	msg = textfit.TruncateToVisualWidth(msg, width)
+	msg := style.Render(fitRecoveryFeedback(text, width))
 	gap := max(width-lipgloss.Width(msg), 0)
 	spacer := lipgloss.NewStyle().
 		Width(gap).

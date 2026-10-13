@@ -71,7 +71,7 @@ func stateChangeUndoContext(ref TaskRef, target models.WorkflowState) string {
 }
 
 // stateChangeTitleRunes matches the width the check-in note gives a title.
-const stateChangeTitleRunes = 32
+const stateChangeTitleRunes = 24
 
 // transitionPlanningArtifacts renders the planning reconciliation a single-task
 // transition implies through the caller-supplied builder, returning the checked

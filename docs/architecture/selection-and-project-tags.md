@@ -200,8 +200,12 @@ one-sentence summary, and the semantic badge role it renders with. It is the
 single source every explaining surface reads — the picker explainer, the badge,
 and the project editor's Tags field — and it is metadata only: adding an entry
 explains a tag, it does not make one decide anything.
-Those explaining surfaces wrap complete summaries inline; focusable picker
-lists give up viewport rows and scroll when the explainer needs more height.
+Those explaining surfaces wrap complete summaries inline, and the picker's
+legend is the first thing a short terminal takes back: when the height budget
+cannot show the rows the list holds, the legend is dropped whole and its rows go
+to the list, which only then scrolls. The section-jump hint stays, since it names
+live keys rather than restating a vocabulary, and the overlay still reserves
+exactly what it rendered.
 Focusable rows use the registry's compact `RowSummary`; previews and the inline
 explainer use the complete `Summary`.
 
@@ -236,8 +240,12 @@ empty the projection. The retained `internal/tui/listsurface/tag_selector.go` pa
 from `internal/tui/handler_helpers.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
 no semantic tier, because it never reads `taskTagListSource`; the obsolete
 bulk-selector message path has been removed.
-Those explaining surfaces wrap complete summaries inline; focusable picker
-lists give up viewport rows and scroll when the explainer needs more height.
+Those explaining surfaces wrap complete summaries inline, and the picker's
+legend is the first thing a short terminal takes back: when the height budget
+cannot show the rows the list holds, the legend is dropped whole and its rows go
+to the list, which only then scrolls. The section-jump hint stays, since it names
+live keys rather than restating a vocabulary, and the overlay still reserves
+exactly what it rendered.
 Focusable rows use the registry's compact `RowSummary`; previews and the inline
 explainer use the complete `Summary`.
 
