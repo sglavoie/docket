@@ -188,7 +188,7 @@ func (r *activityRepo) Snapshot() (app.Snapshot, error) {
 		revisions[project.ID] = doc.Revision
 		documents[project.ID] = doc
 	}
-	return app.NewSnapshot(r.projects, revisions, documents), nil
+	return app.NewPartialSnapshot(r.projects, revisions, documents, nil), nil
 }
 
 func (r *activityRepo) Commit(...storage.ChangeSet) ([]*storage.CommitResult, error) {

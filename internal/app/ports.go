@@ -195,16 +195,12 @@ type snapshotView struct {
 	unavailable []string
 }
 
-// NewSnapshot builds a Snapshot over the given projects, loaded revisions, and
-// exact lossless documents. The document map must contain the parse retained at
-// the same load as each project/revision; application mutations treat those
-// documents as immutable merge bases.
-func NewSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument) Snapshot {
-	return NewPartialSnapshot(projects, revisions, documents, nil)
-}
-
-// NewPartialSnapshot is NewSnapshot for a read that could not see every
-// cataloged project: unavailable names the ones whose tasks are unknown.
+// NewPartialSnapshot builds a Snapshot over the given projects, loaded
+// revisions, and exact lossless documents. The document map must contain the
+// parse retained at the same load as each project/revision; application
+// mutations treat those documents as immutable merge bases. unavailable names
+// the cataloged projects the read could not see, whose tasks are unknown; nil
+// means it saw every one.
 func NewPartialSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument, unavailable []string) Snapshot {
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),

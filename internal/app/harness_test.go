@@ -214,7 +214,7 @@ func (r *fakeRepo) Snapshot() (app.Snapshot, error) {
 	for k, v := range r.documents {
 		docs[k] = v
 	}
-	return app.NewSnapshot(r.projects, revs, docs), nil
+	return app.NewPartialSnapshot(r.projects, revs, docs, nil), nil
 }
 
 // artifactConflict applies one raw-revision expectation to the in-memory file

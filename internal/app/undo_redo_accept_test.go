@@ -112,7 +112,7 @@ func (r *storageRepo) Snapshot() (app.Snapshot, error) {
 		revs[project.ID] = doc.Revision
 		visible = append(visible, project)
 	}
-	return app.NewSnapshot(visible, revs, docs), nil
+	return app.NewPartialSnapshot(visible, revs, docs, nil), nil
 }
 
 func (r *storageRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {

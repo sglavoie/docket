@@ -46,7 +46,7 @@ func (r *testAppRepo) Snapshot() (app.Snapshot, error) {
 		revisions[p.ID] = doc.Revision
 		documents[p.ID] = doc
 	}
-	return app.NewSnapshot(r.projects, revisions, documents), nil
+	return app.NewPartialSnapshot(r.projects, revisions, documents, nil), nil
 }
 
 func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {

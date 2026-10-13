@@ -974,7 +974,7 @@ func (r *scenarioRepo) Snapshot() (app.Snapshot, error) {
 		revs[p.ID] = doc.Revision
 		docs[p.ID] = doc
 	}
-	return app.NewSnapshot(r.projects, revs, docs), nil
+	return app.NewPartialSnapshot(r.projects, revs, docs, nil), nil
 }
 
 func (r *scenarioRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {

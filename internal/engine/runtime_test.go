@@ -282,7 +282,7 @@ func TestRuntimeReconcileKeepsPlanningForUnreadableProjects(t *testing.T) {
 				t.Fatalf("Capture: %v", err)
 			}
 			locator := app.TaskLocator{ProjectID: captured.ProjectID, TaskID: captured.TaskID}
-			if _, err := runtime.Service().ApplyPlanning(app.PlanningRequest{Locator: locator, Action: app.PlanningAddToday}); err != nil {
+			if _, err = runtime.Service().ApplyPlanning(app.PlanningRequest{Locator: locator, Action: app.PlanningAddToday}); err != nil {
 				t.Fatalf("ApplyPlanning: %v", err)
 			}
 			tasksFile := storage.TasksFilePath(unfiled.Path)
