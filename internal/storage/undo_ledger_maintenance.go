@@ -37,15 +37,28 @@ func (l *WorkspaceLedger) gcBlobs(lf *ledgerFile) {
 	}
 }
 
-// selectNewest returns the highest-Seq entry in stack matching scope, its index,
-// and whether one was found.
+// selectNewestOwned returns the highest-Seq entry in stack matching scope, its
+// index, and whether one was found. It is the undo stack's selector.
 func selectNewestOwned(stack []LedgerEntry, scope LedgerScope, device string) (LedgerEntry, int, bool) {
+	return selectOwned(stack, scope, device, func(candidate, best int) bool { return candidate > best })
+}
+
+// selectNextRedoOwned returns the lowest-Seq entry in stack matching scope, its
+// index, and whether one was found. An entry keeps its Seq across both stacks
+// and undo takes the highest first, so the redo stack's next entry — the last
+// one undone — is its lowest: replaying the highest instead would reapply a
+// later mutation over a file the earlier one has not been restored to yet.
+func selectNextRedoOwned(stack []LedgerEntry, scope LedgerScope, device string) (LedgerEntry, int, bool) {
+	return selectOwned(stack, scope, device, func(candidate, best int) bool { return candidate < best })
+}
+
+func selectOwned(stack []LedgerEntry, scope LedgerScope, device string, prefer func(candidate, best int) bool) (LedgerEntry, int, bool) {
 	best := -1
 	for i := range stack {
 		if !entryMatchesScope(stack[i], scope) || !stack[i].ownedBy(device) {
 			continue
 		}
-		if best == -1 || stack[i].Seq > stack[best].Seq {
+		if best == -1 || prefer(stack[i].Seq, stack[best].Seq) {
 			best = i
 		}
 	}

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -110,6 +111,53 @@ func TestWorkspaceLedger_UndoRedoRestoresImages(t *testing.T) {
 	}
 	if got := readFile(t, f); got != "v1" {
 		t.Fatalf("after second undo = %q, want v1", got)
+	}
+}
+
+// TestWorkspaceLedger_RedoReplaysInTheOrderUndone verifies that redo walks back
+// up the history it was undone down: two edits to one file, both undone, redo
+// oldest first. Replaying the newer one first would find the file at neither of
+// its images and refuse, leaving the redo stack stuck.
+func TestWorkspaceLedger_RedoReplaysInTheOrderUndone(t *testing.T) {
+	ledger, root := newTestLedger(t)
+	f := filepath.Join(root, "projects", "alpha", "tasks.md")
+	for i, step := range []struct{ before, after string }{{"v1", "v2"}, {"v2", "v3"}} {
+		writeFile(t, f, step.after)
+		if err := ledger.Record(LedgerRecord{
+			TransactionID: fmt.Sprintf("txn-%d", i+1),
+			Action:        "edit " + step.after,
+			ProjectIDs:    []string{"alpha"},
+			Artifacts: []LedgerArtifact{{
+				Path: f, BeforeExists: true, Before: []byte(step.before), AfterExists: true, After: []byte(step.after),
+			}},
+		}); err != nil {
+			t.Fatalf("Record %s: %v", step.after, err)
+		}
+	}
+
+	for _, want := range []string{"v2", "v1"} {
+		if _, err := ledger.Undo(GlobalScope()); err != nil {
+			t.Fatalf("Undo to %s: %v", want, err)
+		}
+		if got := readFile(t, f); got != want {
+			t.Fatalf("after undo = %q, want %s", got, want)
+		}
+	}
+
+	next, ok, err := ledger.SelectNewestRedo(GlobalScope())
+	if err != nil || !ok {
+		t.Fatalf("SelectNewestRedo: ok=%v err=%v", ok, err)
+	}
+	if next.TransactionID != "txn-1" {
+		t.Fatalf("next redo = %q, want txn-1", next.TransactionID)
+	}
+	for _, want := range []string{"v2", "v3"} {
+		if _, err := ledger.Redo(GlobalScope()); err != nil {
+			t.Fatalf("Redo to %s: %v", want, err)
+		}
+		if got := readFile(t, f); got != want {
+			t.Fatalf("after redo = %q, want %s", got, want)
+		}
 	}
 }
 

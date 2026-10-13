@@ -106,6 +106,6 @@ func (l *WorkspaceLedger) SelectNewestRedo(scope LedgerScope) (LedgerEntry, bool
 	if err != nil {
 		return LedgerEntry{}, false, err
 	}
-	entry, _, ok := selectNewestOwned(lf.RedoEntries, scope, l.device())
+	entry, _, ok := selectNextRedoOwned(lf.RedoEntries, scope, l.device())
 	return entry, ok, nil
 }
