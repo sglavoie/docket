@@ -78,10 +78,15 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(TTActivationPolicy.load(from: defaults), .dockAndMenuBar)
         XCTAssertEqual(TTActivationPolicy.dockAndMenuBar.appKitPolicy, .regular)
         XCTAssertEqual(TTActivationPolicy.menuBarOnly.appKitPolicy, .accessory)
+        XCTAssertEqual(TTActivationPolicy.dockOnly.appKitPolicy, .regular)
+        XCTAssertEqual(TTActivationPolicy.allCases.filter { !$0.showsStatusItem }, [.dockOnly])
         defaults.set("nonsense", forKey: TTActivationPolicy.defaultsKey)
         XCTAssertEqual(TTActivationPolicy.load(from: defaults), .dockAndMenuBar)
         TTActivationPolicy.menuBarOnly.save(to: defaults)
         XCTAssertEqual(TTActivationPolicy.load(from: defaults), .menuBarOnly)
+        TTActivationPolicy.dockOnly.save(to: defaults)
+        XCTAssertEqual(defaults.string(forKey: TTActivationPolicy.defaultsKey), "dock")
+        XCTAssertEqual(TTActivationPolicy.load(from: defaults), .dockOnly)
     }
 
     func testDefaultFontSizeIsUnsetUntilSavedAndRefusesNonsense() {

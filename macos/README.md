@@ -139,8 +139,10 @@ Login, Quit. The Dock icon's menu has Quick Capture… and Relaunch tt.
 Its tooltip is tt's window title, the workspace pulse
 (`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
-it. Preferences also chooses whether tt appears in the Dock and menu bar or
-the menu bar only (`ttActivationPolicy`: `regular` or `accessory`).
+it. Preferences also chooses whether tt appears in the Dock and menu bar, the
+Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
+`accessory`). With the Dock only, there is no menu-bar icon; its commands stay
+in the app menu and the Dock icon's menu.
 
 When `tt` exits cleanly (`q`), the window hides and the next show starts a
 fresh `tt`, or, if Preferences says so, the app quits (`ttExitBehavior`:

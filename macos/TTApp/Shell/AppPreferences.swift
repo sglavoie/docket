@@ -1,11 +1,12 @@
 import AppKit
 import ServiceManagement
 
-/// Where tt.app shows itself: the Dock and the menu bar, or the menu bar
+/// Where tt.app shows itself: the Dock and the menu bar, or either one
 /// alone. Persisted in `UserDefaults` key `ttActivationPolicy`; an absent or
 /// unknown value reads as the default.
 enum TTActivationPolicy: String, CaseIterable {
     case dockAndMenuBar = "regular"
+    case dockOnly = "dock"
     case menuBarOnly = "accessory"
 
     static let defaultsKey = "ttActivationPolicy"
@@ -21,14 +22,20 @@ enum TTActivationPolicy: String, CaseIterable {
 
     var appKitPolicy: NSApplication.ActivationPolicy {
         switch self {
-        case .dockAndMenuBar: return .regular
+        case .dockAndMenuBar, .dockOnly: return .regular
         case .menuBarOnly: return .accessory
         }
+    }
+
+    /// Whether the menu-bar icon exists at all.
+    var showsStatusItem: Bool {
+        self != .dockOnly
     }
 
     var label: String {
         switch self {
         case .dockAndMenuBar: return "Dock and menu bar"
+        case .dockOnly: return "Dock only"
         case .menuBarOnly: return "Menu bar only"
         }
     }

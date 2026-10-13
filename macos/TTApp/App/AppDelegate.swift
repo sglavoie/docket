@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // A regular app with its own Dock icon, unless set to live in the
-        // menu bar alone.
+        // menu bar alone; the status item follows the same setting later.
         NSApp.setActivationPolicy(preferencesModel.activationPolicy.appKitPolicy)
         NSApp.mainMenu = MainMenu.make()
     }
@@ -328,7 +328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureUnavailableReason }
 
-        statusItem = StatusItemController(delegate: self)
+        syncStatusItem(to: model.activationPolicy)
         let hotKeys = HotKeyCenter()
         hotKeys.onPress = { [weak self] in self?.toggleTerminal() }
         self.hotKeys = hotKeys
@@ -369,10 +369,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         return problem
     }
 
+    /// Creates or removes the menu-bar icon; a new one takes the current
+    /// pulse as its tooltip.
+    private func syncStatusItem(to policy: TTActivationPolicy) {
+        guard policy.showsStatusItem != (statusItem != nil) else { return }
+        statusItem = policy.showsStatusItem ? StatusItemController(delegate: self) : nil
+        refreshBadge()
+    }
+
     /// Switched live. Changing the policy can drop the app's activation, so
     /// the window the change was made from is brought back.
     private func applyActivationPolicy(_ policy: TTActivationPolicy) {
         NSApp.setActivationPolicy(policy.appKitPolicy)
+        syncStatusItem(to: policy)
         let front = [preferences, terminal?.window, window].compactMap { $0 }.first { $0.isVisible }
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
