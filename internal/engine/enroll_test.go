@@ -220,6 +220,8 @@ func TestSyncEnrollment(t *testing.T) {
 
 	t.Run("restart_keeps_history_and_exchanges_new_work", enrollmentRestartKeepsHistoryAndExchangesNewWork)
 
+	t.Run("a_renamed_machine_keeps_its_device_identity", enrollmentARenamedMachineKeepsItsDeviceIdentity)
+
 	t.Run("an_interrupted_enrollment_resumes", enrollmentAnInterruptedEnrollmentResumes)
 
 	t.Run("external_edits_are_published_and_invalid_ones_held", enrollmentExternalEditsArePublishedAndInvalidOnesHeld)
@@ -368,6 +370,61 @@ func enrollmentRestartKeepsHistoryAndExchangesNewWork(t *testing.T) {
 	requireSameTree(t, "after exchanging both ways", syncedDigests(t, env.workingCopy), syncedDigests(t, laptop.DataDir()))
 	if genesis := exchangeManifests(t, env.exchange, "desk-a"); len(genesis) != 2 || genesis[0].Kind != synclog.KindEnroll {
 		t.Fatalf("desk published %d transactions, want genesis and one capture", len(genesis))
+	}
+}
+
+// A desktop follows the process, so the identity it would derive changes with
+// the hostname and the home. The working copy must go on recording as the device
+// that enrolled it: a second identity would publish a second genesis and start
+// with nothing received, refusing every peer transaction as out of order.
+func enrollmentARenamedMachineKeepsItsDeviceIdentity(t *testing.T) {
+	env := newEnrollEnvironment(t)
+	cfg := env.enrollConfig()
+	cfg.Machine = ProcessMachine()
+	if _, err := Enroll(cfg); err != nil {
+		t.Fatalf("Enroll: %v", err)
+	}
+	open := func() *Runtime {
+		return openHeadless(t, Config{DataDir: env.workingCopy, Machine: ProcessMachine(), Clock: env.clock, IDs: env.ids})
+	}
+	before, err := open().SyncStatus()
+	if err != nil {
+		t.Fatalf("SyncStatus: %v", err)
+	}
+	laptop := env.join(t)
+	captureIn(t, laptop, "Captured on the laptop")
+	exchangeNow(t, laptop)
+
+	// The derived identity reads the home as well as the hostname, so moving
+	// the home is the rename a test can perform.
+	t.Setenv("HOME", filepath.Join(env.root, "home-renamed"))
+	renamed := open()
+	captureIn(t, renamed, "Captured after the rename")
+	if report := exchangeNow(t, renamed); report.Imported != 1 {
+		t.Fatalf("renamed desk imported %d, want the laptop's capture (report %+v)", report.Imported, report)
+	}
+	after, err := renamed.SyncStatus()
+	if err != nil {
+		t.Fatalf("SyncStatus: %v", err)
+	}
+	if after.DeviceID != before.DeviceID {
+		t.Fatalf("device identity changed from %s to %s", before.DeviceID, after.DeviceID)
+	}
+	if after.LocalTransactions != before.LocalTransactions+1 {
+		t.Fatalf("local transactions = %d, want the genesis history plus one capture (%d)", after.LocalTransactions, before.LocalTransactions+1)
+	}
+	devices, err := os.ReadDir(filepath.Join(env.workingCopy, ".tt", "sync", "devices"))
+	if err != nil || len(devices) != 1 {
+		t.Fatalf("working copy records %d device identities (err %v), want one", len(devices), err)
+	}
+	geneses := 0
+	for _, manifest := range exchangeManifests(t, env.exchange, before.DeviceID) {
+		if manifest.Kind == synclog.KindEnroll {
+			geneses++
+		}
+	}
+	if geneses != 1 {
+		t.Fatalf("exchange holds %d enroll transactions from %s, want one", geneses, before.DeviceID)
 	}
 }
 

@@ -161,6 +161,16 @@ The identity is recomputed per call rather than cached, which is what makes a
 `HOME` switch genuinely a different machine and keeps the harness and the
 two-process gate honest.
 
+That per-call identity answers which machine is running now, and a working
+copy's sync history asks a different question: whose history this is. So the
+desktop derives a sync device identity only for a working copy that has recorded
+nothing; afterwards `synclog.RecordedDeviceID` reads it back from
+`.tt/sync/devices/`, and a renamed host goes on recording as the device that
+enrolled. Deriving it afresh would start a second history beside the first, with
+its own genesis and nothing received, so every peer transaction would arrive
+"before 1". A working copy already holding several identities answers with the
+one that has recorded the most.
+
 `Journal.foreignLive` is the resulting refusal: a manifest naming another machine
 whose heartbeat is fresher than `ForeignTransactionGrace` is left untouched —
 neither rolled forward, nor rolled back, nor quarantined — and reported as

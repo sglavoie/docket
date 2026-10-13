@@ -33,21 +33,34 @@ func workspaceSchemas(state *config.RuntimeState) map[string]int {
 	return schemas
 }
 
+// syncDeviceID is the identity a working copy's sync history records as: the
+// configured device, else the one the working copy already records as, else
+// this machine's identity when it has recorded nothing. Only that last case
+// reads the hostname, so it names a device once and never renames one.
+//
+// The transaction owner is deliberately not this value. Recovery asks which
+// machine is running now and recomputes it per call; sync asks whose history
+// this is, which must outlive a renamed host.
+func syncDeviceID(dataDir, owner string) string {
+	if owner != "" {
+		return owner
+	}
+	if recorded := synclog.RecordedDeviceID(dataDir); recorded != "" {
+		return recorded
+	}
+	return transaction.DefaultMachineID()
+}
+
 // syncHistory is the device's sync history over a rooted workspace, recording
-// as the transaction owner — the configured device, or this machine's identity
-// when the runtime follows the process. An unrooted runtime, which commits
-// nothing durable, has none.
+// as syncDeviceID names it. An unrooted runtime, which commits nothing durable,
+// has none.
 func syncHistory(dataDir, owner string, clock app.Clock, schemas map[string]int) *synclog.History {
 	if dataDir == "" {
 		return nil
 	}
-	deviceID := owner
-	if deviceID == "" {
-		deviceID = transaction.DefaultMachineID()
-	}
 	history, err := synclog.New(synclog.Config{
 		DataDir:  dataDir,
-		DeviceID: deviceID,
+		DeviceID: syncDeviceID(dataDir, owner),
 		Schemas:  schemas,
 		Now:      clock.Now,
 	})

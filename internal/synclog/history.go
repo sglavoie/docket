@@ -256,6 +256,46 @@ type Receipt struct {
 	Conflicts []string `json:"conflicts,omitempty"`
 }
 
+// RecordedDeviceID is the sync identity a working copy already records as, or
+// "" when it has recorded nothing. A working copy belongs to one device, so the
+// identity it holds is that device's whatever the machine is called today: an
+// identity derived afresh from a renamed host would start a second history
+// beside the first, with its own genesis and nothing received.
+//
+// A working copy that already holds several — the product of exactly that
+// rename — answers with the one that has recorded the most, which only widens
+// its lead once chosen, so the answer holds still without being stored.
+func RecordedDeviceID(dataDir string) string {
+	if dataDir == "" {
+		return ""
+	}
+	devices := filepath.Join(dataDir, ".tt", "sync", "devices")
+	entries, err := os.ReadDir(devices)
+	if err != nil {
+		return ""
+	}
+	best, bestSeq := "", uint64(0)
+	for _, entry := range entries {
+		id := entry.Name()
+		if !entry.IsDir() || !ValidDeviceID(id) {
+			continue
+		}
+		data, readErr := os.ReadFile(filepath.Join(devices, id, "state.json"))
+		if readErr != nil {
+			continue
+		}
+		var state State
+		if json.Unmarshal(data, &state) != nil || state.Format != StateFormat || state.DeviceID != id {
+			continue
+		}
+		// ReadDir is sorted, so a tie keeps the first name.
+		if best == "" || state.NextSeq > bestSeq {
+			best, bestSeq = id, state.NextSeq
+		}
+	}
+	return best
+}
+
 // LoadState reads the device's tracking state. A device that has recorded
 // nothing yet has none, reported as (nil, nil).
 func (h *History) LoadState() (*State, error) {

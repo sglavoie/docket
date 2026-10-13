@@ -15,7 +15,6 @@ import (
 	"github.com/sglavoie/tt/internal/syncexchange"
 	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/syncmerge"
-	"github.com/sglavoie/tt/internal/transaction"
 )
 
 // ErrNotEnrolled refuses a sync operation on a workspace that was never
@@ -337,10 +336,7 @@ func Join(cfg JoinConfig) (*Runtime, *syncexchange.FolderReport, error) {
 		return nil, nil, err
 	}
 	owner := newManager(filepath.Clean(cfg.DataDir), cfg.Machine).TransactionOwner()
-	deviceID := owner
-	if deviceID == "" {
-		deviceID = transaction.DefaultMachineID()
-	}
+	deviceID := syncDeviceID(filepath.Clean(cfg.DataDir), owner)
 	if _, statErr := os.Stat(filepath.Join(cfg.Exchange, filepath.FromSlash(syncexchange.ExchangeRoot), "txns", deviceID)); statErr == nil {
 		return nil, nil, fmt.Errorf("join: device %s already publishes to this exchange folder; each device keeps one working copy, so use that one", deviceID)
 	}
@@ -424,10 +420,7 @@ func JoinInbox(cfg JoinInboxConfig) (*Runtime, *syncexchange.Report, error) {
 		clock = app.SystemClock()
 	}
 	owner := newManager(filepath.Clean(cfg.DataDir), cfg.Machine).TransactionOwner()
-	deviceID := owner
-	if deviceID == "" {
-		deviceID = transaction.DefaultMachineID()
-	}
+	deviceID := syncDeviceID(filepath.Clean(cfg.DataDir), owner)
 	if _, statErr := os.Stat(filepath.Join(cfg.InboxDir, "txns", deviceID)); statErr == nil {
 		return nil, nil, fmt.Errorf("join: device %s already publishes to this exchange folder; each device keeps one working copy, so use that one", deviceID)
 	}
