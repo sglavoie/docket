@@ -1349,23 +1349,33 @@ func (m *OutlinerModel) ComputeOutlinerViewport(width int, extraFooterLines int)
 // there the full window stands instead, unpinned, since a blank row would hide a
 // row to name a lane one line above it.
 func (m *OutlinerModel) pinnedContextWindow(visibleRows int) outlinerViewport {
-	full := m.ViewScrollOffset
+	window, offset := m.pinnedContextWindowAt(m.ViewScrollOffset, visibleRows)
+	m.ViewScrollOffset = offset
+	return window
+}
+
+// pinnedContextWindowAt is that decision over a given offset, returning the
+// offset the frame settles on instead of writing it. It is what lets the scroll
+// chord ask which window an offset would draw before it stores one: whether the
+// first screen row is pinned is a property of the destination, not of the frame
+// the key was pressed on.
+func (m *OutlinerModel) pinnedContextWindowAt(offset, visibleRows int) (outlinerViewport, int) {
+	full := offset
 	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
 	if _, scrolledPast := m.sectionHeaderAbove(startIdx); !scrolledPast || visibleRows < 2 {
-		m.ViewScrollOffset = full
-		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}
+		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}, full
 	}
-	startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows-1, &m.ViewScrollOffset)
+	fullWindow := outlinerViewport{startIdx: startIdx, endIdx: endIdx}
+	reduced := offset
+	startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows-1, &reduced)
 	header, scrolledPast := m.sectionHeaderAbove(startIdx)
 	if !scrolledPast && startIdx+visibleRows > len(m.Rows) {
-		m.ViewScrollOffset = full
-		startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
-		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}
+		return fullWindow, full
 	}
 	if !scrolledPast {
-		return outlinerViewport{startIdx: startIdx, endIdx: startIdx + visibleRows}
+		return outlinerViewport{startIdx: startIdx, endIdx: startIdx + visibleRows}, reduced
 	}
-	return outlinerViewport{startIdx: startIdx, endIdx: endIdx, pinned: true, pinnedHeader: header}
+	return outlinerViewport{startIdx: startIdx, endIdx: endIdx, pinned: true, pinnedHeader: header}, reduced
 }
 
 // sectionHeaderAbove answers whether the row at index sits in a lane whose

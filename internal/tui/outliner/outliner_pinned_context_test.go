@@ -255,6 +255,50 @@ func TestPinnedContextGivesTheRowBackAtTheEndOfTheList(t *testing.T) {
 	}
 }
 
+// TestScrollAnchorMeasuresTheWindowItLandsIn starts an anchor from a window
+// that pins nothing and lets it scroll the lane's header away: the row
+// the pin costs belongs to the destination, so one press has to settle.
+func TestScrollAnchorMeasuresTheWindowItLandsIn(t *testing.T) {
+	for _, anchor := range []struct {
+		id        operation.OperationID
+		rowsAbove func(height int) int
+	}{
+		{operation.OperationCoreScrollCursorTop, func(int) int { return 0 }},
+		{operation.OperationCoreScrollCursorMiddle, func(height int) int { return (height - 1) / 2 }},
+	} {
+		model := pinnedContextFixture(t)
+		start := model.ComputeOutlinerViewport(model.Width(), 0)
+		if start.pinned || start.startIdx != 0 {
+			t.Fatalf("the starting window is not the unpinned top: %+v", start)
+		}
+		// The last row the unscrolled window draws: both anchors scroll down to
+		// honor it, far enough that the header leaves. The bottom anchor has no
+		// such start, since that row is already where it would put the cursor.
+		model.Cursor = start.endIdx - 1
+		cursor := model.Cursor
+		if before := model.ComputeOutlinerViewport(model.Width(), 0); before != start {
+			t.Fatalf("moving inside the window redrew it as %+v", before)
+		}
+
+		model.ViewScrollOffset = model.CursorScrollOffset(anchor.id)
+		drawn := model.ComputeOutlinerViewport(model.Width(), 0)
+		if !drawn.pinned || model.Cursor != cursor {
+			t.Fatalf("%s left the window %+v with the cursor on %d", anchor.id, drawn, model.Cursor)
+		}
+		if height := drawn.endIdx - drawn.startIdx; height != start.endIdx-start.startIdx-1 {
+			t.Fatalf("%s drew %d rows beneath the pinned row, want one fewer than %d",
+				anchor.id, height, start.endIdx-start.startIdx)
+		}
+		if got, want := cursor-drawn.startIdx, anchor.rowsAbove(drawn.endIdx-drawn.startIdx); got != want {
+			t.Fatalf("%s put %d rows above the cursor beneath the new pinned row, want %d", anchor.id, got, want)
+		}
+		if again := model.CursorScrollOffset(anchor.id); again != model.ViewScrollOffset {
+			t.Fatalf("%s needs a second press: it would move the window from %d to %d",
+				anchor.id, model.ViewScrollOffset, again)
+		}
+	}
+}
+
 // TestPinnedContextWindowIsTheOneEveryReaderReads holds the window's other
 // readers to a pinned frame: the cached window, the three scroll anchors, and
 // the hosted-panel loan.

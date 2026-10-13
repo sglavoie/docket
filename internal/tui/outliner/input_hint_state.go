@@ -68,13 +68,36 @@ func (m *OutlinerModel) inputBindingIsIneffective(binding operation.OperationKey
 }
 
 // CursorScrollOffset is the offset both the z chord and its hints project. It
-// uses the rendered row window, including clamping at either end of the list.
+// measures against the window that offset would draw, not the one the key was
+// pressed on: an anchor that scrolls a lane's header away costs the list its
+// first screen row, so the cursor is placed among the rows left beneath the
+// pinned one. The full height is tried first and the pinned one only when the
+// window authority says that offset pins.
 func (m *OutlinerModel) CursorScrollOffset(id operation.OperationID) int {
-	start, end := m.VisibleRowWindow()
-	if start >= end {
+	if start, end := m.VisibleRowWindow(); start >= end {
 		return m.ViewScrollOffset
 	}
-	height := end - start
+	visibleRows := m.LastViewport.VisibleRows
+	if visibleRows <= 0 {
+		visibleRows = m.ContentHeight()
+	}
+	offset := m.ViewScrollOffset
+	for _, height := range []int{visibleRows, visibleRows - 1} {
+		if height < 1 {
+			break
+		}
+		window, settled := m.pinnedContextWindowAt(m.cursorAnchorOffset(id, height), visibleRows)
+		offset = settled
+		if !window.pinned {
+			break
+		}
+	}
+	return offset
+}
+
+// cursorAnchorOffset seats the cursor in a window of height document rows,
+// clamped at either end of the list.
+func (m *OutlinerModel) cursorAnchorOffset(id operation.OperationID, height int) int {
 	desired := m.Cursor
 	switch id {
 	case operation.OperationCoreScrollCursorMiddle:

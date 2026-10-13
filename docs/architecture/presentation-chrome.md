@@ -470,7 +470,12 @@ scroll. `VisibleRows` is unchanged — the screen rows the list occupies — so
 measured before, while `startIdx`/`endIdx` on `LastViewport` are the smaller
 window; `VisibleRowWindow`, `CursorScrollOffset`, and the hosted-panel anchor
 therefore place the cursor among the rows actually drawn, and `zt` seats it on
-the first row under the pinned one. Two windows give the row back: one the
+the first row under the pinned one. An anchor may also be what scrolls the header
+away, so `CursorScrollOffset` measures the window its offset lands in rather
+than the one the key was pressed on: `pinnedContextWindowAt` is the same decision
+over a given offset, writing nothing, and the anchor seats the cursor at the full
+height first and at one row fewer only when that offset pins, which is what
+makes one `zz` settle. Two windows give the row back: one the
 smaller height opens exactly on a header starts on that header at full height,
 and at the end of the list, where that would leave the last screen row blank,
 the full window stands unpinned. `renderPinnedContextRow` builds the line from
