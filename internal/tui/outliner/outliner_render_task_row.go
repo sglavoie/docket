@@ -355,14 +355,14 @@ func (segments taskIndicatorSegments) render() string {
 	// The deadline and the review are chips carrying a column of padding each
 	// side; the census is bare text, so it is given the leading column a chip
 	// would have brought and sits the same distance from whatever precedes it.
-	dependencies := segments.dependencies
-	if dependencies != "" {
-		dependencies = " " + dependencies
+	census := segments.dependencies
+	if census != "" {
+		census = " " + census
 	}
 	rendered := listsurface.JoinGroupParts(
 		segments.review,
 		segments.due,
-		dependencies,
+		census,
 	)
 	if rendered == "" {
 		return ""
