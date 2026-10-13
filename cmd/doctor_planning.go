@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // planningRepair carries the planning state a fix pass would commit, computed
@@ -51,6 +52,12 @@ func checkPlanningMembership(runtime *config.RuntimeState, loadedProjects []*mod
 	loaded := make(map[string]map[string]*models.Task, len(loadedProjects))
 	for _, project := range loadedProjects {
 		if project == nil {
+			continue
+		}
+		// No tasks.md loads as an empty project. That is a project this run
+		// could not read, not one that owns nothing, so it stays out of loaded
+		// and its entries take the unavailable branch below.
+		if storage.ProjectTasksFileMissing(project) {
 			continue
 		}
 		tasks := make(map[string]*models.Task, len(project.Tasks))

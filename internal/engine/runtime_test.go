@@ -253,6 +253,66 @@ func TestRuntimeHeadlessCapturePlanEditCompleteReopen(t *testing.T) {
 
 // TestRuntimeOpenRequiresExplicitConfiguration refuses every configuration that
 // would leave the runtime to guess a machine or a workspace.
+// TestRuntimeReconcileKeepsPlanningForUnreadableProjects covers the two ways a
+// project's tasks go unread — no tasks.md on disk, which is what an evicted or
+// undelivered synced file looks like, and one that does not parse — and holds
+// the startup reconcile to pruning nothing on the strength of either.
+func TestRuntimeReconcileKeepsPlanningForUnreadableProjects(t *testing.T) {
+	for _, damage := range []struct {
+		name  string
+		apply func(t *testing.T, tasksFile string)
+	}{
+		{name: "missing", apply: func(t *testing.T, tasksFile string) {
+			if err := os.Rename(tasksFile, tasksFile+".aside"); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "unparseable", apply: func(t *testing.T, tasksFile string) {
+			if err := os.WriteFile(tasksFile, []byte("garbage\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(damage.name, func(t *testing.T) {
+			env := newHeadlessEnvironment(t)
+			runtime := openHeadless(t, env.config(true))
+			unfiled := runtime.State().SystemUnfiledProject()
+			captured, err := runtime.Service().Capture(app.CaptureRequest{ProjectID: unfiled.ID, Title: "Planned work"})
+			if err != nil {
+				t.Fatalf("Capture: %v", err)
+			}
+			locator := app.TaskLocator{ProjectID: captured.ProjectID, TaskID: captured.TaskID}
+			if _, err := runtime.Service().ApplyPlanning(app.PlanningRequest{Locator: locator, Action: app.PlanningAddToday}); err != nil {
+				t.Fatalf("ApplyPlanning: %v", err)
+			}
+			tasksFile := storage.TasksFilePath(unfiled.Path)
+			original, err := os.ReadFile(tasksFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			damage.apply(t, tasksFile)
+
+			reopened := openHeadless(t, env.config(false))
+			if changed, err := reopened.ReconcilePlanning(); err != nil || changed {
+				t.Fatalf("ReconcilePlanning over an unread project = changed %v, err %v; want no change", changed, err)
+			}
+			if got := reopened.State().Planning().GetToday(); len(got) != 1 || got[0].TaskID != captured.TaskID {
+				t.Fatalf("Today = %+v, want the entry for the unread project kept", got)
+			}
+
+			_ = os.Remove(tasksFile + ".aside")
+			if err := os.WriteFile(tasksFile, original, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			restored := openHeadless(t, env.config(false))
+			if changed, err := restored.ReconcilePlanning(); err != nil || changed {
+				t.Fatalf("ReconcilePlanning after the file returned = changed %v, err %v; want no change", changed, err)
+			}
+			requireTitles(t, "today after the file returned", runQuery(t, restored, queryOf(t, models.QueryModeToday)), "Planned work")
+		})
+	}
+}
+
 func TestRuntimeOpenRequiresExplicitConfiguration(t *testing.T) {
 	env := newHeadlessEnvironment(t)
 	cases := map[string]Config{

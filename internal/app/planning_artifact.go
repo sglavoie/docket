@@ -59,7 +59,9 @@ func (m PlanningProjectMove) valid() bool {
 
 // PlanningReconcileRequest is the complete application-owned mutation applied to
 // the planning domain. Complete means Targets describe every task in the loaded
-// workspace and therefore authorizes pruning unknown persisted entries. The
+// workspace and therefore authorizes pruning unknown persisted entries, except
+// those in an Unavailable project: its tasks were not read, so an entry naming
+// one is kept as found rather than judged. The
 // ordering fields are optional full-order replacements used by J/K and the CLI
 // move command; any valid member omitted from an order is retained at the end.
 type PlanningReconcileRequest struct {
@@ -72,6 +74,7 @@ type PlanningReconcileRequest struct {
 	Remove        []TaskLocator
 	Moves         []PlanningProjectMove
 	Complete      bool
+	Unavailable   []string
 	Next          []TaskLocator
 	SetNext       bool
 	TodayOrder    []TaskLocator
@@ -120,8 +123,12 @@ func ReconcilePlanningState(planning *config.PlanningState, req PlanningReconcil
 	}
 
 	if req.Complete {
-		planning.Next = sanitizeNext(planning.GetNext(), known)
-		planning.Today = sanitizeToday(planning.Today, known)
+		unavailable := make(map[string]bool, len(req.Unavailable))
+		for _, projectID := range req.Unavailable {
+			unavailable[projectID] = true
+		}
+		planning.Next = sanitizeNext(planning.GetNext(), known, unavailable)
+		planning.Today = sanitizeToday(planning.Today, known, unavailable)
 		for _, item := range planning.Today {
 			planning.RemoveFromNextInProject(item.TaskID, item.ProjectID)
 		}
@@ -240,13 +247,13 @@ func PlanningTodayEligible(state models.WorkflowState) bool {
 	return state.IsNonterminal()
 }
 
-func sanitizeNext(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
+func sanitizeNext(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget, unavailable map[string]bool) []config.ProjectTaskLocator {
 	out := make([]config.ProjectTaskLocator, 0, len(items))
 	seen := make(map[TaskLocator]bool, len(items))
 	for _, item := range items {
 		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
 		target, ok := known[locator]
-		if !ok || !target.State.IsNonterminal() || seen[locator] {
+		if seen[locator] || !planningEntrySurvives(locator, ok, unavailable, target.State.IsNonterminal()) {
 			continue
 		}
 		seen[locator] = true
@@ -255,19 +262,30 @@ func sanitizeNext(items []config.ProjectTaskLocator, known map[TaskLocator]Plann
 	return out
 }
 
-func sanitizeToday(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget) []config.ProjectTaskLocator {
+func sanitizeToday(items []config.ProjectTaskLocator, known map[TaskLocator]PlanningReconcileTarget, unavailable map[string]bool) []config.ProjectTaskLocator {
 	out := make([]config.ProjectTaskLocator, 0, len(items))
 	seen := make(map[TaskLocator]bool, len(items))
 	for _, item := range items {
 		locator := TaskLocator{ProjectID: item.ProjectID, TaskID: item.TaskID}
 		target, ok := known[locator]
-		if !ok || !PlanningTodayEligible(target.State) || seen[locator] {
+		if seen[locator] || !planningEntrySurvives(locator, ok, unavailable, PlanningTodayEligible(target.State)) {
 			continue
 		}
 		seen[locator] = true
 		out = append(out, item)
 	}
 	return out
+}
+
+// planningEntrySurvives is the one pruning verdict a complete reconcile gives an
+// entry. A task that was read answers by its state; one that was not read is
+// dropped only when its project was, since an unread project says nothing about
+// what it holds.
+func planningEntrySurvives(locator TaskLocator, known bool, unavailable map[string]bool, eligible bool) bool {
+	if known {
+		return eligible
+	}
+	return unavailable[locator.ProjectID]
 }
 
 func ensureNextEntry(planning *config.PlanningState, locator TaskLocator) {

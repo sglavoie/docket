@@ -48,6 +48,41 @@ func TestReconcilePlanningStateSanitizesAndIsIdempotent(t *testing.T) {
 	}
 }
 
+// TestReconcilePlanningStateKeepsEntriesInUnavailableProjects holds a complete
+// reconcile to what it actually read: a project named unavailable contributes no
+// targets, and that silence must not prune the entries naming its tasks. An
+// entry missing from a project that was read is still dropped.
+func TestReconcilePlanningStateKeepsEntriesInUnavailableProjects(t *testing.T) {
+	planning := config.NewPlanningState()
+	planning.Next = []config.ProjectTaskLocator{
+		{TaskID: "unread-next", ProjectID: "evicted"},
+		{TaskID: "unread-next", ProjectID: "evicted"},
+		{TaskID: "missing", ProjectID: "p"},
+	}
+	planning.Today = []config.ProjectTaskLocator{
+		{TaskID: "unread-today", ProjectID: "evicted"},
+		{TaskID: "ready", ProjectID: "p"},
+	}
+	req := app.PlanningReconcileRequest{
+		Complete:    true,
+		Unavailable: []string{"evicted"},
+		Targets: []app.PlanningReconcileTarget{
+			{TaskID: "ready", ProjectID: "p", State: models.StateBacklog},
+		},
+	}
+
+	app.ReconcilePlanningState(planning, req)
+	if got := planning.GetNext(); len(got) != 1 || got[0].TaskID != "unread-next" {
+		t.Fatalf("Next = %+v, want the one unread entry, deduplicated", got)
+	}
+	if got := planning.Today; len(got) != 2 || got[0].TaskID != "unread-today" || got[1].TaskID != "ready" {
+		t.Fatalf("Today = %+v, want the unread entry kept beside the read one", got)
+	}
+	if app.ReconcilePlanningState(planning, req) {
+		t.Fatal("second reconciliation changed an already canonical snapshot")
+	}
+}
+
 func TestApplyPlanningPromotesInboxToTodayAndBacklogClearsToday(t *testing.T) {
 	task := newTask("task", 1, "plan me")
 	if err := task.ApplyStateTransitionAt(models.StateInbox, task.UpdatedAt); err != nil {

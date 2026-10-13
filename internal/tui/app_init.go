@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operationhost"
@@ -195,6 +196,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 			referencedProjects[item.ProjectID] = true
 		}
 		var targets []app.PlanningReconcileTarget
+		var unavailable []string
 		canReconcile := true
 		for projectID := range referencedProjects {
 			project := projectsByID[projectID]
@@ -204,6 +206,11 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 			if err := m.loadStartupProject(project, startupLoads); err != nil {
 				canReconcile = false
 				continue
+			}
+			// No tasks.md loads as an empty project, which is not evidence
+			// that the tasks this queue names are gone.
+			if storage.ProjectTasksFileMissing(project) {
+				unavailable = append(unavailable, project.ID)
 			}
 			for _, task := range project.Tasks {
 				if task != nil {
@@ -216,7 +223,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 		if canReconcile {
 			reconciled := coordinator.ClonePlanningState(planning)
 			if app.ReconcilePlanningState(reconciled, app.PlanningReconcileRequest{
-				Targets: targets, Complete: true,
+				Targets: targets, Complete: true, Unavailable: unavailable,
 			}) {
 				if m.domain.runtime.DataDir() == "" {
 					planning = reconciled

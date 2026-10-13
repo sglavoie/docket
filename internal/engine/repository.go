@@ -64,7 +64,9 @@ func (r *Repository) useCommitService() bool {
 
 // Snapshot loads a revision-consistent read model over every loadable project.
 // Projects that fail to load are skipped with a warning rather than failing the
-// whole mutation.
+// whole mutation, and are named unavailable beside the ones with no tasks.md on
+// disk, so a caller reconciling other state against this read can tell a task
+// it could not see from a task that is gone.
 func (r *Repository) Snapshot() (app.Snapshot, error) {
 	projects, listErr := r.deps.AvailableProjects(r.dataDir)
 	if listErr != nil {
@@ -73,6 +75,7 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 	loaded := make([]*models.Project, 0, len(projects))
 	revisions := make(map[string]string, len(projects))
 	documents := make(map[string]*storage.ProjectDocument, len(projects))
+	var unavailable []string
 	for _, p := range projects {
 		if p == nil {
 			continue
@@ -84,13 +87,17 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 		doc, err := storage.LoadProjectWithDocument(p)
 		if err != nil {
 			logging.Warn("skipping project %s: %v", p.Name, err)
+			unavailable = append(unavailable, p.ID)
 			continue
+		}
+		if storage.ProjectTasksFileMissing(p) {
+			unavailable = append(unavailable, p.ID)
 		}
 		loaded = append(loaded, p)
 		revisions[p.ID] = doc.Revision
 		documents[p.ID] = doc
 	}
-	return app.NewSnapshot(loaded, revisions, documents), nil
+	return app.NewPartialSnapshot(loaded, revisions, documents, unavailable), nil
 }
 
 // CompletionActivityProjects implements app.CompletionActivitySource: the base

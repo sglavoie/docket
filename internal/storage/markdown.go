@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"os"
 	"path/filepath"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -31,4 +33,20 @@ func tasksFilePath(projectPath string) string {
 // snapshot loader uses to decide whether a cached parse is still fresh.
 func TasksFilePath(projectPath string) string {
 	return tasksFilePath(projectPath)
+}
+
+// ProjectTasksFileMissing reports whether a filesystem-backed project has no
+// tasks.md on disk. A load answers that with an empty project, which is right
+// for one never written to and wrong as evidence about tasks other state still
+// names: a file a sync provider evicted or has not delivered yet looks the
+// same. A test double keeps no file and is never missing.
+func ProjectTasksFileMissing(project *models.Project) bool {
+	if project == nil {
+		return false
+	}
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return false
+	}
+	_, err := os.Stat(tasksFilePath(project.Path))
+	return os.IsNotExist(err)
 }

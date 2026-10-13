@@ -40,7 +40,7 @@ func cloneSnapshot(source Snapshot) Snapshot {
 			documents[clone.ID] = cloneProjectDocument(document)
 		}
 	}
-	return NewSnapshot(clones, revisions, documents)
+	return NewPartialSnapshot(clones, revisions, documents, source.UnavailableProjectIDs())
 }
 
 // cloneProjectDocument detaches a repository document for rollback. The copy

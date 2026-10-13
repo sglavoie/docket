@@ -311,8 +311,9 @@ func (s *Service) ReconcilePlanning() (bool, error) {
 		return false, err
 	}
 	artifacts, err := planningArtifactsForRequest(PlanningReconcileRequest{
-		Targets:  planningTargetsForSnapshot(snap),
-		Complete: true,
+		Targets:     planningTargetsForSnapshot(snap),
+		Complete:    true,
+		Unavailable: unavailableProjectsForSnapshot(snap),
 	}, builder)
 	if err != nil {
 		return false, err
@@ -375,6 +376,7 @@ func (s *Service) applyPlanningOrder(req PlanningReconcileRequest, undoAction st
 	}
 	req.Targets = planningTargetsForSnapshot(snap)
 	req.Complete = true
+	req.Unavailable = unavailableProjectsForSnapshot(snap)
 	artifacts, err := planningArtifactsForRequest(req, builder)
 	if err != nil {
 		return "", err
@@ -407,6 +409,15 @@ func planningTargetsForSnapshot(snap Snapshot) []PlanningReconcileTarget {
 		}
 	}
 	return targets
+}
+
+// unavailableProjectsForSnapshot names the projects a Complete request may not
+// prune in, which is the other half of what makes that request authoritative.
+func unavailableProjectsForSnapshot(snap Snapshot) []string {
+	if snap == nil {
+		return nil
+	}
+	return snap.UnavailableProjectIDs()
 }
 
 func planningArtifactsForRequest(req PlanningReconcileRequest, builder PlanningArtifactBuilder) ([]storage.ArtifactChange, error) {

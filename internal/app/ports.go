@@ -12,6 +12,7 @@
 package app
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -160,6 +161,11 @@ type Snapshot interface {
 	Document(projectID string) *storage.ProjectDocument
 	// Projects returns every loaded project.
 	Projects() []*models.Project
+	// UnavailableProjectIDs names the cataloged projects whose tasks this
+	// snapshot could not read: a failed load, or no tasks.md on disk. Their
+	// tasks are unknown rather than absent, so nothing may be pruned on the
+	// strength of not finding one here.
+	UnavailableProjectIDs() []string
 }
 
 // Repository is the sole persistence boundary for user mutations in the
@@ -185,6 +191,8 @@ type snapshotView struct {
 	byLocator map[TaskLocator]TaskRef
 	revisions map[string]string
 	documents map[string]*storage.ProjectDocument
+	// unavailable is the sorted set UnavailableProjectIDs answers with.
+	unavailable []string
 }
 
 // NewSnapshot builds a Snapshot over the given projects, loaded revisions, and
@@ -192,6 +200,12 @@ type snapshotView struct {
 // the same load as each project/revision; application mutations treat those
 // documents as immutable merge bases.
 func NewSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument) Snapshot {
+	return NewPartialSnapshot(projects, revisions, documents, nil)
+}
+
+// NewPartialSnapshot is NewSnapshot for a read that could not see every
+// cataloged project: unavailable names the ones whose tasks are unknown.
+func NewPartialSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument, unavailable []string) Snapshot {
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),
 		byTask:    make(map[string][]TaskRef),
@@ -199,6 +213,12 @@ func NewSnapshot(projects []*models.Project, revisions map[string]string, docume
 		revisions: make(map[string]string, len(revisions)),
 		documents: make(map[string]*storage.ProjectDocument, len(documents)),
 	}
+	for _, id := range unavailable {
+		if id != "" && !slices.Contains(view.unavailable, id) {
+			view.unavailable = append(view.unavailable, id)
+		}
+	}
+	slices.Sort(view.unavailable)
 	for id, rev := range revisions {
 		view.revisions[id] = rev
 	}
@@ -262,3 +282,5 @@ func (v *snapshotView) Document(projectID string) *storage.ProjectDocument {
 }
 
 func (v *snapshotView) Projects() []*models.Project { return v.projects }
+
+func (v *snapshotView) UnavailableProjectIDs() []string { return slices.Clone(v.unavailable) }
