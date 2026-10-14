@@ -103,11 +103,19 @@ enum MainMenu {
     /// key and modifiers, or nil when the menu owns no such shortcut. An
     /// uppercase key equivalent carries an implied Shift.
     static func item(in menu: NSMenu, matching event: NSEvent) -> NSMenuItem? {
-        guard let key = event.charactersIgnoringModifiers?.lowercased(), !key.isEmpty else { return nil }
-        let mods = event.modifierFlags.intersection(shortcutModifiers)
+        guard let key = event.charactersIgnoringModifiers else { return nil }
+        return item(in: menu, key: key, modifiers: event.modifierFlags)
+    }
+
+    /// The item in `menu`, at any depth, whose shortcut is exactly `key` with
+    /// `modifiers`, as `HotKeyCombo.menuKeyEquivalent` spells one.
+    static func item(in menu: NSMenu, key: String, modifiers: NSEvent.ModifierFlags) -> NSMenuItem? {
+        let key = key.lowercased()
+        guard !key.isEmpty else { return nil }
+        let mods = modifiers.intersection(shortcutModifiers)
         for item in menu.items {
             if let submenu = item.submenu {
-                if let found = self.item(in: submenu, matching: event) { return found }
+                if let found = self.item(in: submenu, key: key, modifiers: mods) { return found }
                 continue
             }
             let equivalent = item.keyEquivalent

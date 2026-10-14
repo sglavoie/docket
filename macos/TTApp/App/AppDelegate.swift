@@ -384,8 +384,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
                 self.captureHotKeys?.unregister()
                 self.refreshMenuShortcuts()
             } else {
-                self.registerHotKey(self.preferencesModel.hotKey)
-                self.registerCaptureHotKey(self.preferencesModel.captureHotKey)
+                self.registerHotKeys()
             }
         }
         model.onOpenGhosttyConfig = { Ghostty.App.openConfig() }
@@ -403,18 +402,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let hotKeys = HotKeyCenter()
         hotKeys.onPress = { [weak self] in self?.toggleTerminal() }
         self.hotKeys = hotKeys
-        registerHotKey(model.hotKey)
 
         let captureHotKeys = HotKeyCenter()
         captureHotKeys.onPress = { [weak self] in self?.toggleQuickCapture() }
         self.captureHotKeys = captureHotKeys
         model.onCaptureHotKeyChange = { [weak self] in self?.registerCaptureHotKey($0) }
-        registerCaptureHotKey(model.captureHotKey)
+        registerHotKeys()
     }
 
+    static let toggleHotKeyUse = "shows and hides tt"
+    static let captureHotKeyUse = "opens quick capture"
+
+    /// Both shortcuts, the show/hide one first, so at launch it keeps a combo
+    /// the two share.
+    private func registerHotKeys() {
+        applyHotKey(preferencesModel.hotKey)
+        applyCaptureHotKey(preferencesModel.captureHotKey)
+    }
+
+    /// A changed shortcut registers first and then the other one again, so a
+    /// warning the old combo caused clears.
     private func registerHotKey(_ combo: HotKeyCombo?) {
+        applyHotKey(combo)
+        applyCaptureHotKey(preferencesModel.captureHotKey)
+    }
+
+    private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
+        applyCaptureHotKey(combo)
+        applyHotKey(preferencesModel.hotKey)
+    }
+
+    private func applyHotKey(_ combo: HotKeyCombo?) {
         guard let hotKeys else { return }
-        preferencesModel.hotKeyProblem = Self.register(combo, on: hotKeys)
+        preferencesModel.hotKeyProblem = Self.register(
+            combo, on: hotKeys, beside: captureHotKeys, otherUse: Self.captureHotKeyUse, menu: NSApp.mainMenu
+        )
+    }
+
+    private func applyCaptureHotKey(_ combo: HotKeyCombo?) {
+        guard let captureHotKeys else { return }
+        preferencesModel.captureHotKeyProblem = Self.register(
+            combo, on: captureHotKeys, beside: hotKeys, otherUse: Self.toggleHotKeyUse, menu: NSApp.mainMenu
+        )
+        refreshMenuShortcuts()
     }
 
     /// The status menu reads its shortcuts as it opens; the main menu is told.
@@ -422,21 +452,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         MainMenu.showCaptureHotKey(captureHotKey, in: NSApp.mainMenu)
     }
 
-    private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
-        guard let captureHotKeys else { return }
-        if let combo, combo == preferencesModel.hotKey {
-            captureHotKeys.unregister()
-            preferencesModel.captureHotKeyProblem = "\(combo.displayString) already shows and hides tt. Choose another shortcut."
-            refreshMenuShortcuts()
-            return
+    /// Registers `combo` on `center` and returns what Settings should say
+    /// about it. A combo `other` holds live, which `otherUse` describes, or
+    /// one tt's `menu` or every app needs, is refused and left unregistered.
+    static func register(
+        _ combo: HotKeyCombo?, on center: HotKeyCenter,
+        beside other: HotKeyCenter?, otherUse: String, menu: NSMenu?
+    ) -> String? {
+        var problem: String?
+        if let combo, combo == other?.registeredCombo {
+            problem = "\(combo.displayString) already \(otherUse). Choose another shortcut."
+        } else if let combo, let reserved = ReservedHotKeys.problem(for: combo, menu: menu) {
+            problem = reserved
         }
-        preferencesModel.captureHotKeyProblem = Self.register(combo, on: captureHotKeys)
-        refreshMenuShortcuts()
-    }
-
-    /// Registers `combo` and returns what Preferences should say about it.
-    private static func register(_ combo: HotKeyCombo?, on center: HotKeyCenter) -> String? {
-        var problem = center.register(combo).problem
+        if problem != nil {
+            center.unregister()
+        } else {
+            problem = center.register(combo).problem
+        }
         if problem == nil, let combo, SystemHotKeys.conflicts(with: combo) {
             problem = "macOS also uses \(combo.displayString) (System Settings › Keyboard › Keyboard Shortcuts); "
                 + "turn it off there, or choose another shortcut."

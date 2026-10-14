@@ -125,7 +125,11 @@ already in front; with no terminal (a launch error) it fronts the error window.
 Change or clear it in Settings › Shortcuts (`Cmd+,`): click the recorder and
 press the combination. A combination needs Ctrl, Opt, or Cmd unless the key is
 a function key, and Settings warns when another app or macOS itself already
-owns it.
+owns it. Settings refuses, and leaves unregistered, a combination the other tt
+shortcut already holds, a Command-only one a tt menu item uses, and the
+standard `Cmd+Q`, `Cmd+W`, `Cmd+C`, `Cmd+V`, `Cmd+X`, `Cmd+Z`, `Cmd+A`,
+`Cmd+Tab`, `Cmd+Space`, and `Cmd+,`; changing either shortcut checks the other
+again, so a warning the old combination caused clears.
 
 It is stored as the `ttHotKey` default, lowercase and `+`-joined:
 

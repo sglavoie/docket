@@ -340,6 +340,75 @@ final class HotKeyCenterTests: XCTestCase {
     }
 }
 
+final class HotKeyConflictTests: XCTestCase {
+    private func combo(_ string: String) throws -> HotKeyCombo {
+        try XCTUnwrap(HotKeyCombo(string: string))
+    }
+
+    /// Each shortcut refuses the combo the other holds live, naming what that
+    /// one does, and a refused one registers once the other moves away.
+    func testTheTwoShortcutsRefuseEachOther() throws {
+        let toggle = HotKeyCenter()
+        let capture = HotKeyCenter()
+        let first = try combo("ctrl+opt+shift+cmd+f19")
+        let second = try combo("ctrl+opt+shift+cmd+f18")
+        func registerToggle(_ combo: HotKeyCombo?) -> String? {
+            AppDelegate.register(combo, on: toggle, beside: capture, otherUse: AppDelegate.captureHotKeyUse, menu: nil)
+        }
+        func registerCapture(_ combo: HotKeyCombo?) -> String? {
+            AppDelegate.register(combo, on: capture, beside: toggle, otherUse: AppDelegate.toggleHotKeyUse, menu: nil)
+        }
+
+        XCTAssertNil(registerToggle(first))
+        XCTAssertEqual(registerCapture(first), "⌃⌥⇧⌘F19 already shows and hides tt. Choose another shortcut.")
+        XCTAssertNil(capture.registeredCombo)
+
+        XCTAssertNil(registerToggle(second))
+        XCTAssertNil(registerCapture(first), "the re-registration clears the stale warning")
+        XCTAssertEqual(capture.registeredCombo, first)
+
+        XCTAssertEqual(registerToggle(first), "⌃⌥⇧⌘F19 already opens quick capture. Choose another shortcut.")
+        XCTAssertNil(toggle.registeredCombo)
+        XCTAssertNil(registerCapture(second))
+        XCTAssertNil(registerToggle(first))
+        XCTAssertEqual(toggle.registeredCombo, first)
+    }
+
+    func testTheMenusCommandShortcutsAreRefused() throws {
+        let menu = MainMenu.make(captureHotKey: try combo("shift+cmd+k"))
+        XCTAssertEqual(ReservedHotKeys.problem(for: try combo("cmd+q"), menu: menu),
+                       "⌘Q is tt's Quit tt shortcut. Choose another shortcut.")
+        XCTAssertEqual(ReservedHotKeys.problem(for: try combo("cmd+comma"), menu: menu),
+                       "⌘, is tt's Settings shortcut. Choose another shortcut.")
+        XCTAssertEqual(ReservedHotKeys.problem(for: try combo("cmd+h"), menu: menu),
+                       "⌘H is tt's Hide tt shortcut. Choose another shortcut.")
+        XCTAssertNil(ReservedHotKeys.problem(for: try combo("shift+cmd+k"), menu: menu),
+                     "Quick Capture's item shows the capture shortcut and reserves nothing")
+        XCTAssertNil(ReservedHotKeys.problem(for: try combo("opt+cmd+h"), menu: menu),
+                     "only a Command-only combo is checked against the menu")
+        XCTAssertNil(ReservedHotKeys.problem(for: try combo("shift+cmd+q"), menu: menu))
+    }
+
+    func testTheStandardShortcutsAreRefusedWithoutAMenu() throws {
+        for string in ["cmd+q", "cmd+w", "cmd+c", "cmd+v", "cmd+x", "cmd+z", "cmd+a", "cmd+tab", "cmd+space", "cmd+comma"] {
+            let combo = try combo(string)
+            XCTAssertEqual(ReservedHotKeys.problem(for: combo, menu: nil),
+                           "\(combo.displayString) is a standard macOS shortcut other apps rely on. Choose another shortcut.",
+                           string)
+        }
+        XCTAssertNil(ReservedHotKeys.problem(for: try combo("cmd+t"), menu: nil))
+        XCTAssertNil(ReservedHotKeys.problem(for: try combo("ctrl+cmd+q"), menu: nil))
+    }
+
+    func testARefusedShortcutIsNotRegistered() throws {
+        let center = HotKeyCenter()
+        let problem = AppDelegate.register(try combo("cmd+w"), on: center, beside: nil,
+                                           otherUse: AppDelegate.captureHotKeyUse, menu: MainMenu.make())
+        XCTAssertEqual(problem, "⌘W is tt's Close shortcut. Choose another shortcut.")
+        XCTAssertEqual(center.registration, .none)
+    }
+}
+
 private final class FakeStatusDelegate: StatusItemDelegate {
     var isTerminalFrontmost = false
     var canRelaunchTerminal = true

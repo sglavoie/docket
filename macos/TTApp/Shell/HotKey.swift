@@ -304,6 +304,33 @@ final class HotKeyCenter {
     }
 }
 
+/// Shortcuts a global one would take from every app: tt's own Command-only
+/// menu shortcuts and the standard few macOS and its apps rely on.
+enum ReservedHotKeys {
+    static let standard: Set<HotKeyCombo> = Set(
+        ["cmd+q", "cmd+w", "cmd+c", "cmd+v", "cmd+x", "cmd+z", "cmd+a", "cmd+tab", "cmd+space", "cmd+comma"]
+            .compactMap(HotKeyCombo.init(string:))
+    )
+
+    /// Why `combo` is refused, or nil when it is free. The Quick Capture item
+    /// shows the capture shortcut itself, so it reserves nothing.
+    static func problem(for combo: HotKeyCombo, menu: NSMenu?) -> String? {
+        let commandOnly = combo.modifiers & UInt32(cmdKey) != 0
+            && combo.modifiers & UInt32(controlKey | optionKey) == 0
+        guard commandOnly else { return nil }
+        let equivalent = combo.menuKeyEquivalent
+        if let menu, let item = MainMenu.item(in: menu, key: equivalent.key, modifiers: equivalent.modifiers),
+           item.action != MainMenu.quickCapture {
+            let title = item.title.hasSuffix("…") ? String(item.title.dropLast()) : item.title
+            return "\(combo.displayString) is tt's \(title) shortcut. Choose another shortcut."
+        }
+        if standard.contains(combo) {
+            return "\(combo.displayString) is a standard macOS shortcut other apps rely on. Choose another shortcut."
+        }
+        return nil
+    }
+}
+
 /// Shortcuts macOS itself owns (System Settings › Keyboard › Shortcuts). Carbon
 /// cannot see these as conflicts, so Preferences warns about them itself.
 enum SystemHotKeys {
