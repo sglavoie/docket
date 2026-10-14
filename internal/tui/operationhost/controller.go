@@ -113,6 +113,11 @@ type Controller struct {
 	// flow. The host it was opened for travels on every message it emits.
 	ActionSheet *listsurface.ContextActionSheetModel
 
+	// RowSheet is the sheet a task row raised, which the shell anchors to that
+	// row. It counts only while it is still ActionSheet, so any other sheet
+	// mounted in its place falls back to the bottom-centered placement.
+	RowSheet *listsurface.ContextActionSheetModel
+
 	// The value overlays are the second level: exactly one is mounted, chosen by
 	// the value provider.
 	ValuePicker   *valuepicker.OperationValuePickerModel

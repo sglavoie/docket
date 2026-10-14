@@ -332,7 +332,7 @@ const (
 )
 
 var taskActionCategories = []listsurface.ListCategory{
-	{ID: taskActionCategoryPlan, Label: "Plan"},
+	{ID: taskActionCategoryPlan, Label: "Schedule"},
 	{ID: taskActionCategoryContent, Label: "Content"},
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }
@@ -546,7 +546,7 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 		if err != nil {
 			return err
 		}
-		m.operations.ActionSheet = sheet
+		m.operations.ActionSheet, m.operations.RowSheet = sheet, sheet
 		return nil
 	}
 	task, _ := m.getCurrentCursorTaskAndProject()
@@ -562,6 +562,6 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 	if err != nil {
 		return err
 	}
-	m.operations.ActionSheet = sheet
+	m.operations.ActionSheet, m.operations.RowSheet = sheet, sheet
 	return nil
 }

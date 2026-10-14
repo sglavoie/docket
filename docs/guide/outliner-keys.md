@@ -305,6 +305,10 @@ no key edits them.
 1. Set Check-In
 2. Delete
 
+Set Check-In is listed under **Schedule** and Delete under **Danger**. The sheet,
+for one task or a selection, opens directly under the cursor's row, or just
+above it when the row is too near the bottom of the screen.
+
 `j`/`k` move through the list and `/` opens its search, as in every other
 action sheet: typing filters only once the search is open, `Enter` leaves the
 search with its matches standing, and `Esc` peels one layer per press — the

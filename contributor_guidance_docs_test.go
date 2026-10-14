@@ -1371,8 +1371,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The menu bar is not a sheet but a projection of the registry, the class `?` help and " +
 			"the footer ranks belong to, so it names directly-bound operations freely",
 		"a menu-only operation's `TargetSource` is target-free or view-scoped, never a task or project",
-		"The task-row `Space` menu holds Set Check-In and Delete, identical to the bulk menu: " +
-			"the editor saves with `Ctrl+S`, while Delete confirms first",
+		"The task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical to the bulk menu: " +
+			"the editor saves with `Ctrl+S`; Delete confirms first",
 		"bulk use starts blank and labels the replacement",
 		"The Outliner project-header sheet is Archive and Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
@@ -1429,7 +1429,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"There is no `$delete` sigil",
 		"The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
-		"`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns",
+		"`b` took Peek from the retired `Ctrl+Enter`; no alias returns it",
 		"`;` opens the panel that reads, edits, and deletes comments and `C` " +
 			"only appends one from the list; on a task both commit through `Service.AddComment` " +
 			"under the one limit `taskdetail.CommentCharLimit` states",

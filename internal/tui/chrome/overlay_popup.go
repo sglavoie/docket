@@ -64,6 +64,37 @@ func OverlayPopupDimmedKeepingRow(base, popup string, baseWidth, baseHeight, top
 	}
 }
 
+// AnchoredPopupStartRow places a popup of popupHeight rows against the host row
+// anchorRow inside a frame whose rows above topRow are persistent title rows.
+// The popup hangs directly under the anchor when it fits there, rises to end
+// directly above it when it fits there instead, and otherwise is clamped whole
+// into the frame below topRow, covering the anchor rather than losing rows.
+func AnchoredPopupStartRow(anchorRow, popupHeight, topRow, frameHeight int) int {
+	topRow = min(max(topRow, 0), max(frameHeight-1, 0))
+	switch {
+	case anchorRow+1+popupHeight <= frameHeight:
+		return max(anchorRow+1, topRow)
+	case anchorRow-popupHeight >= topRow:
+		return anchorRow - popupHeight
+	default:
+		return max(min(anchorRow+1, frameHeight-popupHeight), topRow)
+	}
+}
+
+// OverlayPopupDimmedAnchored is OverlayPopupDimmedAt for a popup that belongs to
+// one host row: AnchoredPopupStartRow chooses the row, the popup is fitted to
+// the frame below topRow, and it is centered and flanked the way a
+// bottom-anchored popup is, so only its height position differs.
+func OverlayPopupDimmedAnchored(base, popup string, baseWidth, baseHeight, anchorRow, topRow int) string {
+	if popup == "" {
+		return base
+	}
+	topRow = min(max(topRow, 0), max(baseHeight-1, 0))
+	fitted := FitOverlayPopupHeight(popup, max(baseHeight-topRow, 1))
+	startRow := AnchoredPopupStartRow(anchorRow, lipgloss.Height(fitted), topRow, baseHeight)
+	return overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, startRow)
+}
+
 // overlayPopupDimmedRow centers an already fitted popup at startRow over the
 // dimmed base, flanking it where a side margin is too narrow to show the host.
 func overlayPopupDimmedRow(base, fitted string, baseWidth, baseHeight, startRow int) string {

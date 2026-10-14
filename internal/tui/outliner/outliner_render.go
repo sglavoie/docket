@@ -688,6 +688,10 @@ type outlinerViewport struct {
 	// startIdx and endIdx then span one row fewer.
 	pinned       bool
 	pinnedHeader int
+	// topRow is the screen row the window's first row is drawn on, below the
+	// header rows and any search dropdown, so a cursor row can be named on
+	// screen without a second window computation.
+	topRow int
 }
 
 // drawnRows is the screen rows the window fills: its own rows and the pinned
@@ -740,6 +744,30 @@ func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 // against.
 func (m *OutlinerModel) outlinerHostHeaderRows() int {
 	return m.menuBarRows() + 1 + m.contextRowRows()
+}
+
+// HostHeaderRows is outlinerHostHeaderRows for a shell overlay that anchors to
+// a row of this view: the rows it may never cover.
+func (m *OutlinerModel) HostHeaderRows() int {
+	return m.outlinerHostHeaderRows()
+}
+
+// CursorScreenRow is the screen row the last render drew the cursor on,
+// counted from the view's first row. It reads the window ComputeOutlinerViewport
+// recorded rather than computing one, and answers false when no render has
+// drawn the cursor: an empty projection, a cursor outside the window, or no
+// render at all.
+func (m *OutlinerModel) CursorScreenRow() (int, bool) {
+	viewport := m.LastViewport
+	if viewport.VisibleRows <= 0 || !m.HasContentRows() ||
+		m.Cursor < viewport.startIdx || m.Cursor >= viewport.endIdx || viewport.endIdx > len(m.Rows) {
+		return 0, false
+	}
+	row := viewport.topRow + m.Cursor - viewport.startIdx
+	if viewport.pinned {
+		row++
+	}
+	return row, true
 }
 
 // outlinerHostFrameHeight is the frame a modal composites into: the rows this
@@ -795,6 +823,7 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 	}
 
 	viewport := m.ComputeOutlinerViewport(width, extraFooter)
+	m.LastViewport.topRow = strings.Count(b.String(), "\n")
 	b.WriteString(m.renderOutlinerRows(viewport))
 	m.writePeekDock(&b, viewport)
 

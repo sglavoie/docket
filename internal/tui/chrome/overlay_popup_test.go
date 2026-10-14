@@ -401,3 +401,37 @@ func TestOverlayPopupDimmedKeepingRowNeverCoversTheKeptRow(t *testing.T) {
 		}
 	})
 }
+
+func TestAnchoredPopupStartRowPrefersBelowThenAboveThenClamps(t *testing.T) {
+	cases := []struct {
+		name                                     string
+		anchor, height, top, frame, wantStartRow int
+	}{
+		{name: "fits below the anchor", anchor: 3, height: 5, top: 2, frame: 20, wantStartRow: 4},
+		{name: "ends exactly on the last row", anchor: 14, height: 5, top: 2, frame: 20, wantStartRow: 15},
+		{name: "rises above when below is short", anchor: 17, height: 5, top: 2, frame: 20, wantStartRow: 12},
+		{name: "never above the title rows", anchor: 6, height: 5, top: 2, frame: 10, wantStartRow: 5},
+		{name: "taller than the frame starts at the title rows", anchor: 4, height: 30, top: 2, frame: 10, wantStartRow: 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := AnchoredPopupStartRow(tc.anchor, tc.height, tc.top, tc.frame); got != tc.wantStartRow {
+				t.Fatalf("AnchoredPopupStartRow(%d, %d, %d, %d) = %d, want %d",
+					tc.anchor, tc.height, tc.top, tc.frame, got, tc.wantStartRow)
+			}
+		})
+	}
+}
+
+func TestOverlayPopupDimmedAnchoredKeepsTheAnchorRowAndTitle(t *testing.T) {
+	base := strings.Join([]string{"title", "row 1", "row 2", "row 3", "row 4", "row 5", "row 6", "row 7"}, "\n")
+	popup := strings.Join([]string{"+--+", "|ab|", "+--+"}, "\n")
+
+	out := strings.Split(ansi.Strip(OverlayPopupDimmedAnchored(base, popup, 20, 8, 6, 1)), "\n")
+	if !strings.Contains(out[0], "title") || !strings.Contains(out[6], "row 6") {
+		t.Fatalf("anchored popup covered the title or its row:\n%s", strings.Join(out, "\n"))
+	}
+	if !strings.Contains(out[3], "+--+") || !strings.Contains(out[5], "+--+") {
+		t.Fatalf("popup with no room below did not rise to end above its row:\n%s", strings.Join(out, "\n"))
+	}
+}

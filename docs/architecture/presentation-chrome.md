@@ -621,6 +621,20 @@ host. Both dim the host through
 one `DimContent` call over the composed frame, so the compositing is one pass and
 a modal never renders another modal's frame as its base.
 
+The task action sheet is the one shell overlay that hangs off an Outliner row.
+`openTaskActionSheet` records the sheet it mounts, single or bulk, as
+`RowSheet`, and `overlayAnchoredToOutlinerRow` anchors it only while it is still
+the mounted `ActionSheet`, the Outliner is the presentation, and
+`CursorScreenRow` names a row. That row is read off `LastViewport`, which
+`renderOutlinerHostContent` stamps with the screen row its window starts on, so
+the window `ComputeOutlinerViewport` computed is read rather than recomputed.
+`chrome.OverlayPopupDimmedAnchored` places the box under that row, above it when
+it does not fit below, and otherwise clamps it whole into the frame below
+`HostHeaderRows`, covering the row rather than losing entries; it is centered
+and flanked like the bottom-anchored path, so only its height differs. Every
+other sheet, and a frame with no drawn cursor row, keeps the bottom-centered
+placement.
+
 The host is drawn whole and then covered, which is what stops every row on screen
 from stepping down and back up once per press: the box occupies rows rather than
 displacing them, and `MenuBarVisible()` is already true while a menu is open, so

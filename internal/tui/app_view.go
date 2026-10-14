@@ -388,6 +388,10 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 func (m *AppModel) applyOverlays(content string, h, panelDivider int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
+		if anchored, ok := m.overlayAnchoredToOutlinerRow(renderer, content, h); ok {
+			content = anchored
+			continue
+		}
 		if popup := renderOverlayWithin(renderer, m.viewNav.width, h); popup != "" {
 			content = overlayPopupBelowPersistentTitle(content, popup, m.viewNav.width, h)
 		}
@@ -401,6 +405,32 @@ func (m *AppModel) applyOverlays(content string, h, panelDivider int) string {
 	}
 
 	return content
+}
+
+// overlayAnchoredToOutlinerRow composites the task action sheet under the
+// Outliner row that raised it, or above that row when the sheet does not fit
+// below, never covering the Outliner's header rows. It reads the row the last
+// render drew the cursor on, so it answers false — and the sheet takes the
+// ordinary bottom-centered placement — for any other overlay, any other sheet,
+// another presentation, or a cursor row the render did not draw.
+func (m *AppModel) overlayAnchoredToOutlinerRow(renderer widthRenderer, content string, h int) (string, bool) {
+	sheet := m.operations.ActionSheet
+	if sheet == nil || sheet != m.operations.RowSheet || renderer != widthRenderer(sheet) {
+		return "", false
+	}
+	if m.currentPresentationView() != presentation.ViewCrossProjectOutliner || m.crossOutliner == nil {
+		return "", false
+	}
+	row, ok := m.crossOutliner.CursorScreenRow()
+	if !ok || row >= h {
+		return "", false
+	}
+	top := min(m.crossOutliner.HostHeaderRows(), row)
+	popup := renderOverlayWithin(sheet, m.viewNav.width, max(h-top, 1))
+	if popup == "" {
+		return content, true
+	}
+	return chrome.OverlayPopupDimmedAnchored(content, popup, m.viewNav.width, h, row, top), true
 }
 
 // overlayPopupBelowPersistentTitle reserves the host's first row before

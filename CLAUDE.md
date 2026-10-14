@@ -253,8 +253,8 @@ operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
 or project. Clear All Folds, Advisories, Recent messages and Set up check-ins:
 keyless, target-free. The
-task-row `Space` menu holds Set Check-In and Delete, identical to the bulk menu:
-the editor saves with `Ctrl+S`, while Delete confirms first. The Hub sheet is
+task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
+to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
 Outliner project-header sheet is Archive and Delete, and never Unarchive: that
 header is drawn from the active population.
@@ -840,7 +840,7 @@ not give notes tags, links, or bulk actions.
 The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `wd` alone and no `d` alias may return.
-`b` is live: it took Peek from the retired `Ctrl+Enter`, which no alias returns.
+`b` took Peek from the retired `Ctrl+Enter`; no alias returns it.
 
 `;` opens the panel that reads, edits, and deletes comments and `C`
 only appends one from the list; on a task both commit through
