@@ -35,6 +35,27 @@ func TruncateAndPad(line string, maxWidth int) string {
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
 }
 
+// overlayTitleSubjectFloor is the fewest columns a subject is worth drawing in.
+// Under it the subject is an ellipsis and a letter, which names nothing.
+const overlayTitleSubjectFloor = 4
+
+// FitOverlayTitle composes an overlay's one-line title, `title: subject suffix`,
+// inside width text columns. The subject is the one part that gives way: the
+// title names the act and the suffix carries a value no row repeats, so both
+// are kept whole and the subject is fitted to what they leave. A width that
+// leaves the subject nothing worth reading drops it, and only then is the
+// remainder clipped, so the title never wraps onto a second row.
+func FitOverlayTitle(title, subject, suffix string, width int) string {
+	const separator = ": "
+	if subject != "" {
+		room := width - lipgloss.Width(title) - lipgloss.Width(separator) - lipgloss.Width(suffix)
+		if room >= min(overlayTitleSubjectFloor, lipgloss.Width(subject)) {
+			return title + separator + textfit.TruncateToVisualWidth(subject, room) + suffix
+		}
+	}
+	return textfit.TruncateToVisualWidth(title+suffix, width)
+}
+
 // RenderOverlayBox renders a modal surface with an uninterrupted semantic
 // border, title and help text inside the frame, and a subtle one-cell halo on
 // all four sides. Width is the framed box width; the halo adds two columns and

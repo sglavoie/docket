@@ -271,6 +271,11 @@ The committed suite exercises the product contracts directly:
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |
 | Attachments direct grammar, its five-row `Space` sheet, and the retired keys | `rich-tools.json`, `action-sheet-picker-cancel.json` |
+| An action sheet browsed with `j`/`k` and filtered only behind `/`, with `Esc` peeling the query, the search, and the sheet in turn | `action-sheet-picker-cancel.json` |
+| The date picker's title on one row with the deadline being replaced whole, the task name giving way | `date-picker-title-keeps-due-on-one-row.json`, `date-picker-narrow-resize-key-confinement.json` |
+| The `f` and `g` chord rows under their headings, and what each gives up at the minimum width | `chord-footers-grouped.json` |
+| A wrapped Peek footer never spending its second row on one optional entry | `outliner-peek-footer-no-orphan.json` |
+| A search row's trailer order — indicators, then the match cue — and a subsequence title hit carrying no cue | `search-row-trailer.json` |
 | `gg`/`Home` and `G`/`End` on Notes, Comments, and Attachments, and the silent abandon of a lone `g` | `notes-ends-navigation.json`, `task-comments-ends-navigation.json`, `task-attachments-ends-navigation.json` |
 | Both end spellings named once in each entity surface's own `?` help | `project-hub-help.json`, `notes-help.json`, `task-comments-help.json`, `task-attachments-undo.json` |
 | `u` and `Ctrl+R` reaching the one workspace ledger from inside a panel, refreshing its list and naming the transaction | `task-attachments-undo.json`, `task-comments-undo.json` |

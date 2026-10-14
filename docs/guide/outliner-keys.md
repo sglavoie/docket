@@ -305,9 +305,12 @@ no key edits them.
 1. Set Check-In
 2. Delete
 
-The list filters as soon as printable text is typed. Frequent direct operations
-do not repeat in this menu. Set Check-In opens one draft with **Next check-in**
-and **Repeat** fields. A single task starts with its stored schedule; a bulk
+`j`/`k` move through the list and `/` opens its search, as in every other
+action sheet: typing filters only once the search is open, `Enter` leaves the
+search with its matches standing, and `Esc` peels one layer per press — the
+query, then the search, then the sheet. Frequent direct operations do not repeat
+in this menu. Set Check-In opens one draft with **Next check-in** and **Repeat**
+fields. A single task starts with its stored schedule; a bulk
 selection starts blank and says that saving replaces every selected schedule.
 Use `Tab`/`Shift+Tab` between fields, `Enter` for the current field's presets,
 and `Ctrl+S` to save. Dates accept the relative spellings used by the date

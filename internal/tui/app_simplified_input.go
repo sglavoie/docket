@@ -199,7 +199,9 @@ func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 // for the packer's full budget. Selection follows declaration order except for
 // an entry its binding asked to keep, which ranks with the head of its own run:
 // behind the entry carrying the heading, so it is never drawn under another
-// division's name, and ahead of every other member of that run.
+// division's name, and ahead of every other member of that run. A kept entry
+// standing under no heading has none to be stranded from, so it ranks ahead of
+// every division instead and is the last optional entry the row sheds.
 func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome.GuidanceSpec {
 	spec := chrome.GuidanceSpec{Rows: chrome.MaxGuidanceRows}
 	if prefix = strings.TrimSpace(prefix); prefix != "" {
@@ -213,6 +215,9 @@ func pendingChordGuidanceSpec(prefix string, hints []operation.ChordHint) chrome
 		}
 		if hint.Keep {
 			priority = runPriority
+			if group == "" {
+				priority = 0
+			}
 		}
 		spec.Hints = append(spec.Hints, chrome.GuidanceHint{
 			Key:      hint.Key,

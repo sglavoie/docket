@@ -63,9 +63,6 @@ type ContextActionSheetConfig struct {
 	CategoryFor  func(operation.OperationDescriptor) ListCategoryID
 	SecondaryFor func(operation.OperationDescriptor) string
 	DisabledFor  func(operation.OperationDescriptor) string
-	// ImmediateFilter makes printable text update the plain list query without
-	// requiring a search-mode key. Arrow keys remain navigation.
-	ImmediateFilter bool
 	// Value is a frozen host payload delivered to the executor with every
 	// request raised from this sheet.
 	Value    any
@@ -248,54 +245,6 @@ func (model *ContextActionSheetModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 		return nil, true, ContextActionSheetClosedMsg{}
 	}
 	key := msg.String()
-	if model.Config.ImmediateFilter {
-		switch key {
-		case "esc":
-			if model.Surface.Query().Raw != "" {
-				model.Surface.SetQuery("")
-				model.Searching = false
-				return nil, false, nil
-			}
-			return nil, true, ContextActionSheetClosedMsg{}
-		case "backspace":
-			query := model.Surface.Query().Raw
-			if query != "" {
-				_, size := utf8.DecodeLastRuneInString(query)
-				model.Surface.SetQuery(query[:len(query)-size])
-			}
-			model.Searching = model.Surface.Query().Raw != ""
-			return nil, false, nil
-		case "/":
-			model.Searching = true
-			return nil, false, nil
-		case "up", "ctrl+k":
-			model.Surface.MoveCursor(-1)
-			return nil, false, nil
-		case "down", "ctrl+j":
-			model.Surface.MoveCursor(1)
-			return nil, false, nil
-		case "home":
-			model.Surface.MoveCursorToStart()
-			return nil, false, nil
-		case "end":
-			model.Surface.MoveCursorToEnd()
-			return nil, false, nil
-		case "pgup":
-			model.Surface.PageCursor(-1)
-			return nil, false, nil
-		case "pgdown":
-			model.Surface.PageCursor(1)
-			return nil, false, nil
-		case "enter":
-			return model.activateCursor()
-		default:
-			if msg.Text != "" {
-				model.Surface.SetQuery(model.Surface.Query().Raw + msg.Text)
-				model.Searching = true
-			}
-			return nil, false, nil
-		}
-	}
 	if model.Searching {
 		switch key {
 		case "esc":
@@ -325,7 +274,7 @@ func (model *ContextActionSheetModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 
 	switch key {
 	case "esc":
-		// One layer per press, as in the immediate sheet above. A query narrowing
+		// One layer per press. A query narrowing
 		// the list survives the Enter that leaves search, so it is still standing
 		// between the cursor and the full list, and it is what this press spends
 		// itself on; the sheet closes once nothing is left to peel.
@@ -383,9 +332,6 @@ func (model *ContextActionSheetModel) Render(width int) string {
 	listHeight := min(max(len(model.Surface.Rows()), 7), 16)
 	query := model.Surface.Query().Raw
 	search := ""
-	if model.Config.ImmediateFilter {
-		search = "Search: "
-	}
 	if model.Searching || query != "" {
 		cursor := ""
 		if model.Searching {
@@ -414,9 +360,7 @@ func (model *ContextActionSheetModel) Render(width int) string {
 	if model.Config.Bulk {
 		titleText = fmt.Sprintf("%s · %d selected", titleText, model.Config.Targets)
 	}
-	if model.Config.Subtitle != "" {
-		titleText += ": " + textfit.TruncateToVisualWidth(model.Config.Subtitle, max(innerWidth-20, 12))
-	}
+	titleText = chrome.FitOverlayTitle(titleText, model.Config.Subtitle, "", max(innerWidth-4, 1))
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.GuidanceSpec()
 	footer := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
@@ -429,53 +373,37 @@ func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool)
 	}
 	query := model.Surface.Query().Raw
 	searching := model.Searching
-	immediate := model.Config.ImmediateFilter
 	hasSelection := func() bool {
 		_, ok := model.Surface.CurrentItem()
 		return ok
 	}
-	browsing := func() bool { return !searching || immediate }
-	navigationKey := "j"
-	navigationLabel := "navigate"
-	navigationFooterKey := "j/k"
-	if immediate {
-		navigationKey = "down"
-		navigationLabel = "move"
-		navigationFooterKey = "↑↓/Ctrl+j/k"
-	}
 	enterLabel := "run"
-	if searching && !immediate {
+	if searching {
 		enterLabel = "apply search"
 	}
 	// The ladder is HandleKey's own, in HandleKey's order: a typed query is peeled
 	// first in every sub-state, an open search box is left next, and the sheet
-	// closes only when neither is standing. An immediate sheet has no search
-	// sub-state to leave, so its middle rung is simply absent.
+	// closes only when neither is standing.
 	escapeLabel := "close"
 	switch {
 	case query != "":
 		escapeLabel = "clear search"
-	case searching && !immediate:
+	case searching:
 		escapeLabel = "cancel search"
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
-		keymap.Bind(navigationKey, "Move selection", "Navigation",
-			keymap.WithGate(func() bool { return browsing() && hasSelection() }),
-			keymap.WithFooter(10, navigationLabel, false),
-			keymap.WithFooterKey(navigationFooterKey)),
+		keymap.Bind("j", "Move selection", "Navigation",
+			keymap.WithGate(func() bool { return !searching && hasSelection() }),
+			keymap.WithFooter(10, "navigate", false),
+			keymap.WithFooterKey("j/k")),
 		keymap.Bind("enter", "Apply current action", "Actions",
-			keymap.WithGate(func() bool { return hasSelection() || (searching && !immediate) }),
+			keymap.WithGate(func() bool { return hasSelection() || searching }),
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
 		keymap.Bind("/", "Search actions", "Filters",
-			keymap.WithGate(func() bool { return !searching && !immediate }),
+			keymap.WithGate(func() bool { return !searching }),
 			keymap.WithFooter(20, "search", false)),
 		keymap.Bind("esc", "Unwind action sheet", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	state := model.Surface.GuidanceState(searching && !immediate)
-	spec, ok := ListSurfaceGuidanceSpec(state, km, nil)
-	if immediate && searching {
-		spec.Rows = 2
-	}
-	return spec, ok
+	return ListSurfaceGuidanceSpec(model.Surface.GuidanceState(searching), km, nil)
 }

@@ -856,6 +856,15 @@ the entries in another order would head them correctly anyway. The chord's own
 declaration order is what puts Plan's two entries ahead of Status's eight, which
 is also what keeps them off the end a narrow footer sheds.
 
+The `f` and `g` chords declare their runs the same way, with headings that live
+beside `PlanHintGroup` in `chrome/plan_status_vocabulary.go`: `Field:` and
+`Derived:` for the facets, `Mode:`, `Task:`, and `Sync:` for the jumps. A nested
+prefix is not a binding, so `OperationChordGroup.HintGroup` is the same field on
+the chord group and `chordGroupHint` returns it with the label, which is what
+seats `f!` at the head of the Field run. `gg` is declared with the cursor keys
+and stays ungrouped ahead of the modes; `fx` and `f%` close the filter row
+ungrouped, `f%` declared after `fx` so it is shed first.
+
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
 through, and the miss sets a warning status such as `wq is not a workflow

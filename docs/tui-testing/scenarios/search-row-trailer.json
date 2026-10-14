@@ -1,0 +1,25 @@
+{
+  "name": "search-row-trailer",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    {"type": "key", "label": "capture a task carrying a deadline and a comment", "key": "a"},
+    {"type": "text", "text": "Order hangar parts @2030-01-07 ;zeppelin mooring mast;"},
+    {"type": "key", "key": "enter"},
+    {"type": "wait"},
+    {"type": "key", "key": "/"},
+    {"type": "text", "text": "zeppelin"},
+    {"type": "assert", "label": "the row's own deadline keeps its place beside the title and the cue closes the row, as it closes a note row", "assert": "contains", "value": "Order hangar parts  ⊡ Jan 7 '30   · comment"},
+    {"type": "assert", "assert": "not_contains", "value": "· comment  ⊡"},
+    {"type": "assert", "assert": "no_layout_issues"},
+    {"type": "resize", "label": "the cue is still the first thing a narrow row sheds, ahead of the deadline", "width": 60, "height": 20},
+    {"type": "assert", "assert": "contains", "value": "Order hangar parts"},
+    {"type": "assert", "assert": "no_layout_issues"},
+    {"type": "resize", "width": 100, "height": 30},
+    {"type": "key", "label": "clear the query", "key": "ctrl+u"},
+        {"type": "text", "label": "a query the title holds only as a subsequence", "text": "lgn"},
+    {"type": "assert", "label": "is still a title hit: the row is in the results and explains itself in the title, not in a cue", "assert": "contains", "value": "[rich-project] Build login form  ‹"},
+    {"type": "assert", "assert": "not_contains", "value": "Build login form  ‹  ·"},
+    {"type": "assert", "assert": "no_layout_issues"}
+  ]
+}

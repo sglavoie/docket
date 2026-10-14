@@ -241,3 +241,92 @@ func TestSearchCueDropsBeforeEveryIndicator(t *testing.T) {
 		})
 	}
 }
+
+// TestSearchCueClosesTheRowBehindItsIndicators holds the trailer order a task
+// row shares with a note row: title, then the row's own indicators, then the
+// cue, which is a remark about the search rather than a fact about the task.
+func TestSearchCueClosesTheRowBehindItsIndicators(t *testing.T) {
+	task := cueLadderTask(models.StateWaiting)
+	outliner, project := cursorHighlightOutliner(t, task)
+	row := OutlinerRow{Task: task, ProjectID: project.ID, MatchSource: MatchSourceChecklist}
+
+	segments := outliner.buildTaskRowSegments(row, 200, nil, cursorPaint{})
+	if segments.indicators == "" || segments.matchCue == "" {
+		t.Fatalf("fixture needs both an indicator and a cue: %+v", segments)
+	}
+	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 200, 0, nil))
+	title := strings.Index(plain, task.Title)
+	indicators := strings.Index(plain, strings.TrimSpace(ansi.Strip(segments.indicators)))
+	cue := strings.Index(plain, "· checklist")
+	if title < 0 || indicators < 0 || cue < 0 || title >= indicators || indicators >= cue {
+		t.Fatalf("row order is not title, indicators, cue (%d, %d, %d): %q", title, indicators, cue, plain)
+	}
+	if !strings.HasSuffix(strings.TrimRight(plain, " "), "· checklist") {
+		t.Fatalf("the cue does not close the row: %q", plain)
+	}
+}
+
+// TestSubsequenceTitleHitIsHighlighted covers the title hit no contiguous run
+// explains. The matcher admits a title whose letters hold the query in order,
+// and a title hit earns no cue, so the row's only explanation is the highlight:
+// it paints the matcher's own positions, and only on a row the projection
+// attributed to its title.
+func TestSubsequenceTitleHitIsHighlighted(t *testing.T) {
+	task := primaryRowsTask("subsequence", models.StateBacklog)
+	task.Title = "Fix login bug"
+	project := primaryRowsProject("holdings", task)
+	outliner := scopeTestOutliner(project)
+
+	searchRankedList(outliner, "lgn")
+	if len(outliner.Rows) == 0 || outliner.Rows[0].Task != task {
+		t.Fatalf("search rows = %v, want the subsequence hit", searchVisibleTaskIDs(outliner))
+	}
+	row := outliner.Rows[0]
+	if row.MatchSource != MatchSourceTitle {
+		t.Fatalf("match source = %d, want the title", row.MatchSource)
+	}
+	line := outliner.RenderOutlinerTaskRow(row, false, 120, 0, nil)
+	if plain := ansi.Strip(line); !strings.Contains(plain, task.Title) || strings.Contains(plain, "·") {
+		t.Fatalf("subsequence hit changed the row's text: %q", plain)
+	}
+	for _, letter := range []string{"l", "g", "n"} {
+		if !strings.Contains(line, theme.HighlightStyle.Render(letter)) {
+			t.Fatalf("subsequence hit did not highlight %q:\n%q", letter, line)
+		}
+	}
+	for _, letter := range []string{"F", "o", "b"} {
+		if strings.Contains(line, theme.HighlightStyle.Render(letter)) {
+			t.Fatalf("letter %q outside the match is highlighted:\n%q", letter, line)
+		}
+	}
+
+	// Two terms the title holds apart are no contiguous run either, and both are
+	// painted.
+	searchRankedList(outliner, "fix bug")
+	line = outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 0, nil)
+	for _, letter := range []string{"F", "x", "b", "u"} {
+		if !strings.Contains(line, theme.HighlightStyle.Render(letter)) {
+			t.Fatalf("two-term hit did not highlight %q:\n%q", letter, line)
+		}
+	}
+	if strings.Contains(line, theme.HighlightStyle.Render("l")) {
+		t.Fatalf("two-term hit highlighted the word between its terms:\n%q", line)
+	}
+
+	// A contiguous hit still paints its one run, exactly as before.
+	searchRankedList(outliner, "login")
+	line = outliner.RenderOutlinerTaskRow(outliner.Rows[0], false, 120, 0, nil)
+	if !strings.Contains(line, theme.HighlightStyle.Render("o")) || strings.Contains(line, theme.HighlightStyle.Render("F")) {
+		t.Fatalf("substring hit lost its contiguous highlight:\n%q", line)
+	}
+
+	// A row matched through another field keeps a plain title: its cue is the
+	// explanation, and stray letters lit in the title would contradict it.
+	other := row
+	other.MatchSource = MatchSourceDescription
+	searchRankedList(outliner, "lgn")
+	line = outliner.RenderOutlinerTaskRow(other, false, 120, 0, nil)
+	if strings.Contains(line, theme.HighlightStyle.Render("g")) {
+		t.Fatalf("a non-title hit highlighted its title:\n%q", line)
+	}
+}

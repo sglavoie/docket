@@ -124,8 +124,13 @@ multi-valued and keep intersecting, so `#a #b` still means both.
 Results rank title matches first, then each other field in turn, and a result
 whose title does not carry the match says where it came from with a muted
 `· description`, `· resume`, `· checklist`, `· comment`, `· tag`, `· context`,
-`· attachment`, `· project`, or `· details` note. That note is the first thing a
-narrow row drops, so the title stays readable.
+`· attachment`, `· project`, or `· details` note. That note closes the row,
+after the deadline, review, and reference indicators, the same place a note
+row's `· note` sits, and it is the first thing a narrow row drops, so the title
+stays readable. A title match is highlighted in the title instead: the
+contiguous run where there is one, and otherwise the letters the match was made
+of, so a result found by letters spread across its title or by two words it
+holds apart still shows why it is there.
 
 Open Peek with `b` on a non-title result to read a `Match:` excerpt near the
 top, after the title and parent chain. It names the matching field and shows

@@ -287,33 +287,46 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateSomeday, HasPresetValue: true},
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, PresetValue: models.StateDone, HasPresetValue: true},
 			{OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateCanceled, HasPresetValue: true},
+			// The f chord's facets are declared as two runs, the way the workflow
+			// chord's terminals are: the fields a task stores, then the facts
+			// computed from it. Declaration order is all the division changed, so
+			// every sequence, operation, and preset is the one it always was. The
+			// four f! bindings carry no group of their own; their prefix's chord
+			// group does, which is what seats `!` in the Field run.
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "0"}, DisplayKey: "f!0-3", HintLabel: "clear", PresetValue: 0, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "1"}, DisplayKey: "f!0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "2"}, DisplayKey: "f!0-3", HintLabel: "medium+", PresetValue: 2, HasPresetValue: true},
 			{OperationID: OperationFilterPriority, Sequence: []string{"f", "!", "3"}, DisplayKey: "f!0-3", HintLabel: "low+", PresetValue: 3, HasPresetValue: true},
-			{OperationID: OperationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due/deferred"},
-			{OperationID: OperationFilterCompletionAge, Sequence: []string{"f", "a"}, DisplayKey: "fa", HintLabel: "completion age"},
+			{OperationID: OperationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due/deferred", HintGroup: chrome.FilterFieldHintGroup},
 			// The states facet is the stated exception to spelling a second key
 			// like the sigil it narrows: the workflow chord above took the letter
 			// w, and a facet over the same axis has to answer to the same key or
 			// the two halves stop reading as one family. f$ is retired outright.
-			{OperationID: OperationFilterStates, Sequence: []string{"f", "w"}, DisplayKey: "fw", HintLabel: "states"},
-			{OperationID: OperationFilterTags, Sequence: []string{"f", "#"}, DisplayKey: "f#", HintLabel: "tags"},
+			{OperationID: OperationFilterStates, Sequence: []string{"f", "w"}, DisplayKey: "fw", HintLabel: "states", HintGroup: chrome.FilterFieldHintGroup},
+			{OperationID: OperationFilterTags, Sequence: []string{"f", "#"}, DisplayKey: "f#", HintLabel: "tags", HintGroup: chrome.FilterFieldHintGroup},
 			// Context is declared immediately after tags so the which-key row
 			// reads tags then contexts, which is the order the two sigils teach.
-			{OperationID: OperationFilterContexts, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "contexts"},
-			{OperationID: OperationFilterReview, Sequence: []string{"f", "="}, DisplayKey: "f=", HintLabel: "review"},
-			{OperationID: OperationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
-			// A facet carrying a sigil answers to that sigil, so the reference axis
-			// is f~ and no letter is bound to it.
-			{OperationID: OperationFilterDependency, Sequence: []string{"f", "~"}, DisplayKey: "f~", HintLabel: "references"},
-			{OperationID: OperationFilterStale, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "stale"},
+			{OperationID: OperationFilterContexts, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "contexts", HintGroup: chrome.FilterFieldHintGroup},
+			{OperationID: OperationFilterReview, Sequence: []string{"f", "="}, DisplayKey: "f=", HintLabel: "review", HintGroup: chrome.FilterFieldHintGroup},
 			// Pinned answers to its own sigil like every other sigil-carrying facet:
 			// *pin is what the clause spells, so f* is what narrows by it. The letter
 			// fp stays retired, because it used to mean priority and a letter still
 			// bound would silently apply the wrong facet.
-			{OperationID: OperationFilterPinned, Sequence: []string{"f", "*"}, DisplayKey: "f*", HintLabel: "pinned"},
-			{OperationID: OperationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
+			{OperationID: OperationFilterPinned, Sequence: []string{"f", "*"}, DisplayKey: "f*", HintLabel: "pinned", HintGroup: chrome.FilterFieldHintGroup},
+			// Stale leads and completion age closes the run because the row sheds
+			// from its tail: at the minimum width the short entry is the one that
+			// still fits beside the heading, and the completion window, which only
+			// a terminal population reads, is the one given up.
+			{OperationID: OperationFilterStale, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "stale", HintGroup: chrome.FilterDerivedHintGroup},
+			{OperationID: OperationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy", HintGroup: chrome.FilterDerivedHintGroup},
+			// A facet carrying a sigil answers to that sigil, so the reference axis
+			// is f~ and no letter is bound to it.
+			{OperationID: OperationFilterDependency, Sequence: []string{"f", "~"}, DisplayKey: "f~", HintLabel: "references", HintGroup: chrome.FilterDerivedHintGroup},
+			{OperationID: OperationFilterCompletionAge, Sequence: []string{"f", "a"}, DisplayKey: "fa", HintLabel: "completion age", HintGroup: chrome.FilterDerivedHintGroup},
+			// Clear all and the project facet close the row outside both divisions.
+			// Clear all is kept: it is the one way back from a facet a narrow row
+			// has stopped naming, so it outlasts every facet the row sheds.
+			{OperationID: OperationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all", HintKeep: true},
 			// The project facet answers to its sigil, %project, never to P, which
 			// is the single-project scope rather than a facet. It is declared after
 			// fx so a narrow which-key row sheds it before clear all.
@@ -339,23 +352,27 @@ func SimplifiedInputStrategy() InputStrategy {
 			// Each mode jump carries both its go-to chord and the digit at its
 			// Tab-cycle position, so the mnemonic route and the cheap one are one
 			// binding with one composed spelling rather than two descriptors.
-			{OperationID: OperationCoreGotoAll, Keys: []string{"1"}, Sequence: []string{"g", "a"}, DisplayKey: "ga/1", HintLabel: "all"},
-			{OperationID: OperationCoreGotoInbox, Keys: []string{"3"}, Sequence: []string{"g", "i"}, DisplayKey: "gi/3", HintLabel: "inbox"},
-			{OperationID: OperationCoreGotoToday, Keys: []string{"2"}, Sequence: []string{"g", "t"}, DisplayKey: "gt/2", HintLabel: "today"},
-			{OperationID: OperationCoreGotoNext, Keys: []string{"4"}, Sequence: []string{"g", "n"}, DisplayKey: "gn/4", HintLabel: "next"},
-			{OperationID: OperationCoreGotoBacklog, Keys: []string{"5"}, Sequence: []string{"g", "b"}, DisplayKey: "gb/5", HintLabel: "backlog"},
-			{OperationID: OperationCoreGotoDue, Keys: []string{"6"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/6", HintLabel: "due"},
-			{OperationID: OperationCoreGotoRecent, Keys: []string{"7"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/7", HintLabel: "recent"},
-			{OperationID: OperationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project"},
-			{OperationID: OperationCoreGotoParentTask, Sequence: []string{"g", "P"}, DisplayKey: "gP", HintLabel: "parent task"},
+			{OperationID: OperationCoreGotoAll, Keys: []string{"1"}, Sequence: []string{"g", "a"}, DisplayKey: "ga/1", HintLabel: "all", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoInbox, Keys: []string{"3"}, Sequence: []string{"g", "i"}, DisplayKey: "gi/3", HintLabel: "inbox", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoToday, Keys: []string{"2"}, Sequence: []string{"g", "t"}, DisplayKey: "gt/2", HintLabel: "today", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoNext, Keys: []string{"4"}, Sequence: []string{"g", "n"}, DisplayKey: "gn/4", HintLabel: "next", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoBacklog, Keys: []string{"5"}, Sequence: []string{"g", "b"}, DisplayKey: "gb/5", HintLabel: "backlog", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoDue, Keys: []string{"6"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/6", HintLabel: "due", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoRecent, Keys: []string{"7"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/7", HintLabel: "recent", HintGroup: chrome.GotoModeHintGroup},
+			// The go-to chord reads as three runs: the modes, the places the
+			// cursor's own task names, and the workspace's sync state. The last is
+			// the pair a task row sheds at the minimum width, since neither of its
+			// entries depends on where the cursor is.
+			{OperationID: OperationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project", HintGroup: chrome.GotoTaskHintGroup},
+			{OperationID: OperationCoreGotoParentTask, Sequence: []string{"g", "P"}, DisplayKey: "gP", HintLabel: "parent task", HintGroup: chrome.GotoTaskHintGroup},
 			// `~` is the reference sigil everywhere else, so the relationship walk
 			// spells itself the same way under the go-to chord.
-			{OperationID: OperationCoreGotoRelation, Sequence: []string{"g", "~"}, DisplayKey: "g~", HintLabel: "related task"},
-			{OperationID: OperationCoreSyncNow, Sequence: []string{"g", "s"}, DisplayKey: "gs", HintLabel: "sync now"},
+			{OperationID: OperationCoreGotoRelation, Sequence: []string{"g", "~"}, DisplayKey: "g~", HintLabel: "related task", HintGroup: chrome.GotoTaskHintGroup},
+			{OperationID: OperationCoreSyncNow, Sequence: []string{"g", "s"}, DisplayKey: "gs", HintLabel: "sync now", HintGroup: chrome.GotoSyncHintGroup},
 			// Conflicts joins the go-to chord rather than claiming a root key: what
 			// the strip already names as workspace state is something the user goes
 			// to look at, and root `c` appends a checklist item.
-			{OperationID: OperationCoreConflicts, Sequence: []string{"g", "c"}, DisplayKey: "gc", HintLabel: "conflicts"},
+			{OperationID: OperationCoreConflicts, Sequence: []string{"g", "c"}, DisplayKey: "gc", HintLabel: "conflicts", HintGroup: chrome.GotoSyncHintGroup},
 			{OperationID: OperationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: OperationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
 			{OperationID: OperationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},
@@ -367,7 +384,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// which-key row is what teaches the ten terminals once it is pressed.
 			{Sequence: []string{"w"}, HintLabel: "workflow", FooterRank: 2, FooterLabel: "workflow"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
-			{Sequence: []string{"f", "!"}, HintLabel: "priority threshold"},
+			{Sequence: []string{"f", "!"}, HintLabel: "priority threshold", HintGroup: chrome.FilterFieldHintGroup},
 			{Sequence: []string{"F"}, HintLabel: "project filter", FooterRank: 25, FooterLabel: "project filter"},
 			{Sequence: []string{"o"}, HintLabel: "sort", FooterRank: 23, FooterLabel: "sort"},
 			{Sequence: []string{"g"}, HintLabel: "go to", FooterRank: 26, FooterLabel: "go to"},

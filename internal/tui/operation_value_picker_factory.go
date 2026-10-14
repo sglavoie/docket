@@ -122,10 +122,7 @@ func (m *AppModel) newOperationValuePicker(
 		// The deadline being replaced is named beside the task, because no row
 		// shows it: a date no preset spells opens on Clear, where one reflexive
 		// Enter would erase a value the picker never displayed.
-		if due != nil {
-			subtitle += " · due " + chrome.FormatWeekdayDate(*due, time.Now(), refs[0].Task.DueHasTime())
-		}
-		return valuepicker.NewOperationValuePickerModel(
+		picker, err := valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Due, Defer, or Check-In",
@@ -134,6 +131,10 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
+		if err == nil && due != nil {
+			picker.SetTitleSuffix(" · due " + chrome.FormatWeekdayDate(*due, time.Now(), refs[0].Task.DueHasTime()))
+		}
+		return picker, err
 	case operation.ValueProviderDueDate:
 		selected := []listsurface.ListItemID(nil)
 		if date, ok := valuepicker.CommonTaskDate(refs, false); ok {

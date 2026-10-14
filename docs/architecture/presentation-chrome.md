@@ -101,7 +101,23 @@ declaration order, and `wd` alone declares it. `pendingChordGuidanceSpec` gives
 such an entry the priority of its run's first member: behind the entry carrying
 the heading, so Done is never drawn under `Plan:`, and ahead of every other
 member of that run, so a footer too narrow for all eight states sheds Done
-last. Its slot in the row does not move.
+last. Its slot in the row does not move. `fx` declares it too, in a run with no
+heading: there is no division for it to be drawn under wrongly, so it ranks
+ahead of every run and clear all is the last facet entry a narrow row gives up.
+
+`GuidanceSpec.DropOrphan` refuses a last row holding one optional entry alone.
+The packer selects as it always did, then sheds the last selected entry while
+that is true, and declines a supplemental value that would stand alone the same
+way; a required entry is never shed for it. The Peek profile sets it, since its
+paging hints are what wrap that footer and the entry they strand is not worth
+the row `peekDockFooterWrapRows` already holds open.
+
+`chrome.FitOverlayTitle` is the one-row title of a picker or an action sheet:
+`title: subject suffix` inside the box's text columns. The subject is the part
+that gives way, fitted to what the other two leave and dropped under four
+columns, so a title never wraps. The date picker's `· due …` is the suffix,
+handed over through `SetTitleSuffix` rather than appended to the subtitle, which
+is what keeps the deadline being replaced whole at every width.
 
 #### One active instruction set
 

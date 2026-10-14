@@ -4,7 +4,8 @@
   "size": "60x20",
   "actions": [
     { "type": "key", "label": "open the picker at the supported minimum", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: 国際化 🚀 café résumé" },
+    { "type": "assert", "label": "the title is one row filling the box's fifty columns, the task name giving way", "assert": "contains", "value": "│ Set Due, Defer, or Check-In: 国際化 🚀 café résum… │" },
+    { "type": "assert", "label": "and nothing of it wraps onto a second", "assert": "not_contains", "value": "release check" },
     { "type": "assert", "assert": "contains", "value": "DEFER" },
     { "type": "assert", "label": "the guidance drops its tail rather than overflowing", "assert": "contains", "value": "Enter choose · Esc back · Tab switch field" },
     { "type": "assert", "assert": "not_contains", "value": "preset key pick" },

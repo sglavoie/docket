@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
@@ -60,6 +61,9 @@ func (s taskRowSegments) titlePrefix() string {
 // content is everything from the state badge on, the region that keeps its own
 // colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
 // counts.
+// The match cue closes the row, behind the indicators, as it closes a note row:
+// the indicators are the row's own facts and keep one column across a result
+// list, while the cue is a remark about the search and comes and goes per row.
 func (s taskRowSegments) content(title string) string {
 	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
 		s.statusIcon,
@@ -68,8 +72,8 @@ func (s taskRowSegments) content(title string) string {
 		s.pinMarker,
 		title,
 		s.relationMarker,
-		s.matchCue,
 		s.indicators,
+		s.matchCue,
 	)
 }
 
@@ -264,7 +268,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 	titleStyle := m.renderTaskTitleStyle(task)
 	paint := m.cursorPaintFor(selected).overTaskRow()
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
-	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
+	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
 
 	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 }
@@ -542,14 +546,21 @@ func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
 	return theme.ProjectColorStyle(m.ResolveProjectForRow(row))
 }
 
-func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
+func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
-	title := textfit.TruncateToVisualWidth(task.Title, availableWidth)
+	title := textfit.TruncateToVisualWidth(row.Task.Title, availableWidth)
 	highlight, caseSensitive := m.titleHighlightQuery()
 	if highlight == "" {
 		return titleStyle.Render(title)
 	}
 	positions := query.SearchSubstringPositions(title, highlight, caseSensitive)
+	// A title the matcher admitted as a subsequence holds no contiguous run to
+	// paint, and a title hit earns no cue, so without this the row would explain
+	// itself nowhere. The positions are the matcher's own, as Peek's excerpt
+	// reads them, and only for a row the projection attributed to its title.
+	if len(positions) == 0 && row.MatchSource == MatchSourceTitle {
+		_, positions = fuzzy.NewMatcher(caseSensitive).ScoreTermsWithPositions(title, highlight)
+	}
 	if len(positions) == 0 {
 		return titleStyle.Render(title)
 	}

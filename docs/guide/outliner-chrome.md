@@ -120,7 +120,15 @@ workspace pulse disappears first; the comparison then sheds `(30d)`, then
 Contextual guidance is made of complete `key action` entries. Browse states use
 one row; editing, adding, confirming, autocomplete, and expanded detail may use
 two, and a pending chord may use three, which is what lets `w` name all ten of
-its destinations, Done included, at the narrowest terminal. Required commit and cancellation controls survive before
+its destinations, Done included, at the narrowest terminal. The `f` and `g`
+rows are divided the way `w` is, by a heading riding the first entry of each
+run: `f` reads `Field:` over the values a task stores and `Derived:` over the
+facts worked out from it, with `x clear all` and `% projects` closing the row
+outside both, and `g` reads `Mode:`, `Task:`, and `Sync:` behind `g top`. A row
+too narrow for all of it never draws a heading without its first entry. At the
+narrowest terminal `f` keeps `x clear all` and gives up `a completion age` and
+`% projects`, and `g` over a task row gives up the `Sync:` pair whole; every
+shed key still works and `?` help still lists it. Required commit and cancellation controls survive before
 optional hints, and they survive whole at the narrowest terminal `tt` runs in,
 so the way out of a state is never half a sentence. Transient pickers and action
 sheets own their local guidance while leaving the host title and workspace pulse
@@ -153,7 +161,9 @@ those are the keys really waiting for you.
 The `Esc` entry names what the next press does, not what you are in. Standing in
 a Focus inside a lens it reads `Esc leave Focus`, because that is the layer the
 key takes first; once the Focus is gone it reads `Esc leave lens`. Open Peek and
-one entry covers both keys that close it, `b/Esc close Peek`. Start a range and
+one entry covers both keys that close it, `b/Esc close Peek`; when the paging
+hints wrap that footer, an entry that would sit alone on the second row is
+dropped rather than given the row. Start a range and
 it reads `Esc freeze range`, since freezing is what that press does and clearing
 is the one after. Search typed under a lens reads `Esc restore lens` rather than
 `Esc clear search`, because the lens is what comes back. The empty-state

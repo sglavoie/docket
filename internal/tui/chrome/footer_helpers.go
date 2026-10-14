@@ -35,10 +35,16 @@ type GuidanceHint struct {
 // state data (for example a scroll percentage), not an action. Rows is clamped
 // to the product's guidance budget of one to MaxGuidanceRows; zero means one
 // row.
+//
+// DropOrphan refuses a last row holding one optional entry alone: that entry is
+// shed instead, so a wrapped footer never spends a whole row on a single
+// convenience. A required entry is never shed for it, and a spec that fits one
+// row is unaffected.
 type GuidanceSpec struct {
 	Hints        []GuidanceHint
 	Supplemental string
 	Rows         int
+	DropOrphan   bool
 }
 
 // MaxGuidanceRows is the tallest guidance block the packer will lay out. Only a
@@ -336,8 +342,28 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 		lines = packed
 	}
 
+	orphaned := func(packed [][]guidanceSegment) bool {
+		return spec.DropOrphan && len(packed) > 1 && len(packed[len(packed)-1]) == 1
+	}
+	// Packing is sequential, so a lone entry on the last row is the last selected
+	// one in declaration order. Shedding it can leave the next one alone in its
+	// place, which is why this repeats until the row is shared or required.
+	for orphaned(lines) {
+		last := -1
+		for _, candidate := range candidates {
+			if selected[candidate.index] {
+				last = candidate.index
+			}
+		}
+		if last < 0 || spec.Hints[last].Required {
+			break
+		}
+		delete(selected, last)
+		lines, _ = packGuidanceSegments(selectedSegments(""), width, rows)
+	}
+
 	if supplemental := strings.TrimSpace(spec.Supplemental); supplemental != "" {
-		if packed, ok := packGuidanceSegments(selectedSegments(supplemental), width, rows); ok {
+		if packed, ok := packGuidanceSegments(selectedSegments(supplemental), width, rows); ok && !orphaned(packed) {
 			lines = packed
 		}
 	}

@@ -59,10 +59,14 @@ type OperationKeyBinding struct {
 
 // OperationChordGroup labels one non-terminal chord prefix. Every prefix in a
 // strategy needs a label so a pending chord always has a which-key row to show;
-// a ranked group also appears among the compact footer hints.
+// a ranked group also appears among the compact footer hints. HintGroup is the
+// binding's own field read the same way: the division the parent prefix's
+// which-key row draws this prefix under, so a nested chord joins the run its
+// terminal siblings declared.
 type OperationChordGroup struct {
 	Sequence    []string
 	HintLabel   string
+	HintGroup   string
 	FooterRank  int
 	FooterLabel string
 }

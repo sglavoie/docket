@@ -212,3 +212,68 @@ func TestGuidanceFromGatedKeyMapMatchesHelpAndHandledKeys(t *testing.T) {
 		t.Fatalf("closed gate guidance = (%+v, %v), want required Enter only", spec, ok)
 	}
 }
+
+// TestGuidanceDropOrphanShedsALoneOptionalLastRow sweeps the widths a wrapped
+// footer passes through. With the option set a second row is never one optional
+// entry alone; without it the same spec does leave one, so the sweep is known to
+// reach the case. Required entries are untouched either way.
+func TestGuidanceDropOrphanShedsALoneOptionalLastRow(t *testing.T) {
+	hints := append(RequiredGuidanceHints("b/Esc close peek"),
+		OptionalGuidanceHints(10, "Ctrl+D more", "Ctrl+F page down", "Space actions", "e edit", "? help")...)
+	optional := map[string]bool{}
+	for _, hint := range hints[1:] {
+		optional[GuidanceHintText(hint)] = true
+	}
+
+	sawOrphan := false
+	for width := 20; width <= 120; width++ {
+		plain := guidanceSegmentLines(GuidanceSpec{Hints: hints, Rows: 2}, width)
+		if len(plain) == 2 && len(plain[1]) == 1 && optional[plain[1][0].text()] {
+			sawOrphan = true
+		}
+
+		lines := guidanceSegmentLines(GuidanceSpec{Hints: hints, Rows: 2, DropOrphan: true}, width)
+		if len(lines) == 2 && len(lines[1]) == 1 && optional[lines[1][0].text()] {
+			t.Fatalf("width %d left %q alone on the last row: %q", width, lines[1][0].text(), GuidanceLines(GuidanceSpec{Hints: hints, Rows: 2, DropOrphan: true}, width))
+		}
+		joined := strings.Join(GuidanceLines(GuidanceSpec{Hints: hints, Rows: 2, DropOrphan: true}, width), "\n")
+		if !strings.Contains(joined, "b/Esc close peek") {
+			t.Fatalf("width %d shed the required entry: %q", width, joined)
+		}
+	}
+	if !sawOrphan {
+		t.Fatal("no swept width orphaned an optional entry without the option, so the sweep proves nothing")
+	}
+}
+
+// TestGuidanceDropOrphanKeepsARequiredLastRow holds the other half: a required
+// entry alone on its row stays, since shedding it would hide the way out.
+func TestGuidanceDropOrphanKeepsARequiredLastRow(t *testing.T) {
+	spec := GuidanceSpec{
+		Hints:      RequiredGuidanceHints("Enter apply search", "Esc clear search"),
+		Rows:       2,
+		DropOrphan: true,
+	}
+	lines := GuidanceLines(spec, 20)
+	if len(lines) != 2 || lines[1] != "Esc clear search" {
+		t.Fatalf("required entries = %q, want both kept on two rows", lines)
+	}
+}
+
+// TestGuidanceDropOrphanRefusesALoneSupplemental covers the value attempted
+// last: state text is not worth a row of its own either.
+func TestGuidanceDropOrphanRefusesALoneSupplemental(t *testing.T) {
+	spec := GuidanceSpec{
+		Hints:        RequiredGuidanceHints("Enter create", "Esc cancel"),
+		Supplemental: "50%",
+		Rows:         2,
+		DropOrphan:   true,
+	}
+	width := lipgloss.Width("Enter create" + FooterHelpSeparator + "Esc cancel")
+	if lines := GuidanceLines(spec, width); len(lines) != 1 {
+		t.Fatalf("lines = %q, want the supplemental dropped rather than alone on a row", lines)
+	}
+	if lines := GuidanceLines(spec, width+20); len(lines) != 1 || !strings.Contains(lines[0], "50%") {
+		t.Fatalf("lines = %q, want the supplemental on the shared row", lines)
+	}
+}

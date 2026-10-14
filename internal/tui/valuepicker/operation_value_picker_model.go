@@ -21,11 +21,14 @@ const (
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface     *listsurface.ListSurfaceModel
-	request     operation.OperationExecutionRequest
-	provider    operation.ValueProviderID
-	title       string
-	subtitle    string
+	surface  *listsurface.ListSurfaceModel
+	request  operation.OperationExecutionRequest
+	provider operation.ValueProviderID
+	title    string
+	subtitle string
+	// titleSuffix is a value the title carries after its subject and never
+	// shortens: the subject is fitted to what the suffix leaves.
+	titleSuffix string
 	multi       bool
 	searching   bool
 	searchInput listsurface.PickerSearchInput

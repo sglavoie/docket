@@ -186,8 +186,13 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		t.Errorf("grouped sheet still renders the retired %s header", taskActionCategoryContent)
 	}
 
-	// Printable letters filter immediately. This query includes k, which is no
-	// longer a navigation alias inside the task menu.
+	// Printable letters filter only after the search key. The query includes k,
+	// which is navigation while the sheet is browsing.
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'k', Text: "k"})
+	if query := sheet.Surface.Query().Raw; query != "" {
+		t.Fatalf("a browsing letter wrote the query %q", query)
+	}
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
 	for _, letter := range "task" {
 		_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
 	}
@@ -198,7 +203,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		gotMatches = append(gotMatches, match.Item.ID)
 	}
 	if !slices.Equal(gotMatches, wantAliasMatches) {
-		t.Fatalf("immediate filter results = %v, want the alias matches %v", gotMatches, wantAliasMatches)
+		t.Fatalf("search results = %v, want the alias matches %v", gotMatches, wantAliasMatches)
 	}
 	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
@@ -217,9 +222,9 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 }
 
-// TestActionSheetMovesWithCtrlJAndCtrlK covers the shared sheet navigation
+// TestActionSheetBrowsesWithJAndK covers the shared sheet navigation
 // independently from the production task catalog.
-func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
+func TestActionSheetBrowsesWithJAndK(t *testing.T) {
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.first", "First"),
 		contextActionTestDescriptor("test.second", "Second"),
@@ -229,7 +234,7 @@ func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{"test.first", "test.second"},
-		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner, ImmediateFilter: true},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
@@ -239,21 +244,25 @@ func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	if !ok {
 		t.Fatal("action sheet has no initial item")
 	}
-	_, _, _ = sheet.HandleKey(syntheticCtrlKey('j'))
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	second, ok := sheet.Surface.CurrentItem()
 	if !ok || second.ID == first.ID {
-		t.Fatalf("Ctrl+J did not move down: first = %q, current = %q", first.ID, second.ID)
+		t.Fatalf("j did not move down: first = %q, current = %q", first.ID, second.ID)
 	}
-	_, _, _ = sheet.HandleKey(syntheticCtrlKey('k'))
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	current, ok := sheet.Surface.CurrentItem()
 	if !ok || current.ID != first.ID {
-		t.Fatalf("Ctrl+K did not move back up: current = %q, want %q", current.ID, first.ID)
+		t.Fatalf("k did not move back up: current = %q, want %q", current.ID, first.ID)
 	}
 	if query := sheet.Surface.Query().Raw; query != "" {
-		t.Fatalf("Ctrl+J/Ctrl+K changed the immediate-filter query to %q", query)
+		t.Fatalf("j/k changed the query to %q", query)
 	}
-	if view := sheet.Render(100); !strings.Contains(ansi.Strip(view), "↑↓/Ctrl+j/k move") {
-		t.Fatalf("action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
+	view := ansi.Strip(sheet.Render(100))
+	if !strings.Contains(view, "j/k navigate") || !strings.Contains(view, "/ search") {
+		t.Fatalf("action sheet footer does not advertise j/k and / :\n%s", view)
+	}
+	if strings.Contains(view, "Search:") {
+		t.Fatalf("a browsing sheet drew a search row:\n%s", view)
 	}
 }
 

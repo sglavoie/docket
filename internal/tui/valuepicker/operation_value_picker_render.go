@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -244,10 +243,7 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock
 	}
-	titleText := model.title
-	if model.subtitle != "" {
-		titleText += ": " + textfit.TruncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
-	}
+	titleText := chrome.FitOverlayTitle(model.title, model.subtitle, model.titleSuffix, max(innerWidth-4, 1))
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	// The rendered footer is the one the budget above reserved for, so the two
 	// cannot disagree about how many rows the guidance costs.

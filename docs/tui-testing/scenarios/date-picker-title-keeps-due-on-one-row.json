@@ -1,0 +1,25 @@
+{
+  "name": "date-picker-title-keeps-due-on-one-row",
+  "fixture": "release",
+  "size": "60x20",
+  "actions": [
+    {"type": "key", "label": "give the cursor's task a deadline no preset spells", "key": "e"},
+    {"type": "text", "text": " @2030-01-07"},
+    {"type": "key", "key": "tab"},
+    {"type": "key", "key": "enter"},
+    {"type": "wait"},
+    {"type": "key", "label": "open the picker at the supported minimum", "key": "@"},
+    {"type": "assert", "label": "the deadline being replaced is whole on the title's one row, and the task name is what gave way", "assert": "contains", "value": "│ Set Due, Defer, or Check-In · due Mon Jan 7 2030   │"},
+    {"type": "assert", "label": "which matters here: no preset spells that date, so the cursor opens on Clear", "assert": "contains", "value": "› 0 Clear  remove date"},
+    {"type": "assert", "assert": "count_contains", "value": "· due Mon Jan 7 2030", "count": 1},
+    {"type": "assert", "assert": "no_layout_issues"},
+    {"type": "resize", "label": "a little room goes to the task name first", "width": 72, "height": 22},
+    {"type": "assert", "assert": "contains", "value": "│ Set Due, Defer, or Check-In: 国際化 🚀… · due Mon Jan 7 2030 │"},
+    {"type": "assert", "assert": "no_layout_issues"},
+    {"type": "resize", "label": "and a row wide enough holds all three parts unshortened", "width": 100, "height": 30},
+    {"type": "assert", "assert": "contains", "value": "│ Set Due, Defer, or Check-In: 国際化 🚀 café résumé release check · due Mon Jan 7 2030  │"},
+    {"type": "assert", "assert": "no_layout_issues"},
+    {"type": "key", "label": "leaving writes nothing", "key": "esc"},
+    {"type": "assert", "assert": "contains", "value": "⊡ Jan 7 '30"}
+  ]
+}

@@ -660,6 +660,9 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			Hints: append(hints,
 				chrome.OptionalGuidanceHints(10, "Space actions", "e edit", "? help")...),
 			Rows: 2,
+			// The paging hints are what wrap this footer, and the entry they push
+			// onto a second row alone is not worth the row.
+			DropOrphan: true,
 		}, true
 	case m.HasSearchProjection():
 		return chrome.GuidanceSpec{

@@ -266,7 +266,15 @@ whose hit came from a field the title cannot show carries one muted
 `· description`, `· resume`, `· checklist`, `· comment`, `· tag`, `· context`,
 `· attachment`, `· project`, or `· details` segment, mapped from
 `outlinerRow.MatchSource` by `matchSourceLabels`; a title hit and every ordinary
-row carry none. It is a `taskRowSegments` field, so `titleWidth` charges it once
+row carry none. `taskRowSegments.content` draws it last — title, relation
+marker, indicators, cue — which is the order a note row already kept, so the
+indicators hold their place beside the title down a result list and the cue is
+the part that comes and goes. A title hit explains itself in the title:
+`renderTaskTitle` paints `SearchSubstringPositions` where the query is one
+contiguous run, and for a row whose `MatchSource` is the title falls back to the
+matcher's own `ScoreTermsWithPositions`, the call Peek's excerpt reads, so a
+subsequence or two-term title hit is not the one result with no explanation. It
+is a `taskRowSegments` field, so `titleWidth` charges it once
 like any other segment, and it is still the first thing a crowded row sheds,
 ahead of every `indicatorDropLadder` entry, because an explanation is worth
 nothing beside an unreadable title and because shedding it first leaves a

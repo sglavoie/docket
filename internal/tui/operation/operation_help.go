@@ -257,7 +257,7 @@ func (registry *OperationRegistry) DecoratedChordHintsForPrefix(
 		if child.terminal() {
 			hint = registry.chordTerminalHint(strategy, child, ctx)
 		} else {
-			hint.Label = chordGroupHintLabel(strategy, append(append([]string(nil), prefix...), key))
+			hint = chordGroupHint(strategy, append(append([]string(nil), prefix...), key))
 		}
 		hint.Key = key
 		if decorate != nil {
@@ -311,13 +311,15 @@ func (registry *OperationRegistry) chordNodeForPrefix(id InputStrategyID, prefix
 	return node
 }
 
-func chordGroupHintLabel(strategy InputStrategy, prefix []string) string {
+// chordGroupHint names a deeper prefix by its chord group, label and division
+// both, so a nested chord stands in its parent's row like any terminal sibling.
+func chordGroupHint(strategy InputStrategy, prefix []string) ChordHint {
 	for _, group := range strategy.ChordGroups {
 		if slices.Equal(group.Sequence, prefix) {
-			return group.HintLabel
+			return ChordHint{Label: group.HintLabel, Group: group.HintGroup}
 		}
 	}
-	return ""
+	return ChordHint{}
 }
 
 func OperationCategoryLabel(category OperationCategory) string {

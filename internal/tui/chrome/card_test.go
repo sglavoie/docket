@@ -59,3 +59,48 @@ func TestRenderOverlayBoxCompleteFrameAndHalo(t *testing.T) {
 		t.Fatal("semantic border style was not applied to the frame")
 	}
 }
+
+// TestFitOverlayTitleKeepsOneRowAndTheSuffixWhole sweeps the widths an overlay
+// title is asked for. The result never exceeds the width, so it never wraps; the
+// suffix is whole wherever the title and suffix alone fit; and the subject is
+// the part that gives way, untouched once there is room for all three.
+func TestFitOverlayTitleKeepsOneRowAndTheSuffixWhole(t *testing.T) {
+	const (
+		title   = "Set Due, Defer, or Check-In"
+		subject = "国際化 🚀 café résumé release check"
+		suffix  = " · due Fri Aug 14"
+	)
+	whole := title + ": " + subject + suffix
+	for width := 1; width <= lipgloss.Width(whole)+4; width++ {
+		got := FitOverlayTitle(title, subject, suffix, width)
+		if lipgloss.Width(got) > width {
+			t.Fatalf("width %d: %q is %d columns wide", width, got, lipgloss.Width(got))
+		}
+		if strings.Contains(got, "\n") {
+			t.Fatalf("width %d: title wrapped: %q", width, got)
+		}
+		if width >= lipgloss.Width(title+suffix) && !strings.HasSuffix(got, suffix) {
+			t.Fatalf("width %d: %q lost the suffix", width, got)
+		}
+		if width >= lipgloss.Width(whole) && got != whole {
+			t.Fatalf("width %d: %q, want the whole title %q", width, got, whole)
+		}
+	}
+}
+
+// TestFitOverlayTitleSpendsEveryColumnOnTheSubject holds the budget itself: a
+// subject that exactly fills what the title leaves is not shortened, and one a
+// column wider loses only its tail.
+func TestFitOverlayTitleSpendsEveryColumnOnTheSubject(t *testing.T) {
+	const title, subject = "Task Actions", "Build login form"
+	width := lipgloss.Width(title + ": " + subject)
+	if got := FitOverlayTitle(title, subject, "", width); got != title+": "+subject {
+		t.Fatalf("exact fit = %q, want the subject whole", got)
+	}
+	if got := FitOverlayTitle(title, subject, "", width-1); got != title+": Build login fo…" {
+		t.Fatalf("one column short = %q", got)
+	}
+	if got := FitOverlayTitle(title, "", "", width); got != title {
+		t.Fatalf("no subject = %q, want the bare title", got)
+	}
+}

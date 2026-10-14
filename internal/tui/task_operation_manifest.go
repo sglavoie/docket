@@ -368,9 +368,8 @@ func NewTaskActionSheetModel(
 		DisabledFor: func(descriptor operation.OperationDescriptor) string {
 			return taskActionDisabledReason(descriptor, context)
 		},
-		ImmediateFilter: true,
-		Targets:         taskActionTargetCount(context),
-		Bulk:            context.Selection.Visual,
+		Targets: taskActionTargetCount(context),
+		Bulk:    context.Selection.Visual,
 		EmptyState: listsurface.ListEmptyState{
 			Title:  "No task actions available.",
 			Detail: "Select a task that can be acted on.",
