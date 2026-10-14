@@ -444,11 +444,12 @@ single line and a page is that line. Neither lands on a boundary the document
 imposed, so mixing them reaches every line. `ClampOffset`
 pins the last window to the end of the body, so it is full rather than short, and
 `positionLine` is a further row beneath the body rather than one of them: it is
-drawn for every document, naming how many body rows sit above and below the
-window, and reads `0 above · 0 below` when there are none. A row spent
-unconditionally is what buys the stable height — a counter that appeared only when
-a document paged would move the content rows under the reader's eye the moment
-the document changed.
+reserved for every document, naming how many body rows sit above and below the
+window, and `Lines` leaves it blank when there are none, since a count of zero in
+both directions says nothing a reader needs. A row reserved unconditionally is
+what buys the stable height — a row that appeared only when a document paged
+would move the content rows under the reader's eye the moment the document
+changed — so only its text depends on the document, never its existence.
 
 The offset itself is session-only and lives in `peekOffsetState`, keyed by an
 `inlinePeekOwner` — a kind plus that kind's identity — the width-independent

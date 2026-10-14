@@ -20,6 +20,10 @@ var (
 				Foreground(ColorAccent).
 				Bold(true)
 
+	RelationMarkerStyle = lipgloss.NewStyle().
+				Foreground(ColorAccent).
+				Bold(true)
+
 	ActiveStyle = lipgloss.NewStyle().
 			Foreground(ColorAccent)
 

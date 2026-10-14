@@ -366,34 +366,39 @@ var dockGeometryReviewSizes = [][2]int{{60, 20}, {80, 24}, {100, 35}, {120, 40}}
 
 // dockScreenRows reads the dock's coordinates back off a rendered frame rather
 // than off a constant: the row its divider landed on and the row its position
-// line landed on. The view's block is stacked from the frame's first row, so
-// these indices are the rows a reader counts down the screen. It returns the
-// frame too, because every claim below is made about the same rendering these
-// numbers came out of.
+// line landed on. The divider is found as the dock's own first line, the last
+// rule of its kind on the frame, because a document that fits leaves the
+// position row blank and so cannot be searched for. The view's block is stacked
+// from the frame's first row, so these indices are the rows a reader counts down
+// the screen. It returns the frame too, because every claim below is made about
+// the same rendering these numbers came out of.
 func dockScreenRows(t *testing.T, m *OutlinerModel, label string) (frame []string, divider, position int) {
 	t.Helper()
 	frame = strings.Split(ansi.Strip(m.View().Content), "\n")
 	for index := range frame {
 		frame[index] = strings.TrimRight(frame[index], " ")
 	}
-	position = -1
+	dock := m.PeekDockLines()
+	if len(dock) == 0 {
+		t.Fatalf("%s: the model draws no Peek dock", label)
+	}
+	rule := strings.TrimRight(ansi.Strip(dock[0]), " ")
+	if strings.TrimSpace(rule) == "" || strings.Trim(strings.TrimSpace(rule), "─") != "" {
+		t.Fatalf("%s: the dock's first row is %q, want its divider", label, rule)
+	}
+	divider = -1
 	for index, line := range frame {
-		if emptyProjectPeekCounter.MatchString(strings.TrimSpace(line)) {
-			position = index
+		if line == rule {
+			divider = index
 		}
 	}
-	if position < 0 {
-		t.Fatalf("%s: the frame draws no Peek position row:\n%s", label, strings.Join(frame, "\n"))
-	}
-	rows := m.PeekDockRows()
-	divider = position - rows + 1
 	if divider < 0 {
-		t.Fatalf("%s: the position row is on screen row %d, too high to hold a %d-row dock:\n%s",
-			label, position, rows, strings.Join(frame, "\n"))
+		t.Fatalf("%s: the frame draws no Peek divider:\n%s", label, strings.Join(frame, "\n"))
 	}
-	if rule := strings.TrimSpace(frame[divider]); rule == "" || strings.Trim(rule, "─") != "" {
-		t.Fatalf("%s: screen row %d is %q, want the dock's divider %d rows above its position row:\n%s",
-			label, divider, frame[divider], rows-1, strings.Join(frame, "\n"))
+	position = divider + m.PeekDockRows() - 1
+	if position >= len(frame) {
+		t.Fatalf("%s: the divider is on screen row %d, too low to hold a %d-row dock:\n%s",
+			label, divider, m.PeekDockRows(), strings.Join(frame, "\n"))
 	}
 	return frame, divider, position
 }

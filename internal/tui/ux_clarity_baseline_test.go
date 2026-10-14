@@ -371,9 +371,9 @@ func TestUXClarityPeekDockIsAShareOfTheFrame(t *testing.T) {
 			if !strings.Contains(obs.PlainScreen, "── Capture ─") {
 				t.Fatalf("the capture panel is not drawn over the dock:\n%s", obs.PlainScreen)
 			}
-			// The position line is drawn for every document, so it is the one row
-			// that proves the whole dock is on screen rather than clipped into it.
-			if !uxPeekPositionLine.MatchString(obs.PlainScreen) {
+			// Every row the dock drew is on screen, its position row last, which
+			// is what proves the whole dock is there rather than clipped into it.
+			if _, _, drawn := uxPeekDockSpan(strings.Split(obs.PlainScreen, "\n"), view); !drawn {
 				t.Fatalf("the dock's position line is missing at %dx%d:\n%s", size[0], size[1], obs.PlainScreen)
 			}
 			// Under the panel the dock may be shorter than the frame alone would

@@ -221,7 +221,8 @@ func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
 	}
 
 	// An unpaged document keeps the same window: the body is padded rather than
-	// the dock shortened, and the position row reads zero in both directions.
+	// the dock shortened, and the position row stays reserved but blank, since
+	// nothing is off screen to count.
 	short := inlinePeekDocumentFor(inlinePeekOptions{Task: &models.Task{Description: "Short"}, Width: 80, Window: window})
 	if short.Paged() {
 		t.Fatal("a one-line document claimed to be paged")
@@ -230,8 +231,8 @@ func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
 	if len(shortLines) != window.WindowRows() {
 		t.Fatalf("an unpaged document drew %d rows, want %d", len(shortLines), window.WindowRows())
 	}
-	if got := strings.TrimSpace(ansi.Strip(shortLines[len(shortLines)-1])); got != "0 above · 0 below" {
-		t.Fatalf("an unpaged position row = %q, want zero in both directions", got)
+	if got := strings.TrimSpace(ansi.Strip(shortLines[len(shortLines)-1])); got != "" {
+		t.Fatalf("an unpaged position row = %q, want it blank", got)
 	}
 }
 

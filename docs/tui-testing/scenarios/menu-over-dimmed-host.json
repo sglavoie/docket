@@ -5,7 +5,8 @@
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "key", "label": "open Peek, so the dock is part of the host the menu will stand on", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "the dock's history line closes a document that fits", "assert": "contains", "value": "Created: " },
+    { "type": "assert", "label": "so its position row is reserved but blank, with nothing off screen to count", "assert": "not_contains", "value": "0 above · 0 below" },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -13,7 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Capture Child" },
     { "type": "assert", "label": "the operational title and its workspace pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "contains", "value": "workspace:" },
-    { "type": "assert", "label": "the dock the cursor opened is still open, in the same place", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "the dock the cursor opened is still open, in the same place", "assert": "contains", "value": "Created: " },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
     { "type": "assert", "label": "and so is the part of the list the box does not cover", "assert": "contains", "value": "bounded viewport content" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -32,7 +33,7 @@
 
     { "type": "key", "label": "closing hands the whole view back", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
-    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Created: " },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" },
 

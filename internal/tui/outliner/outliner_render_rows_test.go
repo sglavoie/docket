@@ -385,6 +385,17 @@ func TestOutlinerTaskRowCombinesBothRelationDirections(t *testing.T) {
 	if !strings.Contains(plain, "Mid  ‹›1") {
 		t.Fatalf("row missing the combined relation marker: %q", plain)
 	}
+
+	// The marker is the one cue that family sits elsewhere, so it wears the
+	// accent in bold rather than the muted tone of the connectors beside it.
+	style := theme.RelationMarkerStyle
+	if !style.GetBold() || style.GetForeground() != theme.ColorAccent {
+		t.Fatal("RelationMarkerStyle is not the bold accent")
+	}
+	marker := outliner.taskRelationMarker(OutlinerRow{Task: tasks[1], Breadcrumb: "Root ›"})
+	if want := style.Render("  ‹›1"); marker != want {
+		t.Fatalf("relation marker = %q, want it drawn in RelationMarkerStyle %q", marker, want)
+	}
 }
 
 // TestOutlinerTaskRowKeepsTheAncestorMarkerOnACrowdedRow is the regression: the

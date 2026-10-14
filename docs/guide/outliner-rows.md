@@ -295,7 +295,7 @@ with empty fields omitted too (a one-off schedule reads `Repeat: off`), the resu
 note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
 list, the task's context, its tags, and last of all a history line reading
-`Created: 12d · Updated: 2d · Last review: 3d · Woke: 1d · Deferred: ×3`.
+`Created: 12d ago · Updated: 2d ago · Last review: 3d ago · Woke: 1d ago · Deferred: ×3`.
 A URL or `path:line` attachment name is also a link (OSC 8) in a terminal that
 follows them — `Cmd`-click in Ghostty and tt.app — so a shortened
 `GH owner/repo#123` opens the issue, and every wrapped row of a long URL opens
@@ -310,9 +310,9 @@ something else: Peek shows as many rows as its height allows and `Ctrl+D` and
 move a whole page, one row short of the pane. Every move keeps at least one row
 of what you were reading, the two step sizes mix freely, and the last one stops
 at the end of the detail rather than running past it. A further row at the bottom
-always reads
-`12 above · 7 below`, so you know how much is out of sight and a detail that fits
-says so with `0 above · 0 below` rather than changing the pane's height.
+reads
+`12 above · 7 below`, so you know how much is out of sight; a detail that fits
+leaves that row blank rather than changing the pane's height.
 The footer offers a key only when that direction can actually move, but all four
 belong to an open Peek: pressing one at the end of the detail does nothing rather
 than moving the outline underneath. `PgDn` and `PgUp` still move the outline,

@@ -230,22 +230,27 @@ func TestInlinePeekHistoryLineNamesOnlyWhatIsAlreadySpent(t *testing.T) {
 				DeferCount:     3,
 				LastReviewedAt: &lastReview,
 			},
-			"Created: 12d · Updated: 2d · Last review: 3h · Woke: 1d · Deferred: ×3",
+			"Created: 12d ago · Updated: 2d ago · Last review: 3h ago · Woke: 1d ago · Deferred: ×3",
 		},
 		{
 			"created only",
 			&models.Task{CreatedAt: now.Add(-3 * time.Hour)},
-			"Created: 3h",
+			"Created: 3h ago",
+		},
+		{
+			"an instant under a minute old is now, which already says when",
+			&models.Task{CreatedAt: now.Add(-10 * time.Second)},
+			"Created: now",
 		},
 		{
 			"a pending deferral has not woken, so history says nothing about it",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
-			"Created: 1d",
+			"Created: 1d ago",
 		},
 		{
 			"a lapsed deferral past the wake window falls silent",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &stale},
-			"Created: 1d",
+			"Created: 1d ago",
 		},
 		{
 			"the avoidance count stands without a wake marker",
@@ -422,7 +427,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 		"Dependents: 1 · ",
 		"Context: [platform-core]",
 		"Tags: #backend",
-		"Created: 5d · Updated: 1h · Last review: 1d",
+		"Created: 5d ago · Updated: 1h ago · Last review: 1d ago",
 	}
 	cursor := 0
 	for _, want := range order {
@@ -444,7 +449,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	// on: history moved to the end of a document longer than the window, so it is
 	// only still readable if the last page holds it.
 	last := ansi.Strip(strings.Join(doc.Lines(doc.MaxOffset()), "\n"))
-	if !strings.Contains(last, "Created: 5d · Updated: 1h · Last review: 1d") {
+	if !strings.Contains(last, "Created: 5d ago · Updated: 1h ago · Last review: 1d ago") {
 		t.Fatalf("history is not on the document's last page:\n%s", last)
 	}
 }
@@ -614,7 +619,7 @@ func TestInlinePeekTitleIsBodyRatherThanHeader(t *testing.T) {
 		t.Fatalf("a long title was elided instead of wrapped")
 	}
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
-	for _, want := range []string{"Created: 5d · Updated: 1h", "Attachments: 1 · spec.pdf"} {
+	for _, want := range []string{"Created: 5d ago · Updated: 1h ago", "Attachments: 1 · spec.pdf"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("the title displaced %q:\n%s", want, body)
 		}

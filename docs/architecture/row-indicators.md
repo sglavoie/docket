@@ -21,7 +21,10 @@ instant lapses `inlinePeekHistoryLine` names `Woke: <age>` for `DeferWakeWindow`
 (72h, defined in `internal/tui/query/primary_view_shared.go`), since a wake is
 something that already happened; after that neither line carries it.
 `taskWokeRecently` is the one lapsed-deferral predicate and `FormatRecencyAge`
-the one age token, so the two halves cannot be formatted two ways. The stored
+the one age token, so the two halves cannot be formatted two ways. History
+spells every age it names through `inlinePeekPastAge`, which appends ` ago` to
+that token — `Woke: 1d ago`, `Created: 47d ago` — except `now`, which already
+says when; the status line's `Doing 9d` is a duration and takes no suffix. The stored
 instant is keyed into both `inlinePeekScheduleKey` and `inlinePeekHistoryKey`
 for the same reason a section key identifies its own content: exactly one of the
 two sections is ever drawn from it, so keying it once would drop it from the
@@ -291,7 +294,10 @@ remainder is what made the ancestor mark a 40-column path on a short row, a
 exactly where a child row most needed distinguishing from a root row. Its
 meaning is now the same at every width. One segment rather than two also keeps
 the reserve near three columns on a row that is both a promoted child and a
-detached parent.
+detached parent. It draws in `theme.RelationMarkerStyle`, the accent color in
+bold, as `PinnedMarkerStyle` does: a muted mark beside a muted connector read as
+part of the tree's furniture rather than as the one cue that family sits
+elsewhere. Its width was already reserved, so the color moves no column.
 
 Upward, a promoted section root carries `  ‹`: this row has a parent the outline
 above it does not show. Which parent is Peek's line to name. Downward, a row

@@ -19,10 +19,11 @@
     { "type": "key", "key": "r" },
     { "type": "key", "label": "land on the ordinary task row", "key": "enter" },
     { "type": "key", "label": "Peek keeps the count, on the history line the rest of the task's spent instants share", "key": "b" },
-    { "type": "assert", "label": "avoidance is something the task already spent, so it rides the history line that closes the document and never the schedule", "assert": "contains", "value": "Created: now · Updated: now · Woke: 1d · Deferred: ×3" },
-    { "type": "assert", "label": "this window is a share of the frame, so the whole document is already on it", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "avoidance is something the task already spent, so it rides the history line that closes the document and never the schedule", "assert": "contains", "value": "Created: now · Updated: now · Woke: 1d ago · Deferred: ×3" },
+    { "type": "assert", "label": "this window is a share of the frame, so the whole document is already on it and the position row has nothing to count", "assert": "not_contains", "value": "0 above · 0 below" },
     { "type": "key", "label": "the dock swallows a page at its boundary and moves nothing", "key": "ctrl+f" },
-    { "type": "assert", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "Created: now" },
+    { "type": "assert", "assert": "not_contains", "value": "above · " },
     { "type": "assert", "assert": "contains", "value": "Deferred: ×3" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -17,7 +17,7 @@
     { "type": "assert", "label": "and states the effective route on one row", "assert": "contains", "value": "Project: Unfiled · Status: Inbox" },
     { "type": "assert", "label": "naming no plan, because this capture joins no planning collection", "assert": "not_contains", "value": "Plan:" },
     { "type": "assert", "label": "the outline it was raised from is still a live projection", "assert": "contains", "value": "Backlog  (4)" },
-    { "type": "assert", "label": "including the Peek dock the cursor had open", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "including the Peek dock the cursor had open", "assert": "contains", "value": "Created: " },
     { "type": "assert", "label": "a blank capture is its divider, its route row, and its input line — no preview yet", "assert": "not_contains", "value": "Task     " },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -43,7 +43,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the host has its whole budget back", "assert": "contains", "value": "Backlog  (4)" },
-    { "type": "assert", "label": "with the cursor and the Peek dock capture found", "assert": "contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "with the cursor and the Peek dock capture found", "assert": "contains", "value": "Created: " },
     { "type": "assert", "assert": "not_contains", "value": "Panel capture" },
     { "type": "assert", "assert": "no_layout_issues" },
 

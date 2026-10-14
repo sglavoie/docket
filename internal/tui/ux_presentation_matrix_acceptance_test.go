@@ -22,10 +22,31 @@ import (
 // review is added to every check below at once.
 var uxPresentationMatrixSizes = [][2]int{{60, 20}, {80, 24}, {100, 35}, {120, 40}}
 
-// uxPeekPositionLine matches the position row every Peek document draws, which
-// is the last row of the dock and therefore the one that proves the dock's
-// height without reading a constant back.
-var uxPeekPositionLine = regexp.MustCompile(`\d+ above · \d+ below`)
+// uxPeekDockSpan finds the dock on a plain screen as the block of rows it says
+// it drew, divider first, and returns the rows of its divider and of its last
+// row, the position row. It matches the whole block rather than the position
+// row's text because a document that fits leaves that row blank, and matching
+// every row is what tells a dock drawn whole from one clipped into the frame.
+func uxPeekDockSpan(screen []string, view *outliner.OutlinerModel) (divider, position int, ok bool) {
+	dock := view.PeekDockLines()
+	if len(dock) == 0 {
+		return -1, -1, false
+	}
+	divider, position = -1, -1
+	for start := 0; start+len(dock) <= len(screen); start++ {
+		whole := true
+		for offset, line := range dock {
+			if strings.TrimSpace(screen[start+offset]) != strings.TrimSpace(ansi.Strip(line)) {
+				whole = false
+				break
+			}
+		}
+		if whole {
+			divider, position = start, start+len(dock)-1
+		}
+	}
+	return divider, position, divider >= 0
+}
 
 // uxFullWidthRule matches a line that is nothing but a horizontal rule, which is
 // how the pinned-lane separator, the Peek divider, and the footer divider are
@@ -242,17 +263,13 @@ func assertUXPeekGeometryIsStable(t *testing.T, driver *UITestDriver, view *outl
 			t.Fatalf("Peek over the %s: %+v\n%s", what, obs.LayoutIssues, obs.PlainScreen)
 		}
 		screen := strings.Split(obs.PlainScreen, "\n")
-		frame := dockFrame{what: what, divider: -1, position: -1}
-		for index, line := range screen {
-			if uxPeekPositionLine.MatchString(line) {
-				frame.position = index
-			}
+		frame := dockFrame{what: what}
+		var drawn bool
+		frame.divider, frame.position, drawn = uxPeekDockSpan(screen, view)
+		if !drawn {
+			t.Fatalf("the dock over the %s is not drawn whole\n%s", what, obs.PlainScreen)
 		}
-		if frame.position < 0 {
-			t.Fatalf("the dock over the %s draws no position row\n%s", what, obs.PlainScreen)
-		}
-		frame.divider = frame.position - dockRows + 1
-		if frame.divider < 0 || !strings.Contains(screen[frame.divider], "─") {
+		if !strings.Contains(screen[frame.divider], "─") {
 			t.Fatalf("the dock over the %s has no divider %d rows above its position row\n%s",
 				what, dockRows-1, obs.PlainScreen)
 		}
@@ -431,21 +448,15 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 		t.Fatalf("capture grew the dock from %d rows to %d", resting, dockRows)
 	}
 
-	// Where they sit, which is the part a whole-screen assertion cannot state. The
-	// position row is the dock's last, so the divider is dockRows-1 above it and
-	// everything between the context row and that divider belongs to the list.
-	position := -1
-	for index, line := range lines {
-		if uxPeekPositionLine.MatchString(line) {
-			position = index
-		}
+	// Where they sit, which is the part a whole-screen assertion cannot state.
+	// Everything between the context row and the dock's divider belongs to the
+	// list.
+	divider, _, drawn := uxPeekDockSpan(lines, view)
+	if !drawn {
+		t.Fatalf("the dock is not drawn whole, so it is clipped rather than shortened\n%s", plain)
 	}
-	if position < 0 {
-		t.Fatalf("the dock drew no position row, so it is clipped rather than shortened\n%s", plain)
-	}
-	divider := position - dockRows + 1
-	if divider < 0 || !strings.Contains(lines[divider], "─") {
-		t.Fatalf("the dock has no divider %d rows above its position row\n%s", dockRows-1, plain)
+	if !strings.Contains(lines[divider], "─") {
+		t.Fatalf("the dock does not open on its divider\n%s", plain)
 	}
 	// And the list keeps a row of its own between the two, which is the floor the
 	// dock's availability is capped against. A task title drawn there is what

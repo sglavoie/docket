@@ -693,8 +693,8 @@ Row and Peek budget:
   screen, and `Lines` is the only way to either, so render and measurement cannot
   disagree about height. The body is complete and wrapped, never elided;
   the geometry's `BodyRows` bounds visibility alone, a short document pads, and
-  `positionLine` is a further row drawn for every document, `0 above · 0 below`
-  included. Nothing sits outside that window and the document has no header:
+  `positionLine` is a further row reserved for every document, blank when the
+  body fits. Nothing sits outside that window and the document has no header:
   body order is title, parent, optional search excerpt, status, schedule, resume, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
   history; place a new section deliberately. Schedule is what is still owed —

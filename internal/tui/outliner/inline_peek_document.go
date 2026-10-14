@@ -87,8 +87,9 @@ func (doc inlinePeekDocument) ClampOffset(offset int) int {
 
 // Lines renders the window at one content-row offset: the content rows visible
 // there, blank-padded when the document is shorter than the window, and the
-// position row that says exactly how much sits off screen in each direction. It
-// is the only way to either the drawn window or its height, so a render and a
+// position row that says exactly how much sits off screen in each direction —
+// left blank when nothing does, since a document that fits has nothing to count
+// and the row is reserved for the height alone. It is the only way to either the drawn window or its height, so a render and a
 // measurement cannot disagree about what is on screen. The slice is always the
 // window's own height, which is what keeps the dock the same height over a
 // one-line document and a fifty-line one.
@@ -103,6 +104,9 @@ func (doc inlinePeekDocument) Lines(offset int) []string {
 	lines = append(lines, doc.Body[start:end]...)
 	for len(lines) < body {
 		lines = append(lines, "")
+	}
+	if start == 0 && end == len(doc.Body) {
+		return append(lines, doc.indent)
 	}
 	return append(lines, doc.positionLine(start, len(doc.Body)-end))
 }
@@ -484,20 +488,31 @@ func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
 		return ""
 	}
 	var fields inlinePeekFields
-	fields.add("Created", query.FormatRecencyAge(task.CreatedAt, now))
-	fields.add("Updated", query.FormatRecencyAge(task.UpdatedAt, now))
+	fields.add("Created", inlinePeekPastAge(task.CreatedAt, now))
+	fields.add("Updated", inlinePeekPastAge(task.UpdatedAt, now))
 	if task.LastReviewedAt != nil {
-		fields.add("Last review", query.FormatRecencyAge(*task.LastReviewedAt, now))
+		fields.add("Last review", inlinePeekPastAge(*task.LastReviewedAt, now))
 	}
 	// The lapsed half of the deferral: a task that came back is work again, and
 	// the row carries no deferral at all, so this is where the wake is said.
 	if taskWokeRecently(task, now) {
-		fields.add("Woke", query.FormatRecencyAge(*task.DeferredUntil, now))
+		fields.add("Woke", inlinePeekPastAge(*task.DeferredUntil, now))
 	}
 	if taskHasRepeatedDeferrals(task) {
 		fields.add("Deferred", fmt.Sprintf("×%d", task.DeferCount))
 	}
 	return fields.line()
+}
+
+// inlinePeekPastAge spells an instant already spent as how long ago it was, so
+// `47d ago` cannot be read as a duration the way the status line's `Doing 9d`
+// is. `now` already says when, and an empty age stays empty so the field drops.
+func inlinePeekPastAge(at, now time.Time) string {
+	age := query.FormatRecencyAge(at, now)
+	if age == "" || age == "now" {
+		return age
+	}
+	return age + " ago"
 }
 
 func inlinePeekHistoryLines(task *models.Task, now time.Time, indent string, width int) []string {

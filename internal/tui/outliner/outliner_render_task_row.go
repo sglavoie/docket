@@ -99,7 +99,7 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 	if marker == "" {
 		return ""
 	}
-	return theme.MutedStyle.Render("  " + marker)
+	return theme.RelationMarkerStyle.Render("  " + marker)
 }
 
 // rankedProjectLabelMaxSlug bounds the slug a ranked row spells: a fifth of the
