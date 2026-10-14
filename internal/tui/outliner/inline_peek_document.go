@@ -782,6 +782,61 @@ func searchMatchExcerpt(text string, positions []int) string {
 	return strings.Join(windows, " · ")
 }
 
+// searchMatchExcerpt's first window fitted to width without losing what it
+// explains: the leading context shrinks until the first matched run — the
+// consecutive positions starting at the first match — fits whole, and the tail
+// is then cut. A width that cannot hold that run even with no context returns
+// "", since an excerpt whose match was cut away is context and not a reason.
+func searchMatchExcerptWithin(text string, positions []int, width int) string {
+	if full := searchMatchExcerpt(text, positions); lipgloss.Width(full) <= width {
+		return full
+	}
+	runes := []rune(text)
+	first := -1
+	for _, position := range positions {
+		if position >= 0 && position < len(runes) {
+			first = position
+			break
+		}
+	}
+	if first < 0 {
+		return ""
+	}
+	runEnd := first + 1
+	for _, position := range positions {
+		if position == runEnd {
+			runEnd++
+		}
+	}
+	const contextBefore, excerptRunes = 40, 160
+	for context := contextBefore; context >= 0; context-- {
+		start := max(first-context, 0)
+		// The kept run plus its lead-in, and one column for the ellipsis the
+		// tail cut adds whenever anything follows it.
+		kept := highlightedExcerptWindow(runes, positions, start, runEnd)
+		if start > 0 {
+			kept = "…" + kept
+		}
+		end := min(start+excerptRunes, len(runes))
+		need := lipgloss.Width(kept)
+		if end > runEnd {
+			need++
+		}
+		if need > width {
+			continue
+		}
+		part := highlightedExcerptWindow(runes, positions, start, end)
+		if start > 0 {
+			part = "…" + part
+		}
+		if end < len(runes) {
+			part += "…"
+		}
+		return textfit.TruncateToVisualWidth(part, width)
+	}
+	return ""
+}
+
 // Normalize whitespace before styling, preserving the matcher's rune positions
 // through newlines, repeated spaces and multibyte characters.
 func highlightedExcerptWindow(runes []rune, positions []int, start, end int) string {

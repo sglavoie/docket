@@ -504,7 +504,9 @@ func (m *OutlinerModel) noteProjectLabel(row notes.LocatedNoteRow, rowWidth int,
 // noteBodyExcerpt says why a note matched when its title does not: the body is
 // re-scored under the projection's own query and case mode, exactly as Peek's
 // search excerpt is, and a body the scorer places no position in says nothing.
-func (m *OutlinerModel) noteBodyExcerpt(entry outlinerSearchNoteMatch) string {
+// The excerpt is fitted to width through searchMatchExcerptWithin, so a narrow
+// row spends its columns on the matched words or on nothing at all.
+func (m *OutlinerModel) noteBodyExcerpt(entry outlinerSearchNoteMatch, width int) string {
 	if !entry.match.BodyMatched || entry.row.Note == nil || m.searchTextQuery() == "" {
 		return ""
 	}
@@ -513,7 +515,7 @@ func (m *OutlinerModel) noteBodyExcerpt(entry outlinerSearchNoteMatch) string {
 	if len(positions) == 0 {
 		return ""
 	}
-	return searchMatchExcerpt(body, positions)
+	return searchMatchExcerptWithin(body, positions, width)
 }
 
 // renderOutlinerNoteRow draws one row of the search projection's notes tier. It
@@ -568,11 +570,12 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	}
 	// A body hit is explained in whatever width the title left over, so the
 	// excerpt is the first thing a narrow row loses and never costs the title a
-	// column.
+	// column. Room that cannot hold the matched words draws no excerpt rather
+	// than leading context that explains nothing.
 	excerpt := ""
 	if room := titleWidth() - lipgloss.Width(title) - lipgloss.Width(noteExcerptSeparator); room >= noteExcerptMinWidth {
-		if text := m.noteBodyExcerpt(entry); text != "" {
-			excerpt = noteExcerptSeparator + textfit.TruncateToVisualWidth(text, room)
+		if text := m.noteBodyExcerpt(entry, room); text != "" {
+			excerpt = noteExcerptSeparator + text
 		}
 	}
 	content := glyph + " " + priorityColumn + label +

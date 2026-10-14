@@ -168,8 +168,12 @@ func TestNoteBodyHitShowsAnExcerptShedFirst(t *testing.T) {
 
 	sawExcerptOnly := false
 	for width := 120; width >= 20; width-- {
-		plain := ansi.Strip(outliner.renderOutlinerNoteRow(row, false, width, 0, nil))
-		hasExcerpt := strings.Contains(plain, "needle")
+		plain := strings.TrimRight(ansi.Strip(outliner.renderOutlinerNoteRow(row, false, width, 0, nil)), " ")
+		excerpt, _ := renderedNoteExcerpt(t, plain, "Unrelated title", cue, width)
+		hasExcerpt := excerpt != ""
+		if hasExcerpt && !strings.Contains(excerpt, "needle") {
+			t.Fatalf("width %d drew an excerpt without its match: %q", width, excerpt)
+		}
 		if hasExcerpt && (!strings.Contains(plain, cue) || !strings.Contains(plain, "[alpha]")) {
 			t.Fatalf("width %d kept the excerpt after dropping the cue or the label:\n%q", width, plain)
 		}
@@ -188,8 +192,104 @@ func TestNoteBodyHitShowsAnExcerptShedFirst(t *testing.T) {
 	if entry := outliner.Search.noteMatches[quiet.NoteRow]; entry.match.BodyMatched {
 		t.Fatal("fixture note without a body reported a body match")
 	}
-	if got := outliner.noteBodyExcerpt(outliner.Search.noteMatches[quiet.NoteRow]); got != "" {
+	if got := outliner.noteBodyExcerpt(outliner.Search.noteMatches[quiet.NoteRow], 120); got != "" {
 		t.Fatalf("title-only hit drew an excerpt %q", got)
+	}
+}
+
+// renderedNoteExcerpt reads the excerpt a rendered note row actually drew: the
+// text between the end of its title — whole, or cut at the title's own ellipsis
+// — and the cue, or the line's end when the cue was dropped. It also reports the
+// width the row left that excerpt, measured off the same rendered line.
+func renderedNoteExcerpt(t *testing.T, plain, title, cue string, rowWidth int) (string, int) {
+	t.Helper()
+	titleAt := strings.Index(plain, title[:3])
+	if titleAt < 0 {
+		t.Fatalf("row drew no title:\n%q", plain)
+	}
+	titleEnd := titleAt + len(title)
+	if !strings.HasPrefix(plain[titleAt:], title) {
+		cut := strings.Index(plain[titleAt:], "…")
+		if cut < 0 {
+			t.Fatalf("title is neither whole nor cut at an ellipsis:\n%q", plain)
+		}
+		titleEnd = titleAt + cut + len("…")
+	}
+	rest := plain[titleEnd:]
+	cueWidth := 0
+	if at := strings.Index(rest, cue); at >= 0 {
+		rest = rest[:at]
+		cueWidth = lipgloss.Width("  " + cue)
+	}
+	budget := rowWidth - lipgloss.Width(plain[:titleEnd]) - lipgloss.Width(noteExcerptSeparator) - cueWidth
+	return strings.TrimSpace(rest), budget
+}
+
+// TestNoteBodyExcerptKeepsMatchWithinRowBudget holds a late body hit — the
+// needle sits behind more than forty runes of unrelated prose — to the one
+// promise an excerpt makes: whatever width the row leaves it, the drawn excerpt
+// either carries the matched word or is absent. A right cut that keeps leading
+// context and loses the match is the failure, and it is read off the rendered
+// text rather than inferred from a missing keyword.
+func TestNoteBodyExcerptKeepsMatchWithinRowBudget(t *testing.T) {
+	outliner := noteLabelProjection(t)
+	row := noteRowTitled(t, outliner, "Unrelated title")
+	body := outliner.Search.noteMatches[row.NoteRow].row.Note.Body
+	if at := strings.Index(body, "needle"); at < 40 {
+		t.Fatalf("fixture needle sits at %d, want at least 40 nonmatching runes ahead of it", at)
+	}
+	const title, cue, label = "Unrelated title", "· note", "[alpha]"
+
+	budgets := map[int]bool{}
+	sawExcerpt, sawAbsent := false, false
+	for width := 80; width >= 20; width-- {
+		plain := strings.TrimRight(ansi.Strip(outliner.renderOutlinerNoteRow(row, false, width, 0, nil)), " ")
+		if got := lipgloss.Width(outliner.renderOutlinerNoteRow(row, true, width, 0, nil)); got != width {
+			t.Fatalf("cursor note row at width %d = %d columns", width, got)
+		}
+		excerpt, budget := renderedNoteExcerpt(t, plain, title, cue, width)
+		budgets[budget] = true
+		if excerpt == "" {
+			sawAbsent = true
+			continue
+		}
+		sawExcerpt = true
+		if !strings.Contains(excerpt, "needle") {
+			t.Fatalf("width %d (excerpt budget %d) drew an excerpt without the match: %q\n%q", width, budget, excerpt, plain)
+		}
+		if w := lipgloss.Width(excerpt); w > budget {
+			t.Fatalf("width %d drew a %d-column excerpt in a %d-column budget: %q", width, w, budget, excerpt)
+		}
+		if !strings.Contains(plain, title) || !strings.Contains(plain, label) || !strings.Contains(plain, cue) {
+			t.Fatalf("width %d kept the excerpt at the cost of the title, label, or cue:\n%q", width, plain)
+		}
+	}
+	for budget := noteExcerptMinWidth; budget <= 40; budget++ {
+		if !budgets[budget] {
+			t.Fatalf("no row width left the excerpt a %d-column budget; saw %v", budget, budgets)
+		}
+	}
+	if !sawExcerpt || !sawAbsent {
+		t.Fatalf("the sweep never observed both rungs: excerpt=%v absent=%v", sawExcerpt, sawAbsent)
+	}
+
+	// The fitter itself, at each budget below the row's floor gate: the match or
+	// nothing, never more columns than it was given.
+	positions := []int{strings.Index(body, "needle")}
+	for i := 1; i < len("needle"); i++ {
+		positions = append(positions, positions[0]+i)
+	}
+	for width := 0; width <= 80; width++ {
+		got := ansi.Strip(searchMatchExcerptWithin(body, positions, width))
+		if lipgloss.Width(got) > width {
+			t.Fatalf("budget %d drew %q", width, got)
+		}
+		if got != "" && !strings.Contains(got, "needle") {
+			t.Fatalf("budget %d drew context without the match: %q", width, got)
+		}
+		if width >= lipgloss.Width("…needle…") && got == "" {
+			t.Fatalf("budget %d could hold the match yet drew nothing", width)
+		}
 	}
 }
 
