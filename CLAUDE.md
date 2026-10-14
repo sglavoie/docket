@@ -755,8 +755,9 @@ Row and Peek budget:
   `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.
 - `ComputeOutlinerRowLayout` is the one task-row geometry — the fold column and
-  the badge columns — measured over the whole projection and never a window or
-  a cursor, so titles hold still while the list scrolls. `HasFold` keeps that
+  the badge columns — measured over the whole projection,
+  including rows a fold hides, and never a window or a cursor, so titles hold
+  still while the list scrolls or a fold opens. `HasFold` keeps that
   column blank on a row with nothing to fold, and a nil layout reserves none; the inline editor and the Hub preview
   painter read that same layout.
 - `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent

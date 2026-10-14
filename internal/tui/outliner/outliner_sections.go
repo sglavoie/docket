@@ -155,10 +155,17 @@ func (m *OutlinerModel) flattenSectionForest(
 			if identity.ProjectID == "" && m.Project != nil {
 				identity.ProjectID = m.Project.ID
 			}
-			if len(children) > 0 && m.IsExpanded(identity) {
-				next := append(append([]bool(nil), ancestorIsLast...), isLast)
-				walk(children, next)
+			if len(children) == 0 {
+				continue
 			}
+			if !m.IsExpanded(identity) {
+				if rows == &m.Rows {
+					m.hideSectionForestTasks(forest, children)
+				}
+				continue
+			}
+			next := append(append([]bool(nil), ancestorIsLast...), isLast)
+			walk(children, next)
 		}
 	}
 	walk(forest.roots, nil)
@@ -229,6 +236,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 		CollapseKey:     pinnedSectionCollapseKey,
 	})
 	if m.sectionCollapsed(pinnedSectionCollapseKey) {
+		m.hideProjectRowGroups(section.groups)
 		return
 	}
 
@@ -484,10 +492,8 @@ func (m *OutlinerModel) appendPlanningRows(
 	if len(rows) == 0 {
 		return
 	}
-	rows = slices.Clone(rows)
-	m.sortSectionRows(rows)
 	m.appendProjectGroupedForests(
-		m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}, m.sectionTaskLead(rows)),
+		m.planningRowGroups(rows),
 		OutlinerRow{
 			IsTodaySection: group == models.StateGroupToday,
 			IsNextSection:  group == models.StateGroupNext,
@@ -498,6 +504,15 @@ func (m *OutlinerModel) appendPlanningRows(
 			return planningProjectCollapseKey(projectID, group)
 		},
 	)
+}
+
+// planningRowGroups is the project grouping one planning lane draws, built the
+// same way whether the lane is drawn or folded, so what a fold hides is measured
+// over the tree the open lane would have shown.
+func (m *OutlinerModel) planningRowGroups(rows []OutlinerRow) []projectRowGroup {
+	rows = slices.Clone(rows)
+	m.sortSectionRows(rows)
+	return m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}, m.sectionTaskLead(rows))
 }
 
 func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
@@ -523,9 +538,11 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		StateGroup:      section.group,
 		CollapseKey:     collapseKey,
 	})
-	if !m.sectionCollapsed(collapseKey) {
-		m.appendPlanningRows(section.rows, section.group, collapseKey)
+	if m.sectionCollapsed(collapseKey) {
+		m.hideProjectRowGroups(m.planningRowGroups(section.rows))
+		return
 	}
+	m.appendPlanningRows(section.rows, section.group, collapseKey)
 }
 
 // removePlanningRowsFromTree removes every explicit planning identity from a
@@ -626,6 +643,7 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		PromotedTag:     reviewLaneKey,
 	})
 	if m.sectionCollapsed(reviewSectionCollapseKey) {
+		m.hideProjectRowGroups(section.groups)
 		return
 	}
 	m.appendProjectGroupedForests(

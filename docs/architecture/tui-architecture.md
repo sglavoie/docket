@@ -246,7 +246,8 @@ every project operation resolves from. The task rows under it name no project,
 so the title keeps every column the header already paid for.
 `ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns the
 leading segments align in — and it reads the whole projection rather than the
-window on screen, which is why titles hold still while the list scrolls; the
+window on screen, including rows a fold hides, which is why titles hold still
+while the list scrolls and while a fold opens; the
 inline editor and the Hub preview painter read the same layout.
 
 `rowStartsGroup` is what `n`/`N` step between, and it is one rule covering the

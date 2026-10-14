@@ -242,6 +242,20 @@ the inline editor, and the Hub's preview painter with no second copy. A nil
 layout, which is every row narrower than `MinColumnAlignWidth`, reserves
 nothing, and so does a projection in which nothing folds.
 
+That measurement covers the whole projection, including rows a fold hides. A
+layout read from the drawn rows alone moved every title the moment a fold
+opened onto the first parent or the first prioritized task, so the row builders
+keep `hiddenRowLayout` on the model: each collapsed branch — a folded lane, a
+folded project group, a parent whose children are not expanded — already holds
+the forest it declined to emit and records those tasks there, with the fold
+answer `rowDrawsFold` would have given them. It is reset where `m.Rows` is and
+merged at the Outliner's one render call, so a fold opening or closing changes
+neither `HasFold` nor a badge width. `ComputeOutlinerRowLayout(rows, rowWidth)`
+itself still measures only the rows it is handed, which is what keeps the Hub's
+preview painter, a standalone render of its own rows, blind to the Outliner's
+folds. A projection whose every lane is folded draws no task row and measures
+nothing.
+
 The census is the one indicator that is bare text rather than a padded chip, so
 `taskIndicatorSegments.render` gives it the leading column a chip's padding
 would have brought: it sits two columns from a title and three from a chip

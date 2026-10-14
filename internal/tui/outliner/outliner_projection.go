@@ -323,9 +323,11 @@ func (m *OutlinerModel) appendProjectGroupedForests(
 ) {
 	for _, group := range groups {
 		identity := m.rowGroupFor(sectionKey, collapseKeyFor(group.projectID), group.projectID)
-		if m.appendProjectGroupHeader(template, identity, group.forest.tasks()) {
-			m.flattenSectionRowForest(group.forest, identity, &m.Rows)
+		if !m.appendProjectGroupHeader(template, identity, group.forest.tasks()) {
+			m.hideSectionRowNodes(group.forest.roots)
+			continue
 		}
+		m.flattenSectionRowForest(group.forest, identity, &m.Rows)
 	}
 }
 
@@ -371,7 +373,13 @@ func (m *OutlinerModel) flattenSectionRowRoots(
 			}
 			*rows = append(*rows, row)
 
-			if len(node.children) == 0 || !m.IsExpanded(m.sectionRowIdentity(row)) {
+			if len(node.children) == 0 {
+				continue
+			}
+			if !m.IsExpanded(m.sectionRowIdentity(row)) {
+				if rows == &m.Rows {
+					m.hideSectionRowNodes(node.children)
+				}
 				continue
 			}
 			next := append(slices.Clone(ancestorIsLast), isLast)
@@ -463,6 +471,9 @@ func (m *OutlinerModel) appendStateGroupForests(
 		CollapseKey:     collapseKey,
 	})
 	if m.sectionCollapsed(collapseKey) {
+		for _, item := range forests {
+			m.hideSectionForestTasks(item.forest, item.forest.roots)
+		}
 		return
 	}
 	blocks := make([]projectBlock[stateGroupProjectForest], 0, len(forests))
@@ -479,6 +490,7 @@ func (m *OutlinerModel) appendStateGroupForests(
 		}
 		identity := m.rowGroupFor(collapseKey, projectSectionCollapseKey(projectID, group), projectID)
 		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, item.forest.tasks()) {
+			m.hideSectionForestTasks(item.forest, item.forest.roots)
 			continue
 		}
 		m.flattenSectionForest(item.forest, projectID, identity, &m.Rows)
@@ -648,6 +660,7 @@ func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, m
 		// group identity and the section half stays empty.
 		identity := m.rowGroupFor("", modeProjectCollapseKey(mode, tree.project.ID), tree.project.ID)
 		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, flattenTaskPointers(tree.roots)) {
+			m.hidePrimaryTasks(tree.roots)
 			continue
 		}
 		for i, task := range tree.roots {
@@ -709,7 +722,11 @@ func (m *OutlinerModel) flattenPrimaryTask(
 	if identity.ProjectID == "" && m.Project != nil {
 		identity.ProjectID = m.Project.ID
 	}
-	if len(task.Children) == 0 || !m.IsExpanded(identity) {
+	if len(task.Children) == 0 {
+		return
+	}
+	if !m.IsExpanded(identity) {
+		m.hidePrimaryTasks(task.Children)
 		return
 	}
 	nextAncestors := append(slices.Clone(ancestorIsLast), isLast)
@@ -1032,4 +1049,75 @@ func removeProjectedRowsFromTree(
 		result = append(result, &clone)
 	}
 	return result
+}
+
+// hiddenRowLayout is what the folds of one projection hide from the row
+// layout: whether any hidden task would draw a fold glyph once shown, and the
+// hidden tasks themselves, whose badges decide the badge columns. A projection
+// measured from its drawn rows alone moves every title the moment a fold opens
+// onto the first parent or the first prioritized task, so each collapsed branch
+// of the row builders records here what it declined to emit. It is reset where
+// the rows reset and read by the Outliner's own render alone.
+type hiddenRowLayout struct {
+	hasFold bool
+	tasks   []*models.Task
+}
+
+func (h *hiddenRowLayout) reset() {
+	h.hasFold = false
+	h.tasks = h.tasks[:0]
+}
+
+// add records one hidden task. hasChildren is what HasVisibleChildren would
+// have been on its row, so the fold answer matches rowDrawsFold exactly.
+func (h *hiddenRowLayout) add(task *models.Task, hasChildren bool) {
+	if task == nil {
+		return
+	}
+	h.tasks = append(h.tasks, task)
+	h.hasFold = h.hasFold || hasChildren || len(task.Checklist) > 0
+}
+
+// hideSectionRowNodes records every task of a section-local row forest a
+// folded lane, project group, or parent left undrawn.
+func (m *OutlinerModel) hideSectionRowNodes(nodes []*sectionRowNode) {
+	for _, node := range nodes {
+		m.hiddenLayout.add(node.row.Task, len(node.children) > 0)
+		m.hideSectionRowNodes(node.children)
+	}
+}
+
+// hideProjectRowGroups records every project group of one folded section.
+func (m *OutlinerModel) hideProjectRowGroups(groups []projectRowGroup) {
+	for _, group := range groups {
+		m.hideSectionRowNodes(group.forest.roots)
+	}
+}
+
+// hideSectionForestTasks records the given tasks of a lifecycle forest and
+// everything beneath them, reading children the way flattenSectionForest does.
+func (m *OutlinerModel) hideSectionForestTasks(forest *sectionTaskForest, tasks []*models.Task) {
+	if forest == nil {
+		return
+	}
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		children := forest.children[task.ID]
+		m.hiddenLayout.add(task, len(children) > 0)
+		m.hideSectionForestTasks(forest, children)
+	}
+}
+
+// hidePrimaryTasks records the given tasks of a stored tree and everything
+// beneath them, reading children the way flattenPrimaryTask does.
+func (m *OutlinerModel) hidePrimaryTasks(tasks []*models.Task) {
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		m.hiddenLayout.add(task, len(task.Children) > 0)
+		m.hidePrimaryTasks(task.Children)
+	}
 }

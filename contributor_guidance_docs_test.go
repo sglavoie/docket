@@ -1333,7 +1333,13 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// form's inline overlay alone. The mechanism lives in
 	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed
 	// to pay for it.
-	const budget = 76496
+	// Raise from 76496 to 76544 for row columns that hold across folds. 48
+	// bytes buy the clause the row layout is now held to: the measurement
+	// covers rows a fold hides, so a builder adding a collapsed branch owes the
+	// accumulator what it declined to emit. The mechanism lives in
+	// docs/architecture/row-indicators.md. No rule elsewhere was trimmed to pay
+	// for it.
+	const budget = 76544
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

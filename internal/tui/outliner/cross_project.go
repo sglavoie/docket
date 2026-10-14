@@ -317,6 +317,7 @@ func (m *OutlinerModel) CrossProjectRebuildRows() {
 	m.invalidateDependencyIndex()
 
 	m.Rows = m.Rows[:0]
+	m.hiddenLayout.reset()
 	m.validateCrossFocusStack()
 	// Validation may have shortened the stack after the guard captured its old
 	// depth. Record the repaired depth so the next render remains a no-op.

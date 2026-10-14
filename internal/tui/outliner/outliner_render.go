@@ -38,7 +38,7 @@ func (m *OutlinerModel) View() tea.View {
 }
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
-	colLayout := m.ComputeOutlinerRowLayout(m.Rows, viewport.rowWidth)
+	colLayout := m.computeRowLayout(m.Rows, viewport.rowWidth, &m.hiddenLayout)
 
 	var rowBuilder strings.Builder
 	if viewport.pinned {
@@ -534,6 +534,15 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 // alignment keeps its width floor, because padding a badge is a wide-terminal
 // nicety that a cramped row is better off without.
 func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth int) *chrome.ColumnLayout {
+	return m.computeRowLayout(rows, rowWidth, nil)
+}
+
+// computeRowLayout measures the drawn rows together with what the projection's
+// folds hide. The Outliner's own render hands it the model's accumulator, so a
+// fold opening or closing moves no title; every other caller measures the rows
+// it holds and nothing else. A projection drawing no task row still measures
+// nothing, since there is no row for a hidden one to align with.
+func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidden *hiddenRowLayout) *chrome.ColumnLayout {
 	if rowWidth < chrome.MinColumnAlignWidth {
 		return nil
 	}
@@ -555,6 +564,10 @@ func (m *OutlinerModel) ComputeOutlinerRowLayout(rows []OutlinerRow, rowWidth in
 	}
 	if len(tasks) == 0 {
 		return nil
+	}
+	if hidden != nil {
+		tasks = append(tasks, hidden.tasks...)
+		hasFold = hasFold || hidden.hasFold
 	}
 	opts := chrome.BadgeWidthOpts{IncludeStatus: true}
 	if slugs != nil {

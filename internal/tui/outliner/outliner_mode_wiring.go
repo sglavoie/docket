@@ -367,6 +367,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 			CollapseKey:      section.CollapseKey,
 		})
 		if m.sectionCollapsed(section.CollapseKey) {
+			m.hideProjectRowGroups(groups)
 			continue
 		}
 		m.appendProjectGroupedForests(groups, OutlinerRow{}, section.CollapseKey, func(projectID string) string {

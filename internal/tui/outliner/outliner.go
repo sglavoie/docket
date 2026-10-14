@@ -152,6 +152,9 @@ type OutlinerModel struct {
 	// authoritative project trees rather than from a row's own task, whose
 	// Children the filter pipeline may have rewritten.
 	openChildCounts map[taskref.TaskIdentity]int
+	// hiddenLayout is what this projection's folds hide from the row layout,
+	// rebuilt with the rows so a fold opening moves no title.
+	hiddenLayout hiddenRowLayout
 
 	// dependencyIndexCache is the row-rebuild pass's reading of the soft
 	// reference graph over the loaded population. It is a cache and never
