@@ -216,7 +216,7 @@ func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case chrome.ShowTextEditorMsg:
-		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(msg.FieldName, msg.CurrentValue))
+		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(msg.FieldName, msg.Subtitle, msg.CurrentValue))
 
 	case chrome.ShowTaskTextEditorMsg:
 		if msg.Task == nil || msg.Project == nil {
@@ -225,7 +225,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		var fieldName, currentValue string
 		switch msg.Operation {
 		case app.TaskOperationEditDescription:
-			fieldName = "description"
+			fieldName = chrome.TextEditorFieldDescription
 			currentValue = msg.Task.Description
 		default:
 			return true, status.ErrorCmd("unsupported task text operation %q", msg.Operation)
@@ -239,7 +239,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			Operation: msg.Operation,
 			Original:  currentValue,
 		}
-		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(fieldName, currentValue))
+		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(fieldName, msg.Task.Title, currentValue))
 
 	case chrome.TextEditorDoneMsg:
 		m.popView()

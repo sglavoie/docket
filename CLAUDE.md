@@ -195,9 +195,9 @@ the presentation — and `SuppressesShellGuidance` is its closed table. The last
 rung asks `HostGuidanceStandsBeneath`, which is whether a host is still drawn
 under this presentation and not whether it drew its own acts, so a fullscreen
 surface keeps the footer and fills it: Comments, Attachments, the project
-creator and editor, and both composer presentations publish through
-`route.ContextualGuidanceProvider` and draw no footer, leaving one divider and
-the hints on the last row. That block replaces the breadcrumb, so the exit and
+creator and editor, the text editor, and both composer views publish through
+`route.ContextualGuidanceProvider` and draw no footer: one divider stands
+over hints on the last row. That block replaces the breadcrumb, so the exit and
 `? help` are the surface's own entries. `route.SelfGuidedPresentation`
 overrides the rung per frame for the expanded form's inline overlay alone. A
 suppressed occupant is blanked whole at its own height, so the close returns

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -16,8 +17,11 @@ import (
 // forms themselves, so their guidance is asserted there; the text editor is
 // still the shell's, and its budget stays here.
 func TestTextEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
-	textEditor := chrome.NewTextEditorModel("description", "")
+	textEditor := chrome.NewTextEditorModel("description", "", "")
 	assertRequiredGuidance(t, "text editor", textEditor.GuidanceSpec(), true, "Ctrl+S save", "Esc cancel")
+	textEditor.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
+	spec, ok := textEditor.ContextualGuidance()
+	assertRequiredGuidance(t, "edited text editor", spec, ok, "Ctrl+S save", "Esc discard")
 	textEditor.ExternalEdit = true
 	if got := textEditor.GuidanceSpec().Supplemental; got != "External editor open" {
 		t.Fatalf("external-editor supplemental = %q", got)
@@ -25,7 +29,7 @@ func TestTextEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 }
 
 func TestTextEditorGuidanceFitsNarrowBudgets(t *testing.T) {
-	spec := chrome.NewTextEditorModel("description", "").GuidanceSpec()
+	spec := chrome.NewTextEditorModel("description", "", "").GuidanceSpec()
 	if spec.Rows != 2 {
 		t.Errorf("text editor row budget = %d, want 2", spec.Rows)
 	}
@@ -38,12 +42,49 @@ func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
 	// though the form's own coverage now lives beside it in internal/tui/taskform.
 	const minHeight = chrome.MinTerminalHeight - 2
 
-	textEditor := chrome.NewTextEditorModel("description", "draft")
+	textEditor := chrome.NewTextEditorModel("description", "Ship the release", "draft")
 	textEditor.SetSize(chrome.MinTerminalWidth, minHeight)
 	textView := textEditor.View().Content
 	assertFitsWithin(t, textView, chrome.MinTerminalWidth, minHeight)
-	if !strings.Contains(ansi.Strip(textView), "Ctrl+S save") || !strings.Contains(ansi.Strip(textView), "Esc cancel") {
-		t.Fatalf("text editor minimum layout lost required guidance:\n%s", ansi.Strip(textView))
+	// The editor is shell-guided: its keys publish to the shell footer, so its
+	// own content draws none of them.
+	if plain := ansi.Strip(textView); strings.Contains(plain, "Ctrl+S save") {
+		t.Fatalf("text editor drew its own guidance:\n%s", plain)
+	}
+	spec, ok := textEditor.ContextualGuidance()
+	assertRequiredGuidance(t, "text editor", spec, ok, "Ctrl+S save", "Esc cancel")
+	assertGuidanceFits(t, spec, chrome.MinTerminalWidth)
+}
+
+func TestTextEditorHeaderNamesTaskAndMatchesBreadcrumbLabel(t *testing.T) {
+	for _, tt := range []struct {
+		field, want string
+	}{
+		{field: chrome.TextEditorFieldDescription, want: "Edit Description"},
+		{field: chrome.TextEditorFieldFormDescription, want: "Edit Description"},
+		{field: chrome.TextEditorFieldTitle, want: "Edit Title"},
+	} {
+		t.Run(tt.field, func(t *testing.T) {
+			m := chrome.NewTextEditorModel(tt.field, "Ship the release", "body")
+			m.SetSize(80, 20)
+			header := strings.SplitN(ansi.Strip(m.View().Content), "\n", 2)[0]
+			if !strings.Contains(header, tt.want) || !strings.Contains(header, "Ship the release") {
+				t.Fatalf("header = %q, want %q naming the task", header, tt.want)
+			}
+			if got := m.StatusBarLabel(); got != tt.want {
+				t.Fatalf("StatusBarLabel() = %q, want the header's %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTextEditorReservesShellFooterExcess(t *testing.T) {
+	m := chrome.NewTextEditorModel(chrome.TextEditorFieldDescription, "", "body")
+	m.SetSize(60, 18)
+	base := lipgloss.Height(m.View().Content)
+	m.SetShellFrameMetrics(chrome.ShellFrameMetrics{ControlRows: 2})
+	if got := lipgloss.Height(m.View().Content); got != base-1 {
+		t.Fatalf("height under a two-row footer = %d, want %d", got, base-1)
 	}
 }
 

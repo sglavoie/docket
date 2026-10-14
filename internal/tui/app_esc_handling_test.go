@@ -32,7 +32,7 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 		{
 			name:    "TextEditor",
 			viewTyp: presentation.ViewTextEditor,
-			view:    chrome.NewTextEditorModel("title", "some value"),
+			view:    chrome.NewTextEditorModel("title", "", "some value"),
 		},
 	}
 

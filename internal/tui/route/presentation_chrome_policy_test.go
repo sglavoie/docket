@@ -135,6 +135,7 @@ func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T
 		presentation.ViewProjectEditor:        true,
 		presentation.ViewTaskComments:         true,
 		presentation.ViewTaskAttachments:      true,
+		presentation.ViewTextEditor:           true,
 	}
 	for _, view := range allPresentations() {
 		policy, ok := ChromePolicyForPresentation(view)

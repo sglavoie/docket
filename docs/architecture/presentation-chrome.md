@@ -152,8 +152,8 @@ is its own to fill. That is why the predicate reads `kind` rather than
 classification, asked twice.
 
 What fills it is the surface's own guidance. The Comments and Attachments
-panels, the project creator and editor, and both of the task composer's
-presentations implement `route.ContextualGuidanceProvider` and render no
+panels, the project creator and editor, the field text editor, and both of the
+task composer's presentations implement `route.ContextualGuidanceProvider` and render no
 guidance in `View`: `surfaceFooterContent` draws the spec they return under the
 shell's one divider, so the frame carries a single divider and the hints sit on
 the terminal's last row. The spec replaces the breadcrumb row rather than
@@ -164,12 +164,14 @@ as required, and publish at `taskToolGuidanceRows`, so the footer wraps at the
 floor rather than shed the `Space` menu that is the only route to Delete. And a
 footer that wraps is taller than the two rows the view was sized against, so
 each of these views reads `ShellFrameMetrics.ExcessRows` — through
-`BaseView.FrameHeight` on the two panels, and through the metrics the composer
-forwards to its form — instead of measuring a guidance block it no longer
-draws. The policy table names these presentations `presentationGuidanceShell`.
-A surface that still draws its acts inside its content, as the field text
-editor does, returns no spec, and the footer under it holds that surface's
-breadcrumb and its `Esc back · ? help`.
+`BaseView.FrameHeight` on the two panels, through the metrics the composer
+forwards to its form, and out of the field text editor's textarea — instead of
+measuring a guidance block it no longer draws. The policy table names these
+presentations `presentationGuidanceShell`. The field text editor's header names
+the task whose text it holds, and its header and `StatusBarLabel` are one word,
+`Edit Description` for any description and `Edit Title` for the title alone. A
+surface that still draws its acts inside its content returns no spec, and the
+footer under it holds that surface's breadcrumb and its `Esc back · ? help`.
 
 `route.SelfGuidedPresentation` is the per-frame override for the case a
 `PresentationID` cannot answer, where a sub-state of one view owns every key and

@@ -5,7 +5,6 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -13,21 +12,44 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// TextEditorModel handles editing a single text field in a popup overlay.
-// Used for task title and description editing in task creator/editor forms.
+// The field names a TextEditorModel is opened for. They route the result back
+// to whoever asked; the header reads them through textEditorHeader alone.
+const (
+	TextEditorFieldTitle           = "title"
+	TextEditorFieldDescription     = "description"
+	TextEditorFieldFormDescription = "formDesc"
+)
+
+// textEditorHeader is the one word the header and the breadcrumb label share:
+// Edit Title for the title field and Edit Description for every description,
+// the task's own or the composer form's draft.
+func textEditorHeader(fieldName string) string {
+	if fieldName == TextEditorFieldTitle {
+		return "Edit Title"
+	}
+	return "Edit Description"
+}
+
+// TextEditorModel handles editing a single text field as a fullscreen surface.
+// It is shell-guided: its keys publish through ContextualGuidance and the shell
+// footer draws them, so the view itself draws none.
 type TextEditorModel struct {
 	pulse.WorkspacePulseState
 	textarea     textarea.Model
-	fieldName    string // "title" or "description"
+	fieldName    string
+	subtitle     string // the task title the edited text belongs to, if any
 	initialValue string // for cancel restoration
 	width        int
+	height       int
+	shellFrame   ShellFrameMetrics
 	ExternalEdit bool
 
 	DiscardConfirmState
 }
 
-// NewTextEditorModel creates a new text editor popup.
-func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
+// NewTextEditorModel creates a new text editor. subtitle names the task whose
+// text is edited and may be empty.
+func NewTextEditorModel(fieldName, subtitle, currentValue string) *TextEditorModel {
 	ta := textarea.New()
 	ta.SetValue(currentValue)
 	ta.SetHeight(5)
@@ -39,6 +61,7 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 	return &TextEditorModel{
 		textarea:     ta,
 		fieldName:    fieldName,
+		subtitle:     subtitle,
 		initialValue: currentValue,
 		width:        80,
 	}
@@ -47,12 +70,24 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 // SetSize sets the view dimensions.
 func (m *TextEditorModel) SetSize(width, height int) {
 	m.width = width
+	m.height = height
 	// Use same resize logic as other forms for consistent width
 	FormFactory.ResizeTextarea(&m.textarea, width)
-	// Expand the textarea into the rows left after the title/spacing and the
-	// currently rendered one- or two-row guidance footer.
-	footerHeight := lipgloss.Height(RenderGuidance(m.GuidanceSpec(), width))
-	m.textarea.SetHeight(max(height-2-footerHeight, 1))
+	m.fitTextarea()
+}
+
+// SetShellFrameMetrics answers route.ShellFrameAware: the rows a wrapped or
+// feedback-bearing shell footer costs beyond the two this view was sized
+// against come out of the textarea, never out of the title.
+func (m *TextEditorModel) SetShellFrameMetrics(metrics ShellFrameMetrics) {
+	m.shellFrame = metrics
+	m.fitTextarea()
+}
+
+// fitTextarea expands the textarea into the rows left after the title and its
+// spacing, less whatever the shell footer charges beyond its baseline.
+func (m *TextEditorModel) fitTextarea() {
+	m.textarea.SetHeight(max(m.height-2-m.shellFrame.ExcessRows(), 1))
 }
 
 func (m *TextEditorModel) Init() tea.Cmd {
@@ -109,7 +144,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Save - return current value
 			value := m.textarea.Value()
 			// Replace newlines with spaces for title field
-			if m.fieldName == "title" {
+			if m.fieldName == TextEditorFieldTitle {
 				value = strings.ReplaceAll(value, "\n", " ")
 				value = strings.TrimSpace(value)
 			}
@@ -146,19 +181,10 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TextEditorModel) View() tea.View {
 	var b strings.Builder
 
-	// Determine title
-	title := "Edit Title"
-	if m.fieldName == "description" {
-		title = "Edit Description"
-	}
-
-	b.WriteString(RenderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
+	b.WriteString(RenderFullscreenTitleWithPulse(textEditorHeader(m.fieldName), m.subtitle, m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	theme.ApplyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())
-	b.WriteString("\n")
-
-	b.WriteString(RenderGuidance(m.GuidanceSpec(), m.width))
 
 	return tea.NewView(b.String())
 }
@@ -183,6 +209,12 @@ func (m *TextEditorModel) GuidanceSpec() GuidanceSpec {
 	return spec
 }
 
+// ContextualGuidance answers route.ContextualGuidanceProvider: the editor hands
+// its keys to the shell footer and draws none of its own.
+func (m *TextEditorModel) ContextualGuidance() (GuidanceSpec, bool) {
+	return m.GuidanceSpec(), true
+}
+
 // HasTextInput returns true because the text editor uses a textarea input.
 func (m *TextEditorModel) HasTextInput() bool {
 	return true
@@ -192,9 +224,10 @@ func (m *TextEditorModel) ShouldCaptureEsc() bool { return true }
 
 func (m *TextEditorModel) IsFullHeight() bool { return false }
 
-// ShowTextEditorMsg triggers showing the text editor popup.
+// ShowTextEditorMsg triggers showing the text editor.
 type ShowTextEditorMsg struct {
-	FieldName    string // "title" or "description"
+	FieldName    string // one of the TextEditorField constants
+	Subtitle     string // the task title the text belongs to, if any
 	CurrentValue string
 }
 
@@ -226,4 +259,4 @@ type TextEditorExternalDoneMsg struct {
 	Canceled  bool
 }
 
-func (m *TextEditorModel) StatusBarLabel() string { return "Edit Text" }
+func (m *TextEditorModel) StatusBarLabel() string { return textEditorHeader(m.fieldName) }

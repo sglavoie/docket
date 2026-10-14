@@ -1,6 +1,8 @@
 package taskform
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -61,8 +63,13 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 	case 1:
 		// Description: open TextEditorModel.
 		currentDesc := m.draft.desc
+		draftTitle := strings.TrimSpace(strings.ReplaceAll(m.titleInput.Value(), "\n", " "))
 		return func() tea.Msg {
-			return chrome.ShowTextEditorMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+			return chrome.ShowTextEditorMsg{
+				FieldName:    chrome.TextEditorFieldFormDescription,
+				Subtitle:     draftTitle,
+				CurrentValue: currentDesc,
+			}
 		}
 
 	case 2:

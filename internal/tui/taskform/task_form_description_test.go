@@ -47,6 +47,32 @@ func TestTaskForm_BasicsTab_EnterOnDescription_EmitsShowTextEditorMsg(t *testing
 	if editorMsg.CurrentValue != "current desc" {
 		t.Errorf("expected CurrentValue='current desc', got %q", editorMsg.CurrentValue)
 	}
+	if editorMsg.Subtitle != strings.TrimSpace(m.titleInput.Value()) {
+		t.Errorf("expected Subtitle to carry the draft title %q, got %q", m.titleInput.Value(), editorMsg.Subtitle)
+	}
+}
+
+// The composer form's description editor routes under formDesc, which is not
+// the task field's name; its header still says Edit Description, never the
+// Edit Title the title field alone owns.
+func TestTaskForm_DescriptionEditorHeaderIsEditDescription(t *testing.T) {
+	m := newTestTaskForm()
+	m.titleInput.SetValue("Draft title")
+	m = navigateToField(m, 1)
+	_, cmd := m.Update(syntheticSpecialKey(tea.KeyEnter))
+	editorMsg := cmd().(chrome.ShowTextEditorMsg)
+	if editorMsg.Subtitle != "Draft title" {
+		t.Fatalf("Subtitle = %q, want the draft title", editorMsg.Subtitle)
+	}
+	editor := chrome.NewTextEditorModel(editorMsg.FieldName, editorMsg.Subtitle, editorMsg.CurrentValue)
+	editor.SetSize(80, 20)
+	header := strings.SplitN(editor.View().Content, "\n", 2)[0]
+	if !strings.Contains(header, "Edit Description") || strings.Contains(header, "Edit Title") {
+		t.Fatalf("composer description editor header = %q, want Edit Description", header)
+	}
+	if !strings.Contains(header, "Draft title") {
+		t.Fatalf("composer description editor header = %q, want the draft title", header)
+	}
 }
 
 func TestTaskForm_TextEditorDoneMsg_FormDesc_UpdatesDraft(t *testing.T) {

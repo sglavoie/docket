@@ -162,7 +162,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "text editor", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := chrome.NewTextEditorModel("description", "body")
+			m := chrome.NewTextEditorModel("description", "", "body")
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

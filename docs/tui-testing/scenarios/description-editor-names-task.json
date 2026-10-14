@@ -1,0 +1,36 @@
+{
+  "name": "description-editor-names-task",
+  "fixture": "checklist",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
+    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "E opens the task's description editor", "key": "E" },
+    { "type": "assert", "assert": "view", "value": "TextEditor" },
+    { "type": "assert", "label": "the header names the act and the task it belongs to", "assert": "contains", "value": "Edit Description" },
+    { "type": "assert", "assert": "contains", "value": "Draft the launch runbook" },
+    { "type": "assert", "label": "no breadcrumb under a shell-guided editor names a second word for it", "assert": "not_contains", "value": "Edit Text" },
+    { "type": "assert", "label": "nor repeats the place Esc returns to", "assert": "not_contains", "value": " ← " },
+    { "type": "assert", "label": "the shell footer carries the editor's own keys", "assert": "contains", "value": "Ctrl+S save" },
+    { "type": "assert", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "text": " more" },
+    { "type": "assert", "label": "an edit turns the exit into a discard", "assert": "contains", "value": "Esc discard" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the footer holds its required keys at the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Edit Description" },
+    { "type": "assert", "assert": "contains", "value": "Ctrl+S save" },
+    { "type": "assert", "assert": "contains", "value": "Esc discard" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc asks before discarding the edit", "key": "esc" },
+    { "type": "key", "label": "y discards it and returns to the outline", "key": "y" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

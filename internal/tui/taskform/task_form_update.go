@@ -237,7 +237,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activeTab == formTabBasics && m.focusIndex == 1 {
 				currentDesc := m.draft.desc
 				return m, func() tea.Msg {
-					return chrome.TextEditorExternalMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+					return chrome.TextEditorExternalMsg{FieldName: chrome.TextEditorFieldFormDescription, CurrentValue: currentDesc}
 				}
 			}
 		case "ctrl+s":

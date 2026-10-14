@@ -7,9 +7,12 @@
     { "type": "key", "label": "open capture", "key": "a" },
     { "type": "key", "label": "expand it into the full form", "key": "ctrl+f" },
     { "type": "key", "label": "move to the next field", "key": "tab" },
-    { "type": "key", "label": "and open its text editor, which draws its acts in its content and keeps the breadcrumb row", "key": "enter" },
+    { "type": "key", "label": "and open its description editor, which is shell-guided and so draws no breadcrumb row", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "TextEditor" },
-    { "type": "assert", "label": "each segment names a place whole; the Outliner's scope stays on its own title row", "assert": "contains", "value": " Outliner > Task Composer > Edit Text" },
+    { "type": "assert", "label": "its header says the same word its label would, never Edit Title", "assert": "contains", "value": "Edit Description" },
+    { "type": "assert", "assert": "not_contains", "value": "Edit Title" },
+    { "type": "assert", "label": "the footer holds the editor's keys rather than a path back through the composer", "assert": "not_contains", "value": "Task Composer > Edit" },
+    { "type": "assert", "assert": "contains", "value": "Ctrl+S save" },
     { "type": "assert", "label": "rather than a scope cut mid-word at the segment cap", "assert": "not_contains", "value": "Outliner · Acti" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

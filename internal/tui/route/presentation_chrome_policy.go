@@ -107,7 +107,6 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 	switch view {
 	case presentation.ViewHelp,
 		presentation.ViewLastMessage,
-		presentation.ViewTextEditor,
 		presentation.ViewNotes,
 		presentation.ViewGlobalNotes,
 		presentation.ViewProjectHub:
@@ -120,7 +119,8 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 		presentation.ViewProjectCreator,
 		presentation.ViewProjectEditor,
 		presentation.ViewTaskComments,
-		presentation.ViewTaskAttachments:
+		presentation.ViewTaskAttachments,
+		presentation.ViewTextEditor:
 		policy = PresentationChromePolicy{
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceShell,

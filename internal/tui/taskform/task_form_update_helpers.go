@@ -5,13 +5,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // applyTextEditorResult merges a TextEditorModel result into the draft.
 func (m *TaskFormModel) applyTextEditorResult(field, value string) {
 	switch field {
-	case "formDesc":
+	case chrome.TextEditorFieldFormDescription:
 		m.draft.desc = value
 	}
 	m.hasChanges = true

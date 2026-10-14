@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
+	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -87,6 +90,35 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	}
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after text editor done, got %v", app.currentView())
+	}
+}
+
+// E opens the description editor named for its task: the header carries the
+// task title, and the header and the breadcrumb label are the same word.
+func TestHandleShowTaskTextEditorNamesTask(t *testing.T) {
+	app := newTestAppModel()
+	project := testutil.NewTestProjectWithTasks("Work")
+	task := project.Tasks[0]
+
+	handled, _ := app.handleEditorMessages(chrome.ShowTaskTextEditorMsg{
+		Task:      task,
+		Project:   project,
+		Operation: apppkg.TaskOperationEditDescription,
+	})
+	if !handled || app.currentView() != presentation.ViewTextEditor {
+		t.Fatalf("handled=%v view=%v, want the text editor", handled, app.currentView())
+	}
+	editor, ok := app.activeView().(*chrome.TextEditorModel)
+	if !ok {
+		t.Fatalf("active view = %T, want *chrome.TextEditorModel", app.activeView())
+	}
+	editor.SetSize(110, 30)
+	header := strings.SplitN(ansi.Strip(editor.View().Content), "\n", 2)[0]
+	if !strings.Contains(header, "Edit Description") || !strings.Contains(header, task.Title) {
+		t.Fatalf("header = %q, want Edit Description naming %q", header, task.Title)
+	}
+	if got := editor.StatusBarLabel(); got != "Edit Description" {
+		t.Fatalf("StatusBarLabel() = %q, want Edit Description", got)
 	}
 }
 
