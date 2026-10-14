@@ -432,6 +432,39 @@ final class TerminalWindowControllerTests: XCTestCase {
         try waitForScreen { $0.contains("READY:") }
     }
 
+    /// Closing the window while a relaunch is still being prepared stands:
+    /// the session begins hidden, and the next show brings it forward.
+    func testHideWhileSessionPreparationIsPendingDoesNotPresentOnReady() throws {
+        try start()
+        var waiting: [() -> Void] = []
+        controller.onWillStartSession = { waiting.append($0) }
+        controller.relaunch()
+        XCTAssertEqual(waiting.count, 1)
+        XCTAssertFalse(controller.windowShouldClose(controller.window))
+        XCTAssertFalse(controller.window.isVisible)
+
+        waiting[0]()
+        let surface = try XCTUnwrap(controller.surfaceView)
+        XCTAssertFalse(controller.window.isVisible)
+        try waitForScreen { $0.contains("READY:") }
+        XCTAssertFalse(controller.window.isVisible)
+
+        controller.show()
+        XCTAssertTrue(controller.window.isVisible)
+        XCTAssertTrue(controller.surfaceView === surface)
+        XCTAssertEqual(waiting.count, 1)
+        type("after the hide")
+        try waitForScreen { $0.contains("GOT:after the hide:") }
+
+        // A show asked for again while the next start waits wins over the hide.
+        controller.relaunch()
+        controller.hide()
+        controller.show()
+        XCTAssertFalse(controller.window.isVisible)
+        waiting[1]()
+        XCTAssertTrue(controller.window.isVisible)
+    }
+
     func testOnlyAPlainReturnOrEnterRelaunches() {
         XCTAssertTrue(TerminalWindowController.isRelaunchKey("\r", []))
         XCTAssertTrue(TerminalWindowController.isRelaunchKey("\u{3}", [.numericPad, .function]))

@@ -31,6 +31,9 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// session or asking for another voids it.
     private var pendingStart: Int?
     private var starts = 0
+    /// Whether the start waiting on `onWillStartSession` comes forward when it
+    /// begins: the last of `show()` and `hide()` asked for while it waited.
+    private var presentsPendingStart = false
     /// Called on the main thread with each title the running tt sets.
     var onTitleChange: ((String) -> Void)?
     /// Set once tt has exited on the current surface, so a later close request
@@ -92,7 +95,10 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
             startSession()
         }
         // A session still being prepared comes forward once it begins.
-        guard pendingStart == nil else { return }
+        guard pendingStart == nil else {
+            presentsPendingStart = true
+            return
+        }
         present()
     }
 
@@ -105,8 +111,10 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Orders the window out and hides the app, so focus returns to whatever
-    /// was in front before; the session, if any, keeps running.
+    /// was in front before; the session, if any, keeps running, and one still
+    /// being prepared begins hidden.
     func hide() {
+        presentsPendingStart = false
         window.orderOut(nil)
         if hidesApp {
             NSApp.hide(nil)
@@ -163,7 +171,9 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
             guard let self, self.pendingStart == start else { return }
             self.pendingStart = nil
             self.beginSession()
-            self.present()
+            if self.presentsPendingStart {
+                self.present()
+            }
         }
     }
 
