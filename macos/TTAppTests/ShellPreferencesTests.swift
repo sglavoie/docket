@@ -338,10 +338,10 @@ final class StatusItemTests: XCTestCase {
         XCTAssertTrue(controller.menu.items[1].isHidden)
         XCTAssertTrue(controller.menu.items[1].isSeparatorItem)
 
-        delegate.pulseSummary = "Inbox 3 · Today 2 · Overdue 1"
+        delegate.pulseSummary = "inbox 3 · today 2 · overdue 1"
         controller.refreshMenu()
         let pulse = controller.menu.items[0]
-        XCTAssertEqual(pulse.title, "Inbox 3 · Today 2 · Overdue 1")
+        XCTAssertEqual(pulse.title, "inbox 3 · today 2 · overdue 1")
         XCTAssertFalse(pulse.isHidden)
         XCTAssertFalse(pulse.isEnabled)
         XCTAssertNil(pulse.action)

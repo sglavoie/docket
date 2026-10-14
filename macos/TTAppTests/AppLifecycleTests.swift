@@ -154,11 +154,11 @@ final class TerminalWindowControllerTests: XCTestCase {
 
     /// The stand-in prints READY and its pid, then waits for a line on the
     /// pty: `exit N` exits with N, anything else is echoed back.
-    private func start() throws {
-        let script = dir.appendingPathComponent("fake-tt")
+    private func writeFake(named name: String = "fake-tt", banner: String = "READY") throws -> URL {
+        let script = dir.appendingPathComponent(name)
         try """
         #!/bin/sh
-        printf 'READY:%s:\\n' "$$"
+        printf '\(banner):%s:\\n' "$$"
         while read -r line; do
           case "$line" in
             exit*) exit "${line#exit }" ;;
@@ -168,6 +168,11 @@ final class TerminalWindowControllerTests: XCTestCase {
         done
         """.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        return script
+    }
+
+    private func start() throws {
+        let script = try writeFake()
 
         let launcher = try XCTUnwrap(Bundle.main.url(forResource: "tt-launch", withExtension: nil))
         let statusFile = dir.appendingPathComponent("status")
@@ -249,9 +254,9 @@ final class TerminalWindowControllerTests: XCTestCase {
         ghostty_surface_text(surface, text, UInt(text.utf8.count))
     }
 
-    private func fakePID() throws -> pid_t {
+    private func fakePID(after banner: String = "READY:") throws -> pid_t {
         let screen = screenText()
-        let parts = try XCTUnwrap(screen.components(separatedBy: "READY:").last?.split(separator: ":").first)
+        let parts = try XCTUnwrap(screen.components(separatedBy: banner).last?.split(separator: ":").first)
         return try XCTUnwrap(pid_t(parts))
     }
 
@@ -334,6 +339,97 @@ final class TerminalWindowControllerTests: XCTestCase {
         XCTAssertFalse(controller.surfaceView === surfaceBefore)
         XCTAssertNil(controller.exitAction)
         try waitForScreen { $0.contains("READY:") && !$0.contains("before the crash") }
+    }
+
+    /// Each session asks again which tt runs, off the main thread, so a
+    /// relaunch runs one installed since; a tt that can no longer be found
+    /// leaves the last one running.
+    func testRelaunchRunsTheBinaryResolvedForThatSession() throws {
+        let old = try writeFake(named: "old-tt", banner: "OLD")
+        let new = try writeFake(named: "new-tt", banner: "NEW")
+        let launcher = try XCTUnwrap(Bundle.main.url(forResource: "tt-launch", withExtension: nil))
+        let statusFile = dir.appendingPathComponent("status")
+
+        var installed: URL? = old
+        var askedOnMain = false
+        let binaries = TTSessionBinaryStore()
+        binaries.resolve = { _ in
+            askedOnMain = askedOnMain || Thread.isMainThread
+            guard let installed else { return .failure(.init(invalidOverride: nil, tried: [])) }
+            return .success(.init(url: installed, source: .localBin))
+        }
+        binaries.supportedFlags = { path in
+            askedOnMain = askedOnMain || Thread.isMainThread
+            return path == new.path ? [TTControlLaunch.flag] : []
+        }
+
+        ghostty = Ghostty.App {
+            var overrides = Ghostty.ConfigOverrides(
+                command: launcher, arguments: [statusFile.path], waitAfterCommand: true
+            )
+            if let binary = binaries.current {
+                overrides.arguments.append(binary.path)
+            }
+            return Ghostty.Config(userConfig: nil, overrides: overrides)
+        }
+        let delegate = Delegate()
+        ghostty.delegate = delegate
+        self.delegate = delegate
+        controller = TerminalWindowController(
+            ghostty: ghostty, statusFile: statusFile, exitBehavior: { .relaunchOnShow },
+            frameAutosaveName: nil, hidesApp: false
+        )
+        delegate.controller = controller
+        controller.window.setFrameOrigin(NSPoint(x: -10_000, y: -10_000))
+        var failures = 0
+        controller.onWillStartSession = { [weak self] ready in
+            binaries.refresh(searchPath: "") { notFound in
+                XCTAssertTrue(Thread.isMainThread)
+                failures += notFound == nil ? 0 : 1
+                self?.ghostty.reloadConfig()
+                ready()
+            }
+        }
+
+        controller.show()
+        XCTAssertNil(controller.surfaceView, "the session waits for the answer")
+        XCTAssertFalse(controller.window.isVisible)
+        try waitForScreen { $0.contains("OLD:") }
+        XCTAssertTrue(controller.window.isVisible)
+        XCTAssertEqual(binaries.current?.controlSupported, false)
+
+        installed = new
+        controller.relaunch()
+        try waitForScreen { $0.contains("NEW:") }
+        XCTAssertEqual(binaries.current?.path, new.path)
+        XCTAssertEqual(binaries.current?.controlSupported, true)
+        let newPID = try fakePID(after: "NEW:")
+
+        installed = nil
+        controller.relaunch()
+        try waitForScreen { $0.contains("NEW:") }
+        XCTAssertNotEqual(try fakePID(after: "NEW:"), newPID)
+        XCTAssertEqual(binaries.current?.path, new.path)
+        XCTAssertEqual(failures, 1)
+        XCTAssertFalse(askedOnMain)
+    }
+
+    /// A relaunch asked for while a start is still waiting replaces it: one
+    /// session begins, not two.
+    func testASupersededStartBeginsNothing() throws {
+        try start()
+        var waiting: [() -> Void] = []
+        controller.onWillStartSession = { waiting.append($0) }
+        controller.relaunch()
+        controller.relaunch()
+        XCTAssertEqual(waiting.count, 2)
+        waiting[0]()
+        XCTAssertNil(controller.surfaceView)
+        waiting[1]()
+        let surface = try XCTUnwrap(controller.surfaceView)
+        waiting[1]()
+        XCTAssertTrue(controller.surfaceView === surface)
+        try waitForScreen { $0.contains("READY:") }
     }
 
     func testOnlyAPlainReturnOrEnterRelaunches() {

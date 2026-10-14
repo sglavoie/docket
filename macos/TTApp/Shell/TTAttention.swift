@@ -79,7 +79,7 @@ enum TTPulseBadge {
 /// out, or none when nothing is.
 enum TTPulseSummary {
     static func line(for pulse: TTPulse) -> String? {
-        let parts = [("Inbox", pulse.inbox), ("Today", pulse.today), ("Overdue", pulse.overdue)]
+        let parts = [("inbox", pulse.inbox), ("today", pulse.today), ("overdue", pulse.overdue)]
             .filter { $0.1 > 0 }
             .map { "\($0.0) \($0.1)" }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

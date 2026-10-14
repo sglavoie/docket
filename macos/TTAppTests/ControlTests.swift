@@ -97,8 +97,8 @@ final class ControlWireTests: XCTestCase {
 
     func testPulseSummaryNamesWhatIsOwedAndOmitsZeros() {
         XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 3, today: 2, overdue: 1, done: 9)),
-                       "Inbox 3 · Today 2 · Overdue 1")
-        XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 4, overdue: 0, done: 0)), "Today 4")
+                       "inbox 3 · today 2 · overdue 1")
+        XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 4, overdue: 0, done: 0)), "today 4")
         XCTAssertNil(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 0, overdue: 0, done: 7)))
     }
 }

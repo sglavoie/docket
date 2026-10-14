@@ -77,7 +77,7 @@ defaults delete io.github.sglavoie.tt ttEnvironment   # use the shell's for all
 
 tt reads its environment when it starts, so an edit reaches the next tt:
 Preferences offers Relaunch tt while the running one has the old values. A
-`PATH` override also searches for `tt` itself, which happens when tt.app starts.
+`PATH` override also searches for `tt` itself, which happens before each session.
 
 ### Signing and notarization
 
@@ -140,9 +140,9 @@ those are registered, as Quick Capture… does in the app menu; a shortcut that 
 off, or that another app holds, is not shown. The Dock icon's menu has Quick
 Capture… and Relaunch tt.
 Once tt has reported its pulse, the menu leads with it as one line that runs
-nothing (`Inbox 2 · Today 3 · Overdue 1`), leaving out any count at zero and the
+nothing (`inbox 2 · today 3 · overdue 1`), leaving out any count at zero and the
 whole line when all three are. The icon's tooltip is tt's window title, that
-same pulse (`tt · inbox 2 · today 3 · overdue 1`).
+same pulse in the same spelling (`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
 it. Preferences also chooses whether tt appears in the Dock and menu bar, the
 Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
@@ -165,8 +165,12 @@ a change made under you. tt.app passes the flag only to a tt whose `--help`
 lists it, since an older one would refuse it and never start; with such a tt,
 the quick-capture panel names the binary and how to update it instead of
 sending anything, the notification actions are off, and notifications fall back
-to `--notify`. The binary and its flags are read when tt.app starts, so an
-updated tt is picked up by quitting and reopening the app, not by Relaunch tt.
+to `--notify`. The binary and its flags are read again before every session,
+off the main thread, so Relaunch tt picks up an updated tt without quitting the
+app: quick capture, the notification actions, and the line Preferences shows for
+the running binary all follow the tt that just started. If no tt can be found at
+that moment, the last one that was keeps running; only a launch that never found
+one shows the error instead of a window.
 
 ### Quick capture
 

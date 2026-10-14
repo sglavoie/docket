@@ -21,6 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var captureUnavailableReason: String? = "tt is not running."
     /// The last pulse tt reported over it; nil while none has arrived.
     private var lastPulse: TTPulse?
+    /// Which tt the next session runs and what it accepts, asked again
+    /// before each one.
+    private let sessionBinaries = TTSessionBinaryStore()
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -47,18 +50,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
         let detected = LaunchEnvironment.current()
         preferencesModel.detectedEnvironment = detected
-        let environment = detected.applying(preferencesModel.environmentOverrides)
-        let binary: TTBinaryResolver.Resolution
-        switch TTBinaryResolver.live(searchPath: environment.path).resolve() {
-        case .success(let resolution):
-            binary = resolution
-        case .failure(let notFound):
-            NSLog("tt: %@", notFound.message)
-            showLaunchError(title: "tt could not be found.", message: notFound.message)
-            return
-        }
-        NSLog("tt: running %@ (%@)", binary.url.path, String(describing: binary.source))
-        preferencesModel.runningBinary = binary
 
         guard let launcher = Bundle.main.url(forResource: "tt-launch", withExtension: nil) else {
             showLaunchError(title: "tt.app is incomplete.", message: "Its tt-launch helper is missing from Resources.")
@@ -66,40 +57,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         let statusFile = FileManager.default.temporaryDirectory
             .appendingPathComponent("tt-app-\(ProcessInfo.processInfo.processIdentifier).status")
-        let launchArguments = [statusFile.path, binary.url.path]
-        // Asked once: the binary is chosen at launch and fixed until tt.app restarts.
-        let supported = TTVersion.supported(
-            flags: [TTNotificationsPreference.flag, TTControlLaunch.flag], binary: binary.url.path
-        )
-        let notifySupported = supported.contains(TTNotificationsPreference.flag)
-        let controlPath = supported.contains(TTControlLaunch.flag) ? TTControlLaunch.socketPath() : nil
-        captureUnavailableReason = controlPath == nil
-            ? TTControlLaunch.unsupportedReason(binary: binary.url.path)
-            : nil
-        if controlPath == nil {
-            NSLog("tt: %@ does not accept %@; quick capture and notification actions are off",
-                  binary.url.path, TTControlLaunch.flag)
-        }
-        if controlPath == nil, !notifySupported {
-            NSLog("tt: %@ does not accept %@; notifications are off", binary.url.path, TTNotificationsPreference.flag)
-        }
         let overrides = Ghostty.ConfigOverrides(
             command: launcher,
-            arguments: launchArguments,
-            environment: environment.commandEnvironment,
+            arguments: [statusFile.path],
+            environment: detected.applying(preferencesModel.environmentOverrides).commandEnvironment,
             waitAfterCommand: true
         )
-        // Read on every load, so a reload applies the current default zoom and
-        // the environment Preferences sets.
+        // Read on every load, so a reload applies the current default zoom,
+        // the environment Preferences sets, and the tt the next session runs.
+        // None is resolved until the first session asks, and no surface
+        // exists before it has.
         let model = preferencesModel
+        let binaries = sessionBinaries
         let ghostty = Ghostty.App {
             var current = overrides
             current.fontSize = model.defaultFontSize
-            current.arguments = launchArguments + TTControlLaunch.arguments(
-                controlPath: controlPath,
-                notificationsEnabled: model.notificationsEnabled,
-                notifySupported: notifySupported
-            )
+            if let binary = binaries.current {
+                current.arguments += [binary.path] + TTControlLaunch.arguments(
+                    controlPath: binary.controlSupported ? TTControlLaunch.socketPath() : nil,
+                    notificationsEnabled: model.notificationsEnabled,
+                    notifySupported: binary.notifySupported
+                )
+            }
             current.environment = detected.applying(model.environmentOverrides).commandEnvironment
             return Ghostty.Config(overrides: current)
         }
@@ -117,18 +96,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         model.onRelaunch = { [weak self] in self?.relaunchTerminal() }
         refreshConfigFontSize()
 
-        if let controlPath {
-            setUpControl(path: controlPath)
-        }
-
         let controller = TerminalWindowController(ghostty: ghostty, statusFile: statusFile)
-        // A new tt takes the config's environment, so a reload still waiting
-        // on the typing pause goes first.
-        controller.onWillStartSession = { [weak self, weak model] in
-            self?.flushEnvironmentReload()
-            model?.sessionEnvironment = model?.effectiveEnvironment?.commandEnvironment
-            self?.control?.connect()
-        }
+        controller.onWillStartSession = { [weak self] ready in self?.prepareSession(then: ready) }
         controller.onSessionEnd = { [weak self, weak model] in
             model?.sessionEnvironment = nil
             self?.control?.disconnect()
@@ -209,7 +178,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         showTitle(terminal?.surfaceView?.title ?? "")
     }
 
+    // MARK: Session binary
+
+    /// Before each tt: asks again which binary runs and what it accepts, so
+    /// Relaunch tt picks up one installed since the last session started. A
+    /// tt that can no longer be found leaves the last one running; only a
+    /// launch that never found one has nothing to show but the error.
+    private func prepareSession(then ready: @escaping () -> Void) {
+        // A request sent while the answer is on its way waits for the new tt.
+        control?.connect()
+        let searchPath = preferencesModel.effectiveEnvironment?.path ?? ""
+        sessionBinaries.refresh(searchPath: searchPath) { [weak self] notFound in
+            guard let self else { return }
+            if let notFound {
+                NSLog("tt: %@", notFound.message)
+            }
+            guard let binary = self.sessionBinaries.current else {
+                self.terminal = nil
+                self.showLaunchError(title: "tt could not be found.", message: notFound?.message ?? "")
+                return
+            }
+            self.adopt(binary)
+            // A new tt takes the config's command and environment, so the
+            // reload goes first, and with it one still waiting on the typing
+            // pause.
+            self.pendingEnvironmentReload?.cancel()
+            self.pendingEnvironmentReload = nil
+            self.ghostty?.reloadConfig()
+            let model = self.preferencesModel
+            model.sessionEnvironment = model.effectiveEnvironment?.commandEnvironment
+            ready()
+        }
+    }
+
+    /// Takes the tt the next session runs: Preferences names it, quick capture
+    /// learns whether it can be reached, and the control client exists exactly
+    /// while that tt serves a socket.
+    private func adopt(_ binary: TTSessionBinary) {
+        if preferencesModel.runningBinary != binary.resolution {
+            NSLog("tt: running %@ (%@)", binary.path, String(describing: binary.resolution.source))
+            preferencesModel.runningBinary = binary.resolution
+            if preferences?.isVisible ?? false {
+                preferencesModel.refreshBinaryStatus()
+            }
+        }
+        if binary.controlSupported {
+            captureUnavailableReason = nil
+            if control == nil {
+                setUpControl(path: TTControlLaunch.socketPath())
+                control?.connect()
+            }
+            return
+        }
+        captureUnavailableReason = TTControlLaunch.unsupportedReason(binary: binary.path)
+        NSLog("tt: %@ does not accept %@; quick capture and notification actions are off",
+              binary.path, TTControlLaunch.flag)
+        if !binary.notifySupported {
+            NSLog("tt: %@ does not accept %@; notifications are off", binary.path, TTNotificationsPreference.flag)
+        }
+        tearDownControl()
+    }
+
     // MARK: Control socket
+
+    /// The tt that runs next serves no socket: the client goes, and with it
+    /// the pulse only it reported.
+    private func tearDownControl() {
+        guard let control else { return }
+        control.disconnect()
+        try? FileManager.default.removeItem(atPath: control.path)
+        self.control = nil
+        lastPulse = nil
+        refreshBadge()
+    }
 
     private func setUpControl(path: String) {
         let client = TTControlClient(path: path)

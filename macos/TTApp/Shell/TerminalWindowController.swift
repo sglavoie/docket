@@ -21,9 +21,16 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     /// The live session's surface; nil between a clean exit and the next show.
     private(set) var surfaceView: Ghostty.SurfaceView?
-    /// Called just before a new tt starts, and after a session is gone.
-    var onWillStartSession: (() -> Void)?
+    /// Called just before a new tt starts, with the continuation that starts
+    /// it: what must be read first may be read off the main thread, and the
+    /// session begins when `ready` is called on it. Unset, it begins at once.
+    var onWillStartSession: ((_ ready: @escaping () -> Void) -> Void)?
+    /// Called after a session is gone.
     var onSessionEnd: (() -> Void)?
+    /// The start waiting on `onWillStartSession`, if one is; ending the
+    /// session or asking for another voids it.
+    private var pendingStart: Int?
+    private var starts = 0
     /// Called on the main thread with each title the running tt sets.
     var onTitleChange: ((String) -> Void)?
     /// Set once tt has exited on the current surface, so a later close request
@@ -84,6 +91,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         if surfaceView == nil {
             startSession()
         }
+        // A session still being prepared comes forward once it begins.
+        guard pendingStart == nil else { return }
+        present()
+    }
+
+    private func present() {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         if let surfaceView {
@@ -138,8 +151,24 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     // MARK: Session
 
     private func startSession() {
+        guard ghostty.app != nil, pendingStart == nil else { return }
+        guard let onWillStartSession else {
+            beginSession()
+            return
+        }
+        starts += 1
+        let start = starts
+        pendingStart = start
+        onWillStartSession { [weak self] in
+            guard let self, self.pendingStart == start else { return }
+            self.pendingStart = nil
+            self.beginSession()
+            self.present()
+        }
+    }
+
+    private func beginSession() {
         guard let app = ghostty.app else { return }
-        onWillStartSession?()
         try? FileManager.default.removeItem(at: statusFile)
         exitAction = nil
         window.title = "tt"
@@ -157,6 +186,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     }
 
     private func endSession() {
+        pendingStart = nil
         removeFailureBanner()
         if let surfaceView {
             container.removeArrangedSubview(surfaceView)

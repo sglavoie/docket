@@ -16,11 +16,11 @@ enum TTControlLaunch {
     }
 
     /// What quick capture says when the tt that runs predates the flag. The
-    /// binary and its flags are chosen when tt.app starts, so only a restart
-    /// of the app picks up an updated one.
+    /// binary and its flags are asked for again before each session, so a
+    /// relaunch picks up an updated one.
     static func unsupportedReason(binary: String) -> String {
         "\(PreferencesModel.abbreviated(binary)) predates \(flag), so it cannot take a capture. "
-            + "Update it (just install), then quit and reopen tt.app."
+            + "Update it (just install), then choose Relaunch tt."
     }
 
     /// With a socket, tt reports arrivals over it and tt.app decides whether to
