@@ -4,8 +4,7 @@
   "size": "100x30",
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
-    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "then step onto the first task, which a singleton group draws in place of its heading", "key": "j" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task the cursor stood on", "key": "p" },
     { "type": "assert", "label": "the header footer teaches the key rather than the menu row it replaced", "assert": "contains", "value": "* project pin" },

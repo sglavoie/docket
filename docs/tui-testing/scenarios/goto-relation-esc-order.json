@@ -11,7 +11,6 @@
 
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "follow the reference", "key": "g" },
     { "type": "key", "key": "~" },
     { "type": "key", "key": "enter" },

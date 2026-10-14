@@ -368,10 +368,11 @@ selection; otherwise the restore names the location instead. It runs ahead of
 `refreshTaskViewsAfterSave`, which captures the cursor's own task at request
 time. `Ctrl+O origin` is advertised only where a frame was pushed.
 
-Every cross-project group opens with its header, expanded or folded:
-`appendProjectGroupHeader` emits it whenever the group has a project half, so
-the header is the one row naming the project and its tasks sit one level
-beneath it, carrying no label of their own. Keys still read the group off the
+Every cross-project group names its project once. `appendProjectGroupHeader`
+emits the header when folded or over two or more top-level tasks, which carry no
+label; an expanded group of one merges into its task's row, `LeadsMergedGroup`,
+at the header's depth and led by the ranked list's `[slug]`, where task keys
+answer and project ones wait for the header. Keys still read the group off the
 row, never the header: `rowStartsGroup` is `n`/`N`'s stop set —
 a header row, or a row whose predecessor carried another group — and
 `VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
@@ -748,8 +749,9 @@ Row and Peek budget:
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`. A task row names no project: the group header above it does,
-  so no label competes with the title. The cross-project ranked list is the one
-  exception, since it draws no header: `taskProjectLabel` leads each title with
+  so no label competes with the title. The cross-project ranked list and a
+  merged group's row are the exceptions, since no header stands over either:
+  `taskProjectLabel` leads each title with
   the header's own bold `[slug]` in the project color, padded to
   `ColumnLayout.ProjectWidth` so the titles share a column, its slug cut by
   `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole

@@ -235,11 +235,12 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 func TestInboxAsyncGroupJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	alphaOne := newBulkPickerTestTask(t, 1, "alpha one")
 	alphaTwo := newBulkPickerTestTask(t, 2, "alpha two")
+	// beta holds one task, so its group merges into that row and the departure
+	// settles on the row that both opens the group and is a task.
 	betaOne := newBulkPickerTestTask(t, 1, "beta one")
-	betaTwo := newBulkPickerTestTask(t, 2, "beta two")
 	async := newInboxAsyncEnv(t,
 		[]*models.Task{alphaOne, alphaTwo},
-		[]*models.Task{betaOne, betaTwo})
+		[]*models.Task{betaOne})
 
 	cursorToTaskRow(t, async.outliner, alphaTwo.ID)
 	saveCmd := async.commitState(t, models.StateDone)
@@ -255,8 +256,8 @@ func TestInboxAsyncGroupJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 		t.Fatalf("settled cursor %d is outside the projection", settled)
 	}
 	// The settled row opens its project's block, which is what n and N stop on:
-	// an expanded group draws no heading, so the first row of the run is the
-	// group's own beginning.
+	// a merged singleton group draws no heading, so its one row is the group's
+	// own beginning.
 	settledRow := async.outliner.Rows[settled]
 	if settled == 0 || settledRow.Group == async.outliner.Rows[settled-1].Group {
 		t.Fatalf("the fixture did not settle the cursor on a group start at row %d", settled)

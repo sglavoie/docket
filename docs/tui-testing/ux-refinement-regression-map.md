@@ -628,6 +628,19 @@ harness command or a direct cursor assignment. Three reasons:
   `docs/tui-testing/scenarios/outliner-range-selection.json` — must keep public
   keys and gain the new presentation's expectations rather than be relaxed.
 
+### One-task groups after the polish pass
+
+A later polish pass merged an expanded project group holding one top-level task
+into that task's row, which leads with the `[slug]` the header would have drawn.
+That reverses the restored heading for singletons only, so the same two
+populations moved again: a slug assertion now reads the merged row, and a
+`down` or `j` that stepped past a one-task group's header was dropped rather than
+replaced. Scenarios that test the header itself fold the group with `h` or `p`
+first, because a folded singleton still draws its header as the summary.
+`internal/tui/outliner/outliner_merged_singleton_group_test.go` holds the merge,
+its fold round trip, the shared label column, and the pinned context row over
+it.
+
 ## Preserved through all of it
 
 Two things the plan does not touch, recorded here because a refactor can erode

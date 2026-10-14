@@ -108,28 +108,31 @@ func assertUXLaunchPresentation(t *testing.T, driver *UITestDriver, view *outlin
 		"[ux-",
 	)
 
-	// Every cross-project group opens with its heading, expanded or folded, and
-	// with exactly one: the heading is the one row naming the project, so a
-	// group with none is anonymous and a group with two says it twice. Groups
-	// are counted over the whole projection, because the window only decides
-	// how much of it is on screen.
+	// Every cross-project group names its project exactly once: a heading, or,
+	// for an expanded group of one top-level task, the merged row that leads
+	// with the label in the heading's place. A group with neither is anonymous
+	// and a group with both says it twice. Groups are counted over the whole
+	// projection, because the window only decides how much of it is on screen.
 	plain := obs.PlainScreen
 	groups := map[outliner.OutlinerRowGroup]bool{}
-	headings := map[outliner.OutlinerRowGroup]int{}
+	carriers := map[outliner.OutlinerRowGroup]int{}
 	for _, row := range view.Rows {
 		switch {
 		case row.IsProjectHeader:
-			headings[row.Group]++
+			carriers[row.Group]++
 		case row.IsTaskRow() && row.Group.ProjectGrouped():
 			groups[row.Group] = true
+			if row.LeadsMergedGroup {
+				carriers[row.Group]++
+			}
 		}
 	}
 	if len(groups) == 0 {
 		t.Fatal("the launch projection grouped no rows by project")
 	}
 	for group := range groups {
-		if headings[group] != 1 {
-			t.Fatalf("group %+v drew %d project headings, want exactly one", group, headings[group])
+		if carriers[group] != 1 {
+			t.Fatalf("group %+v named its project %d times, want exactly once", group, carriers[group])
 		}
 	}
 
@@ -473,7 +476,9 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 	listText := strings.Join(lines[2:divider], "\n")
 	taskRowDrawn := false
 	for _, row := range view.Rows {
-		if row.IsTaskRow() && row.Task != nil && strings.Contains(listText, row.Task.Title) {
+		// The row may have clipped its title to fit the project label a merged
+		// group leads with, so its opening words are what has to be there.
+		if row.IsTaskRow() && row.Task != nil && strings.Contains(listText, string([]rune(row.Task.Title)[:min(16, len([]rune(row.Task.Title)))])) {
 			taskRowDrawn = true
 			break
 		}

@@ -139,9 +139,14 @@ func assertCrossProjectGrouping(t *testing.T, m *OutlinerModel, projectID, label
 		if !slices.Contains(groups, row.Group) {
 			t.Fatalf("%s task row %q carries group %+v, want one of %+v", label, row.Task.ID, row.Group, groups)
 		}
+		// A singleton group merges into its one root, which then carries the
+		// project in the header's place.
+		if row.LeadsMergedGroup {
+			headers++
+		}
 	}
 	if headers != len(groups) {
-		t.Fatalf("%s drew %d project headers over %d groups", label, headers, len(groups))
+		t.Fatalf("%s drew %d project headers or merged rows over %d groups", label, headers, len(groups))
 	}
 }
 

@@ -33,8 +33,7 @@
     { "type": "key", "key": "esc" },
 
     { "type": "key", "label": "launch opens on the first task, so take the top explicitly", "key": "home" },
-    { "type": "key", "label": "past the lane and its project header", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "past the lane onto its task, whose singleton project group merges into the row", "key": "j" },
     { "type": "key", "label": "and so does an inline edit", "key": "e" },
     { "type": "text", "text": " \\raw" },
     { "type": "assert", "assert": "contains", "value": "\\raw" },

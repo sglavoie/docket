@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
-    { "type": "key", "label": "down past its first project heading", "key": "j" },
-    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
+    { "type": "key", "label": "onto the first task, its singleton project merged into the row, where a launch with Backlog open would have stood", "key": "j" },
 
     { "type": "key", "label": "open Move to Project", "key": "%" },
     { "type": "assert", "assert": "contains", "value": "Move to Project: Alpha migration kickoff" },
@@ -21,7 +20,8 @@
     { "type": "key", "label": "undo names the same action back", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: #2 Alpha migration kickoff → client-beta" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "label": "the task is back as its project's one top-level task, so the row carries the project label", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "[client-beta] (2)" },
 
     { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
     { "type": "wait" },

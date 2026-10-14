@@ -235,13 +235,17 @@ is useful.
 The flat ranked list across several projects draws no project header, so its
 rows carry the one project label a task row still wears: `taskProjectLabel`
 puts the header's bold `[slug]`, in the same `ProjectColorStyle`, between the
-badges and the title. `rankedProjectLabelMaxSlug` is the one cap on that slug —
+badges and the title. The row leading a merged one-task group wears the same
+label for the same reason — no header stands over it — and
+`rowLeadsWithProjectLabel` is the one predicate both cases share; the rows
+beneath it, its own subtree and checklist, name nothing. The label is reserved
+rather than laddered, so on a narrow row the title and the ladder pay for it. `rankedProjectLabelMaxSlug` is the one cap on that slug —
 a fifth of the row, never under twelve columns and never over twenty-four — so
 a long slug is cut at the floor and spelled out where the row has the room;
 `chrome.ComputeBadgeWidths` takes it as `MaxProjectLen` and keeps no default of
 its own. `ComputeOutlinerRowLayout` measures the widest label into
-`ColumnLayout.ProjectWidth` and every label pads to it, so the titles start in
-one column; it is part of `titlePrefix`, so the inline editor opens after it. A
+`ColumnLayout.ProjectWidth` and every label pads to it, so the labeled titles
+start in one column; it is part of `titlePrefix`, so the inline editor opens after it. A
 single-project scope keeps its focused header and no label.
 
 The fold glyph is a column of the same layout. `ComputeOutlinerRowLayout` sets

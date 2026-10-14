@@ -4,10 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
-    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "the cursor stands on Client Alpha's task, so one stop reaches the Client Beta group header", "key": "n" },
-    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
+    { "type": "key", "label": "then step onto the first task, whose singleton project group merges into its row", "key": "j" },
+    { "type": "key", "label": "the cursor stands on Client Alpha's task, so one stop reaches Client Beta's merged task row", "key": "n" },
     { "type": "key", "label": "scope to that project", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

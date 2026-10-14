@@ -22,6 +22,7 @@
       "assert": "contains",
       "value": "[triage-alpha] (4)"
     },
+    { "type": "assert", "label": "the sibling left behind is its group's only task, so it leads with the project label in place of a header", "assert": "contains", "value": "◌ [triage-beta] Beta intake trailing remainder" },
     { "type": "key", "label": "copy whatever the sweep continued onto", "key": "y" },
     {
       "type": "assert",
@@ -30,8 +31,7 @@
       "value": "Beta intake trailing remainder"
     },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "move the cursor while the cross-project reload is still in flight, over the remaining group's header", "key": "k" },
-    { "type": "key", "label": "onto the carried child", "key": "k" },
+    { "type": "key", "label": "move the cursor while the cross-project reload is still in flight: the remaining group holds one task and draws no header, so one step up reaches the carried child", "key": "k" },
     { "type": "wait", "label": "drain the asynchronous reload" },
     { "type": "key", "label": "copy the row the user chose", "key": "y" },
     {

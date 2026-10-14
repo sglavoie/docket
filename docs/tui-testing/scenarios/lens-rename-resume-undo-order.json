@@ -50,7 +50,6 @@
 
     { "type": "key", "label": "record where the doing task was left", "key": "home" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "r" },
     { "type": "assert", "label": "the subtitle is the task, and is labeled as one", "assert": "contains", "value": "Task: Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Current: Build login form" },

@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
-    { "type": "key", "label": "down past its first project heading", "key": "j" },
-    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
+    { "type": "key", "label": "down onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "key", "label": "the typed sigil selects a project", "key": "/" },
     { "type": "text", "text": "%client-beta" },
     { "type": "key", "label": "leave the input while the flat ranked list slash opened stands", "key": "enter" },
@@ -24,8 +23,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
 
-    { "type": "key", "label": "the scope push is the same selection by another spelling, and Esc left the cursor inside the Client Alpha group, so one stop reaches the Client Beta header", "key": "n" },
-    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
+    { "type": "key", "label": "the scope push is the same selection by another spelling, and Esc left the cursor inside the Client Alpha group, so one stop reaches Client Beta's singleton task row", "key": "n" },
     { "type": "key", "key": "g" },
     { "type": "key", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

@@ -4,9 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "select the Doing task and enter multi-select", "key": "v" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "move to an Inbox task in the same project", "key": "j" },
+    { "type": "key", "label": "step onto the Inbox lane header", "key": "j" },
+    { "type": "key", "label": "move to an Inbox task in the same project, its singleton group merged into the row", "key": "j" },
     { "type": "key", "label": "select the Inbox task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "key", "label": "open the common-action menu for the frozen selection", "key": "space" },

@@ -13,8 +13,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "label": "past the Inbox section header", "key": "j" },
-    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "past the Inbox section header onto the new row", "key": "j" },
     { "type": "assert", "label": "the row stores one reference", "assert": "contains", "value": "~0/1" },
 
     { "type": "key", "label": "open the relationship picker", "key": "g" },

@@ -5,22 +5,22 @@
   "actions": [
     { "type": "assert", "label": "launch folds Backlog, the one lane holding a parent", "assert": "contains", "value": "▸  Backlog  (3)" },
     { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
-    { "type": "assert", "label": "the drawn rows still keep the fold column that lane's parents need", "assert": "contains", "value": "└──   ▶   Build login form" },
-    { "type": "assert", "assert": "contains", "value": "└──   ◌   Triage support inbox" },
-    { "type": "assert", "assert": "contains", "value": "└──   ⊘ ◉ Fix redirect loop after logout" },
+    { "type": "assert", "label": "the drawn singleton rows, each a group's one task at its header's depth, still keep the fold column that lane's parents need", "assert": "contains", "value": "   ▶   [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": "   ◌   [rich-project] Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "   ⊘ ◉ [rich-project] Fix redirect loop after logout" },
 
     { "type": "key", "label": "s opens every lane", "key": "s" },
     { "type": "assert", "assert": "contains", "value": "▾  Backlog  (3)" },
-    { "type": "assert", "label": "the parents draw their glyph in that column", "assert": "contains", "value": "└── ▾ □ ◉ Launch platform" },
-    { "type": "assert", "label": "and no title moved", "assert": "contains", "value": "└──   ▶   Build login form" },
-    { "type": "assert", "assert": "contains", "value": "└──   ◌   Triage support inbox" },
-    { "type": "assert", "assert": "contains", "value": "└──   ⊘ ◉ Fix redirect loop after logout" },
-    { "type": "assert", "assert": "contains", "value": "└──   ¿   Explore social login" },
+    { "type": "assert", "label": "the parents draw their glyph in that column", "assert": "contains", "value": " ▾ □ ◉ [rich-project] Launch platform" },
+    { "type": "assert", "label": "and no title moved", "assert": "contains", "value": "   ▶   [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": "   ◌   [rich-project] Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "   ⊘ ◉ [rich-project] Fix redirect loop after logout" },
+    { "type": "assert", "assert": "contains", "value": "   ¿   [rich-project] Explore social login" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the minimum size holds the same columns", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "└──   ▶   Build login form" },
-    { "type": "assert", "assert": "contains", "value": "└── ▾ □ ◉ Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "   ▶   [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": " ▾ □ ◉ [rich-project] Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

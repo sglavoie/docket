@@ -4,8 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
-    { "type": "key", "label": "onto the Client Alpha group header", "key": "j" },
-    { "type": "key", "label": "onto Client Alpha's task", "key": "j" },
+    { "type": "key", "label": "onto Client Alpha's task, which its singleton group draws in place of a header", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering that task", "key": "p" },

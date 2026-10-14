@@ -5,8 +5,7 @@
   "actions": [
     { "type": "key", "label": "select it", "key": "v" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "move past the Inbox group and project headers", "key": "j" },
+    { "type": "key", "label": "move past the Inbox group header onto its lone task", "key": "j" },
     { "type": "key", "label": "select a second, non-adjacent task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
 

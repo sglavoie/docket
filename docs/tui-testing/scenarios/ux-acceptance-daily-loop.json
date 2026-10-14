@@ -12,7 +12,7 @@
     },
     {
       "type": "assert",
-      "label": "three projects are scanned from one list, each group opening under the header that names it",
+      "label": "three projects are scanned from one list, each group named by its header, or by its one task row's own label when it holds a single task",
       "assert": "contains",
       "value": "[ux-platform-delivery] ("
     },
@@ -24,6 +24,12 @@
     {
       "type": "assert",
       "assert": "contains",
+      "value": "[ux-support-queue]     Triage the duplicate support tickets"
+    },
+    {
+      "type": "assert",
+      "label": "a single-task group draws no header of its own while it is open",
+      "assert": "not_contains",
       "value": "[ux-support-queue] ("
     },
     {
@@ -707,11 +713,7 @@
     },
     {
       "type": "key",
-      "label": "past the lane and its project header",
-      "key": "j"
-    },
-    {
-      "type": "key",
+      "label": "past the lane onto its first task, whose single-task group draws no header",
       "key": "j"
     },
     {
@@ -782,8 +784,8 @@
     {
       "type": "assert",
       "assert": "contains",
-      "label": "the uncovered part of the host is still drawn beside the history labels",
-      "value": "Coordinate the platform migration window"
+      "label": "the uncovered part of the host is still drawn below the history labels",
+      "value": "Reconcile the client onboarding checklist against the revised milestones"
     },
     {
       "type": "assert",
@@ -799,6 +801,11 @@
       "label": "the task covered by the wider history menu returns unchanged",
       "assert": "contains",
       "value": "Triage the duplicate support tickets"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Coordinate the platform migration window"
     },
     {
       "type": "assert",
@@ -913,11 +920,7 @@
     },
     {
       "type": "key",
-      "label": "past the lane and its project header",
-      "key": "j"
-    },
-    {
-      "type": "key",
+      "label": "past the lane onto its first task, whose single-task group draws no header",
       "key": "j"
     },
     {

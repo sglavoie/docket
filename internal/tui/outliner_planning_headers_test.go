@@ -32,12 +32,18 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 				t.Fatalf("Next task order = %v, want rows grouped under pinned-first project headers", got)
 			}
 
+			// A group of one top-level task merges into its row, which then
+			// stands where the header would have and counts itself.
 			var headers []string
 			counts := make(map[string]int)
 			for _, row := range outlinerView.Rows {
 				if row.IsProjectHeader && row.IsNextSection {
 					headers = append(headers, row.ProjectID)
 					counts[row.ProjectID] = row.SectionCount
+				}
+				if row.LeadsMergedGroup && row.IsNextSection {
+					headers = append(headers, row.ProjectID)
+					counts[row.ProjectID] = 1
 				}
 			}
 			if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
@@ -98,13 +104,18 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 	})
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	var headers []string
+	// Both groups hold one task, so each merges into its row and draws no
+	// header; the merged rows keep the pinned-first order the headers had.
+	var headers, merged []string
 	for _, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.IsTodaySection {
 			headers = append(headers, row.ProjectID)
 		}
+		if row.LeadsMergedGroup && row.IsTodaySection {
+			merged = append(merged, row.ProjectID)
+		}
 	}
-	if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Today project headers = %v, want pinned projects first", headers)
+	if len(headers) != 0 || !slices.Equal(merged, []string{beta.ID, alpha.ID}) {
+		t.Fatalf("Today project headers = %v merged = %v, want no headers and pinned projects first", headers, merged)
 	}
 }

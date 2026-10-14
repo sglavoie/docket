@@ -176,12 +176,20 @@ func projectGroupOrder(m *OutlinerModel) []string {
 }
 
 // projectGroupTaskCounts reads each project group's declared count off the
-// header that opens it, expanded or folded.
+// header that opens it, expanded or folded. A merged singleton group declares
+// none, so its count is the task rows it draws.
 func projectGroupTaskCounts(m *OutlinerModel) map[string]int {
 	counts := make(map[string]int)
 	for _, row := range m.Rows {
 		if row.IsProjectHeader && row.Group.ProjectGrouped() {
 			counts[row.Group.ProjectID] += row.SectionCount
+		}
+		if row.LeadsMergedGroup {
+			for _, member := range m.Rows {
+				if member.IsTaskRow() && member.Group == row.Group {
+					counts[row.Group.ProjectID]++
+				}
+			}
 		}
 	}
 	return counts

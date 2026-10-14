@@ -17,7 +17,6 @@
     { "type": "assert", "label": "a root task has no ancestor chain to name", "assert": "not_contains", "value": "Parent:" },
     { "type": "key", "label": "Peek follows the cursor to a promoted child", "key": "home" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "assert", "label": "Peek names the chain the row reduced to a bare marker", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "toggle Peek off", "key": "b" },

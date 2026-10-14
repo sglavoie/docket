@@ -60,16 +60,17 @@ func sectionFoldStates(m *outliner.OutlinerModel) map[string]bool {
 	return states
 }
 
-// One press folds every project group and the next puts them back. The headers
-// themselves keep rendering throughout: folding a group hides its tasks, not the
-// row naming the project the tasks belong to.
+// One press folds every project group and the next puts them back. A group of
+// two keeps its header throughout: folding hides its tasks, not the row naming
+// their project. beta's one task merged its header away, so folding is what
+// draws that header, as the summary, and unfolding merges it again.
 func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T) {
 	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	headers := projectHeaderRowIDs(outlinerView)
-	if len(headers) != 2 {
-		t.Fatalf("seeded project headers = %v, want one per project", headers)
+	if headers := projectHeaderRowIDs(outlinerView); !slices.Equal(headers, []string{"alpha"}) {
+		t.Fatalf("seeded project headers = %v, want alpha's alone", headers)
 	}
+	headers := []string{"alpha", "beta"}
 
 	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("toggleVisibleProjectGroups reported no change on all-expanded groups")
@@ -91,6 +92,9 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 	}
 	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tasks) {
 		t.Fatalf("restored rows = %v, want %v", got, tasks)
+	}
+	if restored := projectHeaderRowIDs(outlinerView); !slices.Equal(restored, []string{"alpha"}) {
+		t.Fatalf("restored project headers = %v, want beta merged again", restored)
 	}
 }
 

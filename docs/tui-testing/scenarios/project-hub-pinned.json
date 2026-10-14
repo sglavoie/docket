@@ -5,7 +5,9 @@
   "actions": [
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
-    { "type": "key", "label": "step down onto the first project header", "key": "j" },
+    { "type": "key", "label": "step down onto Client Alpha's singleton task row", "key": "j" },
+    { "type": "key", "label": "fold that singleton group so its project header draws under the cursor", "key": "h" },
+    { "type": "assert", "assert": "contains", "value": "▸ [client-alpha] (1)" },
     { "type": "key", "label": "pin Client Alpha", "key": "*" },
     { "type": "wait" },
 

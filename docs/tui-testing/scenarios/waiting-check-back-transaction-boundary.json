@@ -32,7 +32,7 @@
     {"type": "wait"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "assert": "contains", "value": "▶   Build login form"},
+    {"type": "assert", "assert": "contains", "value": "▶   [rich-project] Build login form"},
     {"type": "assert", "assert": "not_contains", "value": "Set Check-In"},
     {"type": "resize", "width": 60, "height": 20},
     {"type": "assert", "assert": "no_layout_issues"}

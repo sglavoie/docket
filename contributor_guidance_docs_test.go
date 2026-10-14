@@ -1339,7 +1339,13 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// accumulator what it declined to emit. The mechanism lives in
 	// docs/architecture/row-indicators.md. No rule elsewhere was trimmed to pay
 	// for it.
-	const budget = 76544
+	// Raise from 76544 to 76680 for one-task project groups merging into their
+	// row. 136 bytes buy the exception to "every group opens with its header":
+	// which groups still draw one, that the merged row leads with the ranked
+	// list's label, and that project keys wait for the header. The mechanism
+	// lives in docs/architecture/tui-architecture.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 76680
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

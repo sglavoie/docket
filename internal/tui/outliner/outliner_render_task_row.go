@@ -30,7 +30,8 @@ type taskRowSegments struct {
 	statusIcon, prioritySegment, pinMarker string
 	indicators, relationMarker, matchCue   string
 	// projectLabel names the task's project where no heading above it does: the
-	// ranked list, which draws no group headers. It is empty everywhere else.
+	// ranked list, which draws no group headers, and the one row a merged
+	// singleton group draws in place of its header. It is empty everywhere else.
 	projectLabel string
 }
 
@@ -112,11 +113,18 @@ func rankedProjectLabelMaxSlug(rowWidth int) int {
 	return min(max(rowWidth/5, 12), 24)
 }
 
-// showsRankedProjectLabel reports whether task rows lead their title with the
-// project: the ranked list across several projects, the one cross-project
+// showsRankedProjectLabel reports whether every task row leads its title with
+// the project: the ranked list across several projects, the one cross-project
 // projection whose rows no group header stands over.
 func (m *OutlinerModel) showsRankedProjectLabel() bool {
 	return m.ShowsRankedList() && m.groupsRowsByProject()
+}
+
+// rowLeadsWithProjectLabel reports whether one task row leads its title with
+// the project: every row of the ranked list, or the row leading a merged
+// singleton group, which no header stands over either.
+func (m *OutlinerModel) rowLeadsWithProjectLabel(row OutlinerRow) bool {
+	return row.LeadsMergedGroup || m.showsRankedProjectLabel()
 }
 
 // rankedProjectSlug is the bare slug a ranked row names, bounded to the label's
@@ -131,9 +139,9 @@ func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string 
 
 // taskProjectLabel is the `[slug]` the project header would have drawn, in the
 // same bold project color, padded to the projection's widest label so every
-// ranked title starts in one column.
+// labeled title starts in one column.
 func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
-	if !m.showsRankedProjectLabel() {
+	if !m.rowLeadsWithProjectLabel(row) {
 		return ""
 	}
 	slug := m.rankedProjectSlug(row, rowWidth)

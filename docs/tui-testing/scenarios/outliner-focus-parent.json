@@ -8,8 +8,7 @@
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "tab" },
-    { "type": "key", "label": "land on the first Backlog task after its section and project headers", "key": "home" },
-    { "type": "key", "key": "down" },
+    { "type": "key", "label": "land on the first Backlog task, which leads its singleton project group", "key": "home" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "label": "walk down to the deepest Backlog task", "key": "down" },
     { "type": "key", "key": "down" },
@@ -21,11 +20,11 @@
     { "type": "key", "label": "climb one level, so the cursor task's siblings widen into view", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "› User authe" },
-    { "type": "assert", "assert": "contains", "value": "● User authentication" },
+    { "type": "assert", "assert": "contains", "value": "● [rich-project] User authentication" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "key", "label": "climb off a root task, which leaves Focus", "key": "shift+enter" },
     { "type": "assert", "assert": "not_contains", "value": "Focus:" },
-    { "type": "assert", "assert": "contains", "value": "[rich-project] (3)" },
+    { "type": "assert", "label": "out of Focus, the project's lone Backlog root carries its label in place of a header", "assert": "contains", "value": "[rich-project] Launch platform" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "label": "focus the cursor task's parent again", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
@@ -35,7 +34,7 @@
     { "type": "key", "label": "the cursor sits on the former focus root, so its parent focuses next", "key": "shift+enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "› User authe" },
-    { "type": "assert", "assert": "contains", "value": "● User authentication" },
+    { "type": "assert", "assert": "contains", "value": "● [rich-project] User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

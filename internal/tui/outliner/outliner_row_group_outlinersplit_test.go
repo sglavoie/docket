@@ -143,7 +143,9 @@ func TestRowGroupSeparatesOneProjectRepeatedAcrossSections(t *testing.T) {
 
 // TestRowGroupMatchesTheHeaderAbovePeriod holds the header to the group rather
 // than the other way round: every project header carries the identity its
-// members carry, and every section header carries the section half alone.
+// members carry, and every section header carries the section half alone. A
+// merged singleton's lead row stands where its header would have, so it opens
+// the group the same way.
 func TestRowGroupMatchesTheHeaderAbovePeriod(t *testing.T) {
 	fixture := newRowGroupFixture()
 	outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
@@ -171,6 +173,12 @@ func TestRowGroupMatchesTheHeaderAbovePeriod(t *testing.T) {
 			if row.Group.ProjectKey != row.EffectiveCollapseKey() {
 				t.Fatalf("project header %q group = %+v, want its own fold key %q",
 					row.ProjectID, row.Group, row.EffectiveCollapseKey())
+			}
+		case row.IsTaskRow() && row.LeadsMergedGroup:
+			project = row.Group
+			if !row.Group.ProjectGrouped() || row.Group.SectionKey != section.SectionKey {
+				t.Fatalf("merged lead %q group = %+v, want a project group in section %q",
+					row.Task.ID, row.Group, section.SectionKey)
 			}
 		case row.IsTaskRow():
 			if row.Group != project {

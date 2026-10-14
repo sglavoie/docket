@@ -613,21 +613,21 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	tasks := make([]*models.Task, 0, len(rows))
 	hasFold := false
 	var slugs map[*models.Task]string
-	if m.showsRankedProjectLabel() {
-		slugs = make(map[*models.Task]string, len(rows))
-	}
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		tasks = append(tasks, row.Task)
 		hasFold = hasFold || rowDrawsFold(row)
-		if slugs != nil {
+		if m.rowLeadsWithProjectLabel(row) {
+			if slugs == nil {
+				slugs = make(map[*models.Task]string, len(rows))
+			}
 			slugs[row.Task] = m.rankedProjectSlug(row, rowWidth)
 		}
 	}
 	noteWidth := 0
-	if slugs != nil {
+	if m.showsRankedProjectLabel() {
 		noteWidth = m.noteLabelWidth(rows, rowWidth)
 	}
 	if len(tasks) == 0 {

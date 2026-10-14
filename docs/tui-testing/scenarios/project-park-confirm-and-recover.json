@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
-    { "type": "key", "label": "then step past the first project heading onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "then step onto the first task, which leads its singleton group with the project label", "key": "j" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
     { "type": "assert", "label": "nothing is parked yet, so the base scope needs no anchor", "assert": "not_contains", "value": "parked" },
     { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering the task the cursor stood on", "key": "p" },

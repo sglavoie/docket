@@ -4,8 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
-    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "j steps past the lane header onto the first task, whose singleton group draws no header", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "c answers from the owner row, since an empty checklist has no item row", "key": "c" },
@@ -39,8 +39,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Step Due Date: Due " },
     { "type": "assert", "assert": "contains", "value": "14:30" },
     { "type": "key", "label": "landing on today took the row to the planning lane, so the cursor kept sweeping Backlog", "key": "home" },
-    { "type": "key", "label": "past the Today lane's header onto its project", "key": "j" },
-    { "type": "key", "label": "back onto the row the step moved", "key": "j" },
+    { "type": "key", "label": "past the Today lane's header back onto the row the step moved, its project label leading the title", "key": "j" },
     { "type": "key", "label": "no deadline at all is the stop below today", "key": "-" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Step Due Date: Due date cleared" },

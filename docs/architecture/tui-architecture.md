@@ -196,11 +196,13 @@ themselves, and re-aims an in-flight reload at the row they chose.
 Project grouping is universal, not per-mode: whenever the Outliner is not showing
 one project's own view, every mode groups its rows by project and ranks each
 group by its best task under the active order, pinned projects first and then
-alphabetically breaking a tie. A group states its identity on one header row,
-`IsProjectHeader` and all, that `appendProjectGroupHeader` emits above its tasks
-whether the group is expanded or folded; the tasks sit one level beneath it and
-carry no project label of their own. Folded, that same header is the summary
-that stands in for the group's rows. Every mode emits it through the shared
+alphabetically breaking a tie. A group states its identity on one row. Folded,
+or expanded over two or more top-level tasks, that row is the header,
+`IsProjectHeader` and all, that `appendProjectGroupHeader` emits above its tasks;
+the tasks sit one level beneath it and carry no project label of their own, and
+folded, that same header is the summary that stands in for the group's rows. An
+expanded group of one top-level task states it on that task's own row instead,
+as described below. Every mode emits it through the shared
 `appendProjectGroupHeader` kernel, and each grouping surface
 owns a disjoint `CollapsedSections` key
 namespace, because that map is never cleared on a mode change.
@@ -238,12 +240,22 @@ key rather than the header declaring it — the same landing today, because a
 group's header is emitted above its members and carries the group, and a landing
 that survives a projection choosing not to draw one.
 
-Because the group is a value, keys never depend on the heading being drawn,
-though every cross-project group draws one. `appendProjectGroupHeader` emits the
-header for an expanded group and a folded one alike: it names the project,
-carries the pressure counts, is what `l` expands and `h` folds, and is what
-every project operation resolves from. The task rows under it name no project,
-so the title keeps every column the header already paid for.
+Because the group is a value, keys never depend on the heading being drawn.
+`appendProjectGroupHeader` emits the header for a folded group and for an
+expanded group of two or more top-level tasks: it names the project, carries the
+pressure counts, is what `l` expands and `h` folds, and is what every project
+operation resolves from. The task rows under it name no project, so the title
+keeps every column the header already paid for. An expanded group of exactly one
+top-level task merges into that task's row instead: the kernel takes the top-level
+count, emits nothing and reports the merge, and `mergeProjectGroupRows` trims one
+connector level off the rows the group then emitted and marks the first
+`OutlinerRow.LeadsMergedGroup`. That row stands at the header's depth with its
+subtree and checklist beneath it and leads with the same bold `[slug]` the ranked
+list draws, so a group of one spends no row on a name its only row can carry.
+Folding it — `h` once nothing nearer is left, or `p` — draws the header as the
+summary, and `l` merges it back. Project operations, project Peek, and `Enter`
+answer only on a header, so on a merged row the task keys answer; the project is
+one `h` away, or `P`.
 `ComputeOutlinerRowLayout` is the one task-row geometry — the badge columns the
 leading segments align in — and it reads the whole projection rather than the
 window on screen, including rows a fold hides, which is why titles hold still

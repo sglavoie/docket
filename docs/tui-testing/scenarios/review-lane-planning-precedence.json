@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open Backlog, which launch folds and seats the cursor on", "key": "l" },
-    { "type": "key", "label": "down past its first project heading", "key": "j" },
-    { "type": "key", "label": "onto the first task, where a launch with Backlog open would have stood", "key": "j" },
+    { "type": "key", "label": "down onto the first task, where a launch with Backlog open would have stood", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "label": "no review lane before anything is flagged", "assert": "not_contains", "value": "Review  (" },
 
@@ -17,26 +16,24 @@
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line" },
     { "type": "assert", "label": "the cursor was on the intended task", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Review  (" },
-    { "type": "assert", "label": "the review flag draws exactly one row", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
+    { "type": "assert", "label": "the review flag draws exactly one row", "assert": "count_contains", "value": "□ [client-alpha] Alpha migration kickoff", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the flag moved the row to the promoted lane and the cursor kept sweeping Backlog", "key": "home" },
-    { "type": "key", "label": "past the Review lane's project group header", "key": "down" },
-    { "type": "key", "label": "onto the flagged row in the Review lane", "key": "down" },
+    { "type": "key", "label": "onto the flagged row in the Review lane, its group's only task and so drawn without a header", "key": "down" },
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "plan the flagged task into Next", "key": "n" },
     { "type": "wait" },
-    { "type": "assert", "label": "planning moves the row instead of copying it", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 },
+    { "type": "assert", "label": "planning moves the row instead of copying it", "assert": "count_contains", "value": "□ [client-alpha] Alpha migration kickoff", "count": 1 },
     { "type": "assert", "label": "Next outranks the review flag, emptying the lane", "assert": "not_contains", "value": "Review  (" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "planning moved the row again, so walk back to it", "key": "home" },
-    { "type": "key", "label": "past the Next lane's project group header", "key": "down" },
-    { "type": "key", "label": "onto the planned row in the Next lane", "key": "down" },
+    { "type": "key", "label": "onto the planned row in the Next lane, likewise its group's only task", "key": "down" },
     { "type": "key", "label": "hold the workflow prefix", "key": "w" },
     { "type": "key", "label": "leave Next again", "key": "n" },
     { "type": "wait" },
     { "type": "assert", "label": "the flag was never mutated, so Review reclaims the row", "assert": "contains", "value": "Review  (" },
-    { "type": "assert", "assert": "count_contains", "value": "□ Alpha migration kickoff", "count": 1 }
+    { "type": "assert", "assert": "count_contains", "value": "□ [client-alpha] Alpha migration kickoff", "count": 1 }
   ]
 }

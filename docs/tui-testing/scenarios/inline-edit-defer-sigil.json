@@ -41,8 +41,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "step onto the Today membership, which holds no deferral", "key": "home" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "its lone task carries its own project label, so there is no group header to step past", "key": "j" },
     { "type": "key", "label": "edit the row in place", "key": "e" },
     { "type": "text", "label": "an hour offset defers from the edit line", "text": " @@+2h " },
     { "type": "key", "key": "enter" },

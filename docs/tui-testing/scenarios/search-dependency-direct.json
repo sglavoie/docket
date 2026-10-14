@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
-    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "j steps past the lane header onto the first task, which leads its singleton group with the project label", "key": "j" },
     { "type": "key", "label": "edit the selected row", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "reference a task in another project", "text": " ~client-beta:1" },
@@ -35,7 +34,7 @@
     { "type": "key", "label": "the negation subtracts what the positive selected", "key": "/" },
     { "type": "text", "text": "-~client-beta:1" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "label": "the referring task is the only row removed; the undo status still names it", "assert": "not_contains", "value": "□ Alpha migration kickoff" },
+    { "type": "assert", "label": "the referring task is the only row removed; the undo status still names it", "assert": "not_contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
     { "type": "assert", "assert": "contains", "value": "Renew passport" },
     { "type": "assert", "assert": "no_layout_issues" },

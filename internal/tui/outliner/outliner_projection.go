@@ -246,20 +246,27 @@ func (m *OutlinerModel) rowGroupFor(sectionKey, projectKey, projectID string) Ou
 // header because its chrome already names the project, which is exactly the
 // group carrying no project half.
 //
-// Every other project group draws its header, expanded or folded: the header
-// is the one row that names the project, so its task rows carry no label of
-// their own and sit one level beneath it. Every row still carries the group, so
-// discovery, folding, and navigation read it off the row rather than scanning
-// for the header, and a folded header is the summary that carries the group's
-// pressure counts and is what l expands and every project operation resolves
-// from.
+// Every other project group draws its header, folded or expanded, with one
+// exception: an expanded group holding exactly one top-level task merges into
+// that task's row, which leads with the `[slug]` the header would have drawn
+// and sits at the header's depth, so a group of one does not spend a row naming
+// a project its only row can name. merged reports that case, and the caller
+// hands the rows it then emits to mergeProjectGroupRows. Every row still
+// carries the group, so discovery, folding, and navigation read it off the row
+// rather than scanning for the header, and a folded header — singletons
+// included — is the summary that carries the group's pressure counts and is
+// what l expands and every project operation resolves from.
 func (m *OutlinerModel) appendProjectGroupHeader(
 	template OutlinerRow,
 	group OutlinerRowGroup,
 	tasks []*models.Task,
-) bool {
+	topLevel int,
+) (follow, merged bool) {
 	if !group.ProjectGrouped() {
-		return true
+		return true, false
+	}
+	if topLevel == 1 && !m.sectionCollapsed(group.ProjectKey) {
+		return true, true
 	}
 	header := template
 	header.Group = group
@@ -274,7 +281,32 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 		header.TodayCount = 0
 	}
 	m.Rows = append(m.Rows, header)
-	return !m.IsSectionRowCollapsed(header)
+	return !m.IsSectionRowCollapsed(header), false
+}
+
+// mergeProjectGroupRows seats the rows one merged group emitted from start on
+// at the depth its header would have held: the lone top-level task loses its
+// connector and leads the group, and every descendant moves up the same one
+// level, so the tree beneath it still reads as that task's own.
+func (m *OutlinerModel) mergeProjectGroupRows(start int) {
+	if start < 0 || start >= len(m.Rows) {
+		return
+	}
+	for index := start; index < len(m.Rows); index++ {
+		m.Rows[index].Prefix = trimTreePrefixLevel(m.Rows[index].Prefix)
+	}
+	m.Rows[start].LeadsMergedGroup = true
+}
+
+// trimTreePrefixLevel drops the outermost connector level of one tree prefix.
+// Every level BuildTreePrefix writes is one four-column connector.
+func trimTreePrefixLevel(prefix string) string {
+	runes := []rune(prefix)
+	level := len([]rune(connectorSpace))
+	if len(runes) <= level {
+		return ""
+	}
+	return string(runes[level:])
 }
 
 // projectGroupPressure counts the overdue and Today-planned work one project
@@ -323,11 +355,16 @@ func (m *OutlinerModel) appendProjectGroupedForests(
 ) {
 	for _, group := range groups {
 		identity := m.rowGroupFor(sectionKey, collapseKeyFor(group.projectID), group.projectID)
-		if !m.appendProjectGroupHeader(template, identity, group.forest.tasks()) {
+		follow, merged := m.appendProjectGroupHeader(template, identity, group.forest.tasks(), len(group.forest.roots))
+		if !follow {
 			m.hideSectionRowNodes(group.forest.roots)
 			continue
 		}
+		start := len(m.Rows)
 		m.flattenSectionRowForest(group.forest, identity, &m.Rows)
+		if merged {
+			m.mergeProjectGroupRows(start)
+		}
 	}
 }
 
@@ -489,11 +526,16 @@ func (m *OutlinerModel) appendStateGroupForests(
 			projectID = item.project.ID
 		}
 		identity := m.rowGroupFor(collapseKey, projectSectionCollapseKey(projectID, group), projectID)
-		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, item.forest.tasks()) {
+		follow, merged := m.appendProjectGroupHeader(OutlinerRow{}, identity, item.forest.tasks(), len(item.forest.roots))
+		if !follow {
 			m.hideSectionForestTasks(item.forest, item.forest.roots)
 			continue
 		}
+		start := len(m.Rows)
 		m.flattenSectionForest(item.forest, projectID, identity, &m.Rows)
+		if merged {
+			m.mergeProjectGroupRows(start)
+		}
 	}
 }
 
@@ -659,12 +701,17 @@ func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, m
 		// These modes emit no section header, so the project group is the whole
 		// group identity and the section half stays empty.
 		identity := m.rowGroupFor("", modeProjectCollapseKey(mode, tree.project.ID), tree.project.ID)
-		if !m.appendProjectGroupHeader(OutlinerRow{}, identity, flattenTaskPointers(tree.roots)) {
+		follow, merged := m.appendProjectGroupHeader(OutlinerRow{}, identity, flattenTaskPointers(tree.roots), len(tree.roots))
+		if !follow {
 			m.hidePrimaryTasks(tree.roots)
 			continue
 		}
+		start := len(m.Rows)
 		for i, task := range tree.roots {
 			m.flattenPrimaryTask(task, tree.project, identity, nil, i == len(tree.roots)-1)
+		}
+		if merged {
+			m.mergeProjectGroupRows(start)
 		}
 	}
 }

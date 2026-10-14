@@ -4,18 +4,17 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
-    { "type": "key", "label": "j twice steps past the lane and project headers onto the first task", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "j steps past the lane header onto the first task, which its singleton group draws in place of a project header", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "key", "label": "select it", "key": "v" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "onto the Client Beta task", "key": "j" },
     { "type": "key", "label": "and select that one too", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
 
     { "type": "key", "label": "one picker edits the whole selection", "key": "~" },
     { "type": "assert", "assert": "contains", "value": "Set Dependencies: 2 selected tasks" },
-    { "type": "assert", "label": "neither selected task is offered, since that reference is inside the selection", "assert": "not_contains", "value": "] Alpha migration kickoff" },
-    { "type": "assert", "assert": "not_contains", "value": "] Beta rollout checklist" },
+    { "type": "assert", "label": "neither selected task is offered, since that reference is inside the selection", "assert": "not_contains", "value": "[ ] Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ] Beta rollout checklist" },
     { "type": "assert", "label": "nothing is stored yet, so no row is checked or indeterminate", "assert": "contains", "value": "[ ] Renew passport" },
     { "type": "assert", "assert": "contains", "value": "[ ] Finish the distributed systems book" },
     { "type": "assert", "assert": "not_contains", "value": "[-] " },
@@ -30,7 +29,6 @@
     { "type": "key", "label": "leave the selection", "key": "esc" },
 
     { "type": "key", "key": "home" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "back onto the Client Alpha task alone", "key": "j" },
     { "type": "key", "label": "a cursor-only edit is still the single-task task-line edit", "key": "~" },
     { "type": "assert", "assert": "contains", "value": "Set Dependencies: Alpha migration kickoff" },
@@ -46,7 +44,6 @@
     { "type": "assert", "assert": "contains", "value": "Beta rollout checklist  ~0/1" },
 
     { "type": "key", "label": "select the pair again, now carrying different sets", "key": "v" },
-    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },

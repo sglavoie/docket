@@ -4,11 +4,12 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
-    { "type": "assert", "assert": "count_contains", "value": "▾ [", "count": 4 },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[client-beta] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
+    { "type": "assert", "label": "each single-task project group merges its header into its one task row", "assert": "count_contains", "value": "□ [", "count": 4 },
+    { "type": "assert", "assert": "not_contains", "value": "▾ [" },
+    { "type": "assert", "assert": "contains", "value": "□ [client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "□ [client-beta]  Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "□ [home-errands] Renew passport" },
+    { "type": "assert", "assert": "contains", "value": "□ [reading-list] Finish the distributed systems book" },
 
     { "type": "key", "label": "sort by title descending", "key": "o" },
     { "type": "key", "key": "t" },
@@ -17,18 +18,16 @@
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↓" },
     { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
 
-    { "type": "assert", "label": "every project group survives the sort", "assert": "count_contains", "value": "▾ [", "count": 4 },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[client-beta] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
-    { "type": "assert", "label": "each group keeps its own single task", "assert": "contains", "value": "Alpha migration kickoff" },
-    { "type": "assert", "assert": "contains", "value": "Finish the distributed systems book" },
+    { "type": "assert", "label": "every project group survives the sort", "assert": "count_contains", "value": "□ [", "count": 4 },
+    { "type": "assert", "label": "each group keeps its own single task", "assert": "contains", "value": "□ [client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "□ [client-beta]  Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "□ [home-errands] Renew passport" },
+    { "type": "assert", "assert": "contains", "value": "□ [reading-list] Finish the distributed systems book" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clearing the sort leaves the groups untouched", "key": "o" },
     { "type": "key", "key": "x" },
-    { "type": "assert", "assert": "count_contains", "value": "▾ [", "count": 4 },
+    { "type": "assert", "assert": "count_contains", "value": "□ [", "count": 4 },
     { "type": "assert", "assert": "not_contains", "value": "Sort: " },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

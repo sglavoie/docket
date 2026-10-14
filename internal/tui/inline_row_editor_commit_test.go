@@ -159,7 +159,10 @@ func TestTaskLineEditRelocationFollowsInGroupResultAndRecoversOtherwise(t *testi
 	makeOutliner := func() (*outliner.OutlinerModel, *models.Project, *models.Project, *models.Task, *models.Task) {
 		task := &models.Task{ID: "moving", ShortID: 1, Title: "Moving", WorkflowState: models.StateBacklog}
 		neighbor := &models.Task{ID: "neighbor", ShortID: 2, Title: "Neighbor", WorkflowState: models.StateBacklog}
-		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
+		// A third root keeps the source group at two top-level tasks after the
+		// reparent, so its header stays drawn and the move is one row down.
+		bystander := &models.Task{ID: "bystander", ShortID: 3, Title: "Bystander", WorkflowState: models.StateBacklog}
+		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor, bystander}}
 		destination := &models.Project{ID: "zeta-destination", Slug: "zeta-destination", Name: "Destination"}
 		out := outliner.NewOutlinerModel(nil, nil, nil)
 		out.Population.Projects = []*models.Project{source, destination}
@@ -181,7 +184,7 @@ func TestTaskLineEditRelocationFollowsInGroupResultAndRecoversOtherwise(t *testi
 	capture := out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	task.ParentID = &neighbor.ID
 	neighbor.Children = []*models.Task{task}
-	source.Tasks = []*models.Task{neighbor, task}
+	source.Tasks = []*models.Task{neighbor, task, source.Tasks[2]}
 	out.Population.Invalidate()
 	out.CrossProjectRebuildRows()
 	_, recorded := out.FinishTaskLineEditRelocation(capture, taskref.For(task, source))

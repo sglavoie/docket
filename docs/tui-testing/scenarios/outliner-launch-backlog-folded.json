@@ -19,7 +19,6 @@
     { "type": "key", "label": "walk down to the Backlog header", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
     { "type": "key", "label": "l opens it like any other fold", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "▾  Backlog  (3)" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },

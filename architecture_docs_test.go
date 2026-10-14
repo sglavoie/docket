@@ -89,10 +89,14 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"groups `VisibleProjectGroups()` reports, and each writes its own half through " +
 			"`setGroupFold`",
 		"Neither scans for a header and neither matches a key prefix",
-		// The layout plan restored the expanded heading: every cross-project group
-		// opens with its header again, and the per-row project label is gone.
-		"`appendProjectGroupHeader` emits the header for an expanded group and a folded one alike",
+		// The layout plan restored the expanded heading, and the polish pass
+		// merged a one-task group into its row: the header stays for a folded
+		// group and a group of two or more, and the merged row wears the label.
+		"`appendProjectGroupHeader` emits the header for a folded group and for an " +
+			"expanded group of two or more top-level tasks",
 		"The task rows under it name no project",
+		"An expanded group of exactly one top-level task merges into that task's row instead",
+		"`OutlinerRow.LeadsMergedGroup`",
 		"`ComputeOutlinerRowLayout` is the one task-row geometry",
 		"it reads the whole projection rather than the window on screen",
 		"`rowStartsGroup` is what `n`/`N` step between",

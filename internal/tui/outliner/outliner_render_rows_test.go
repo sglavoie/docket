@@ -172,9 +172,10 @@ func TestSelectedRowKeepsItsDueChip(t *testing.T) {
 }
 
 // TestCrossProjectProjectIdentityHasExactlyOneCarrier walks both halves of the
-// same guarantee: a group states its project once, on the header that opens it.
-// Expanded, the header sits above the task rows and no row repeats the name;
-// folded, the same header is the summary that replaces those rows.
+// same guarantee: a group states its project once. Expanded, a group of one
+// top-level task states it on that task's row, which merged the header away,
+// and no other row names it; folded, the header is the summary that replaces
+// those rows.
 func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateBacklog))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateBacklog))
@@ -184,19 +185,24 @@ func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 	headed := make(map[string]int)
 	for index, row := range outliner.Rows {
 		if row.IsProjectHeader {
-			headed[row.ProjectID]++
+			t.Errorf("expanded singleton group %q drew a header: %+v", row.ProjectID, row)
 			continue
 		}
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
-		if strings.Contains(line, "["+row.ProjectID+"]") {
-			t.Errorf("task row %q repeated its project beneath the header: %q", row.Task.ID, line)
+		named := strings.Contains(line, "["+row.ProjectID+"] "+row.Task.Title)
+		if named != row.LeadsMergedGroup {
+			t.Errorf("task row %q named its project = %t, leads merged group = %t: %q",
+				row.Task.ID, named, row.LeadsMergedGroup, line)
+		}
+		if named {
+			headed[row.ProjectID]++
 		}
 	}
 	if headed[alpha.ID] != 1 || headed[beta.ID] != 1 {
-		t.Fatalf("expanded headers = %v, want one per project", headed)
+		t.Fatalf("expanded carriers = %v, want one per project", headed)
 	}
 
 	for _, group := range outliner.VisibleProjectGroups() {

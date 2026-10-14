@@ -4,8 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
-    { "type": "key", "label": "onto the Client Alpha group header", "key": "j" },
-    { "type": "key", "label": "onto Client Alpha's task", "key": "j" },
+    { "type": "key", "label": "onto Client Alpha's task, its group's only one and so drawn without a header", "key": "j" },
     { "type": "key", "label": "edit the selected row", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "text", "label": "give the row a priority and a tag to search against", "text": " !2 #urgent" },
@@ -23,7 +22,7 @@
     { "type": "key", "label": "the tag negation removes exactly what the tag selects", "key": "/" },
     { "type": "text", "text": "-#urgent" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "not_contains", "value": "□ Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "[client-alpha] Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Renew passport" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },

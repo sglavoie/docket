@@ -30,8 +30,7 @@
     { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
 
     { "type": "key", "label": "every destination is another lane, so the cursor stayed with the Backlog sweep rather than following the task", "key": "home" },
-    { "type": "key", "label": "the Inbox lane leads the projection, so its one row is a step away", "key": "j" },
-    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
+    { "type": "key", "label": "the Inbox lane leads the projection, so its one task row, drawing no project header, is a step away", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wg starts it", "key": "g" },
     { "type": "wait" },
@@ -39,8 +38,7 @@
     { "type": "assert", "label": "the start names what it left unscheduled", "assert": "contains", "value": "No check-in" },
 
     { "type": "key", "label": "Doing leads it now", "key": "home" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
+    { "type": "key", "label": "onto the lane's one task, whose single-task group draws no header", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "ww blocks it and notes the missing schedule", "key": "w" },
     { "type": "wait" },
@@ -55,8 +53,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Paused" },
 
     { "type": "key", "label": "Paused sorts above Backlog", "key": "home" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
+    { "type": "key", "label": "onto the lane's one task, whose single-task group draws no header", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wm shelves it", "key": "m" },
     { "type": "wait" },
@@ -79,16 +76,14 @@
     { "type": "assert", "assert": "status_contains", "value": "Move to Next: Sketch intake flow" },
 
     { "type": "key", "label": "Next sorts above Backlog", "key": "home" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
+    { "type": "key", "label": "onto the lane's one task, whose single-task group draws no header", "key": "j" },
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wt moves it to Today, which Next cannot share", "key": "t" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Plan for Today: Sketch intake flow" },
 
     { "type": "key", "label": "Today leads every lane", "key": "home" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "past the lane's project header onto its task", "key": "j" },
+    { "type": "key", "label": "onto the lane's one task, whose single-task group draws no header", "key": "j" },
     { "type": "key", "label": "the planned task reports both halves in Peek", "key": "b" },
     { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "Plan: Today · Status: Backlog" },
     { "type": "key", "label": "close the dock again", "key": "b" },
@@ -97,7 +92,8 @@
     { "type": "key", "label": "wc abandons it, which the live projection stops showing", "key": "c" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Change Status: Sketch intake flow → Canceled" },
-    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
+    { "type": "assert", "label": "no row draws it, neither under a header nor as a lane's one labeled task", "assert": "not_contains", "value": "◉ Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "] Sketch intake flow" },
 
     { "type": "key", "label": "back to the top of the Outliner", "key": "home" },
     { "type": "key", "label": "onto the project header", "key": "j" },
