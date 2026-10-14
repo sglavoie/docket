@@ -99,12 +99,12 @@ func TestSearchProjectionSeatsNoteRowsBelowEveryTaskMatch(t *testing.T) {
 }
 
 // noteRowWithOwner returns the projection's project-owned note row, which is
-// the one whose render carries an owner label.
+// the one whose label names a project rather than the workspace.
 func noteRowWithOwner(t *testing.T, outliner *OutlinerModel) OutlinerRow {
 	t.Helper()
 	for _, index := range noteRowIndexes(outliner) {
 		row := outliner.Rows[index]
-		if outliner.Search.noteMatches[row.NoteRow].row.OwnerLabel != "" {
+		if outliner.Search.noteMatches[row.NoteRow].row.Location.Scope == app.NoteScopeProject {
 			return row
 		}
 	}
@@ -161,10 +161,13 @@ func TestNoteRowRendersWithoutTaskFurniture(t *testing.T) {
 	line := outliner.renderOutlinerNoteRow(row, false, rowWidth, 0, nil)
 	plain := ansi.Strip(line)
 	for _, want := range []string{noteRowGlyph, entry.row.Note.Title,
-		"[" + entry.row.OwnerLabel + "]", matchSourceLabels[MatchSourceNote]} {
+		"[alpha]", matchSourceLabels[MatchSourceNote]} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("note row lost %q:\n%q", want, plain)
 		}
+	}
+	if strings.Index(plain, "[alpha]") > strings.Index(plain, entry.row.Note.Title) {
+		t.Fatalf("note row trails its title with the label instead of leading with it:\n%q", plain)
 	}
 	for _, state := range []models.WorkflowState{
 		models.StateBacklog, models.StateDoing, models.StateInbox,

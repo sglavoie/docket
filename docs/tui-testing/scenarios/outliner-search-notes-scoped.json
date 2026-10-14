@@ -13,7 +13,9 @@
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "label": "the scope owns the notes tier too", "assert": "contains", "value": "Rich Project delivery plan" },
     { "type": "assert", "assert": "not_contains", "value": "Workspace launch brief" },
-    { "type": "assert", "assert": "not_contains", "value": "[Global]" },
+    { "type": "assert", "assert": "not_contains", "value": "[global]" },
+    { "type": "assert", "label": "the focused header names the project, so neither row kind repeats it", "assert": "contains", "value": "≡   Rich Project delivery plan" },
+    { "type": "assert", "assert": "contains", "value": "◉ Launch platform" },
     { "type": "assert", "assert": "count_contains", "value": "· note", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 

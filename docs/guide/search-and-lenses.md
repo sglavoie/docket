@@ -127,7 +127,11 @@ whose title does not carry the match says where it came from with a muted
 `· attachment`, `· project`, or `· details` note. That note closes the row,
 after the deadline, review, and reference indicators, the same place a note
 row's `· note` sits, and it is the first thing a narrow row drops, so the title
-stays readable. A title match is highlighted in the title instead: the
+stays readable. A note row leads its title with the same `[slug]` label a ranked
+task row does, or a muted `[global]` for a workspace note, so note titles start
+in the task titles' column. A note whose body matched spends what width its
+title leaves on a muted excerpt around the match, and a narrow row drops that
+excerpt before anything else. A title match is highlighted in the title instead: the
 contiguous run where there is one, and otherwise the letters the match was made
 of, so a result found by letters spread across its title or by two words it
 holds apart still shows why it is there.

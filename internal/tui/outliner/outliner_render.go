@@ -8,9 +8,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -450,6 +453,69 @@ func (m *OutlinerModel) RenderOutlinerChecklistRow(row OutlinerRow, selected boo
 // the product has to spell the same way.
 const noteRowGlyph = "≡"
 
+// noteExcerptSeparator stands between a note's title and the body excerpt that
+// explains it, and noteExcerptMinWidth is the narrowest excerpt worth drawing:
+// fewer columns than that read as noise rather than as the matched words.
+const (
+	noteExcerptSeparator = "  "
+	noteExcerptMinWidth  = 8
+)
+
+// noteGlobalLabel is the owner a workspace-global note names in the label
+// column, where a project note names its project.
+const noteGlobalLabel = "global"
+
+// noteRowSlug is the bare text a note row's label spells, bounded by the cap
+// ranked task rows use so the render and computeRowLayout measure one string:
+// the project's slug, or global for a workspace note. The project is nil for a
+// global note and for one whose owner no longer resolves.
+func (m *OutlinerModel) noteRowSlug(row notes.LocatedNoteRow, rowWidth int) (string, *models.Project, bool) {
+	if row.Location.Scope == app.NoteScopeGlobal {
+		return noteGlobalLabel, nil, true
+	}
+	projectRow := OutlinerRow{ProjectID: row.Location.ProjectID}
+	slug := m.rankedProjectSlug(projectRow, rowWidth)
+	_, project := m.projectSlugForRow(projectRow)
+	return slug, project, false
+}
+
+// noteProjectLabel leads a note's title with the label a ranked task row leads
+// its own with, under the same gate and padded to the same column: the project
+// in its bold color, or a muted global for a workspace note.
+func (m *OutlinerModel) noteProjectLabel(row notes.LocatedNoteRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
+	if !m.showsRankedProjectLabel() {
+		return ""
+	}
+	slug, project, global := m.noteRowSlug(row, rowWidth)
+	if slug == "" {
+		return ""
+	}
+	style := theme.ProjectColorStyle(project).Bold(true)
+	if global {
+		style = theme.MutedStyle
+	}
+	label := style.Render("[" + slug + "]")
+	if colLayout != nil {
+		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
+	}
+	return label + " "
+}
+
+// noteBodyExcerpt says why a note matched when its title does not: the body is
+// re-scored under the projection's own query and case mode, exactly as Peek's
+// search excerpt is, and a body the scorer places no position in says nothing.
+func (m *OutlinerModel) noteBodyExcerpt(entry outlinerSearchNoteMatch) string {
+	if !entry.match.BodyMatched || entry.row.Note == nil || m.searchTextQuery() == "" {
+		return ""
+	}
+	body := entry.row.Note.Body
+	_, positions := fuzzy.NewMatcher(m.searchCaseSensitive()).ScoreTermsWithPositions(body, m.searchTextQuery())
+	if len(positions) == 0 {
+		return ""
+	}
+	return searchMatchExcerpt(body, positions)
+}
+
 // renderOutlinerNoteRow draws one row of the search projection's notes tier. It
 // keeps the task row's rhythm — the same cursor bar, the same badge columns, the
 // same muted match cue in the same place — without borrowing task furniture: a
@@ -475,36 +541,42 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	if colLayout != nil && colLayout.HasPriority {
 		priorityColumn = strings.Repeat(" ", colLayout.PriorityWidth+1)
 	}
-	owner := ""
-	if entry.row.OwnerLabel != "" {
-		owner = "  " + theme.MutedStyle.Render("["+entry.row.OwnerLabel+"]")
-	}
+	label := m.noteProjectLabel(entry.row, rowWidth, colLayout)
 	cue := taskMatchSourceCue(row)
 
 	// The space after the glyph is the one the task row spends after its state
 	// badge, so both blocks start their content at the same column.
 	titleWidth := func() int {
 		return max(rowWidth-lipgloss.Width(gutter)-lipgloss.Width(glyph)-1-
-			lipgloss.Width(priorityColumn)-lipgloss.Width(owner)-lipgloss.Width(cue), 1)
+			lipgloss.Width(priorityColumn)-lipgloss.Width(label)-lipgloss.Width(cue), 1)
 	}
-	// The note row sheds the same two things in the same order the task row does,
-	// under the same title target: the match cue first, because it explains a
-	// result whose title has become unreadable, and the owner label second. Both
-	// are dropped rather than truncated — the whole line is clamped to rowWidth at
-	// the end, and a cue cut mid-word would read as a different word.
+	// The note row sheds what the task row sheds, in the same order and under the
+	// same title target: the match cue first, because it explains a result whose
+	// title has become unreadable, and the project label second. Both are dropped
+	// rather than truncated — the whole line is clamped to rowWidth at the end, and
+	// a cue cut mid-word would read as a different word.
 	titleTarget := min(8, max(rowWidth/4, 4))
 	if titleWidth() < titleTarget {
 		cue = ""
 	}
 	if titleWidth() < titleTarget {
-		owner = ""
+		label = ""
 	}
 	title := ""
 	if entry.row.Note != nil {
 		title = textfit.TruncateToVisualWidth(entry.row.Note.Title, titleWidth())
 	}
-	content := glyph + " " + priorityColumn +
-		textfit.HighlightText(title, entry.match.TitlePositions, theme.NormalStyle) + owner + cue
+	// A body hit is explained in whatever width the title left over, so the
+	// excerpt is the first thing a narrow row loses and never costs the title a
+	// column.
+	excerpt := ""
+	if room := titleWidth() - lipgloss.Width(title) - lipgloss.Width(noteExcerptSeparator); room >= noteExcerptMinWidth {
+		if text := m.noteBodyExcerpt(entry); text != "" {
+			excerpt = noteExcerptSeparator + textfit.TruncateToVisualWidth(text, room)
+		}
+	}
+	content := glyph + " " + priorityColumn + label +
+		textfit.HighlightText(title, entry.match.TitlePositions, theme.NormalStyle) + excerpt + cue
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
@@ -554,8 +626,15 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 			slugs[row.Task] = m.rankedProjectSlug(row, rowWidth)
 		}
 	}
+	noteWidth := 0
+	if slugs != nil {
+		noteWidth = m.noteLabelWidth(rows, rowWidth)
+	}
 	if len(tasks) == 0 {
-		return nil
+		if noteWidth == 0 {
+			return nil
+		}
+		return &chrome.ColumnLayout{ProjectWidth: noteWidth}
 	}
 	if hidden != nil {
 		tasks = append(tasks, hidden.tasks...)
@@ -569,8 +648,30 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	layout := chrome.ComputeBadgeWidths(tasks, opts)
 	if layout != nil {
 		layout.HasFold = hasFold
+		layout.ProjectWidth = max(layout.ProjectWidth, noteWidth)
 	}
 	return layout
+}
+
+// noteLabelWidth is the widest label the notes tier draws, folded into the
+// task rows' project column so a note title starts where a task title does. A
+// result set holding only notes still measures it, which is why the layout is
+// not nil there.
+func (m *OutlinerModel) noteLabelWidth(rows []OutlinerRow, rowWidth int) int {
+	width := 0
+	for _, row := range rows {
+		if !row.IsNoteRow {
+			continue
+		}
+		entry, ok := m.Search.noteMatches[row.NoteRow]
+		if !ok {
+			continue
+		}
+		if slug, _, _ := m.noteRowSlug(entry.row, rowWidth); slug != "" {
+			width = max(width, lipgloss.Width("["+slug+"]"))
+		}
+	}
+	return width
 }
 
 type outlinerViewport struct {
