@@ -70,6 +70,13 @@ final class ControlWireTests: XCTestCase {
         XCTAssertNil(object["text"])
     }
 
+    func testQuitEncodesTheGoSpelling() throws {
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.quit)) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "quit")
+        XCTAssertNil(object["text"])
+        XCTAssertNil(object["task"])
+    }
+
     func testLineBufferKeepsAPartialLine() {
         var buffer = TTLineBuffer()
         XCTAssertEqual(buffer.append(Data("{\"a\":1}\n{\"b\"".utf8)), [Data("{\"a\":1}".utf8)])
@@ -100,6 +107,58 @@ final class ControlWireTests: XCTestCase {
                        "inbox 3 · today 2 · overdue 1")
         XCTAssertEqual(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 4, overdue: 0, done: 0)), "today 4")
         XCTAssertNil(TTPulseSummary.line(for: TTPulse(inbox: 0, today: 0, overdue: 0, done: 7)))
+    }
+}
+
+final class QuitHandshakeTests: XCTestCase {
+    private func handshake() -> (TTQuitHandshake, () -> [TTQuitHandshake.Outcome]) {
+        var outcomes: [TTQuitHandshake.Outcome] = []
+        let handshake = TTQuitHandshake { outcomes.append($0) }
+        return (handshake, { outcomes })
+    }
+
+    /// An OK means tt is on its way out: the app waits for it to end, and
+    /// ends exactly once however many signals follow.
+    func testAnOKWaitsForTTToEnd() {
+        let (handshake, outcomes) = handshake()
+        handshake.replied(TTControlReply(reply: 1, ok: true, message: "quitting"))
+        XCTAssertEqual(outcomes(), [])
+        handshake.ttEnded()
+        handshake.ttEnded()
+        handshake.replied(.failure("The connection to tt ended"))
+        XCTAssertEqual(outcomes(), [.quit])
+    }
+
+    func testABusyRefusalAsksTheUser() {
+        let (handshake, outcomes) = handshake()
+        let busy = "tt is busy: finish what is open in tt first"
+        handshake.replied(TTControlReply(reply: 1, ok: false, message: busy))
+        XCTAssertEqual(outcomes(), [.busy(busy)])
+    }
+
+    /// An older tt does not know the request, and a dropped connection means
+    /// tt is gone: either way the app ends and tt takes the hangup.
+    func testATTThatCannotBeAskedQuits() {
+        for reply in [
+            TTControlReply(reply: 1, ok: false, message: #"unknown operation "quit""#),
+            TTControlReply.failure("The connection to tt ended"),
+            TTControlReply(reply: 1, ok: false, message: "tt did not answer in time"),
+        ] {
+            let (handshake, outcomes) = handshake()
+            handshake.replied(reply)
+            XCTAssertEqual(outcomes(), [.quit], "\(reply)")
+        }
+    }
+
+    func testTheTimeoutQuits() {
+        let quit = expectation(description: "timeout")
+        let handshake = TTQuitHandshake { outcome in
+            XCTAssertEqual(outcome, .quit)
+            quit.fulfill()
+        }
+        handshake.replied(TTControlReply(reply: 1, ok: true, message: nil))
+        handshake.start(timeout: 0.05)
+        wait(for: [quit], timeout: 2)
     }
 }
 
@@ -242,6 +301,32 @@ final class ControlClientTests: XCTestCase {
             replied.fulfill()
         }
         wait(for: [pulse, replied], timeout: 5)
+        client.disconnect()
+    }
+
+    /// tt's OK reply may be lost to its exit: the connection ending finishes
+    /// the quit as surely as the reply would.
+    func testQuitFinishesWhenTheConnectionEnds() {
+        let listener = self.listener
+        Thread.detachNewThread {
+            let connection = accept(listener, nil, nil)
+            guard connection >= 0 else { return }
+            var chunk = [UInt8](repeating: 0, count: 4096)
+            _ = read(connection, &chunk, chunk.count)
+            close(connection)
+        }
+        let client = TTControlClient(path: path)
+        let quit = expectation(description: "quit")
+        let handshake = TTQuitHandshake { outcome in
+            XCTAssertEqual(outcome, .quit)
+            quit.fulfill()
+        }
+        client.onConnectionChange = { connected in
+            if !connected { handshake.ttEnded() }
+        }
+        client.connect()
+        client.send(.quit) { reply in handshake.replied(reply) }
+        wait(for: [quit], timeout: 5)
         client.disconnect()
     }
 

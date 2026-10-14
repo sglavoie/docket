@@ -164,3 +164,28 @@ func TestListenRefusesToReplaceAFile(t *testing.T) {
 		t.Fatal("Listen replaced a regular file")
 	}
 }
+
+// TestServerCloseEndsAQuittingHostsConnection: a quit's OK reply may not
+// outlive the exit, so the host reads the connection ending as the same
+// answer. Close must end every open connection rather than leave one hanging.
+func TestServerCloseEndsAQuittingHostsConnection(t *testing.T) {
+	server, err := Listen(socketPath(t), echoDispatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := dial(t, server.Path())
+	c.send(t, `{"id":3,"op":"quit"}`)
+	if got := c.next(t); got["reply"] != float64(3) || got["message"] != OpQuit+":" {
+		t.Fatalf("reply = %v", got)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_ = c.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if c.scanner.Scan() {
+		t.Fatalf("read %q after Close, want the connection ended", c.scanner.Text())
+	}
+	if err := c.scanner.Err(); err != nil {
+		t.Fatalf("connection did not end cleanly: %v", err)
+	}
+}

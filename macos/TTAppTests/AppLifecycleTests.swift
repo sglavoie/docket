@@ -174,6 +174,22 @@ final class LaunchErrorTests: XCTestCase {
 
     /// With no terminal, a Dock click or switching to tt.app brings the
     /// launch error back rather than nothing.
+    /// With no tt to ask, Quit ends the app at once; tt, if any, takes the
+    /// hangup as before.
+    func testQuitWithNoControlSocketTerminatesNow() {
+        let delegate = AppDelegate()
+        XCTAssertEqual(delegate.applicationShouldTerminate(NSApp), .terminateNow)
+    }
+
+    /// A busy tt brings the question to the user, and Cancel keeps the app.
+    func testABusyQuitAsksBeforeQuittingAnyway() {
+        let delegate = AppDelegate()
+        var asked = 0
+        delegate.confirmQuitAnyway = { asked += 1; return false }
+        delegate.finishQuit(.busy("tt is busy: finish what is open in tt first"))
+        XCTAssertEqual(asked, 1)
+    }
+
     func testReopeningWithoutATerminalShowsTheLaunchError() throws {
         let delegate = AppDelegate()
         XCTAssertNil(delegate.terminal)

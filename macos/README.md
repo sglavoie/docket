@@ -190,6 +190,13 @@ the running binary all follow the tt that just started. If no tt can be found at
 that moment, the last one that was keeps running; only a launch that never found
 one shows the error instead of a window.
 
+Quitting tt.app asks tt to quit first, the way `q` does, so it saves its view
+and filter state. The app ends once tt has, or after three seconds. If tt is
+busy, because a draft, a picker, an editor, a selection, or a search is open in
+it, the window comes forward with a "tt is busy." alert offering Quit Anyway or
+Cancel. With no socket, or a tt too old to know the request, tt.app quits at
+once and tt gets a hangup, as a closed terminal would give it.
+
 ### Quick capture
 
 `Ctrl+Opt+Cmd+A` by default (after tt's own `a`) opens a capture field over

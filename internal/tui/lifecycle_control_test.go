@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // controlEnv is the R chain's environment with the Outliner as the live route,
@@ -226,6 +227,41 @@ func TestControlRefusesWhileTheUserIsMidInteraction(t *testing.T) {
 	}
 	if !env.storedTask(t, 1).Review {
 		t.Fatal("a refused request committed")
+	}
+}
+
+// TestControlQuitTakesTheQuitPath: an idle session answers OK and emits the
+// quit key's own message, so view and filter state are saved on the way out.
+func TestControlQuitTakesTheQuitPath(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
+	replies := make(chan control.Reply, 1)
+	handled, cmd := env.model.handleControlMessage(controlRequestMsg{request: control.Request{Op: control.OpQuit}, reply: replies})
+	if !handled || cmd == nil {
+		t.Fatalf("quit handled=%v cmd=%v", handled, cmd)
+	}
+	if reply := <-replies; !reply.OK {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if _, ok := cmd().(status.QuitMsg); !ok {
+		t.Fatal("quit did not emit status.QuitMsg")
+	}
+}
+
+// TestControlQuitRefusesWhileTheUserIsMidInteraction: an open draft, picker,
+// or editor is never thrown away by a host's quit.
+func TestControlQuitRefusesWhileTheUserIsMidInteraction(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	replies := make(chan control.Reply, 1)
+	_, cmd := env.model.handleControlMessage(controlRequestMsg{request: control.Request{Op: control.OpQuit}, reply: replies})
+	if reply := <-replies; reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if cmd != nil {
+		t.Fatal("a refused quit still produced a command")
+	}
+	if env.model.lifecycle.quitting {
+		t.Fatal("a refused quit marked the session quitting")
 	}
 }
 

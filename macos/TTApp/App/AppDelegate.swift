@@ -30,6 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// The running tt's `--version` line, for About; read off the main thread
     /// when a session adopts its binary.
     private var ttVersionLine: String?
+    /// The quit waiting on tt to end; nil when no quit is pending.
+    private var quitHandshake: TTQuitHandshake?
+    /// How long a quit waits on tt before ending it with a hangup.
+    var quitTimeout = TTQuitHandshake.defaultTimeout
+    /// Asks whether to quit over what tt has open; true quits anyway.
+    var confirmQuitAnyway: () -> Bool = AppDelegate.runBusyQuitAlert
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -106,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         controller.onWillStartSession = { [weak self] ready in self?.prepareSession(then: ready) }
         controller.onSessionEnd = { [weak self, weak model] in
             model?.sessionEnvironment = nil
+            self?.quitHandshake?.ttEnded()
             self?.control?.disconnect()
             self?.lastPulse = nil
             self?.showTitle("")
@@ -145,6 +152,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         guard !terminal.window.isVisible else { return }
         terminal.show()
+    }
+
+    /// Asks tt to quit first, so it saves its view and filter state, and ends
+    /// once tt has, or after the timeout. With no live socket, or a tt too old
+    /// to know the request, it ends at once and tt takes the hangup below.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard quitHandshake == nil else { return .terminateCancel }
+        guard let control, control.isConnected else { return .terminateNow }
+        let handshake = TTQuitHandshake { [weak self] outcome in self?.finishQuit(outcome) }
+        quitHandshake = handshake
+        control.send(.quit) { reply in handshake.replied(reply) }
+        handshake.start(timeout: quitTimeout)
+        return .terminateLater
+    }
+
+    /// Ends the pending quit: at once when tt has ended, or after asking when
+    /// tt refused because something is open in it.
+    func finishQuit(_ outcome: TTQuitHandshake.Outcome) {
+        quitHandshake = nil
+        switch outcome {
+        case .quit:
+            NSApp.reply(toApplicationShouldTerminate: true)
+        case .busy:
+            terminal?.show()
+            NSApp.reply(toApplicationShouldTerminate: confirmQuitAnyway())
+        }
+    }
+
+    /// The busy alert. tt refuses for an open draft, picker, or editor, and
+    /// also for a selection or a search, so it says busy rather than unsaved.
+    private static func runBusyQuitAlert() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "tt is busy."
+        alert.informativeText = "Something is open in tt, such as a draft, a picker, or a selection. "
+            + "Finish it in tt, or quit anyway and lose it."
+        alert.addButton(withTitle: "Quit Anyway")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -305,6 +350,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private func setUpControl(path: String) {
         let client = TTControlClient(path: path)
         client.onEvent = { [weak self] event in self?.handle(event) }
+        client.onConnectionChange = { [weak self] connected in
+            if !connected { self?.quitHandshake?.ttEnded() }
+        }
         control = client
 
         notifications.onReveal = { [weak self] task in self?.reveal(task) }

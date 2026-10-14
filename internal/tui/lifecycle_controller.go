@@ -552,7 +552,7 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 	case control.OpPreview:
 		m.controlPreview(request.Text, reply)
 		return nil
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture:
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
@@ -560,6 +560,11 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 	if !m.safeToAdoptExternalChange() {
 		answer(reply, false, "tt is busy: finish what is open in tt first")
 		return nil
+	}
+	if request.Op == control.OpQuit {
+		// The quit key's own path, so view and filter state are saved.
+		answer(reply, true, "quitting")
+		return func() tea.Msg { return status.QuitMsg{} }
 	}
 	// A blurred session may be holding a workspace another machine changed;
 	// acting on it would commit against a stale read and record a conflict.

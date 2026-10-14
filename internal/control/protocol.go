@@ -13,6 +13,11 @@
 // Request lines; tt writes one Reply per request, carrying the request's id,
 // and Event lines whenever it has something to report. Every connection hears
 // every event, and a new connection hears the latest pulse at once.
+//
+// OpQuit is how a host ends the session it hosts: tt quits as its quit key
+// would, or refuses while something is open. A host treats the connection
+// ending as the OK it may never read, and falls back to a hangup for a tt that
+// answers "unknown operation".
 package control
 
 // The operations a Request may name.
@@ -31,6 +36,12 @@ const (
 	OpComplete = "complete"
 	// OpPreview describes the full capture draft without writing anything.
 	OpPreview = "preview"
+	// OpQuit ends the session the way the quit key does, saving view and
+	// filter state, and is refused while the user is mid-interaction so an
+	// open draft, picker, or editor is never thrown away. The OK reply may
+	// not outlive the exit, so a host reads the connection closing as the
+	// same answer.
+	OpQuit = "quit"
 )
 
 // The events tt reports.

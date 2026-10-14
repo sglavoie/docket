@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete, preview
+        case reveal, acknowledge, capture, complete, preview, quit
         case deferTask = "defer"
     }
 
@@ -68,6 +68,63 @@ struct TTControlRequest: Encodable, Equatable {
 
     static func preview(_ text: String) -> Self {
         Self(op: .preview, text: text)
+    }
+
+    /// Ends tt the way its quit key does, unless something is open in it.
+    static let quit = Self(op: .quit)
+}
+
+/// Quitting tt.app asks tt to quit first, so it saves its view and filter
+/// state instead of taking a hangup. It finishes once: `.quit` when tt has
+/// ended, when tt cannot be asked (an older tt answers "unknown operation"),
+/// or when the timeout passes; `.busy` when tt refused because something is
+/// open in it. tt's OK reply may not outlive its exit, so the connection
+/// ending counts as the same answer.
+final class TTQuitHandshake {
+    enum Outcome: Equatable {
+        case quit
+        case busy(String)
+    }
+
+    static let defaultTimeout: TimeInterval = 3
+
+    private let finish: (Outcome) -> Void
+    private var finished = false
+
+    init(finish: @escaping (Outcome) -> Void) {
+        self.finish = finish
+    }
+
+    /// Starts the timeout; after it, the app ends and tt takes the hangup.
+    func start(timeout: TimeInterval = defaultTimeout) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
+            self?.complete(.quit)
+        }
+    }
+
+    /// tt's answer to `.quit`. An OK waits for tt to end; a refusal from a
+    /// busy tt asks the user; anything else is a tt that cannot be asked.
+    func replied(_ reply: TTControlReply) {
+        if reply.ok { return }
+        if let message = reply.message, message.hasPrefix(Self.busyPrefix) {
+            complete(.busy(message))
+            return
+        }
+        complete(.quit)
+    }
+
+    /// tt's connection or session ended.
+    func ttEnded() {
+        complete(.quit)
+    }
+
+    /// What tt says when it refuses a request because something is open.
+    static let busyPrefix = "tt is busy"
+
+    private func complete(_ outcome: Outcome) {
+        guard !finished else { return }
+        finished = true
+        finish(outcome)
     }
 }
 
