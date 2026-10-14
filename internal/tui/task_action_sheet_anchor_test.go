@@ -11,14 +11,18 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-// anchoredSheetTestDriver draws an Outliner of one project holding count Inbox
-// tasks, so the cursor can be put on a row near either end of a frame of the
+// anchoredSheetTaskCount is more Inbox tasks than any frame these tests draw
+// holds, so the cursor can sit near either end of the window.
+const anchoredSheetTaskCount = 30
+
+// anchoredSheetTestDriver draws an Outliner of one project holding
+// anchoredSheetTaskCount Inbox tasks, so the cursor can be put on a row near either end of a frame of the
 // given height.
-func anchoredSheetTestDriver(t *testing.T, count, width, height int) (*UITestDriver, *models.Project) {
+func anchoredSheetTestDriver(t *testing.T, width, height int) (*UITestDriver, *models.Project) {
 	t.Helper()
 	app := newUITestApp()
-	tasks := make([]*models.Task, 0, count)
-	for i := range count {
+	tasks := make([]*models.Task, 0, anchoredSheetTaskCount)
+	for i := range anchoredSheetTaskCount {
 		tasks = append(tasks, &models.Task{
 			ID:            fmt.Sprintf("task-%02d", i),
 			Title:         fmt.Sprintf("Anchor task %02d", i),
@@ -79,7 +83,7 @@ func sheetBox(t *testing.T, frame, title string) (top, bottom, titleRow int) {
 }
 
 func TestTaskActionSheetHangsUnderACursorRowNearTheTop(t *testing.T) {
-	driver, _ := anchoredSheetTestDriver(t, 30, 100, 40)
+	driver, _ := anchoredSheetTestDriver(t, 100, 40)
 	seatAnchoredSheetCursor(t, driver, "Anchor task 01")
 	row, ok := driver.App().crossOutliner.CursorScreenRow()
 	if !ok {
@@ -98,7 +102,7 @@ func TestTaskActionSheetHangsUnderACursorRowNearTheTop(t *testing.T) {
 }
 
 func TestTaskActionSheetRisesAboveACursorRowNearTheBottom(t *testing.T) {
-	driver, _ := anchoredSheetTestDriver(t, 30, 100, 40)
+	driver, _ := anchoredSheetTestDriver(t, 100, 40)
 	seatAnchoredSheetCursor(t, driver, "Anchor task 29")
 	row, ok := driver.App().crossOutliner.CursorScreenRow()
 	if !ok {
@@ -120,7 +124,7 @@ func TestTaskActionSheetRisesAboveACursorRowNearTheBottom(t *testing.T) {
 }
 
 func TestTaskActionSheetStaysWholeInsideAShortFrame(t *testing.T) {
-	driver, _ := anchoredSheetTestDriver(t, 30, 80, 20)
+	driver, _ := anchoredSheetTestDriver(t, 80, 20)
 	seatAnchoredSheetCursor(t, driver, "Anchor task 04")
 	openAnchoredSheet(t, driver)
 
@@ -139,7 +143,7 @@ func TestTaskActionSheetStaysWholeInsideAShortFrame(t *testing.T) {
 }
 
 func TestBulkTaskActionSheetAnchorsToTheCursorRow(t *testing.T) {
-	driver, project := anchoredSheetTestDriver(t, 30, 100, 40)
+	driver, project := anchoredSheetTestDriver(t, 100, 40)
 	seatAnchoredSheetCursor(t, driver, "Anchor task 02")
 	out := driver.App().crossOutliner
 	out.MultiSelectMode = true
@@ -167,7 +171,7 @@ func TestBulkTaskActionSheetAnchorsToTheCursorRow(t *testing.T) {
 }
 
 func TestTaskActionSheetFallsBackToBottomWithoutAnOutlinerRow(t *testing.T) {
-	driver, _ := anchoredSheetTestDriver(t, 30, 100, 40)
+	driver, _ := anchoredSheetTestDriver(t, 100, 40)
 	seatAnchoredSheetCursor(t, driver, "Anchor task 01")
 	openAnchoredSheet(t, driver)
 	// The project sheet mounted in its place is not the one the row raised.
