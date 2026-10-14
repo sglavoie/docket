@@ -23,9 +23,9 @@ import (
 // the render path and the viewport measurement path derive the title budget from
 // one formula instead of two that can drift apart.
 type taskRowSegments struct {
-	cursorPrefix, checkbox, prefixStr, foldIndicator string
-	statusIcon, prioritySegment, pinMarker           string
-	indicators, relationMarker, matchCue             string
+	cursorPrefix, prefixStr, foldIndicator string
+	statusIcon, prioritySegment, pinMarker string
+	indicators, relationMarker, matchCue   string
 	// projectLabel names the task's project where no heading above it does: the
 	// ranked list, which draws no group headers. It is empty everywhere else.
 	projectLabel string
@@ -33,18 +33,19 @@ type taskRowSegments struct {
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
-		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
+		s.cursorPrefix, s.prefixStr, s.foldIndicator,
 		s.statusIcon, s.prioritySegment, s.projectLabel, s.pinMarker,
 		s.indicators, s.relationMarker, s.matchCue,
 	), 1)
 }
 
 // gutter is the leading structural region the cursor highlight owns: the left
-// margin, the multi-select box, the tree connectors and the fold arrow. It is a
+// margin, which is also where a selected row wears its mark, the tree connectors
+// and the fold arrow. It is a
 // concatenation only — the seam changes nothing about how wide each piece is, so
 // titleWidth stays the single title-budget authority.
 func (s taskRowSegments) gutter() string {
-	return s.cursorPrefix + s.checkbox + s.prefixStr + s.foldIndicator
+	return s.cursorPrefix + s.prefixStr + s.foldIndicator
 }
 
 // titlePrefix is every column drawn before the title: the structural gutter and
@@ -216,8 +217,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.Prefix, prefixBudget), foldIndicator, bg, m.treeConnectorStyle(row))
 
 	segments := taskRowSegments{
-		cursorPrefix:    paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix()),
-		checkbox:        m.renderTaskCheckbox(row, bg),
+		cursorPrefix:    m.renderTaskCursorColumn(row, paint),
 		prefixStr:       prefixStr,
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
@@ -497,14 +497,21 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 	return priorityBadge + " "
 }
 
-func (m *OutlinerModel) renderTaskCheckbox(row OutlinerRow, bg color.Color) string {
-	if !m.MultiSelectMode {
-		return ""
+// selectionMark is what a member of the visual selection wears in the row's
+// leading column. It is one column and takes the cursor column rather than one
+// of its own, so entering a selection moves no title; it is a glyph rather than
+// a color, so it reads reversed under the cursor's bar and in a profile carrying
+// no color at all.
+const selectionMark = "✓"
+
+// renderTaskCursorColumn draws the row's leading column: the selection mark on
+// a member of the visual selection, a blank on every other row, and the cursor's
+// bar over whichever it is.
+func (m *OutlinerModel) renderTaskCursorColumn(row OutlinerRow, paint cursorPaint) string {
+	if m.MultiSelectMode && m.isRowSelected(row) {
+		return paint.bar(theme.SelectionCheckStyle, selectionMark)
 	}
-	if m.isRowSelected(row) {
-		return gutterPiece(bg, theme.SelectionCheckStyle, "[x]") + gutterSpace(bg)
-	}
-	return gutterPiece(bg, theme.MutedStyle, "[ ]") + gutterSpace(bg)
+	return paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
 }
 
 func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
@@ -563,8 +570,8 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 	return m.LensTextQuery(), m.LensCaseSensitive()
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, projectLabel, pinMarker, indicators, relationMarker, matchCue string) int {
-	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
+func outlinerNonTitleWidth(cursorPrefix, prefixStr, foldIndicator, statusIcon, prioritySegment, projectLabel, pinMarker, indicators, relationMarker, matchCue string) int {
+	return lipgloss.Width(cursorPrefix) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(projectLabel) + lipgloss.Width(pinMarker) +
@@ -606,7 +613,7 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 	tint, tinted := taskRowTint(task)
 
 	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
-	// (long tree prefix + multi-select checkbox) can assemble wider than rowWidth.
+	// (a long tree prefix) can assemble wider than rowWidth.
 	// The row style below applies Width(rowWidth), which *wraps* an over-wide line
 	// to a second terminal row — but computeOutlinerViewport budgets one line per
 	// row, so the extra wrapped rows overflow terminal height. Clamp to rowWidth

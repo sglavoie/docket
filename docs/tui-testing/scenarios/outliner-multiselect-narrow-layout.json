@@ -9,7 +9,9 @@
     { "type": "key", "label": "select current task and enter multi-select mode", "key": "v" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "narrower band where rows wrap", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "[x]" },
+    { "type": "assert", "assert": "contains", "value": "✓" },
+    { "type": "assert", "assert": "not_contains", "value": "[x]" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ]" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "taller-but-narrow band", "width": 70, "height": 22 },
     { "type": "assert", "assert": "no_layout_issues" }

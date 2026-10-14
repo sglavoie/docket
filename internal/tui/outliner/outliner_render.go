@@ -133,8 +133,7 @@ func (p cursorPaint) bar(style lipgloss.Style, text string) string {
 // gutterBg names the background the gutter columns after the bar carry. On a row
 // wearing a band it is that band, because the band is the row and a gutter left
 // out of it would be a hole between the mark and the work. On a row wearing none
-// there is nothing at rest — the connectors, the fold arrow and the multi-select
-// box stay ordinary. A flash spends exactly that: it floods the whole gutter,
+// there is nothing at rest — the connectors and the fold arrow stay ordinary. A flash spends exactly that: it floods the whole gutter,
 // which reads as more of the same mark rather than a different one.
 func (p cursorPaint) gutterBg() color.Color {
 	if p.flash {
@@ -466,14 +465,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 ) string {
 	entry := m.Search.noteMatches[row.NoteRow]
 	paint := m.cursorPaintFor(selected)
-	bg := paint.gutterBg()
 	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
-	if m.MultiSelectMode {
-		// A note is not selectable, so the checkbox column is held open rather than
-		// drawn: an empty box beside the task boxes would advertise a membership
-		// every selection operation refuses.
-		gutter += gutterPiece(bg, lipgloss.NewStyle(), "   ") + gutterSpace(bg)
-	}
 
 	glyph := theme.MutedStyle.Render(noteRowGlyph)
 	if colLayout != nil && colLayout.HasStatus {

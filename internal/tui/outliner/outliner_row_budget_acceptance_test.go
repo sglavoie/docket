@@ -167,9 +167,9 @@ func TestDoubleWidthTitleFillsTheReclaimedBudgetByCells(t *testing.T) {
 }
 
 // TestSelectedNestedRowKeepsTheSameEssentials pins selection to the budget
-// rather than to the paint. A selected row spends a checkbox and its marker on
-// saying it is selected, so it has strictly fewer columns for everything else —
-// and the essentials are the ones that may not be what it gives up.
+// rather than to the paint. A selected row says so in the leading column every
+// row already has, so it spends no column on it: it assembles exactly as wide as
+// the unselected row and keeps every essential that row drew.
 func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	task := budgetAcceptanceTask("Confirm the vendor security questionnaire")
 	project := renderFixtureProject(t, "budget-project", "platform", "Platform", []*models.Task{task})
@@ -184,8 +184,13 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	if got := lipgloss.Width(plain); got != width {
 		t.Fatalf("selected row assembled %d columns: %q", got, plain)
 	}
-	if !strings.Contains(plain, "[x]") {
-		t.Fatalf("selected row did not draw its checkbox: %q", plain)
+	if !strings.HasPrefix(plain, selectionMark) {
+		t.Fatalf("selected row did not draw its mark: %q", plain)
+	}
+	outliner.MultiSelectMode = false
+	unselected := ansi.Strip(outliner.RenderOutlinerTaskRow(row, true, width, 0, nil))
+	if want := selectionMark + strings.TrimPrefix(unselected, " "); plain != want {
+		t.Fatalf("selecting the row moved what it draws:\nunselected %q\nselected   %q", unselected, plain)
 	}
 	for _, want := range []string{
 		ansi.Strip(chrome.RenderPriorityBadge(1)),
@@ -194,7 +199,7 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 		"Confirm",
 	} {
 		if !strings.Contains(plain, want) {
-			t.Fatalf("selected row traded an essential for its checkbox, missing %q: %q", want, plain)
+			t.Fatalf("selected row traded an essential for its mark, missing %q: %q", want, plain)
 		}
 	}
 }

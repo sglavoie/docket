@@ -627,17 +627,19 @@ before either the paint or `Enter` reads it.
 The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
 Every Outliner row renderer splits itself at one seam: a leading structural
 gutter and the content that follows it. For a task row the gutter is
-`taskRowSegments.gutter()` — cursor prefix, multi-select box, tree connectors,
-fold arrow — and the content is `taskRowSegments.content()`, the state badge
-onward; a checklist row's gutter stops before its `[ ]` box, and a section or
+`taskRowSegments.gutter()` — cursor prefix, tree connectors, fold arrow — and
+the content is `taskRowSegments.content()`, the state badge onward. A member of
+the visual selection wears `selectionMark`, a `✓`, in that cursor prefix rather
+than in a column of its own, so `outlinerNonTitleWidth` charges a selection
+nothing and no title moves on `v`; a checklist row's gutter stops before its `[ ]` box, and a section or
 project header's gutter is its fold indicator and the spaces around it.
 
 `cursorPaint` decides once per row how it wears the cursor, and every renderer
 asks it three questions. `bar` renders the row's first column, and on the cursor
 row it discards that column's own style for `CursorBarStyle` — inverse video, the
 loudest treatment one column can carry alone. Every column it can cover is
-structural: a blank margin, or a section header's fold arrow, which stays legible
-reversed. Inverse video is an attribute rather than a color, which is the point:
+structural: a blank margin, a selected task's mark, or a section header's fold
+arrow, each of which stays legible reversed. Inverse video is an attribute rather than a color, which is the point:
 `colorprofile.ASCII` drops every hue the row asked for and forwards SGR 7, so the
 bar is the one part of the mark a terminal without color still draws. `gutterBg`
 is what the columns after the bar carry: `rowBg` where the row has one, and

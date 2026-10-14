@@ -24,13 +24,15 @@
     { "type": "assert", "label": "the context row is the sole persistent summary, so the counts are stated once", "assert": "count_contains", "value": "Multi-select:", "count": 1 },
     { "type": "assert", "label": "and the status channel says nothing about a selection", "assert": "not_contains", "value": "Visual selection" },
     { "type": "assert", "label": "the window opens one row inside the Pinned lane, so its first row is that lane's pinned context", "assert": "contains", "value": "▾  Pinned › [ux-platform-delivery]  (1)" },
-    { "type": "assert", "label": "which costs the list its last row: the third selected task is below the window, and only the summary counts it", "assert": "count_contains", "value": "[x]", "count": 2 },
+    { "type": "assert", "label": "which costs the list its last row: the third selected task is below the window, and only the summary counts it", "assert": "count_contains", "value": "✓└──", "count": 2 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+A takes every visible task in the projection", "key": "ctrl+a" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 15 selected" },
     { "type": "assert", "assert": "count_contains", "value": "Multi-select:", "count": 1 },
-    { "type": "assert", "label": "selection checkboxes cost a column every row pays; the fifteenth is the row the pinned context took", "assert": "count_contains", "value": "[x]", "count": 14 },
+    { "type": "assert", "label": "every task row on screen wears the mark in its cursor column, fourteen over the two connector shapes; the fifteenth is the row the pinned context took", "assert": "count_contains", "value": "✓├──", "count": 5 },
+    { "type": "assert", "assert": "count_contains", "value": "✓└──", "count": 9 },
+    { "type": "assert", "label": "and the mark costs no column, so no checkbox is drawn", "assert": "not_contains", "value": "[x]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Esc unwinds the selection before anything else", "key": "esc" },

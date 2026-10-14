@@ -319,44 +319,81 @@ func TestCursorBarSurvivesARowWithoutColor(t *testing.T) {
 
 // TestCursorRowStaysTellableFromAVisualSelection keeps the two axes apart. A row
 // can be the one you are on, a member of an explicit selection, both, or
-// neither, and the band and the checkbox are what say which: a selected row the
-// cursor left wears its `[x]` and no band, and the row the cursor is on wears the
-// band whether or not it was selected.
+// neither, and the band and the mark are what say which: a selected row the
+// cursor left wears its mark and no band, and the row the cursor is on wears the
+// band whether or not it was selected. The mark takes the leading column and
+// none of its own, so every one of those rows starts its title where an
+// unselected row does.
 func TestCursorRowStaysTellableFromAVisualSelection(t *testing.T) {
 	selected := &models.Task{ID: "t1", ShortID: 1, Title: "Selected", WorkflowState: models.StateBacklog}
 	elsewhere := &models.Task{ID: "t2", ShortID: 2, Title: "Elsewhere", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, selected, elsewhere)
 	selectedRow := outliner.OutlinerRow{Task: selected, ProjectID: project.ID}
 	cursorRow := outliner.OutlinerRow{Task: elsewhere, ProjectID: project.ID}
+	before := ansi.Strip(outlinerView.RenderOutlinerTaskRow(selectedRow, false, 80, 0, nil))
 	outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(selectedRow)})
 
+	const mark = "✓"
 	band := backgroundParams(t, theme.ColorCursorRowBg)
 	left := outlinerView.RenderOutlinerTaskRow(selectedRow, false, 80, 0, nil)
 	if strings.Contains(left, band) {
 		t.Fatalf("a selected row the cursor left wears the band:\n%q", left)
 	}
-	if !strings.Contains(ansi.Strip(left), "[x]") {
-		t.Fatalf("a selected row the cursor left lost its checkbox:\n%q", ansi.Strip(left))
+	if !strings.HasPrefix(ansi.Strip(left), mark) {
+		t.Fatalf("a selected row the cursor left lost its mark:\n%q", ansi.Strip(left))
+	}
+	if strings.Contains(ansi.Strip(left), "[x]") {
+		t.Fatalf("a selected row still draws a checkbox:\n%q", ansi.Strip(left))
+	}
+	if got, want := ansi.Strip(left), mark+strings.TrimPrefix(before, " "); got != want {
+		t.Fatalf("selecting a row moved what it draws:\nbefore %q\nafter  %q", before, got)
 	}
 
 	under := outlinerView.RenderOutlinerTaskRow(cursorRow, true, 80, 0, nil)
 	if !strings.Contains(under, band) {
 		t.Fatalf("the cursor row wears no band while a selection stands:\n%q", under)
 	}
-	if strings.Contains(ansi.Strip(under), "[x]") {
+	if strings.Contains(ansi.Strip(under), mark) {
 		t.Fatalf("an unselected cursor row claims membership in the selection:\n%q", ansi.Strip(under))
 	}
 
 	both := outlinerView.RenderOutlinerTaskRow(selectedRow, true, 80, 0, nil)
-	if !strings.Contains(both, band) || !strings.Contains(ansi.Strip(both), "[x]") {
+	if !strings.Contains(both, band) || !strings.HasPrefix(both, theme.CursorBarStyle.Render(mark)) {
 		t.Fatalf("a selected row under the cursor states only one of the two:\n%q", both)
+	}
+	if got := cursorMarks(both); got != 1 {
+		t.Fatalf("a selected cursor row inverted %d columns, want 1:\n%q", got, both)
+	}
+}
+
+// TestSelectionMarkReadsWithoutColor is why the mark is a glyph. The cursor's
+// bar replaces the mark's own style, and a profile carrying no color drops what
+// is left of it, so membership has to survive as text in both: the mark on a
+// selected row, and a blank on every row that is not one.
+func TestSelectionMarkReadsWithoutColor(t *testing.T) {
+	selected := &models.Task{ID: "t1", ShortID: 1, Title: "Selected", WorkflowState: models.StateBacklog}
+	elsewhere := &models.Task{ID: "t2", ShortID: 2, Title: "Elsewhere", WorkflowState: models.StateBacklog}
+	outlinerView, project := cursorHighlightOutliner(t, selected, elsewhere)
+	selectedRow := outliner.OutlinerRow{Task: selected, ProjectID: project.ID}
+	otherRow := outliner.OutlinerRow{Task: elsewhere, ProjectID: project.ID}
+	outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(selectedRow)})
+
+	for _, cursor := range []bool{false, true} {
+		member := ansi.Strip(outlinerView.RenderOutlinerTaskRow(selectedRow, cursor, 80, 0, nil))
+		if !strings.HasPrefix(member, "✓") {
+			t.Fatalf("cursor=%v: a selected row says so in color alone:\n%q", cursor, member)
+		}
+		other := ansi.Strip(outlinerView.RenderOutlinerTaskRow(otherRow, cursor, 80, 0, nil))
+		if !strings.HasPrefix(other, " ") || strings.Contains(other, "✓") {
+			t.Fatalf("cursor=%v: an unselected row draws something in the mark's column:\n%q", cursor, other)
+		}
 	}
 }
 
 // TestCursorRowKeepsItsGutterForegroundsOnTheBand is the other half of the
-// shape: the connectors, fold arrow and multi-select box past column 0 keep the
-// foregrounds they wear on every other row, and the band is the only thing the
-// cursor adds to them. Only the bar replaces what it covers.
+// shape: the connectors and fold arrow past column 0 keep the foregrounds they
+// wear on every other row, and the band is the only thing the cursor adds to
+// them. Only the bar replaces what it covers, the selection mark included.
 func TestCursorRowKeepsItsGutterForegroundsOnTheBand(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, task)
@@ -369,16 +406,11 @@ func TestCursorRowKeepsItsGutterForegroundsOnTheBand(t *testing.T) {
 	banded := func(style lipgloss.Style) lipgloss.Style {
 		return style.Background(theme.ColorCursorRowBg)
 	}
-	for name, want := range map[string]string{
-		"multi-select box": banded(theme.SelectionCheckStyle).Render("[x]"),
-		"tree connectors":  banded(theme.MutedStyle).Render(prefix),
-	} {
-		if !strings.Contains(line, want) {
-			t.Fatalf("cursor row repainted its %s:\n%q", name, line)
-		}
+	if want := banded(theme.MutedStyle).Render(prefix); !strings.Contains(line, want) {
+		t.Fatalf("cursor row repainted its tree connectors:\n%q", line)
 	}
-	if !strings.Contains(ansi.Strip(line), "[x]") {
-		t.Fatalf("selected cursor row lost its [x] entirely:\n%q", ansi.Strip(line))
+	if !strings.HasPrefix(line, theme.CursorBarStyle.Render("✓")) {
+		t.Fatalf("selected cursor row does not open with its mark under the bar:\n%q", line)
 	}
 }
 

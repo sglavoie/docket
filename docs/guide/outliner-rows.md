@@ -374,6 +374,12 @@ only, and `V` or `Esc` freezes it. `v` during a live range freezes it and drops
 the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
 selection survives at zero members until `Esc` leaves the mode.
 
+A selected task wears a `✓` in its leftmost column, the one the cursor bar
+already uses, and every other row leaves that column blank. The mark takes no
+column of its own, so no title moves when a selection starts or ends. It is a
+glyph rather than a color: under the cursor it is drawn reversed, and a terminal
+without color still shows it.
+
 How many tasks you are holding is stated in exactly one place: the second header
 row, as `Multi-select: 5 selected`, with `(2 hidden)` after it whenever the view
 is not showing all of them. Nothing repeats it lower down, which is what keeps

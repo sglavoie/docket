@@ -342,13 +342,14 @@ moves the cursor.
 The Outliner marks its cursor row in the margins rather than over the row. One
 bright column at the far left says where the cursor is, and the empty columns
 past the row's text carry a dim recess saying how far the row reaches. Nothing
-between them changes: the multi-select box, the tree connectors and the fold
+between them changes: the tree connectors and the fold
 arrow keep the colors they wear on every other row, and so do the state badge,
 the priority badge, the due tier, the project badge and the
 search-match highlight — all of which read the same under the cursor as beside
 it, leaving an overdue row visibly overdue while you stand on it. The bar is the
 row's leftmost column on every row type: a blank
-margin, except on a section header, where it reverses the fold arrow. A cursor
+margin, except on a section header, where it reverses the fold arrow, and on a
+task in a visual selection, where it reverses that task's `✓`. A cursor
 flash floods the whole gutter rather than changing the bar's color, so a pulse
 reads as more of the same mark. Every other list — the pickers, the tag and
 parent selectors, notes, the project hub — still inverts the whole row, because a
