@@ -35,23 +35,29 @@ func TruncateAndPad(line string, maxWidth int) string {
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
 }
 
-// overlayTitleSubjectFloor is the fewest columns a subject is worth drawing in.
-// Under it the subject is an ellipsis and a letter, which names nothing.
-const overlayTitleSubjectFloor = 4
+// overlayTitlePartFloor is the fewest columns a subject or a shortened title is
+// worth drawing in. Under it the part is an ellipsis and a letter, which names
+// nothing.
+const overlayTitlePartFloor = 4
 
 // FitOverlayTitle composes an overlay's one-line title, `title: subject suffix`,
-// inside width text columns. The subject is the one part that gives way: the
-// title names the act and the suffix carries a value no row repeats, so both
-// are kept whole and the subject is fitted to what they leave. A width that
-// leaves the subject nothing worth reading drops it, and only then is the
-// remainder clipped, so the title never wraps onto a second row.
+// inside width text columns. The suffix carries a value no row repeats, so it
+// is the last part to lose a column: the subject is fitted to what the title
+// and the suffix leave, a width that leaves it nothing worth reading drops it,
+// and a width too narrow for the two that remain shortens the title, which the
+// overlay's own rows still explain. Only a width the suffix alone overruns
+// clips it, so the title never wraps onto a second row.
 func FitOverlayTitle(title, subject, suffix string, width int) string {
 	const separator = ": "
+	suffixWidth := lipgloss.Width(suffix)
 	if subject != "" {
-		room := width - lipgloss.Width(title) - lipgloss.Width(separator) - lipgloss.Width(suffix)
-		if room >= min(overlayTitleSubjectFloor, lipgloss.Width(subject)) {
+		room := width - lipgloss.Width(title) - lipgloss.Width(separator) - suffixWidth
+		if room >= min(overlayTitlePartFloor, lipgloss.Width(subject)) {
 			return title + separator + textfit.TruncateToVisualWidth(subject, room) + suffix
 		}
+	}
+	if room := width - suffixWidth; suffix != "" && room >= min(overlayTitlePartFloor, lipgloss.Width(title)) {
+		return textfit.TruncateToVisualWidth(title, room) + suffix
 	}
 	return textfit.TruncateToVisualWidth(title+suffix, width)
 }

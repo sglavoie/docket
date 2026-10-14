@@ -114,10 +114,12 @@ the row `peekDockFooterWrapRows` already holds open.
 
 `chrome.FitOverlayTitle` is the one-row title of a picker or an action sheet:
 `title: subject suffix` inside the box's text columns. The subject is the part
-that gives way, fitted to what the other two leave and dropped under four
-columns, so a title never wraps. The date picker's `· due …` is the suffix,
-handed over through `SetTitleSuffix` rather than appended to the subtitle, which
-is what keeps the deadline being replaced whole at every width.
+that gives way first, fitted to what the other two leave and dropped under four
+columns; a row still too narrow shortens the title, and the suffix is clipped
+only where it alone overruns the row, so a title never wraps. The date picker's
+`· due …` is the suffix, handed over through `SetTitleSuffix` rather than
+appended to the subtitle, which is what keeps the deadline being replaced whole,
+its year and clock included, at the minimum width.
 
 #### One active instruction set
 

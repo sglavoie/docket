@@ -20,6 +20,16 @@
     {"type": "assert", "assert": "contains", "value": "│ Set Due, Defer, or Check-In: 国際化 🚀 café résumé release check · due Mon Jan 7 2030  │"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "label": "leaving writes nothing", "key": "esc"},
-    {"type": "assert", "assert": "contains", "value": "⊡ Jan 7 '30"}
+    {"type": "assert", "assert": "contains", "value": "⊡ Jan 7 '30"},
+    {"type": "resize", "label": "back at the minimum, a timed deadline is wider than the row leaves beside the title", "width": 60, "height": 20},
+    {"type": "key", "key": "e"},
+    {"type": "text", "text": " @2030-01-17 09:30"},
+    {"type": "key", "key": "tab"},
+    {"type": "key", "key": "enter"},
+    {"type": "wait"},
+    {"type": "key", "key": "@"},
+    {"type": "assert", "label": "so the act's label gives way and the clock stays whole", "assert": "contains", "value": "│ Set Due, Defer, or Ch… · due Thu Jan 17 2030 09:30 │"},
+    {"type": "assert", "assert": "count_contains", "value": "· due Thu Jan 17 2030 09:30", "count": 1},
+    {"type": "assert", "assert": "no_layout_issues"}
   ]
 }
