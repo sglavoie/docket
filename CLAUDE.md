@@ -194,12 +194,15 @@ dispatch order — shell confirmation, shell-mounted modal, pending chord, then
 the presentation — and `SuppressesShellGuidance` is its closed table. The last
 rung asks `HostGuidanceStandsBeneath`, which is whether a host is still drawn
 under this presentation and not whether it drew its own acts, so a fullscreen
-surface keeps the footer holding its own breadcrumb and `? help`;
-`route.SelfGuidedPresentation` overrides it per frame where one view owns two
-presentations. A suppressed occupant is blanked whole at its own height, so the
-close returns the host's rows unchanged; an unclassified presentation publishes,
-feedback is never displaced, and a view-local modal answers through its own
-surface.
+surface keeps the footer and fills it: Comments, Attachments, the project
+creator and editor, and both composer presentations publish through
+`route.ContextualGuidanceProvider` and draw no footer, leaving one divider and
+the hints on the last row. That block replaces the breadcrumb, so the exit and
+`? help` are the surface's own entries. `route.SelfGuidedPresentation`
+overrides the rung per frame for the expanded form's inline overlay alone. A
+suppressed occupant is blanked whole at its own height, so the close returns
+the host's rows unchanged; an unclassified presentation publishes, feedback is
+never displaced, and a view-local modal answers through its own surface.
 
 Feedback and controls are two blocks of one footer, never alternatives.
 `renderFooterChrome` composes divider, feedback, controls in that order, so the

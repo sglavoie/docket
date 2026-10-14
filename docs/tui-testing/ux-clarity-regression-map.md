@@ -229,24 +229,28 @@ contract in the same change.
   resolution, with `suppressGuidanceRows` blanking the occupant at its own
   height and `surfaceFooterContent` holding the branches it takes whole.
   `route.SelfGuidedPresentation` in `internal/tui/route/view.go` is the
-  per-frame override the task composer answers, since one `PresentationID` names
-  its compact panel and its expanded form alike.
+  per-frame override the task composer answers for the one frame the static
+  policy cannot: an inline overlay open over its expanded form. Both of its
+  presentations otherwise publish through `ContextualGuidance`.
   `internal/tui/guidance_ownership_test.go` enumerates the covered surfaces —
   every arm of `shellModalMounted`, the three shell confirmations, the chord's
-  place in the order, the expanded composer, and the Outliner's view-local menu —
+  place in the order, the expanded form's overlay, and the Outliner's view-local menu —
   and each case asserts the same three properties, because they fail
   differently: the text is gone, the height is unchanged, and putting the
   interaction down restores the frame byte for byte.
 - The boundary the last rung stands on is `HostGuidanceStandsBeneath`, which asks
   whether a host is still drawn under this presentation rather than whether this
   presentation drew its own acts. The two read alike and only one is right: the
-  Comments panel, the project editor, Notes, and the Hub all print their controls
-  inside their content, but each replaced the host outright, so the footer
-  beneath holds that same surface's breadcrumb and its `Esc back · ? help` — the
-  one statement of either, not a duplicate. `TestExampleScenariosPass` states
-  both halves already: `task-comments-help.json` requires `? help` under a panel
-  that draws its own row, and `project-editor-minimum-layout.json` requires the
-  breadcrumb, while `tags-picker-direct.json`, `project-tags-picker.json`, and
+  Comments and Attachments panels, the project creator and editor, and the
+  expanded form each replaced the host outright, so the footer beneath is their
+  own, and they fill it through `ContextualGuidance` rather than drawing a second
+  one above a breadcrumb row. `TestExampleScenariosPass` states both halves:
+  `task-comments-minimum-layout.json` and `task-attachments-minimum-layout.json`
+  require `Esc close · ? help` beside `Space actions` at the floor,
+  `project-editor-minimum-layout.json` and `project-creator-minimum-layout.json`
+  require the surface's keys and no breadcrumb, and
+  `breadcrumb-names-places-whole.json` keeps the breadcrumb on the field text
+  editor, which still draws its own acts, while `tags-picker-direct.json`, `project-tags-picker.json`, and
   `semantic-task-tags-split.json` now require the host's ranks to be absent under
   a picker and back after its close.
 - The regression to watch for is not a footer that speaks under an overlay but

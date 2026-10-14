@@ -128,20 +128,39 @@ Whether the footer is a presentation's voice at all is
 not whether this presentation drew its own acts but whether anyone else is still
 under it. A transient presentation is composited over a host that is still drawn
 and still filling that footer, so the ranks there describe a grammar no press
-reaches. A fullscreen presentation replaced that host: even where it draws its
-acts inside its content, as the Comments panel, the project editor, Notes, and
-the Hub all do, the footer beneath it holds that same surface's breadcrumb and
-its `Esc back · ? help` — the second half of one instruction set and the only
-statement of either on the screen. That is why the predicate reads `kind` rather
-than `guidance`, and why it is the exact complement of
-`WorkspacePulseEligible`: one classification, asked twice.
+reaches. A fullscreen presentation replaced that host, so the footer beneath it
+is its own to fill. That is why the predicate reads `kind` rather than
+`guidance`, and why it is the exact complement of `WorkspacePulseEligible`: one
+classification, asked twice.
+
+What fills it is the surface's own guidance. The Comments and Attachments
+panels, the project creator and editor, and both of the task composer's
+presentations implement `route.ContextualGuidanceProvider` and render no
+guidance in `View`: `surfaceFooterContent` draws the spec they return under the
+shell's one divider, so the frame carries a single divider and the hints sit on
+the terminal's last row. The spec replaces the breadcrumb row rather than
+standing above it, which has two consequences a surface answers for itself. The
+exit and `? help` the breadcrumb used to print are now entries of the surface's
+own spec — the Comments and Attachments keymaps rank `Esc close` and `? help`
+as required, and publish at `taskToolGuidanceRows`, so the footer wraps at the
+floor rather than shed the `Space` menu that is the only route to Delete. And a
+footer that wraps is taller than the two rows the view was sized against, so
+each of these views reads `ShellFrameMetrics.ExcessRows` — through
+`BaseView.FrameHeight` on the two panels, and through the metrics the composer
+forwards to its form — instead of measuring a guidance block it no longer
+draws. The policy table names these presentations `presentationGuidanceShell`.
+A surface that still draws its acts inside its content, as the field text
+editor does, returns no spec, and the footer under it holds that surface's
+breadcrumb and its `Esc back · ? help`.
 
 `route.SelfGuidedPresentation` is the per-frame override for the case a
-`PresentationID` cannot answer, where one view owns two presentations: the task
-composer's compact panel publishes through the shell, and its expanded form
-draws its own footer over the whole content area and answers `true`. An
-unclassified presentation publishes, so a footer that may be the only
-instructions on screen is never emptied on a guess.
+`PresentationID` cannot answer, where a sub-state of one view owns every key and
+draws its instructions inside its own frame. The expanded form's inline overlay
+is that case and the only one: it is the whole view, so the composer answers
+`true` while it is open and the form's footer is blanked at its own height
+rather than naming routes no press reaches. An unclassified presentation
+publishes, so a footer that may be the only instructions on screen is never
+emptied on a guess.
 
 Suppression is `suppressGuidanceRows`: the occupant is replaced by blank rows of
 its own height, each filled to the footer's own width. The frame is laid out

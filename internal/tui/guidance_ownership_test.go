@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
@@ -239,19 +240,22 @@ func TestPendingChordOutranksTheSurfaceButNotAnOverlay(t *testing.T) {
 	}
 }
 
-// TestExpandedComposerSilencesTheShellFooter is the SelfGuidedPresentation case.
-// One PresentationID names the composer and the composer owns two presentations:
-// the compact panel the shell speaks for, and the expanded form that draws its
-// own footer over the whole content area. The static policy cannot tell them
-// apart, which is why the view answers per frame.
-func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
+// TestExpandedComposerPublishesThroughTheShellFooter holds the composer's two
+// presentations to one footer. The compact panel and the expanded form both hand
+// the shell their keys through ContextualGuidance and draw none of their own, so
+// either frame carries one divider with its hints on the last row.
+//
+// SelfGuidedPresentation is left the one frame the static policy cannot answer:
+// an inline overlay open over the form is the whole view and carries its keys in
+// its own frame, so the form's footer is blanked at its own height under it.
+func TestExpandedComposerPublishesThroughTheShellFooter(t *testing.T) {
 	composer := &taskform.TaskComposerModel{}
 	if composer.PublishesOwnGuidance() {
 		t.Fatal("the compact capture panel claims to draw its own guidance; the shell publishes it")
 	}
 	composer.Mode = taskform.ComposerExpanded
-	if !composer.PublishesOwnGuidance() {
-		t.Fatal("the expanded form does not claim its own guidance, so the shell would draw a second set under it")
+	if composer.PublishesOwnGuidance() {
+		t.Fatal("the expanded form claims its own guidance; the shell publishes it")
 	}
 
 	// Reached through the real route rather than by assigning the field, since
@@ -273,19 +277,54 @@ func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
 	}
 
 	uxClarityPress(t, driver, uxClarityKeys("ctrl+f")...)
-	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerPresentation {
-		t.Fatalf("the expanded form resolves to owner %d rather than presentation", owner)
+	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerShell {
+		t.Fatalf("the expanded form resolves to owner %d rather than shell", owner)
 	}
-	// The divider is chrome and stays; what must go is every word under it, so
-	// the assertion is that the bar carries no label text at all rather than that
-	// it is empty.
 	expanded := ansi.Strip(app.renderStatusBar())
-	if strings.ContainsAny(expanded, "abcdefghijklmnopqrstuvwxyz") {
-		t.Fatalf("the shell footer speaks under the expanded form, which draws its own:\n%s", expanded)
+	for _, entry := range []string{"Ctrl+S save", "Esc cancel", "Tab next"} {
+		if !strings.Contains(expanded, entry) {
+			t.Fatalf("the shell footer under the expanded form does not carry %q:\n%s", entry, expanded)
+		}
 	}
-	if lipgloss.Height(expanded) < lipgloss.Height(compact)-1 {
-		t.Fatalf("the suppressed footer gave up more than the guidance rows: %d against %d",
-			lipgloss.Height(expanded), lipgloss.Height(compact))
+	if strings.Contains(expanded, "Enter create") {
+		t.Fatalf("the shell footer still speaks for the compact panel:\n%s", expanded)
+	}
+	assertOneFooter(t, driver, "the expanded form", "Ctrl+S save")
+
+	// Enter on the focused Priority row opens its picker, which is the whole
+	// view: the form's footer would name routes no press reaches under it.
+	uxClarityPress(t, driver, uxClarityKeys("tab", "tab", "enter")...)
+	composerView, ok := app.activeView().(*taskform.TaskComposerModel)
+	if !ok || !composerView.PublishesOwnGuidance() {
+		t.Fatalf("Enter on the Priority row opened no inline overlay, so the state under test was not reached:\n%s",
+			ansi.Strip(app.View().Content))
+	}
+	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerPresentation {
+		t.Fatalf("an open form overlay resolves to owner %d rather than presentation", owner)
+	}
+	covered := ansi.Strip(app.renderStatusBar())
+	if strings.Contains(covered, "Ctrl+S save") {
+		t.Fatalf("the form's footer speaks under an overlay that owns every key:\n%s", covered)
+	}
+	if lipgloss.Height(covered) != lipgloss.Height(expanded) {
+		t.Fatalf("the suppressed footer changed height: %d against %d",
+			lipgloss.Height(covered), lipgloss.Height(expanded))
+	}
+}
+
+// assertOneFooter holds a composed frame to one footer: the named entry appears
+// once, on the terminal's last row or the row above a wrapped one, and nothing
+// the surface drew above the shell's divider repeats it.
+func assertOneFooter(t *testing.T, driver *UITestDriver, surface, entry string) {
+	t.Helper()
+	frame := strings.TrimRight(ansi.Strip(driver.App().View().Content), "\n")
+	if got := strings.Count(frame, entry); got != 1 {
+		t.Fatalf("%s draws %q %d times; one footer says it once:\n%s", surface, entry, got, frame)
+	}
+	rows := strings.Split(frame, "\n")
+	tail := strings.Join(rows[max(len(rows)-chrome.MaxGuidanceRows, 0):], "\n")
+	if !strings.Contains(tail, entry) {
+		t.Fatalf("%s does not keep %q on the frame's last rows:\n%s", surface, entry, frame)
 	}
 }
 
@@ -295,10 +334,10 @@ func TestExpandedComposerSilencesTheShellFooter(t *testing.T) {
 //
 // A transient presentation is composited over a host that is still drawn and
 // still filling the footer, so those ranks belong to a layer no press reaches. A
-// fullscreen surface replaced that host: the footer beneath it holds its own
-// breadcrumb and its own `Esc back · ? help`, the one statement of either on the
-// screen, and blanking it would take away the only advertisement of a key the
-// surface answers rather than a duplicate of one.
+// fullscreen surface replaced that host: the footer beneath it is its own, and
+// one that publishes ContextualGuidance fills it with its own keys — `Esc close`
+// and `? help` among them — as the frame's one divider and one set of hints,
+// rather than drawing a footer of its own above a breadcrumb row.
 func TestAFullscreenSurfaceKeepsTheFooterItReplacedTheHostFor(t *testing.T) {
 	app := guidanceOwnershipApp(t)
 	if owner, _ := app.activeGuidance(); owner != route.GuidanceOwnerShell {
@@ -321,11 +360,16 @@ func TestAFullscreenSurfaceKeepsTheFooterItReplacedTheHostFor(t *testing.T) {
 		t.Fatalf("`;` reached %s rather than the Comments panel", got)
 	}
 	if !live.activePresentationPublishesToShell() {
-		t.Fatal("the Comments panel is fullscreen, so the shell still owes it a breadcrumb row")
+		t.Fatal("the Comments panel is fullscreen, so the footer is its own to fill")
 	}
 	if owner, _ := live.activeGuidance(); owner != route.GuidanceOwnerShell {
 		t.Fatalf("the Comments panel resolves to owner %d rather than shell", owner)
 	}
+	if _, ok := live.activeView().(route.ContextualGuidanceProvider); !ok {
+		t.Fatal("the Comments panel publishes no guidance, so the footer would fall back to a breadcrumb")
+	}
+	assertOneFooter(t, driver, "the Comments panel", "? help")
+	assertOneFooter(t, driver, "the Comments panel", "Esc close")
 	frame := ansi.Strip(live.renderStatusBar())
 	if !strings.Contains(frame, "? help") {
 		t.Fatalf("the panel's `?` is advertised nowhere: the footer under it says\n%s", frame)

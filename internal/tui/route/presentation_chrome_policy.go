@@ -14,7 +14,10 @@ const (
 )
 
 // presentationGuidanceOwner identifies the one layer responsible for guidance
-// whenever a production presentation is reachable.
+// whenever a production presentation is reachable. A shell-owned presentation
+// hands its keys to the shell footer through ContextualGuidanceProvider and
+// draws no footer of its own; a surface-owned one still draws its acts inside
+// its content and leaves the shell footer its breadcrumb.
 type presentationGuidanceOwner uint8
 
 const (
@@ -37,10 +40,10 @@ func (p PresentationChromePolicy) WorkspacePulseEligible() bool {
 // belongs to a different layer. A transient presentation is composited over a
 // host that is still drawn and still filling that footer, so the ranks there
 // describe a grammar no press reaches while the overlay stands. A fullscreen
-// presentation replaced that host outright, so the footer beneath it is its own
-// breadcrumb and its own help hint — the second half of one instruction set
-// rather than a competing one — whether it publishes guidance through the shell
-// or draws its acts inside its content.
+// presentation replaced that host outright, so the footer beneath it is its own:
+// the guidance it publishes through the shell, which is then the frame's one
+// divider and one set of hints, or — for a surface that still draws its acts
+// inside its content — its own breadcrumb and help hint.
 func (p PresentationChromePolicy) HostGuidanceStandsBeneath() bool {
 	return p.kind == presentationChromeTransient
 }
@@ -102,13 +105,9 @@ func (p PresentationChromePolicy) valid() bool {
 func ChromePolicyForPresentation(view presentation.PresentationID) (PresentationChromePolicy, bool) {
 	var policy PresentationChromePolicy
 	switch view {
-	case presentation.ViewProjectCreator,
-		presentation.ViewProjectEditor,
-		presentation.ViewHelp,
+	case presentation.ViewHelp,
 		presentation.ViewLastMessage,
-		presentation.ViewTaskComments,
 		presentation.ViewTextEditor,
-		presentation.ViewTaskAttachments,
 		presentation.ViewNotes,
 		presentation.ViewGlobalNotes,
 		presentation.ViewProjectHub:
@@ -117,7 +116,11 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 			guidance: presentationGuidanceSurface,
 		}
 	case presentation.ViewCrossProjectOutliner,
-		presentation.ViewTaskComposer:
+		presentation.ViewTaskComposer,
+		presentation.ViewProjectCreator,
+		presentation.ViewProjectEditor,
+		presentation.ViewTaskComments,
+		presentation.ViewTaskAttachments:
 		policy = PresentationChromePolicy{
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceShell,

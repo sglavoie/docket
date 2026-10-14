@@ -237,17 +237,21 @@ func (m *TaskComposerModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	return m.DiscardConfirmState.GetConfirmDialog()
 }
 
-// PublishesOwnGuidance answers for the composer's two presentations. The
-// expanded form draws its own footer over the whole content area, so the shell
-// footer underneath it would be a second instruction set; the compact panel
-// publishes through ContextualGuidance and the shell speaks for it.
+// PublishesOwnGuidance answers route.SelfGuidedPresentation for the one frame
+// the composer speaks for itself: an inline overlay open over the expanded form.
+// That overlay is the whole view and draws its instructions in its own frame, so
+// the form's footer would name routes no press reaches. Both of the composer's
+// presentations otherwise publish through ContextualGuidance.
 func (m *TaskComposerModel) PublishesOwnGuidance() bool {
-	return m.Mode == ComposerExpanded
+	return m.Mode == ComposerExpanded && m.Expanded != nil && m.Expanded.overlayOwnsGuidance()
 }
 
 func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.Mode == ComposerExpanded {
-		return chrome.GuidanceSpec{}, false
+		if m.Expanded == nil {
+			return chrome.GuidanceSpec{}, false
+		}
+		return m.Expanded.guidanceSpec(), true
 	}
 	if m.matchingTaskPreview != nil {
 		spec := chrome.RequiredExitGuidanceSpec("↑/↓ scroll", "Esc return to capture", "y copy reference", "PgUp/PgDn page", "Ctrl+O return to capture")

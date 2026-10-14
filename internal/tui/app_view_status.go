@@ -344,15 +344,17 @@ func (m *AppModel) shellModalMounted() bool {
 
 // activePresentationPublishesToShell asks whether the footer is still this
 // presentation's voice. A view answering SelfGuidedPresentation decides per
-// frame, since a PresentationID names a view and one view may own two
-// presentations and only one of them may have drawn its acts inside its own
-// content; otherwise the static chrome policy answers, and it answers by whether
-// a host is still standing under this presentation holding that footer.
+// frame, since a PresentationID names a view and one view may hold a sub-state
+// that owns every key and draws its instructions in its own frame, as an inline
+// overlay over the expanded form does; otherwise the static chrome policy
+// answers, and it answers by whether a host is still standing under this
+// presentation holding that footer.
 //
-// A fullscreen surface keeps it even though its acts are drawn in its content:
-// the footer then holds that same surface's breadcrumb and its `Esc back · ?
-// help`, which is the one statement of either and names keys the surface itself
-// answers.
+// A fullscreen surface keeps it. One that publishes ContextualGuidance has
+// handed the footer its keys and draws none of its own, so the footer is the
+// frame's one divider and one set of hints; one that still draws its acts in its
+// content leaves the footer that same surface's breadcrumb and its `Esc back · ?
+// help`.
 //
 // An unclassified presentation publishes, deliberately: a footer that may be the
 // only instructions on screen is never blanked on a guess.

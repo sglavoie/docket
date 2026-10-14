@@ -37,14 +37,16 @@ type ContextualGuidanceProvider interface {
 }
 
 // SelfGuidedPresentation is the other half of the guidance-provider contract: a
-// view says here that it has already drawn its instructions inside its own
-// content, so the shell footer must not publish a second set underneath it.
+// view says here that, for this frame, it has drawn its instructions inside its
+// own content, so the shell footer must not publish a second set underneath it.
 //
-// It exists because a PresentationID names a view, not a presentation, and one
-// view may own two. The task composer is that case — a compact panel the shell
-// speaks for, and an expanded form that draws its own footer — so the static
-// policy cannot answer for it and the view answers per frame instead. A view
-// that never implements this is answered by ChromePolicyForPresentation alone.
+// It exists because a PresentationID names a view, not a frame, and one view may
+// hold a sub-state that owns every key. The task composer is that case: its
+// compact panel and its expanded form both publish through
+// ContextualGuidanceProvider, but an inline overlay open over the form is the
+// whole view and carries its own keys in its own frame, so the static policy
+// cannot answer for it and the view answers per frame instead. A view that never
+// implements this is answered by ChromePolicyForPresentation alone.
 type SelfGuidedPresentation interface {
 	PublishesOwnGuidance() bool
 }

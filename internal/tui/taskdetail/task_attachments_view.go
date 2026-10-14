@@ -35,10 +35,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	}
 
 	m.renderMessages(&b)
-	spec, ok := m.guidanceSpec()
-	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
-	m.renderAttachmentsList(&b, taskToolAvailableRows(b.String(), footer, m.Height()))
-	b.WriteString(footer)
+	m.renderAttachmentsList(&b, taskToolAvailableRows(b.String(), m.FrameHeight()))
 
 	return tea.NewView(b.String())
 }
@@ -49,9 +46,7 @@ func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(theme.MutedStyle.Render("Enter a file path or URL"))
 	b.WriteString("\n\n")
 	b.WriteString(m.TextInput.View())
-	b.WriteString("\n\n")
-	spec, ok := m.guidanceSpec()
-	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
+	b.WriteString("\n")
 	return tea.NewView(b.String())
 }
 

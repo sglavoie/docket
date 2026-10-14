@@ -1,10 +1,6 @@
 package taskdetail
 
 import (
-	"image/color"
-
-	"charm.land/lipgloss/v2"
-
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
@@ -16,45 +12,52 @@ func discardConfirmAction(action string) bool {
 	return action == "discard-add" || action == "discard-edit"
 }
 
-func taskToolGuidanceSpec(confirm *chrome.ConfirmDialog, activeInteraction bool, km *keymap.KeyMap) (chrome.GuidanceSpec, bool) {
+// taskToolGuidanceRows is the budget both panels publish at in every sub-state.
+// The footer is the shell's one block now, so the row the panel's own divider
+// used to cost is the row a narrow terminal wraps onto: at the floor the browse
+// keys keep the `Space` menu, which is the only route to Delete, beside the exit
+// and `? help`. A width that fits them on one row still draws one.
+const taskToolGuidanceRows = 2
+
+func taskToolGuidanceSpec(confirm *chrome.ConfirmDialog, km *keymap.KeyMap) (chrome.GuidanceSpec, bool) {
 	if confirm.IsActive() {
 		if discardConfirmAction(confirm.Action()) {
 			return chrome.DiscardGuidanceSpec(), true
 		}
 		return chrome.ConfirmationGuidanceSpec(), true
 	}
-	rows := 1
-	if activeInteraction {
-		rows = 2
-	}
-	return chrome.GuidanceSpecFromKeyMap(km, rows)
+	return chrome.GuidanceSpecFromKeyMap(km, taskToolGuidanceRows)
 }
 
 func (m *CommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(&m.Confirm, m.AddMode || m.EditMode || m.ExpandedView, m.BuildKeyMap())
+	return taskToolGuidanceSpec(&m.Confirm, m.BuildKeyMap())
 }
 
 func (m *TaskAttachmentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(&m.Confirm, m.AddMode, m.BuildKeyMap())
+	return taskToolGuidanceSpec(&m.Confirm, m.BuildKeyMap())
 }
 
-func renderTaskToolGuidance(spec chrome.GuidanceSpec, ok bool, width int, accent ...color.Color) string {
-	if !ok {
-		return ""
-	}
-	if len(accent) > 0 {
-		return chrome.RenderGuidance(spec, width, accent[0])
-	}
-	return chrome.RenderGuidance(spec, width)
+// ContextualGuidance answers route.ContextualGuidanceProvider: the panel hands
+// its keys to the shell footer and draws none of its own, so the frame carries
+// one divider and the hints sit on the terminal's last row.
+func (m *CommentsModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
+	return m.guidanceSpec()
 }
 
-// taskToolAvailableRows measures the already-rendered prefix and structured
-// footer together. Content inserted between them may consume the remainder.
-func taskToolAvailableRows(prefix, footer string, height int) int {
+// ContextualGuidance answers route.ContextualGuidanceProvider on the same terms
+// as the comments panel.
+func (m *TaskAttachmentsModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
+	return m.guidanceSpec()
+}
+
+// taskToolAvailableRows is what the panel's fixed rows leave for its list. The
+// footer is the shell's and is no term here: the height handed in is already
+// the frame less whatever that footer costs beyond its baseline.
+func taskToolAvailableRows(fixed string, height int) int {
 	if height <= 0 {
 		return 1 << 20
 	}
-	return max(height-lipgloss.Height(prefix+footer), 0)
+	return max(height-composedRows(fixed), 0)
 }
 
 func taskToolMaxVisible(total, availableRows, maxRowsPerItem int) int {

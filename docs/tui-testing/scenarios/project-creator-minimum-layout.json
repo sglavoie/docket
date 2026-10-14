@@ -5,6 +5,8 @@
   "actions": [
     { "type": "command", "label": "open Project Creator", "command": "new project" },
     { "type": "assert", "assert": "view", "value": "ProjectCreator" },
+    { "type": "assert", "label": "the creator's keys are the shell footer's one block", "assert": "contains", "value": "Enter create · Esc cancel" },
+    { "type": "assert", "label": "with no breadcrumb row under a second divider", "assert": "not_contains", "value": "Outliner >" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

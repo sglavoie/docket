@@ -6,6 +6,8 @@
 
     { "type": "key", "label": "open the Attachments panel at the minimum supported size", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "label": "the panel's keys are the shell footer's one block, exit and help included", "assert": "contains", "value": "Esc close · ? help" },
+    { "type": "assert", "label": "with no breadcrumb row under a second divider", "assert": "not_contains", "value": "Outliner >" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the add mode narrows the same footer", "key": "a" },
@@ -13,7 +15,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
-    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "label": "the footer wraps at the floor rather than shed the only route to Delete", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "contains", "value": "Esc close · ? help" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the sheet fits the same terminal", "key": "space" },

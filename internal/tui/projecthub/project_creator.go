@@ -148,14 +148,10 @@ func (m *ProjectCreatorModel) View() tea.View {
 		b.WriteString(renderProjectSlugPreview(slug, m.width, "", ""))
 	}
 
-	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
-
 	var out strings.Builder
 	out.WriteString(chrome.RenderFullscreenTitleWithPulse("Create Project", "", m.CurrentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
-	out.WriteString("\n")
-	out.WriteString(guidance)
 
 	return tea.NewView(out.String())
 }
@@ -172,6 +168,12 @@ func (m *ProjectCreatorModel) guidanceSpec() chrome.GuidanceSpec {
 	}
 	// No supplemental: the title row already says Create Project.
 	return chrome.RequiredExitGuidanceSpec("Enter create", chrome.DraftEscapeHint(m.hasDraft()))
+}
+
+// ContextualGuidance answers route.ContextualGuidanceProvider: the creator
+// hands its keys to the shell footer and draws none of its own.
+func (m *ProjectCreatorModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
+	return m.guidanceSpec(), true
 }
 
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }

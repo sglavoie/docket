@@ -115,6 +115,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.hostTitle = "Task Composer · Expanded"
 	form.SetTaskFormCoordinator(m.taskForm)
 	form.SetSize(m.width, m.height)
+	form.SetShellFrameMetrics(m.shellFrame)
 	m.Expanded = form
 	m.Mode = ComposerExpanded
 	m.Errors = nil
@@ -159,6 +160,7 @@ func (m *TaskComposerModel) seedExpandedForm(seed TaskComposerSeed) {
 	form.hostTitle = seed.HostTitle
 	form.SetTaskFormCoordinator(m.taskForm)
 	form.SetSize(m.width, m.height)
+	form.SetShellFrameMetrics(m.shellFrame)
 	m.Expanded = form
 	m.Mode = ComposerExpanded
 }

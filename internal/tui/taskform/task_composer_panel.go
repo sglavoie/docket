@@ -226,6 +226,9 @@ func (m *TaskComposerModel) compactPanelRows() int {
 // preview every time a message arrived.
 func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
 	m.shellFrame = metrics
+	if m.Expanded != nil {
+		m.Expanded.SetShellFrameMetrics(metrics)
+	}
 	if m.matchingTaskPreview != nil {
 		m.resizeMatchingTaskPreview()
 	}

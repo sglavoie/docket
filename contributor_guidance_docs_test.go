@@ -1325,7 +1325,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// and a recorded index rather than by the upward scan the group invariant
 	// forbids. The mechanism lives in docs/architecture/presentation-chrome.md.
 	// No rule elsewhere was trimmed to pay for it.
-	const budget = 76209
+	// Raise from 76209 to 76496 for one footer on fullscreen surfaces. 287
+	// bytes buy the rule a surface replacing its host is held to: it publishes
+	// its keys through the guidance provider and draws no footer of its own, so
+	// the frame has one divider, the breadcrumb's exit and help become the
+	// surface's own entries, and the per-frame override is left to the expanded
+	// form's inline overlay alone. The mechanism lives in
+	// docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed
+	// to pay for it.
+	const budget = 76496
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

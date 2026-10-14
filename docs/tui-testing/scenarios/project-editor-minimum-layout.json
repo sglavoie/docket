@@ -10,8 +10,9 @@
     { "type": "assert", "assert": "view", "value": "ProjectEditor" },
     { "type": "assert", "label": "the Tags field explains the one behavioral tag", "assert": "contains", "value": "Parks this project" },
     { "type": "assert", "label": "the form wraps the complete explanation inline", "assert": "contains", "value": "attachments, hides them from Active Projects." },
-    { "type": "assert", "label": "the app status bar keeps its normal breadcrumb", "assert": "contains", "value": "Outliner" },
-    { "type": "assert", "label": "the form's own control row is left intact", "assert": "contains", "value": "Ctrl+S save · Esc cancel · Tab next · Shift+Tab previous" },
+    { "type": "assert", "label": "the editor's keys are the shell footer's one block", "assert": "contains", "value": "Ctrl+S save · Esc cancel · Tab next · Shift+Tab previous" },
+    { "type": "assert", "label": "wrapped whole at this width rather than shed", "assert": "contains", "value": "Enter next/save" },
+    { "type": "assert", "label": "with no breadcrumb row under a second divider", "assert": "not_contains", "value": "Outliner >" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

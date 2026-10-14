@@ -125,9 +125,16 @@ func TestActiveGuidanceOwnerSuppressionIsAClosedTable(t *testing.T) {
 }
 
 func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T) {
+	// A shell-owned presentation publishes its keys through
+	// ContextualGuidanceProvider and draws no footer of its own, so the frame
+	// carries one divider and one set of hints.
 	wantShell := map[presentation.PresentationID]bool{
 		presentation.ViewCrossProjectOutliner: true,
 		presentation.ViewTaskComposer:         true,
+		presentation.ViewProjectCreator:       true,
+		presentation.ViewProjectEditor:        true,
+		presentation.ViewTaskComments:         true,
+		presentation.ViewTaskAttachments:      true,
 	}
 	for _, view := range allPresentations() {
 		policy, ok := ChromePolicyForPresentation(view)

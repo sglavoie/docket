@@ -33,12 +33,9 @@ func (m *CommentsModel) View() tea.View {
 
 	m.renderCommentsSummary(&b)
 	m.renderMessages(&b, true)
-	spec, ok := m.guidanceSpec()
-	footer := renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
 	var tail strings.Builder
 	m.renderStatusMessage(&tail)
-	tail.WriteString(footer)
-	m.renderCommentsList(&b, taskToolAvailableRows(b.String(), tail.String(), m.FrameHeight()))
+	m.renderCommentsList(&b, taskToolAvailableRows(b.String()+tail.String(), m.FrameHeight()))
 	b.WriteString(tail.String())
 
 	return tea.NewView(b.String())
@@ -79,7 +76,7 @@ func (m *CommentsModel) expandedReaderHeader() string {
 }
 
 // expandedReader is the whole geometry of the expanded comment: the header above
-// the body, the footer under it, the body's rendered rows, and how many of those
+// the body, the body's rendered rows, and how many of those
 // rows the terminal has room for.
 //
 // It is one value because the render and the scrolling keys both read it. A
@@ -88,7 +85,6 @@ func (m *CommentsModel) expandedReaderHeader() string {
 // same one twice and hope.
 type expandedReader struct {
 	header  string
-	footer  string
 	lines   []string
 	visible int
 	// counted reports whether a row was reserved for the position line, which
@@ -129,16 +125,15 @@ func expandedReaderVisibleRows(total, available int) (int, bool) {
 }
 
 // expandedReaderWindow measures the reader against the panel's own height, which
-// is the height the shell will crop it to. Everything above and below the body is
-// measured first because none of it is negotiable — the title says which entity
-// the panel is for, the header says which comment, and the footer names the keys
-// that move the body and close it — so what is left is the body's whole budget.
+// is the height the shell will crop it to. Everything above the body is measured
+// first because none of it is negotiable — the title says which entity the panel
+// is for and the header says which comment — so what is left is the body's whole
+// budget. The keys that move the body and close it are the shell footer's, and
+// FrameHeight has already paid for the rows they take.
 func (m *CommentsModel) expandedReaderWindow() expandedReader {
 	reader := expandedReader{header: m.expandedReaderHeader()}
-	spec, ok := m.guidanceSpec()
-	reader.footer = renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor())
 	reader.lines = strings.Split(textfit.RenderMarkdown(m.entries[m.Cursor].Text, max(m.Width()-4, 1)), "\n")
-	available := taskToolAvailableRows(m.panelTitle()+reader.header, reader.footer, m.FrameHeight())
+	available := taskToolAvailableRows(m.panelTitle()+reader.header, m.FrameHeight())
 	reader.visible, reader.counted = expandedReaderVisibleRows(len(reader.lines), available)
 	return reader
 }
@@ -170,7 +165,6 @@ func (m *CommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 		b.WriteString(theme.MutedStyle.Render(textfit.TruncateIntentional(position, m.proseWidth(), "…")))
 		b.WriteString("\n")
 	}
-	b.WriteString(reader.footer)
 	return tea.NewView(b.String())
 }
 
@@ -397,8 +391,6 @@ func recoveredDraftExcerpt(text string, width, maxRows int) []string {
 func (m *CommentsModel) renderComposerBody(b *strings.Builder, composer *textarea.Model, naturalRows int) tea.View {
 	var tail strings.Builder
 	m.renderStatusMessage(&tail)
-	spec, ok := m.guidanceSpec()
-	tail.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 
 	// The refusal is measured by the ladder rather than counted as fixed, because
 	// its last rung is the blank row underneath it. Its words are not negotiable

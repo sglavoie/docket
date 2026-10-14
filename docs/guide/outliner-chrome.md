@@ -130,18 +130,20 @@ Only one set of shortcuts is on screen at a time, and it always belongs to
 whatever your next key press reaches. Open a picker, an action sheet, a lens
 list, the check-in editor, or the conflict browser over the outline and the
 outline's own row of shortcuts goes quiet: it is describing keys that picker has
-taken. The same is true of a confirmation, and of the expanded capture form,
-which prints its own controls where its content ends. The row does not collapse
+taken. The same is true of a confirmation, and of a picker opened inside the
+expanded capture form. The row does not collapse
 while it is quiet — the space stays reserved, so nothing on screen jumps when
 the picker opens — and closing the picker brings the outline's shortcuts back
 exactly as they were.
 
 A panel that takes over the whole screen is a different case, because nothing is
-left underneath it to go quiet. Comments, attachments, Notes, the project editor
-and the Hub each print their own controls where their content ends, and the row
-at the very bottom is still theirs: it carries where you are, `Esc back`, and
-`? help`, which is the only place either is offered. That is one instruction set
-in two places rather than two sets.
+left underneath it to go quiet. Comments, attachments, the project creator and
+editor, and the expanded capture form each have one footer: a single divider
+with that panel's own shortcuts under it, on the last row of the terminal. The
+way out is among them, and on Comments and Attachments so is `? help`. On a
+narrow terminal the shortcuts wrap onto a second row rather than drop the ones
+you cannot reach any other way, and the panel gives up a row of its content to
+make room.
 
 A message is not a set of shortcuts, so a status line or an error still reaches
 that row with a picker open: it is telling you what just happened rather than
@@ -190,10 +192,11 @@ set a row aside for a footer the dock's own paging keys can wrap, so an ordinary
 one-line message costs it nothing further and the dock stays exactly where it
 was: no message and no cursor ever moves it.
 
-Surfaces that draw their own footer — Help, Notes, the Hub, the project editor,
-the comments panel, expanded capture — keep it. The message is placed directly
-above that footer's divider rather than over its keys, and the frame stays
-exactly as tall as the terminal.
+Surfaces that draw their own footer — Help, Notes, the Hub, Recent messages —
+keep it. The message is placed directly above that footer's divider rather than
+over its keys, and the frame stays exactly as tall as the terminal. Everywhere
+else, the comments panel, the project editor, and expanded capture included, the
+message sits between the one divider and the shortcuts.
 
 The Outliner's own feedback — a focus notice, or a line such as
 `Latest activity: …` — renders in a status strip pinned directly above the

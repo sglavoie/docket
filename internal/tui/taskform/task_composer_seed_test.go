@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // repeatSeed is the seed a repeat draft carries, spelled once so every test
@@ -207,8 +208,18 @@ func TestComposerSeedRendersAndSizesThroughTheExpandedForm(t *testing.T) {
 	if !strings.Contains(rendered, "Ship the quarterly report") {
 		t.Errorf("the seeded title is not rendered:\n%s", rendered)
 	}
-	if _, guided := composer.ContextualGuidance(); guided {
-		t.Error("a seeded composer offered the compact capture guidance")
+	// The expanded form draws no footer: its keys reach the shell through the
+	// composer, and they are the form's rather than the compact panel's.
+	if strings.Contains(rendered, "Ctrl+S save") {
+		t.Errorf("the seeded form drew its own footer:\n%s", rendered)
+	}
+	spec, guided := composer.ContextualGuidance()
+	if !guided {
+		t.Fatal("a seeded composer published no guidance, so the shell footer would fall back to a breadcrumb")
+	}
+	published := ansi.Strip(chrome.RenderGuidanceText(spec, 100))
+	if !strings.Contains(published, "Ctrl+S save") || strings.Contains(published, "Enter create") {
+		t.Errorf("a seeded composer published %q; want the expanded form's keys", published)
 	}
 }
 

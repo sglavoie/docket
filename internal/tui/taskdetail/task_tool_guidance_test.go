@@ -43,10 +43,13 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "comments browse", spec, ok,
-		"Enter expand", "a add", "e edit", "Space actions", "y copy", "Y copy all", "Esc close")
+		"Enter expand", "a add", "e edit", "Space actions", "y copy", "Y copy all", "Esc close", "? help")
+	// The panel's keys are the shell footer, so no breadcrumb row is left to
+	// name the exit or the help: both are required here instead.
+	assertRequiredGuidance(t, "comments browse", spec, ok, "Esc close", "? help")
 	assertGuidanceExcludes(t, "comments browse", spec, "delete")
-	if spec.Rows != 1 {
-		t.Fatalf("comments browse rows = %d, want 1", spec.Rows)
+	if spec.Rows != taskToolGuidanceRows {
+		t.Fatalf("comments browse rows = %d, want %d", spec.Rows, taskToolGuidanceRows)
 	}
 
 	model.ExpandedView = true
@@ -100,8 +103,9 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "file attachment", spec, ok,
-		"Enter open", "E editor", "y copy path", "Space actions", "J/K reorder", "Esc close")
-	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line", "? help", "delete", "unlink", "original")
+		"Enter open", "E editor", "y copy path", "Space actions", "J/K reorder", "Esc close", "? help")
+	assertRequiredGuidance(t, "file attachment", spec, ok, "Esc close", "? help")
+	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line", "delete", "unlink", "original")
 
 	model.Cursor = 1
 	spec, ok = model.guidanceSpec()
@@ -164,9 +168,17 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 		{"comments", func() chrome.GuidanceSpec { spec, _ := comments.guidanceSpec(); return spec }()},
 		{"attachments", func() chrome.GuidanceSpec { spec, _ := attachments.guidanceSpec(); return spec }()},
 	} {
-		if tc.spec.Rows != 1 {
-			t.Errorf("%s browse row budget = %d, want 1", tc.name, tc.spec.Rows)
+		if tc.spec.Rows != taskToolGuidanceRows {
+			t.Errorf("%s browse row budget = %d, want %d", tc.name, tc.spec.Rows, taskToolGuidanceRows)
 		}
 		assertGuidanceFits(t, tc.spec, 24)
+		// At the app's floor the wrapped footer still carries the menu that is
+		// the only route to Delete, beside the exit and the help.
+		floor := ansi.Strip(chrome.RenderGuidanceText(tc.spec, chrome.MinTerminalWidth))
+		for _, entry := range []string{"Space actions", "Esc close", "? help"} {
+			if !strings.Contains(floor, entry) {
+				t.Errorf("%s footer at the floor sheds %q:\n%s", tc.name, entry, floor)
+			}
+		}
 	}
 }

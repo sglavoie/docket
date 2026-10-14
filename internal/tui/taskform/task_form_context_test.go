@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestTaskFormBasicsTabRendersContextRow(t *testing.T) {
@@ -48,22 +50,30 @@ func TestTaskFormContextFieldIsReachableAndTypable(t *testing.T) {
 }
 
 // TestTaskFormContextRowStaysReachableAtMinimumSize keeps the last Basics row
-// honest at the floor the form now renders at. At 60 columns the footer spends a
-// second line, so the window is a row shorter than the expanded body and the
-// Context row sits below the fold — which is the windowing working, not a clip:
-// tabbing to it brings it on screen, and the body says how many rows are down
-// there while it does not.
+// honest at the floor the form now renders at. The form's keys are the shell
+// footer's, and at 60 columns that footer spends a second line the form is told
+// about and pays for, so the body is windowed against the frame that is left and
+// every row stays reachable: tabbing to Context brings it on screen.
 func TestTaskFormContextRowStaysReachableAtMinimumSize(t *testing.T) {
 	m := newTestTaskForm()
 	m.SetSize(formMinWidth, formMinHeight)
+	guidance := ansi.Strip(chrome.RenderGuidanceText(m.guidanceSpec(), formMinWidth))
+	if !strings.Contains(guidance, "Ctrl+S save") || !strings.Contains(guidance, "Esc cancel") {
+		t.Fatalf("save/cancel guidance is not published at the floor:\n%s", guidance)
+	}
+	m.SetShellFrameMetrics(chrome.ShellFrameMetrics{ControlRows: lipgloss.Height(guidance)})
+	frameRows := formMinHeight - m.shellFrame.ExcessRows()
+	if frameRows >= formMinHeight {
+		t.Fatalf("the floor's footer fits one row, so the state under test was not reached:\n%s", guidance)
+	}
 	plain := ansi.Strip(m.View().Content)
 	if strings.Contains(plain, "Terminal too small") {
 		t.Fatalf("form should render at its floor:\n%s", plain)
 	}
-	if !strings.Contains(plain, "Ctrl+S save") || !strings.Contains(plain, "Esc cancel") {
-		t.Fatalf("save/cancel guidance is not visible at the floor:\n%s", plain)
+	if strings.Contains(plain, "Ctrl+S save") {
+		t.Fatalf("the form drew its own footer under the shell's:\n%s", plain)
 	}
-	assertFitsWithin(t, m.View().Content, formMinWidth, formMinHeight)
+	assertFitsWithin(t, m.View().Content, formMinWidth, frameRows)
 
 	for range formBasicsFieldCount - 1 {
 		m = sendFormKey(m, syntheticSpecialKey(tea.KeyTab))
@@ -75,7 +85,7 @@ func TestTaskFormContextRowStaysReachableAtMinimumSize(t *testing.T) {
 	if !strings.Contains(focused, "Context:") {
 		t.Fatalf("Context row is unreachable at the minimum size:\n%s", focused)
 	}
-	assertFitsWithin(t, m.View().Content, formMinWidth, formMinHeight)
+	assertFitsWithin(t, m.View().Content, formMinWidth, frameRows)
 }
 
 func TestTaskFormSaveNormalizesContext(t *testing.T) {

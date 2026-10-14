@@ -59,13 +59,14 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("u", "Undo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
 		keymap.Bind("ctrl+r", "Redo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
 		// Gated to browse mode like its neighbors because Update hands the add,
-		// edit, and expanded states their whole key streams, and deliberately
-		// unranked: the panel is a HelpProvider now, so the shell strip under this
-		// footer already prints "? help" beside the breadcrumb. "System" is the core
-		// descriptor's own category, so the row lands in the same help bucket as the
-		// Outliner's `?`.
-		keymap.Bind("?", "Help", "System", keymap.WithGate(inBrowseMode)),
-		keymap.Bind("esc", "Close comments", "Navigation", keymap.WithFooter(9, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
+		// edit, and expanded states their whole key streams. Ranked and required
+		// beside the exit: the panel publishes this keymap as the shell footer, so
+		// no breadcrumb row is left to print either, and the way out and the way to
+		// every unranked key are the two entries a narrow footer may not shed.
+		// "System" is the core descriptor's own category, so the row lands in the
+		// same help bucket as the Outliner's `?`.
+		keymap.Bind("?", "Help", "System", keymap.WithFooter(10, "help", true), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("esc", "Close comments", "Navigation", keymap.WithFooter(9, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("ctrl+s", "Save comment", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Ctrl+S"), keymap.WithGate(inputMode)),
 		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(inputMode)),
 		// Gated off a read-only composer, which is the one state that refuses it: the

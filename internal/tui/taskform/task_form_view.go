@@ -97,22 +97,20 @@ func (m *TaskFormModel) View() tea.View {
 		errBanner = theme.ValidationErrorStyle.Render(strings.Join(textfit.WrapText(m.err.Error(), m.width), "\n"))
 	}
 
-	// ── Footer ────────────────────────────────────────────────────────────────
-	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
-
-	// Window the interior body so the fullscreen title, tab bar, error banner,
-	// and footer stay visible even when the body is inherently taller than the
-	// allotted height. Chrome = title + tab bar + two structural blank rows +
-	// rendered guidance, plus the error banner when present (it occupies the
-	// pre-separator slot). The banner is chrome rather than body for exactly this
-	// reason: a refusal names a field the viewport then scrolls to, and the two
-	// are read together or not at all.
-	chrome := lipgloss.Height(title) + lipgloss.Height(tabBar) + 2 +
-		lipgloss.Height(guidance)
+	// Window the interior body so the fullscreen title, tab bar, and error
+	// banner stay visible even when the body is inherently taller than the
+	// allotted height. Chrome = title + tab bar + one structural blank row, plus
+	// the error banner and the blank row above it when present. The banner is
+	// chrome rather than body for exactly this reason: a refusal names a field
+	// the viewport then scrolls to, and the two are read together or not at all.
+	// The keys are the shell footer's, published through the composer, so no
+	// guidance is measured here: frameHeight has already paid for whatever that
+	// footer costs beyond its baseline.
+	chrome := lipgloss.Height(title) + lipgloss.Height(tabBar) + 1
 	if m.err != nil {
-		chrome += lipgloss.Height(errBanner)
+		chrome += 1 + lipgloss.Height(errBanner)
 	}
-	bodyRows := m.height - chrome
+	bodyRows := m.frameHeight() - chrome
 
 	// The viewport travels the form body alone. The help pane is anchored to the
 	// top because it describes the focused field, so scrolling it away at the one
@@ -134,11 +132,7 @@ func (m *TaskFormModel) View() tea.View {
 	if m.err != nil {
 		out.WriteString("\n\n")
 		out.WriteString(errBanner)
-	} else {
-		out.WriteString("\n")
 	}
-	out.WriteString("\n")
-	out.WriteString(guidance)
 
 	return tea.NewView(out.String())
 }
@@ -152,8 +146,30 @@ func (m *TaskFormModel) View() tea.View {
 func (m *TaskFormModel) renderOverlayView() string {
 	return lipgloss.NewStyle().
 		Width(m.width).
-		Height(m.height).
-		Render(clampFormBody(m.renderFormOverlay(), m.height))
+		Height(m.frameHeight()).
+		Render(clampFormBody(m.renderFormOverlay(), m.frameHeight()))
+}
+
+// frameHeight is the rows the form may actually draw: its height less whatever
+// the shell footer costs beyond the two rows the form was sized against. The
+// form's own keys are that footer now, and they wrap to a second row exactly
+// where the terminal is narrowest, so planning against the bare height would
+// have the shell crop the body's last row there.
+func (m *TaskFormModel) frameHeight() int {
+	return max(m.height-m.shellFrame.ExcessRows(), 1)
+}
+
+// SetShellFrameMetrics records the footer budget the composer was handed. It is
+// not a resize, so no input and no viewport offset is reset by it.
+func (m *TaskFormModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	m.shellFrame = metrics
+}
+
+// overlayOwnsGuidance reports whether an inline overlay is the whole view. It
+// holds every key and draws its own instructions in its own frame, so the form's
+// footer would name routes that are not live while it stands.
+func (m *TaskFormModel) overlayOwnsGuidance() bool {
+	return m.activeOverlay != formOverlayNone
 }
 
 func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
@@ -177,7 +193,7 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 }
 
 // clampFormBody limits a body to maxRows lines so the surrounding fullscreen
-// title, tab bar, and footer always remain visible. It is the last defensive cut
+// title and tab bar, and the shell footer under them, always remain visible. It is the last defensive cut
 // rather than the form's height policy: the form's own fields travel through
 // scrollFormBody, which reaches every one of them, and what reaches this are the
 // two blocks no focus indexes — an inline overlay and a help pane taller than

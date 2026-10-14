@@ -67,6 +67,9 @@ type TaskFormModel struct {
 	taskForm          coordinator.TaskFormCoordinator
 	presetDestination app.CaptureDestination
 	hostTitle         string
+	// shellFrame is what the shell last said its footer costs, forwarded by the
+	// composer hosting this form. It is a budget and never a size.
+	shellFrame chrome.ShellFrameMetrics
 
 	// Title input (Basics tab, field 0)
 	titleInput textarea.Model
