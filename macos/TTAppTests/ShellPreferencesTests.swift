@@ -144,6 +144,61 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertFalse(model.environmentAwaitsRelaunch, "back to what runs")
     }
 
+    func testABinaryAwaitsARelaunchOnlyWhenTheNextOneIsAnotherPath() {
+        let bundled = TTBinaryResolver.Resolution(url: URL(fileURLWithPath: "/a/bin/tt"), source: .bundled)
+        let same = TTBinaryResolver.Resolution(url: URL(fileURLWithPath: "/a/bin/../bin/tt"), source: .userDefaultsOverride)
+        let other = TTBinaryResolver.Resolution(url: URL(fileURLWithPath: "/b/tt"), source: .userDefaultsOverride)
+        XCTAssertFalse(PreferencesModel.binaryAwaitsRelaunch(running: nil, next: other), "no session runs")
+        XCTAssertFalse(PreferencesModel.binaryAwaitsRelaunch(running: bundled, next: nil), "the last tt keeps running")
+        XCTAssertFalse(PreferencesModel.binaryAwaitsRelaunch(running: bundled, next: same), "one path, two spellings")
+        XCTAssertTrue(PreferencesModel.binaryAwaitsRelaunch(running: bundled, next: other))
+
+        let model = PreferencesModel(defaults: defaults)
+        var next: TTBinaryResolver.Resolution? = bundled
+        model.resolveNextBinary = { _ in next }
+        model.binaryOverride = "/b/tt"
+        XCTAssertFalse(model.binaryAwaitsRelaunch, "nothing runs yet")
+
+        model.runningBinary = bundled
+        model.refreshBinaryStatus()
+        XCTAssertFalse(model.binaryAwaitsRelaunch)
+
+        next = other
+        model.binaryOverride = "/b/tt "
+        XCTAssertTrue(model.binaryAwaitsRelaunch, "the edit is asked about as it is made")
+
+        model.runningBinary = other
+        model.refreshBinaryStatus()
+        XCTAssertFalse(model.binaryAwaitsRelaunch, "the relaunched tt is the one named")
+    }
+
+    func testALaunchAtLoginFailureIsTheErrorAndWhereToChangeIt() {
+        let error = NSError(domain: "t", code: 1, userInfo: [NSLocalizedDescriptionKey: "Operation not permitted."])
+        XCTAssertEqual(PreferencesModel.launchAtLoginFailure(error),
+                       "Operation not permitted.\nSystem Settings › General › Login Items")
+    }
+
+    func testSettingsIsFourTabsInAWindowThatRemembersItsFrame() throws {
+        XCTAssertEqual(SettingsTab.allCases.map(\.title), ["General", "Shortcuts", "Terminal", "Advanced"])
+        XCTAssertEqual(PreferencesWindowController.frameAutosaveName, "Settings")
+
+        let unsaved = PreferencesWindowController(model: PreferencesModel(defaults: defaults), frameAutosaveName: nil)
+        XCTAssertEqual(unsaved.window.title, "tt Settings")
+        XCTAssertEqual(unsaved.window.frameAutosaveName, "")
+
+        let name = "tt-tests-settings-\(UUID().uuidString)"
+        defer { UserDefaults.standard.removeObject(forKey: "NSWindow Frame \(name)") }
+        let saved = PreferencesWindowController(model: PreferencesModel(defaults: defaults), frameAutosaveName: name)
+        XCTAssertEqual(saved.window.frameAutosaveName, name)
+        saved.window.setFrameOrigin(NSPoint(x: 123, y: 321))
+        saved.window.saveFrame(usingName: name)
+        saved.window.setFrameAutosaveName("")
+
+        let reopened = PreferencesWindowController(model: PreferencesModel(defaults: defaults), frameAutosaveName: name)
+        XCTAssertEqual(reopened.window.frame.origin, NSPoint(x: 123, y: 321), "opens where it was left, not centered")
+        reopened.window.setFrameAutosaveName("")
+    }
+
     func testBinaryStatusNamesTheRunningVersionAndAnOlderCopy() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("tt-skew-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -308,7 +363,7 @@ final class StatusItemTests: XCTestCase {
 
         controller.refreshMenu()
         let titles = controller.menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
-        XCTAssertEqual(titles, ["Show tt", "Quick Capture…", "Relaunch tt", "Preferences…", "Launch at Login", "Quit tt"])
+        XCTAssertEqual(titles, ["Show tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login", "Quit tt"])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
 
         delegate.isTerminalFrontmost = true
@@ -321,7 +376,7 @@ final class StatusItemTests: XCTestCase {
         XCTAssertFalse(controller.menu.item(withTitle: "Relaunch tt")?.isEnabled ?? true)
         XCTAssertEqual(controller.menu.item(withTitle: "Launch at Login")?.state, .on)
 
-        for title in ["Hide tt", "Quick Capture…", "Relaunch tt", "Preferences…", "Launch at Login"] {
+        for title in ["Hide tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login"] {
             let item = try XCTUnwrap(controller.menu.item(withTitle: title))
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }

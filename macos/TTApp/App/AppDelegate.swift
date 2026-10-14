@@ -3,7 +3,10 @@ import GhosttyKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate {
     /// The launch-error window, when tt could not start.
-    private var window: NSWindow?
+    private(set) var launchErrorWindow: NSWindow?
+    /// The terminal whose first session found no tt, kept for Try Again; nil
+    /// once one has started.
+    private var stalledTerminal: TerminalWindowController?
     private(set) var ghostty: Ghostty.App?
     private(set) var terminal: TerminalWindowController?
     let preferencesModel = PreferencesModel()
@@ -115,15 +118,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         false
     }
 
-    /// A Dock click shows the window, starting a fresh tt if the last one exited.
+    /// A Dock click shows the window, starting a fresh tt if the last one
+    /// exited; with no terminal it brings back the launch error.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        terminal?.show()
+        guard let terminal else {
+            showLaunchErrorAgain()
+            return false
+        }
+        terminal.show()
         return false
     }
 
-    /// Switching to tt.app (Cmd+Tab, the Dock) brings its window back.
+    /// Switching to tt.app (Cmd+Tab, the Dock) brings its window back: the
+    /// terminal, or the launch error when there is none.
     func applicationDidBecomeActive(_ notification: Notification) {
-        guard let terminal, !terminal.window.isVisible, !(preferences?.isVisible ?? false) else { return }
+        guard !(preferences?.isVisible ?? false) else { return }
+        guard let terminal else {
+            if !(launchErrorWindow?.isVisible ?? true) {
+                showLaunchErrorAgain()
+            }
+            return
+        }
+        guard !terminal.window.isVisible else { return }
         terminal.show()
     }
 
@@ -183,7 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// Before each tt: asks again which binary runs and what it accepts, so
     /// Relaunch tt picks up one installed since the last session started. A
     /// tt that can no longer be found leaves the last one running; only a
-    /// launch that never found one has nothing to show but the error.
+    /// launch that never found one has nothing to show but the error, whose
+    /// Try Again runs this again for the same start.
     private func prepareSession(then ready: @escaping () -> Void) {
         // A request sent while the answer is on its way waits for the new tt.
         control?.connect()
@@ -194,9 +211,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
                 NSLog("tt: %@", notFound.message)
             }
             guard let binary = self.sessionBinaries.current else {
+                // The controller keeps waiting on `ready`; Try Again asks again
+                // for the same start.
+                if let terminal = self.terminal {
+                    self.stalledTerminal = terminal
+                }
                 self.terminal = nil
-                self.showLaunchError(title: "tt could not be found.", message: notFound?.message ?? "")
+                self.showLaunchError(title: "tt could not be found.", message: notFound?.message ?? "") { [weak self] in
+                    self?.prepareSession(then: ready)
+                }
                 return
+            }
+            if let stalled = self.stalledTerminal {
+                self.stalledTerminal = nil
+                self.terminal = stalled
+                self.closeLaunchError()
             }
             self.adopt(binary)
             // A new tt takes the config's command and environment, so the
@@ -431,7 +460,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private func applyActivationPolicy(_ policy: TTActivationPolicy) {
         NSApp.setActivationPolicy(policy.appKitPolicy)
         syncStatusItem(to: policy)
-        let front = [preferences, terminal?.window, window].compactMap { $0 }.first { $0.isVisible }
+        let front = [preferences, terminal?.window, launchErrorWindow].compactMap { $0 }.first { $0.isVisible }
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
             front?.makeKeyAndOrderFront(nil)
@@ -499,8 +528,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     func toggleTerminal() {
         guard let terminal else {
             // tt could not start; its launch error is what there is to show.
-            NSApp.activate(ignoringOtherApps: true)
-            window?.makeKeyAndOrderFront(nil)
+            showLaunchErrorAgain()
             return
         }
         if isTerminalFrontmost {
@@ -518,16 +546,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         guard let failure = preferencesModel.setLaunchAtLogin(!LoginItem.isEnabled) else { return }
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "Launch at Login"
+        alert.messageText = "Couldn't change Launch at Login"
         alert.informativeText = failure
         alert.runModal()
     }
 
-    private func showLaunchError(title: String, message: String) {
-        let window = LaunchErrorWindow.make(title: title, message: message)
+    /// Replaces any launch error showing. Open Settings… is always offered,
+    /// since a binary override or the environment may be what is wrong; Try
+    /// Again only when `tryAgain` can start what failed.
+    func showLaunchError(title: String, message: String, tryAgain: (() -> Void)? = nil) {
+        closeLaunchError()
+        let window = LaunchErrorWindow.make(
+            title: title,
+            message: message,
+            openSettings: { [weak self] in self?.showPreferences(nil) },
+            tryAgain: tryAgain
+        )
         window.makeKeyAndOrderFront(nil)
-        self.window = window
+        launchErrorWindow = window
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// With no terminal, the launch error is what there is to show.
+    private func showLaunchErrorAgain() {
+        NSApp.activate(ignoringOtherApps: true)
+        launchErrorWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    private func closeLaunchError() {
+        launchErrorWindow?.orderOut(nil)
+        launchErrorWindow = nil
     }
 
     // MARK: GhosttyAppDelegate

@@ -1,9 +1,15 @@
 import AppKit
 
-/// A plain window that says why tt could not start and offers Quit; it
-/// replaces the terminal window rather than sitting over it.
+/// A plain window that says why tt could not start and offers a way out: Open
+/// Settings… always, Try Again when the failure is one a retry can fix, and
+/// Quit. It replaces the terminal window rather than sitting over it.
 enum LaunchErrorWindow {
-    static func make(title: String, message: String) -> NSWindow {
+    static func make(
+        title: String,
+        message: String,
+        openSettings: (() -> Void)? = nil,
+        tryAgain: (() -> Void)? = nil
+    ) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 560, height: 260),
             styleMask: [.titled, .closable, .miniaturizable],
@@ -20,10 +26,23 @@ enum LaunchErrorWindow {
         body.font = .monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
         body.isSelectable = true
 
+        var buttons: [NSButton] = []
+        if let openSettings {
+            buttons.append(ActionButton(title: "Open Settings…", action: openSettings))
+        }
+        if let tryAgain {
+            buttons.append(ActionButton(title: "Try Again", action: tryAgain))
+        }
         let quit = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
-        quit.keyEquivalent = "\r"
+        buttons.append(quit)
+        // Return retries when a retry is offered; otherwise it quits.
+        (tryAgain == nil ? quit : buttons[buttons.count - 2]).keyEquivalent = "\r"
 
-        let stack = NSStackView(views: [heading, body, quit])
+        let row = NSStackView(views: buttons)
+        row.orientation = .horizontal
+        row.spacing = 8
+
+        let stack = NSStackView(views: [heading, body, row])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -42,5 +61,24 @@ enum LaunchErrorWindow {
         window.contentView = content
         window.center()
         return window
+    }
+
+    /// A push button that runs a closure, so the window needs no target object.
+    final class ActionButton: NSButton {
+        private var run: (() -> Void)?
+
+        convenience init(title: String, action: @escaping () -> Void) {
+            self.init(frame: .zero)
+            self.title = title
+            bezelStyle = .rounded
+            setButtonType(.momentaryPushIn)
+            run = action
+            target = self
+            self.action = #selector(fire(_:))
+        }
+
+        @objc private func fire(_ sender: Any?) {
+            run?()
+        }
     }
 }

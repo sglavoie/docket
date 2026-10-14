@@ -48,14 +48,21 @@ gitignored: edit the spec, not the project.
 
 ### Which tt runs
 
-The first executable of: the Preferences override (`ttBinaryPath`), the
+The first executable of: the Settings override (`ttBinaryPath`), the
 bundled `Contents/Resources/bin/tt`, `~/.local/bin/tt`, then `PATH`. A Release
 build always bundles one, so an installed app runs the `tt` it was built with,
 with one exception: a `~/.local/bin/tt` whose `--version` reports a later
 `built:` time than the bundled copy's runs instead, since the older binary
 refuses a workspace the newer one has migrated. A Debug build bundles none and
-falls through to `just install`'s copy. Preferences names the binary running,
-its version, and an older copy of the pair when there is one.
+falls through to `just install`'s copy. Settings › Advanced names the binary
+running, its version, and an older copy of the pair when there is one. A
+binary choice takes effect when tt next starts, and Settings offers Relaunch tt
+while the running one is another binary than the next would be.
+
+If no tt is found at launch, a window says where it looked and offers Open
+Settings…, Try Again, and Quit; Try Again searches again without restarting
+the app. A Dock click or switching to tt.app brings that window back while no
+tt runs.
 
 ### Environment
 
@@ -66,7 +73,7 @@ editor your terminal would, and `TT_DATA_DIR` picks the same workspace. A
 shell that cannot run interactively within five seconds is asked again as a
 plain login shell.
 
-Preferences lists the five, each showing the shell's value in gray. Typing a
+Settings lists the five, each showing the shell's value in gray. Typing a
 value gives tt that instead, and clearing the field returns to the shell's.
 They are stored together as the `ttEnvironment` dictionary default:
 
@@ -76,7 +83,7 @@ defaults delete io.github.sglavoie.tt ttEnvironment   # use the shell's for all
 ```
 
 tt reads its environment when it starts, so an edit reaches the next tt:
-Preferences offers Relaunch tt while the running one has the old values. A
+Settings offers Relaunch tt while the running one has the old values. A
 `PATH` override also searches for `tt` itself, which happens before each session.
 
 ### Signing and notarization
@@ -115,10 +122,10 @@ entitlements exist for the arbitrary shells Ghostty.app hosts.
 
 `Ctrl+Opt+Cmd+T` by default. It shows tt from any app and hides it when tt is
 already in front; with no terminal (a launch error) it fronts the error window.
-Change or clear it in Preferences (`Cmd+,`, shown as Settings… in the app
-menu): click the recorder and press the combination. A combination needs
-Ctrl, Opt, or Cmd unless the key is a function key, and Preferences warns when
-another app or macOS itself already owns it.
+Change or clear it in Settings › Shortcuts (`Cmd+,`): click the recorder and
+press the combination. A combination needs Ctrl, Opt, or Cmd unless the key is
+a function key, and Settings warns when another app or macOS itself already
+owns it.
 
 It is stored as the `ttHotKey` default, lowercase and `+`-joined:
 
@@ -134,7 +141,7 @@ or Raycast rule that focused Ghostty for tt can go.
 ### Menu-bar icon and window
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
-opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Preferences…, Launch at
+opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Settings…, Launch at
 Login, Quit. Show/Hide and Quick Capture… show their global shortcuts while
 those are registered, as Quick Capture… does in the app menu; a shortcut that is
 off, or that another app holds, is not shown. The Dock icon's menu has Quick
@@ -144,13 +151,13 @@ nothing (`inbox 2 · today 3 · overdue 1`), leaving out any count at zero and t
 whole line when all three are. The icon's tooltip is tt's window title, that
 same pulse in the same spelling (`tt · inbox 2 · today 3 · overdue 1`).
 Closing the window hides it and keeps the session; the next show returns to
-it. Preferences also chooses whether tt appears in the Dock and menu bar, the
+it. Settings also chooses whether tt appears in the Dock and menu bar, the
 Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
 `accessory`). With the Dock only, there is no menu-bar icon; its commands stay
 in the app menu and the Dock icon's menu.
 
 When `tt` exits cleanly (`q`), the window hides and the next show starts a
-fresh `tt`, or, if Preferences says so, the app quits (`ttExitBehavior`:
+fresh `tt`, or, if Settings says so, the app quits (`ttExitBehavior`:
 `relaunch` or `quit`). A failed exit or a crash always stays on screen with
 its status and a Relaunch button.
 
@@ -167,7 +174,7 @@ the quick-capture panel names the binary and how to update it instead of
 sending anything, the notification actions are off, and notifications fall back
 to `--notify`. The binary and its flags are read again before every session,
 off the main thread, so Relaunch tt picks up an updated tt without quitting the
-app: quick capture, the notification actions, and the line Preferences shows for
+app: quick capture, the notification actions, and the line Settings shows for
 the running binary all follow the tt that just started. If no tt can be found at
 that moment, the last one that was keeps running; only a launch that never found
 one shows the error instead of a window.
@@ -208,7 +215,7 @@ panel grows to fit them. A preview never starts tt, and is simply absent with
 an older tt that does not support it. Reopening the panel cancels a previous
 capture's pending automatic dismissal.
 
-The shortcut is set in Preferences beside the show/hide one, and stored as
+The shortcut is set in Settings beside the show/hide one, and stored as
 `ttCaptureHotKey`, spelled like `ttHotKey`:
 
 ```bash
@@ -224,10 +231,10 @@ one alert per task: clicking it shows tt with the cursor on that task, and its
 buttons act without leaving the app you are in — Acknowledge, offered only where
 `R` would accept it, and Defer 1 Hour. More arrive as one summary that brings tt
 forward. macOS asks for permission on the first one, and none is shown while tt
-is already in front. Preferences turns them off (`ttNotifications`), at once.
+is already in front. Settings turns them off (`ttNotifications`), at once.
 
 The Dock icon carries the overdue count from tt's pulse, and none at zero
-(`ttDockBadge`, also in Preferences):
+(`ttDockBadge`, also in Settings):
 
 ```bash
 defaults write io.github.sglavoie.tt ttNotifications -bool false
@@ -252,7 +259,7 @@ syntax, and not Ghostty.app's config. To share that one, write:
 config-file = ~/.config/ghostty/config
 ```
 
-Preferences has Open and Reload for it. The app always overrides `command`,
+Settings has Open and Reload for it. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 tt runs in.
 
@@ -283,7 +290,7 @@ with `Cmd`-click.
 ### Default zoom
 
 `Cmd+=` and `Cmd+-` zoom the terminal for the running session only; every
-launch, and `Cmd+0`, return to the default zoom. Preferences sets it as a font
+launch, and `Cmd+0`, return to the default zoom. Settings sets it as a font
 size in points, applied at once even over a zoomed window, and it overrides
 the config file's `font-size`; Reset hands the size back to the config. It is
 stored as the `ttDefaultFontSize` default, 6 to 72:

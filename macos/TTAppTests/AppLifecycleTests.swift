@@ -64,7 +64,7 @@ final class MainMenuTests: XCTestCase {
     func testAppMenuAndClipboardOnlyEditMenu() {
         let main = MainMenu.make()
         let app = titles(main.items.first?.submenu)
-        for title in ["About tt", "Preferences…", "Relaunch tt", "Hide tt", "Quit tt"] {
+        for title in ["About tt", "Settings…", "Relaunch tt", "Hide tt", "Quit tt"] {
             XCTAssertTrue(app.contains(title), "\(title) missing from \(app)")
         }
         XCTAssertEqual(titles(submenu(main, "Edit")), ["Copy", "Paste", "Select All"])
@@ -130,6 +130,60 @@ final class MainMenuTests: XCTestCase {
         XCTAssertTrue(FileManager.default.isExecutableFile(atPath: launcher.path))
         let notice = try XCTUnwrap(Bundle.main.url(forResource: "NOTICE-ghostty", withExtension: nil))
         XCTAssertTrue(try String(contentsOf: notice, encoding: .utf8).contains("MIT License"))
+    }
+}
+
+final class LaunchErrorTests: XCTestCase {
+    private func buttons(in view: NSView) -> [NSButton] {
+        (view as? NSButton).map { [$0] } ?? view.subviews.flatMap(buttons(in:))
+    }
+
+    func testTheWindowOffersSettingsTryAgainAndQuit() throws {
+        var calls: [String] = []
+        let window = LaunchErrorWindow.make(
+            title: "tt could not be found.",
+            message: "Looked in: …",
+            openSettings: { calls.append("settings") },
+            tryAgain: { calls.append("retry") }
+        )
+        let all = buttons(in: try XCTUnwrap(window.contentView))
+        XCTAssertEqual(all.map(\.title), ["Open Settings…", "Try Again", "Quit"])
+        XCTAssertEqual(all.first { $0.keyEquivalent == "\r" }?.title, "Try Again")
+        all[0].performClick(nil)
+        all[1].performClick(nil)
+        XCTAssertEqual(calls, ["settings", "retry"])
+        XCTAssertEqual(all[2].action, #selector(NSApplication.terminate(_:)))
+    }
+
+    /// A failure a retry cannot fix offers none, and Return quits.
+    func testWithoutARetryReturnQuits() throws {
+        let window = LaunchErrorWindow.make(title: "Ghostty failed to start.", message: "", openSettings: {})
+        let all = buttons(in: try XCTUnwrap(window.contentView))
+        XCTAssertEqual(all.map(\.title), ["Open Settings…", "Quit"])
+        XCTAssertEqual(all.first { $0.keyEquivalent == "\r" }?.title, "Quit")
+    }
+
+    /// With no terminal, a Dock click or switching to tt.app brings the
+    /// launch error back rather than nothing.
+    func testReopeningWithoutATerminalShowsTheLaunchError() throws {
+        let delegate = AppDelegate()
+        XCTAssertNil(delegate.terminal)
+        delegate.showLaunchError(title: "tt could not be found.", message: "", tryAgain: {})
+        let window = try XCTUnwrap(delegate.launchErrorWindow)
+        defer { window.orderOut(nil) }
+        XCTAssertTrue(window.isVisible)
+
+        window.orderOut(nil)
+        XCTAssertFalse(delegate.applicationShouldHandleReopen(NSApp, hasVisibleWindows: false))
+        XCTAssertTrue(window.isVisible)
+
+        window.orderOut(nil)
+        delegate.applicationDidBecomeActive(Notification(name: NSApplication.didBecomeActiveNotification))
+        XCTAssertTrue(window.isVisible)
+
+        delegate.showLaunchError(title: "tt could not be found.", message: "again")
+        XCTAssertFalse(window.isVisible, "a second error replaces the first")
+        delegate.launchErrorWindow?.orderOut(nil)
     }
 }
 

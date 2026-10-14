@@ -24,7 +24,7 @@ enum MainMenu {
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "About tt", action: showAbout, keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Preferences…", action: showPreferences, keyEquivalent: ",")
+        appMenu.addItem(withTitle: "Settings…", action: showPreferences, keyEquivalent: ",")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quick Capture…", action: quickCapture, keyEquivalent: "")
             .setShortcut(captureHotKey)

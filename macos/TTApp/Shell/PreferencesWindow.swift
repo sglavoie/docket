@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Everything Preferences edits. Each change is saved to `UserDefaults` as it
+/// Everything Settings edits. Each change is saved to `UserDefaults` as it
 /// is made; the app delegate applies the live ones through the callbacks.
 final class PreferencesModel: ObservableObject {
     let defaults: UserDefaults
@@ -82,13 +82,14 @@ final class PreferencesModel: ObservableObject {
             } else {
                 defaults.set(trimmed, forKey: TTBinaryResolver.overrideDefaultsKey)
             }
+            refreshBinaryRelaunch()
         }
     }
 
     /// What the login shell reported at launch, set by the app delegate.
     @Published var detectedEnvironment: LaunchEnvironment?
 
-    /// Values typed in Preferences in place of the shell's; blank uses the shell's.
+    /// Values typed in Settings in place of the shell's; blank uses the shell's.
     @Published var environmentOverrides: [String: String] {
         didSet {
             guard environmentOverrides != oldValue else { return }
@@ -112,8 +113,13 @@ final class PreferencesModel: ObservableObject {
     }
 
     /// The binary this session runs, set by the app delegate once resolved;
-    /// its notes are read when Preferences opens, not at launch.
+    /// its notes are read when Settings opens, not at launch.
     var runningBinary: TTBinaryResolver.Resolution?
+    /// The tt the next session would run, resolved the way a session resolves
+    /// it; nil when none resolves.
+    var resolveNextBinary: (_ searchPath: String) -> TTBinaryResolver.Resolution?
+    /// The next tt is another binary than the running one.
+    @Published private(set) var binaryAwaitsRelaunch = false
     /// Which tt runs and its version.
     @Published private(set) var runningBinaryNote: String?
     /// A second copy that disagrees with the running one, and what to do.
@@ -150,6 +156,9 @@ final class PreferencesModel: ObservableObject {
         dockBadge = TTDockBadgePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = TTEnvironmentOverrides.load(from: defaults)
+        resolveNextBinary = { [defaults] searchPath in
+            try? TTBinaryResolver.live(searchPath: searchPath, defaults: defaults).resolve().get()
+        }
     }
 
     /// Re-reads what may have changed elsewhere, e.g. the login item in System
@@ -171,6 +180,7 @@ final class PreferencesModel: ObservableObject {
     /// Reads the running binary's version and, when it is one of the bundled
     /// and `~/.local/bin` pair, how the other one compares.
     func refreshBinaryStatus() {
+        refreshBinaryRelaunch()
         guard let running = runningBinary else {
             runningBinaryNote = nil
             binarySkewNote = nil
@@ -200,6 +210,26 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// Asked as the override changes and as Settings opens, never per
+    /// redraw: resolving may read two binaries' versions.
+    func refreshBinaryRelaunch() {
+        let next = runningBinary == nil ? nil : resolveNextBinary(effectiveEnvironment?.path ?? "")
+        let awaits = Self.binaryAwaitsRelaunch(running: runningBinary, next: next)
+        if awaits != binaryAwaitsRelaunch {
+            binaryAwaitsRelaunch = awaits
+        }
+    }
+
+    /// A running tt and a resolvable next one at different paths. One that no
+    /// longer resolves relaunches nothing: the last tt keeps running.
+    static func binaryAwaitsRelaunch(
+        running: TTBinaryResolver.Resolution?,
+        next: TTBinaryResolver.Resolution?
+    ) -> Bool {
+        guard let running, let next else { return false }
+        return running.url.standardizedFileURL.path != next.url.standardizedFileURL.path
+    }
+
     static func abbreviated(_ path: String) -> String {
         let home = NSHomeDirectory()
         return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
@@ -219,10 +249,15 @@ final class PreferencesModel: ObservableObject {
             return nil
         } catch {
             refreshLoginItem()
-            let message = "Launch at Login could not be changed: \(error.localizedDescription)"
+            let message = Self.launchAtLoginFailure(error)
             launchAtLoginNote = message
             return message
         }
+    }
+
+    /// The error, then where the login item can be changed by hand.
+    static func launchAtLoginFailure(_ error: Error) -> String {
+        "\(error.localizedDescription)\nSystem Settings › General › Login Items"
     }
 
     /// Why the override will not work, when it is set; checked the way the
@@ -235,15 +270,20 @@ final class PreferencesModel: ObservableObject {
     }
 }
 
-/// The SwiftUI Preferences window.
+/// The SwiftUI Settings window, where it was last left.
 final class PreferencesWindowController: NSObject, NSWindowDelegate {
+    static let frameAutosaveName = "Settings"
+
     let model: PreferencesModel
     let recorder = HotKeyRecorder()
     let captureRecorder = HotKeyRecorder()
+    private let frameAutosaveName: String?
     private(set) lazy var window: NSWindow = makeWindow()
 
-    init(model: PreferencesModel) {
+    /// Tests pass no autosave name, so they leave the saved frame alone.
+    init(model: PreferencesModel, frameAutosaveName: String? = PreferencesWindowController.frameAutosaveName) {
         self.model = model
+        self.frameAutosaveName = frameAutosaveName
         super.init()
     }
 
@@ -254,14 +294,24 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(
+        let host = NSHostingController(
             rootView: PreferencesView(model: model, recorder: recorder, captureRecorder: captureRecorder)
-        ))
-        window.title = "tt Preferences"
+        )
+        // Each tab is its own height; the window follows the one chosen.
+        host.sizingOptions = .preferredContentSize
+        let window = NSWindow(contentViewController: host)
+        window.title = "tt Settings"
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.center()
+        if let frameAutosaveName {
+            if !window.setFrameUsingName(frameAutosaveName) {
+                window.center()
+            }
+            window.setFrameAutosaveName(frameAutosaveName)
+        } else {
+            window.center()
+        }
         return window
     }
 
@@ -272,13 +322,81 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
     }
 }
 
+/// The four Settings tabs, in order.
+enum SettingsTab: String, CaseIterable {
+    case general, shortcuts, terminal, advanced
+
+    var title: String { rawValue.capitalized }
+
+    var systemImage: String {
+        switch self {
+        case .general: return "gearshape"
+        case .shortcuts: return "keyboard"
+        case .terminal: return "terminal"
+        case .advanced: return "gearshape.2"
+        }
+    }
+}
+
 struct PreferencesView: View {
     @ObservedObject var model: PreferencesModel
     @ObservedObject var recorder: HotKeyRecorder
     @ObservedObject var captureRecorder: HotKeyRecorder
 
     var body: some View {
-        Form {
+        TabView {
+            ForEach(SettingsTab.allCases, id: \.self) { tab in
+                content(tab)
+                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
+                    .tag(tab)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func content(_ tab: SettingsTab) -> some View {
+        switch tab {
+        case .general: general
+        case .shortcuts: shortcuts
+        case .terminal: terminal
+        case .advanced: advanced
+        }
+    }
+
+    private var general: some View {
+        tabForm {
+            Section {
+                Picker("Show tt in", selection: $model.activationPolicy) {
+                    ForEach(TTActivationPolicy.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Toggle("Launch at Login", isOn: Binding(
+                    get: { model.launchAtLogin },
+                    set: { model.setLaunchAtLogin($0) }
+                ))
+                if let loginNote = model.launchAtLoginNote {
+                    note(loginNote, warning: true)
+                }
+            }
+
+            Section {
+                Picker("When tt exits", selection: $model.exitBehavior) {
+                    ForEach(TTExitBehavior.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                note("A crash or a non-zero exit always keeps tt's last output on screen with a Relaunch button.")
+            }
+
+            Section {
+                Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
+                note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
+                    + "while tt is not in front. Click one to show its task; Acknowledge and Defer 1 Hour "
+                    + "act on it from the notification.")
+                Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
+            }
+        }
+    }
+
+    private var shortcuts: some View {
+        tabForm {
             Section {
                 LabeledContent("Show and hide tt") {
                     HotKeyRecorderView(combo: $model.hotKey, model: model, recorder: recorder, other: captureRecorder)
@@ -297,20 +415,11 @@ struct PreferencesView: View {
                 note("Opens a capture field over any app. Enter sends the line to tt, "
                     + "which reads it as the a composer would: #tag, @date, %project, $state.")
             }
+        }
+    }
 
-            Section {
-                Picker("Show tt in", selection: $model.activationPolicy) {
-                    ForEach(TTActivationPolicy.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Toggle("Launch at Login", isOn: Binding(
-                    get: { model.launchAtLogin },
-                    set: { model.setLaunchAtLogin($0) }
-                ))
-                if let loginNote = model.launchAtLoginNote {
-                    note(loginNote, warning: true)
-                }
-            }
-
+    private var terminal: some View {
+        tabForm {
             Section {
                 LabeledContent("Default zoom") {
                     // Reset leads, so the trailing stepper holds still as it appears.
@@ -335,20 +444,20 @@ struct PreferencesView: View {
             }
 
             Section {
-                Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
-                note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
-                    + "while tt is not in front. Click one to show its task; Acknowledge and Defer 1 Hour "
-                    + "act on it from the notification.")
-                Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
-            }
-
-            Section {
-                Picker("When tt exits", selection: $model.exitBehavior) {
-                    ForEach(TTExitBehavior.allCases, id: \.self) { Text($0.label).tag($0) }
+                LabeledContent("Ghostty config") {
+                    HStack {
+                        Button("Open") { model.onOpenGhosttyConfig?() }
+                        Button("Reload") { model.onReloadGhosttyConfig?() }
+                    }
                 }
-                note("A crash or a non-zero exit always keeps tt's last output on screen with a Relaunch button.")
+                note(Ghostty.Config.userConfigURL().path
+                    .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
             }
+        }
+    }
 
+    private var advanced: some View {
+        tabForm {
             Section {
                 LabeledContent("tt binary") {
                     HStack {
@@ -367,9 +476,16 @@ struct PreferencesView: View {
                 if let skew = model.binarySkewNote {
                     note(skew, warning: true)
                 }
+                if model.binaryAwaitsRelaunch {
+                    HStack {
+                        note("The running tt is another binary.", warning: true)
+                        Spacer()
+                        Button("Relaunch tt") { model.onRelaunch?() }
+                    }
+                }
                 note("Leave empty to use the bundled tt, ~/.local/bin/tt, then PATH; "
                     + "a ~/.local/bin/tt built after the bundled one wins. "
-                    + "Takes effect the next time tt.app starts.")
+                    + "Takes effect when tt next starts.")
             }
 
             Section {
@@ -393,21 +509,14 @@ struct PreferencesView: View {
                 note("Gray values are what your login shell sets. Type one to give tt "
                     + "another; clear it to go back. tt reads these each time it starts.")
             }
-
-            Section {
-                LabeledContent("Ghostty config") {
-                    HStack {
-                        Button("Open") { model.onOpenGhosttyConfig?() }
-                        Button("Reload") { model.onReloadGhosttyConfig?() }
-                    }
-                }
-                note(Ghostty.Config.userConfigURL().path
-                    .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
-            }
         }
-        .formStyle(.grouped)
-        .frame(width: 520)
-        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func tabForm<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        Form(content: content)
+            .formStyle(.grouped)
+            .frame(width: 520)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func note(_ text: String, warning: Bool = false) -> some View {

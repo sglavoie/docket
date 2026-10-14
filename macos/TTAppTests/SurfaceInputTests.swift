@@ -284,7 +284,7 @@ final class SurfaceInputTests: XCTestCase {
         try startByteDump()
         let recorder = MenuRecorder()
         let appMenu = NSMenu()
-        let preferences = appMenu.addItem(withTitle: "Preferences…", action: #selector(MenuRecorder.preferences(_:)), keyEquivalent: ",")
+        let preferences = appMenu.addItem(withTitle: "Settings…", action: #selector(MenuRecorder.preferences(_:)), keyEquivalent: ",")
         preferences.target = recorder
         let main = NSMenu()
         let appItem = NSMenuItem()
