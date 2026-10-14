@@ -197,12 +197,12 @@ the draft joins a planning collection it says so in its own half —
 `Project: Client Alpha · Plan: Today · Status: Backlog`, because `$today` is a
 plan and the status it implies is one the word does not spell. A draft with no
 `$destination` and no `%project` reads whatever it would default to, a draft
-whose lines disagree about an axis reads `Mixed` for that axis alone, and the
-preview beneath it echoes the `$today` token rather than repeating the pair.
-That preview's `Route` line appears only when the line under the cursor says
-something of its own — a `$destination`, a `%project`, or a deferral, which
-lands the task in Backlog — so a line taking the default adds no second copy of
-the route row.
+whose lines disagree about an axis reads `Mixed` for that axis alone. The
+preview beneath it says the route only where that row cannot: its `Route` line
+appears when the row reads `Mixed`, or when the line under the cursor is
+deferred, which lands the task in Backlog for a reason the row does not show.
+A default, a `$destination`, and a `%project` are all already on the route row,
+so none of them adds a second copy.
 Both wear the colors the
 Outliner already uses: the project its own color, the plan and the status their
 section badges, the preview's state glyph the badge the new row will carry,

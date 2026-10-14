@@ -1,0 +1,20 @@
+{
+  "name": "capture-route-said-once",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "raise capture over the outline", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "text": "Fix #bug %rea" },
+    { "type": "key", "label": "complete the project target", "key": "tab" },
+    { "type": "assert", "label": "the route row names the target project", "assert": "contains", "value": "Project: Reading List · Status: Inbox" },
+    { "type": "assert", "label": "and the preview says the route nowhere else", "assert": "count_contains", "value": "Reading List", "count": 1 },
+    { "type": "assert", "assert": "not_contains", "value": "Route    " },
+    { "type": "assert", "label": "while the preview still says what the row cannot", "assert": "contains", "value": "Tags     #bug" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "label": "a deferral is a landing the route row cannot show", "text": " @@tomorrow " },
+    { "type": "assert", "label": "so the preview keeps its Route group", "assert": "contains", "value": "(deferred)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -17,7 +17,7 @@
     { "type": "assert", "label": "no cursor lends capture its project", "assert": "contains", "value": "Project: Unfiled" },
 
     { "type": "text", "label": "route the line, then adopt two tasks named three ways", "text": "Consolidate follow-ups %rich-project <2 <6 <Fix" },
-    { "type": "assert", "label": "children resolve in the routed project", "assert": "contains", "value": "→ Rich Project" },
+    { "type": "assert", "label": "children resolve in the routed project, which the route row names", "assert": "contains", "value": "Project: Rich Project" },
     { "type": "assert", "label": "the short id and the title prefix collapse to one child", "assert": "contains", "value": "Children <2 User authentication · <6 Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" },
 

@@ -32,10 +32,43 @@ func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
 	if popup == "" {
 		return base
 	}
-	popupWidth := PopupWidth(popup)
-	startCol := max((baseWidth-popupWidth)/2, 0)
 	fitted := FitOverlayPopupHeight(popup, baseHeight)
-	startRow := bottomPopupTopRow(baseHeight, lipgloss.Height(fitted))
+	return overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, bottomPopupTopRow(baseHeight, lipgloss.Height(fitted)))
+}
+
+// OverlayPopupDimmedKeepingRow is OverlayPopupDimmed for a frame holding one row
+// the popup may not cover — a bounded panel's divider, which is what says where
+// the panel starts — and whose rows above topRow are the host's own. The popup
+// keeps its bottom anchor when it fits beneath keepRow, halo included; otherwise
+// it rises whole above keepRow, and a popup fitting neither side is fitted to
+// the larger one. A keepRow outside the frame keeps nothing.
+func OverlayPopupDimmedKeepingRow(base, popup string, baseWidth, baseHeight, topRow, keepRow int) string {
+	if popup == "" {
+		return base
+	}
+	topRow = min(max(topRow, 0), max(baseHeight-1, 0))
+	below, above := baseHeight-keepRow-1, keepRow-topRow
+	if keepRow < topRow || keepRow >= baseHeight || max(below, above) < 1 {
+		return OverlayPopupDimmed(base, FitOverlayPopupHeight(popup, max(baseHeight-topRow, 1)), baseWidth, baseHeight)
+	}
+	height := lipgloss.Height(popup)
+	switch {
+	case height <= below:
+		return overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, baseHeight-height)
+	case height <= above:
+		return overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, keepRow-height)
+	case below >= above:
+		return overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, below), baseWidth, baseHeight, keepRow+1)
+	default:
+		return overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, above), baseWidth, baseHeight, topRow)
+	}
+}
+
+// overlayPopupDimmedRow centers an already fitted popup at startRow over the
+// dimmed base, flanking it where a side margin is too narrow to show the host.
+func overlayPopupDimmedRow(base, fitted string, baseWidth, baseHeight, startRow int) string {
+	popupWidth := PopupWidth(fitted)
+	startCol := max((baseWidth-popupWidth)/2, 0)
 	left, right := startCol, max(baseWidth-startCol-popupWidth, 0)
 	if left >= overlayFlankMinColumns {
 		left = 0

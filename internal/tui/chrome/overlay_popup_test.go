@@ -320,3 +320,84 @@ func TestOverlayPopupDimmedAtFitsWhatTheAnchorLeaves(t *testing.T) {
 		t.Fatalf("an anchor past the frame wrote above the row it was pulled back to:\n%s", strings.Join(clamped, "\n"))
 	}
 }
+
+// TestOverlayPopupDimmedKeepingRowNeverCoversTheKeptRow holds a bottom-anchored
+// popup off a bounded panel's divider: beneath it, halo starting the row after,
+// when the panel is tall enough; whole above it when it is not; and fitted to the
+// larger side when neither holds it. The host's first row stays its own.
+func TestOverlayPopupDimmedKeepingRowNeverCoversTheKeptRow(t *testing.T) {
+	const (
+		baseWidth  = 30
+		baseHeight = 16
+		frameWidth = 18
+	)
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	popup := RenderOverlayBox("body", frameWidth, "Title", "Enter · Esc", borderStyle)
+	popupHeight := lipgloss.Height(popup)
+	divider := strings.Repeat("=", baseWidth)
+	baseWith := func(keepRow int) string {
+		lines := make([]string, baseHeight)
+		for i := range lines {
+			lines[i] = strings.Repeat(".", baseWidth)
+		}
+		lines[keepRow] = divider
+		return strings.Join(lines, "\n")
+	}
+	popupRows := func(rendered string) (first, last int) {
+		first, last = -1, -1
+		for i, line := range strings.Split(ansi.Strip(rendered), "\n") {
+			if strings.Contains(line, "Title") || strings.ContainsAny(line, "╭╰│") {
+				if first < 0 {
+					first = i
+				}
+				last = i
+			}
+		}
+		// The frame's rows sit inside one halo row on each side.
+		return first - 1, last + 1
+	}
+
+	for _, tc := range []struct {
+		name      string
+		keepRow   int
+		wantFirst int
+		wantLast  int
+	}{
+		{name: "fits beneath", keepRow: baseHeight - popupHeight - 1, wantFirst: baseHeight - popupHeight, wantLast: baseHeight - 1},
+		{name: "rises above", keepRow: baseHeight - 3, wantFirst: baseHeight - 3 - popupHeight, wantLast: baseHeight - 4},
+		{name: "no row kept", keepRow: -1, wantFirst: baseHeight - popupHeight, wantLast: baseHeight - 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := baseWith(max(tc.keepRow, 0))
+			rendered := OverlayPopupDimmedKeepingRow(base, popup, baseWidth, baseHeight, 1, tc.keepRow)
+			lines := strings.Split(ansi.Strip(rendered), "\n")
+			if len(lines) != baseHeight {
+				t.Fatalf("composed height = %d, want %d", len(lines), baseHeight)
+			}
+			if tc.keepRow >= 0 && lines[tc.keepRow] != divider {
+				t.Fatalf("the kept row was covered: %q\n%s", lines[tc.keepRow], strings.Join(lines, "\n"))
+			}
+			if first, last := popupRows(rendered); first != tc.wantFirst || last != tc.wantLast {
+				t.Fatalf("popup spans rows %d-%d, want %d-%d\n%s", first, last, tc.wantFirst, tc.wantLast, strings.Join(lines, "\n"))
+			}
+		})
+	}
+
+	t.Run("fitted to the larger side", func(t *testing.T) {
+		const short = 8
+		lines := make([]string, short)
+		for i := range lines {
+			lines[i] = strings.Repeat(".", baseWidth)
+		}
+		keepRow := 3
+		lines[keepRow] = divider
+		rendered := OverlayPopupDimmedKeepingRow(strings.Join(lines, "\n"), popup, baseWidth, short, 1, keepRow)
+		plain := strings.Split(ansi.Strip(rendered), "\n")
+		if plain[keepRow] != divider {
+			t.Fatalf("the kept row was covered:\n%s", strings.Join(plain, "\n"))
+		}
+		if !strings.Contains(plain[short-2], "╰") {
+			t.Fatalf("the fitted popup lost its frame beneath the kept row:\n%s", strings.Join(plain, "\n"))
+		}
+	})
+}

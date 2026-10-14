@@ -82,6 +82,9 @@ type composerRouteHeader struct {
 	planMixed    bool
 	status       models.WorkflowState
 	statusMixed  bool
+	// destination is the first line's whole route, which the plan and status
+	// split; it answers for every line only where neither axis is mixed.
+	destination app.CaptureDestination
 }
 
 // effectiveRouteHeader states the route as the two independent things it is: the
@@ -104,9 +107,10 @@ func (m *TaskComposerModel) effectiveRouteHeader() composerRouteHeader {
 	}
 
 	header := composerRouteHeader{
-		project: routes[0].project,
-		plan:    composerPlanDestination(routes[0].destination),
-		status:  composerStatusState(routes[0].destination),
+		project:     routes[0].project,
+		destination: routes[0].destination,
+		plan:        composerPlanDestination(routes[0].destination),
+		status:      composerStatusState(routes[0].destination),
 	}
 	for _, route := range routes[1:] {
 		if composerProjectID(route.project) != composerProjectID(header.project) {
@@ -120,6 +124,21 @@ func (m *TaskComposerModel) effectiveRouteHeader() composerRouteHeader {
 		}
 	}
 	return header
+}
+
+// routeSummary is the route row's answer as the capture preview reads it, so
+// the preview's Route group is dropped exactly where this row already says it.
+func (m *TaskComposerModel) routeSummary() grammar.CaptureRouteSummary {
+	header := m.effectiveRouteHeader()
+	destination := header.destination
+	if destination == "" {
+		destination = app.CaptureDestinationInbox
+	}
+	return grammar.CaptureRouteSummary{
+		ProjectID:   composerProjectID(header.project),
+		Destination: destination,
+		Mixed:       header.projectMixed || header.planMixed || header.statusMixed,
+	}
 }
 
 func composerProjectID(project *models.Project) string {

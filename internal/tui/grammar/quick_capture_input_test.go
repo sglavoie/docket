@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
@@ -76,39 +77,56 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 	}
 }
 
-// TestRenderPreview_HostRouteRowOwnsTheDefaultDestination holds the Route group
-// to what a host's own route row cannot say. A host drawing that row has already
-// named a default destination, so the preview repeats nothing; an explicit
-// sigil, a deferral, and a project target are each the line's own answer and
-// keep the group, and a host drawing no such row keeps it always.
-func TestRenderPreview_HostRouteRowOwnsTheDefaultDestination(t *testing.T) {
+// TestRenderPreview_HostRouteRowOwnsTheRoute holds the Route group to what a
+// host's own route row cannot say. A row naming the line's project and
+// destination has said all of it, a default, an explicit sigil, and a project
+// target alike, so the preview repeats nothing; a deferral the row cannot show,
+// a row reading Mixed, a row naming another route, and a host drawing no such
+// row each keep the group.
+func TestRenderPreview_HostRouteRowOwnsTheRoute(t *testing.T) {
 	parentID := "parent"
+	webAppID := "web-app"
 	deferUntil := time.Now().Add(48 * time.Hour)
+	home := &models.Project{ID: "home", Name: "Home"}
+	inHome := func(destination app.CaptureDestination) *CaptureRouteSummary {
+		return &CaptureRouteSummary{ProjectID: home.ID, Destination: destination}
+	}
 	for _, tc := range []struct {
 		name      string
 		preview   *QuickCaptureResult
+		host      *CaptureRouteSummary
 		wantRoute string
 	}{
-		{name: "default inbox", preview: &QuickCaptureResult{Title: "Plain"}},
-		{name: "default child backlog", preview: &QuickCaptureResult{Title: "Child", ParentID: &parentID}},
-		{name: "explicit destination", wantRoute: "$today",
+		{name: "default inbox", host: inHome(app.CaptureDestinationInbox),
+			preview: &QuickCaptureResult{Title: "Plain"}},
+		{name: "default child backlog", host: inHome(app.CaptureDestinationBacklog),
+			preview: &QuickCaptureResult{Title: "Child", ParentID: &parentID}},
+		{name: "explicit destination", host: inHome(app.CaptureDestinationToday),
 			preview: &QuickCaptureResult{Title: "Plan it", Destination: app.CaptureDestinationToday, DestinationSet: true}},
-		{name: "project target", wantRoute: "Web App",
-			preview: &QuickCaptureResult{Title: "Elsewhere", TargetProjectName: "Web App"}},
-		{name: "deferred", wantRoute: "(deferred)",
+		{name: "project target",
+			host:    &CaptureRouteSummary{ProjectID: webAppID, Destination: app.CaptureDestinationInbox},
+			preview: &QuickCaptureResult{Title: "Elsewhere", TargetProjectID: &webAppID, TargetProjectName: "Web App"}},
+		{name: "deferred", host: inHome(app.CaptureDestinationBacklog), wantRoute: "(deferred)",
 			preview: &QuickCaptureResult{Title: "Later", DeferUntil: &deferUntil, DeferSet: true}},
+		{name: "mixed row", wantRoute: "$inbox",
+			host:    &CaptureRouteSummary{ProjectID: home.ID, Destination: app.CaptureDestinationInbox, Mixed: true},
+			preview: &QuickCaptureResult{Title: "One of many"}},
+		{name: "row naming another route", host: inHome(app.CaptureDestinationInbox), wantRoute: "$today",
+			preview: &QuickCaptureResult{Title: "Plan it", Destination: app.CaptureDestinationToday, DestinationSet: true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			editor := makePreviewInput(t, tc.preview, "", 0)
+			editor.Project = home
 			if got := ansi.Strip(editor.renderPreview()); !strings.Contains(got, "Route") {
 				t.Fatalf("a host drawing no route row lost the Route group:\n%s", got)
 			}
 
 			composer := makePreviewInput(t, tc.preview, "", 0)
-			composer.HostDrawsRoute = true
+			composer.Project = home
+			composer.HostRoute = tc.host
 			got := ansi.Strip(composer.renderPreview())
 			if tc.wantRoute == "" {
-				if strings.Contains(got, "Route") || strings.Contains(got, "(default)") {
+				if strings.Contains(got, "Route") || strings.Contains(got, "(default)") || strings.Contains(got, "Web App") {
 					t.Fatalf("the preview repeats the host's route row:\n%s", got)
 				}
 				if compact := ansi.Strip(composer.renderCompactPreview()); strings.Contains(compact, "(default)") {
@@ -120,6 +138,31 @@ func TestRenderPreview_HostRouteRowOwnsTheDefaultDestination(t *testing.T) {
 				t.Fatalf("the preview dropped a route the host row does not state (want %q):\n%s", tc.wantRoute, got)
 			}
 		})
+	}
+}
+
+// TestUpdatePreview_SettlesTheHostRouteSummary holds the summary to the parse:
+// UpdatePreview reads the host once, so measuring never asks it again.
+func TestUpdatePreview_SettlesTheHostRouteSummary(t *testing.T) {
+	home := &models.Project{ID: "home", Name: "Home"}
+	q := NewQuickCaptureInput(home, []*models.Project{home}, "", false)
+	calls := 0
+	q.HostRouteSummary = func() CaptureRouteSummary {
+		calls++
+		return CaptureRouteSummary{ProjectID: home.ID, Destination: app.CaptureDestinationInbox}
+	}
+	q.Input.SetValue("Plain")
+	q.UpdatePreview()
+	if calls != 1 || q.HostRoute == nil {
+		t.Fatalf("UpdatePreview did not settle the host route (calls=%d)", calls)
+	}
+	q.PreviewBlockRows()
+	q.renderPreview()
+	if calls != 1 {
+		t.Fatalf("measuring the preview asked the host again (calls=%d)", calls)
+	}
+	if got := ansi.Strip(q.renderPreview()); strings.Contains(got, "Route") {
+		t.Fatalf("the preview repeats the host's route row:\n%s", got)
 	}
 }
 

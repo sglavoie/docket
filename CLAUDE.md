@@ -453,8 +453,8 @@ the act and the footer repeats nothing: the destination is the route summary's,
 the row `Ctrl+P` rewrites, so only a value that row cannot carry — a child
 capture's parent — reaches the label. The pane repeats it neither: `To:` counts
 are drawn only for a batch spanning projects, through `batchSpansProjects` in
-measure and render alike, and `HostDrawsRoute` drops the preview's Route group
-for a default destination with no project target. The discard question stays the shell's
+measure and render alike, and `HostRoute` drops the preview's Route group
+where that row says it whole: not Mixed, not deferred. The discard question stays the shell's
 confirm dialog, and a second copy underneath would cost the preview a row. A bounded preview elides nothing: `ComposeBoundedPreviewBlock`
 falls to the compact wrapped run rather than clipping the grouped one, because a
 truncated group list reads as a complete one. `Ctrl+F` is the composer's other

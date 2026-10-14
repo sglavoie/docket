@@ -23,6 +23,11 @@ import (
 func (q *QuickCaptureInput) UpdatePreview() {
 	q.previewMinute = time.Now().Truncate(time.Minute)
 	q.batchDuplicateHint = ""
+	q.HostRoute = nil
+	if q.HostRouteSummary != nil {
+		summary := q.HostRouteSummary()
+		q.HostRoute = &summary
+	}
 	lines := strings.Split(q.Input.Value(), "\n")
 	input := strings.TrimSpace(lines[min(q.Input.Line(), len(lines)-1)])
 	if input == "" {
@@ -224,14 +229,35 @@ func (q *QuickCaptureInput) previewRouteGroup(previewTask *models.Task, destinat
 	if q.Preview.TargetProjectName != "" {
 		routeChunks = append(routeChunks, "→ "+theme.ProjectColorStyle(q.Preview.TargetProject).Render(q.Preview.TargetProjectName))
 	}
-	// A default destination in the host's own project is the whole of what that
-	// route row says, so the group would repeat it; an explicit sigil, a deferral,
-	// or a project target is this line's own answer and stays.
-	routeIsDefault := !deferred && !q.Preview.DestinationSet && q.Preview.TargetProjectName == ""
-	if q.HostDrawsRoute && routeIsDefault {
+	if q.hostRouteStates(destination, deferred) {
 		return previewGroup{}, false
 	}
 	return previewGroup{label: "Route", chunks: routeChunks}, true
+}
+
+// hostRouteStates reports whether the host's route row already says everything
+// the Route group would: the same project and the same destination, read as one
+// value. A row reading Mixed names neither, and a deferral is a landing the row
+// cannot show, so both keep the group, as does a host drawing no such row.
+func (q *QuickCaptureInput) hostRouteStates(destination app.CaptureDestination, deferred bool) bool {
+	if q.HostRoute == nil || q.HostRoute.Mixed || deferred {
+		return false
+	}
+	return q.HostRoute.Destination == destination && q.HostRoute.ProjectID == q.previewProjectID()
+}
+
+// previewProjectID is the project the Route group names: the line's target,
+// else the host's own project.
+func (q *QuickCaptureInput) previewProjectID() string {
+	switch {
+	case q.Preview.TargetProjectID != nil:
+		return *q.Preview.TargetProjectID
+	case q.Preview.TargetProject != nil:
+		return q.Preview.TargetProject.ID
+	case q.Project != nil:
+		return q.Project.ID
+	}
+	return ""
 }
 
 // The marker uses the autocomplete vocabulary; tags and contexts remain separate.

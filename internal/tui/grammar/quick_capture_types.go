@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -60,6 +61,15 @@ const (
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
 const acVisibleCount = 7
 
+// CaptureRouteSummary is what a host's route row resolved: the project and
+// the destination every line agrees on, or Mixed where they disagree and the
+// row says so instead of naming one.
+type CaptureRouteSummary struct {
+	ProjectID   string
+	Destination app.CaptureDestination
+	Mixed       bool
+}
+
 // QuickCaptureInput encapsulates the compact Task Composer's autocomplete,
 // preview, and parsing infrastructure.
 type QuickCaptureInput struct {
@@ -84,10 +94,12 @@ type QuickCaptureInput struct {
 	DefaultParentID   *string // Composer's implicit parent, used for duplicate-hint ranking.
 	allProjects       []*models.Project
 	skipProjectSyntax bool // When true, %project syntax is disabled
-	// HostDrawsRoute is set by a host that states the effective route on a row
-	// of its own, which lets the preview stay silent about a default
-	// destination instead of repeating that row.
-	HostDrawsRoute bool
+	// HostRouteSummary is installed by a host that states the effective route
+	// on a row of its own, and UpdatePreview settles HostRoute from it beside
+	// the parse, so measuring the preview asks the host nothing. A preview
+	// whose Route group that row already says in full stays silent about it.
+	HostRouteSummary func() CaptureRouteSummary
+	HostRoute        *CaptureRouteSummary
 
 	// Layout
 	Width int // Available width for preview wrapping

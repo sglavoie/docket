@@ -106,7 +106,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 			if !inZen {
 				content = composeSurfaceFooterFeedback(content, m.footerFeedbackLine())
 			}
-			content = m.applyOverlays(content, m.viewNav.height)
+			content = m.applyOverlays(content, m.viewNav.height, noPanelDivider)
 			resultView.SetContent(m.applyBackground(content))
 			return resultView
 		}
@@ -118,7 +118,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	// Pad content so the status bar is always at the bottom of the terminal
 	targetContentHeight := m.viewNav.height - statusBarHeight
-	content = m.composeHostedPanelContent(content, targetContentHeight)
+	content, panelDivider := m.composeHostedPanelContent(content, targetContentHeight)
 	contentHeight := lipgloss.Height(content)
 	if contentHeight > targetContentHeight {
 		content = clipContentHeight(content, targetContentHeight)
@@ -128,7 +128,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		content += strings.Repeat("\n", targetContentHeight-contentHeight)
 	}
 
-	content = m.applyOverlays(content, targetContentHeight)
+	content = m.applyOverlays(content, targetContentHeight, panelDivider)
 
 	// One separator, always. A trailing newline is the last content row rather
 	// than a spare one — lipgloss.Height counts it, and so did the padding above —
@@ -379,12 +379,13 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 
 // applyOverlays composites all popup/overlay layers onto the base content.
 // h is the overlay positioning height (m.viewNav.height for full-height views,
-// targetContentHeight for views with an external status bar).
+// targetContentHeight for views with an external status bar), and panelDivider
+// the row a bounded panel opens with, or noPanelDivider.
 //
 // Overlay visual contract:
 //   - Pickers/selection overlays (dimmedOverlayRenderers): dim
 //   - Confirm dialogs: dim (destructive action requires focus)
-func (m *AppModel) applyOverlays(content string, h int) string {
+func (m *AppModel) applyOverlays(content string, h, panelDivider int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
 		if popup := renderOverlayWithin(renderer, m.viewNav.width, h); popup != "" {
@@ -392,9 +393,11 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 		}
 	}
 
-	// Overlay confirm dialog last so it renders on top of all other popups
+	// Overlay confirm dialog last so it renders on top of all other popups. It
+	// stands beside a bounded panel rather than on it: the panel's divider is
+	// what says where the panel starts, so the dialog's halo never takes it.
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
-		content = overlayPopupBelowPersistentTitle(content, popup, m.viewNav.width, h)
+		content = chrome.OverlayPopupDimmedKeepingRow(content, popup, m.viewNav.width, h, 1, panelDivider)
 	}
 
 	return content
@@ -581,27 +584,32 @@ func (m *AppModel) presentationViewFor(view presentation.PresentationID) route.V
 	return m.viewNav.views.Get(view)
 }
 
+// noPanelDivider is the divider row of a frame no bounded panel opens in.
+const noPanelDivider = -1
+
 // composeHostedPanelContent stacks the panel under the presentation it was
 // opened from. The host is re-rendered inside the rows the panel left it rather
 // than covered by it, which is the whole reason the shell resizes it: a panel
 // drawn on top of a full-height host would hide the row the host's cursor is on.
-func (m *AppModel) composeHostedPanelContent(panel string, contentHeight int) string {
+// The row it also returns is the panel's divider, its first row, or
+// noPanelDivider when the content is no bounded panel.
+func (m *AppModel) composeHostedPanelContent(panel string, contentHeight int) (string, int) {
 	layout, ok := m.hostedPanelLayout()
 	if !ok {
-		return panel
+		return panel, noPanelDivider
 	}
 	hostRows := contentHeight - lipgloss.Height(panel)
 	if hostRows < 1 {
-		return panel
+		return panel, 0
 	}
 	frame, hosted := m.hostedPanelFrame()
 	if !hosted || !layout.HostDrawn {
 		// The panel asked for its share of the area whatever the shell found
 		// above it, so the rows it declined are blank rather than its own: a
 		// bottom panel that floated to the top row would read as a full view.
-		return chrome.ComposeHostedPanel("", panel, hostRows)
+		return chrome.ComposeHostedPanel("", panel, hostRows), hostRows
 	}
-	return chrome.ComposeHostedPanel(frame.view.View().Content, panel, hostRows)
+	return chrome.ComposeHostedPanel(frame.view.View().Content, panel, hostRows), hostRows
 }
 
 // syncHostedPanelHost hands the presentation under a bottom panel the budget the

@@ -116,9 +116,12 @@ the grouped preview's height through
 `grammar.QuickCaptureInput.PreviewBlockRows`. That predicate is read by the
 measurement and the render alike, and a single-project batch draws no counts
 because the route row already names its project. The preview answers to the same
-row: the composer sets `QuickCaptureInput.HostDrawsRoute`, which omits the
-`Route` group for a default destination with no project target, while an
-explicit sigil, a deferral, or a `%project` keeps it. `composerPanelShareRows` turns that
+row: the composer installs `QuickCaptureInput.HostRouteSummary`, which
+`UpdatePreview` settles into `HostRoute` beside the parse, so measuring asks the
+host nothing. The `Route` group is omitted wherever that summary names the same
+project and destination the group would — a default, an explicit sigil, and a
+`%project` target alike — and kept where the row reads Mixed or the line is
+deferred, a landing the row cannot show. `composerPanelShareRows` turns that
 into the share the host is told about, between `composerPanelMinRows` — the two
 fixed rows and one input line, which a blank capture is — and
 `composerPanelMaxRows`, the fourteen-row ceiling the bounded paths were written
@@ -193,7 +196,11 @@ names every recognized attribute. Keeping the first few groups and clipping the
 rest would read as a complete preview, which is the one outcome a capture surface
 may not produce. The discard question is left to the shell's own confirm dialog
 for the same accounting: a second copy inside the panel would spend a preview row
-repeating what the overlay already asks.
+repeating what the overlay already asks. That dialog stands beside the panel
+rather than on it: `composeHostedPanelContent` returns the panel's divider row,
+and `chrome.OverlayPopupDimmedKeepingRow` keeps the dialog's halo beneath it when
+the panel has the rows and lifts the whole box above it when it does not, so the
+divider that says where the panel starts is never covered.
 
 `##context` is the singleton task-context sigil. It shares tag normalization,
 but projects one optional field rather than a repeatable tag set. Capture and

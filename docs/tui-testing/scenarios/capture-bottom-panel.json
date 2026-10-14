@@ -28,9 +28,17 @@
 
     { "type": "text", "label": "one planning sigil answers two questions", "text": "$today " },
     { "type": "assert", "label": "so the route row states the collection and the state apart", "assert": "contains", "value": "Plan: Today · Status: Backlog" },
-    { "type": "assert", "label": "and the preview names the token beneath it", "assert": "contains", "value": "$today" },
+    { "type": "assert", "label": "and the preview, which that row already answers for, names no route of its own", "assert": "not_contains", "value": "Route    " },
     { "type": "assert", "label": "without stating the pair a second time", "assert": "count_contains", "value": "Plan: Today", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "abandoning the draft asks first", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Discard unsaved changes?" },
+    { "type": "assert", "label": "and the question stands beside the panel, never on the divider that says where it starts", "assert": "contains", "value": "── Capture ─────────────────────────────────────────────────────────────────────────────────────────" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "keep editing", "key": "n" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "Task     Panel capture" },
 
     { "type": "key", "label": "the expanded form is the composer's other presentation", "key": "ctrl+f" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
