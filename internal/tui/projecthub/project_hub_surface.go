@@ -16,7 +16,7 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer listsurface.ListItemID) {
 	items := m.projectHubItems()
 	if m.surface == nil {
 		surface, err := listsurface.NewListSurfaceModel(items, categories, listsurface.ListSurfaceConfig{
-			SelectionMode: listsurface.ListSelectionMulti,
+			SelectionMode: listsurface.ListSelectionMark,
 			EmptyState:    m.projectHubEmptyState(),
 			NoMatchState:  m.projectHubNoMatchState(),
 		})
@@ -159,20 +159,21 @@ func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
 // of the pane to its tasks. The five labeled fields this replaced cost six rows
 // to say what one muted line says, and `Pinned: false` said nothing at all: an
 // unpinned project is the ordinary case, so the marker appears only when it is
-// true.
+// true. The line travels as segments, so a narrow pane wraps between them and
+// `slug agent-mux` never splits.
 func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) listsurface.ListPreview {
 	lifecycle := "Active"
 	if archived {
 		lifecycle = "Archived"
 	}
-	meta := fmt.Sprintf("%s · %s · slug %s", lifecycle, m.projectTaskPhrase(project), project.Slug)
+	meta := []string{lifecycle, m.projectTaskPhrase(project), "slug " + project.Slug}
 	if project.Pinned {
-		meta += " · pinned"
+		meta = append(meta, "pinned")
 	}
 	return listsurface.ListPreview{
-		Title:   project.Name,
-		Summary: meta,
-		Body:    project.Description,
+		Title:           project.Name,
+		SummarySegments: meta,
+		Body:            project.Description,
 	}
 }
 

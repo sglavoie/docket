@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/projectops"
 )
@@ -66,7 +67,7 @@ func writeProjectHubTaskTree(t *testing.T, project *models.Project) {
 	}
 }
 
-func TestProjectHubPreviewListsEveryTaskInTreeOrder(t *testing.T) {
+func TestProjectHubPreviewListsOpenTasksInTreeOrder(t *testing.T) {
 	app := projectHubDiskApp(t)
 	tree := projectHubDiskProject(app, "tree", "Tree")
 	writeProjectHubTaskTree(t, tree)
@@ -181,7 +182,10 @@ func TestProjectPreviewTaskRowsListsAnOrphanExactlyOnce(t *testing.T) {
 	missing := "gone"
 	orphan.ParentID = &missing
 
-	rows := projectops.PreviewTaskRows("proj", []*models.Task{root, orphan})
+	rows, settled := projectops.PreviewTaskRows("proj", []*models.Task{root, orphan})
+	if !settled.Empty() {
+		t.Fatalf("settled = %+v, want none for two open tasks", settled)
+	}
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d, want one per task", len(rows))
 	}
@@ -193,6 +197,65 @@ func TestProjectPreviewTaskRowsListsAnOrphanExactlyOnce(t *testing.T) {
 			t.Fatalf("row %d carries project %q, want %q", index, rows[index].ProjectID, "proj")
 		}
 	}
+}
+
+func TestProjectPreviewTaskRowsFoldsTerminalTasksIntoOneSummary(t *testing.T) {
+	t.Parallel()
+
+	parent := &models.Task{ID: "parent", ShortID: 1, Title: "Parent", WorkflowState: models.StateDoing}
+	open := &models.Task{ID: "open", ShortID: 2, Title: "Open child", WorkflowState: models.StateBacklog}
+	finished := &models.Task{ID: "finished", ShortID: 3, Title: "Finished child", WorkflowState: models.StateDone}
+	dropped := &models.Task{ID: "dropped", ShortID: 4, Title: "Dropped", WorkflowState: models.StateCanceled}
+	shipped := &models.Task{ID: "shipped", ShortID: 5, Title: "Shipped", WorkflowState: models.StateDone}
+	parentID := parent.ID
+	open.ParentID = &parentID
+	finished.ParentID = &parentID
+	// The finished child comes last, so the open one must still close the
+	// sibling run: connectors are measured over the open siblings alone.
+	parent.Children = []*models.Task{open, finished}
+
+	rows, settled := projectops.PreviewTaskRows("proj", []*models.Task{parent, open, finished, dropped, shipped})
+	if got, want := settled, (projectops.PreviewSettledTally{Done: 2, Canceled: 1}); got != want {
+		t.Fatalf("settled = %+v, want %+v", got, want)
+	}
+	if got, want := settled.Label(), "✓ 2 done · 1 canceled"; got != want {
+		t.Fatalf("label = %q, want %q", got, want)
+	}
+	if got, want := (projectops.PreviewSettledTally{Done: 3}).Label(), "✓ 3 done"; got != want {
+		t.Fatalf("done-only label = %q, want %q", got, want)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want the two open tasks", len(rows))
+	}
+	if rows[0].Task.Title != "Parent" || rows[1].Task.Title != "Open child" {
+		t.Fatalf("rows = %q, %q; want Parent then Open child", rows[0].Task.Title, rows[1].Task.Title)
+	}
+	if got, want := rows[1].Prefix, outliner.BuildTreePrefix([]bool{true}, true); got != want {
+		t.Fatalf("open child prefix = %q, want the last-sibling connector %q", got, want)
+	}
+}
+
+func TestProjectHubPreviewSummarizesSettledWorkInOneRow(t *testing.T) {
+	app := projectHubDiskApp(t)
+	tree := projectHubDiskProject(app, "tree", "Tree")
+	writeProjectHubTaskTree(t, tree)
+	tree.Tasks[3].WorkflowState = models.StateDone
+	tree.Tasks[3].StateChangedAt = tree.Tasks[3].UpdatedAt
+	if err := storage.SaveProject(tree); err != nil {
+		t.Fatalf("SaveProject: %v", err)
+	}
+	addTestAppProject(app, tree)
+
+	hub := openProjectHub(t, app)
+	focusProjectHubRow(t, hub, "Tree")
+	pane := projectHubPreviewText(t, hub)
+	if strings.Contains(pane, "Root two") {
+		t.Fatalf("preview still lists the done task:\n%s", pane)
+	}
+	if !strings.Contains(pane, "✓ 1 done") {
+		t.Fatalf("preview has no settled summary row:\n%s", pane)
+	}
+	assertProjectHubFitsWidth(t, hub.View().Content, 120)
 }
 
 // assertProjectHubFitsWidth is the Hub's own copy of the overflow assertion the

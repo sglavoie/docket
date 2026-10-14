@@ -20,7 +20,9 @@ instead of passing for one with work left. Administering a project is one press:
 under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
 Notes. `Ctrl+T` cycles between every project, only those holding open tasks, and
 only those holding none open. The catalog ID, not a display name, protects the
-system Unfiled project.
+system Unfiled project. The preview beside the list lists the project's open
+tasks and folds finished ones into one `✓ N done` row. A row `v` selects wears
+`✓` where the cursor arrow sits; nothing is reserved for a checkbox.
 
 `/` searches a project by anything the project itself says: its name, its slug,
 its description, and each of its tags spelled either way, so `#billing` finds

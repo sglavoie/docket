@@ -9,7 +9,7 @@
     { "type": "text", "text": "Garden" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "› [ ] Garden" },
+    { "type": "assert", "assert": "contains", "value": "› Garden" },
     { "type": "key", "label": "open it straight away, before the Outliner has read it", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the new project opens rather than being refused as unloaded", "assert": "view", "value": "CrossProjectOutliner" },

@@ -38,7 +38,11 @@ full browse grammar; `/` reopens search with the previous query still editable.
 `ShouldCaptureEsc` names the unwind rungs in order — the action sheet, the
 query, then the selection — and browse holding none of them is what lets `Esc`
 close Select Project. The selection is a rung because retiring `A` left no other
-way to drop every checkbox at once.
+way to drop every selection mark at once. The Hub's surface is
+`listsurface.ListSelectionMark`: it selects as many rows as `ListSelectionMulti`
+but reserves no checkbox column, and a selected row wears the Outliner's `✓` in
+its cursor column, so nothing is spent on an empty `[ ]` until something is
+selected. Pickers keep `ListSelectionMulti` and its `[ ]`.
 
 The typed `ManageParams.ProjectHubMode` is part of route identity and is passed
 through every reconstruction into `ProjectHubModel`. Pinned mode filters the
@@ -138,10 +142,17 @@ grammar that would drift from it, and it has no cursor, so no row opens Peek.
 
 `projectPreviewTaskRows` flattens the tree once per project and
 `projectHubPreviewState` caches it beside the painter until
-`rebuildProjectSurface` invalidates both. Roots there are the tasks no other
-task claims as a child rather than the tasks reporting no parent, so a task
-whose `ParentID` dangles is still listed exactly once and the pane's row count
-keeps agreeing with the total the header printed. The tasks come from
+`rebuildProjectSurface` invalidates both. It lists open tasks only: done and
+canceled ones collapse into one muted `✓ N done` row, `· N canceled` added when
+any are, drawn after the tree and outside it, so finished work costs the pane one
+row and the open rows plus that tally still add up to the header's total. A
+terminal task's subtree is terminal, so dropping it hides no open work, and the
+tree connectors are measured over the open siblings alone. Roots there are the
+tasks no other task claims as a child rather than the tasks reporting no parent,
+so a task whose `ParentID` dangles is still listed exactly once. The header's
+meta line travels as `ListPreview.SummarySegments` and wraps through
+`textfit.WrapSegments`, between whole ` · ` segments, so `slug agent-mux` never
+splits. The tasks come from
 `projectTaskTally.Tasks`, retained by the count pass that already reads every
 cataloged project from disk, which is what fills the pane for a parked or
 archived project — each reaches the Hub as a rehydrated catalog record holding

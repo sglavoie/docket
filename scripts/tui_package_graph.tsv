@@ -165,6 +165,9 @@
 #     It is the same shape as that edge and one-directional for the same reason:
 #     `taskdetail` reaches only L0-L6 plus `coordinator`, none of which reaches
 #     `projectops`, so the edge can close no cycle.
+#   - `projectops -> textfit` was added when the Hub preview folded its terminal
+#     tasks into one `✓ N done` row: that row is not a task row, so the painter
+#     fits it to the pane's width itself. `textfit` is L0, so it closes no cycle.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -205,7 +208,7 @@ entityops	L7	presentation,theme,taskref,status,keymap,chrome,coordinator,operati
 lensops	L7	lens,operation,listsurface,outliner,valuepicker
 filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outliner,projecthub,valuepicker
 notesops	L7	presentation,operation,route,listsurface,notes,projecthub,outliner
-projectops	L7	presentation,theme,status,chrome,operation,route,listsurface,notes,projecthub,outliner,taskdetail,valuepicker,filterops
+projectops	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,taskdetail,valuepicker,filterops
 operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref,taskform,coordinator
 valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost

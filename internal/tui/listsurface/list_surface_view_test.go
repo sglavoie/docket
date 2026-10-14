@@ -308,3 +308,46 @@ func TestListSurfacePreviewGeometryHonorsListWidthPercent(t *testing.T) {
 		})
 	}
 }
+
+func TestListSelectionMarkReservesNoColumnAndMarksSelectedRows(t *testing.T) {
+	t.Parallel()
+
+	item := ListItem{ID: "alpha", PrimaryText: "Alpha"}
+	render := func(row ListSurfaceRow) string {
+		row.Match = ListMatch{Item: item}
+		return strings.TrimRight(ansi.Strip(RenderListSurfaceRow(row, ListSelectionMark, 30)), " ")
+	}
+	for _, state := range []struct {
+		name string
+		row  ListSurfaceRow
+		want string
+	}{
+		{name: "plain", row: ListSurfaceRow{}, want: "  Alpha"},
+		{name: "cursor", row: ListSurfaceRow{Cursor: true}, want: "› Alpha"},
+		{name: "selected", row: ListSurfaceRow{Selected: true}, want: "✓ Alpha"},
+		{name: "selected cursor", row: ListSurfaceRow{Selected: true, Cursor: true}, want: "✓ Alpha"},
+	} {
+		if got := render(state.row); got != state.want {
+			t.Errorf("%s row = %q, want %q", state.name, got, state.want)
+		}
+	}
+	if !ListSelectionMark.Many() || ListSelectionSingle.Many() {
+		t.Fatal("ListSelectionMark must store many selections and Single one")
+	}
+}
+
+func TestListSurfacePreviewWrapsSummarySegmentsWhole(t *testing.T) {
+	t.Parallel()
+
+	preview := ListPreview{Title: "Agent", SummarySegments: []string{"Active", "3 open · 5 tasks", "slug agent-mux"}}
+	if preview.Empty() {
+		t.Fatal("a preview carrying only segments reads as empty")
+	}
+	lines := strings.Split(ansi.Strip(RenderListSurfacePreview(preview, 28, 0, nil)), "\n")
+	want := []string{"Agent", "Active · 3 open · 5 tasks", "slug agent-mux"}
+	for index, line := range want {
+		if index >= len(lines) || strings.TrimRight(lines[index], " ") != line {
+			t.Fatalf("preview lines = %q, want %q", lines, want)
+		}
+	}
+}

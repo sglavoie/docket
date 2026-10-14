@@ -14,13 +14,14 @@
 
     { "type": "key", "label": "move to the project whose every task is finished", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "Active · 0 open · 2 tasks" },
-    { "type": "assert", "label": "a finished task is still a task the pane lists", "assert": "contains", "value": "Mix cleanup sweep" },
-    { "type": "assert", "assert": "contains", "value": "Mix cleanup follow-up" },
+    { "type": "assert", "label": "finished work folds into one summary row rather than a row each", "assert": "contains", "value": "✓ 2 done" },
+    { "type": "assert", "assert": "not_contains", "value": "Mix cleanup sweep" },
+    { "type": "assert", "assert": "not_contains", "value": "Mix cleanup follow-up" },
     { "type": "assert", "assert": "not_contains", "value": "Mix rollout plan" },
     { "type": "key", "label": "page a list shorter than the pane", "key": "ctrl+f" },
-    { "type": "assert", "label": "paging past the end shows the same rows rather than blanking the pane", "assert": "contains", "value": "Mix cleanup sweep" },
+    { "type": "assert", "label": "paging past the end shows the same rows rather than blanking the pane", "assert": "contains", "value": "✓ 2 done" },
     { "type": "key", "label": "page back", "key": "ctrl+b" },
-    { "type": "assert", "assert": "contains", "value": "Mix cleanup follow-up" },
+    { "type": "assert", "assert": "contains", "value": "✓ 2 done" },
 
     { "type": "key", "label": "move to the parked project", "key": "j" },
     { "type": "assert", "label": "a parked project's tasks are read from the tally the count pass retained", "assert": "contains", "value": "Mix migration audit" },

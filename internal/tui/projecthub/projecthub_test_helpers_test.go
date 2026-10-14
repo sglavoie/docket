@@ -472,7 +472,10 @@ func projectHubPreviewSummary(t *testing.T, hub *ProjectHubModel, id listsurface
 	if len(preview.Fields) > 0 {
 		t.Fatalf("project hub preview for %q carries %d labeled fields, want the meta line alone", id, len(preview.Fields))
 	}
-	return preview.Summary
+	if preview.Summary != "" {
+		t.Fatalf("project hub preview for %q carries a joined Summary, want segments", id)
+	}
+	return strings.Join(preview.SummarySegments, " · ")
 }
 
 func projectHubActionIDs(hub *ProjectHubModel) []operation.OperationID {

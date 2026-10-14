@@ -16,7 +16,7 @@ import (
 // is handed a painter over one project's tasks instead of naming a renderer it
 // cannot reach.
 type PreviewTaskPainter interface {
-	// RowCount is how many task rows the previewed project flattened to.
+	// RowCount is how many rows the previewed project flattened to, its summary row included.
 	RowCount() int
 	// RenderRow paints one row at the pane's column budget.
 	RenderRow(index, width int) string

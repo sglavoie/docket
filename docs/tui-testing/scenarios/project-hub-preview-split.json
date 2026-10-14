@@ -5,7 +5,8 @@
   "actions": [
     { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
-    { "type": "assert", "label": "the default split shows the whole preview meta line", "assert": "contains", "value": "Active · 1 open · 1 task · slug" },
+    { "type": "assert", "label": "the default split wraps the meta line between whole segments", "assert": "contains", "value": "Active · 1 open · 1 task" },
+    { "type": "assert", "label": "so the slug never splits from its value", "assert": "contains", "value": "slug mix-active-delivery · pinned" },
 
     { "type": "key", "label": "move the split right, narrowing the preview", "key": ">" },
     { "type": "key", "key": ">" },
@@ -13,7 +14,8 @@
     { "type": "key", "key": ">" },
     { "type": "key", "key": ">" },
     { "type": "key", "key": ">" },
-    { "type": "assert", "label": "a preview at its minimum width cuts the meta line short", "assert": "not_contains", "value": "Active · 1 open · 1 task · slug" },
+    { "type": "assert", "label": "a preview at its minimum width wraps the meta line onto more rows", "assert": "not_contains", "value": "slug mix-active-delivery · pinned" },
+    { "type": "assert", "label": "and still keeps the slug segment whole", "assert": "contains", "value": "slug mix-active-delivery" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "move the split left, widening the preview past the default", "key": "<" },
@@ -28,7 +30,7 @@
     { "type": "key", "key": "<" },
     { "type": "key", "key": "<" },
     { "type": "key", "key": "<" },
-    { "type": "assert", "assert": "contains", "value": "Active · 1 open · 1 task · slug" },
+    { "type": "assert", "label": "a preview wider than the default holds the whole meta line on one row", "assert": "contains", "value": "Active · 1 open · 1 task · slug mix-active-delivery · pinned" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "narrow the preview again before leaving", "key": ">" },
@@ -44,7 +46,7 @@
     { "type": "key", "label": "close Select Project", "key": "esc" },
     { "type": "key", "label": "reopen it", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
-    { "type": "assert", "label": "the split held across the reopen", "assert": "not_contains", "value": "Active · 1 open · 1 task · slug" },
+    { "type": "assert", "label": "the split held across the reopen", "assert": "not_contains", "value": "slug mix-active-delivery · pinned" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open project search", "key": "/" },

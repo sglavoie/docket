@@ -286,6 +286,10 @@ func renderListSurfaceEmpty(empty ListEmptyContext, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// selectionMark is the Outliner's selection glyph, worn by a selected row of a
+// ListSelectionMark surface.
+const selectionMark = "✓"
+
 func RenderListSurfaceRow(
 	row ListSurfaceRow,
 	selectionMode ListSelectionMode,
@@ -302,7 +306,15 @@ func RenderListSurfaceRow(
 		cursor = "› "
 	}
 	marker := cursor
-	if selectionMode == ListSelectionMulti {
+	switch selectionMode {
+	case ListSelectionMark:
+		// The mark takes the cursor column rather than one of its own, as the
+		// Outliner's does, so selecting moves no text; the cursor row still reads
+		// as the cursor because SelectedLine owns its whole line.
+		if row.Selected {
+			marker = selectionMark + " "
+		}
+	case ListSelectionMulti:
 		checkbox := "[ ] "
 		if item.Indeterminate {
 			checkbox = "[-] "
@@ -310,6 +322,7 @@ func RenderListSurfaceRow(
 			checkbox = "[x] "
 		}
 		marker += checkbox
+	case ListSelectionSingle:
 	}
 	// PrimaryMarker is charged to markerWidth rather than to the primary text, so
 	// LayoutListText budgets around chrome it never sees and the marker survives
@@ -469,7 +482,11 @@ func RenderListSurfacePreview(
 	if preview.Title != "" {
 		appendWrapped(preview.Title, theme.ListPreviewHeaderStyle, 0)
 	}
-	if preview.Summary != "" {
+	if len(preview.SummarySegments) > 0 {
+		for _, line := range textfit.WrapSegments(preview.SummarySegments, " · ", max(width, 1)) {
+			appendLine(theme.MutedStyle.Render(line))
+		}
+	} else if preview.Summary != "" {
 		appendWrapped(preview.Summary, theme.MutedStyle, 0)
 	}
 	for _, field := range preview.Fields {
@@ -535,7 +552,7 @@ func listSurfaceHelp(model *ListSurfaceModel, override string) string {
 	if override != "" {
 		return override
 	}
-	if model != nil && model.Config().SelectionMode == ListSelectionMulti {
+	if model != nil && model.Config().SelectionMode.Many() {
 		return "j/k navigate · Space toggle · Enter apply · / search · Esc cancel"
 	}
 	return "j/k navigate · Enter select · / search · Esc cancel"

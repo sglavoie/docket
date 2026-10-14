@@ -34,7 +34,8 @@ func TestSearchCueStaysOutOfPeekAndProjectPreview(t *testing.T) {
 		}
 	}
 
-	for _, previewRow := range projectops.PreviewTaskRows(project.ID, []*models.Task{task}) {
+	previewRows, _ := projectops.PreviewTaskRows(project.ID, []*models.Task{task})
+	for _, previewRow := range previewRows {
 		if previewRow.MatchSource != outliner.MatchSourceNone {
 			t.Fatalf("preview row carried source %d, want none", previewRow.MatchSource)
 		}

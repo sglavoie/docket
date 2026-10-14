@@ -1,0 +1,20 @@
+{
+  "name": "project-hub-selection-mark",
+  "fixture": "project-mix",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "with nothing selected the rows reserve no checkbox column", "assert": "contains", "value": "› * Mix Active Delivery" },
+    { "type": "assert", "assert": "not_contains", "value": "[ ]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "select the cursor row", "key": "v" },
+    { "type": "assert", "label": "the selected row wears the Outliner's mark in its cursor column", "assert": "contains", "value": "✓ * Mix Active Delivery" },
+    { "type": "assert", "assert": "not_contains", "value": "[x]" },
+    { "type": "key", "label": "move off the selected row", "key": "j" },
+    { "type": "assert", "label": "the mark stays on the selected row, which keeps its title where it was", "assert": "contains", "value": "✓ * Mix Active Delivery" },
+    { "type": "assert", "assert": "contains", "value": "› Mix Finished Cleanup" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

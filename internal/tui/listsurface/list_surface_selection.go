@@ -17,7 +17,7 @@ func (model *ListSurfaceModel) SelectCurrent() error {
 	if !item.Enabled() {
 		return fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
 	}
-	if model.config.SelectionMode == ListSelectionSingle {
+	if !model.config.SelectionMode.Many() {
 		clear(model.selected)
 	}
 	model.selected[item.ID] = struct{}{}
@@ -34,7 +34,7 @@ func (model *ListSurfaceModel) ToggleCurrentSelection() (bool, error) {
 	if !item.Enabled() {
 		return false, fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
 	}
-	if model.config.SelectionMode == ListSelectionSingle {
+	if !model.config.SelectionMode.Many() {
 		clear(model.selected)
 		model.selected[item.ID] = struct{}{}
 		return true, nil
@@ -68,7 +68,7 @@ func (model *ListSurfaceModel) SetSelectedIDs(ids []ListItemID) error {
 		seen[id] = struct{}{}
 		normalized = append(normalized, id)
 	}
-	if model.config.SelectionMode == ListSelectionSingle && len(normalized) > 1 {
+	if !model.config.SelectionMode.Many() && len(normalized) > 1 {
 		return ErrListSelectionCardinality
 	}
 

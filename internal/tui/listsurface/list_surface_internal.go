@@ -65,7 +65,7 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 }
 
 func validListSelectionMode(mode ListSelectionMode) bool {
-	return mode == ListSelectionSingle || mode == ListSelectionMulti
+	return mode == ListSelectionSingle || mode.Many()
 }
 
 func normalizeListCategories(
@@ -332,7 +332,7 @@ func (model *ListSurfaceModel) sourceItem(id ListItemID) (ListItem, bool) {
 }
 
 func (model *ListSurfaceModel) actionItems() []ListItem {
-	if model.config.SelectionMode == ListSelectionMulti && len(model.selected) > 0 {
+	if model.config.SelectionMode.Many() && len(model.selected) > 0 {
 		return model.SelectedItems()
 	}
 	item, ok := model.CurrentItem()

@@ -10,7 +10,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
-    { "type": "assert", "label": "the cursor lands on the row the creation made, so the next key acts on it", "assert": "contains", "value": "› [ ] Garden" },
+    { "type": "assert", "label": "the cursor lands on the row the creation made, so the next key acts on it", "assert": "contains", "value": "› Garden" },
     { "type": "assert", "label": "and the preview names it", "assert": "contains", "value": "slug garden" },
     { "type": "assert", "assert": "contains", "value": "Create Project: Garden" },
     { "type": "assert", "assert": "no_layout_issues" },

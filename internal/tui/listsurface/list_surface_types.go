@@ -25,7 +25,17 @@ type ListSelectionMode uint8
 const (
 	ListSelectionSingle ListSelectionMode = iota
 	ListSelectionMulti
+	// ListSelectionMark stores many selections like ListSelectionMulti but
+	// reserves no checkbox column: a selected row wears the Outliner's `✓` in its
+	// cursor column instead, so a list read far more often than it is selected
+	// spends no width on an empty `[ ]`.
+	ListSelectionMark
 )
+
+// Many reports whether the mode stores more than one selection.
+func (mode ListSelectionMode) Many() bool {
+	return mode == ListSelectionMulti || mode == ListSelectionMark
+}
 
 // ListEmptyKind distinguishes an empty source from a query with no matches.
 type ListEmptyKind uint8
@@ -82,14 +92,18 @@ type ListPreviewField struct {
 type ListPreview struct {
 	Title   string
 	Summary string
-	Body    string
-	Fields  []ListPreviewField
+	// SummarySegments, when set, replaces Summary with ` · `-joined segments
+	// that wrap only between whole segments.
+	SummarySegments []string
+	Body            string
+	Fields          []ListPreviewField
 }
 
 // Empty reports whether the preview has any displayable content.
 func (preview ListPreview) Empty() bool {
 	return preview.Title == "" &&
 		preview.Summary == "" &&
+		len(preview.SummarySegments) == 0 &&
 		preview.Body == "" &&
 		len(preview.Fields) == 0
 }
