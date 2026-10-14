@@ -140,12 +140,12 @@ enum MainMenu {
         return true
     }
 
-    /// The About panel's credits: the Ghostty build tt.app embeds, then
-    /// Ghostty's license notice.
-    static func aboutCredits(ghosttyVersion: String, notice: String?) -> NSAttributedString {
+    /// The About panel's credits: the tt the session runs, the Ghostty build
+    /// tt.app embeds, then Ghostty's license notice.
+    static func aboutCredits(ttVersion: String?, ghosttyVersion: String, notice: String?) -> NSAttributedString {
         let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         let credits = NSMutableAttributedString(
-            string: "Terminal engine: Ghostty \(ghosttyVersion)\n",
+            string: "tt: \(ttVersion ?? "version unknown")\nTerminal engine: Ghostty \(ghosttyVersion)\n",
             attributes: [.font: NSFont.boldSystemFont(ofSize: NSFont.smallSystemFontSize),
                          .foregroundColor: NSColor.labelColor]
         )

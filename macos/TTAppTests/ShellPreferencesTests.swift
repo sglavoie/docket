@@ -421,6 +421,8 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     func relaunchTerminal() { calls.append("relaunch") }
     func showQuickCapture(_ sender: Any?) { calls.append("capture") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
+    func showAbout(_ sender: Any?) { calls.append("about") }
+    func showGuide(_ sender: Any?) { calls.append("guide") }
     func toggleLaunchAtLogin() { calls.append("login") }
 }
 
@@ -432,7 +434,9 @@ final class StatusItemTests: XCTestCase {
 
         controller.refreshMenu()
         let titles = controller.menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
-        XCTAssertEqual(titles, ["Show tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login", "Quit tt"])
+        XCTAssertEqual(titles, [
+            "Show tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login", "About tt", "tt Guide", "Quit tt",
+        ])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
 
         delegate.isTerminalFrontmost = true
@@ -445,11 +449,11 @@ final class StatusItemTests: XCTestCase {
         XCTAssertFalse(controller.menu.item(withTitle: "Relaunch tt")?.isEnabled ?? true)
         XCTAssertEqual(controller.menu.item(withTitle: "Launch at Login")?.state, .on)
 
-        for title in ["Hide tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login"] {
+        for title in ["Hide tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login", "About tt", "tt Guide"] {
             let item = try XCTUnwrap(controller.menu.item(withTitle: title))
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
-        XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login"])
+        XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login", "about", "guide"])
     }
 
     /// The pulse leads the menu as a line that runs nothing, and takes no row
@@ -466,6 +470,7 @@ final class StatusItemTests: XCTestCase {
         controller.refreshMenu()
         let pulse = controller.menu.items[0]
         XCTAssertEqual(pulse.title, "inbox 3 · today 2 · overdue 1")
+        XCTAssertEqual(controller.statusItem.button?.accessibilityValue() as? String, "inbox 3 · today 2 · overdue 1")
         XCTAssertFalse(pulse.isHidden)
         XCTAssertFalse(pulse.isEnabled)
         XCTAssertNil(pulse.action)
@@ -473,7 +478,8 @@ final class StatusItemTests: XCTestCase {
         XCTAssertEqual(controller.menu.items[2].title, "Show tt")
 
         delegate.pulseSummary = nil
-        controller.refreshMenu()
+        controller.refreshPulse()
+        XCTAssertNil(controller.statusItem.button?.accessibilityValue())
         XCTAssertTrue(controller.menu.items[0].isHidden)
         XCTAssertTrue(controller.menu.items[1].isHidden)
     }

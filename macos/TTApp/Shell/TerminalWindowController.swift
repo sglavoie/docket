@@ -13,8 +13,23 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     private let statusFile: URL
     private let exitBehavior: () -> TTExitBehavior
     private let hidesApp: Bool
+    /// Hides the app; tests record the call instead.
+    var hideApp: () -> Void = { NSApp.hide(nil) }
+    /// Whether a tt window other than the terminal (Settings, About, the
+    /// launch error) is on screen, so hiding the terminal leaves the app shown.
+    lazy var otherWindowVisible: () -> Bool = { [weak self] in
+        NSApp.windows.contains { candidate in
+            candidate !== self?.window && candidate.isVisible && candidate.styleMask.contains(.titled)
+                && !candidate.styleMask.contains(.nonactivatingPanel)
+        }
+    }
+    /// Called with the summary when tt fails while the window is hidden: the
+    /// banner waits for the next show rather than bringing the window forward.
+    var onHiddenFailure: ((String) -> Void)?
+    /// Set while hide() waits for full screen to end before ordering out.
+    private var hidesAfterFullScreen = false
     private let container = NSStackView()
-    private var failureBanner: NSView?
+    private(set) var failureBanner: NSView?
     /// While the banner shows, Return relaunches even with the dead surface
     /// focused (it stays focusable so its output can be selected and copied).
     private var failureKeyMonitor: Any?
@@ -91,6 +106,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     /// Brings the window forward, first starting tt if no session is live.
     func show() {
+        hidesAfterFullScreen = false
         if surfaceView == nil {
             startSession()
         }
@@ -112,13 +128,43 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     /// Orders the window out and hides the app, so focus returns to whatever
     /// was in front before; the session, if any, keeps running, and one still
-    /// being prepared begins hidden.
+    /// being prepared begins hidden. Another tt window still showing keeps the
+    /// app shown, and full screen is left first, the order-out following once
+    /// it has ended.
     func hide() {
         presentsPendingStart = false
-        window.orderOut(nil)
-        if hidesApp {
-            NSApp.hide(nil)
+        if window.styleMask.contains(.fullScreen) {
+            hidesAfterFullScreen = true
+            window.toggleFullScreen(nil)
+            return
         }
+        finishHide()
+    }
+
+    private func finishHide() {
+        hidesAfterFullScreen = false
+        window.orderOut(nil)
+        if hidesApp && !otherWindowVisible() {
+            hideApp()
+        }
+    }
+
+    // MARK: Size
+
+    static let minimumColumns: CGFloat = 80
+    static let minimumRows: CGFloat = 24
+
+    /// The content size of `columns`×`rows` cells of `cell`.
+    static func minimumContentSize(cell: NSSize) -> NSSize {
+        NSSize(width: cell.width * minimumColumns, height: cell.height * minimumRows)
+    }
+
+    /// The cell size changed (zoom, font, display): the window resizes in
+    /// whole cells and never below 80×24 of them.
+    func cellSizeChanged() {
+        guard let cell = surfaceView?.cellSize, cell.width > 0, cell.height > 0 else { return }
+        window.contentResizeIncrements = cell
+        window.contentMinSize = Self.minimumContentSize(cell: cell)
     }
 
     /// Replaces whatever the window holds with a fresh tt and shows it.
@@ -193,6 +239,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         container.addArrangedSubview(surfaceView)
         window.initialFirstResponder = surfaceView
         self.surfaceView = surfaceView
+        cellSizeChanged()
     }
 
     private func endSession() {
@@ -268,7 +315,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
             return nil
         }
         if !window.isVisible {
-            show()
+            onHiddenFailure?(summary)
         }
     }
 
@@ -300,6 +347,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         hide()
         return false
     }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        if hidesAfterFullScreen {
+            finishHide()
+        }
+    }
 }
 
 /// The strip under a failed session's last output.
@@ -324,6 +377,12 @@ private final class FailureBanner: NSView {
         stack.edgeInsets = NSEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
+
+        setAccessibilityElement(true)
+        setAccessibilityRole(.group)
+        setAccessibilityLabel("tt stopped")
+        setAccessibilityHelp(summary)
+        relaunch.setAccessibilityLabel("Relaunch tt")
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),

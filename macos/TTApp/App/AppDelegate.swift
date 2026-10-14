@@ -27,6 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// Which tt the next session runs and what it accepts, asked again
     /// before each one.
     private let sessionBinaries = TTSessionBinaryStore()
+    /// The running tt's `--version` line, for About; read off the main thread
+    /// when a session adopts its binary.
+    private var ttVersionLine: String?
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -108,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.showTitle("")
         }
         controller.onTitleChange = { [weak self] title in self?.showTitle(title) }
+        controller.onHiddenFailure = { [weak self] summary in self?.announceHiddenFailure(summary) }
         model.onDockBadgeChange = { [weak self] _ in self?.refreshBadge() }
         terminal = controller
         controller.show()
@@ -186,12 +190,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// read from the control socket's pulse when tt reports one.
     private func showTitle(_ title: String) {
         statusItem?.statusItem.button?.toolTip = title.isEmpty ? "tt" : title
+        statusItem?.refreshPulse()
         let badge = lastPulse.map(TTPulseBadge.label(for:)) ?? TTWindowTitle.badgeLabel(for: title)
         NSApp.dockTile.badgeLabel = preferencesModel.dockBadge ? badge : nil
     }
 
     private func refreshBadge() {
         showTitle(terminal?.surfaceView?.title ?? "")
+    }
+
+    /// tt failed while its window was hidden: the window stays hidden with the
+    /// banner waiting, and the Dock icon bounces once, or with no Dock icon a
+    /// notification says so when notifications are on.
+    private func announceHiddenFailure(_ summary: String) {
+        if NSApp.activationPolicy() == .regular {
+            NSApp.requestUserAttention(.informationalRequest)
+        } else {
+            notifications.postNotice(title: "tt stopped", body: summary)
+        }
     }
 
     // MARK: Session binary
@@ -244,6 +260,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// learns whether it can be reached, and the control client exists exactly
     /// while that tt serves a socket.
     private func adopt(_ binary: TTSessionBinary) {
+        let path = binary.path
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let line = TTVersion.read(binary: path)?.line
+            DispatchQueue.main.async { self?.ttVersionLine = line }
+        }
         if preferencesModel.runningBinary != binary.resolution {
             NSLog("tt: running %@ (%@)", binary.path, String(describing: binary.resolution.source))
             preferencesModel.runningBinary = binary.resolution
@@ -366,7 +387,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
-            .credits: MainMenu.aboutCredits(ghosttyVersion: Ghostty.versionDescription, notice: notice),
+            .credits: MainMenu.aboutCredits(
+                ttVersion: ttVersionLine, ghosttyVersion: Ghostty.versionDescription, notice: notice
+            ),
         ])
     }
 
@@ -632,6 +655,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case GHOSTTY_ACTION_COLOR_CHANGE:
             let change = action.action.color_change
             onMain { [weak self] in self?.terminal?.colorChanged(change) }
+            return true
+        case GHOSTTY_ACTION_CELL_SIZE:
+            onMain { [weak self] in self?.terminal?.cellSizeChanged() }
             return true
         case GHOSTTY_ACTION_RENDERER_HEALTH:
             if action.action.renderer_health != GHOSTTY_RENDERER_HEALTH_HEALTHY {

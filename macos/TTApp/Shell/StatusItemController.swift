@@ -15,6 +15,8 @@ protocol StatusItemDelegate: AnyObject {
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
     func showPreferences(_ sender: Any?)
+    func showAbout(_ sender: Any?)
+    func showGuide(_ sender: Any?)
     func toggleLaunchAtLogin()
 }
 
@@ -33,6 +35,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let relaunchItem = NSMenuItem(title: "Relaunch tt", action: #selector(relaunch(_:)), keyEquivalent: "")
     private let preferencesItem = NSMenuItem(title: "Settings…", action: #selector(preferences(_:)), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(launchAtLogin(_:)), keyEquivalent: "")
+    private let aboutItem = NSMenuItem(title: "About tt", action: #selector(about(_:)), keyEquivalent: "")
+    private let guideItem = NSMenuItem(title: "tt Guide", action: #selector(guide(_:)), keyEquivalent: "")
     private let quitItem = NSMenuItem(title: "Quit tt", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
 
     init(delegate: StatusItemDelegate, statusBar: NSStatusBar = .system) {
@@ -40,7 +44,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem = statusBar.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
-        for item in [toggleItem, captureItem, relaunchItem, preferencesItem, loginItem] {
+        for item in [toggleItem, captureItem, relaunchItem, preferencesItem, loginItem, aboutItem, guideItem] {
             item.target = self
         }
         pulseItem.isEnabled = false
@@ -54,6 +58,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(preferencesItem)
         menu.addItem(loginItem)
+        menu.addItem(.separator())
+        menu.addItem(aboutItem)
+        menu.addItem(guideItem)
         menu.addItem(.separator())
         menu.addItem(quitItem)
         menu.delegate = self
@@ -87,16 +94,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     /// Brings the menu's titles and states in line with the app.
     func refreshMenu() {
-        let pulse = delegate?.pulseSummary ?? ""
-        pulseItem.title = pulse
-        pulseItem.isHidden = pulse.isEmpty
-        pulseSeparator.isHidden = pulse.isEmpty
+        refreshPulse()
         let frontmost = delegate?.isTerminalFrontmost ?? false
         toggleItem.title = frontmost ? "Hide tt" : "Show tt"
         toggleItem.setShortcut(delegate?.toggleHotKey)
         captureItem.setShortcut(delegate?.captureHotKey)
         relaunchItem.isEnabled = delegate?.canRelaunchTerminal ?? false
         loginItem.state = (delegate?.isLaunchAtLoginEnabled ?? false) ? .on : .off
+    }
+
+    /// The pulse line leads the menu and is the button's accessibility value,
+    /// so VoiceOver reads the counts the menu shows.
+    func refreshPulse() {
+        let pulse = delegate?.pulseSummary ?? ""
+        pulseItem.title = pulse
+        pulseItem.isHidden = pulse.isEmpty
+        pulseSeparator.isHidden = pulse.isEmpty
+        statusItem.button?.setAccessibilityValue(pulse.isEmpty ? nil : pulse)
     }
 
     static func opensMenu(_ event: NSEvent?) -> Bool {
@@ -125,4 +139,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }
     @objc private func preferences(_ sender: Any?) { delegate?.showPreferences(sender) }
     @objc private func launchAtLogin(_ sender: Any?) { delegate?.toggleLaunchAtLogin() }
+    @objc private func about(_ sender: Any?) { delegate?.showAbout(sender) }
+    @objc private func guide(_ sender: Any?) { delegate?.showGuide(sender) }
 }

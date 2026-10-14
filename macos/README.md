@@ -146,16 +146,19 @@ or Raycast rule that focused Ghostty for tt can go.
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
 opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Settings…, Launch at
-Login, Quit. Show/Hide and Quick Capture… show their global shortcuts while
+Login, About tt, tt Guide, Quit. Show/Hide and Quick Capture… show their global shortcuts while
 those are registered, as Quick Capture… does in the app menu; a shortcut that is
 off, or that another app holds, is not shown. The Dock icon's menu has Quick
 Capture… and Relaunch tt.
 Once tt has reported its pulse, the menu leads with it as one line that runs
 nothing (`inbox 2 · today 3 · overdue 1`), leaving out any count at zero and the
 whole line when all three are. The icon's tooltip is tt's window title, that
-same pulse in the same spelling (`tt · inbox 2 · today 3 · overdue 1`).
+same pulse in the same spelling (`tt · inbox 2 · today 3 · overdue 1`), and
+VoiceOver reads the pulse line as the icon's value.
 Closing the window hides it and keeps the session; the next show returns to
-it. Settings also chooses whether tt appears in the Dock and menu bar, the
+it. Hiding leaves full screen first, and hides the app only when no other tt
+window, such as Settings or About, is open. The window resizes in whole cells
+and never below 80×24 of them, following the cell size as the font zooms. Settings also chooses whether tt appears in the Dock and menu bar, the
 Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
 `accessory`). With the Dock only, there is no menu-bar icon; its commands stay
 in the app menu and the Dock icon's menu.
@@ -163,7 +166,11 @@ in the app menu and the Dock icon's menu.
 When `tt` exits cleanly (`q`), the window hides and the next show starts a
 fresh `tt`, or, if Settings says so, the app quits (`ttExitBehavior`:
 `relaunch` or `quit`). A failed exit or a crash always stays on screen with
-its status and a Relaunch button.
+its status and a Relaunch button. One while the window is hidden leaves it
+hidden: the Dock icon bounces once, or with no Dock icon a "tt stopped"
+notification says so when notifications are on, and the banner is waiting the
+next time the window is shown. About tt names the running tt's version above the
+Ghostty build.
 
 ### Talking to tt
 

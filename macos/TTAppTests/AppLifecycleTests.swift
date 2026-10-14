@@ -120,9 +120,18 @@ final class MainMenuTests: XCTestCase {
 
     func testAboutCreditsNameTheGhosttyVersionAndNotice() {
         XCTAssertFalse(Ghostty.versionDescription.hasPrefix("unknown"), Ghostty.versionDescription)
-        let credits = MainMenu.aboutCredits(ghosttyVersion: Ghostty.versionDescription, notice: "MIT License").string
+        let credits = MainMenu.aboutCredits(
+            ttVersion: nil, ghosttyVersion: Ghostty.versionDescription, notice: "MIT License"
+        ).string
         XCTAssertTrue(credits.contains("Ghostty \(Ghostty.versionDescription)"))
         XCTAssertTrue(credits.contains("MIT License"))
+        XCTAssertTrue(credits.hasPrefix("tt: version unknown\n"), credits)
+    }
+
+    func testAboutCreditsLeadWithTheRunningTTVersion() {
+        let line = "tt version 1.2.3 (commit: abc, built: 2026-10-14T00:00:00Z)"
+        let credits = MainMenu.aboutCredits(ttVersion: line, ghosttyVersion: "1.0", notice: nil).string
+        XCTAssertTrue(credits.hasPrefix("tt: \(line)\nTerminal engine: Ghostty 1.0"), credits)
     }
 
     func testTheBundleShipsTheLauncherAndNotice() throws {
@@ -225,7 +234,7 @@ final class TerminalWindowControllerTests: XCTestCase {
         return script
     }
 
-    private func start() throws {
+    private func start(hidesApp: Bool = false) throws {
         let script = try writeFake()
 
         let launcher = try XCTUnwrap(Bundle.main.url(forResource: "tt-launch", withExtension: nil))
@@ -239,7 +248,7 @@ final class TerminalWindowControllerTests: XCTestCase {
         self.delegate = delegate
         controller = TerminalWindowController(
             ghostty: ghostty, statusFile: statusFile, exitBehavior: { .relaunchOnShow },
-            frameAutosaveName: nil, hidesApp: false
+            frameAutosaveName: nil, hidesApp: hidesApp
         )
         delegate.controller = controller
         controller.window.setFrameOrigin(NSPoint(x: -10_000, y: -10_000))
@@ -260,6 +269,8 @@ final class TerminalWindowControllerTests: XCTestCase {
             case GHOSTTY_ACTION_COLOR_CHANGE:
                 let change = action.action.color_change
                 DispatchQueue.main.async { [weak self] in self?.controller?.colorChanged(change) }
+            case GHOSTTY_ACTION_CELL_SIZE:
+                DispatchQueue.main.async { [weak self] in self?.controller?.cellSizeChanged() }
             default:
                 return false
             }
@@ -517,6 +528,84 @@ final class TerminalWindowControllerTests: XCTestCase {
         XCTAssertFalse(controller.window.isVisible)
         waiting[1]()
         XCTAssertTrue(controller.window.isVisible)
+    }
+
+    /// A crash while the window is hidden leaves it hidden: the app is told
+    /// once, and the banner is waiting at the next show.
+    func testAFailureWhileHiddenStaysHiddenUntilTheNextShow() throws {
+        try start()
+        var announced: [String] = []
+        controller.onHiddenFailure = { announced.append($0) }
+        XCTAssertFalse(controller.windowShouldClose(controller.window))
+        XCTAssertFalse(controller.window.isVisible)
+
+        type("exit 3")
+        try wait("the failure banner") { controller.isShowingFailure }
+        XCTAssertFalse(controller.window.isVisible)
+        XCTAssertEqual(announced, ["tt exited with status 3."])
+        let banner = try XCTUnwrap(controller.failureBanner)
+        XCTAssertEqual(banner.accessibilityLabel(), "tt stopped")
+        XCTAssertEqual(banner.accessibilityHelp(), "tt exited with status 3.")
+
+        controller.show()
+        XCTAssertTrue(controller.window.isVisible)
+        XCTAssertTrue(controller.isShowingFailure)
+        XCTAssertEqual(announced.count, 1)
+    }
+
+    /// A failure with the window on screen shows the banner and says nothing else.
+    func testAFailureWhileShownAnnouncesNothing() throws {
+        try start()
+        var announced: [String] = []
+        controller.onHiddenFailure = { announced.append($0) }
+        type("exit 3")
+        try wait("the failure banner") { controller.isShowingFailure }
+        XCTAssertTrue(controller.window.isVisible)
+        XCTAssertEqual(announced, [])
+    }
+
+    /// Hiding the terminal with Settings open leaves the app shown, so the
+    /// Settings window stays where it was.
+    func testHidingWithAnotherTTWindowOpenKeepsTheAppShown() throws {
+        try start(hidesApp: true)
+        var hides = 0
+        controller.hideApp = { hides += 1 }
+
+        let settings = NSWindow(
+            contentRect: NSRect(x: -10_000, y: -10_000, width: 200, height: 100),
+            styleMask: [.titled, .closable], backing: .buffered, defer: false
+        )
+        settings.isReleasedWhenClosed = false
+        settings.orderFront(nil)
+        defer { settings.orderOut(nil) }
+
+        controller.hide()
+        XCTAssertFalse(controller.window.isVisible)
+        XCTAssertEqual(hides, 0)
+
+        settings.orderOut(nil)
+        controller.show()
+        controller.hide()
+        XCTAssertFalse(controller.window.isVisible)
+        XCTAssertEqual(hides, 1)
+    }
+
+    /// The window resizes in whole cells and never below 80×24 of them, and
+    /// follows the cell size when the font zooms.
+    func testTheWindowSizesInCellsWithAnEightyByTwentyFourFloor() throws {
+        try start()
+        let surfaceView = try XCTUnwrap(controller.surfaceView)
+        let cell = surfaceView.cellSize
+        XCTAssertGreaterThan(cell.width, 0)
+        XCTAssertEqual(controller.window.contentResizeIncrements, cell)
+        XCTAssertEqual(controller.window.contentMinSize, NSSize(width: cell.width * 80, height: cell.height * 24))
+
+        let action = "increase_font_size:4"
+        XCTAssertTrue(ghostty_surface_binding_action(surfaceView.surface, action, UInt(action.utf8.count)))
+        try wait("the cell size to grow") { controller.window.contentResizeIncrements.width > cell.width }
+        let bigger = surfaceView.cellSize
+        XCTAssertEqual(controller.window.contentResizeIncrements, bigger)
+        XCTAssertEqual(controller.window.contentMinSize, TerminalWindowController.minimumContentSize(cell: bigger))
     }
 
     func testOnlyAPlainReturnOrEnterRelaunches() {
