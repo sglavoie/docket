@@ -3,6 +3,8 @@ package outliner
 import (
 	"fmt"
 	"image/color"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -548,7 +550,11 @@ func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
 
 func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
-	title := textfit.TruncateToVisualWidth(row.Task.Title, availableWidth)
+	title := row.Task.Title
+	if lipgloss.Width(title) > availableWidth {
+		title = m.compactTitleForRow(title)
+	}
+	title = textfit.TruncateToVisualWidth(title, availableWidth)
 	highlight, caseSensitive := m.titleHighlightQuery()
 	if highlight == "" {
 		return titleStyle.Render(title)
@@ -565,6 +571,91 @@ func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Sty
 		return titleStyle.Render(title)
 	}
 	return textfit.HighlightText(title, positions, titleStyle)
+}
+
+// compactTitleForRow is the row's display form of a title too wide for it: a
+// URL keeps its host and first path segment, and a path under the home
+// directory keeps its last segment. It runs before the cut, so a search
+// highlight paints the compacted text the row draws. It is the row's alone —
+// Peek, the editors, the form, and exports read the stored title whole.
+func (m *OutlinerModel) compactTitleForRow(title string) string {
+	return compactRowTitle(title, m.homeDir)
+}
+
+// compactRowTitle compacts each space-separated word of title that is an
+// http(s) URL or an absolute path under home, leaving the rest as written.
+// Punctuation wrapped around a word, such as a closing parenthesis or a full
+// stop, stays outside the compacted form.
+func compactRowTitle(title, home string) string {
+	words := strings.Split(title, " ")
+	for i, word := range words {
+		core := strings.TrimLeft(word, "(<[\"'")
+		lead := word[:len(word)-len(core)]
+		core = strings.TrimRight(core, ".,;:!?)>]\"'")
+		trail := word[len(lead)+len(core):]
+		if core == "" {
+			continue
+		}
+		if compact, ok := compactTitleURL(core); ok {
+			words[i] = lead + compact + trail
+		} else if compact, ok := compactTitleHomePath(core, home); ok {
+			words[i] = lead + compact + trail
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// compactTitleURL renders an http(s) URL as its host, without `www.`, then its
+// first path segment, then `/…` when anything follows it.
+func compactTitleURL(word string) (string, bool) {
+	u, err := url.Parse(word)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", false
+	}
+	compact := strings.TrimPrefix(u.Host, "www.")
+	var segments []string
+	for _, segment := range strings.Split(u.EscapedPath(), "/") {
+		if segment != "" {
+			segments = append(segments, segment)
+		}
+	}
+	if len(segments) > 0 {
+		compact += "/" + segments[0]
+	}
+	if len(segments) > 1 || u.RawQuery != "" || u.Fragment != "" {
+		compact += "/…"
+	}
+	return compact, true
+}
+
+// compactTitleHomePath renders an absolute path under home as `~/…/<last>`,
+// or as `~/<last>` when the last segment sits directly in home.
+func compactTitleHomePath(word, home string) (string, bool) {
+	if home == "" {
+		return "", false
+	}
+	sep := string(filepath.Separator)
+	if word == home || word == home+sep {
+		return "~", true
+	}
+	rest, ok := strings.CutPrefix(word, home+sep)
+	if !ok {
+		return "", false
+	}
+	var segments []string
+	for _, segment := range strings.Split(rest, sep) {
+		if segment != "" {
+			segments = append(segments, segment)
+		}
+	}
+	switch len(segments) {
+	case 0:
+		return "~", true
+	case 1:
+		return "~" + sep + segments[0], true
+	default:
+		return "~" + sep + "…" + sep + segments[len(segments)-1], true
+	}
 }
 
 // titleHighlightQuery names the free text the visible rows were narrowed by,

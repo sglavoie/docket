@@ -38,6 +38,11 @@ type OutlinerModel struct {
 
 	Project *models.Project
 
+	// homeDir is the home directory resolved once at setup through config, so a
+	// row compacting a home path never asks the environment itself; empty means
+	// unknown and compacts no path.
+	homeDir string
+
 	// focus is both focus stacks, the section zoom, and the one-shot notice a
 	// stack that stopped resolving leaves behind. Like the readout, the menu bar,
 	// the population and the search below it, it is a named field rather than
@@ -391,6 +396,9 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		TreeSort:         query.NewSortState(),
 		MultiSelectState: listsurface.MultiSelectState{Selected: make(map[taskref.TaskIdentity]bool)},
 		columnConfig:     listsurface.NewColumnConfig(nil, nil, listsurface.DefaultOutlinerColumns),
+	}
+	if home, ok := config.HomeDir(); ok {
+		m.homeDir = home
 	}
 	m.Folds.ResetAll()
 	m.InitSearchInput("Search tasks...", 100, 30)

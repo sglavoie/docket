@@ -248,6 +248,13 @@ func resolveHomeDir() (string, bool) {
 	return home, true
 }
 
+// HomeDir is resolveHomeDir for callers outside this package, so a surface that
+// abbreviates a home path asks the same one source of truth every path helper
+// reads rather than calling os.UserHomeDir itself.
+func HomeDir() (string, bool) {
+	return resolveHomeDir()
+}
+
 // resolveMachineHome is the injectable machine-identity seam over
 // resolveHomeDir. Machine identity is exactly the home directory — machine.json
 // lives at <home>/.tt/runtime/<workspace-id>/machine.json — so naming a home is

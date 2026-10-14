@@ -13,6 +13,16 @@ other column on the title, while Peek is the complete document one `b` away.
 Nothing was deleted from the product; each signal has exactly one surface now
 instead of a truncated copy and a whole one.
 
+The title itself is display-compacted when it is wider than `titleWidth`:
+`compactTitleForRow`, beside `renderTaskTitle`, draws each http(s) URL as host
+(without `www.`) plus first path segment plus `/…`, and each absolute path under
+the home directory as `~/…/<last segment>`, before `TruncateToVisualWidth` cuts
+whatever is still too long. That order is what keeps search highlights on the
+compacted text the row draws. The home directory is resolved once in
+`NewOutlinerModel` through `config.HomeDir`, so no `internal/tui` code asks the
+environment. A title that fits is drawn as stored, and Peek, the inline editor,
+the form, and exports always read it whole.
+
 A deferral is therefore state-dependent prose in the Peek body rather than
 a row segment, and its two halves sit on different lines because they point
 opposite ways. `inlinePeekScheduleLine` names `Defer: <date>` while

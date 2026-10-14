@@ -1,0 +1,28 @@
+{
+  "name": "outliner-row-compacts-url-title",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture a task whose title carries a long Slack link", "key": "a" },
+    { "type": "text", "text": "Reply to https://acme.slack.com/archives/C024BE91L/p1700000000123456 thread" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the over-wide title draws the link as host, first path segment, and an ellipsis, keeping the words after it", "assert": "contains", "value": "◌ Reply to acme.slack.com/archives/… thread" },
+    { "type": "assert", "assert": "not_contains", "value": "◌ Reply to https://" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Peek reads the stored title", "key": "b" },
+    { "type": "assert", "label": "Peek is whole: the full link, scheme and all", "assert": "contains", "value": "Reply to https://acme.slack.com/archives/C024BE91L/p1700000000123456 thread" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "b" },
+
+    { "type": "key", "label": "the inline editor edits the stored title, not the compacted one", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "assert", "assert": "contains", "value": "https://acme.slack.com/archives/C024BE91L/p1700000000123456 thread" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "◌ Reply to acme.slack.com/archives/… thread" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

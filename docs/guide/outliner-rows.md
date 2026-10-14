@@ -99,6 +99,14 @@ title that fits is worth more on every row than a badge that only matters on
 some, and a value shown whole one keypress away is worth more than an
 abbreviation shown always.
 
+A title too wide for its row is display-compacted before it is cut: a link
+draws as its host and first path segment, so
+`https://www.slack.com/archives/C024BE91L/p17…` reads `slack.com/archives/…`,
+and a path under your home directory draws as `~/…/<last segment>`. Only the
+row is compacted. Peek, the inline editor, the form, and exports keep the whole
+title, so a search highlight follows the compacted text on the row and the full
+one in Peek.
+
 A deferral is one of those, and it is read in two places depending on which way
 it points. Peek's schedule line reads `Defer: <date>` while it is still pending,
 and the date carries a clock whenever the task comes back partway
