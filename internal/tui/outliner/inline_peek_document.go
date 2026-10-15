@@ -479,7 +479,8 @@ func inlinePeekScheduleKey(task *models.Task) string {
 }
 
 // inlinePeekHistoryLine names the instants the task has already spent: how long
-// ago it was created and last touched, when it was last reviewed, whether it
+// ago it was created and last touched (the touch only when it differs from the
+// creation to the second), when it was last reviewed, whether it
 // recently came back from a deferral, and how many times it has been deferred.
 // None of them is owed, so they close the document rather than standing between
 // the schedule and the task's own text.
@@ -489,7 +490,11 @@ func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
 	}
 	var fields inlinePeekFields
 	fields.add("Created", inlinePeekPastAge(task.CreatedAt, now))
-	fields.add("Updated", inlinePeekPastAge(task.UpdatedAt, now))
+	// A task never touched since its creation was updated when it was created,
+	// so a second instant saying the same thing is noise.
+	if !sameStoredSecond(task.CreatedAt, task.UpdatedAt) {
+		fields.add("Updated", inlinePeekPastAge(task.UpdatedAt, now))
+	}
 	if task.LastReviewedAt != nil {
 		fields.add("Last review", inlinePeekPastAge(*task.LastReviewedAt, now))
 	}
@@ -502,6 +507,12 @@ func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
 		fields.add("Deferred", fmt.Sprintf("×%d", task.DeferCount))
 	}
 	return fields.line()
+}
+
+// sameStoredSecond reports whether two stored instants name the same second,
+// which is the precision a creation and its first write share.
+func sameStoredSecond(a, b time.Time) bool {
+	return a.Truncate(time.Second).Equal(b.Truncate(time.Second))
 }
 
 // inlinePeekPastAge spells an instant already spent as how long ago it was, so

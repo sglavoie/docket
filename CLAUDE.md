@@ -705,7 +705,7 @@ Row and Peek budget:
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
   history; place a new section deliberately. Schedule is what is still owed —
   deadline, pending deferral, check-in, repeat — and history records created,
-  updated, last review, a lapsed wake, and avoidance count on its own final line.
+  updated if later, last review, a lapsed wake, avoidance count on its last line.
   The deferral instant keys both. Title and ancestor chain are uncompacted.
   Status spells plan (collection), state with Doing/Waiting age off
   `StateChangedAt`, priority, pinned, and review; stored values key it, so ticks

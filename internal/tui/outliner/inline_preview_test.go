@@ -243,6 +243,16 @@ func TestInlinePeekHistoryLineNamesOnlyWhatIsAlreadySpent(t *testing.T) {
 			"Created: now",
 		},
 		{
+			"an update in the creation's second repeats the creation, so it drops",
+			&models.Task{CreatedAt: now.Add(-3 * time.Hour), UpdatedAt: now.Add(-3 * time.Hour).Add(400 * time.Millisecond)},
+			"Created: 3h ago",
+		},
+		{
+			"an update a second or more later is a touch of its own",
+			&models.Task{CreatedAt: now.Add(-3 * time.Hour), UpdatedAt: now.Add(-3*time.Hour + time.Second)},
+			"Created: 3h ago · Updated: 2h ago",
+		},
+		{
 			"a pending deferral has not woken, so history says nothing about it",
 			&models.Task{CreatedAt: now.Add(-24 * time.Hour), DeferredUntil: &pending},
 			"Created: 1d ago",

@@ -26,7 +26,7 @@
     { "type": "assert", "assert": "contains", "value": "Context: [finance]" },
     { "type": "assert", "assert": "contains", "value": "Tags: #audit #billing" },
     { "type": "assert", "label": "history closes the body order, below everything that is still owed", "assert": "contains", "value": "Created: " },
-    { "type": "assert", "assert": "contains", "value": "· Updated: " },
+    { "type": "assert", "label": "an untouched task names its creation once", "assert": "not_contains", "value": "· Updated: " },
     { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
     { "type": "assert", "assert": "not_contains", "value": "Ctrl+F page down" },
     { "type": "assert", "assert": "no_layout_issues" },

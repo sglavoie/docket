@@ -304,6 +304,8 @@ note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
 list, the task's context, its tags, and last of all a history line reading
 `Created: 12d ago · Updated: 2d ago · Last review: 3d ago · Woke: 1d ago · Deferred: ×3`.
+The `Updated` age is left out when the task has not been touched since it was
+created, to the second, since it would only repeat `Created`.
 A URL or `path:line` attachment name is also a link (OSC 8) in a terminal that
 follows them — `Cmd`-click in Ghostty and tt.app — so a shortened
 `GH owner/repo#123` opens the issue, and every wrapped row of a long URL opens

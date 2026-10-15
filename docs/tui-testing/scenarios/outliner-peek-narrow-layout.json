@@ -11,7 +11,7 @@
     { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
     { "type": "assert", "label": "the history line closing the document survives minimum width", "assert": "contains", "value": "Created:" },
-    { "type": "assert", "assert": "contains", "value": "· Updated:" },
+    { "type": "assert", "label": "a task untouched since its creation repeats no Updated age", "assert": "not_contains", "value": "· Updated:" },
     { "type": "assert", "label": "every summary line is one Label: value grammar at the floor", "assert": "contains", "value": "Status: Someday" },
     { "type": "assert", "assert": "not_contains", "value": "status someday" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "not_contains", "value": "#7" },
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Description: Google / GitHub OAuth." },
-    { "type": "assert", "assert": "not_contains", "value": "· Updated:" },
+    { "type": "assert", "assert": "not_contains", "value": "Created:" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -11,7 +11,7 @@
     { "type": "key", "label": "enable cursor-following Peek", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
     { "type": "assert", "label": "Peek closes with the spent instants the row has no width for", "assert": "contains", "value": "Created:" },
-    { "type": "assert", "assert": "contains", "value": "· Updated:" },
+    { "type": "assert", "label": "a task untouched since its creation repeats no Updated age", "assert": "not_contains", "value": "· Updated:" },
     { "type": "assert", "label": "Peek never restates the checklist the rows already carry", "assert": "not_contains", "value": "Checklist:" },
     { "type": "assert", "assert": "not_contains", "value": "#7" },
     { "type": "assert", "label": "a root task has no ancestor chain to name", "assert": "not_contains", "value": "Parent:" },
@@ -22,7 +22,7 @@
     { "type": "key", "label": "toggle Peek off", "key": "b" },
     { "type": "assert", "assert": "not_contains", "value": "Parent:" },
     { "type": "assert", "assert": "not_contains", "value": "Description: Google / GitHub OAuth." },
-    { "type": "assert", "assert": "not_contains", "value": "· Updated:" },
+    { "type": "assert", "assert": "not_contains", "value": "Created:" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
