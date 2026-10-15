@@ -16,7 +16,7 @@
     { "type": "assert", "assert": "contains", "value": "~0/2" },
 
     { "type": "key", "label": "reopen the same row", "key": "e" },
-    { "type": "assert", "label": "the inline buffer is a delta, so the stored set is stated beside it rather than dumped into it", "assert": "contains", "value": "EDIT TASK · [client-alpha] › root · backlog · ~2" },
+    { "type": "assert", "label": "the inline buffer is a delta, so the stored set is stated beside it rather than dumped into it", "assert": "contains", "value": "EDIT TASK · [client-alpha] · backlog · ~2" },
     { "type": "text", "label": "strike one reference by name", "text": " -~home-errands:1" },
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "enter" },

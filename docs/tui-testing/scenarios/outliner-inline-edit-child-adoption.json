@@ -10,8 +10,8 @@
     { "type": "key", "label": "from Launch platform, which leads its singleton project group, step onto User authentication", "key": "j" },
     { "type": "key", "label": "edit the row in place", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
-    { "type": "assert", "label": "the edit grammar advertises the structural sigil", "assert": "contains", "value": "<child adopt" },
-    { "type": "assert", "label": "and the deferral sigil beside it", "assert": "contains", "value": "@@defer/@@0 defer" },
+    { "type": "assert", "label": "the edit grammar advertises the structural sigil", "assert": "contains", "value": "<task adopt" },
+    { "type": "assert", "label": "and the deferral sigil beside it", "assert": "contains", "value": "@@date defer" },
 
     { "type": "text", "label": "<0 is an ordinary unresolvable reference, never a clear", "text": " <0" },
     { "type": "key", "key": "enter" },

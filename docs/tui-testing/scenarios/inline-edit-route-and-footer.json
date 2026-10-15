@@ -1,0 +1,29 @@
+{
+  "name": "inline-edit-route-and-footer",
+  "fixture": "multi-project",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
+    { "type": "key", "label": "step onto its first task, which has no parent", "key": "j" },
+    { "type": "key", "label": "edit the task inline", "key": "e" },
+    { "type": "assert", "label": "no parent shows nothing: the route is the project chip alone", "assert": "contains", "value": "EDIT TASK · [client-alpha] · backlog" },
+    { "type": "assert", "assert": "not_contains", "value": "› root" },
+    { "type": "assert", "label": "the required pair leads the footer", "assert": "contains", "value": "Enter save · Esc cancel · !1-3 priority · #tag tag" },
+    { "type": "assert", "label": "teach order puts context beside tags, before dates", "assert": "contains", "value": "##ctx context · @date due" },
+    { "type": "assert", "label": "a status token, not the field's name repeated", "assert": "not_contains", "value": "$destination destination" },
+    { "type": "assert", "label": "positive forms only: the clears stay in the syntax guide", "assert": "not_contains", "value": "*unpin" },
+    { "type": "assert", "assert": "not_contains", "value": "!1-3/!0" },
+    { "type": "assert", "assert": "not_contains", "value": "remove tag" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "label": "the chip still stands alone at the minimum", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "assert": "not_contains", "value": "› root" },
+    { "type": "assert", "assert": "contains", "value": "Enter save · Esc cancel" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "cancel the edit", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "EDIT TASK" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

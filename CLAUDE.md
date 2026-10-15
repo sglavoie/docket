@@ -767,7 +767,7 @@ Row and Peek budget:
   as a second copy of the row's arithmetic. A validation refusal is readable
   nowhere else, so `quickEditMandatoryMetadata` serves it first and shrinks the
   route to `quickEditRouteFloor` beneath it rather than halving both; that floor
-  keeps the route's two endpoints, the project chip and the immediate parent.
+  keeps the route's endpoints, the project chip and any immediate parent.
 - The 60-second periodic tick invalidates a projection when its frozen local day
   is no longer current, so `?review`, Review counts, rows, and Peek answer an
   arrived check-in without a key press. The invalidation remains owed under an

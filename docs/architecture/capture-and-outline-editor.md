@@ -535,6 +535,18 @@ loaded one, durable `project-id:task-id` otherwise — and the parser accepts th
 locator form back unchanged, which is how a reference to archived or deleted
 work survives a round trip the workspace cannot resolve.
 
+The inline editor's header route is the project chip, then the ancestor
+chain down to the immediate parent; a task with no parent shows `[project]`
+alone, never a placeholder word standing for the absence. Its footer keeps
+`Enter save · Esc cancel` required and then teaches the grammar from
+`textgrammar.GuideDefinitions(SurfaceEdit)`, so it reads in teach order: one
+entry per field, positive form only, with a plain noun label —
+`!1-3 priority`, `#tag tag`, `##ctx context`, `@date due`, `@@date defer`,
+`$state status`, `*pin pin`, `=review review`, `%slug project`,
+`>task parent`, `<task adopt`, `~task depends`. Clears and negations stay in
+the `?` syntax guide. `quickEditFooterEntries` is that table, and its test
+fails when the edit surface gains a positive field the footer does not name.
+
 `Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
 heading is a title line, so `handleTaskContentEdited` routes it through the same
 `grammar.ParseQuickEdit` and `outliner.TaskLineEditRequest` the inline editor uses, then rides the

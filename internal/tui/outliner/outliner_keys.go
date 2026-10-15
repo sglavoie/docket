@@ -706,37 +706,34 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}, true
 }
 
+// quickEditFooterEntries is the inline editor's footer spelling of each field
+// it teaches: a short positive token and a plain noun that never repeats it.
+// Clears and negations are absent on purpose; the `?` syntax guide states
+// them, and a footer naming both halves of every field restated itself.
+var quickEditFooterEntries = map[textgrammar.Field]string{
+	textgrammar.FieldPriority:    "!1-3 priority",
+	textgrammar.FieldTag:         "#tag tag",
+	textgrammar.FieldContext:     "##ctx context",
+	textgrammar.FieldDue:         "@date due",
+	textgrammar.FieldDefer:       "@@date defer",
+	textgrammar.FieldDestination: "$state status",
+	textgrammar.FieldPinned:      "*pin pin",
+	textgrammar.FieldReview:      "=review review",
+	textgrammar.FieldProject:     "%slug project",
+	textgrammar.FieldParent:      ">task parent",
+	textgrammar.FieldChild:       "<task adopt",
+	textgrammar.FieldDependency:  "~task depends",
+}
+
+// quickEditGrammarGuidance lists one entry per field the edit surface accepts,
+// in teach order, so the footer reads in the order the syntax guide does and
+// the two-row packer sheds from the end of what a user meets last.
 func quickEditGrammarGuidance() []string {
-	labels := map[textgrammar.Field]string{
-		textgrammar.FieldPriority:    "priority",
-		textgrammar.FieldTag:         "add tag",
-		textgrammar.FieldRemoveTag:   "remove tag",
-		textgrammar.FieldDue:         "due",
-		textgrammar.FieldDefer:       "defer",
-		textgrammar.FieldDestination: "destination",
-		textgrammar.FieldPinned:      "pin",
-		textgrammar.FieldReview:      "review",
-		textgrammar.FieldProject:     "move",
-		textgrammar.FieldParent:      "parent",
-		textgrammar.FieldChild:       "adopt",
-	}
-	// The reference forms are named for the same reason the tag pair is: the
-	// sigil is the only route to a stored set no key opens. They are appended
-	// rather than labeled in place because parse order puts the tilde first,
-	// and a two-row footer that led with the newest sigil would drop the
-	// structural ones every surface above it already advertises.
-	trailing := map[textgrammar.Field]string{
-		textgrammar.FieldDependency:       "depends on",
-		textgrammar.FieldRemoveDependency: "drop dependency",
-	}
-	entries := make([]string, 0, len(labels)+len(trailing))
-	for _, source := range []map[textgrammar.Field]string{labels, trailing} {
-		for _, definition := range textgrammar.Definitions(textgrammar.SurfaceEdit) {
-			label, ok := source[definition.Field]
-			if !ok || len(definition.Forms) == 0 {
-				continue
-			}
-			entries = append(entries, strings.Join(definition.Forms, "/")+" "+label)
+	definitions := textgrammar.GuideDefinitions(textgrammar.SurfaceEdit)
+	entries := make([]string, 0, len(quickEditFooterEntries))
+	for _, definition := range definitions {
+		if entry, ok := quickEditFooterEntries[definition.Field]; ok {
+			entries = append(entries, entry)
 		}
 	}
 	return entries

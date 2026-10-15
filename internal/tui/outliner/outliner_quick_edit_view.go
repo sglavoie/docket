@@ -146,7 +146,8 @@ func (m *OutlinerModel) QuickEditMetadataLine(row OutlinerRow, project *models.P
 // quickEditRouteFloor is the columns the route keeps while a validation message
 // is on screen. compactQuickEditRoute collapses deep ancestry between its two
 // endpoints above this, so the floor is what leaves a recognizable project chip
-// and parent rather than a bare ellipsis.
+// and parent rather than a bare ellipsis. A task with no parent has a route of
+// the project chip alone, and the floor keeps that chip's brackets.
 const quickEditRouteFloor = 8
 
 func quickEditMandatoryMetadata(label, errorText, route, workflow string, width int) []string {
@@ -178,12 +179,17 @@ func quickEditMandatoryMetadata(label, errorText, route, workflow string, width 
 // compactQuickEditRoute keeps both ends of the mandatory route visible under
 // width pressure: the project at the front and the immediate parent at the
 // back. Deeper ancestry collapses between them before either endpoint shrinks.
+// A route without a parent is the project chip alone, which shrinks inside its
+// brackets rather than losing them.
 func compactQuickEditRoute(route string, width int) string {
 	if lipgloss.Width(route) <= width {
 		return route
 	}
 	parts := strings.Split(route, " › ")
-	if len(parts) < 2 || width < 5 {
+	if len(parts) == 1 {
+		return compactQuickEditProjectChip(route, width)
+	}
+	if width < 5 {
 		return textfit.TruncateToVisualWidth(route, width)
 	}
 
@@ -217,9 +223,11 @@ func quickEditRouteLabel(task *models.Task, project *models.Project) string {
 	if projectName == "" {
 		projectName = "project"
 	}
+	// No parent shows nothing: the chip alone is the whole route, since a word
+	// standing in for the absence of a parent reads as a task named that.
 	path := []string{"[" + projectName + "]"}
 	if task == nil || task.ParentID == nil || project == nil {
-		return strings.Join(append(path, "root"), " › ")
+		return path[0]
 	}
 	parents := make([]string, 0, 3)
 	seen := map[string]bool{}
@@ -238,9 +246,6 @@ func quickEditRouteLabel(task *models.Task, project *models.Project) string {
 	}
 	for left, right := 0, len(parents)-1; left < right; left, right = left+1, right-1 {
 		parents[left], parents[right] = parents[right], parents[left]
-	}
-	if len(parents) == 0 {
-		parents = append(parents, "root")
 	}
 	return strings.Join(append(path, parents...), " › ")
 }
