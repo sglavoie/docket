@@ -84,6 +84,14 @@ enum TTPulseSummary {
             .map { "\($0.0) \($0.1)" }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
+
+    /// The status menu's items for a pulse: one per count still owed, in the
+    /// line's order, each naming the mode that shows it. Overdue opens Due.
+    static func items(for pulse: TTPulse) -> [(title: String, view: TTView)] {
+        [("Inbox", pulse.inbox, TTView.inbox), ("Today", pulse.today, .today), ("Overdue", pulse.overdue, .due)]
+            .filter { $0.1 > 0 }
+            .map { (title: "\($0.0) \($0.1)", view: $0.2) }
+    }
 }
 
 /// Shows tt's notifications through the Notification Center. Authorization is

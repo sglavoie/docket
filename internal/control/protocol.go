@@ -47,6 +47,10 @@ const (
 	// mid-interaction, writes no machine state, and records no ledger entry,
 	// so a tt launched from a terminal keeps its own saved theme.
 	OpAppearance = "appearance"
+	// OpView switches the Outliner to the mode Text names, "inbox", "today", or
+	// "due", exactly as the mode jump does, and is refused where that key is:
+	// while the user is mid-interaction or a search projection is open.
+	OpView = "view"
 )
 
 // The events tt reports.

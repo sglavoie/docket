@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete, preview, quit, appearance
+        case reveal, acknowledge, capture, complete, preview, quit, appearance, view
         case deferTask = "defer"
     }
 
@@ -78,6 +78,17 @@ struct TTControlRequest: Encodable, Equatable {
     static func appearance(_ scheme: TTAppearanceScheme) -> Self {
         Self(op: .appearance, text: scheme.rawValue)
     }
+
+    /// Switches the running tt to the mode `view` names, as its mode jump
+    /// does; refused while something is open in tt.
+    static func view(_ view: TTView) -> Self {
+        Self(op: .view, text: view.rawValue)
+    }
+}
+
+/// The modes a status menu count opens, spelled as tt's `view` op takes them.
+enum TTView: String, Equatable {
+    case inbox, today, due
 }
 
 /// Quitting tt.app asks tt to quit first, so it saves its view and filter

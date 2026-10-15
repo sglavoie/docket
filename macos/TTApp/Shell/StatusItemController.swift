@@ -8,10 +8,15 @@ protocol StatusItemDelegate: AnyObject {
     var isLaunchAtLoginEnabled: Bool { get }
     /// The workspace pulse as one line; nil while tt has reported none.
     var pulseSummary: String? { get }
+    /// The pulse itself, whose counts the menu offers; nil while tt has
+    /// reported none.
+    var pulse: TTPulse? { get }
     /// The live global shortcuts, shown beside the items they run.
     var toggleHotKey: HotKeyCombo? { get }
     var captureHotKey: HotKeyCombo? { get }
     func toggleTerminal()
+    /// Shows tt in the mode a pulse count names.
+    func showView(_ view: TTView)
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
     func showPreferences(_ sender: Any?)
@@ -27,8 +32,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     let menu = NSMenu()
     private weak var delegate: StatusItemDelegate?
 
-    /// Read-only, so it is disabled and runs nothing.
-    private let pulseItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    /// One per non-zero pulse count, leading the menu; rebuilt per refresh.
+    private(set) var pulseItems: [NSMenuItem] = []
     private let pulseSeparator = NSMenuItem.separator()
     private let toggleItem = NSMenuItem(title: "Show tt", action: #selector(toggle(_:)), keyEquivalent: "")
     private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
@@ -47,10 +52,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         for item in [toggleItem, captureItem, relaunchItem, preferencesItem, loginItem, aboutItem, guideItem] {
             item.target = self
         }
-        pulseItem.isEnabled = false
-        pulseItem.isHidden = true
         pulseSeparator.isHidden = true
-        menu.addItem(pulseItem)
         menu.addItem(pulseSeparator)
         menu.addItem(toggleItem)
         menu.addItem(captureItem)
@@ -103,14 +105,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         loginItem.state = (delegate?.isLaunchAtLoginEnabled ?? false) ? .on : .off
     }
 
-    /// The pulse line leads the menu and is the button's accessibility value,
-    /// so VoiceOver reads the counts the menu shows.
+    /// Each non-zero count leads the menu as an item showing tt in its mode,
+    /// and the pulse line is the button's accessibility value, so VoiceOver
+    /// reads the counts the menu shows.
     func refreshPulse() {
-        let pulse = delegate?.pulseSummary ?? ""
-        pulseItem.title = pulse
-        pulseItem.isHidden = pulse.isEmpty
-        pulseSeparator.isHidden = pulse.isEmpty
-        statusItem.button?.setAccessibilityValue(pulse.isEmpty ? nil : pulse)
+        for item in pulseItems { menu.removeItem(item) }
+        pulseItems = (delegate?.pulse).map(TTPulseSummary.items(for:))?.map { entry in
+            let item = NSMenuItem(title: entry.title, action: #selector(showView(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = entry.view.rawValue
+            return item
+        } ?? []
+        for (index, item) in pulseItems.enumerated() { menu.insertItem(item, at: index) }
+        pulseSeparator.isHidden = pulseItems.isEmpty
+        let line = delegate?.pulseSummary ?? ""
+        statusItem.button?.setAccessibilityValue(line.isEmpty ? nil : line)
     }
 
     static func opensMenu(_ event: NSEvent?) -> Bool {
@@ -135,6 +144,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggle(_ sender: Any?) { delegate?.toggleTerminal() }
+    @objc private func showView(_ sender: NSMenuItem) {
+        guard let view = (sender.representedObject as? String).flatMap(TTView.init(rawValue:)) else { return }
+        delegate?.showView(view)
+    }
     @objc private func relaunch(_ sender: Any?) { delegate?.relaunchTerminal() }
     @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }
     @objc private func preferences(_ sender: Any?) { delegate?.showPreferences(sender) }

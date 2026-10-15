@@ -150,11 +150,14 @@ Login, About tt, tt Guide, Quit. Show/Hide and Quick Capture… show their globa
 those are registered, as Quick Capture… does in the app menu; a shortcut that is
 off, or that another app holds, is not shown. The Dock icon's menu has Quick
 Capture… and Relaunch tt.
-Once tt has reported its pulse, the menu leads with it as one line that runs
-nothing (`inbox 2 · today 3 · overdue 1`), leaving out any count at zero and the
-whole line when all three are. The icon's tooltip is tt's window title, that
-same pulse in the same spelling (`tt · inbox 2 · today 3 · overdue 1`), and
-VoiceOver reads the pulse line as the icon's value.
+Once tt has reported its pulse, the menu leads with one item per count still
+owed — `Inbox 2`, `Today 3`, `Overdue 1` — leaving out any count at zero and
+all of them when all three are. Choosing one shows tt in that mode, as its mode
+jump would: Inbox, Today, or Due for Overdue. A tt that is busy, because
+something is open in it, or too old to know the request is still shown, in the
+mode it was in. The icon's tooltip is tt's window title, the pulse as one line
+(`tt · inbox 2 · today 3 · overdue 1`), and VoiceOver reads that line, without
+the title, as the icon's value.
 Closing the window hides it and keeps the session; the next show returns to
 it. Hiding leaves full screen first, and hides the app only when no other tt
 window, such as Settings or About, is open. The window resizes in whole cells

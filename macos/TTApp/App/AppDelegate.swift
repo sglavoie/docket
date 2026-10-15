@@ -641,6 +641,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     var pulseSummary: String? { lastPulse.flatMap(TTPulseSummary.line(for:)) }
 
+    var pulse: TTPulse? { lastPulse }
+
     var toggleHotKey: HotKeyCombo? { hotKeys?.registeredCombo }
 
     var captureHotKey: HotKeyCombo? { captureHotKeys?.registeredCombo }
@@ -657,6 +659,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             terminal.hide()
         } else {
             terminal.show()
+        }
+    }
+
+    /// A status menu count: show tt in that mode. A busy or older tt is still
+    /// shown, and its refusal is only logged.
+    func showView(_ view: TTView) {
+        guard let terminal else {
+            showLaunchErrorAgain()
+            return
+        }
+        terminal.show()
+        control?.send(.view(view)) { reply in
+            if !reply.ok { NSLog("tt: view: %@", reply.message ?? "refused") }
         }
     }
 

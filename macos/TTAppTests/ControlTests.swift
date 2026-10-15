@@ -67,6 +67,24 @@ final class ControlWireTests: XCTestCase {
         XCTAssertEqual(TTAppearanceScheme(try XCTUnwrap(NSAppearance(named: .aqua))), .light)
     }
 
+    func testViewEncodesTheModeTtTakes() throws {
+        for view in [TTView.inbox, .today, .due] {
+            let data = try JSONEncoder().encode(TTControlRequest.view(view))
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(object["op"] as? String, "view")
+            XCTAssertEqual(object["text"] as? String, view.rawValue)
+            XCTAssertNil(object["task"])
+        }
+    }
+
+    func testPulseItemsOmitZeroCountsAndOpenTheirMode() {
+        let items = TTPulseSummary.items(for: TTPulse(inbox: 2, today: 3, overdue: 1, done: 9))
+        XCTAssertEqual(items.map(\.title), ["Inbox 2", "Today 3", "Overdue 1"])
+        XCTAssertEqual(items.map(\.view), [.inbox, .today, .due])
+        XCTAssertEqual(TTPulseSummary.items(for: TTPulse(inbox: 0, today: 0, overdue: 4, done: 0)).map(\.title), ["Overdue 4"])
+        XCTAssertTrue(TTPulseSummary.items(for: TTPulse(inbox: 0, today: 0, overdue: 0, done: 5)).isEmpty)
+    }
+
     /// A later tt may add events; an older app skips what it does not know.
     func testUnknownLinesAreSkipped() {
         XCTAssertNil(TTControlLine.decode(Data(#"{"event":"something-new"}"#.utf8)))

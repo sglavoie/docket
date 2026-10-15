@@ -432,10 +432,12 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     var canRelaunchTerminal = true
     var isLaunchAtLoginEnabled = false
     var pulseSummary: String?
+    var pulse: TTPulse?
     var toggleHotKey: HotKeyCombo?
     var captureHotKey: HotKeyCombo?
     var calls: [String] = []
     func toggleTerminal() { calls.append("toggle") }
+    func showView(_ view: TTView) { calls.append("view:\(view.rawValue)") }
     func relaunchTerminal() { calls.append("relaunch") }
     func showQuickCapture(_ sender: Any?) { calls.append("capture") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
@@ -474,32 +476,45 @@ final class StatusItemTests: XCTestCase {
         XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login", "about", "guide"])
     }
 
-    /// The pulse leads the menu as a line that runs nothing, and takes no row
-    /// until tt has reported one.
-    func testMenuLeadsWithThePulseOnceOneArrives() throws {
+    /// Each count still owed leads the menu as an enabled item showing tt in
+    /// its mode; a zero count takes no row, nor does a pulse tt never sent.
+    /// The accessibility value keeps the one-line pulse.
+    func testMenuLeadsWithOneItemPerOwedCount() throws {
         let delegate = FakeStatusDelegate()
         let controller = StatusItemController(delegate: delegate)
         controller.refreshMenu()
+        XCTAssertTrue(controller.pulseItems.isEmpty)
+        XCTAssertTrue(controller.menu.items[0].isSeparatorItem)
         XCTAssertTrue(controller.menu.items[0].isHidden)
-        XCTAssertTrue(controller.menu.items[1].isHidden)
-        XCTAssertTrue(controller.menu.items[1].isSeparatorItem)
 
-        delegate.pulseSummary = "inbox 3 · today 2 · overdue 1"
+        delegate.pulse = TTPulse(inbox: 2, today: 0, overdue: 1, done: 4)
+        delegate.pulseSummary = "inbox 2 · overdue 1"
         controller.refreshMenu()
-        let pulse = controller.menu.items[0]
-        XCTAssertEqual(pulse.title, "inbox 3 · today 2 · overdue 1")
-        XCTAssertEqual(controller.statusItem.button?.accessibilityValue() as? String, "inbox 3 · today 2 · overdue 1")
-        XCTAssertFalse(pulse.isHidden)
-        XCTAssertFalse(pulse.isEnabled)
-        XCTAssertNil(pulse.action)
-        XCTAssertFalse(controller.menu.items[1].isHidden)
-        XCTAssertEqual(controller.menu.items[2].title, "Show tt")
+        XCTAssertEqual(controller.menu.items.prefix(2).map(\.title), ["Inbox 2", "Overdue 1"])
+        XCTAssertEqual(controller.statusItem.button?.accessibilityValue() as? String, "inbox 2 · overdue 1")
+        XCTAssertTrue(controller.menu.items[2].isSeparatorItem)
+        XCTAssertFalse(controller.menu.items[2].isHidden)
+        XCTAssertEqual(controller.menu.items[3].title, "Show tt")
+        for item in controller.menu.items.prefix(2) {
+            XCTAssertTrue(item.isEnabled)
+            XCTAssertFalse(item.isHidden)
+            _ = (item.target as? NSObject)?.perform(item.action, with: item)
+        }
+        XCTAssertEqual(delegate.calls, ["view:inbox", "view:due"])
 
+        delegate.pulse = TTPulse(inbox: 0, today: 3, overdue: 0, done: 0)
+        delegate.pulseSummary = "today 3"
+        controller.refreshPulse()
+        XCTAssertEqual(controller.pulseItems.map(\.title), ["Today 3"])
+        XCTAssertEqual(controller.menu.items.filter { $0.title.hasPrefix("Inbox") }.count, 0)
+
+        delegate.pulse = TTPulse(inbox: 0, today: 0, overdue: 0, done: 2)
         delegate.pulseSummary = nil
         controller.refreshPulse()
+        XCTAssertTrue(controller.pulseItems.isEmpty)
         XCTAssertNil(controller.statusItem.button?.accessibilityValue())
+        XCTAssertTrue(controller.menu.items[0].isSeparatorItem)
         XCTAssertTrue(controller.menu.items[0].isHidden)
-        XCTAssertTrue(controller.menu.items[1].isHidden)
     }
 
     func testMenuShowsTheLiveShortcuts() throws {

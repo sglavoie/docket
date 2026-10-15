@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
@@ -562,7 +563,7 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		applySessionTheme(request.Text)
 		answer(reply, true, "Theme: "+request.Text)
 		return nil
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit:
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
@@ -575,6 +576,12 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		// The quit key's own path, so view and filter state are saved.
 		answer(reply, true, "quitting")
 		return func() tea.Msg { return status.QuitMsg{} }
+	}
+	if request.Op == control.OpView {
+		// A mode change reads the workspace it already holds and commits
+		// nothing, so it owes no reload of its own.
+		m.controlView(request.Text, reply)
+		return nil
 	}
 	// A blurred session may be holding a workspace another machine changed;
 	// acting on it would commit against a stale read and record a conflict.
@@ -601,6 +608,34 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		}
 	}
 	return tea.Batch(reload, cmd)
+}
+
+// controlViewModes are the modes a host may name: the three the pulse counts.
+var controlViewModes = map[string]chrome.OutlinerModeID{
+	"inbox": chrome.ModeInbox,
+	"today": chrome.ModeToday,
+	"due":   chrome.ModeDue,
+}
+
+// controlView switches the Outliner to the named mode through the mode jump's
+// own SelectOutlinerMode. The busy guard already refused the ranked list, where
+// that key refuses too.
+func (m *AppModel) controlView(name string, reply chan<- control.Reply) {
+	id, known := controlViewModes[name]
+	if !known {
+		answer(reply, false, fmt.Sprintf("unknown view %q: want inbox, today, or due", name))
+		return
+	}
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		answer(reply, false, "the Outliner is not open")
+		return
+	}
+	// The user asked for this mode; a launch still settling may not move it.
+	m.lifecycle.dropLaunchFocus()
+	_, _ = out.SelectOutlinerMode(id)
+	mode, _ := chrome.OutlinerModeByID(id)
+	answer(reply, true, "Shown: "+mode.Label)
 }
 
 // controlReveal seats the cursor on the task: in place when the current view

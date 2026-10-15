@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/control"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -386,5 +387,50 @@ func TestControlAppearanceAppliesForTheSessionAlone(t *testing.T) {
 		if theme.ActiveThemeName != want {
 			t.Fatalf("refused appearance %q changed the theme to %q", text, theme.ActiveThemeName)
 		}
+	}
+}
+
+// TestControlViewSwitchesModeAsTheJumpDoes: a host's view op lands the Outliner
+// in the named mode, refuses an unknown name, and is refused wherever the mode
+// jump is — mid-interaction or under the ranked list — without moving the mode.
+func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
+	for _, tc := range []struct {
+		text string
+		want chrome.OutlinerModeID
+	}{{"inbox", chrome.ModeInbox}, {"today", chrome.ModeToday}, {"due", chrome.ModeDue}} {
+		mode, _ := chrome.OutlinerModeByID(tc.want)
+		if reply := env.request(t, control.Request{Op: control.OpView, Text: tc.text}); !reply.OK || reply.Message != "Shown: "+mode.Label {
+			t.Fatalf("view %q reply = %+v", tc.text, reply)
+		}
+		if env.outliner.PrimaryMode != tc.want {
+			t.Fatalf("view %q left mode %q", tc.text, env.outliner.PrimaryMode)
+		}
+	}
+
+	for _, text := range []string{"", "all", "Inbox"} {
+		if reply := env.request(t, control.Request{Op: control.OpView, Text: text}); reply.OK || reply.Message == "" {
+			t.Fatalf("view %q answered %+v", text, reply)
+		}
+	}
+	if env.outliner.PrimaryMode != chrome.ModeDue {
+		t.Fatalf("a refused view moved the mode to %q", env.outliner.PrimaryMode)
+	}
+
+	searchRankedList(env.outliner, "kept")
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+		t.Fatalf("view under the ranked list answered %+v", reply)
+	}
+	if env.outliner.PrimaryMode != chrome.ModeDue {
+		t.Fatalf("a view under the ranked list moved the mode to %q", env.outliner.PrimaryMode)
+	}
+	env.outliner.ClearSearch()
+
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+		t.Fatalf("view mid-interaction answered %+v", reply)
+	}
+	if env.outliner.PrimaryMode != chrome.ModeDue {
+		t.Fatalf("a busy view moved the mode to %q", env.outliner.PrimaryMode)
 	}
 }
