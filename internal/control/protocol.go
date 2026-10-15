@@ -51,6 +51,10 @@ const (
 	// "due", exactly as the mode jump does, and is refused where that key is:
 	// while the user is mid-interaction or a search projection is open.
 	OpView = "view"
+	// OpUndo undoes the transaction Text names, as u would, only while it is
+	// still the newest undo entry, so a host never takes back something newer
+	// the user did in tt. It is refused while the user is mid-interaction.
+	OpUndo = "undo"
 )
 
 // The events tt reports.
@@ -85,12 +89,15 @@ type Request struct {
 // outcome on success, the refusal otherwise. Completion answers OpComplete
 // alone, and is absent when the caret stands on no sigil the grammar completes.
 // Preview answers OpPreview with the full draft's human-readable route and date.
+// Transaction answers a successful OpCapture with the committed transaction's
+// ID, the one OpUndo names.
 type Reply struct {
-	ID         int         `json:"reply"`
-	OK         bool        `json:"ok"`
-	Message    string      `json:"message,omitempty"`
-	Completion *Completion `json:"completion,omitempty"`
-	Preview    string      `json:"preview,omitempty"`
+	ID          int         `json:"reply"`
+	OK          bool        `json:"ok"`
+	Message     string      `json:"message,omitempty"`
+	Completion  *Completion `json:"completion,omitempty"`
+	Preview     string      `json:"preview,omitempty"`
+	Transaction string      `json:"transaction,omitempty"`
 }
 
 // Completion is what the composer would offer for the token ending at the

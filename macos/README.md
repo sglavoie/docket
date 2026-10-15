@@ -223,6 +223,14 @@ key, and a pending capture cannot be submitted twice. The
 menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
+`Cmd+Z` in the empty field takes back the last capture through tt's own undo,
+the one `u` would make, and the line under the field says what tt answered. tt
+refuses it once something newer has changed in tt (`Something newer was
+changed in tt; undo it there`), or while something is open in tt, and the
+capture stays. With text in the field, `Cmd+Z` undoes the typing instead. So
+it serves a `Ctrl+N` capture and a reopened panel; an undone capture is not
+offered again, and an undo never starts tt.
+
 A live preview under the field names the project, plan (when present), status,
 and resolved deadline, including its weekday and any time. It also shows
 priority and the resolved deferral date and time when supplied. An unfinished

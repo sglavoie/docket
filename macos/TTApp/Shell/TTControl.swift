@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete, preview, quit, appearance, view
+        case reveal, acknowledge, capture, complete, preview, quit, appearance, view, undo
         case deferTask = "defer"
     }
 
@@ -83,6 +83,12 @@ struct TTControlRequest: Encodable, Equatable {
     /// does; refused while something is open in tt.
     static func view(_ view: TTView) -> Self {
         Self(op: .view, text: view.rawValue)
+    }
+
+    /// Undoes the transaction a capture reply named, only while it is still
+    /// tt's newest undo entry; refused otherwise, or while something is open.
+    static func undo(_ transaction: String) -> Self {
+        Self(op: .undo, text: transaction)
     }
 }
 
@@ -158,13 +164,19 @@ struct TTControlReply: Decodable, Equatable {
     /// A `complete` reply's suggestions; nil when the caret stands on no sigil.
     let completion: TTCompletion?
     let preview: String?
+    /// A successful `capture` reply's committed transaction, the one `undo` names.
+    let transaction: String?
 
-    init(reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil) {
+    init(
+        reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil,
+        transaction: String? = nil
+    ) {
         self.reply = reply
         self.ok = ok
         self.message = message
         self.completion = completion
         self.preview = preview
+        self.transaction = transaction
     }
 
     /// What the app says when it could not ask: no tt, or a dropped connection.
@@ -263,6 +275,7 @@ enum TTControlLine: Equatable {
         let message: String?
         let completion: TTCompletion?
         let preview: String?
+        let transaction: String?
         let event: String?
         let pulse: TTPulse?
         let arrivals: [TTArrival]?
@@ -273,7 +286,8 @@ enum TTControlLine: Equatable {
     static func decode(_ data: Data) -> TTControlLine? {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
-            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview))
+            return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
+                transaction: raw.transaction))
         }
         switch raw.event {
         case "pulse":

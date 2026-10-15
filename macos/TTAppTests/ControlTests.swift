@@ -35,6 +35,15 @@ final class ControlWireTests: XCTestCase {
         )
     }
 
+    func testACaptureReplyCarriesItsTransactionAndUndoNamesIt() throws {
+        let line = #"{"reply":8,"ok":true,"message":"Captured: Buy milk","transaction":"tx-42"}"#
+        XCTAssertEqual(TTControlLine.decode(Data(line.utf8)),
+                       .reply(TTControlReply(reply: 8, ok: true, message: "Captured: Buy milk", transaction: "tx-42")))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.undo("tx-42"))) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "undo")
+        XCTAssertEqual(object["text"] as? String, "tx-42")
+    }
+
     func testACompletionReplyDecodesAndTheRequestEncodes() throws {
         let line = #"{"reply":4,"ok":true,"completion":{"token":"%cl","exact":true,"items":[{"label":"%Client Work","insert":"%client-work "}]}}"#
         XCTAssertEqual(
@@ -375,7 +384,7 @@ final class ControlClientTests: XCTestCase {
 final class QuickCapturePanelTests: XCTestCase {
     func testControlNCapturesRepeatedlyAndKeepsRefusedDrafts() throws {
         let panel = QuickCapturePanel()
-        var callbacks: [(Bool, String) -> Void] = []
+        var callbacks: [(Bool, String, String?) -> Void] = []
         var submitted: [String] = []
         var dismissals = 0
         panel.scheduleDismissal = { _ in dismissals += 1 }
@@ -390,18 +399,18 @@ final class QuickCapturePanelTests: XCTestCase {
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
         XCTAssertEqual(submitted, ["First"], "an in-flight request cannot be duplicated")
-        callbacks[0](true, "Captured")
+        callbacks[0](true, "Captured", "tx-1")
         XCTAssertEqual(field.stringValue, "")
         XCTAssertTrue(panel.isVisible)
         XCTAssertEqual(dismissals, 0)
         field.stringValue = "Second"
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
-        callbacks[1](false, "Please fix this")
+        callbacks[1](false, "Please fix this", nil)
         XCTAssertEqual(field.stringValue, "Second")
         XCTAssertTrue(panel.isVisible)
         XCTAssertEqual(dismissals, 0)
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
-        callbacks[2](true, "Captured")
+        callbacks[2](true, "Captured", "tx-2")
         XCTAssertEqual(field.stringValue, "")
         XCTAssertEqual(submitted, ["First", "Second", "Second"])
     }
@@ -435,7 +444,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testSuccessfulCaptureClearsTheRememberedSelection() throws {
         let panel = QuickCapturePanel()
         panel.scheduleDismissal = { _ in }
-        panel.submit = { _, done in done(true, "Captured") }
+        panel.submit = { _, done in done(true, "Captured", "tx") }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -492,7 +501,7 @@ final class QuickCapturePanelTests: XCTestCase {
         let panel = QuickCapturePanel()
         var dismiss: (() -> Void)?
         panel.scheduleDismissal = { dismiss = $0 }
-        panel.submit = { _, done in done(true, "Captured") }
+        panel.submit = { _, done in done(true, "Captured", "tx") }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -513,7 +522,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testLongRefusalsGrowThePanelAndTheNextOpeningShrinksIt() throws {
         let panel = QuickCapturePanel()
         let reason = String(repeating: "The selected project is unavailable; choose an existing project. ", count: 8)
-        panel.submit = { _, done in done(false, reason) }
+        panel.submit = { _, done in done(false, reason, nil) }
         panel.show()
         defer { panel.close() }
         let originalHeight = panel.panel.frame.height
@@ -550,6 +559,53 @@ final class QuickCapturePanelTests: XCTestCase {
             XCTAssertTrue(QuickCapturePanel.placeholder.contains(sigil), sigil)
             XCTAssertFalse(QuickCapturePanel.hint.contains(sigil), sigil)
         }
+    }
+
+    /// Cmd+Z in an empty field undoes the last capture through tt and shows its
+    /// answer; in a field holding text it is the field's own undo, and an undone
+    /// capture is not offered again.
+    func testCommandZUndoesTheLastCaptureOnlyFromAnEmptyField() throws {
+        let panel = QuickCapturePanel()
+        panel.scheduleDismissal = { _ in }
+        panel.submit = { _, done in done(true, "Captured: Buy milk", "tx-1") }
+        var undone: [String] = []
+        var undoReplies: [(Bool, String) -> Void] = []
+        panel.undo = { transaction, done in undone.append(transaction); undoReplies.append(done) }
+        panel.show()
+        defer { panel.close() }
+        let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
+        let field = try XCTUnwrap(labels.first { $0.isEditable })
+        let commandZ = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero,
+            modifierFlags: .command, timestamp: 0, windowNumber: panel.panel.windowNumber,
+            context: nil, characters: "z", charactersIgnoringModifiers: "z", isARepeat: false, keyCode: 6))
+
+        // Before any capture there is nothing of tt's to undo.
+        _ = panel.panel.performKeyEquivalent(with: commandZ)
+        XCTAssertEqual(undone, [])
+
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertEqual(panel.lastCaptureTransaction, "tx-1")
+
+        // Text in the field: the key is text undo, and tt hears nothing.
+        field.stringValue = "Next"
+        _ = panel.panel.performKeyEquivalent(with: commandZ)
+        XCTAssertEqual(undone, [])
+
+        field.stringValue = ""
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: commandZ))
+        XCTAssertEqual(undone, ["tx-1"])
+        undoReplies[0](false, "Something newer was changed in tt; undo it there")
+        XCTAssertTrue(labels.contains { $0.stringValue == "Something newer was changed in tt; undo it there" })
+        XCTAssertEqual(panel.lastCaptureTransaction, "tx-1", "a refused undo keeps the capture")
+
+        XCTAssertTrue(panel.panel.performKeyEquivalent(with: commandZ))
+        undoReplies[1](true, "Undid: Create Task: Buy milk")
+        XCTAssertTrue(panel.isVisible)
+        XCTAssertTrue(labels.contains { $0.stringValue == "Undid: Create Task: Buy milk" })
+        XCTAssertNil(panel.lastCaptureTransaction)
+        _ = panel.panel.performKeyEquivalent(with: commandZ)
+        XCTAssertEqual(undone, ["tx-1", "tx-1"], "an undone capture is forgotten")
     }
 
     /// A tt without a control socket still opens the panel, which names the

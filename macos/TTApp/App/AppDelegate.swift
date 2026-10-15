@@ -369,6 +369,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
         }
         quickCapture.submit = { [weak self] text, done in self?.capture(text, done: done) }
+        quickCapture.undo = { [weak self] transaction, done in self?.undoCapture(transaction, done: done) }
         quickCapture.complete = { [weak self] text, done in self?.complete(text, done: done) }
         quickCapture.preview = { [weak self] text, done in self?.previewCapture(text, done: done) }
     }
@@ -408,16 +409,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    private func capture(_ text: String, done: @escaping (Bool, String) -> Void) {
+    private func capture(_ text: String, done: @escaping (Bool, String, String?) -> Void) {
         guard let control, let terminal else {
-            done(false, "This tt has no control socket. Update it (just install) to capture from here.")
+            done(false, "This tt has no control socket. Update it (just install) to capture from here.", nil)
             return
         }
         // A tt that exited cleanly starts again; the request waits for it.
         if terminal.surfaceView == nil {
             terminal.show()
         }
-        control.send(.capture(text)) { reply in done(reply.ok, reply.message ?? "") }
+        control.send(.capture(text)) { reply in done(reply.ok, reply.message ?? "", reply.transaction) }
+    }
+
+    /// Undoes a capture in the running tt. Unlike a capture it never starts tt;
+    /// with nothing connected the panel says so and keeps the capture.
+    private func undoCapture(_ transaction: String, done: @escaping (Bool, String) -> Void) {
+        guard let control, control.isConnected else {
+            done(false, "tt is not running")
+            return
+        }
+        control.send(.undo(transaction)) { reply in done(reply.ok, reply.message ?? "") }
     }
 
     /// Asks the running tt what its composer would suggest. Unlike a capture it

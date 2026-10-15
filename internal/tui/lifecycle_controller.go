@@ -563,7 +563,7 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		applySessionTheme(request.Text)
 		answer(reply, true, "Theme: "+request.Text)
 		return nil
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView:
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView, control.OpUndo:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
@@ -582,6 +582,11 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		// nothing, so it owes no reload of its own.
 		m.controlView(request.Text, reply)
 		return nil
+	}
+	if request.Op == control.OpUndo {
+		// The restore reloads every project the entry touched, so it owes no
+		// blurred-workspace reload of its own.
+		return m.controlUndo(request.Text, reply)
 	}
 	// A blurred session may be holding a workspace another machine changed;
 	// acting on it would commit against a stale read and record a conflict.
@@ -636,6 +641,32 @@ func (m *AppModel) controlView(name string, reply chan<- control.Reply) {
 	_, _ = out.SelectOutlinerMode(id)
 	mode, _ := chrome.OutlinerModeByID(id)
 	answer(reply, true, "Shown: "+mode.Label)
+}
+
+// controlUndoSuperseded is the refusal for a transaction that is no longer the
+// newest undo entry: u would take back the newer change instead.
+const controlUndoSuperseded = "Something newer was changed in tt; undo it there"
+
+// controlUndo undoes the named transaction through the u key's own ledger path,
+// and only while it is still the newest undo entry.
+func (m *AppModel) controlUndo(transactionID string, reply chan<- control.Reply) tea.Cmd {
+	transactionID = strings.TrimSpace(transactionID)
+	if transactionID == "" {
+		answer(reply, false, "an undo needs a transaction ID")
+		return nil
+	}
+	entry, ok, err := workspaceLedgerFromConfig(m.domain.runtime).SelectNewestUndo(storage.GlobalScope())
+	if err != nil {
+		answer(reply, false, status.FormatUndoRedoRestoreError("undo", err).Error())
+		return nil
+	}
+	if !ok || entry.TransactionID != transactionID {
+		answer(reply, false, controlUndoSuperseded)
+		return nil
+	}
+	cmd, outcome, restored := m.restoreLedgerEntry(false)
+	answer(reply, restored, outcome)
+	return cmd
 }
 
 // controlReveal seats the cursor on the task: in place when the current view
@@ -721,8 +752,9 @@ func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.C
 			return controlCommittedMsg{inner: msg}
 		}
 		summary := controlCapturedSummary(captured.Results)
-		answer(reply, true, summary)
-		return controlCommittedMsg{inner: captured, feedback: summary, txID: captured.Results[0].TransactionID}
+		txID := captured.Results[0].TransactionID
+		reply <- control.Reply{OK: true, Message: summary, Transaction: txID}
+		return controlCommittedMsg{inner: captured, feedback: summary, txID: txID}
 	}
 }
 

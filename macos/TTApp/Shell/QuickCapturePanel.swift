@@ -8,11 +8,18 @@ import AppKit
 /// Typing a sigil asks tt what its composer would suggest there, and the
 /// answers list under the field: ↑/↓ choose, Tab accepts, Enter accepts unless
 /// the token already stands as typed, and Esc closes the list before the panel.
+///
+/// Cmd+Z in an empty field takes back the last capture, through tt's own undo,
+/// while it is still the newest change in tt; in a field holding text it undoes
+/// the typing.
 final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     NSTableViewDataSource, NSTableViewDelegate {
-    /// Sends one line to tt and calls back with whether it was captured and
-    /// what tt said.
-    var submit: ((String, @escaping (Bool, String) -> Void) -> Void)?
+    /// Sends one line to tt and calls back with whether it was captured, what
+    /// tt said, and the committed transaction a later undo names.
+    var submit: ((String, @escaping (Bool, String, String?) -> Void) -> Void)?
+    /// Asks tt to undo the named capture transaction and calls back with
+    /// whether it did and what tt said.
+    var undo: ((String, @escaping (Bool, String) -> Void) -> Void)?
     /// Asks tt what to suggest for the draft up to the caret and calls back
     /// with its answer, or nil when there is none to show.
     var complete: ((String, @escaping (TTCompletion?) -> Void) -> Void)?
@@ -54,6 +61,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private var requestedDraft: (text: String, caret: Int)?
     private var selectionObserver: NSObjectProtocol?
     private var savedSelection: (text: String, range: NSRange)?
+    /// The last successful capture's transaction, until it is undone.
+    private(set) var lastCaptureTransaction: String?
 
     deinit {
         stopObservingSelection()
@@ -154,6 +163,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             guard let self, self.completion == nil else { return }
             self.capture(keepOpen: true)
         }
+        panel.onUndo = { [weak self] in self?.undoKey() ?? false }
 
         let background = NSVisualEffectView()
         background.material = .hudWindow
@@ -266,11 +276,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         sending = true
         field.isEditable = false
         setStatus("Capturing…", error: false)
-        submit(text) { [weak self] ok, message in
+        submit(text) { [weak self] ok, message, transaction in
             guard let self else { return }
             self.sending = false
             self.field.isEditable = true
             if ok {
+                self.lastCaptureTransaction = transaction
                 self.savedSelection = nil
                 self.field.stringValue = ""
                 self.setStatus(message.isEmpty ? "Captured" : message, error: false)
@@ -289,6 +300,42 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
                 self.setStatus(message.isEmpty ? "tt refused the capture" : message, error: true)
                 self.panel.makeFirstResponder(self.field)
             }
+        }
+    }
+
+    /// Cmd+Z: the last capture when the field is empty and one is remembered,
+    /// otherwise the field's own text undo.
+    private func undoKey() -> Bool {
+        if field.stringValue.isEmpty, let transaction = lastCaptureTransaction, let undo {
+            undoCapture(transaction, through: undo)
+            return true
+        }
+        guard let editor = field.currentEditor(), let manager = editor.undoManager, manager.canUndo else {
+            return false
+        }
+        manager.undo()
+        return true
+    }
+
+    private func undoCapture(_ transaction: String, through undo: (String, @escaping (Bool, String) -> Void) -> Void) {
+        guard !sending else { return }
+        clearCompletion()
+        // The panel stays open to say what tt answered.
+        dismissalGeneration += 1
+        sending = true
+        field.isEditable = false
+        setStatus("Undoing…", error: false)
+        undo(transaction) { [weak self] ok, message in
+            guard let self else { return }
+            self.sending = false
+            self.field.isEditable = true
+            if ok {
+                self.lastCaptureTransaction = nil
+                self.setStatus(message.isEmpty ? "Undid the capture" : message, error: false)
+            } else {
+                self.setStatus(message.isEmpty ? "tt refused the undo" : message, error: true)
+            }
+            self.panel.makeFirstResponder(self.field)
         }
     }
 
@@ -521,12 +568,17 @@ private final class EmphasizedRowView: NSTableRowView {
 private final class KeyablePanel: NSPanel {
     var onCancel: (() -> Void)?
     var onCaptureAnother: (() -> Void)?
+    /// Cmd+Z, answering whether it was handled.
+    var onUndo: (() -> Bool)?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if event.type == .keyDown,
-           event.modifierFlags.intersection([.control, .option, .command, .shift]) == .control,
-           event.charactersIgnoringModifiers == "n" {
+        let modifiers = event.modifierFlags.intersection([.control, .option, .command, .shift])
+        if event.type == .keyDown, modifiers == .control, event.charactersIgnoringModifiers == "n" {
             onCaptureAnother?()
+            return true
+        }
+        if event.type == .keyDown, modifiers == .command, event.charactersIgnoringModifiers == "z",
+           onUndo?() == true {
             return true
         }
         return super.performKeyEquivalent(with: event)

@@ -397,6 +397,14 @@ func (m *AppModel) workspaceHistoryPreview() (undo, redo string) {
 // catalog-reading surfaces are therefore rebuilt from the restored snapshot on
 // the same terms every forward catalog mutation rebuilds them.
 func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
+	cmd, _, _ := m.restoreLedgerEntry(redo)
+	return cmd
+}
+
+// restoreLedgerEntry is handleLedgerTaskUndoRedo's restore, also reporting the
+// outcome it puts on the status line and whether the entry was restored, so a
+// control request can answer with tt's own words.
+func (m *AppModel) restoreLedgerEntry(redo bool) (tea.Cmd, string, bool) {
 	m.retireInteraction()
 	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	restore := ledger.UndoWithEntry
@@ -410,7 +418,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 		// An exhausted ledger is not an error: say so quietly rather than toast
 		// a spurious failure.
 		if status.IsExhaustedHistory(err) {
-			return status.NothingToRestoreCmd(redo)
+			return status.NothingToRestoreCmd(redo), "Nothing to " + label, false
 		}
 		// A retired entry changed nothing durable but did leave the ledger, so
 		// the session memories keyed to it are put down with it.
@@ -419,7 +427,8 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 			m.undoFocus.ForgetRetired(retired.Entry.TransactionID, redo)
 			m.dueClocks.ForgetRetired(retired.Entry.TransactionID, redo)
 		}
-		return status.ErrorCmd("%s", status.FormatUndoRedoRestoreError(label, err))
+		failure := status.FormatUndoRedoRestoreError(label, err)
+		return status.ErrorCmd("%s", failure), failure.Error(), false
 	}
 	restored := make([]*models.Project, 0, len(entry.ProjectIDs))
 	for _, id := range entry.ProjectIDs {
@@ -430,7 +439,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	}
 	m.refreshRuntime()
 	if err := m.repairTaskProjectRefsAfterRestore(restored); err != nil {
-		return status.ErrorCmd("%s", err)
+		return status.ErrorCmd("%s", err), err.Error(), false
 	}
 	m.rebuildPlanningFromRuntime()
 	m.refreshLoadedTaskWorkspace()
@@ -445,11 +454,12 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	// rather than drag the view to wherever it started.
 	focusCmd, detail := m.refocusRestoredTask(entry.TransactionID, redo)
 	m.clearToggleHistory()
-	m.setSuccessStatus(appendRestoreDetail(fmt.Sprintf("%s: %s", verb, desc), detail))
+	outcome := appendRestoreDetail(fmt.Sprintf("%s: %s", verb, desc), detail)
+	m.setSuccessStatus(outcome)
 	m.refreshProjectHubIfActive()
 	cmds := m.refreshTaskViewsAfterSave()
 	cmds = append(cmds, focusCmd, m.refreshActiveNotesManager(), m.statusReadingTimeout())
-	return tea.Batch(cmds...)
+	return tea.Batch(cmds...), outcome, true
 }
 
 // refocusRestoredTask spends this restore's correlation, if there is one, and
