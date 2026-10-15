@@ -417,7 +417,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         refreshBadge()
     }
 
+    private var captureStoreConfigured = false
+    private var captureStoreError: String?
+    private func configureCaptureStore() {
+        guard !captureStoreConfigured else { return }
+        captureStoreConfigured = true
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("io.github.sglavoie.tt/pending-capture.json"))
+        quickCapture.persistSubmission = { try store.save($0) }
+        do {
+            if let submission = try store.load() { quickCapture.restoreSubmission(submission) }
+        } catch {
+            captureStoreError = "Could not read the saved capture draft: \(error.localizedDescription)"
+        }
+    }
+
     private func setUpControl(path: String) {
+        configureCaptureStore()
         let client = TTControlClient(path: path)
         client.onEvent = { [weak self] event in self?.handle(event) }
         client.onConnectionChange = { [weak self] connected in
@@ -445,7 +461,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.onDefer = { [weak self] task in
             self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
         }
-        quickCapture.submit = { [weak self] text, written, done in self?.capture(text, written: written, done: done) }
+        quickCapture.submit = { [weak self] submission, written, done in self?.capture(submission, written: written, done: done) }
+        quickCapture.captureContext = { [weak self] done in
+            guard let self, let control = self.control, let terminal = self.terminal else {
+                done(nil, "tt is not available"); return
+            }
+            if terminal.surfaceView == nil { terminal.show() }
+            control.send(TTControlRequest(op: .captureContext)) { reply in
+                done(reply.ok ? reply.workspace : nil,
+                     reply.ok ? nil : "Update tt, then choose Relaunch tt to use safe quick capture. " + (reply.message ?? ""))
+            }
+        }
         quickCapture.undo = { [weak self] transaction, written, done in
             self?.undoCapture(transaction, written: written, done: done)
         }
@@ -488,7 +514,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    private func capture(_ text: String, written: @escaping () -> Void, done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) {
+    private func capture(_ submission: QuickCaptureSubmission, written: @escaping () -> Void, done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) {
         guard let control, let terminal else {
             done(false, "This tt has no control socket. Update it (just install) to capture from here.", nil, nil)
             return
@@ -498,7 +524,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             terminal.show()
         }
         // The reply clock starts once tt has the request, not while it starts.
-        control.send(.capture(text), onWritten: written) { reply in
+        control.send(.captureOnce(submission), onWritten: written) { reply in
             done(reply.ok, reply.message ?? "", reply.transaction, reply.selection)
         }
     }
@@ -577,7 +603,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isEnabled = { [weak model] in model?.notificationsEnabled ?? false }
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
-        quickCapture.unavailableReason = { [weak self] in self?.captureUnavailableReason }
+        quickCapture.unavailableReason = { [weak self] in self?.captureStoreError ?? self?.captureUnavailableReason }
         model.onFollowAppearanceChange = { [weak self] _ in self?.sendAppearance() }
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.sendAppearance() }

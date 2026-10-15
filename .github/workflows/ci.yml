@@ -91,3 +91,49 @@ jobs:
           name: ios-results
           path: ios-results
           if-no-files-found: warn
+
+  macos-shell:
+    name: macOS desktop shell
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      GHOSTTYKIT_TARGET: native
+      TT_MACOS_RESULTS: ${{ github.workspace }}/macos-results
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install just
+        run: brew install just
+
+      - name: Identify Apple toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          fingerprint=$( { xcodebuild -version; xcrun --sdk macosx --show-sdk-version; } | shasum -a 256 | cut -d ' ' -f 1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pinned desktop dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            macos/Vendor
+            macos/.cache/zig
+            macos/.cache/xcodegen-*
+          key: desktop-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('macos/GHOSTTY_VERSION', 'macos/XCODEGEN_VERSION', 'macos/patches/ghostty/**', 'macos/scripts/build-ghosttykit.sh', 'macos/scripts/resolve-xcodegen.sh') }}
+
+      - name: Build and test the desktop shell
+        run: just mac-test
+
+      - name: Keep desktop test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-results
+          path: macos-results
+          if-no-files-found: warn

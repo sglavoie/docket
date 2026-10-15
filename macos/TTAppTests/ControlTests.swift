@@ -446,6 +446,7 @@ final class ControlClientTests: XCTestCase {
 final class QuickCapturePanelTests: XCTestCase {
     func testPreviewDebouncesTypingAndOnlyShowsBusyForASlowReply() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var timers: [(Double, () -> Void)] = []
         var requests: [(String, (String?) -> Void)] = []
         panel.schedulePreview = { timers.append(($0, $1)) }
@@ -473,8 +474,9 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testRefusedCaptureSelectsTheExactTokenAndKeepsTheDraft() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         panel.submit = { text, written, done in
-            XCTAssertEqual(text, "  Buy 🥛 milk %missing")
+            XCTAssertEqual(text.text, "  Buy 🥛 milk %missing")
             written()
             done(false, "Unknown project", nil, TTTextSelection(start: 14, length: 8))
         }
@@ -496,11 +498,12 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testControlNCapturesRepeatedlyAndKeepsRefusedDrafts() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var callbacks: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         var submitted: [String] = []
         var dismissals = 0
         panel.scheduleDismissal = { _ in dismissals += 1 }
-        panel.submit = { text, written, done in written(); submitted.append(text); callbacks.append(done) }
+        panel.submit = { text, written, done in written(); submitted.append(text.text); callbacks.append(done) }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -529,6 +532,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testReopeningAnInterruptedDraftRestoresCaretAndSelection() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -555,6 +559,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testSuccessfulCaptureClearsTheRememberedSelection() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         panel.scheduleDismissal = { _ in }
         panel.submit = { _, written, done in written(); done(true, "Captured", "tx", nil) }
         panel.show()
@@ -577,6 +582,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testPreviewUsesTheWholeDraftAndRejectsOldReplies() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var requests: [(String, (String?) -> Void)] = []
         panel.schedulePreview = { delay, action in if delay < 0.2 { action() } }
         panel.preview = { text, done in requests.append((text, done)) }
@@ -612,6 +618,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testAnOldDismissalCannotCloseAReopenedPanel() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var dismiss: (() -> Void)?
         panel.scheduleDismissal = { dismiss = $0 }
         panel.submit = { _, written, done in written(); done(true, "Captured", "tx", nil) }
@@ -634,6 +641,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
     func testLongRefusalsGrowThePanelAndTheNextOpeningShrinksIt() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         let reason = String(repeating: "The selected project is unavailable; choose an existing project. ", count: 8)
         panel.submit = { _, written, done in written(); done(false, reason, nil, nil) }
         panel.show()
@@ -662,6 +670,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// field is empty, as its placeholder.
     func testTheHintKeepsTheKeysAndThePlaceholderTheSigils() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         panel.show()
         defer { panel.close() }
         let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
@@ -679,6 +688,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// capture is not offered again.
     func testCommandZUndoesTheLastCaptureOnlyFromAnEmptyField() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         panel.scheduleDismissal = { _ in }
         panel.submit = { _, written, done in written(); done(true, "Captured: Buy milk", "tx-1", nil) }
         var undone: [String] = []
@@ -726,6 +736,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// remembered for undo, and a late refusal changes nothing.
     func testAnUnansweredCaptureTimesOutKeepingTheDraft() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var timeouts: [(TimeInterval, () -> Void)] = []
         var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         var announced: [String] = []
@@ -779,6 +790,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// timeout message follows.
     func testASlowStartThenAPromptReplyCapturesWithoutATimeout() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var timeouts: [() -> Void] = []
         var written: (() -> Void)?
         var reply: ((Bool, String, String?, TTTextSelection?) -> Void)?
@@ -820,6 +832,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// the draft for the next opening, which can send it again.
     func testCancellingAPendingCaptureKeepsTheDraft() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         panel.scheduleTimeout = { _, _ in }
         panel.announce = { _ in }
@@ -847,6 +860,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// hint; the panel is placed, not dragged.
     func testThePanelIsLabeledAndAnnouncesItsStatus() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         var announced: [String] = []
         panel.announce = { announced.append($0) }
         panel.scheduleDismissal = { _ in }
@@ -871,6 +885,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// binary and what to do instead of sending anything.
     func testAnUnavailableTtIsExplainedInThePanelAndNothingIsSent() throws {
         let panel = QuickCapturePanel()
+        panel.captureContext = { $0("test-workspace", nil) }
         let reason = TTControlLaunch.unsupportedReason(binary: NSHomeDirectory() + "/.local/bin/tt")
         XCTAssertTrue(reason.hasPrefix("~/.local/bin/tt predates --control"))
         panel.unavailableReason = { reason }
@@ -986,5 +1001,87 @@ final class QuickCapturePanelCompletionTests: XCTestCase {
 private extension NSView {
     func descendants<T: NSView>(of type: T.Type) -> [T] {
         subviews.flatMap { ($0 as? T).map { [$0] } ?? [] + $0.descendants(of: type) }
+    }
+}
+
+extension QuickCapturePanelTests {
+    func testSafeRetryKeepsIdentityAndAcceptsOriginalLateReply() throws {
+        let panel = QuickCapturePanel()
+        panel.captureContext = { $0("workspace", nil) }
+        var sent: [QuickCaptureSubmission] = []
+        var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
+        var timers: [() -> Void] = []
+        var persisted: QuickCaptureSubmission?
+        panel.persistSubmission = { persisted = $0 }
+        panel.scheduleTimeout = { _, action in timers.append(action) }
+        panel.scheduleDismissal = { _ in }
+        panel.submit = { submission, written, done in
+            XCTAssertEqual(persisted, submission, "identity must be durable before transmission")
+            sent.append(submission); replies.append(done); written()
+        }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "One capture"
+        field.sendAction(field.action, to: field.target)
+        timers[0]()
+        field.sendAction(field.action, to: field.target)
+        XCTAssertEqual(sent.count, 2)
+        XCTAssertEqual(sent[0], sent[1])
+        replies[0](true, "Captured", "tx", nil)
+        XCTAssertFalse(panel.sending, "original success also settles its retry")
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertNil(persisted)
+        replies[1](true, "Captured", "tx", nil)
+        field.stringValue = "One capture"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertNotEqual(sent[2].id, sent[0].id, "a new intentional capture gets a new identity")
+    }
+
+    func testCaptureStoreRestoresRetryAndRefusesAnotherWorkspace() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("pending.json"))
+        let submission = QuickCaptureSubmission(id: UUID().uuidString.lowercased(), text: "Recover me", workspace: "original")
+        try store.save(submission)
+        let restored = try XCTUnwrap(store.load())
+        XCTAssertEqual(restored, submission)
+        let panel = QuickCapturePanel()
+        panel.restoreSubmission(restored)
+        panel.persistSubmission = { try store.save($0) }
+        panel.captureContext = { $0("different", nil) }
+        var sent = false
+        panel.submit = { _, _, _ in sent = true }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        XCTAssertEqual(field.stringValue, "Recover me")
+        field.sendAction(field.action, to: field.target)
+        XCTAssertFalse(sent)
+        XCTAssertFalse(panel.sending)
+        XCTAssertEqual(try store.load(), submission)
+        panel.captureContext = { $0("original", nil) }
+        panel.submit = { value, written, done in
+            XCTAssertEqual(value, submission); written(); done(true, "Captured", "tx", nil)
+        }
+        field.sendAction(field.action, to: field.target)
+        XCTAssertNil(try store.load())
+        XCTAssertEqual(field.stringValue, "")
+    }
+
+    func testCaptureDoesNotSendWhenSavingItsIdentityFails() throws {
+        let panel = QuickCapturePanel()
+        panel.captureContext = { $0("workspace", nil) }
+        panel.persistSubmission = { _ in throw CocoaError(.fileWriteNoPermission) }
+        var sent = false
+        panel.submit = { _, _, _ in sent = true }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "Keep me"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertFalse(sent)
+        XCTAssertFalse(panel.sending)
+        XCTAssertEqual(field.stringValue, "Keep me")
     }
 }

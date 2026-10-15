@@ -6,6 +6,7 @@
 #
 # Environment:
 #   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   TT_MACOS_RESULTS        optional directory for a unique XCTest result bundle
 
 set -eu
 
@@ -14,7 +15,16 @@ macos_dir=$(dirname -- "$script_dir")
 
 "$script_dir/generate-project.sh"
 
-xcodebuild test \
+# A unique bundle also makes repeated local runs safe; xcodebuild refuses an
+# existing result path. Keep failed runs too for CI artifact collection.
+set --
+if [ -n "${TT_MACOS_RESULTS:-}" ]; then
+	mkdir -p "$TT_MACOS_RESULTS"
+	result_dir=$(mktemp -d "$TT_MACOS_RESULTS/desktop.XXXXXX")
+	set -- -resultBundlePath "$result_dir/tests.xcresult"
+fi
+
+xcodebuild test "$@" \
 	-project "$macos_dir/tt.xcodeproj" \
 	-scheme tt \
 	-destination "platform=macOS,arch=$(uname -m)" \

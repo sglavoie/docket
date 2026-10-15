@@ -34,10 +34,18 @@ func (m *OutlinerModel) View() tea.View {
 		return tea.NewView(m.renderFullWidth())
 	}
 
-	// Rebuild the mode's flat row list and clamp the cursor.
-	m.RebuildRows()
+	// Mutations explicitly rebuild; cursor motion and repaint-only events reuse
+	// the projection, just as the cross-project render path does.
+	m.SyncJumpProjection()
+	if m.OpenAtTask != nil || !m.Population.memoized(m.singleProjectRowsFingerprint(), len(m.Focus.Stack), len(m.Project.Tasks)) {
+		m.RebuildRows()
+	}
 
 	return tea.NewView(m.renderFullWidth())
+}
+
+func (m *OutlinerModel) singleProjectRowsFingerprint() string {
+	return fmt.Sprintf("single=%p|%s", m.Project, m.crossProjectRowsFingerprint())
 }
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
@@ -1243,7 +1251,7 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 		Pace:  pace,
 		Pulse: &workspacePulse,
 	}
-	// A wide title spends its blank middle on the active mode's Tab neighbours,
+	// A wide title spends its blank middle on the active mode's Tab neighbors,
 	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
 	// fits unshortened; anywhere narrower the lone active badge stands.
 	strip := spec

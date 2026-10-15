@@ -5,8 +5,14 @@ the whole product: you capture, triage, plan, and finish work in a single
 keyboard-driven outline, and readable Markdown on your own disk stays the
 canonical store. Nothing is hidden in a database you cannot open.
 
-There is no server, no sync service, and no web interface. There is also no
-`tt add`: the command line is deliberately limited to diagnostics, conflict
+The terminal is the core interface. [tt.app for macOS](macos/README.md)
+wraps it with quick capture, menus, and notifications; the
+[native iPhone app](ios/README.md) uses the same Go engine. Optional
+[file exchange](docs/guide/storage.md#syncing-through-an-exchange-folder) keeps enrolled
+working copies in sync through a folder you provide, including iCloud Drive.
+There is no hosted server, account, or web interface.
+
+There is no `tt add`: the command line is deliberately limited to diagnostics, conflict
 recovery, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
@@ -138,10 +144,13 @@ is not supported.
 
 ## Your data
 
-There is no telemetry, no analysis service, no account, and no network call
-anywhere in the program. Everything `tt` knows lives under `~/.tt/` — a JSON
-catalog plus one readable Markdown file per project — on a machine you control.
-You can read, grep, edit, and back the whole thing up with ordinary tools.
+The Go engine makes no network calls and sends no telemetry. By default, the
+terminal workspace lives under `~/.tt/`: a JSON catalog plus one readable
+Markdown file per project. You can read, grep, edit, and back it up with ordinary
+tools. An enrolled Mac or iPhone keeps its own local working copy and exchanges
+changes through the chosen folder; when that folder is in iCloud Drive, Apple’s
+file transport handles cloud delivery. See [Storage](docs/guide/storage.md) for
+the working-copy layout and recovery instructions.
 
 ## Before you upgrade
 

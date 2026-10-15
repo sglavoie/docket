@@ -39,6 +39,8 @@ func InvalidCaptureDestinationError(raw string) error {
 // Title are required; every other field is optional and defaults to the domain
 // default (unset priority, root Inbox/child Backlog destination, no due date).
 type CaptureRequest struct {
+	// Submission is optional retry identity for the whole batch, on its first request only.
+	Submission *storage.CaptureSubmission
 	// TaskID, when set, is the identity the new task takes instead of a minted
 	// one. It must be a UUID the project does not hold yet. An importer that
 	// derives it from a durable capture identity can tell, after a termination,
@@ -117,6 +119,14 @@ type CaptureRequest struct {
 // ChangeSet. It validates the title, priority, tags, state, and parent
 // before mutating, so a rejected request never persists a partial task.
 func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
+	if req.Submission != nil {
+		results, err := s.CaptureMany([]CaptureRequest{req})
+		if err != nil {
+			return TaskResult{}, err
+		}
+		return results[0], nil
+	}
+
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return TaskResult{}, err
@@ -195,8 +205,8 @@ func (s *Service) CaptureManyCreatingProjects(creation ProjectCreation, reqs []C
 }
 
 func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) ([]TaskResult, error) {
-	if len(reqs) == 0 {
-		return nil, invalidInput("capture", "no tasks to create")
+	if err := validateCaptureBatch(reqs); err != nil {
+		return nil, err
 	}
 
 	snap, err := s.repo.Snapshot()
@@ -208,12 +218,7 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 		return nil, err
 	}
 
-	type batchItem struct {
-		project  *models.Project
-		prepared preparedCapture
-		task     *models.Task
-	}
-	items := make([]batchItem, len(reqs))
+	items := make([]captureBatchItem, len(reqs))
 	projectOrder := make([]*models.Project, 0)
 	seenProjects := make(map[string]bool)
 	claimedChildren := make(map[string]int)
@@ -238,7 +243,7 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 			}
 			claimedChildren[key] = i
 		}
-		items[i] = batchItem{project: project, prepared: prepared}
+		items[i] = captureBatchItem{project: project, prepared: prepared}
 		if !seenProjects[project.ID] {
 			seenProjects[project.ID] = true
 			projectOrder = append(projectOrder, project)
@@ -342,10 +347,8 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 			}}
 		}
 	}
-	artifacts = creation.withCatalog(artifacts)
-	if len(commits) > 0 {
-		commits[0].artifacts = artifacts
-	}
+	commits[0].capture = captureBatchReceipt(reqs[0].Submission, items)
+	commits[0].artifacts = creation.withCatalog(artifacts)
 	outcome, err := s.commitProjects(commits, "Add Tasks", ctxTitle)
 	if err != nil {
 		return nil, createdProjectFileError(created, err)
@@ -488,4 +491,41 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, remove []Tas
 		}
 	}
 	return artifacts, nil
+}
+
+func validateCaptureBatch(reqs []CaptureRequest) error {
+	for i, req := range reqs {
+		if req.Submission == nil {
+			continue
+		}
+		if i != 0 {
+			return invalidInput("capture", "submission identity belongs to the first request only")
+		}
+		if err := req.Submission.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if len(reqs) == 0 {
+		return invalidInput("capture", "no tasks to create")
+	}
+
+	return nil
+}
+
+type captureBatchItem struct {
+	project  *models.Project
+	prepared preparedCapture
+	task     *models.Task
+}
+
+func captureBatchReceipt(submission *storage.CaptureSubmission, items []captureBatchItem) *storage.CaptureReceipt {
+	if submission == nil {
+		return nil
+	}
+	titles := make([]string, len(items))
+	for i, item := range items {
+		titles[i] = item.task.Title
+	}
+	return &storage.CaptureReceipt{CaptureSubmission: *submission, Titles: titles}
 }

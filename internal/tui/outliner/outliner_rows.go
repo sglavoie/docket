@@ -136,6 +136,9 @@ func (m *OutlinerModel) RebuildRows() {
 		m.CrossProjectRebuildRows()
 		return
 	}
+	defer func() {
+		m.Population.record(m.singleProjectRowsFingerprint(), len(m.Focus.Stack), len(m.Project.Tasks))
+	}()
 	openAt := m.OpenAtTask
 	// Consume the pending target before any navigation helper can trigger a
 	// nested rebuild. A target hidden by the current focus or filters otherwise
@@ -143,9 +146,7 @@ func (m *OutlinerModel) RebuildRows() {
 	m.OpenAtTask = nil
 	m.Rows = m.Rows[:0]
 	m.hiddenLayout.reset()
-	// The single-project path has no memoization guard, so the index is dropped
-	// on every pass through it, matching what the cross-project guard does when
-	// it decides a pass is real.
+	// Explicit rebuilds invalidate the index; repaint-only frames reuse both.
 	m.invalidateDependencyIndex()
 
 	m.validateFocusStack()

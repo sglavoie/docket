@@ -228,15 +228,27 @@ selection, so typing resumes where you left off; Select All still replaces the
 whole draft. A successful capture clears the draft and its selection. With suggestions
 closed, `Ctrl+N` captures and keeps the field open for another task; Enter keeps
 its usual automatic dismissal. A refused capture preserves the draft for either
-key, and a pending capture cannot be submitted twice. Once tt has received
-a capture or an undo, it has five seconds to answer; after that the panel
-stops waiting, keeps the draft, and says the capture may still arrive in tt,
-so check there before sending it again. The five seconds do not start while
-tt is still starting for a capture: that wait lasts until tt's control socket
-appears, up to 30 seconds, after which the panel says tt did not start. If tt does answer late, a capture still clears the draft it
-took and can be undone with `Cmd+Z`. Esc or clicking elsewhere stops waiting
-sooner, also keeping the draft; tt starting for a capture does not count as
-clicking elsewhere. VoiceOver names the field Quick capture and the list
+key, and a pending capture cannot be submitted twice. Quick capture saves its draft and a submission identity before sending it to tt.
+After five seconds without an answer, the panel stops waiting and keeps the
+saved draft. Press Enter to retry safely: tt returns the original outcome if
+it already committed, including after a restart or an undo, rather than creating
+the tasks again. A new capture after a confirmed success receives a new identity,
+even when its text is identical.
+
+The saved submission is bound to its workspace. Reopening tt.app restores an
+unresolved draft; switching workspaces refuses to resend it into the wrong one.
+The file lives at `~/Library/Application Support/io.github.sglavoie.tt/pending-capture.json`
+and is removed after a successful reply. A failure to save this file prevents
+transmission. A damaged saved file is reported rather than overwritten.
+An older tt without safe capture support is refused with update instructions.
+
+The five-second reply timer starts after transmission, so startup can use the
+control connection's 30-second window. Esc or clicking elsewhere stops waiting
+and keeps the draft. A late success settles every retry of that submission and
+can be undone with `Cmd+Z`; it never clears a different draft. Undo retains its
+existing timeout warning: an unanswered undo may still complete, so check tt
+before trying it again. Reopening the panel cancels a pending automatic dismissal.
+VoiceOver names the field Quick capture and the list
 Suggestions, and announces each status line. The panel always opens centred
 on the screen under the pointer and cannot be dragged. The
 menu-bar and Dock menus also carry Quick Capture. If tt had
@@ -443,3 +455,9 @@ keyboard focus. They explain what to close, save, or cancel before trying again.
 Full-screen show/hide requests preserve the last requested visibility through
 transitions; a window whose display disappeared returns within a remaining
 display’s visible bounds.
+
+The `macOS desktop shell` CI job builds and runs `just mac-test` on every pull
+request and push to main. Its dependency cache is keyed by architecture, Xcode
+and SDK versions, the Ghostty/Zig and XcodeGen pins, and build patches/scripts.
+XCTest result bundles, including failures, are uploaded as `macos-results`.
+Locally, set `TT_MACOS_RESULTS` to keep a result bundle for each test run.

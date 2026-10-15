@@ -76,6 +76,11 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		t.Errorf("handled keys = %v, want the strategy keys %v", handled, expectedKeys)
 	}
 
+	auditInputStrategyHelp(t, registry, strategy, ctx)
+}
+
+func auditInputStrategyHelp(t *testing.T, registry *operation.OperationRegistry, strategy operation.InputStrategy, ctx operation.CommandContext) {
+	t.Helper()
 	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
 	applicable := registry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
 	// One row per applicable operation, except a chord whose one display key

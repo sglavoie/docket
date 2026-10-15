@@ -50,7 +50,7 @@ type OutlinerModel struct {
 	// ladder and every wholesale reset reach each narrowing through m.focus.
 	Focus focusState
 
-	Rows []OutlinerRow // Flattened rows, rebuilt on each render
+	Rows []OutlinerRow // Flattened projection, rebuilt when its inputs change
 	// lastViewport is the window the last render actually drew. zt/zz/zb read it
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move ViewScrollOffset.

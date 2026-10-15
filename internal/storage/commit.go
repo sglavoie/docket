@@ -150,6 +150,9 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 		return nil, fmt.Errorf("storage: commit requires at least one changeset")
 	}
 
+	if err := validateCaptureReceipts(changesets); err != nil {
+		return nil, err
+	}
 	seenPaths := make(map[string]bool, len(changesets))
 	var artifacts []ArtifactChange
 	var artifactPreconditions []ArtifactPrecondition
@@ -200,6 +203,16 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
+		}
+
+		if capture := changesets[0].Capture; capture != nil {
+			receipt, err := s.readCaptureReceipt(capture.CaptureSubmission)
+			if err != nil {
+				return err
+			}
+			if receipt != nil {
+				return &CaptureAlreadyCommitted{Receipt: *receipt}
+			}
 		}
 
 		// A prepared snapshot can outlive removal of a project it only read. Detect

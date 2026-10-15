@@ -104,6 +104,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 				inZen = zenView.IsZenMode()
 			}
 			if !inZen {
+				content = fitSurfaceFooterHeight(content, m.viewNav.height)
 				content = composeSurfaceFooterFeedback(content, m.footerFeedbackLine())
 			}
 			content = m.applyOverlays(content, m.viewNav.height, noPanelDivider)
@@ -184,6 +185,26 @@ func composeSurfaceFooterFeedback(content, feedback string) string {
 	composed = append(composed, rows...)
 	composed = append(composed, lines[footerStart:]...)
 	return strings.Join(composed, "\n")
+}
+
+// fitSurfaceFooterHeight anchors a surface-owned footer to the terminal's last
+// row. Registered views receive the ordinary content budget (height minus the
+// shell footer); return those reserved rows above their own footer, preserving
+// the body's scroll position and every control. Oversized bodies are clipped
+// before the footer rather than clipping the controls themselves.
+func fitSurfaceFooterHeight(content string, height int) string {
+	lines := strings.Split(content, "\n")
+	start := surfaceFooterDividerIndex(lines)
+	if start < 0 || height < len(lines)-start {
+		return content
+	}
+	foot := lines[start:]
+	bodyHeight := height - len(foot)
+	body := append([]string(nil), lines[:min(start, bodyHeight)]...)
+	for len(body) < bodyHeight {
+		body = append(body, "")
+	}
+	return strings.Join(append(body, foot...), "\n")
 }
 
 // surfaceFooterDividerIndex locates the divider a view's own footer opens with,

@@ -36,6 +36,8 @@ struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
         case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit
         case deferTask = "defer"
+        case captureOnce = "capture_once"
+        case captureContext = "capture_context"
     }
 
     var id = 0
@@ -44,6 +46,8 @@ struct TTControlRequest: Encodable, Equatable {
     var task: String?
     var text: String?
     var minutes: Int?
+    var capture_id: String?
+    var workspace: String?
 
     static func edit(_ action: String) -> Self { Self(op: .edit, text: action) }
 
@@ -66,6 +70,10 @@ struct TTControlRequest: Encodable, Equatable {
 
     static func capture(_ text: String) -> Self {
         Self(op: .capture, text: text)
+    }
+
+    static func captureOnce(_ submission: QuickCaptureSubmission) -> Self {
+        Self(op: .captureOnce, text: submission.text, capture_id: submission.id, workspace: submission.workspace)
     }
 
     /// What the composer would suggest for `text`, the draft up to the caret.
@@ -179,6 +187,7 @@ struct TTControlReply: Decodable, Equatable {
     /// A successful `capture` reply's committed transaction, the one `undo` names.
     let transaction: String?
     let selection: TTTextSelection?
+    var workspace: String? = nil
 
     init(
         reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil,

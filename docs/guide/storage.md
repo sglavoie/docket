@@ -494,3 +494,16 @@ landed — the resolution is refused and writes nothing; read it again and
 choose. `tt sync diagnostics --output FILE` writes what to share when sync
 misbehaves: status, the last exchange and its error, the unpublished work, and
 the conflicts' files, devices, and digests, without task or note content.
+
+### Quick-capture retry receipts
+
+The Mac quick-capture panel gives each submitted draft a unique identity bound
+to its workspace. The task transaction also writes an immutable receipt under
+`.tt/control-captures/`. Tasks, planning changes, attachments, undo history, and
+the receipt recover together after an interruption. A retry returns the original
+transaction and titles; the same identity with different text is refused.
+
+Receipts remain after undo, deletion, and undo-history pruning so a delayed
+retry cannot recreate work you removed. They are internal working-copy metadata,
+excluded from undo and exchange sync; keep them when backing up or relocating a
+working copy. They contain the draft's hash, captured titles, and transaction ID.

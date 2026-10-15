@@ -47,6 +47,9 @@ type feedbackController struct {
 	// footer and, having no clock of its own, is compared by text rather than by
 	// sequence when the flash probe runs.
 	err error
+	// The text field that received a draft failure. Typing in covering Help or
+	// search must not dismiss an error belonging to the editor beneath it.
+	errDraftKey any
 
 	// message is the transient status line, info its neutral surface, and
 	// updatedAt the stamp that guards it from a stale clear timer.
@@ -175,6 +178,7 @@ func (c *feedbackController) clear() {
 	c.announce("", false, time.Time{})
 	c.severity = flashNone
 	c.err = nil
+	c.errDraftKey = nil
 }
 
 // stale reports whether a clear scheduled at scheduledAt has been overtaken by

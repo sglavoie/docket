@@ -26,6 +26,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	msg, origin, interactive := m.beginCommandOriginUpdate(msg)
 	statusBefore := m.captureFooterFlashProbe()
 	textBefore := m.desktopTextBuffer()
+	draftBefore := m.quitBlockReason() != ""
 	defer func() {
 		if r := recover(); r != nil {
 			m.retireInteraction()
@@ -55,6 +56,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		// Every branch above returns early, so this closure is also the one place
 		// a bottom panel's host can be resized exactly when the panel opened,
 		// moved, or closed rather than on every frame.
+		m.reconcileDraftError(statusBefore.errText, textBefore, draftBefore)
 		m.rememberFeedbackSince(statusBefore)
 		m.syncHostedPanelHost()
 		// And the one place the footer this update produced can be measured

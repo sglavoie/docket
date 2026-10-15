@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/sglavoie/tt/internal/logging"
@@ -249,9 +250,12 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 			Artifacts:  ledgerArtifacts,
 		}
 	}
-	manifest, ledgerPlan, err := s.prepareTransaction(journal, ops, ledgerRecord, synclog.KindUser)
+	manifest, ledgerPlan, err := s.prepareTransaction(journal, ops, ledgerRecord, synclog.KindUser, changesets[0].Capture)
 	if err != nil {
 		return nil, err
+	}
+	if capture := changesets[0].Capture; capture != nil {
+		dirsToCreate = append(dirsToCreate, filepath.Dir(captureReceiptPath(s.transactionsDir, capture.ID)))
 	}
 	// Create every collected target parent directory (attachment destinations and
 	// artifact write parents) now that Prepare validated every target and before

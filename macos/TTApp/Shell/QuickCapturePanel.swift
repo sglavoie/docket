@@ -21,7 +21,17 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     /// Sends one line to tt, calls `written` once tt has the request, which
     /// starts the reply timeout, and calls back with whether it was captured,
     /// what tt said, and the committed transaction a later undo names.
-    var submit: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) -> Void)?
+    var submit: ((QuickCaptureSubmission, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) -> Void)?
+    /// Reads the workspace identity before saving and transmitting a submission.
+    var captureContext: ((@escaping (String?, String?) -> Void) -> Void)?
+    var persistSubmission: (QuickCaptureSubmission?) throws -> Void = { _ in }
+    private(set) var pendingSubmission: QuickCaptureSubmission?
+
+    func restoreSubmission(_ submission: QuickCaptureSubmission) {
+        pendingSubmission = submission
+        field.stringValue = submission.text
+    }
+
     /// Asks tt to undo the named capture transaction, calls `written` once tt
     /// has the request, and calls back with whether it did and what tt said.
     var undo: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String) -> Void) -> Void)?
@@ -55,8 +65,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     /// How long a capture or undo waits for tt's answer.
     static let replyTimeout: TimeInterval = 5
-    static let captureTimeoutMessage = "tt did not answer within 5 seconds, so the line is kept here. "
-        + "It may still arrive in tt: check there before sending it again."
+    static let captureTimeoutMessage = "Still waiting for tt. Your draft is saved. Press Enter to retry safely; it will not create a duplicate."
     static let undoTimeoutMessage = "tt did not answer the undo within 5 seconds. "
         + "It may still happen in tt: check there before trying again."
     static let accessibilityLabel = "Quick capture"
@@ -349,17 +358,62 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             return
         }
         guard !sending, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let submit else { return }
-        let generation = dismissalGeneration
+        guard let captureContext else { setStatus("Capture connection is unavailable", error: true); return }
         clearPreview()
         sending = true
         field.isEditable = false
         requestGeneration += 1
         let request = requestGeneration
         setStatus("Capturing…", error: false)
-        submit(text, { [weak self] in
+        captureContext { [weak self] workspace, error in
+            guard let self, request == self.requestGeneration else { return }
+            guard let workspace, !workspace.isEmpty else {
+                self.abandonRequest()
+                self.setStatus(error ?? "Update tt, then choose Relaunch tt to use safe quick capture.", error: true)
+                return
+            }
+            let submission: QuickCaptureSubmission
+            if let pending = self.pendingSubmission, pending.text == text {
+                guard pending.workspace == workspace else {
+                    self.abandonRequest()
+                    self.setStatus("This saved capture belongs to another workspace. Reopen that workspace to retry it.", error: true)
+                    return
+                }
+                submission = pending
+            } else {
+                submission = QuickCaptureSubmission(id: UUID().uuidString.lowercased(), text: text, workspace: workspace)
+            }
+            do { try self.persistSubmission(submission) }
+            catch {
+                self.abandonRequest()
+                self.setStatus("Could not save the capture draft: \(error.localizedDescription)", error: true)
+                return
+            }
+            self.pendingSubmission = submission
+            self.sendCapture(submission, request: request, keepOpen: keepOpen, through: submit)
+        }
+    }
+
+    private func sendCapture(
+        _ submission: QuickCaptureSubmission, request: Int, keepOpen: Bool,
+        through submit: (QuickCaptureSubmission, @escaping () -> Void, @escaping (Bool, String, String?, TTTextSelection?) -> Void) -> Void
+    ) {
+        let text = submission.text
+        let generation = dismissalGeneration
+        submit(submission, { [weak self] in
             self?.armTimeout(for: request, message: Self.captureTimeoutMessage)
         }) { [weak self] ok, message, transaction, selection in
-            guard let self else { return }
+            guard let self, self.pendingSubmission?.id == submission.id else { return }
+            if ok {
+                do { try self.persistSubmission(nil) }
+                catch {
+                    self.abandonRequest()
+                    self.setStatus("Captured, but the saved draft could not be cleared. Retrying is safe.", error: true)
+                    return
+                }
+                self.pendingSubmission = nil
+                if request != self.requestGeneration { self.abandonRequest() }
+            }
             guard request == self.requestGeneration else {
                 self.lateCaptureReply(ok: ok, message: message, text: text, transaction: transaction)
                 return

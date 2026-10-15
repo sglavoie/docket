@@ -219,7 +219,10 @@ footer, introduced by a dim thin divider. The strip never floats mid-screen on a
 short list and never leaves blank padding under itself: it takes its rows from
 the task list, and in a narrow terminal it wraps rather than pushing the footer
 off screen. Ordinary shell and view feedback stays for two to six seconds,
-depending on text length; undo feedback keeps its six-second window. The strip
+depending on text length; undo feedback keeps its six-second window. A save
+failure with a retained draft stays visible until that field is edited or the
+draft is saved or discarded. Cursor movement, timers, and typing in covering
+Help do not dismiss the editor's failure. The strip
 clears on a
 mode change, so a message naming a mode can never misreport the one you switched
 to. A live visual selection is no exception, because the strip never carries one
@@ -354,21 +357,17 @@ selection you are still holding survives its own undo. The correlation is
 session-only: after restarting `tt`, undo still restores the same work but never
 moves the cursor.
 
-The Outliner marks its cursor row in the margins rather than over the row. One
-bright column at the far left says where the cursor is, and the empty columns
-past the row's text carry a dim recess saying how far the row reaches. Nothing
-between them changes: the tree connectors and the fold
-arrow keep the colors they wear on every other row, and so do the state badge,
-the priority badge, the due tier, the project badge and the
-search-match highlight — all of which read the same under the cursor as beside
-it, leaving an overdue row visibly overdue while you stand on it. The bar is the
-row's leftmost column on every row type: a blank
-margin, except on a section header, where it reverses the fold arrow, and on a
-task in a visual selection, where it reverses that task's `✓`. A cursor
-flash floods the whole gutter rather than changing the bar's color, so a pulse
-reads as more of the same mark. Every other list — the pickers, the tag and
-parent selectors, notes, the project hub — still inverts the whole row, because a
-flat list row has no margins to paint.
+The Outliner marks its cursor with a bright column at the far left. A selected
+task also carries a subtle background band across the full row, so the eye can
+follow a long title and its indicators without losing the selection. The tree
+connectors, state and priority badges, deadline, project label, and search
+highlights retain their own foreground colors over that band. Headers,
+checklist items, and notes keep their margin mark and trailing fill.
+
+The bar reverses the fold arrow on a section header and the `✓` on a task in a
+visual selection. A cursor flash brightens the gutter and the task's band.
+Other lists—the pickers, tag and parent selectors, notes, and project hub—use
+whole-row inversion.
 
 A list scrolled into the middle of a lane says which lane it is showing. When
 the lane's header is above the window, the first list row becomes a pinned

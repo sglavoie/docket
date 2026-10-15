@@ -455,3 +455,12 @@ task or project objects. Harness-only setup commands never appear in
 3. Use harness commands only for setup with no public shortcut.
 4. Assert stable semantics, including the final view and layout health.
 5. Replay the individual file, then run the complete acceptance script.
+
+## Outliner frame performance
+
+`go test ./internal/tui/outliner -run '^$' -bench BenchmarkSingleProjectFrame -benchmem`
+measures single-project browsing, Peek, and accepted-search navigation at 100,
+1,000, and 10,000 tasks. It includes row projection and rendering. Run comparisons
+on the same machine with other checks idle; allocation counts are more stable
+than short timing samples. Cursor-only frames reuse their projection; mutations,
+query/mode changes, project replacement, and time invalidation rebuild it.

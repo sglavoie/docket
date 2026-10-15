@@ -55,7 +55,7 @@ func OperationalTitleModeSegment(mode OutlinerMode) string {
 }
 
 // OperationalTitleModeStrip renders the active mode's badge followed by its two
-// Tab neighbours, muted — `Inbox  ‹ Today  Next ›` — so a wide title says where
+// Tab neighbors, muted — `Inbox  ‹ Today  Next ›` — so a wide title says where
 // Shift+Tab and Tab go without moving the badge off the scope it qualifies. The
 // badge is the segment OperationalTitleModeSegment draws, so a title that falls
 // back to the lone badge names the mode identically.

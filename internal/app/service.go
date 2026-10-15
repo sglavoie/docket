@@ -196,6 +196,7 @@ func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision strin
 // reassigned planning refs) and attachment file side effects (e.g. a cross-project
 // attachment move) that must land in the same transaction as the project write.
 type projectCommit struct {
+	capture          *storage.CaptureReceipt
 	project          *models.Project
 	expectedRevision string
 	// base is the exact lossless document retained by the snapshot that supplied
@@ -234,6 +235,7 @@ func changeSetFor(c projectCommit, undoAction, undoContext string) storage.Chang
 		applyPostMutationHooks(c.project)
 	}
 	return storage.ChangeSet{
+		Capture:               c.capture,
 		Project:               c.project,
 		ExpectedRevision:      c.expectedRevision,
 		Base:                  c.base,

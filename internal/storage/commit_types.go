@@ -118,6 +118,8 @@ type OpsCommitRequest struct {
 // through one journal transaction, so a whole cross-project mutation is
 // all-or-nothing.
 type ChangeSet struct {
+	// Capture is batch-level retry evidence, carried on the first changeset only.
+	Capture *CaptureReceipt
 	// Project is the single project whose tasks.md this changeset rewrites.
 	Project *models.Project
 	// ExpectedRevision is the canonical revision the caller observed when it

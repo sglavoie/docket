@@ -181,3 +181,69 @@ func (m *AppModel) publishDesktopEditing() {
 	m.control.editing = &state
 	m.control.publisher.Publish(control.Event{Event: control.EventEditing, Editing: &state})
 }
+
+// A retained draft keeps its save failure through timers, cursor motion and
+// covering help. Editing that same field, finishing/discarding the draft, or a
+// successful save retires it. A fresh failure from this update always wins.
+func (m *AppModel) reconcileDraftError(previous string, before *chrome.DesktopTextBuffer, hadDraft bool) {
+	if m.feedback.err == nil {
+		m.feedback.errDraftKey = nil
+		return
+	}
+	if previous == "" || m.feedback.err.Error() != previous {
+		m.feedback.errDraftKey = nil
+		if input := m.desktopTextBuffer(); input != nil {
+			m.feedback.errDraftKey = input.Key
+		}
+		return
+	}
+	if hadDraft && m.quitBlockReason() == "" {
+		m.feedback.err = nil
+		return
+	}
+	after := m.desktopTextBuffer()
+	if before != nil && after != nil && before.Key == m.feedback.errDraftKey && before.Key == after.Key && before.Text != after.Text {
+		m.feedback.err = nil
+	}
+}
+
+// quitContentOwner reports actual unsaved content, independently of transient
+// navigation. Inspect the entire live presentation path: Help or a picker may
+// cover an editor without making its draft safe to discard.
+type quitContentOwner interface{ QuitBlockReason() string }
+
+func (m *AppModel) quitBlockReason() string {
+	if m.checkInSetup != nil && m.checkInSetup.busy {
+		return "A check-in change is still being saved."
+	}
+	if p := m.operations.TextPrompt; p != nil {
+		if reason := p.QuitBlockReason(); reason != "" {
+			return reason
+		}
+	}
+	if p := m.operations.CheckInEditor; p != nil {
+		if reason := p.QuitBlockReason(); reason != "" {
+			return reason
+		}
+	}
+	if p := m.operations.ValuePicker; p != nil {
+		if reason := p.QuitBlockReason(); reason != "" {
+			return reason
+		}
+	}
+	path := m.presentationPath()
+	for i := len(path) - 1; i >= 0; i-- {
+		var owner quitContentOwner
+		if path[i] == presentation.ViewTaskComposer && m.taskComposer != nil {
+			owner = m.taskComposer
+		} else if m.viewNav.views != nil {
+			owner, _ = m.viewNav.views.Get(path[i]).(quitContentOwner)
+		}
+		if owner != nil {
+			if reason := owner.QuitBlockReason(); reason != "" {
+				return reason
+			}
+		}
+	}
+	return ""
+}

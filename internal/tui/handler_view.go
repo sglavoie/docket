@@ -69,6 +69,11 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, nil
 
 	case status.StatusClearMsg:
+		// A failed save belongs to the retained draft. Timers (including older
+		// success timers) cannot erase the reason it has not been saved.
+		if m.feedback.err != nil && m.quitBlockReason() != "" {
+			return true, nil
+		}
 		if m.feedback.stale(msg.ScheduledAt) {
 			return true, nil
 		}

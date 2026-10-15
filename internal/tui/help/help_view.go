@@ -96,10 +96,7 @@ func (m *HelpViewModel) SetSize(width, height int) {
 		viewportWidth = 1
 	}
 
-	statusBarHeight := 3 // blank line + divider + one browse-guidance row
-	if m.searchMode || m.tabSearchMode {
-		statusBarHeight++ // active input may use the two-row guidance budget
-	}
+	statusBarHeight := lipgloss.Height(m.renderHelpFooter())
 	// Counts can wrap the tabs onto extra rows, and themed input labels can
 	// wrap too. Measure the rendered header, excluding its trailing newline,
 	// rather than assuming either search field always occupies two rows.

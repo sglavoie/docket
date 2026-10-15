@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -540,6 +541,16 @@ func (m *AppModel) handleControlMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case controlRequestMsg:
 		return true, m.answerControlRequest(msg.request, msg.reply)
+	case controlCaptureCheckedMsg:
+		if msg.err != nil {
+			answer(msg.reply, false, msg.err.Error())
+			return true, nil
+		}
+		if msg.receipt != nil {
+			msg.reply <- captureReceiptReply(*msg.receipt)
+			return true, nil
+		}
+		return true, m.executeControlRequest(msg.request, msg.reply)
 	case controlCommittedMsg:
 		return true, m.adoptControlCommit(msg)
 	default:
@@ -548,6 +559,21 @@ func (m *AppModel) handleControlMessage(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 func (m *AppModel) answerControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
+	if request.Op == control.OpCaptureContext {
+		if m.domain.runtime == nil || m.domain.runtime.Catalog().WorkspaceID == "" {
+			answer(reply, false, "workspace identity is unavailable")
+		} else {
+			reply <- control.Reply{OK: true, Workspace: m.domain.runtime.Catalog().WorkspaceID}
+		}
+		return nil
+	}
+	if request.Op == control.OpCaptureOnce {
+		return m.lookupControlCapture(request, reply)
+	}
+	return m.executeControlRequest(request, reply)
+}
+
+func (m *AppModel) executeControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
 	switch request.Op {
 	case control.OpEdit:
 		return m.controlEdit(request.Text, reply)
@@ -576,7 +602,7 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		}
 		answer(reply, true, "quitting")
 		return func() tea.Msg { return status.QuitMsg{} }
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpView, control.OpUndo, control.OpDone:
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpCaptureOnce, control.OpView, control.OpUndo, control.OpDone:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
@@ -615,8 +641,13 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 
 	var cmd tea.Cmd
 	switch request.Op {
-	case control.OpCapture:
-		cmd = m.controlCapture(request.Text, reply)
+	case control.OpCapture, control.OpCaptureOnce:
+		if request.Op == control.OpCaptureOnce {
+			submission := storage.CaptureSubmission{ID: request.CaptureID, Digest: fmt.Sprintf("%x", sha256.Sum256([]byte(request.Text)))}
+			cmd = m.controlCapture(request.Text, reply, submission)
+		} else {
+			cmd = m.controlCapture(request.Text, reply)
+		}
 	default:
 		identity := taskref.TaskIdentity{ProjectID: request.Project, TaskID: request.Task}
 		task, project := m.taskAndProjectForIdentity(identity)
@@ -783,7 +814,7 @@ func (m *AppModel) controlDone(task *models.Task, project *models.Project, reply
 
 // controlCapture reads text as the global `a` composer would and commits it as
 // one capture transaction.
-func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.Cmd {
+func (m *AppModel) controlCapture(text string, reply chan<- control.Reply, submissions ...storage.CaptureSubmission) tea.Cmd {
 	preset, ok := m.captureComposerPreset(nil, nil)
 	if !ok {
 		answer(reply, false, "the Unfiled project is unavailable")
@@ -794,10 +825,28 @@ func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.C
 		reply <- control.Reply{OK: false, Message: controlLineErrors(lineErrors, strings.Count(strings.TrimSpace(text), "\n") > 0), Selection: captureErrorSelection(text, lineErrors[0])}
 		return nil
 	}
+	if len(reqs) == 0 {
+		answer(reply, false, "Enter a task to capture")
+		return nil
+	}
+	if len(submissions) > 0 {
+		if err := submissions[0].Validate(); err != nil {
+			answer(reply, false, err.Error())
+			return nil
+		}
+		reqs[0].Submission = &submissions[0]
+	}
 	cmd := m.features.Capture.CaptureBulk(reqs, false)
 	return func() tea.Msg {
 		msg := cmd()
 		captured, ok := msg.(coordinator.TasksCapturedMsg)
+		if failure, failed := msg.(status.ErrorMsg); failed {
+			var duplicate *storage.CaptureAlreadyCommitted
+			if errors.As(failure.Err, &duplicate) {
+				reply <- captureReceiptReply(duplicate.Receipt)
+				return controlCommittedMsg{}
+			}
+		}
 		if !ok || len(captured.Results) == 0 {
 			answer(reply, false, commitRefusal(msg))
 			return controlCommittedMsg{inner: msg}
@@ -1208,4 +1257,41 @@ func captureErrorSelection(text string, problem grammar.LineError) *control.Text
 	}
 	prefix += string(line[:start])
 	return &control.TextSelection{Start: len(utf16.Encode([]rune(prefix))), Length: len(utf16.Encode(line[start:end]))}
+}
+
+type controlCaptureCheckedMsg struct {
+	request control.Request
+	reply   chan<- control.Reply
+	receipt *storage.CaptureReceipt
+	err     error
+}
+
+func (m *AppModel) lookupControlCapture(request control.Request, reply chan<- control.Reply) tea.Cmd {
+	submission := storage.CaptureSubmission{ID: request.CaptureID, Digest: fmt.Sprintf("%x", sha256.Sum256([]byte(request.Text)))}
+	if err := submission.Validate(); err != nil {
+		answer(reply, false, err.Error())
+		return nil
+	}
+	if m.domain.runtime == nil || m.domain.runtime.DataDir() == "" {
+		answer(reply, false, "capture retry storage is unavailable")
+		return nil
+	}
+	if request.Workspace == "" || request.Workspace != m.domain.runtime.Catalog().WorkspaceID {
+		answer(reply, false, "This capture belongs to a different workspace. Reopen its workspace to retry it.")
+		return nil
+	}
+	root := m.domain.runtime.DataDir()
+	service := storage.NewCommitService(config.TransactionsDir(root), []string{root})
+	return func() tea.Msg {
+		receipt, err := service.LookupCaptureReceipt(submission)
+		return controlCaptureCheckedMsg{request: request, reply: reply, receipt: receipt, err: err}
+	}
+}
+
+func captureReceiptReply(receipt storage.CaptureReceipt) control.Reply {
+	summary := "Captured " + util.Count(len(receipt.Titles), "task")
+	if len(receipt.Titles) == 1 {
+		summary = "Captured: " + receipt.Titles[0]
+	}
+	return control.Reply{OK: true, Message: summary, Transaction: receipt.TransactionID}
 }

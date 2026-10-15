@@ -137,10 +137,10 @@ func (s *CommitService) CommitProjectRepair(project *models.Project, expectedRaw
 // in that same manifest. When the service carries a sync history, the outgoing
 // record of ops — its blobs, immutable manifest, index entry, and tracking
 // state — is staged in that manifest too, so the commit and its publication
-// record recover together. A service with neither yields a user-operations-only
-// manifest. The transaction ID is allocated before either is planned so every
+// record recover together. Optional capture receipts share the manifest but
+// stay outside sync and undo. The transaction ID is allocated before planning so every
 // record cites the journal transaction that carries it. User operations stay
-// first, sync history follows, and the ledger's blobs and ledger.json come
+// first, sync history and capture receipts follow, and the ledger's blobs and ledger.json come
 // last, with ledger.json last by prepareRecord's contract. A planning failure
 // returns before Journal.Prepare stages any operation.
 func (s *CommitService) prepareTransaction(
@@ -148,9 +148,14 @@ func (s *CommitService) prepareTransaction(
 	ops []transaction.Op,
 	record *LedgerRecord,
 	kind synclog.Kind,
+	captures ...*CaptureReceipt,
 ) (*transaction.Manifest, *preparedLedgerRecord, error) {
+	var capture *CaptureReceipt
+	if len(captures) > 0 {
+		capture = captures[0]
+	}
 	recordLedger := record != nil && s.ledger != nil
-	if !recordLedger && s.history == nil {
+	if !recordLedger && s.history == nil && capture == nil {
 		manifest, err := journal.Prepare(ops)
 		if err != nil {
 			return nil, nil, fmt.Errorf("preparing transaction: %w", err)
@@ -166,6 +171,13 @@ func (s *CommitService) prepareTransaction(
 			return nil, nil, fmt.Errorf("preparing sync history: %w", err)
 		}
 		combinedOps = append(combinedOps, syncPlan.Ops...)
+	}
+	if capture != nil {
+		op, err := s.captureReceiptOp(capture, txnID)
+		if err != nil {
+			return nil, nil, err
+		}
+		combinedOps = append(combinedOps, op)
 	}
 	var ledgerPlan *preparedLedgerRecord
 	if recordLedger {

@@ -697,3 +697,19 @@ The viewer reads a detached newest-first snapshot. Copy notices stay local, and
 recalled recovery hints never reactivate an operation.
 Copy-all exports that snapshot with full timestamps and kinds through the same
 clipboard boundary as single-message copy; neither changes the retained events.
+
+## Host capture retries and retained errors
+
+Host capture retries use `capture_context` and `capture_once`, never a silent
+fallback to unprotected capture. Workspace-bound submission identities carry an
+exact-text digest. Storage checks receipts under the workspace commit lock after
+recovery and stages a new receipt with the tasks, outside undo and sync effects.
+Receipts survive undo and deletion. A duplicate returns its original outcome;
+reusing an identity for different text refuses.
+
+Draft save errors outlive transient timers. Only editing the owning field,
+saving, or discarding the draft retires them; typing in covering Help does not.
+Full-height surfaces keep their own controls on the terminal's last row through
+`fitSurfaceFooterHeight`, with shell feedback immediately above the divider.
+Single-project repaint caching shares the population invalidation guard; explicit
+`RebuildRows` remains an unconditional mutation-driven rebuild.

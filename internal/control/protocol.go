@@ -34,6 +34,11 @@ const (
 	OpDone = "done"
 	// OpCapture captures Text through the composer's grammar.
 	OpCapture = "capture"
+	// OpCaptureOnce requires a durable CaptureID; retrying it returns the
+	// original committed outcome. Older engines refuse this operation rather
+	// than silently accepting a request without duplicate protection.
+	OpCaptureOnce    = "capture_once"
+	OpCaptureContext = "capture_context"
 	// OpComplete asks what the composer would suggest for Text, read as the
 	// draft up to the caret. It reads and never writes, so tt answers it even
 	// while the user is mid-interaction.
@@ -84,12 +89,14 @@ const (
 // and task IDs a previous Event named, never a slug or a ShortID, so a rename
 // or a renumbering between the event and the request cannot retarget it.
 type Request struct {
-	ID      int    `json:"id"`
-	Op      string `json:"op"`
-	Project string `json:"project,omitempty"`
-	Task    string `json:"task,omitempty"`
-	Text    string `json:"text,omitempty"`
-	Minutes int    `json:"minutes,omitempty"`
+	CaptureID string `json:"capture_id,omitempty"`
+	Workspace string `json:"workspace,omitempty"`
+	ID        int    `json:"id"`
+	Op        string `json:"op"`
+	Project   string `json:"project,omitempty"`
+	Task      string `json:"task,omitempty"`
+	Text      string `json:"text,omitempty"`
+	Minutes   int    `json:"minutes,omitempty"`
 }
 
 // Reply answers the Request whose ID it carries. Message is what tt said: the
@@ -99,6 +106,7 @@ type Request struct {
 // Transaction answers a successful OpCapture with the committed transaction's
 // ID, the one OpUndo names.
 type Reply struct {
+	Workspace   string         `json:"workspace,omitempty"`
 	ID          int            `json:"reply"`
 	OK          bool           `json:"ok"`
 	Message     string         `json:"message,omitempty"`
