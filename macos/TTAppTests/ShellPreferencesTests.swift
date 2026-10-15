@@ -491,6 +491,11 @@ final class StatusItemTests: XCTestCase {
         delegate.pulseSummary = "inbox 2 · overdue 1"
         controller.refreshMenu()
         XCTAssertEqual(controller.menu.items.prefix(2).map(\.title), ["Inbox 2", "Overdue 1"])
+        // Plain words and digits, so VoiceOver reads each as it is shown.
+        for item in controller.pulseItems {
+            XCTAssertTrue(item.title.allSatisfy { $0.isLetter || $0.isNumber || $0 == " " }, item.title)
+            XCTAssertNil(item.attributedTitle)
+        }
         XCTAssertEqual(controller.statusItem.button?.accessibilityValue() as? String, "inbox 2 · overdue 1")
         XCTAssertTrue(controller.menu.items[2].isSeparatorItem)
         XCTAssertFalse(controller.menu.items[2].isHidden)
@@ -515,6 +520,23 @@ final class StatusItemTests: XCTestCase {
         XCTAssertNil(controller.statusItem.button?.accessibilityValue())
         XCTAssertTrue(controller.menu.items[0].isSeparatorItem)
         XCTAssertTrue(controller.menu.items[0].isHidden)
+    }
+
+    /// The icon is named tt, carries the pulse as its value, and says what
+    /// its clicks do.
+    func testStatusButtonIsLabeledForVoiceOver() throws {
+        let delegate = FakeStatusDelegate()
+        let controller = StatusItemController(delegate: delegate)
+        let button = try XCTUnwrap(controller.statusItem.button)
+        XCTAssertEqual(button.accessibilityLabel(), "tt")
+        XCTAssertEqual(button.accessibilityHelp(), "Click to show or hide tt; Control-click for the menu")
+        XCTAssertNil(button.accessibilityValue())
+
+        delegate.pulse = TTPulse(inbox: 1, today: 2, overdue: 0, done: 0)
+        delegate.pulseSummary = "inbox 1 · today 2"
+        controller.refreshMenu()
+        XCTAssertEqual(button.accessibilityLabel(), "tt")
+        XCTAssertEqual(button.accessibilityValue() as? String, "inbox 1 · today 2")
     }
 
     func testMenuShowsTheLiveShortcuts() throws {

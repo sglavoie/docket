@@ -71,11 +71,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         if let button = statusItem.button {
             button.image = Self.icon()
             button.toolTip = "tt"
+            // VoiceOver names the icon tt, reads the pulse as its value, and
+            // says what its two clicks do.
+            button.setAccessibilityLabel("tt")
+            button.setAccessibilityHelp(Self.accessibilityHelp)
             button.target = self
             button.action = #selector(clicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
     }
+
+    static let accessibilityHelp = "Click to show or hide tt; Control-click for the menu"
 
     deinit {
         statusItem.statusBar?.removeStatusItem(statusItem)

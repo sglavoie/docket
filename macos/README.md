@@ -156,8 +156,9 @@ all of them when all three are. Choosing one shows tt in that mode, as its mode
 jump would: Inbox, Today, or Due for Overdue. A tt that is busy, because
 something is open in it, or too old to know the request is still shown, in the
 mode it was in. The icon's tooltip is tt's window title, the pulse as one line
-(`tt · inbox 2 · today 3 · overdue 1`), and VoiceOver reads that line, without
-the title, as the icon's value.
+(`tt · inbox 2 · today 3 · overdue 1`). VoiceOver names the icon tt, reads that
+line, without the title, as its value, and says what it does: click to show or
+hide tt, Control-click for the menu. The count items read as they are shown.
 Closing the window hides it and keeps the session; the next show returns to
 it. Hiding leaves full screen first, and hides the app only when no other tt
 window, such as Settings or About, is open. The window resizes in whole cells
