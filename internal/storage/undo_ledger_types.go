@@ -14,6 +14,10 @@ var (
 	ErrNoRedoHistory = errors.New("no redo history available")
 )
 
+// ErrUndoSuperseded refuses an undo naming a transaction that is no longer the
+// newest undo entry.
+var ErrUndoSuperseded = errors.New("the named transaction is no longer the newest undo entry")
+
 // UndoLedgerSchemaVersion is stamped into every persisted ledger file. A file
 // carrying a newer version than the running binary understands is rejected
 // rather than misinterpreted, matching the transaction manifest contract.

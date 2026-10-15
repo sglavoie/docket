@@ -649,8 +649,14 @@ func (m *AppModel) controlView(name string, reply chan<- control.Reply) {
 // newest undo entry: u would take back the newer change instead.
 const controlUndoSuperseded = "Something newer was changed in tt; undo it there"
 
+// controlUndoAfterPreview runs between controlUndo's unlocked preview and the
+// guarded restore. Tests alone set it, to land a competing commit there.
+var controlUndoAfterPreview func()
+
 // controlUndo undoes the named transaction through the u key's own ledger path,
-// and only while it is still the newest undo entry.
+// and only while it is still the newest undo entry. The preview answers the
+// common refusal without retiring the user's interaction; the restore itself
+// rechecks the name under the ledger lock, which is what decides.
 func (m *AppModel) controlUndo(transactionID string, reply chan<- control.Reply) tea.Cmd {
 	transactionID = strings.TrimSpace(transactionID)
 	if transactionID == "" {
@@ -666,7 +672,10 @@ func (m *AppModel) controlUndo(transactionID string, reply chan<- control.Reply)
 		answer(reply, false, controlUndoSuperseded)
 		return nil
 	}
-	cmd, outcome, restored := m.restoreLedgerEntry(false)
+	if controlUndoAfterPreview != nil {
+		controlUndoAfterPreview()
+	}
+	cmd, outcome, restored := m.restoreLedgerEntry(false, transactionID)
 	answer(reply, restored, outcome)
 	return cmd
 }

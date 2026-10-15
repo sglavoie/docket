@@ -19,7 +19,19 @@ func (l *WorkspaceLedger) Undo(scope LedgerScope) (string, error) {
 // Callers that must refresh affected projects use this instead of previewing the
 // ledger separately and then racing a concurrent commit before restore begins.
 func (l *WorkspaceLedger) UndoWithEntry(scope LedgerScope) (LedgerEntry, string, error) {
-	return l.restore(scope, false)
+	return l.restore(scope, false, "")
+}
+
+// UndoTransactionWithEntry is UndoWithEntry for a caller naming the transaction
+// it means to take back. The name is compared with the newest undo entry under
+// the same workspace lock that selects and restores it, so a commit landing
+// after the caller's preview refuses with ErrUndoSuperseded and changes nothing
+// rather than undoing the newer transaction in its place.
+func (l *WorkspaceLedger) UndoTransactionWithEntry(scope LedgerScope, transactionID string) (LedgerEntry, string, error) {
+	if transactionID == "" {
+		return LedgerEntry{}, "", fmt.Errorf("%w: no transaction named", ErrUndoSuperseded)
+	}
+	return l.restore(scope, false, transactionID)
 }
 
 // Redo replays the newest entry in scope, restoring every artifact to its
@@ -31,14 +43,16 @@ func (l *WorkspaceLedger) Redo(scope LedgerScope) (string, error) {
 
 // RedoWithEntry is Redo plus the exact entry selected under the workspace lock.
 func (l *WorkspaceLedger) RedoWithEntry(scope LedgerScope) (LedgerEntry, string, error) {
-	return l.restore(scope, true)
+	return l.restore(scope, true, "")
 }
 
 // restore is the shared undo/redo engine. redo=false consumes the undo stack and
 // applies before-images; redo=true consumes the redo stack and applies
 // after-images. The consumed entry moves to the opposite stack so the operation
-// is itself reversible, matching the linear Vim-style contract.
-func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, string, error) {
+// is itself reversible, matching the linear Vim-style contract. A non-empty
+// expectTransactionID refuses, before any durable change, unless the selected
+// entry is that transaction.
+func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactionID string) (LedgerEntry, string, error) {
 	service := NewCommitService(l.transactionsDir, l.roots).OnMachine(l.machineID)
 	var restored LedgerEntry
 	err := service.withWorkspaceCommitLock(func() error {
@@ -71,6 +85,9 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 				return fmt.Errorf("%w for artifact root %q", historyErr, scope.ArtifactRoot)
 			}
 			return historyErr
+		}
+		if expectTransactionID != "" && entry.TransactionID != expectTransactionID {
+			return fmt.Errorf("%w: newest is %s, not %s", ErrUndoSuperseded, entry.TransactionID, expectTransactionID)
 		}
 
 		var directoryLockPaths []string

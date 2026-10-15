@@ -397,23 +397,35 @@ func (m *AppModel) workspaceHistoryPreview() (undo, redo string) {
 // catalog-reading surfaces are therefore rebuilt from the restored snapshot on
 // the same terms every forward catalog mutation rebuilds them.
 func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
-	cmd, _, _ := m.restoreLedgerEntry(redo)
+	cmd, _, _ := m.restoreLedgerEntry(redo, "")
 	return cmd
 }
 
 // restoreLedgerEntry is handleLedgerTaskUndoRedo's restore, also reporting the
 // outcome it puts on the status line and whether the entry was restored, so a
-// control request can answer with tt's own words.
-func (m *AppModel) restoreLedgerEntry(redo bool) (tea.Cmd, string, bool) {
+// control request can answer with tt's own words. A non-empty transactionID
+// names the undo entry the caller means: the ledger compares it with the newest
+// entry under the restore's own lock and refuses with
+// storage.ErrUndoSuperseded, changing nothing, when another commit got there
+// first.
+func (m *AppModel) restoreLedgerEntry(redo bool, transactionID string) (tea.Cmd, string, bool) {
 	m.retireInteraction()
 	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	restore := ledger.UndoWithEntry
 	verb, label := "Undid", "undo"
-	if redo {
+	switch {
+	case redo:
 		restore = ledger.RedoWithEntry
 		verb, label = "Redo", "redo"
+	case transactionID != "":
+		restore = func(scope storage.LedgerScope) (storage.LedgerEntry, string, error) {
+			return ledger.UndoTransactionWithEntry(scope, transactionID)
+		}
 	}
 	entry, desc, err := restore(storage.GlobalScope())
+	if errors.Is(err, storage.ErrUndoSuperseded) {
+		return nil, controlUndoSuperseded, false
+	}
 	if err != nil {
 		// An exhausted ledger is not an error: say so quietly rather than toast
 		// a spurious failure.
