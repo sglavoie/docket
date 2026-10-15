@@ -110,6 +110,14 @@ final class ControlWireTests: XCTestCase {
         XCTAssertNil(object["text"])
     }
 
+    func testDoneEncodesTheGoSpelling() throws {
+        let request = TTControlRequest.done(TTTaskID(project: "p", task: "t"))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "done")
+        XCTAssertEqual(object["project"] as? String, "p")
+        XCTAssertEqual(object["task"] as? String, "t")
+    }
+
     func testQuitEncodesTheGoSpelling() throws {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.quit)) as? [String: Any])
         XCTAssertEqual(object["op"] as? String, "quit")
@@ -232,23 +240,25 @@ final class ControlNotificationTests: XCTestCase {
         presenter.onActivate = { calls.append("activate") }
         presenter.onReveal = { calls.append("reveal \($0.task)") }
         presenter.onAcknowledge = { calls.append("ack \($0.task)") }
+        presenter.onDone = { calls.append("done \($0.task)") }
         presenter.onDefer = { calls.append("defer \($0.task)") }
         let task = TTTaskID(project: "p", task: "t")
 
         presenter.respond(to: UNNotificationDefaultActionIdentifier, task: task)
         presenter.respond(to: NotificationPresenter.Action.acknowledge, task: task)
+        presenter.respond(to: NotificationPresenter.Action.done, task: task)
         presenter.respond(to: NotificationPresenter.Action.deferHour, task: task)
         presenter.respond(to: UNNotificationDefaultActionIdentifier, task: nil)
         presenter.respond(to: UNNotificationDismissActionIdentifier, task: task)
-        XCTAssertEqual(calls, ["reveal t", "ack t", "defer t", "activate"])
+        XCTAssertEqual(calls, ["reveal t", "ack t", "done t", "defer t", "activate"])
     }
 
-    func testCategoriesOfferAcknowledgeOnlyWhenReviewable() throws {
+    func testCategoriesOfferDoneAlwaysAndAcknowledgeOnlyWhenReviewable() throws {
         let categories = Dictionary(uniqueKeysWithValues: NotificationPresenter.categories().map { ($0.identifier, $0) })
         XCTAssertEqual(try XCTUnwrap(categories[NotificationPresenter.Category.reviewable]).actions.map(\.title),
-                       ["Acknowledge", "Defer 1 Hour"])
+                       ["Acknowledge", "Done", "Defer 1 Hour"])
         XCTAssertEqual(try XCTUnwrap(categories[NotificationPresenter.Category.task]).actions.map(\.title),
-                       ["Defer 1 Hour"])
+                       ["Done", "Defer 1 Hour"])
     }
 }
 

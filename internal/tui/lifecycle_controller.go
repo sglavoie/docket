@@ -563,7 +563,7 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		applySessionTheme(request.Text)
 		answer(reply, true, "Theme: "+request.Text)
 		return nil
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView, control.OpUndo:
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView, control.OpUndo, control.OpDone:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
@@ -610,6 +610,8 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 			cmd = m.controlAcknowledge(task, project, reply)
 		case control.OpDefer:
 			cmd = m.controlDefer(task, project, request.Minutes, reply)
+		case control.OpDone:
+			cmd = m.controlDone(task, project, reply)
 		}
 	}
 	return tea.Batch(reload, cmd)
@@ -728,6 +730,25 @@ func (m *AppModel) controlDefer(task *models.Task, project *models.Project, minu
 	capture := m.captureOutlinerRelocationForLocators([]app.TaskLocator{locator})
 	cmd := withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(request, "Set Defer", ""), capture)
 	return replyWhenCommitted(cmd, reply, "Deferred until "+until.Format("15:04")+": "+task.Title)
+}
+
+// controlDone commits Done through the request wd builds, so the lifecycle
+// transition, its planning cleanup, and the child guard are the key's own.
+func (m *AppModel) controlDone(task *models.Task, project *models.Project, reply chan<- control.Reply) tea.Cmd {
+	if task.WorkflowState.IsTerminal() {
+		answer(reply, false, fmt.Sprintf("%s is already %s", task.Title, task.WorkflowState))
+		return nil
+	}
+	locator := taskref.For(task, project).Locator()
+	request := app.TaskOperationRequest{
+		Operation: app.TaskOperationSetState,
+		Targets:   []app.TaskLocator{locator},
+		State:     models.StateDone,
+	}
+	capture := m.captureOutlinerRelocationForLocators([]app.TaskLocator{locator})
+	cmd := withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(request, "Change Status",
+		fmt.Sprintf("Change Status · Changed %s to %s", util.Count(1, "task"), models.StateDone)), capture)
+	return replyWhenCommitted(cmd, reply, "Done: "+task.Title)
 }
 
 // controlCapture reads text as the global `a` composer would and commits it as

@@ -297,9 +297,9 @@ terminal that honors the escape shows it whether or not tt is in view.
 `tt --control PATH` serves a Unix socket at `PATH`, readable by your user
 alone, for a host app such as tt.app. Over it the session reports the pulse
 whenever it changes and each tick's arrivals with the identity of every task,
-and it takes six requests: show a task, acknowledge one as `R` does, defer one
-by some minutes, capture a line as the `a` composer would read it, refusals
-included, ask what that composer would suggest for a draft up to its caret,
+and it takes seven requests: show a task, acknowledge one as `R` does, mark
+one Done as `wd` does, defer one by some minutes, capture a line as the `a`
+composer would read it, refusals included, ask what that composer would suggest for a draft up to its caret,
 and preview the project, plan, status, and deadline of a full capture draft.
 Each is answered as though you had pressed the key in tt: through the same
 commit and the same undo entry, so `u` takes it back. A request that changes

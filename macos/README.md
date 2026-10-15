@@ -258,7 +258,7 @@ A check-in whose day comes, a timed deadline that passes, or a deferral that
 ends while tt runs becomes a Notification Center alert. Up to three at once are
 one alert per task: clicking it shows tt with the cursor on that task, and its
 buttons act without leaving the app you are in — Acknowledge, offered only where
-`R` would accept it, and Defer 1 Hour. More arrive as one summary that brings tt
+`R` would accept it, Done, which commits it as `wd` would, and Defer 1 Hour. More arrive as one summary that brings tt
 forward. macOS asks for permission on the first one, and none is shown while tt
 is already in front. Settings turns them off (`ttNotifications`), at once.
 

@@ -405,7 +405,7 @@ struct PreferencesView: View {
             Section {
                 Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
                 note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
-                    + "while tt is not in front. Click one to show its task; Acknowledge and Defer 1 Hour "
+                    + "while tt is not in front. Click one to show its task; Acknowledge, Done, and Defer 1 Hour "
                     + "act on it from the notification.")
                 Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
             }

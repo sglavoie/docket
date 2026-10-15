@@ -28,6 +28,10 @@ const (
 	OpAcknowledge = "acknowledge"
 	// OpDefer defers one task by Minutes from now.
 	OpDefer = "defer"
+	// OpDone marks one task Done, as wd does on its row. It refuses a task
+	// already Done or Canceled. OpComplete is not this: it is the composer's
+	// completion.
+	OpDone = "done"
 	// OpCapture captures Text through the composer's grammar.
 	OpCapture = "capture"
 	// OpComplete asks what the composer would suggest for Text, read as the

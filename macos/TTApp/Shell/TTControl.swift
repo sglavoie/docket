@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete, preview, quit, appearance, view, undo
+        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo
         case deferTask = "defer"
     }
 
@@ -51,6 +51,11 @@ struct TTControlRequest: Encodable, Equatable {
 
     static func acknowledge(_ task: TTTaskID) -> Self {
         Self(op: .acknowledge, project: task.project, task: task.task)
+    }
+
+    /// Marks the task Done, as `wd` does on its row.
+    static func done(_ task: TTTaskID) -> Self {
+        Self(op: .done, project: task.project, task: task.task)
     }
 
     static func deferTask(_ task: TTTaskID, minutes: Int) -> Self {

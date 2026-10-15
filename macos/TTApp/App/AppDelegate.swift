@@ -365,6 +365,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.onAcknowledge = { [weak self] task in
             self?.act(.acknowledge(task), failure: "tt could not acknowledge it")
         }
+        notifications.onDone = { [weak self] task in
+            self?.act(.done(task), failure: "tt could not mark it Done")
+        }
         notifications.onDefer = { [weak self] task in
             self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
         }

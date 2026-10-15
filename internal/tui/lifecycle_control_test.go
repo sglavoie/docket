@@ -120,6 +120,43 @@ func TestControlDeferDefersByMinutesFromNow(t *testing.T) {
 	}
 }
 
+// TestControlDoneCommitsDoneAsWdDoes: the task is Done with its clock and
+// completion stamped, and a second request refuses it by name.
+func TestControlDoneCommitsDoneAsWdDoes(t *testing.T) {
+	task := reviewSettledTask(t, 1, "ship it")
+	env := controlEnv(t, task)
+
+	reply := env.request(t, env.taskRequest(control.OpDone, task))
+	if !reply.OK || reply.Message != "Done: ship it" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	stored := env.storedTask(t, 1)
+	if stored.WorkflowState != models.StateDone || stored.CompletedAt == nil {
+		t.Fatalf("stored task = %+v", stored)
+	}
+
+	if reply := env.request(t, env.taskRequest(control.OpDone, task)); reply.OK || reply.Message != "ship it is already done" {
+		t.Fatalf("a done task answered %+v", reply)
+	}
+	if reply := env.request(t, control.Request{Op: control.OpDone, Project: "gone", Task: "gone"}); reply.OK || reply.Message != "that task is no longer in the workspace" {
+		t.Fatalf("a missing task answered %+v", reply)
+	}
+}
+
+func TestControlDoneRefusesWhileTheUserIsMidInteraction(t *testing.T) {
+	task := reviewSettledTask(t, 1, "ship it")
+	env := controlEnv(t, task)
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+
+	reply := env.request(t, env.taskRequest(control.OpDone, task))
+	if reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if env.storedTask(t, 1).WorkflowState != models.StateBacklog {
+		t.Fatal("a refused request committed")
+	}
+}
+
 func TestControlCaptureCommitsThroughTheComposerGrammar(t *testing.T) {
 	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
 

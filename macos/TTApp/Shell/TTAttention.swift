@@ -101,7 +101,7 @@ enum TTPulseSummary {
 ///
 /// Two sources feed it. A tt with a control socket reports arrivals with each
 /// task's identity, so a notification naming one task offers Acknowledge (when
-/// tt would accept it) and Defer 1 Hour, and clicking it shows that task. An
+/// tt would accept it), Done, and Defer 1 Hour, and clicking it shows that task. An
 /// older tt run with `--notify` sends one OSC 777 escape per batch, which can
 /// only bring tt forward.
 final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
@@ -114,6 +114,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
     /// Run when a notification naming a task is clicked, or one of its actions chosen.
     var onReveal: ((TTTaskID) -> Void)?
     var onAcknowledge: ((TTTaskID) -> Void)?
+    var onDone: ((TTTaskID) -> Void)?
     var onDefer: ((TTTaskID) -> Void)?
 
     /// More arrivals than this in one batch are worded as one summary.
@@ -127,6 +128,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
 
     enum Action {
         static let acknowledge = "tt.acknowledge"
+        static let done = "tt.done"
         static let deferHour = "tt.defer"
     }
 
@@ -147,10 +149,11 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
 
     static func categories() -> Set<UNNotificationCategory> {
         let acknowledge = UNNotificationAction(identifier: Action.acknowledge, title: "Acknowledge", options: [])
+        let done = UNNotificationAction(identifier: Action.done, title: "Done", options: [])
         let deferHour = UNNotificationAction(identifier: Action.deferHour, title: "Defer 1 Hour", options: [])
         return [
-            UNNotificationCategory(identifier: Category.reviewable, actions: [acknowledge, deferHour], intentIdentifiers: []),
-            UNNotificationCategory(identifier: Category.task, actions: [deferHour], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Category.reviewable, actions: [acknowledge, done, deferHour], intentIdentifiers: []),
+            UNNotificationCategory(identifier: Category.task, actions: [done, deferHour], intentIdentifiers: []),
         ]
     }
 
@@ -253,6 +256,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         }
         switch action {
         case Action.acknowledge: onAcknowledge?(task)
+        case Action.done: onDone?(task)
         case Action.deferHour: onDefer?(task)
         case UNNotificationDefaultActionIdentifier: onReveal?(task)
         default: break
