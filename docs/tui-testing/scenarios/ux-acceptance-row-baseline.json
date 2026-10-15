@@ -16,9 +16,9 @@
     { "type": "assert", "assert": "contains", "value": "▾  Backlog  (6)" },
     { "type": "assert", "assert": "contains", "value": "▾  Waiting  (2)" },
 
-    { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform-delivery]", "count": 6 },
-    { "type": "assert", "assert": "count_contains", "value": "[ux-client-rollout]", "count": 2 },
-    { "type": "assert", "assert": "count_contains", "value": "[ux-support-queue]", "count": 2 },
+    { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform", "count": 6 },
+    { "type": "assert", "assert": "count_contains", "value": "[ux-client-r", "count": 2 },
+    { "type": "assert", "assert": "count_contains", "value": "[ux-support-", "count": 2 },
     { "type": "assert", "label": "a project header carries the lane's overdue pressure", "assert": "contains", "value": "! overdue 1" },
 
     { "type": "assert", "label": "the row keeps the deadline, the owed review, and the reference census", "assert": "contains", "value": "⊡ Today" },

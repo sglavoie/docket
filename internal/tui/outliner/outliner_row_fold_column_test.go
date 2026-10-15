@@ -70,10 +70,10 @@ func TestFoldColumnIsNotReservedWithoutAFoldOrALayout(t *testing.T) {
 	}
 }
 
-// TestRankedProjectLabelCapFollowsTheRow pins the one cap: a fifth of the row,
-// held between twelve and twenty-four columns.
+// TestRankedProjectLabelCapFollowsTheRow pins the one cap: an eighth of the
+// row, held between twelve and twenty-four columns.
 func TestRankedProjectLabelCapFollowsTheRow(t *testing.T) {
-	for width, want := range map[int]int{40: 12, 60: 12, 80: 16, 100: 20, 120: 24, 200: 24} {
+	for width, want := range map[int]int{40: 12, 80: 12, 100: 12, 120: 15, 160: 20, 192: 24, 200: 24} {
 		if got := rankedProjectLabelMaxSlug(width); got != want {
 			t.Errorf("rankedProjectLabelMaxSlug(%d) = %d, want %d", width, got, want)
 		}

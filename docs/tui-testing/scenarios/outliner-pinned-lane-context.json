@@ -41,7 +41,7 @@
     { "type": "key", "key": "enter" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
-    { "type": "assert", "assert": "contains", "value": "[release-project]" },
+    { "type": "assert", "assert": "contains", "value": "[release-pro…]" },
     { "type": "assert", "assert": "not_contains", "value": "› [release-project]" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 004" },
     { "type": "assert", "assert": "no_layout_issues" },

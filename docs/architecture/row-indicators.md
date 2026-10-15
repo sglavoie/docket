@@ -240,8 +240,10 @@ label for the same reason — no header stands over it — and
 `rowLeadsWithProjectLabel` is the one predicate both cases share; the rows
 beneath it, its own subtree and checklist, name nothing. The label is reserved
 rather than laddered, so on a narrow row the title and the ladder pay for it. `rankedProjectLabelMaxSlug` is the one cap on that slug —
-a fifth of the row, never under twelve columns and never over twenty-four — so
-a long slug is cut at the floor and spelled out where the row has the room;
+an eighth of the row, never under twelve columns and never over twenty-four — so a
+narrow row spends its columns on the title and a wide one spells a long slug out.
+The floor stays at twelve rather than following the eighth down, so a
+twelve-column slug is still whole at eighty columns;
 `chrome.ComputeBadgeWidths` takes it as `MaxProjectLen` and keeps no default of
 its own. `ComputeOutlinerRowLayout` measures the widest label into
 `ColumnLayout.ProjectWidth` and every label pads to it, so the labeled titles

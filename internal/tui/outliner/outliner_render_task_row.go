@@ -105,12 +105,12 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 	return theme.RelationMarkerStyle.Render("  " + marker)
 }
 
-// rankedProjectLabelMaxSlug bounds the slug a ranked row spells: a fifth of the
-// row, never under twelve columns and never over twenty-four, so a long slug is
-// cut at the floor and spelled out where the row has the room. It is the one
+// rankedProjectLabelMaxSlug bounds the slug a ranked row spells: an eighth of
+// the row, never under twelve columns and never over twenty-four, so a narrow
+// row keeps its title and a wide one spells a long slug out. It is the one
 // source of that cap; the render and ComputeOutlinerRowLayout both read it.
 func rankedProjectLabelMaxSlug(rowWidth int) int {
-	return min(max(rowWidth/5, 12), 24)
+	return min(max(rowWidth/8, 12), 24)
 }
 
 // showsRankedProjectLabel reports whether every task row leads its title with

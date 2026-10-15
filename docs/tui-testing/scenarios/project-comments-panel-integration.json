@@ -112,7 +112,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "key", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole, its singleton group drawn as the slug-led task", "assert": "contains", "value": "[mix-active-delivery] Mix rollout plan" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole, its singleton group drawn as the slug-led task", "assert": "contains", "value": "[mix-active-…] Mix rollout plan" },
     { "type": "key", "label": "where the same key opens the task's own comments", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
