@@ -358,7 +358,7 @@ func TestTagCategoryJumpKeysSurviveTheDateShortcuts(t *testing.T) {
 // The hint is chrome, not vocabulary: it says how to apply a row without
 // becoming a word that finds one.
 func TestDatePresetHintsRideTheMarkerAndStayOutOfTheSearchableText(t *testing.T) {
-	for _, item := range OperationDateListSource("").Items {
+	for _, item := range OperationDateListSource("", bothDateFieldsSet).Items {
 		value, isDate := item.Data.(operation.OperationDateValue)
 		if !isDate {
 			continue

@@ -145,7 +145,8 @@ Creating work in Doing or Waiting without a check-in interrupts nothing. The
 footer says so once the creation commits — `No check-in: <task> · Ctrl+M: Set up
 check-ins`, or `No check-in: N tasks` when one capture committed several — and
 the route it names is the keyless **Set up check-ins** menu entry, not a key,
-because the new task may not be under the cursor. A creation that already
+because the new task may not be under the cursor. It says so once per session,
+the first time, and stays quiet after that. A creation that already
 supplies a schedule is never counted. When create-and-open is used, the content
 editor keeps its own screen and the note follows the edit it commits. The same
 note follows committed line or outline edits that enter either state, and it

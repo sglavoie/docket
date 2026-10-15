@@ -477,7 +477,7 @@ func TestPeekDockHoldsItsPositionOnAnEmptyProjection(t *testing.T) {
 			// both still above it, in that order, at every reviewed size.
 			message := -1
 			for index, line := range emptyFrame[:divider] {
-				if strings.Contains(line, m.OutlinerEmptyMessage()) {
+				if strings.Contains(line, emptyMessageLead(m.OutlinerEmptyMessage())) {
 					message = index
 				}
 			}
@@ -525,4 +525,14 @@ func TestPeekDockKeepsTheListRowsStillAcrossCursorMoves(t *testing.T) {
 			t.Fatalf("cursor %d put the dock on screen row %d, want %d", cursor, index, dividerRow)
 		}
 	}
+}
+
+// emptyMessageLead is the explanation's first sentence, which is what a frame
+// can be searched for: the whole explanation wraps at narrow widths, so its full
+// text is never one row.
+func emptyMessageLead(message string) string {
+	if lead, _, ok := strings.Cut(message, ". "); ok {
+		return lead + "."
+	}
+	return message
 }

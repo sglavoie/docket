@@ -114,8 +114,8 @@ No commit opens that draft. Entering Doing or Waiting without a schedule is
 committed evidence, `TaskStateEffect.OffersCheckIn()`, and its one consequence
 is a footer note naming the committed subset and the keyless `Set up check-ins`
 entry — never `@` or `Space`, which read a cursor the committed task may have
-left. It publishes once per transaction ID from the one deferred closure, so a
-reload, a redraw, and a duplicate delivery all say nothing, and it rides the line
+left. It publishes once per session and transaction ID from the one deferred
+closure, so a reload, a redraw, or a redelivery says nothing, and it rides the line
 already speaking through `appendNote`, spliced ahead of `u undo` and advancing no
 `seq`, so it takes no keyboard and asks nothing of interaction ownership.
 `splitRecoverySuffix` alone spells those two endings, and a line wider than its
@@ -420,7 +420,7 @@ the tail clamp; `Ctrl+F`/`Ctrl+B` page it, never `Ctrl+D`/`Ctrl+U`, which stay
 the list cursor's, and they are claimed ahead of a search input and advertised
 only where a body can page. Select Project's header is a name, one meta line,
 and a description capped at `listSurfacePreviewBodyLines`, declares no `Fields`,
-and paints the project's tasks with `RenderOutlinerTaskRow` from the
+and paints its tasks with `RenderOutlinerPreviewTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.
 
 Capture is a bounded panel over a live presentation, not a fullscreen view.
@@ -593,11 +593,11 @@ presets cannot express belongs in an inline mode on that picker, never a
 standalone form. `@` is the one date picker over Due, Defer, and Check-in; the
 cursor's Defer section, not a provider method, lets `+Nh` parse. The cursor names
 the section: read the row's typed payload, never a second section index.
-It opens in Due on the due field alone — a preset, else
-Due's Clear row — and opening writes nothing. `Tab` moves forward through those
-sections and wraps; `Shift+Tab` moves backward. Both skip empty sections, reaching
-the next first match, disabled rows included. A sole section is inert.
-Both are consumed on every picker; a one-section picker is inert. A preset key
+It opens in Due on the due field alone — its preset, Today if unset, else
+Clear — and opening writes nothing; an unset field's Clear is disabled.
+`Tab` moves forward through those sections and wraps; `Shift+Tab` moves backward,
+skipping empty ones, to the first enabled match, else first. Both are
+consumed on every picker; a one-section picker is inert. A preset key
 is one `chrome` table read by field and preset ID, never a per-surface keyboard;
 the creation form borrows it and keeps its own order, labels, and arithmetic.
 Dispatch precedes browse keys. Unbound presets name their owning field;

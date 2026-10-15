@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "assert", "label": "the one row is the focused header, above the empty explanation", "assert": "contains", "value": "[mix-quiet-planning]" },
-    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "C on that header writes the project's first comment", "key": "C" },

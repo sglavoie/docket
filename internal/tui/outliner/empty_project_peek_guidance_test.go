@@ -130,10 +130,8 @@ func assertPeekMovementGuidance(t *testing.T, m *OutlinerModel, spec chrome.Guid
 		t.Fatalf("%s: no pane is on screen, so there is no movement to hold", label)
 	}
 	movement := map[string]bool{
-		m.peekOperationKey(operation.OperationCorePeekHalfPageDown, "Ctrl+D") + " more":  peek.CanPageDown,
-		m.peekOperationKey(operation.OperationCorePeekPageDown, "Ctrl+F") + " page down": peek.CanPageDown,
-		m.peekOperationKey(operation.OperationCorePeekHalfPageUp, "Ctrl+U") + " back":    peek.CanPageUp,
-		m.peekOperationKey(operation.OperationCorePeekPageUp, "Ctrl+B") + " page up":     peek.CanPageUp,
+		m.peekOperationKey(operation.OperationCorePeekHalfPageDown, "Ctrl+D") + " more": peek.CanPageDown,
+		m.peekOperationKey(operation.OperationCorePeekHalfPageUp, "Ctrl+U") + " back":   peek.CanPageUp,
 	}
 	offered := make(map[string]bool, len(movement))
 	for _, entry := range peekGuidanceEntries(spec) {
@@ -207,14 +205,12 @@ func assertPeekFooterRenders(t *testing.T, spec chrome.GuidanceSpec, width int, 
 	}
 }
 
-// peekGuidanceMovementCount is how many of the four scrolling entries the
+// peekGuidanceMovementCount is how many of the two scrolling entries the
 // guidance is currently offering.
 func peekGuidanceMovementCount(m *OutlinerModel, spec chrome.GuidanceSpec) int {
 	movement := map[string]bool{
-		m.peekOperationKey(operation.OperationCorePeekHalfPageDown, "Ctrl+D") + " more":  true,
-		m.peekOperationKey(operation.OperationCorePeekPageDown, "Ctrl+F") + " page down": true,
-		m.peekOperationKey(operation.OperationCorePeekHalfPageUp, "Ctrl+U") + " back":    true,
-		m.peekOperationKey(operation.OperationCorePeekPageUp, "Ctrl+B") + " page up":     true,
+		m.peekOperationKey(operation.OperationCorePeekHalfPageDown, "Ctrl+D") + " more": true,
+		m.peekOperationKey(operation.OperationCorePeekHalfPageUp, "Ctrl+U") + " back":   true,
 	}
 	count := 0
 	for _, entry := range peekGuidanceEntries(spec) {
@@ -268,15 +264,15 @@ func assertLongCommentPeekGuidance(t *testing.T, width, height int) {
 	}
 	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "top")
 
-	// The middle: every direction the window has, which is all four.
+	// The middle: every direction the window has, one half-page entry each.
 	if !outliner.HalfPagePeek(1) {
 		t.Fatal("the pane would not move off the top")
 	}
 	spec = peekGuidanceSpec(t, outliner, "middle")
 	assertPeekCloseGuidance(t, outliner, spec, "middle")
 	assertPeekMovementGuidance(t, outliner, spec, "middle")
-	if got := peekGuidanceMovementCount(outliner, spec); got != 4 {
-		t.Fatalf("the middle offered %d movements, want all four: %v",
+	if got := peekGuidanceMovementCount(outliner, spec); got != 2 {
+		t.Fatalf("the middle offered %d movements, want both: %v",
 			got, peekGuidanceEntries(spec))
 	}
 	assertPeekFooterRenders(t, spec, width, emptyStatePeekRecovery, "middle")

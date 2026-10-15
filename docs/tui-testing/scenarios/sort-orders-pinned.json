@@ -15,7 +15,7 @@
     { "type": "key", "label": "pin Build login form", "key": "*" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Pinned  (2)" },
-    { "type": "assert", "label": "at one priority the newest pin leads", "assert": "contains", "value": "├──   ▶   Build login form  ‹" },
+    { "type": "assert", "label": "at one priority the newest pin leads", "assert": "contains", "value": "├──   ◐   Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "└──   ¿   Explore social login" },
 
     { "type": "key", "label": "sort by title descending", "key": "o" },
@@ -27,7 +27,7 @@
     { "type": "assert", "assert": "contains", "value": "Sort: title ↓" },
     { "type": "assert", "assert": "not_contains", "value": "· manual" },
     { "type": "assert", "label": "the sort orders Pinned like every other section", "assert": "contains", "value": "├──   ¿   Explore social login" },
-    { "type": "assert", "assert": "contains", "value": "└──   ▶   Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "└──   ◐   Build login form  ‹" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the sort decides the order, so J has no tie to rearrange", "key": "home" },
@@ -35,19 +35,19 @@
     { "type": "key", "label": "past the project header onto Explore", "key": "down" },
     { "type": "key", "key": "J" },
     { "type": "assert", "assert": "contains", "value": "├──   ¿   Explore social login" },
-    { "type": "assert", "assert": "contains", "value": "└──   ▶   Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "└──   ◐   Build login form  ‹" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clearing the sort gives the pin order back", "key": "o" },
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Sort cleared" },
-    { "type": "assert", "assert": "contains", "value": "├──   ▶   Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "├──   ◐   Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "└──   ¿   Explore social login" },
 
     { "type": "key", "label": "and K reorders Pinned by hand again, the cursor having followed Explore", "key": "K" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "├──   ¿   Explore social login" },
-    { "type": "assert", "assert": "contains", "value": "└──   ▶   Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "└──   ◐   Build login form  ‹" },
     { "type": "assert", "assert": "status_contains", "value": "Reorder Pinned" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

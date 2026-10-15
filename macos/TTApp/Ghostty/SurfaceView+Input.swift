@@ -145,6 +145,10 @@ extension Ghostty.SurfaceView {
         // hierarchy rather than the first responder.
         guard focused, let surface else { return false }
 
+        // Undo, Redo, and Cut are the Edit menu's only for text fields: here
+        // their keys stay the terminal's, as they were before the menu had them.
+        let textOnlyEdit = NSApp.mainMenu.map { MainMenu.isTextOnlyEdit(MainMenu.item(in: $0, matching: event)) } ?? false
+
         var keyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)
         var flags = ghostty_binding_flags_e(0)
         let isBinding = (event.characters ?? "").withCString { ptr in
@@ -158,7 +162,7 @@ extension Ghostty.SurfaceView {
             let consumed = flags.rawValue & GHOSTTY_BINDING_FLAGS_CONSUMED.rawValue != 0
             let surfaceOwned = flags.rawValue
                 & (GHOSTTY_BINDING_FLAGS_ALL.rawValue | GHOSTTY_BINDING_FLAGS_PERFORMABLE.rawValue) != 0
-            if consumed, !surfaceOwned,
+            if consumed, !surfaceOwned, !textOnlyEdit,
                let menu = NSApp.mainMenu,
                MainMenu.performShortcut(for: event, in: menu) {
                 return true
@@ -188,6 +192,14 @@ extension Ghostty.SurfaceView {
             if !event.modifierFlags.contains(.command) && !event.modifierFlags.contains(.control) {
                 lastPerformKeyEvent = nil
                 return false
+            }
+
+            // A text-only edit is never offered to the menu: it is encoded
+            // now, as it would be once the menu had declined it.
+            if textOnlyEdit {
+                lastPerformKeyEvent = nil
+                equivalent = event.characters ?? ""
+                break
             }
 
             // The same event coming back after AppKit declined it is encoded.

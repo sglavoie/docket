@@ -75,6 +75,11 @@ type searchState struct {
 	// that brings them in even when other results are visible.
 	withheld         searchWithheldMatches
 	hiddenFilterHint string
+	// eliminationHint names the sigil clause that emptied a ranked list: one
+	// naming a value nothing carries, else the one whose removal restores the
+	// most matches. It is decided by the rebuild that found nothing, so the
+	// empty state reads an answer rather than recomputing one per frame.
+	eliminationHint string
 
 	// drawn counts the task and note rows the last rebuild drew for this query,
 	// in either presentation. It is taken when the rows are built rather than
@@ -260,6 +265,7 @@ func (s *searchState) resetCompilation() {
 	s.clearNoteMatches()
 	s.hiddenFilterHint = ""
 	s.drawn = 0
+	s.eliminationHint = ""
 }
 
 // setCompilation installs the reading of the query the visible result set was
@@ -732,8 +738,10 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 		)
 	}
 	m.Search.hiddenFilterHint = ""
+	m.Search.eliminationHint = ""
 	if len(matches) == 0 && len(notes) == 0 && !predicates.Invalid() {
 		m.Search.hiddenFilterHint = m.removableFilterSearchHint(projects)
+		m.Search.eliminationHint = m.searchEliminationHint(projects, candidates)
 	}
 	m.sortSearchMatchesWithinTier(matches)
 
@@ -1069,4 +1077,79 @@ func (m *OutlinerModel) removableFilterSearchHint(projects []*models.Project) st
 		hints = append(hints, fmt.Sprintf("Clearing your %s filter reveals %s.", name, count))
 	}
 	return strings.Join(hints, " ")
+}
+
+// maxEliminationClauses bounds the questions an empty result asks. Each clause
+// costs at most two passes of the existing gate over the loaded population —
+// once alone when it names a stored value, once left out — so a long query
+// cannot turn one keystroke into an unbounded walk. A query past the bound
+// keeps the plain sentence.
+const maxEliminationClauses = 8
+
+// searchEliminationHint explains a ranked list that found nothing by naming the
+// sigil clause responsible. A positive tag, context, or project clause that no
+// task in the searched population carries at all is named first, since that is
+// a value to correct rather than a combination to loosen. Otherwise it reruns
+// the gate once per clause with that clause left out and names the one whose
+// removal restores the most matches, the first typed winning a tie. It answers
+// nothing when no single clause is responsible, when removing the clause would
+// leave no query at all, or when active filters own the empty state, since that
+// sentence already names its own exits.
+func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candidates map[string][]*models.Task) string {
+	if m == nil || !m.ShowsRankedList() || query.HasActiveCommonFilters(&m.Filter.CommonFilterState) {
+		return ""
+	}
+	text := m.SearchQuery()
+	remainder, clauses := query.SearchClauses(text)
+	if len(clauses) == 0 || len(clauses) > maxEliminationClauses {
+		return ""
+	}
+	plan := outlinerPlanningMembership{outliner: m}
+
+	for _, clause := range clauses {
+		if !clause.Vocabulary() {
+			continue
+		}
+		gate := query.CompileSearchClauseAlone(text, projects, plan, clause)
+		if gate.Invalid() || len(searchProjectionMatchesWithin(projects, "", candidates, fuzzy.NewMatcher(false), gate)) > 0 {
+			continue
+		}
+		if clause.NamesProject() {
+			return fmt.Sprintf("No project matches %s.", clause.Spelling)
+		}
+		return fmt.Sprintf("No task carries %s.", clause.Spelling)
+	}
+
+	// Removing the only clause of a sigil-only query leaves an empty query, which
+	// matches everything and explains nothing.
+	if remainder == "" && len(clauses) == 1 {
+		return ""
+	}
+	best, bestCount := query.SearchClause{}, 0
+	for _, clause := range clauses {
+		rest, gate := query.CompileSearchQueryWithout(text, projects, plan, m.FilterQuery, clause)
+		if gate.Invalid() {
+			continue
+		}
+		matcher := fuzzy.SmartCase(rest)
+		matches := searchProjectionMatchesWithin(projects, rest, candidates, matcher, gate)
+		if len(matches) == 0 && matcher.CaseSensitive() {
+			matches = searchProjectionMatchesWithin(projects, rest, candidates, fuzzy.NewMatcher(false), gate)
+		}
+		if len(matches) > bestCount {
+			best, bestCount = clause, len(matches)
+		}
+	}
+	if bestCount == 0 {
+		return ""
+	}
+	count := util.Count(bestCount, "task")
+	verb, object := "matches", "it"
+	if bestCount != 1 {
+		verb, object = "match", "them"
+	}
+	if len(clauses) == 1 {
+		return fmt.Sprintf("%s %s %q; %s removes %s.", count, verb, remainder, best.Spelling, object)
+	}
+	return fmt.Sprintf("%s %s without %s.", count, verb, best.Spelling)
 }

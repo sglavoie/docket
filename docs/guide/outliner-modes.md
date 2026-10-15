@@ -27,6 +27,12 @@ screen leads with work already in motion; each header still counts what it
 hides, and `l` or `s` opens it. Only a launch folds them: `Esc`, `0`, and a reload leave it as you
 last set it.
 
+A task appears once in All, so Pinned and Review lift their rows out of the
+section they would otherwise sit in, and that section says so after its count:
+`Inbox (1) +1 above` is one inbox task here and one in a lane above it. That is
+what keeps a header in step with the workspace pulse, which counts `inbox 2`
+wherever the rows are drawn.
+
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole;
 a pinned task there wears a bold `*` left of its title.

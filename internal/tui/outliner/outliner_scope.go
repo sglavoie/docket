@@ -416,7 +416,13 @@ func (m *OutlinerModel) ResetToLaunchView() ([]string, bool) {
 	note(query.CommonFilterFacetCount(&m.Filter.CommonFilterState) > 0, "filters")
 	reload := note(query.ProjectFilterFacetCount(&m.ProjectFilter) > 0, "project filters")
 	note(m.Sort.Field != query.SortByDefault || m.TreeSort.Field != query.SortByDefault, "sort")
-	note(m.PrimaryMode != chrome.ModeAll, "mode")
+	// The mode is named rather than called "mode", so the status says what the
+	// key left: `cleared Recent mode`, not a bare axis word.
+	if mode, ok := chrome.OutlinerModeByID(m.PrimaryMode); ok {
+		note(m.PrimaryMode != chrome.ModeAll, mode.Label+" mode")
+	} else {
+		note(m.PrimaryMode != chrome.ModeAll, "mode")
+	}
 	// The relationship trail is an axis of its own for exactly this reason: a hop
 	// can land somewhere the launch view already describes, and every note above
 	// would then report nothing to clear while an Esc still had a return to make.

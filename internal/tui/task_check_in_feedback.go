@@ -26,9 +26,15 @@ import (
 // is a within-one-Update buffer rather than a queue, because the line it rides
 // is the line this Update published; drained every Update, it can never arrive
 // beside a status belonging to something else.
+//
+// spoken makes the note a once-per-session reminder rather than a refrain: the
+// first unscheduled Doing or Waiting commit teaches the route, and every later
+// one stays quiet, since the keyless `Set up check-ins` entry is still in the
+// menu bar for whoever wants it.
 type checkInFeedbackController struct {
-	seen  map[string]bool
-	noted []app.TaskResult
+	seen   map[string]bool
+	noted  []app.TaskResult
+	spoken bool
 }
 
 // checkInFeedbackTitleWidth bounds the one title a single-task note names. The
@@ -107,10 +113,14 @@ func (m *AppModel) publishCheckInFeedback() tea.Cmd {
 	if len(results) == 0 {
 		return nil
 	}
+	if m.checkInFeedback.spoken {
+		return nil
+	}
 	note := checkInFeedbackNote(m.committedCheckInTitles(results), m.feedback.message)
 	if note == "" {
 		return nil
 	}
+	m.checkInFeedback.spoken = true
 	if m.feedback.appendNote(note) {
 		// The line it rode already carries this Update's severity and its own
 		// clock, so advancing either here would reset both.

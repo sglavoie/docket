@@ -1,11 +1,13 @@
 import AppKit
 
 /// The programmatic main menu: the app, Edit, View, Window, and Help menus, so
-/// About, Preferences, Hide, Quit, Copy, Paste, Select All, the zoom keys, full
-/// screen, and Minimize keep their standard shortcuts, and are discoverable, without a nib. The Edit items target the first responder, the
-/// terminal surface. A shortcut both an item and a consumed Ghostty binding
-/// claim is the item's, so Cmd+, opens Preferences rather than Ghostty's
-/// config.
+/// About, Preferences, Hide, Quit, the edit keys, the zoom keys, full screen,
+/// and Minimize keep their standard shortcuts, and are discoverable, without a
+/// nib. The Edit items target the first responder: the terminal surface, or a
+/// text field in Settings or quick capture. A shortcut both an item and a
+/// consumed Ghostty binding claim is the item's, so Cmd+, opens Preferences
+/// rather than Ghostty's config, except the text-only edits below, which the
+/// terminal keeps.
 enum MainMenu {
     /// Sent up the responder chain to the app delegate.
     static let showPreferences = #selector(AppDelegate.showPreferences(_:))
@@ -13,8 +15,18 @@ enum MainMenu {
     static let showGuide = #selector(AppDelegate.showGuide(_:))
     static let relaunch = #selector(AppDelegate.relaunchFromMenu(_:))
     static let quickCapture = #selector(AppDelegate.showQuickCapture(_:))
+    static let reportIssue = #selector(AppDelegate.reportIssue(_:))
+    static let undo = Selector(("undo:"))
+    static let redo = Selector(("redo:"))
+    static let cut = #selector(NSText.cut(_:))
+    /// Edits only a text field answers. The terminal surface never runs these
+    /// items: its own keys reach tt, which owns undo and every other edit.
+    static let textOnlyEditActions: Set<Selector> = [undo, redo, cut]
+    /// tt's repository, which the guide and issue links are read from.
+    static let repositoryURL = URL(string: "https://github.com/sglavoie/tt")!
     /// The user guide, read on GitHub: an installed app carries no docs tree.
-    static let guideURL = URL(string: "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")!
+    static let guideURL = repositoryURL.appendingPathComponent("blob/main/docs/guide/README.md")
+    static let issuesURL = repositoryURL.appendingPathComponent("issues")
 
     /// `captureHotKey` is the live quick-capture shortcut, shown on its item.
     static func make(captureHotKey: HotKeyCombo? = nil) -> NSMenu {
@@ -43,10 +55,15 @@ enum MainMenu {
         appItem.submenu = appMenu
         main.addItem(appItem)
 
-        // The clipboard and the terminal selection only: tt owns every other
-        // edit, undo included, through its own keys.
+        // Undo, Redo, and Cut serve text fields alone; in the terminal they
+        // stay disabled and their keys go to tt, which owns every other edit.
         let editItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Undo", action: undo, keyEquivalent: "z")
+        let redoItem = editMenu.addItem(withTitle: "Redo", action: redo, keyEquivalent: "z")
+        redoItem.keyEquivalentModifierMask = [.shift, .command]
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Cut", action: cut, keyEquivalent: "x")
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
@@ -84,6 +101,7 @@ enum MainMenu {
         let helpItem = NSMenuItem()
         let helpMenu = NSMenu(title: "Help")
         helpMenu.addItem(withTitle: "tt Guide", action: showGuide, keyEquivalent: "")
+        helpMenu.addItem(withTitle: "Report an Issue…", action: reportIssue, keyEquivalent: "")
         helpItem.submenu = helpMenu
         main.addItem(helpItem)
         NSApp.helpMenu = helpMenu
@@ -95,6 +113,12 @@ enum MainMenu {
     static func showCaptureHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
         guard let appMenu = menu?.items.first?.submenu else { return }
         appMenu.items.first { $0.action == quickCapture }?.setShortcut(combo)
+    }
+
+    /// Whether `item` is one of the edits the terminal keeps for itself.
+    static func isTextOnlyEdit(_ item: NSMenuItem?) -> Bool {
+        guard let action = item?.action else { return false }
+        return textOnlyEditActions.contains(action)
     }
 
     private static let shortcutModifiers: NSEvent.ModifierFlags = [.shift, .control, .option, .command]

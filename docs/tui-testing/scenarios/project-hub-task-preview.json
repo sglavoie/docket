@@ -23,12 +23,17 @@
     { "type": "key", "label": "page back", "key": "ctrl+b" },
     { "type": "assert", "assert": "contains", "value": "✓ 2 done" },
 
-    { "type": "key", "label": "move to the parked project", "key": "j" },
-    { "type": "assert", "label": "a parked project's tasks are read from the tally the count pass retained", "assert": "contains", "value": "Mix migration audit" },
-
     { "type": "key", "label": "move to the project holding nothing", "key": "j" },
     { "type": "assert", "label": "an empty project says so rather than showing a blank pane", "assert": "contains", "value": "No tasks." },
     { "type": "assert", "assert": "not_contains", "value": "Mix migration audit" },
+
+    { "type": "key", "label": "pass Unfiled", "key": "j" },
+    { "type": "key", "label": "cross into the Parked group, below every active project", "key": "j" },
+    { "type": "assert", "label": "parked projects have a group of their own", "assert": "contains", "value": "PARKED PROJECTS" },
+    { "type": "assert", "label": "the parked preview names its lifecycle", "assert": "contains", "value": "Parked · 1 open · 1 task" },
+    { "type": "assert", "label": "a parked project's tasks are read from the tally the count pass retained", "assert": "contains", "value": "Mix migration audit" },
+    { "type": "assert", "label": "the heading says parked, so no chip repeats it", "assert": "not_contains", "value": "#parked" },
+    { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "jump to the archived tail", "key": "G" },
     { "type": "assert", "assert": "contains", "value": "Archived · 0 tasks" },

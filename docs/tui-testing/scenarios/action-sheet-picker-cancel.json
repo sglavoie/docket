@@ -17,7 +17,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Comments" },
     { "type": "assert", "label": "the search box is still open, so the next Esc leaves it", "assert": "contains", "value": "Esc cancel search" },
     { "type": "key", "label": "leave the search", "key": "esc" },
-    { "type": "assert", "label": "browsing again: j/k move and / searches", "assert": "contains", "value": "Enter run · Esc close · j/k navigate · / search" },
+    { "type": "assert", "label": "browsing again: j/k move", "assert": "contains", "value": "Enter run · Esc close · j/k navigate" },
+    { "type": "assert", "label": "and a sheet short enough to read whole does not advertise searching it", "assert": "not_contains", "value": "/ search" },
     { "type": "assert", "assert": "not_contains", "value": "Search:" },
     { "type": "key", "label": "j steps onto Delete without writing a query", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "› Delete  confirmation required" },
@@ -27,7 +28,7 @@
     { "type": "key", "label": "cancel the sheet", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
-    { "type": "assert", "assert": "contains", "value": "▶   [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": "◐   [rich-project] Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the attachment sigil opens the panel directly", "key": "&" },

@@ -15,6 +15,10 @@ import (
 func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	p.input = parsed.Text
 
+	p.parseDuplicateSingletons(parsed)
+	if p.err != nil {
+		return
+	}
 	p.parseRetiredTaskTypeTokens(parsed.TokensFor(textgrammar.FieldTaskType))
 	if p.err != nil {
 		return
@@ -389,5 +393,24 @@ func (p *quickCaptureParser) parseDestinationTokens(tokens []textgrammar.Token) 
 		}
 		p.result.Destination = destination
 		p.result.DestinationSet = true
+	}
+}
+
+// parseDuplicateSingletons refuses a repeated singleton such as `@fri @mon` or
+// `!1 !2`. The grammar already diagnoses it; without this stage the field
+// parsers would each keep one of the values and the other would vanish from the
+// draft, so the refusal names the later token, where the conflict begins.
+func (p *quickCaptureParser) parseDuplicateSingletons(parsed textgrammar.Result) {
+	for _, diagnostic := range parsed.Diagnostics {
+		tokens := parsed.TokensFor(diagnostic.Field)
+		if len(tokens) < 2 {
+			if p.failf("%s", diagnostic.Message) {
+				return
+			}
+			continue
+		}
+		if p.failTokenf(tokens[1], "%s", diagnostic.Message) {
+			return
+		}
 	}
 }

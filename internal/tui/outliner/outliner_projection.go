@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/theme"
+
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -487,6 +489,7 @@ func (m *OutlinerModel) allPrimaryGroupOrder() []models.WorkflowStateGroup {
 func (m *OutlinerModel) appendStateGroupForests(
 	group models.WorkflowStateGroup,
 	forests []stateGroupProjectForest,
+	lifted int,
 ) {
 	if len(forests) == 0 {
 		return
@@ -500,12 +503,13 @@ func (m *OutlinerModel) appendStateGroupForests(
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
-		Group:           OutlinerRowGroup{SectionKey: collapseKey},
-		IsSectionHeader: true,
-		SectionName:     group.Label(),
-		SectionCount:    total,
-		StateGroup:      group,
-		CollapseKey:     collapseKey,
+		Group:              OutlinerRowGroup{SectionKey: collapseKey},
+		IsSectionHeader:    true,
+		SectionName:        group.Label(),
+		SectionCount:       total,
+		StateGroup:         group,
+		SectionLiftedCount: lifted,
+		CollapseKey:        collapseKey,
 	})
 	if m.sectionCollapsed(collapseKey) {
 		for _, item := range forests {
@@ -935,19 +939,51 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		}
 	}
 
+	lifted := liftedLaneCounts(input, pinned, review.projected, today.suppressed, next.suppressed)
 	for _, group := range m.allPrimaryGroupOrder() {
 		switch group {
 		case models.StateGroupToday:
-			m.appendPlanningSection(today)
+			m.appendPlanningSection(today, lifted[group])
 		case models.StateGroupNext:
-			m.appendPlanningSection(next)
+			m.appendPlanningSection(next, lifted[group])
 		default:
-			m.appendStateGroupForests(group, grouped[group])
+			m.appendStateGroupForests(group, grouped[group], lifted[group])
 		}
 		if group == models.StateGroupDoing {
 			m.appendReviewSection(review)
 		}
 	}
+}
+
+// liftedLaneCounts counts, per All group, the members Pinned or Review drew
+// above instead of in that group. The workspace pulse counts a state or a plan
+// wherever its rows are drawn, so a lane header naming what was lifted out of it
+// is what lets `Inbox (1)` and `inbox 2` agree. A planned task belongs to its
+// plan's group, which is where All would otherwise have drawn it.
+func liftedLaneCounts(
+	input OutlinerModeInput,
+	pinned, review, today, next map[taskref.TaskIdentity]bool,
+) map[models.WorkflowStateGroup]int {
+	lifted := make(map[models.WorkflowStateGroup]int)
+	for _, candidate := range orderedModeTasks(input) {
+		task, project := candidate.row.Task, candidate.row.Project
+		if task == nil || project == nil {
+			continue
+		}
+		identity := taskref.For(task, project)
+		if !pinned[identity] && !review[identity] {
+			continue
+		}
+		switch {
+		case today[identity]:
+			lifted[models.StateGroupToday]++
+		case next[identity]:
+			lifted[models.StateGroupNext]++
+		default:
+			lifted[theme.TaskStateGroup(task)]++
+		}
+	}
+	return lifted
 }
 
 // projectedDoingTasks names the qualified rows claimed by the lifecycle Doing

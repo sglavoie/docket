@@ -163,7 +163,7 @@ func TestInlinePeekScheduleLineNamesOnlyWhatIsStillOwed(t *testing.T) {
 				NextCheckIn:       &checkIn,
 				CheckInRepeatDays: 7,
 			},
-			"Due: Fri Aug 14 (in 4 days) · Defer: " + chrome.FormatDeferDate(pending, now) + " · Check-in: Wed Aug 12 (in 2 days) · Repeat: 7d",
+			"Due: Fri Aug 14 (in 4 days) · Defer: " + chrome.FormatDeferDate(pending, now) + " · Check-in: Wed Aug 12 (in 2 days) · Repeat: every 7d",
 		},
 		{
 			// The row carries no deferral now, so Peek names the pending one — and

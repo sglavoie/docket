@@ -78,18 +78,48 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 
 	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
 	applicable := registry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
-	if len(help) != len(applicable) {
-		t.Fatalf("help items = %d, want one per applicable binding (%d)", len(help), len(applicable))
-	}
-	for index, item := range help {
-		descriptor := applicable[index]
-		if item.Description != descriptor.Label {
-			t.Errorf("help row %d describes %q, want the descriptor label %q", index, item.Description, descriptor.Label)
-		}
+	// One row per applicable operation, except a chord whose one display key
+	// compresses several presets (`wi/g/w/p/m/d/c`), which `?` spells as one row
+	// per preset so each letter is named.
+	index := 0
+	for _, descriptor := range applicable {
 		shortcut := registry.InputShortcutForOperation(operation.InputStrategySimplified, descriptor.ID)
-		if item.Key != shortcut {
-			t.Errorf("help row %d shows key %q, want the strategy display key %q", index, item.Key, shortcut)
+		var presets []operation.OperationKeyBinding
+		if strings.Contains(shortcut, "/") {
+			for _, binding := range strategy.Bindings {
+				if binding.OperationID == descriptor.ID && binding.HasPresetValue && binding.HintLabel != "" && len(binding.Sequence) > 0 {
+					presets = append(presets, binding)
+				}
+			}
 		}
+		if len(presets) == 0 {
+			if index >= len(help) {
+				t.Fatalf("help ran out at %s", descriptor.ID)
+			}
+			item := help[index]
+			index++
+			if item.Description != descriptor.Label {
+				t.Errorf("help row %d describes %q, want the descriptor label %q", index-1, item.Description, descriptor.Label)
+			}
+			if item.Key != shortcut {
+				t.Errorf("help row %d shows key %q, want the strategy display key %q", index-1, item.Key, shortcut)
+			}
+			continue
+		}
+		for _, binding := range presets {
+			if index >= len(help) {
+				t.Fatalf("help ran out at %s preset %v", descriptor.ID, binding.Sequence)
+			}
+			item := help[index]
+			index++
+			if wantKey := strings.Join(binding.Sequence, ""); item.Key != wantKey ||
+				!strings.HasPrefix(item.Description, descriptor.Label+": ") {
+				t.Errorf("help row %d = %q %q, want %q under %q", index-1, item.Key, item.Description, wantKey, descriptor.Label)
+			}
+		}
+	}
+	if index != len(help) {
+		t.Fatalf("help items = %d, want %d", len(help), index)
 	}
 }
 

@@ -111,30 +111,28 @@ func (m *AppModel) newOperationValuePicker(
 		// The opening cursor reads the due field and nothing else. The picker
 		// always starts in Due, so agreement about the deferral cannot move it and
 		// must not be able to withhold it either: a selection sharing a due preset
-		// but not a deferral still opens on that preset. A selection that disagrees
-		// about due has no shared value to name, which is the same answer as no due
-		// date at all — Due's Clear row.
+		// but not a deferral still opens on that preset. Targets agreeing on no due
+		// date open on Today, so one reflexive Enter writes a deadline; a selection
+		// that disagrees about due, or a date no preset spells, opens on Due's
+		// Clear row.
 		due, dueShared := valuepicker.CommonTaskDate(refs, false)
-		if !dueShared {
-			due = nil
-		}
-		selected := valuepicker.OperationDateSelectedID(due)
-		// The deadline being replaced is named beside the task, because no row
-		// shows it: a date no preset spells opens on Clear, where one reflexive
-		// Enter would erase a value the picker never displayed.
+		selected := valuepicker.OperationDateSelectedID(due, dueShared)
 		picker, err := valuepicker.NewOperationValuePickerModel(
 			request,
 			provider,
 			"Set Due, Defer, or Check-In",
 			subtitle,
-			valuepicker.OperationDateListSource(deferRefusalReason(refs)),
+			valuepicker.OperationDateListSource(deferRefusalReason(refs), dateFieldsSet(refs)),
 			false,
 			selected,
 		)
-		if err == nil && due != nil {
-			picker.SetTitleSuffix(" · due " + chrome.FormatWeekdayDate(*due, time.Now(), refs[0].Task.DueHasTime()))
+		if err != nil {
+			return nil, err
 		}
-		return picker, err
+		// No row shows a stored value, so the line under the title names the
+		// three the picker can replace before any Enter replaces one.
+		picker.SetContextLine(valuepicker.DateFieldsNowLine(refs, time.Now()))
+		return picker, nil
 	case operation.ValueProviderDueDate:
 		selected := []listsurface.ListItemID(nil)
 		if date, ok := valuepicker.CommonTaskDate(refs, false); ok {
@@ -145,7 +143,7 @@ func (m *AppModel) newOperationValuePicker(
 			provider,
 			"Set Due Date",
 			subtitle,
-			valuepicker.OperationDueDateListSource(),
+			valuepicker.OperationDueDateListSource(dateFieldsSet(refs).Due),
 			false,
 			selected,
 		)
@@ -393,4 +391,19 @@ func surfaceOperationGates() []operationhost.SurfaceGate {
 // file inside the subtree happens to hold the declaration.
 func SimplifiedInputStrategy() operation.InputStrategy {
 	return operation.SimplifiedInputStrategy()
+}
+
+// dateFieldsSet records which date fields any target holds a value in, which is
+// what keeps each field's Clear row committable: clearing a field no target
+// holds would write nothing.
+func dateFieldsSet(refs []taskref.TaskProjectRef) valuepicker.DateFieldsSet {
+	var set valuepicker.DateFieldsSet
+	for _, ref := range refs {
+		if ref.Task == nil {
+			continue
+		}
+		set.Due = set.Due || ref.Task.DueDate != nil
+		set.Defer = set.Defer || ref.Task.DeferredUntil != nil
+	}
+	return set
 }

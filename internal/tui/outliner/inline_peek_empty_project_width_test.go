@@ -217,7 +217,7 @@ func TestEmptyProjectPeekScrollUsesRenderedWidth(t *testing.T) {
 
 			frame := emptyProjectPeekFrame(t, outliner, narrow, test.name)
 			joined := strings.Join(frame, "\n")
-			if want := outliner.OutlinerEmptyMessage(); !strings.Contains(joined, want) {
+			if want := emptyMessageLead(outliner.OutlinerEmptyMessage()); !strings.Contains(joined, want) {
 				t.Fatalf("%s: the frame is not the empty state (%q):\n%s", test.name, want, joined)
 			}
 			if _, doc, ok := outliner.peekCursorDocument(); !ok || !doc.Paged() {

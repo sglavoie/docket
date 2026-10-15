@@ -205,8 +205,12 @@ func (m *AppModel) footerFeedbackLine() string {
 		return m.renderFooterMessageRow(theme.ErrorStatusStyle, icons.Get("error")+" "+sentenceCaseFeedback(m.feedback.err.Error()))
 	case m.feedback.message == "":
 		return ""
+	case m.feedback.info && m.feedback.severity == flashWarning:
+		return m.renderFooterMessageRow(theme.InfoStatusStyle, icons.Get("warning")+" "+m.feedback.message)
 	case m.feedback.info:
-		return m.renderFooterMessageRow(theme.InfoStatusStyle, "· "+m.feedback.message)
+		// Neutral information carries no mark: a leading dot read as a stray
+		// bullet, and the neutral color already sets it apart from ✓ and ✕.
+		return m.renderFooterMessageRow(theme.InfoStatusStyle, m.feedback.message)
 	default:
 		return m.renderFooterMessageRow(theme.SuccessStyle, icons.Get("success")+" "+m.feedback.message)
 	}

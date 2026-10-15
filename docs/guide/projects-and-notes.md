@@ -12,10 +12,14 @@ actions of the full Select Project surface below — the Project Hub, or Hub for
 short; `Enter` focuses the selected project. With no active pins it explains
 that `Esc` returns to the Outliner, where `P` still opens the full Hub.
 
-`P` opens Select Project on a live cursor, browsing active and archived
-projects. Each row carries its open task count beside its total and its tag
-chips, so a project whose tasks are all finished reads `0 open · 2 tasks`
-instead of passing for one with work left. Administering a project is one press:
+`P` opens Select Project on a live cursor, browsing active, parked, and archived
+projects under one heading each. Each row carries its open task count beside its
+total and its tag chips, so a project whose tasks are all finished reads `0 open ·
+2 tasks` instead of passing for one with work left; a project with missed
+deadlines adds them in the overdue color, `3 open · 2 overdue · 5 tasks`,
+counted as the Outliner's project headers count them. Parked projects are dimmed
+under their own Parked Projects heading and drop the `#parked` chip it would
+repeat. Administering a project is one press:
 `Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one
 under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
 Notes. `Ctrl+T` cycles between every project, only those holding open tasks, and
@@ -34,17 +38,22 @@ vocabulary.
 
 On a terminal wide enough for two panes, the right one belongs to the project
 under the cursor. It opens with the project's name and a single muted line —
-`Active · 4 open · 4 tasks · slug tt`, with ` · pinned` appended only when the
-project is pinned — followed by up to two lines of its description. The rest of
-the pane is the project's own tasks, every one of them, in tree order with the
-same connectors, badges, and indicators the Outliner draws, because they are the
-Outliner's rows. `Ctrl+F` and `Ctrl+B` page that list a pane at a time, `↑ N
+`Active · 4 open · 4 tasks · slug tt` (`Parked` or `Archived` for those), with
+` · pinned` appended only when the project is pinned — followed by up to two
+lines of its description. The rest of the pane is the project's own tasks, every
+one of them, in tree order with the same connectors, badges, and indicators the
+Outliner draws, because they are the Outliner's rows. A pane too narrow for a
+whole title sheds that row's reference count and review first, in the Outliner's
+own order, but never its deadline: an overdue date is what a glance at a project
+is for, so the title is cut before the date is dropped. `Ctrl+F` and `Ctrl+B` page that list a pane at a time, `↑ N
 more` and `↓ N more` count what sits off either end, and moving the list cursor
 swaps the tasks and returns to the top of the new project. A project holding
 nothing reads `No tasks.`, and one whose tasks could not be read says `Tasks not
-loaded.` rather than passing for the first. `<` and `>` move the divider between
-the two panes left and right, 5% of the width a press, between a quarter and
-three quarters of it; the position holds until `tt` exits, so reopening Select
+loaded.` rather than passing for the first. The list pane is no wider than its widest row
+needs, up to its default 55% share, so short project names leave the preview
+more room. `<` and `>` move the divider between
+the two panes left and right, 5% of the width a press from where it is drawn,
+between a quarter and three quarters of it; the position holds until `tt` exits, so reopening Select
 Project finds it where you left it. While you type a query they are just
 characters. Below the two-pane minimum width the pane is gone and the paging and
 split keys go quiet with it.
@@ -108,7 +117,8 @@ straight away. Once parked, the status names both ways back
 wherever the vanished rows left it, and the Outliner scope reads
 `Active Projects · 1 parked` so the hidden work is never silent.
 
-A parked project is not hidden away. It still appears in Select Project, still
+A parked project is not hidden away. It still appears in Select Project, under
+its own Parked Projects heading, still
 owns its Notes, and still accepts `%project` during capture and inline editing.
 `Enter` on it in Select Project opens it as an
 explicit one-project focus, anchored with the `parked` tag, and `Esc` returns

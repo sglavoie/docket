@@ -30,7 +30,7 @@
     { "type": "wait" },
     { "type": "key", "key": "y" },
     { "type": "wait" },
-    { "type": "assert", "label": "the workspace's only project leaves with everything it owned", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "label": "the workspace's only project leaves with everything it owned", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project]" },
     { "type": "assert", "label": "one transaction, so the strip offers one undo", "assert": "status_contains", "value": "Delete Project: Rich Project" },
     { "type": "assert", "assert": "status_contains", "value": "u undo" },

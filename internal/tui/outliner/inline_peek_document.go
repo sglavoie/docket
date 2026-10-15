@@ -447,10 +447,17 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 		fields.add("Defer", chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.NextCheckIn != nil {
-		fields.add("Check-in", chrome.FormatWeekdayDate(*task.NextCheckIn, now, false)+" ("+chrome.DayGloss(*task.NextCheckIn, now)+")")
+		// An arrived check-in is what the row calls `review`, so the gloss says
+		// so: one fact keeps one name across the row and its document.
+		gloss := chrome.DayGloss(*task.NextCheckIn, now)
+		if task.CheckInIsDueAt(now) && models.TaskNeedsAttention(task, now) {
+			gloss += ", review owed"
+		}
+		fields.add("Check-in", chrome.FormatWeekdayDate(*task.NextCheckIn, now, false)+" ("+gloss+")")
+		// "every" keeps a cadence from reading as the row's lateness `+Nd`.
 		repeat := "off"
 		if task.CheckInRepeatDays > models.CheckInRepeatOff {
-			repeat = fmt.Sprintf("%dd", task.CheckInRepeatDays)
+			repeat = fmt.Sprintf("every %dd", task.CheckInRepeatDays)
 		}
 		fields.add("Repeat", repeat)
 	}

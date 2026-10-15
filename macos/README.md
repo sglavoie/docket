@@ -61,7 +61,9 @@ while the running one is another binary than the next would be.
 
 If no tt is found at launch, a window says where it looked and offers Open
 Settings…, Try Again, and Quit; Try Again searches again without restarting
-the app. A Dock click or switching to tt.app brings that window back while no
+the app, and Return chooses it. When the terminal itself cannot start, the
+window names the config file and lists what Ghostty found wrong in it, and
+Return opens Settings; it never quits. A Dock click or switching to tt.app brings that window back while no
 tt runs.
 
 ### Environment
@@ -129,7 +131,8 @@ owns it. Settings refuses, and leaves unregistered, a combination the other tt
 shortcut already holds, a Command-only one a tt menu item uses, and the
 standard `Cmd+Q`, `Cmd+W`, `Cmd+C`, `Cmd+V`, `Cmd+X`, `Cmd+Z`, `Cmd+A`,
 `Cmd+Tab`, `Cmd+Space`, and `Cmd+,`; changing either shortcut checks the other
-again, so a warning the old combination caused clears.
+again, so a warning the old combination caused clears. Restore Default appears
+beside a shortcut that is not its default, or is off.
 
 It is stored as the `ttHotKey` default, lowercase and `+`-joined:
 
@@ -145,11 +148,12 @@ or Raycast rule that focused Ghostty for tt can go.
 ### Menu-bar icon and window
 
 Clicking the menu-bar icon shows or hides tt; right-click or Control-click
-opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Settings…, Launch at
-Login, About tt, tt Guide, Quit. Show/Hide and Quick Capture… show their global shortcuts while
-those are registered, as Quick Capture… does in the app menu; a shortcut that is
-off, or that another app holds, is not shown. The Dock icon's menu has Quick
-Capture… and Relaunch tt.
+opens its menu: Show/Hide, Quick Capture…, Relaunch tt, Settings… (`Cmd+,`),
+Launch at Login, About tt, tt Guide, Quit (`Cmd+Q`). Show/Hide and Quick
+Capture… show their global shortcuts while those are registered, as Quick
+Capture… does in the app menu; a shortcut that is off, or that another app
+holds, is not shown. The Dock icon's menu has the same pulse items, then
+Show/Hide, Quick Capture…, and Relaunch tt.
 Once tt has reported its pulse, the menu leads with one item per count still
 owed — `Inbox 2`, `Today 3`, `Overdue 1` — leaving out any count at zero and
 all of them when all three are. Choosing one shows tt in that mode, as its mode
@@ -160,12 +164,15 @@ mode it was in. The icon's tooltip is tt's window title, the pulse as one line
 line, without the title, as its value, and says what it does: click to show or
 hide tt, Control-click for the menu. The count items read as they are shown.
 Closing the window hides it and keeps the session; the next show returns to
-it. Hiding leaves full screen first, and hides the app only when no other tt
-window, such as Settings or About, is open. The window resizes in whole cells
+it. Hiding leaves full screen first, and the next show enters it again; it
+hides the app only when no other tt window, such as Settings or About, is
+open. Showing brings the window to the Space you are on rather than switching
+to the Space it was last on; a full-screen window keeps its own Space. The window resizes in whole cells
 and never below 80×24 of them, following the cell size as the font zooms. Settings also chooses whether tt appears in the Dock and menu bar, the
 Dock only, or the menu bar only (`ttActivationPolicy`: `regular`, `dock`, or
 `accessory`). With the Dock only, there is no menu-bar icon; its commands stay
-in the app menu and the Dock icon's menu.
+in the app menu and the Dock icon's menu. With the menu bar only, the overdue
+count the Dock icon would carry sits beside the menu-bar icon instead.
 
 When `tt` exits cleanly (`q`), the window hides and the next show starts a
 fresh `tt`, or, if Settings says so, the app quits (`ttExitBehavior`:
@@ -220,7 +227,17 @@ selection, so typing resumes where you left off; Select All still replaces the
 whole draft. A successful capture clears the draft and its selection. With suggestions
 closed, `Ctrl+N` captures and keeps the field open for another task; Enter keeps
 its usual automatic dismissal. A refused capture preserves the draft for either
-key, and a pending capture cannot be submitted twice. The
+key, and a pending capture cannot be submitted twice. Once tt has received
+a capture or an undo, it has five seconds to answer; after that the panel
+stops waiting, keeps the draft, and says the capture may still arrive in tt,
+so check there before sending it again. The five seconds do not start while
+tt is still starting for a capture: that wait lasts until tt's control socket
+appears, up to 30 seconds, after which the panel says tt did not start. If tt does answer late, a capture still clears the draft it
+took and can be undone with `Cmd+Z`. Esc or clicking elsewhere stops waiting
+sooner, also keeping the draft; tt starting for a capture does not count as
+clicking elsewhere. VoiceOver names the field Quick capture and the list
+Suggestions, and announces each status line. The panel always opens centred
+on the screen under the pointer and cannot be dragged. The
 menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
@@ -263,10 +280,13 @@ one alert per task: clicking it shows tt with the cursor on that task, and its
 buttons act without leaving the app you are in — Acknowledge, offered only where
 `R` would accept it, Done, which commits it as `wd` would, and Defer 1 Hour. More arrive as one summary that brings tt
 forward. macOS asks for permission on the first one, and none is shown while tt
-is already in front. Settings turns them off (`ttNotifications`), at once.
+is already in front. Settings turns them off (`ttNotifications`), at once. If
+macOS has notifications for tt.app turned off, Settings says so under the
+toggle and offers Open Notification Settings.
 
-The Dock icon carries the overdue count from tt's pulse, and none at zero
-(`ttDockBadge`, also in Settings):
+The Dock icon carries the overdue count from tt's pulse, and none at zero, or
+the menu-bar icon does when tt has no Dock icon (`ttDockBadge`, also in
+Settings):
 
 ```bash
 defaults write io.github.sglavoie.tt ttNotifications -bool false
@@ -291,7 +311,8 @@ syntax, and not Ghostty.app's config. To share that one, write:
 config-file = ~/.config/ghostty/config
 ```
 
-Settings has Open and Reload for it. The app always overrides `command`,
+Settings has Open and Reload for it; Reload says "Reloaded." or lists what
+Ghostty found wrong in the file. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 tt runs in.
 
@@ -317,11 +338,14 @@ session only, so a tt started from a terminal keeps the theme it saved, and
 
 ### Menus
 
-Edit has Copy, Paste, and Select All, and nothing else: tt owns every other
-edit, undo included, through its own keys. View names the zoom keys (Actual
-Size, Zoom In, Zoom Out) and Enter Full Screen (`Ctrl+Cmd+F`); Window has
-Minimize, Zoom, Close, and Bring All to Front; and Help › tt Guide opens the
-user guide on GitHub.
+Edit has Undo, Redo, Cut, Copy, Paste, and Select All. Undo, Redo, and Cut
+serve text fields, in Settings and quick capture; in the terminal they stay
+disabled and `Cmd+Z`, `Shift+Cmd+Z`, and `Cmd+X` go to tt as before, since tt
+owns every edit there, undo included, through its own keys. View names the
+zoom keys (Actual Size, Zoom In, Zoom Out) and Enter Full Screen
+(`Ctrl+Cmd+F`); Window has Minimize, Zoom, Close, and Bring All to Front; and
+Help has tt Guide, which opens the user guide on GitHub, and Report an Issue…,
+which opens the repository's issues.
 The app menu also carries Relaunch tt. Peek's attachment links (OSC 8) open
 with `Cmd`-click.
 

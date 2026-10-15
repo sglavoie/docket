@@ -141,7 +141,8 @@ turns amber, a warning rather than a missed deadline. Moving a task to Waiting w
 `ww` opens nothing: the move commits, and when the task has no check-in the
 footer says so — `No check-in: <task> · Ctrl+M: Set up check-ins` — naming the
 keyless Task menu entry, which `Ctrl+M` opens, that schedules one rather than
-asking for a date there and then.
+asking for a date there and then. It is a reminder, not a refrain: the first such
+commit in a session says it, and later ones stay quiet.
 
 Waiting by itself is quiet. The badge says where the task is, and that is the
 whole signal: no background tint, no age competing for the eye, and nothing that
@@ -298,8 +299,10 @@ is the collection you committed the task to, Today or Next; the status is the
 lifecycle state it holds. They are two answers, not one, which is why a task
 planned for Today reads `Plan: Today · Status: Backlog` and a task in no
 collection has no plan half at all. Then a schedule line reading
-`Due: Fri Aug 14 (in 4 days) · Defer: Sep 2 · Check-in: Thu Aug 20 (in 10 days) · Repeat: 7d`
-with empty fields omitted too (a one-off schedule reads `Repeat: off`), the resume
+`Due: Fri Aug 14 (in 4 days) · Defer: Sep 2 · Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d`
+with empty fields omitted too (a one-off schedule reads `Repeat: off`, and a
+check-in whose day has arrived adds `review owed` to its gloss, the word its row
+uses), the resume
 note, the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
 list, the task's context, its tags, and last of all a history line reading

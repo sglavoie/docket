@@ -289,17 +289,13 @@ func TestPeekScrollingIsOfferedOnlyWhereItCanMove(t *testing.T) {
 		t.Fatalf("top can scroll down = %v, up = %v", outliner.CanScrollPeek(1), outliner.CanScrollPeek(-1))
 	}
 	hints := outliner.peekScrollHints()
-	if len(hints) != 2 {
-		t.Fatalf("top hints = %v, want the two forward movements alone", hintEntries(hints))
+	if len(hints) != 1 {
+		t.Fatalf("top hints = %v, want the half-page forward movement alone", hintEntries(hints))
 	}
 	for _, hint := range hints {
 		if strings.HasSuffix(hint.Label, "back") || strings.HasSuffix(hint.Label, "page up") {
 			t.Fatalf("top offered a backward movement: %v", hintEntries(hints))
 		}
-	}
-	if hints[0].Priority >= hints[1].Priority {
-		t.Fatalf("hint priorities = %d then %d, want the half page retained first",
-			hints[0].Priority, hints[1].Priority)
 	}
 
 	for outliner.PagePeek(1) { //nolint:revive // Reaching the end is the point of the loop.
@@ -312,8 +308,8 @@ func TestPeekScrollingIsOfferedOnlyWhereItCanMove(t *testing.T) {
 		t.Fatal("scrolling past the end moved")
 	}
 	hints = outliner.peekScrollHints()
-	if len(hints) != 2 {
-		t.Fatalf("end hints = %v, want the two backward movements alone", hintEntries(hints))
+	if len(hints) != 1 {
+		t.Fatalf("end hints = %v, want the half-page backward movement alone", hintEntries(hints))
 	}
 	for _, hint := range hints {
 		if strings.HasSuffix(hint.Label, "more") || strings.HasSuffix(hint.Label, "page down") {

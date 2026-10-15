@@ -60,6 +60,13 @@ type ListSurfaceRenderConfig struct {
 	// ListWidthPercent is the list pane's share of a two-pane split; zero means
 	// ListSurfaceDefaultListWidthPercent. Both panes' minimum widths still win.
 	ListWidthPercent int
+	// ListContentWidth is the widest row the list pane draws, as
+	// ListSurfaceModel.NaturalRowWidth measures it. Under the default split it
+	// narrows the list pane to that width, never below ListMinWidth and never
+	// past the default share, so the columns a short list would leave blank go to
+	// the preview instead. An explicit ListWidthPercent is a split the user moved
+	// and wins outright. Zero keeps the plain percentage split.
+	ListContentWidth int
 	// PreviewBody renders pane-owned lines below the preview header, at the
 	// resolved pane width and within the rows the header left. It returns lines
 	// already fitted to width; the renderer appends them verbatim. ListPreview
@@ -137,10 +144,12 @@ func normalizeListSurfaceRenderConfig(
 	if config.PreviewMinWidth <= 0 {
 		config.PreviewMinWidth = ListSurfaceDefaultPreviewMinWidth
 	}
-	if config.ListWidthPercent <= 0 {
-		config.ListWidthPercent = ListSurfaceDefaultListWidthPercent
+	// A zero percent stays zero: it is what tells the geometry the split is the
+	// default one, which ListContentWidth may narrow.
+	if config.ListWidthPercent > 0 {
+		config.ListWidthPercent = min(max(config.ListWidthPercent, ListSurfaceMinListWidthPercent), ListSurfaceMaxListWidthPercent)
 	}
-	config.ListWidthPercent = min(max(config.ListWidthPercent, ListSurfaceMinListWidthPercent), ListSurfaceMaxListWidthPercent)
+	config.ListContentWidth = max(config.ListContentWidth, 0)
 	return config
 }
 
@@ -161,7 +170,9 @@ func listSurfaceRenderLayout(
 	return ListSurfaceLayoutWide, preview
 }
 
-// ListSurfacePreviewGeometry is the one copy of the two-pane split. A preview
+// ListSurfacePreviewGeometry is the one copy of the two-pane split. Under the
+// default split a list whose rows are narrower than its share gives the spare
+// columns to the preview (ListContentWidth). A preview
 // width of zero means the terminal cannot satisfy both panes' minimums and the
 // layout falls back to the list alone, so a caller deciding whether to advertise
 // a key that only acts inside the preview asks this rather than re-deriving the
@@ -175,7 +186,14 @@ func ListSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
 	if config.Width < required {
 		return config.Width, 0
 	}
-	listWidth := max(config.Width*config.ListWidthPercent/100, config.ListMinWidth)
+	percent := config.ListWidthPercent
+	if percent <= 0 {
+		percent = ListSurfaceDefaultListWidthPercent
+	}
+	listWidth := max(config.Width*percent/100, config.ListMinWidth)
+	if config.ListWidthPercent <= 0 && config.ListContentWidth > 0 {
+		listWidth = min(listWidth, max(config.ListContentWidth, config.ListMinWidth))
+	}
 	previewWidth := config.Width - listWidth - listSurfacePaneGapWidth
 	if previewWidth < config.PreviewMinWidth {
 		previewWidth = config.PreviewMinWidth
@@ -290,6 +308,37 @@ func renderListSurfaceEmpty(empty ListEmptyContext, width int) string {
 // ListSelectionMark surface.
 const selectionMark = "✓"
 
+// NaturalRowWidth is the width the widest row would draw at with nothing
+// truncated: the cursor and checkbox columns, the marker, the primary text, the
+// gap, and the secondary text, as RenderListSurfaceRow lays them out, and every
+// category header. It reads every source row rather than the rows a query left,
+// so a split sized from it holds still while the user types.
+func (model *ListSurfaceModel) NaturalRowWidth() int {
+	if model == nil {
+		return 0
+	}
+	widest := 0
+	for _, category := range model.categories {
+		widest = max(widest, lipgloss.Width(strings.ToUpper(category.Label)))
+	}
+	chromeWidth := 2 // the cursor column
+	if model.config.SelectionMode == ListSelectionMulti {
+		chromeWidth += lipgloss.Width("[ ] ")
+	}
+	for _, item := range model.items {
+		width := chromeWidth + lipgloss.Width(item.PrimaryMarker) + lipgloss.Width(item.PrimaryText)
+		secondary := item.SecondaryText
+		if !item.Enabled() {
+			secondary = strings.TrimPrefix(secondary+" · disabled: "+item.DisabledReason, " · ")
+		}
+		if secondary != "" {
+			width += lipgloss.Width(ListTextGap) + lipgloss.Width(secondary)
+		}
+		widest = max(widest, width)
+	}
+	return widest
+}
+
 func RenderListSurfaceRow(
 	row ListSurfaceRow,
 	selectionMode ListSelectionMode,
@@ -357,11 +406,18 @@ func RenderListSurfaceRow(
 		}
 		styled := chrome(marker) + item.PrimaryMarker + item.PrimaryStyle.Render(layout.Primary)
 		if layout.Secondary != "" {
-			styled += chrome(layout.Gap + layout.Secondary)
+			if row.Selected {
+				styled += chrome(layout.Gap + layout.Secondary)
+			} else {
+				styled += layout.Gap + paintSecondaryAccent(item, layout.Secondary)
+			}
 		}
 		return textfit.TruncateToVisualWidth(styled, width)
 	}
 	line := marker + item.PrimaryMarker + layout.Text()
+	if item.Enabled() && !row.Selected && !row.Cursor && layout.Secondary != "" {
+		line = marker + item.PrimaryMarker + layout.Primary + layout.Gap + paintSecondaryAccent(item, layout.Secondary)
+	}
 	if !item.Enabled() {
 		line = theme.MutedStyle.Render(line)
 	}
@@ -372,6 +428,21 @@ func RenderListSurfaceRow(
 		line = chrome.SelectedLine(line, width)
 	}
 	return textfit.TruncateToVisualWidth(line, width)
+}
+
+// paintSecondaryAccent paints the item's accent run inside the secondary text
+// the layout kept. A run the truncation cut is left plain, because a clipped
+// count painted as a warning reads as a different number.
+func paintSecondaryAccent(item ListItem, secondary string) string {
+	if item.SecondaryAccent == "" || item.SecondaryAccentStyle == nil {
+		return secondary
+	}
+	index := strings.Index(secondary, item.SecondaryAccent)
+	if index < 0 {
+		return secondary
+	}
+	end := index + len(item.SecondaryAccent)
+	return secondary[:index] + item.SecondaryAccentStyle.Render(item.SecondaryAccent) + secondary[end:]
 }
 
 func renderMatchedListSurfaceRow(row ListSurfaceRow, marker string, layout ListTextLayout, width int) string {

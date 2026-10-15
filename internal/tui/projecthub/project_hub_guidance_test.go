@@ -60,7 +60,7 @@ func TestProjectHubGuidanceFollowsBrowseSearchSelectionAndActions(t *testing.T) 
 		t.Fatal("project action sheet did not open")
 	}
 	spec, ok = hub.ContextualGuidance()
-	assertGuidanceContains(t, "project actions", spec, ok, "Enter run", "Esc close", "/ search")
+	assertGuidanceContains(t, "project actions", spec, ok, "Enter run", "Esc close")
 	_, _ = hub.Update(syntheticKey('/'))
 	spec, ok = hub.ContextualGuidance()
 	assertGuidanceContains(t, "project action search", spec, ok, "Enter apply search", "Esc cancel search")

@@ -559,18 +559,19 @@ func (m *OutlinerModel) PagePeek(direction int) bool {
 	return m.scrollPeek(direction * m.peekDockGeometry().FullPageRows())
 }
 
-// peekScrollHints names the movements that can actually happen, half page first
-// because it is the smaller commitment and the one a reader reaches for. The
-// Peek footer is a hand-written hint list rather than the strategy's ranks, so
-// these read their keys off the strategy instead of spelling them: the hint
-// cannot drift from the binding it teaches. The full-page pair carries the later
-// priority, so a narrow terminal keeps the shorter step rather than half of each.
+// peekScrollHints names the movements that can actually happen. Only the half
+// page is offered: it is the smaller commitment and the one a reader reaches for,
+// and advertising Ctrl+F and Ctrl+B beside it spent a footer entry restating the
+// same direction. The full-page pair still answers and `?` help still names it.
+// The Peek footer is a hand-written hint list rather than the strategy's ranks,
+// so these read their keys off the strategy instead of spelling them: the hint
+// cannot drift from the binding it teaches.
 func (m *OutlinerModel) peekScrollHints() []chrome.GuidanceHint {
 	peek := m.PeekCommandContext()
 	if !peek.Visible {
 		return nil
 	}
-	hints := make([]chrome.GuidanceHint, 0, 4)
+	hints := make([]chrome.GuidanceHint, 0, 2)
 	if peek.CanPageDown {
 		hints = append(hints, chrome.NewGuidanceHint(
 			m.peekOperationKey(operation.OperationCorePeekHalfPageDown, "Ctrl+D")+" more", peekHalfPageHintPriority, false))
@@ -579,25 +580,12 @@ func (m *OutlinerModel) peekScrollHints() []chrome.GuidanceHint {
 		hints = append(hints, chrome.NewGuidanceHint(
 			m.peekOperationKey(operation.OperationCorePeekHalfPageUp, "Ctrl+U")+" back", peekHalfPageHintPriority, false))
 	}
-	if peek.CanPageDown {
-		hints = append(hints, chrome.NewGuidanceHint(
-			m.peekOperationKey(operation.OperationCorePeekPageDown, "Ctrl+F")+" page down", peekFullPageHintPriority, false))
-	}
-	if peek.CanPageUp {
-		hints = append(hints, chrome.NewGuidanceHint(
-			m.peekOperationKey(operation.OperationCorePeekPageUp, "Ctrl+B")+" page up", peekFullPageHintPriority, false))
-	}
 	return hints
 }
 
-// The two priorities the Peek guidance spends on movement. Both sit under the
-// row of ordinary optional hints, and the full page sits under the half page,
-// because a reader who only has room for one offer is better served by the step
-// that cannot overshoot.
-const (
-	peekHalfPageHintPriority = 9
-	peekFullPageHintPriority = 11
-)
+// The priority the Peek guidance spends on movement: under the row of ordinary
+// optional hints.
+const peekHalfPageHintPriority = 9
 
 // peekDisplayKey is the key Peek answers to when the registry cannot be asked.
 // The guidance and the header projection both spell it through here rather than

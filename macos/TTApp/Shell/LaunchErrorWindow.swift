@@ -35,8 +35,9 @@ enum LaunchErrorWindow {
         }
         let quit = NSButton(title: "Quit", target: NSApp, action: #selector(NSApplication.terminate(_:)))
         buttons.append(quit)
-        // Return retries when a retry is offered; otherwise it quits.
-        (tryAgain == nil ? quit : buttons[buttons.count - 2]).keyEquivalent = "\r"
+        // Return retries when a retry is offered, else opens Settings; it
+        // never quits, so a reflexive Return cannot end the app.
+        defaultButton(in: buttons, tryAgainOffered: tryAgain != nil)?.keyEquivalent = "\r"
 
         let row = NSStackView(views: buttons)
         row.orientation = .horizontal
@@ -61,6 +62,13 @@ enum LaunchErrorWindow {
         window.contentView = content
         window.center()
         return window
+    }
+
+    /// The button Return presses: Try Again when offered, else Open
+    /// Settings…, and never Quit.
+    static func defaultButton(in buttons: [NSButton], tryAgainOffered: Bool) -> NSButton? {
+        let title = tryAgainOffered ? "Try Again" : "Open Settings…"
+        return buttons.first { $0.title == title }
     }
 
     /// A push button that runs a closure, so the window needs no target object.

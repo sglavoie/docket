@@ -59,11 +59,23 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 	if len(handled) != len(pathKeys) {
 		t.Fatalf("handled keys = %d, keys on declared paths = %d", len(handled), len(pathKeys))
 	}
-	// One help row per applicable operation, so a preset family collapses instead
-	// of documenting the same operation once per spelling.
+	// One help row per applicable operation, except a chord whose one display key
+	// compresses several labeled presets (`wi/g/w/p/m/d/c`): `?` names each of
+	// those letters on its own row instead of leaving initials to decode.
+	presetRows := make(map[operation.OperationID]int)
+	for _, binding := range strategy.Bindings {
+		if documented[binding.OperationID] && binding.HasPresetValue && binding.HintLabel != "" &&
+			len(binding.Sequence) > 0 && strings.Contains(binding.DisplayKey, "/") {
+			presetRows[binding.OperationID]++
+		}
+	}
+	want := len(documented)
+	for _, rows := range presetRows {
+		want += rows - 1
+	}
 	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
-	if len(help) != len(documented) {
-		t.Fatalf("help items = %d, applicable bound operations = %d", len(help), len(documented))
+	if len(help) != want {
+		t.Fatalf("help items = %d, want %d (applicable bound operations %d plus spelled-out presets)", len(help), want, len(documented))
 	}
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
 		operation.InputStrategySimplified, simplifiedOperationContext(),

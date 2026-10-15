@@ -25,7 +25,9 @@ func JoinGroupParts(parts ...string) string {
 const EmptyStateFiltered = "No tasks match filters. Press fx to clear filters."
 
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
-const EmptyStateNoTasks = "No tasks yet. Press a to capture one."
+// It closes on one capture line spelling three sigils, so a first launch shows
+// what the composer reads rather than only that it exists.
+const EmptyStateNoTasks = "No tasks yet. Press a to capture one, such as: Call the bank !1 @fri #errands"
 
 // OrderedTaskTags is the one display order both tag surfaces render: every
 // non-semantic tag first in alphabetical order, then every semantic tag, also

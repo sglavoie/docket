@@ -38,11 +38,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let toggleItem = NSMenuItem(title: "Show tt", action: #selector(toggle(_:)), keyEquivalent: "")
     private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
     private let relaunchItem = NSMenuItem(title: "Relaunch tt", action: #selector(relaunch(_:)), keyEquivalent: "")
-    private let preferencesItem = NSMenuItem(title: "Settings…", action: #selector(preferences(_:)), keyEquivalent: "")
+    // ⌘, and ⌘Q are shown as in the app menu, and answer while this menu is open.
+    private let preferencesItem = NSMenuItem(title: "Settings…", action: #selector(preferences(_:)), keyEquivalent: ",")
     private let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(launchAtLogin(_:)), keyEquivalent: "")
     private let aboutItem = NSMenuItem(title: "About tt", action: #selector(about(_:)), keyEquivalent: "")
     private let guideItem = NSMenuItem(title: "tt Guide", action: #selector(guide(_:)), keyEquivalent: "")
-    private let quitItem = NSMenuItem(title: "Quit tt", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+    private let quitItem = NSMenuItem(title: "Quit tt", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
     init(delegate: StatusItemDelegate, statusBar: NSStatusBar = .system) {
         self.delegate = delegate
@@ -98,6 +99,28 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         image.isTemplate = true
         image.accessibilityDescription = "tt"
         return image
+    }
+
+    /// The overdue count beside the icon, for when there is no Dock icon to
+    /// carry it; nil shows the icon alone. VoiceOver already reads the pulse
+    /// as the button's value, so the count adds no label of its own.
+    func showCount(_ count: String?) {
+        guard let button = statusItem.button else { return }
+        if let count, !count.isEmpty {
+            statusItem.length = NSStatusItem.variableLength
+            button.imagePosition = .imageLeading
+            button.title = count
+        } else {
+            button.title = ""
+            button.imagePosition = .imageOnly
+            statusItem.length = NSStatusItem.squareLength
+        }
+    }
+
+    /// The count shown beside the icon, or nil.
+    var shownCount: String? {
+        let title = statusItem.button?.title ?? ""
+        return title.isEmpty ? nil : title
     }
 
     /// Brings the menu's titles and states in line with the app.

@@ -139,6 +139,14 @@ type ListItem struct {
 	// PrimaryText. Unlike PrimaryStyle it survives the cursor row, because
 	// SelectedLine strips styling but not characters.
 	PrimaryMarker string
+	// SecondaryAccent names one run of SecondaryText to paint in
+	// SecondaryAccentStyle, such as a count that is a warning rather than a
+	// description. It is presentation metadata too: the secondary text stays
+	// plain for measuring, truncating, and matching, and the accent is painted
+	// only where the run survived the row's truncation whole and no other paint
+	// owns the line (the cursor, a selection, a disabled row, a match highlight).
+	SecondaryAccent      string
+	SecondaryAccentStyle *lipgloss.Style
 	// Match positions are rune offsets in the plain texts, supplied by adapters
 	// that filter outside this surface. They affect rendering alone.
 	PrimaryMatchPositions   []int

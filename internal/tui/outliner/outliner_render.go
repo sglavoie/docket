@@ -207,6 +207,7 @@ func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) 
 type sectionHeaderOpts struct {
 	Name        string
 	Count       int
+	Lifted      int // members drawn in a promoted lane above; zero says nothing
 	Collapsed   bool
 	AccentColor lipgloss.Style // applied to the name portion
 	Width       int            // if > 0, trailing ─ fill is added
@@ -234,6 +235,9 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	gutter = opts.Cursor.bar(theme.MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
+	if opts.Lifted > 0 {
+		content += " " + theme.MutedStyle.Render(fmt.Sprintf("+%d above", opts.Lifted))
+	}
 
 	if opts.Width > 0 {
 		visible := lipgloss.Width(gutter) + lipgloss.Width(content)
@@ -297,6 +301,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
 		Name:        displayName,
 		Count:       row.SectionCount,
+		Lifted:      row.SectionLiftedCount,
 		Collapsed:   m.IsSectionRowCollapsed(row),
 		AccentColor: sectionStyle,
 		Prefix:      prefix,
@@ -394,8 +399,9 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 // project group holds, so folding the group does not hide what is urgent in it.
 // The suffix degrades before the row is truncated — today drops first, then
 // overdue — because a clipped count reads as a different number. Each chip
-// carries a mark so it cannot be mistaken for the bare group size beside it: the
-// Today count is spelled as its capture sigil, since Due mode heads its own
+// carries a word so it cannot be mistaken for the parenthesized group size beside
+// it. The Today count says "today" in the Plan vocabulary the rest of the chrome
+// speaks, never its capture sigil, and no clock, since Due mode heads its own
 // sections with ◷ and a clock there read as a deadline.
 // budget is the columns the content region has, which is the row width less the
 // gutter the cursor highlight owns.
@@ -411,7 +417,7 @@ func appendProjectHeaderPressure(content string, row OutlinerRow, budget int) st
 		parts = append(parts, theme.ProjectPressureOverdueStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
 	}
 	if row.TodayCount > 0 {
-		parts = append(parts, theme.ProjectPressureTodayStyle.Render(fmt.Sprintf("$today %d", row.TodayCount)))
+		parts = append(parts, theme.ProjectPressureTodayStyle.Render(fmt.Sprintf("today %d", row.TodayCount)))
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
 		suffix := "  " + strings.Join(parts, theme.MutedStyle.Render(" · "))
@@ -1231,12 +1237,21 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 			MedianPerDay: m.CompletionActivity.MedianPerDay(),
 		}
 	}
-	return pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
+	spec := pulse.OperationalTitleSpec{
 		Scope: theme.TitleStyle.Render(m.outlinerScopeLabel()),
 		Mode:  chrome.OperationalTitleModeSegment(m.ActiveOutlinerModeEntry()),
 		Pace:  pace,
 		Pulse: &workspacePulse,
-	}, max(width, 1))
+	}
+	// A wide title spends its blank middle on the active mode's Tab neighbours,
+	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
+	// fits unshortened; anywhere narrower the lone active badge stands.
+	strip := spec
+	strip.Mode = chrome.OperationalTitleModeStrip(m.ActiveOutlinerMode())
+	if pulse.OperationalTitleFitsWhole(strip, width) {
+		spec = strip
+	}
+	return pulse.RenderOperationalTitle(spec, max(width, 1))
 }
 
 // writeOutlinerHeader is the one place the header's rows are written, so both
@@ -1379,6 +1394,9 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 				verb = "do"
 			}
 			return fmt.Sprintf("No open tasks match search %q, but %s %s. Press %s.", m.SearchQuery(), hint, verb, m.searchExitClause())
+		}
+		if hint := m.Search.eliminationHint; hint != "" {
+			return fmt.Sprintf("No tasks match search %q. %s Press %s.", m.SearchQuery(), hint, m.searchExitClause())
 		}
 		return fmt.Sprintf("No tasks match search %q. Press %s.", m.SearchQuery(), m.searchExitClause())
 	case OutlinerEmptySearchFiltered:

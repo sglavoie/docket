@@ -86,8 +86,11 @@ func (model *OperationValuePickerModel) sectionedDatePicker() bool {
 
 // switchDateSection moves the cursor to the first matching row in the adjacent
 // visible section, skipping sections the query emptied. Tab moves forward and
-// Shift+Tab backward. Disabled rows remain reachable; with only the current
-// section matching, the cursor and query stay untouched.
+// Shift+Tab backward. It lands on that section's first enabled match, so a
+// Clear row disabled for an empty field is stepped over, and falls back to its
+// first match when every row is disabled, which is how a section a terminal task
+// refuses is still reached and its reason read. With only the current section
+// matching, the cursor and query stay untouched.
 func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg {
 	current, ok := model.dateSectionUnderCursor()
 	if !ok {
@@ -103,12 +106,22 @@ func (model *OperationValuePickerModel) switchDateSection(direction int) tea.Msg
 	for step := 1; step < len(datePickerSections); step++ {
 		targetIndex := (currentIndex + direction*step + len(datePickerSections)) % len(datePickerSections)
 		target := datePickerSections[targetIndex]
+		first := listsurface.ListItemID("")
 		for _, match := range model.surface.Matches() {
 			section, ok := dateRowSection(match.Item)
 			if !ok || section != target {
 				continue
 			}
-			model.surface.SetCursorToID(match.Item.ID)
+			if match.Item.Enabled() {
+				model.surface.SetCursorToID(match.Item.ID)
+				return nil
+			}
+			if first == "" {
+				first = match.Item.ID
+			}
+		}
+		if first != "" {
+			model.surface.SetCursorToID(first)
 			return nil
 		}
 	}

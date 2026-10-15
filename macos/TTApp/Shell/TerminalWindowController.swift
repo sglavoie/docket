@@ -28,6 +28,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     var onHiddenFailure: ((String) -> Void)?
     /// Set while hide() waits for full screen to end before ordering out.
     private var hidesAfterFullScreen = false
+    /// Set while full screen is being left, by hide() or a show() that
+    /// interrupted it, until AppKit says it has ended.
+    private var exitingFullScreen = false
+    /// The window was full screen when last hidden, so the next show
+    /// returns to it.
+    private(set) var restoresFullScreen = false
     private let container = NSStackView()
     private(set) var failureBanner: NSView?
     /// While the banner shows, Return relaunches even with the dead surface
@@ -78,6 +84,10 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         window.title = "tt"
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
+        // Summoned onto the Space in use, as the shortcut's job is to bring tt
+        // to you rather than take you to the Space it was last on.
+        window.collectionBehavior.insert(.moveToActiveSpace)
+        window.collectionBehavior.insert(.fullScreenPrimary)
         window.delegate = self
 
         // The title bar shows the window's background, which follows the
@@ -124,6 +134,17 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         if let surfaceView {
             window.makeFirstResponder(surfaceView)
         }
+        reenterFullScreenIfHiddenFromIt()
+    }
+
+    /// A window hidden from full screen goes back to it once shown; while the
+    /// exit that hiding began is still running, its end does this instead.
+    private func reenterFullScreenIfHiddenFromIt() {
+        guard restoresFullScreen, !exitingFullScreen, window.isVisible else { return }
+        restoresFullScreen = false
+        if !window.styleMask.contains(.fullScreen) {
+            window.toggleFullScreen(nil)
+        }
     }
 
     /// Orders the window out and hides the app, so focus returns to whatever
@@ -134,9 +155,14 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     func hide() {
         presentsPendingStart = false
         if window.styleMask.contains(.fullScreen) {
+            restoresFullScreen = true
             hidesAfterFullScreen = true
+            exitingFullScreen = true
             window.toggleFullScreen(nil)
             return
+        }
+        if !exitingFullScreen {
+            restoresFullScreen = false
         }
         finishHide()
     }
@@ -349,8 +375,11 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {
+        exitingFullScreen = false
         if hidesAfterFullScreen {
             finishHide()
+        } else {
+            reenterFullScreenIfHiddenFromIt()
         }
     }
 }

@@ -29,7 +29,7 @@
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
     { "type": "key", "label": "fold every group so the singleton draws its header", "key": "p" },
-    { "type": "assert", "label": "a header carries both counts when both apply", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · $today 1" },
+    { "type": "assert", "label": "a header carries both counts when both apply", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · today 1" },
     { "type": "assert", "label": "the pulse and the header each say today 1", "assert": "count_contains", "value": "today 1", "count": 2 },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }

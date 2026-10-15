@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import UserNotifications
 import XCTest
 @testable import tt
 
@@ -183,7 +184,7 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(PreferencesWindowController.frameAutosaveName, "Settings")
 
         let unsaved = PreferencesWindowController(model: PreferencesModel(defaults: defaults), frameAutosaveName: nil)
-        XCTAssertEqual(unsaved.window.title, "tt Settings")
+        XCTAssertEqual(unsaved.window.title, "Settings")
         XCTAssertEqual(unsaved.window.frameAutosaveName, "")
 
         let name = "tt-tests-settings-\(UUID().uuidString)"
@@ -280,6 +281,66 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: TTBinaryResolver.overrideDefaultsKey))
     }
 
+    /// Restore Default shows while a shortcut is another combo or off, and
+    /// never while recording.
+    func testRestoreDefaultIsOfferedOnlyAwayFromTheDefault() throws {
+        for preset in [TTHotKeyPreference.default, TTCaptureHotKeyPreference.default] {
+            XCTAssertFalse(HotKeyRecorderView.offersRestoreDefault(combo: preset, default: preset, recording: false))
+            XCTAssertTrue(HotKeyRecorderView.offersRestoreDefault(combo: nil, default: preset, recording: false))
+            let other = try XCTUnwrap(HotKeyCombo(string: "ctrl+opt+f5"))
+            XCTAssertTrue(HotKeyRecorderView.offersRestoreDefault(combo: other, default: preset, recording: false))
+            XCTAssertFalse(HotKeyRecorderView.offersRestoreDefault(combo: other, default: preset, recording: true))
+        }
+    }
+
+    /// Reload says what it did: applied, applied with Ghostty's diagnostics,
+    /// or not applied; reopening Settings clears it.
+    func testReloadReportsWhatItFound() {
+        XCTAssertEqual(GhosttyConfigReport(applied: true, diagnostics: []).text, "Reloaded.")
+        XCTAssertFalse(GhosttyConfigReport(applied: true, diagnostics: []).warning)
+        let problems = GhosttyConfigReport(applied: true, diagnostics: ["unknown field: x", "invalid value: y"])
+        XCTAssertTrue(problems.warning)
+        XCTAssertEqual(problems.text,
+                       "Reloaded, with 2 problems in the config:\n• unknown field: x\n• invalid value: y")
+        XCTAssertTrue(GhosttyConfigReport(applied: false, diagnostics: []).warning)
+
+        let model = PreferencesModel(defaults: defaults)
+        model.readNotificationAuthorization = { $0(.authorized) }
+        model.ghosttyConfigReport = problems
+        model.refresh()
+        XCTAssertNil(model.ghosttyConfigReport)
+    }
+
+    /// Settings reads macOS's answer as it opens; only a refusal is shown.
+    func testDeniedNotificationsAreReadWhenSettingsOpens() throws {
+        let model = PreferencesModel(defaults: defaults)
+        var status = UNAuthorizationStatus.denied
+        model.readNotificationAuthorization = { $0(status) }
+        XCTAssertFalse(model.notificationsDenied)
+        model.refresh()
+        XCTAssertTrue(model.notificationsDenied)
+        status = .notDetermined
+        model.refresh()
+        XCTAssertFalse(model.notificationsDenied, "not yet asked is not refused")
+
+        // Off the main thread too, as UserNotifications answers.
+        status = .denied
+        model.readNotificationAuthorization = { done in DispatchQueue.global().async { done(status) } }
+        model.refresh()
+        let deadline = Date().addingTimeInterval(2)
+        while !model.notificationsDenied, Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
+        XCTAssertTrue(model.notificationsDenied)
+
+        XCTAssertEqual(NotificationSettingsLink.url(bundleIdentifier: "io.github.sglavoie.tt").absoluteString,
+                       "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=io.github.sglavoie.tt")
+    }
+
+    func testTheExitChoicesAreWorded() {
+        XCTAssertEqual(TTExitBehavior.allCases.map(\.label), ["Hide, and start a fresh tt next time", "Quit tt"])
+    }
+
     func testFollowingTheAppearanceDefaultsOnAndSavesEachChange() {
         XCTAssertTrue(TTFollowAppearancePreference.load(from: defaults))
         let model = PreferencesModel(defaults: defaults)
@@ -346,7 +407,8 @@ final class HotKeyCenterTests: XCTestCase {
         let combo = try XCTUnwrap(HotKeyCombo(string: "ctrl+opt+cmd+t"))
         let taken = HotKeyCenter.Registration.failed(combo, OSStatus(eventHotKeyExistsErr)).problem
         XCTAssertEqual(taken, "⌃⌥⌘T is already taken by another app. Choose another shortcut.")
-        XCTAssertTrue(HotKeyCenter.Registration.failed(combo, -1).problem?.contains("error -1") == true)
+        XCTAssertEqual(HotKeyCenter.Registration.failed(combo, -1).problem,
+                       "macOS would not register ⌃⌥⌘T as a global shortcut. Choose another shortcut.")
     }
 
     func testSystemShortcutsAreReadable() {
@@ -458,6 +520,9 @@ final class StatusItemTests: XCTestCase {
             "Show tt", "Quick Capture…", "Relaunch tt", "Settings…", "Launch at Login", "About tt", "tt Guide", "Quit tt",
         ])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
+        XCTAssertEqual(controller.menu.items.last?.keyEquivalent, "q")
+        XCTAssertEqual(controller.menu.items.last?.keyEquivalentModifierMask, .command)
+        XCTAssertEqual(controller.menu.item(withTitle: "Settings…")?.keyEquivalent, ",")
 
         delegate.isTerminalFrontmost = true
         delegate.isLaunchAtLoginEnabled = true
@@ -558,6 +623,55 @@ final class StatusItemTests: XCTestCase {
         delegate.toggleHotKey = nil
         controller.refreshMenu()
         XCTAssertEqual(toggle.keyEquivalent, "")
+    }
+
+    /// With no Dock icon the overdue count sits beside the menu-bar icon,
+    /// and goes when it reaches zero.
+    func testTheCountShowsBesideTheIcon() throws {
+        let controller = StatusItemController(delegate: FakeStatusDelegate())
+        XCTAssertNil(controller.shownCount)
+        controller.showCount("3")
+        XCTAssertEqual(controller.shownCount, "3")
+        XCTAssertEqual(controller.statusItem.length, NSStatusItem.variableLength)
+        XCTAssertEqual(controller.statusItem.button?.imagePosition, .imageLeading)
+        XCTAssertNotNil(controller.statusItem.button?.image)
+        controller.showCount(nil)
+        XCTAssertNil(controller.shownCount)
+        XCTAssertEqual(controller.statusItem.length, NSStatusItem.squareLength)
+    }
+
+    func testTheBadgeGoesWhereThereIsAnIconForIt() {
+        XCTAssertEqual(TTBadgePlacement(policy: .dockAndMenuBar, enabled: true, label: "2"),
+                       TTBadgePlacement(dock: "2", statusItem: nil))
+        XCTAssertEqual(TTBadgePlacement(policy: .dockOnly, enabled: true, label: "2"),
+                       TTBadgePlacement(dock: "2", statusItem: nil))
+        XCTAssertEqual(TTBadgePlacement(policy: .menuBarOnly, enabled: true, label: "2"),
+                       TTBadgePlacement(dock: nil, statusItem: "2"))
+        XCTAssertEqual(TTBadgePlacement(policy: .menuBarOnly, enabled: false, label: "2"),
+                       TTBadgePlacement(dock: nil, statusItem: nil))
+        XCTAssertEqual(TTBadgePlacement(policy: .dockAndMenuBar, enabled: true, label: nil),
+                       TTBadgePlacement(dock: nil, statusItem: nil))
+    }
+
+    /// The Dock menu carries the status menu's commands: the counts owed,
+    /// Show/Hide, Quick Capture…, and Relaunch tt.
+    func testTheDockMenuOffersThePulseAndTheShellActions() throws {
+        let target = NSObject()
+        func titles(_ menu: NSMenu) -> [String] { menu.items.map { $0.isSeparatorItem ? "-" : $0.title } }
+
+        let empty = AppDelegate.dockMenu(pulse: nil, terminalFrontmost: false, canRelaunch: true, target: target)
+        XCTAssertEqual(titles(empty), ["Show tt", "Quick Capture…", "Relaunch tt"])
+
+        let menu = AppDelegate.dockMenu(
+            pulse: TTPulse(inbox: 2, today: 0, overdue: 1, done: 5), terminalFrontmost: true, canRelaunch: false,
+            target: target
+        )
+        XCTAssertEqual(titles(menu), ["Inbox 2", "Overdue 1", "-", "Hide tt", "Quick Capture…", "Relaunch tt"])
+        XCTAssertEqual(menu.items.prefix(2).compactMap { $0.representedObject as? String }, ["inbox", "due"])
+        XCTAssertTrue(menu.items.allSatisfy { $0.isSeparatorItem || $0.target === target })
+        XCTAssertFalse(menu.item(withTitle: "Relaunch tt")?.isEnabled ?? true)
+        XCTAssertEqual(menu.item(withTitle: "Hide tt")?.action, #selector(AppDelegate.toggleFromMenu(_:)))
+        XCTAssertEqual(menu.items[0].action, #selector(AppDelegate.showViewFromMenu(_:)))
     }
 
     func testRightAndControlClicksOpenTheMenu() throws {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -207,6 +208,9 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 
 	guidance, _ := model.GuidanceSpec()
 	guidanceText := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
+	// The context line wraps whole rather than eliding: a value it would cut is
+	// one the rows below never show, so a truncated line would read as complete.
+	contextLines := textfit.WrapText(model.contextLine, max(innerWidth-4, 1))
 
 	rowCount := len(model.surface.Rows())
 	listHeight := min(max(rowCount, 6), 15)
@@ -217,8 +221,8 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		// earns a second guidance row — an active field to name beside the keys
 		// that move between them — takes that row out of the list instead of out
 		// of the terminal. A present explainer adds its own rows plus one
-		// separating row.
-		chromeRows := 8 + lipgloss.Height(guidanceText)
+		// separating row, and a context line adds the rows it wraps to.
+		chromeRows := 8 + lipgloss.Height(guidanceText) + len(contextLines)
 		available := height - chromeRows - explainerBlockRows(explainerBlock)
 		// The list outranks the legends: a choice that scrolled out of a
 		// one-row window is not recoverable from a sentence about the
@@ -240,10 +244,13 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	if search != "" {
 		content = search + "\n\n" + content
 	}
+	if len(contextLines) > 0 {
+		content = theme.MutedStyle.Render(strings.Join(contextLines, "\n")) + "\n" + content
+	}
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock
 	}
-	titleText := chrome.FitOverlayTitle(model.title, model.subtitle, model.titleSuffix, max(innerWidth-4, 1))
+	titleText := chrome.FitOverlayTitle(model.title, model.subtitle, "", max(innerWidth-4, 1))
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	// The rendered footer is the one the budget above reserved for, so the two
 	// cannot disagree about how many rows the guidance costs.

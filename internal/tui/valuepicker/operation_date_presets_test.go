@@ -9,6 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// The clock is a Saturday, so the weekend row names the next one rather than
+// today, and Monday is two days out.
 func TestDueDatePresetsStayCalendarDays(t *testing.T) {
 	now := time.Date(2026, 3, 14, 15, 26, 53, 589, time.Local)
 	midnight := util.StartOfDay(now)
@@ -22,6 +24,8 @@ func TestDueDatePresetsStayCalendarDays(t *testing.T) {
 		{id: "clear", label: "Clear", clear: true},
 		{id: "today", label: "Today", value: midnight},
 		{id: "tomorrow", label: "Tomorrow", value: midnight.AddDate(0, 0, 1)},
+		{id: "weekend", label: "This weekend", value: midnight.AddDate(0, 0, 7)},
+		{id: "monday", label: "Start of next week", value: midnight.AddDate(0, 0, 2)},
 		{id: "week", label: "In one week", value: midnight.AddDate(0, 0, 7)},
 		{id: "month", label: "In 30 days", value: midnight.AddDate(0, 0, 30)},
 	}
@@ -66,6 +70,8 @@ func TestDeferPresetsOfferHoursMorningAndDays(t *testing.T) {
 		{id: "8h", label: "In 8 hours", value: now.Add(8 * time.Hour)},
 		{id: "morning", label: "Tomorrow morning", value: time.Date(2026, 3, 15, 9, 0, 0, 0, time.Local)},
 		{id: "tomorrow", label: "Until tomorrow", value: midnight.AddDate(0, 0, 1)},
+		{id: "weekend", label: "Until the weekend", value: midnight.AddDate(0, 0, 7)},
+		{id: "monday", label: "Until next week", value: midnight.AddDate(0, 0, 2)},
 		{id: "week", label: "For one week", value: midnight.AddDate(0, 0, 7)},
 		{id: "month", label: "For 30 days", value: midnight.AddDate(0, 0, 30)},
 	}
@@ -177,7 +183,7 @@ func TestRelativeDateSelectedIDRefusesToApproximateAnIntraDayDefer(t *testing.T)
 // "tomorrow" means a date value in Due or Defer, while Check-in is a typed
 // editor action and cannot masquerade as either.
 func TestDateListItemIDsSeparateTheThreeSections(t *testing.T) {
-	source := OperationDateListSource("")
+	source := OperationDateListSource("", bothDateFieldsSet)
 	seen := make(map[listsurface.ListItemID]bool, len(source.Items))
 	deferredRows := 0
 	checkInRows := 0
@@ -216,7 +222,7 @@ func TestDateListItemIDsSeparateTheThreeSections(t *testing.T) {
 // A terminal task keeps the due section reachable: only the defer rows carry
 // the refusal, which is what lets one key answer both fields on a Done task.
 func TestTerminalTaskDisablesOnlyTheDeferSection(t *testing.T) {
-	source := OperationDateListSource("terminal tasks cannot be deferred")
+	source := OperationDateListSource("terminal tasks cannot be deferred", bothDateFieldsSet)
 	for _, item := range source.Items {
 		value, isDate := item.Data.(operation.OperationDateValue)
 		if !isDate {
@@ -229,7 +235,7 @@ func TestTerminalTaskDisablesOnlyTheDeferSection(t *testing.T) {
 			t.Errorf("row %q enabled = %v with deferred = %v", item.ID, item.Enabled(), value.Deferred)
 		}
 	}
-	for _, item := range OperationDueDateListSource().Items {
+	for _, item := range OperationDueDateListSource(true).Items {
 		if !item.Enabled() {
 			t.Errorf("due-only row %q is disabled", item.ID)
 		}

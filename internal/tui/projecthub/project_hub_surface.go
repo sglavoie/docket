@@ -3,11 +3,15 @@ package projecthub
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -40,15 +44,24 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer listsurface.ListItemID) {
 }
 
 // projectHubCategories orders the listing groups: the base task workspace
-// first, then the archived tail.
+// first, then the parked projects it leaves out, then the archived tail. The
+// pinned Hub is one group, since a pin is what it lists and a parked pin keeps
+// its `#parked` chip there instead.
 func (m *ProjectHubModel) projectHubCategories() []listsurface.ListCategory {
 	if m.mode == route.ProjectHubModePinned {
 		return []listsurface.ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
 	}
 	return []listsurface.ListCategory{
 		{ID: projectHubCategoryActive, Label: "Active Projects"},
+		{ID: projectHubCategoryParked, Label: "Parked Projects"},
 		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
 	}
+}
+
+// projectHubGroupsParked reports whether a project draws under the Parked
+// group. Only the full Hub has one; the pinned Hub lists every pin together.
+func (m *ProjectHubModel) projectHubGroupsParked(project *models.Project) bool {
+	return m.mode != route.ProjectHubModePinned && project != nil && models.ProjectTagsParked(project.Tags)
 }
 
 // projectPinnedMarker gives an archived project the marker too: the pin is real
@@ -90,6 +103,7 @@ func projectHubAliases(project *models.Project, lifecycle string) []string {
 
 func (m *ProjectHubModel) projectHubItems() []listsurface.ListItem {
 	items := make([]listsurface.ListItem, 0, len(m.runtime.AllProjects()))
+	now := time.Now()
 	for _, project := range m.runtime.AvailableProjects() {
 		if project == nil || (m.mode == route.ProjectHubModePinned && !project.Pinned) || m.projectHubFilterHides(project) {
 			continue
@@ -98,14 +112,27 @@ func (m *ProjectHubModel) projectHubItems() []listsurface.ListItem {
 		if project.ID == m.focusedProjectID {
 			label += " (focused)"
 		}
+		category, lifecycle, phase := projectHubCategoryActive, "active project", projectPreviewActive
+		var primaryStyle *lipgloss.Style
+		if m.projectHubGroupsParked(project) {
+			// A parked row is dimmed rather than restyled: it is still a live
+			// project every act reaches, only one the base Outliner leaves out.
+			category, lifecycle, phase = projectHubCategoryParked, "parked project", projectPreviewParked
+			muted := theme.MutedStyle
+			primaryStyle = &muted
+		}
+		phrase := m.projectTaskPhraseAt(project, now)
 		items = append(items, listsurface.ListItem{
-			ID:            listsurface.ListItemID(projectHubItemPrefix + project.ID),
-			CategoryID:    projectHubCategoryActive,
-			PrimaryText:   label,
-			PrimaryMarker: projectPinnedMarker(project),
-			SecondaryText: m.projectSecondary(project),
-			Aliases:       projectHubAliases(project, "active project"),
-			Preview:       m.projectPreview(project, false),
+			ID:                   listsurface.ListItemID(projectHubItemPrefix + project.ID),
+			CategoryID:           category,
+			PrimaryText:          label,
+			PrimaryStyle:         primaryStyle,
+			PrimaryMarker:        projectPinnedMarker(project),
+			SecondaryText:        joinProjectSecondary(phrase.text, ProjectTagChips(m.projectRowTags(project))),
+			SecondaryAccent:      phrase.overdue,
+			SecondaryAccentStyle: projectOverdueStyle(phrase.overdue),
+			Aliases:              projectHubAliases(project, lifecycle),
+			Preview:              m.projectPreview(project, phase, phrase.text),
 			OperationIDs: append([]operation.OperationID{
 				operation.OperationScopeArchiveProject,
 			}, projectBulkOperations...),
@@ -126,7 +153,7 @@ func (m *ProjectHubModel) projectHubItems() []listsurface.ListItem {
 			PrimaryMarker: projectPinnedMarker(project),
 			SecondaryText: strings.TrimSuffix("archived · "+ProjectTagChips(project.Tags), " · "),
 			Aliases:       projectHubAliases(project, "archived project"),
-			Preview:       m.projectPreview(project, true),
+			Preview:       m.projectPreview(project, projectPreviewArchived, m.projectTaskPhraseAt(project, now).text),
 			OperationIDs: []operation.OperationID{
 				operation.OperationScopeRestoreProject,
 			},
@@ -155,18 +182,24 @@ func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
 	}
 }
 
+// projectPreviewPhase is the lifecycle word the preview header leads with.
+type projectPreviewPhase string
+
+const (
+	projectPreviewActive   projectPreviewPhase = "Active"
+	projectPreviewParked   projectPreviewPhase = "Parked"
+	projectPreviewArchived projectPreviewPhase = "Archived"
+)
+
 // projectPreview spends two rows on the project's identity and leaves the rest
 // of the pane to its tasks. The five labeled fields this replaced cost six rows
 // to say what one muted line says, and `Pinned: false` said nothing at all: an
 // unpinned project is the ordinary case, so the marker appears only when it is
 // true. The line travels as segments, so a narrow pane wraps between them and
-// `slug agent-mux` never splits.
-func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) listsurface.ListPreview {
-	lifecycle := "Active"
-	if archived {
-		lifecycle = "Archived"
-	}
-	meta := []string{lifecycle, m.projectTaskPhrase(project), "slug " + project.Slug}
+// `slug agent-mux` never splits. taskPhrase is the row's own tally wording, so
+// the two never disagree.
+func (m *ProjectHubModel) projectPreview(project *models.Project, phase projectPreviewPhase, taskPhrase string) listsurface.ListPreview {
+	meta := []string{string(phase), taskPhrase, "slug " + project.Slug}
 	if project.Pinned {
 		meta = append(meta, "pinned")
 	}
@@ -194,34 +227,72 @@ func (m *ProjectHubModel) projectTally(project *models.Project) (ProjectTaskTall
 	return ProjectTaskTallyOf(project), true
 }
 
-// projectSecondary carries the task tally and the project's own tag chips. Both
-// numbers ride the row because a total alone reads as pending work when every
-// task in it is finished, and the open count leads because a narrow row
+// joinProjectSecondary carries the task tally and the project's own tag chips.
+// Both numbers ride the row because a total alone reads as pending work when
+// every task in it is finished, and the open count leads because a narrow row
 // truncates secondary text from the right. A known-empty project has no open
 // subset worth naming and keeps its bare total. The chips are plain text rather
-// than styled badges because the row layout measures this string, and they are
-// what makes a parked project legible here: the Hub lists parked projects
-// alongside every other active one.
-func (m *ProjectHubModel) projectSecondary(project *models.Project) string {
-	secondary := m.projectTaskPhrase(project)
-	if chips := ProjectTagChips(project.Tags); chips != "" {
-		secondary += " · " + chips
+// than styled badges because the row layout measures this string.
+func joinProjectSecondary(phrase, chips string) string {
+	if chips == "" {
+		return phrase
 	}
-	return secondary
+	return phrase + " · " + chips
 }
 
-// projectTaskPhrase is the one wording of a project's tally, so the row and the
-// preview header never disagree about how much work a project holds.
-func (m *ProjectHubModel) projectTaskPhrase(project *models.Project) string {
+// projectRowTags is the tag set a row's chips spell. A row under the Parked
+// group drops `parked`, since the group heading already says it; every other
+// row, the pinned Hub's included, keeps the chip as the one place it is said.
+func (m *ProjectHubModel) projectRowTags(project *models.Project) []string {
+	if !m.projectHubGroupsParked(project) {
+		return project.Tags
+	}
+	tags := make([]string, 0, len(project.Tags))
+	for _, tag := range project.Tags {
+		if tag != models.ParkedProjectTag {
+			tags = append(tags, tag)
+		}
+	}
+	return tags
+}
+
+// projectTaskPhrase is a project's tally in words, and overdue names the run
+// inside it that counts missed deadlines, empty when there are none, so the row
+// can paint that run as a warning without reparsing the text.
+type projectTaskPhrase struct {
+	text    string
+	overdue string
+}
+
+// projectTaskPhraseAt is the one wording of a project's tally, so the row and
+// the preview header never disagree about how much work a project holds. The
+// overdue count sits beside the open count it is a part of, ahead of the total,
+// so a narrow row sheds the total before the warning.
+func (m *ProjectHubModel) projectTaskPhraseAt(project *models.Project, now time.Time) projectTaskPhrase {
 	tally, ok := m.projectTally(project)
 	switch {
 	case !ok:
-		return "tasks not loaded"
+		return projectTaskPhrase{text: "tasks not loaded"}
 	case tally.Total == 0:
-		return "0 tasks"
-	default:
-		return fmt.Sprintf("%d open · %s", tally.Open, util.Count(tally.Total, "task"))
+		return projectTaskPhrase{text: "0 tasks"}
 	}
+	phrase := projectTaskPhrase{text: fmt.Sprintf("%d open", tally.Open)}
+	if overdue := tally.OverdueAt(now); overdue > 0 {
+		phrase.overdue = fmt.Sprintf("%d overdue", overdue)
+		phrase.text += " · " + phrase.overdue
+	}
+	phrase.text += " · " + util.Count(tally.Total, "task")
+	return phrase
+}
+
+// projectOverdueStyle is the paint for the overdue run: the Outliner project
+// header's own overdue pressure color, so one fact keeps one color.
+func projectOverdueStyle(overdue string) *lipgloss.Style {
+	if overdue == "" {
+		return nil
+	}
+	style := theme.ProjectPressureOverdueStyle
+	return &style
 }
 
 func ProjectTagChips(tags []string) string {

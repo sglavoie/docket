@@ -628,7 +628,10 @@ func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
 //
 // When the task is absent — or the cursor never held one, as on a header row —
 // the anchor degrades to the nearest navigable row at the pre-transition index,
-// clamped into the (possibly differently shaped) new row list.
+// clamped into the (possibly differently shaped) new row list. A cursor that
+// held a task keeps holding one: the index is walked to the nearest task row,
+// forward first, so a task key pressed next is not refused on a header the
+// reshape happened to put there.
 func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	m.ViewScrollOffset = anchor.scrollOffset
 	if anchor.hasTask {
@@ -655,6 +658,30 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	}
 	m.Cursor = idx
 	m.ClampCursor()
+	if anchor.hasTask {
+		m.seatNearestTaskRow()
+	}
+}
+
+// seatNearestTaskRow moves the cursor to the nearest task row when it rests on
+// anything else, looking forward before backward, and leaves it alone when the
+// projection draws no task at all.
+func (m *OutlinerModel) seatNearestTaskRow() {
+	if m.Cursor < 0 || m.Cursor >= len(m.Rows) || m.Rows[m.Cursor].IsTaskRow() {
+		return
+	}
+	for i := m.Cursor + 1; i < len(m.Rows); i++ {
+		if m.Rows[i].IsTaskRow() && m.Rows[i].Task != nil {
+			m.Cursor = i
+			return
+		}
+	}
+	for i := m.Cursor - 1; i >= 0; i-- {
+		if m.Rows[i].IsTaskRow() && m.Rows[i].Task != nil {
+			m.Cursor = i
+			return
+		}
+	}
 }
 
 // selectOutlinerMode applies the named catalog mode. It is the sole entry

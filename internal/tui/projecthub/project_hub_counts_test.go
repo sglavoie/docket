@@ -30,10 +30,20 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 	hub := fixture.open()
 	wantCategories := []listsurface.ListCategory{
 		{ID: projectHubCategoryActive, Label: "Active Projects"},
+		{ID: projectHubCategoryParked, Label: "Parked Projects"},
 		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
 	}
 	if got := hub.surface.Categories(); !reflect.DeepEqual(got, wantCategories) {
 		t.Fatalf("project categories = %#v, want %#v", got, wantCategories)
+	}
+	for id, want := range map[listsurface.ListItemID]listsurface.ListCategoryID{
+		"project-hub:project:alpha":     projectHubCategoryActive,
+		"project-hub:project:parked":    projectHubCategoryParked,
+		"project-hub:archived:archived": projectHubCategoryArchived,
+	} {
+		if got := projectHubItem(t, hub, id).CategoryID; got != want {
+			t.Errorf("%s drew under %q, want %q", id, got, want)
+		}
 	}
 	for _, id := range []listsurface.ListItemID{
 		"project-hub:project:alpha",
@@ -159,8 +169,12 @@ func TestProjectHubCountsParkedAndArchivedProjects(t *testing.T) {
 	fixture.add(archived)
 
 	hub := fixture.open()
-	if got := projectHubItem(t, hub, "project-hub:project:parked").SecondaryText; got != "3 open · 3 tasks · #parked" {
-		t.Fatalf("parked row secondary = %q, want the real count", got)
+	// The Parked heading says what the chip would, so the row drops it.
+	if got := projectHubItem(t, hub, "project-hub:project:parked").SecondaryText; got != "3 open · 3 tasks" {
+		t.Fatalf("parked row secondary = %q, want the real count without #parked", got)
+	}
+	if got, want := projectHubPreviewSummary(t, hub, "project-hub:project:parked"), "Parked · 3 open · 3 tasks · slug parked"; got != want {
+		t.Fatalf("parked preview meta = %q, want %q", got, want)
 	}
 	want := "Archived · 2 open · 2 tasks · slug archived"
 	if got := projectHubPreviewSummary(t, hub, "project-hub:archived:archived"); got != want {

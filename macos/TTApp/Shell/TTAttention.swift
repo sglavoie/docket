@@ -75,6 +75,24 @@ enum TTPulseBadge {
     }
 }
 
+/// Where the overdue count goes: the Dock icon while there is one, else
+/// beside the menu-bar icon, so menu-bar-only tt still shows it. Neither
+/// carries it while `ttDockBadge` is off.
+struct TTBadgePlacement: Equatable {
+    let dock: String?
+    let statusItem: String?
+
+    init(dock: String?, statusItem: String?) {
+        self.dock = dock
+        self.statusItem = statusItem
+    }
+
+    init(policy: TTActivationPolicy, enabled: Bool, label: String?) {
+        let shown = enabled ? label : nil
+        self.init(dock: policy.showsDockIcon ? shown : nil, statusItem: policy.showsDockIcon ? nil : shown)
+    }
+}
+
 /// The status menu's line for a pulse: the counts still owed, zero ones left
 /// out, or none when nothing is.
 enum TTPulseSummary {

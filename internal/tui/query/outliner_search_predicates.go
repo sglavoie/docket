@@ -1,6 +1,7 @@
 package query
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -128,6 +129,20 @@ func CompileSearchQuery(
 	plan PlanningMembership,
 	facets models.Query,
 ) (string, *SearchPredicates) {
+	return compileSearchTokens(text, projects, plan, facets, func(int) bool { return true })
+}
+
+// compileSearchTokens is CompileSearchQuery over the subset of the parsed tokens
+// keep admits, by their index in the parse. The live gate and the diagnostic
+// gates an empty result asks about all compile here, so a clause dropped for a
+// question compiles exactly as it does inside the query.
+func compileSearchTokens(
+	text string,
+	projects []*models.Project,
+	plan PlanningMembership,
+	facets models.Query,
+	keep func(index int) bool,
+) (string, *SearchPredicates) {
 	parsed := textgrammar.ParseSearch(strings.TrimSpace(text))
 	predicates := &SearchPredicates{now: time.Now(), sigils: len(parsed.Tokens) > 0}
 	if guidance := textgrammar.SearchGuidance(parsed); guidance != "" {
@@ -135,13 +150,92 @@ func CompileSearchQuery(
 		return parsed.Text, predicates
 	}
 
-	for _, token := range parsed.Tokens {
-		predicates.applyToken(token, projects, plan)
+	for index, token := range parsed.Tokens {
+		if keep(index) {
+			predicates.applyToken(token, projects, plan)
+		}
 	}
 	predicates.compileDerivedContext(projects)
 	predicates.admitsTerminal = predicates.admitsTerminal || facets.OpensTerminalPopulation()
 	predicates.admitsDeferred = predicates.admitsDeferred || facets.OpensDeferredPopulation()
 	return parsed.Text, predicates
+}
+
+// SearchClause is one sigil token of a search query, as an empty result names
+// it back to the user. index is the token's position in the parse, which is
+// deterministic, so a clause read off one parse addresses the same token when
+// the same text is compiled again.
+type SearchClause struct {
+	// Spelling is the trigger and value as the grammar read them, e.g. "#nope".
+	Spelling string
+	Field    textgrammar.Field
+	index    int
+	start    int
+}
+
+// Vocabulary reports a positive clause naming a stored value — a tag, a
+// context, or a project slug — so a clause nothing carries is an unknown name
+// rather than a combination that happens to be empty.
+func (c SearchClause) Vocabulary() bool {
+	switch c.Field { //nolint:exhaustive // Only the three stored vocabularies answer true.
+	case textgrammar.FieldTag, textgrammar.FieldContext, textgrammar.FieldProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// NamesProject reports the positive %project clause, whose unknown value is a
+// project rather than something a task carries.
+func (c SearchClause) NamesProject() bool {
+	return c.Field == textgrammar.FieldProject
+}
+
+// SearchClauses lists the sigil clauses of a valid query in the order the user
+// typed them, beside the free-text remainder the gate leaves for scoring. An
+// invalid query names no clauses: its own guidance speaks instead.
+func SearchClauses(text string) (string, []SearchClause) {
+	parsed := textgrammar.ParseSearch(strings.TrimSpace(text))
+	if textgrammar.SearchGuidance(parsed) != "" {
+		return parsed.Text, nil
+	}
+	clauses := make([]SearchClause, 0, len(parsed.Tokens))
+	for index, token := range parsed.Tokens {
+		clauses = append(clauses, SearchClause{
+			Spelling: token.Form + token.Value,
+			Field:    token.Field,
+			index:    index,
+			start:    token.Start,
+		})
+	}
+	sort.SliceStable(clauses, func(i, j int) bool { return clauses[i].start < clauses[j].start })
+	return parsed.Text, clauses
+}
+
+// CompileSearchQueryWithout compiles text as CompileSearchQuery does with one
+// clause left out. It is a question, never an installed gate: an empty result
+// asks it once per clause to find the conjunct that eliminated everything.
+func CompileSearchQueryWithout(
+	text string,
+	projects []*models.Project,
+	plan PlanningMembership,
+	facets models.Query,
+	clause SearchClause,
+) (string, *SearchPredicates) {
+	return compileSearchTokens(text, projects, plan, facets, func(index int) bool { return index != clause.index })
+}
+
+// CompileSearchClauseAlone compiles one clause on its own, with no free text
+// and every population open, so a gate admitting nothing means no task in the
+// population carries what the clause names at all.
+func CompileSearchClauseAlone(
+	text string,
+	projects []*models.Project,
+	plan PlanningMembership,
+	clause SearchClause,
+) *SearchPredicates {
+	_, gate := compileSearchTokens(text, projects, plan, models.Query{}, func(index int) bool { return index == clause.index })
+	return gate.WithEveryPopulation()
 }
 
 // applyToken compiles one token onto the gate. A negation is never a separate

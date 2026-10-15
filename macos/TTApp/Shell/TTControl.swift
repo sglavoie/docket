@@ -337,7 +337,7 @@ final class TTControlClient {
     private var nextID = 1
     private var pending: [Int: (TTControlReply) -> Void] = [:]
     /// Requests sent while tt is still starting, written once it connects.
-    private var queued: [(TTControlRequest, (TTControlReply) -> Void)] = []
+    private var queued: [Queued] = []
     private var connecting = false
     /// Bumped by each connect and disconnect, so a retry scheduled for an
     /// earlier session gives up.
@@ -379,20 +379,45 @@ final class TTControlClient {
 
     /// Sends a request; `completion` runs on the main queue with tt's reply,
     /// or a failure when there is no tt to ask. A request sent while tt is
-    /// still starting waits for it.
+    /// still starting waits for it, up to `connectWindow`.
     func send(_ request: TTControlRequest, completion: @escaping (TTControlReply) -> Void = { _ in }) {
+        enqueue(request, onWritten: nil, completion: completion)
+    }
+
+    /// Sends a request as above; `onWritten` runs on the main queue once the
+    /// request has reached tt, so a caller timing tt's answer starts its clock
+    /// there rather than while tt is still starting.
+    func send(
+        _ request: TTControlRequest,
+        onWritten: @escaping () -> Void,
+        completion: @escaping (TTControlReply) -> Void
+    ) {
+        enqueue(request, onWritten: onWritten, completion: completion)
+    }
+
+    private func enqueue(
+        _ request: TTControlRequest, onWritten: (() -> Void)?, completion: @escaping (TTControlReply) -> Void
+    ) {
         queue.async { [self] in
             if fd < 0, connecting {
-                queued.append((request, completion))
+                queued.append(Queued(request: request, onWritten: onWritten, completion: completion))
                 return
             }
-            transmit(request, completion: completion)
+            transmit(request, onWritten: onWritten, completion: completion)
         }
+    }
+
+    private struct Queued {
+        let request: TTControlRequest
+        let onWritten: (() -> Void)?
+        let completion: (TTControlReply) -> Void
     }
 
     // MARK: On the queue
 
-    private func transmit(_ request: TTControlRequest, completion: @escaping (TTControlReply) -> Void) {
+    private func transmit(
+        _ request: TTControlRequest, onWritten: (() -> Void)?, completion: @escaping (TTControlReply) -> Void
+    ) {
         guard fd >= 0 else {
             DispatchQueue.main.async { completion(.failure("tt is not running")) }
             return
@@ -408,6 +433,10 @@ final class TTControlClient {
         pending[request.id] = completion
         if !writeAll(line) {
             closeLocked(reason: "The connection to tt ended")
+            return
+        }
+        if let onWritten {
+            DispatchQueue.main.async(execute: onWritten)
         }
     }
 
@@ -415,7 +444,7 @@ final class TTControlClient {
         let failed = queued
         queued = []
         DispatchQueue.main.async {
-            for (_, completion) in failed { completion(.failure(reason)) }
+            for entry in failed { entry.completion(.failure(reason)) }
         }
     }
 
@@ -427,7 +456,7 @@ final class TTControlClient {
             startReading()
             let waiting = queued
             queued = []
-            for (request, completion) in waiting { transmit(request, completion: completion) }
+            for entry in waiting { transmit(entry.request, onWritten: entry.onWritten, completion: entry.completion) }
             DispatchQueue.main.async { [self] in
                 isConnected = true
                 onConnectionChange?(true)

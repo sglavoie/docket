@@ -1,0 +1,25 @@
+{
+  "name": "capture-duplicate-singleton-refused",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Pay rent @fri @mon" },
+    { "type": "assert", "label": "the preview names the conflict instead of keeping one date", "assert": "contains", "value": "duplicate due: @mon conflicts with earlier @fri" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "submitting refuses and keeps the draft", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "Pay rent @fri @mon" },
+    { "type": "key", "label": "removing the second date clears the refusal", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "assert", "assert": "not_contains", "value": "duplicate due" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Pay rent" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

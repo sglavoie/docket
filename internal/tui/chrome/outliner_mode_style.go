@@ -53,3 +53,29 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 func OperationalTitleModeSegment(mode OutlinerMode) string {
 	return pulse.OperationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
 }
+
+// OperationalTitleModeStrip renders the active mode's badge followed by its two
+// Tab neighbours, muted — `Inbox  ‹ Today  Next ›` — so a wide title says where
+// Shift+Tab and Tab go without moving the badge off the scope it qualifies. The
+// badge is the segment OperationalTitleModeSegment draws, so a title that falls
+// back to the lone badge names the mode identically.
+func OperationalTitleModeStrip(active OutlinerModeID) string {
+	modes := OutlinerTabModes()
+	index := -1
+	for i, mode := range modes {
+		if mode.ID == active {
+			index = i
+			break
+		}
+	}
+	if index < 0 || len(modes) < 2 {
+		if mode, ok := OutlinerModeByID(active); ok {
+			return OperationalTitleModeSegment(mode)
+		}
+		return ""
+	}
+	previous := modes[(index-1+len(modes))%len(modes)]
+	next := modes[(index+1)%len(modes)]
+	return OperationalTitleModeSegment(modes[index]) + "  " +
+		theme.MutedStyle.Render("‹ "+previous.Label+"  "+next.Label+" ›")
+}

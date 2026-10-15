@@ -99,6 +99,29 @@ func RenderOperationalTitle(spec OperationalTitleSpec, width int) string {
 	return identity + operationalTitleContextGap + textfit.TruncateToVisualWidth(context, contextBudget)
 }
 
+// OperationalTitleFitsWhole reports whether spec renders at width with nothing
+// shortened: the whole identity and context, the full Today pace, and the full
+// workspace pulse at its gap. A caller offering a richer segment uses it to
+// spend only columns the title would otherwise leave blank, so the richer form
+// never costs the pulse or pace a rung of its ladder.
+func OperationalTitleFitsWhole(spec OperationalTitleSpec, width int) bool {
+	if width <= 0 {
+		return false
+	}
+	identity := joinOperationalTitleSegments([]string{spec.Surface, spec.Scope, spec.Mode})
+	base := joinOperationalTitleRegions(identity, joinOperationalTitleSegments(spec.Context))
+	if spec.Pace != nil {
+		base = joinOperationalTitleRegions(base, operationalPaceVariants(*spec.Pace)[0])
+	}
+	need := lipgloss.Width(base)
+	if spec.Pulse != nil {
+		if pulse := operationalPulseVariants(*spec.Pulse)[0]; pulse != "" {
+			need += operationalTitlePulseGap + lipgloss.Width(pulse)
+		}
+	}
+	return need <= width
+}
+
 func renderOperationalIdentity(spec OperationalTitleSpec, width int) string {
 	parts := []string{spec.Surface, spec.Scope, spec.Mode}
 	identity := joinOperationalTitleSegments(parts)

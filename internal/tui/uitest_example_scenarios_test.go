@@ -85,6 +85,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"named-lens-machine-round-trip.json",
 		"defer-wake-marker.json",
 		"date-picker-preset-keys.json",
+		"date-picker-empty-field-opening.json",
 		"date-picker-section-switch.json",
 		"date-picker-planning-persist.json",
 		"date-picker-frozen-cross-project-selection.json",

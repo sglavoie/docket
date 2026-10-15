@@ -531,6 +531,7 @@ type OutlinerRow struct {
 	PromotedTag            string                    // Canonical promoted workflow tag for synthetic header/project/task rows
 	SectionName            string                    // Section name for header rows
 	SectionCount           int                       // Number of tasks in this section
+	SectionLiftedCount     int                       // Members drawn in a promoted lane above instead (All only)
 	StateGroup             models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
 	CollapseKey            string                    // Stable identity for shared or project-owned grouping headers
 	ProjectID              string                    // Project that owns task/project-header rows; empty for shared section headers

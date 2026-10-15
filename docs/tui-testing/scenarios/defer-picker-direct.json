@@ -21,12 +21,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Set Due, Defer, or Check-In" },
 
     { "type": "key", "label": "reopen the picker", "key": "@" },
-    { "type": "key", "label": "step past the five due rows onto Clear defer", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "label": "highlight In 1 hour, the first row below Clear defer", "key": "j" },
+    { "type": "key", "label": "cross into the defer section onto In 1 hour, past a Clear defer with nothing to clear", "key": "tab" },
     { "type": "key", "label": "commit the one-hour deferral", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

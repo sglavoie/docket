@@ -15,12 +15,12 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Offer capture" },
 
-    { "type": "key", "label": "the same note rides an inline edit that blocks the task", "key": "e" },
+    { "type": "key", "label": "an inline edit that blocks the task commits quietly: the note is said once per session", "key": "e" },
     { "type": "key", "key": "ctrl+u" },
     { "type": "text", "text": "Offer capture $waiting " },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Offer capture · No check-in · Ctrl+M: Set up check-ins" },
+    { "type": "assert", "assert": "not_contains", "value": "No check-in" },
     { "type": "assert", "assert": "not_contains", "value": "Set Check-In" },
 
     { "type": "command", "label": "scheduling stays explicit and is the user's own act", "command": "Set Check-In" },

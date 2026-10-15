@@ -289,7 +289,13 @@ final class ControlClientTests: XCTestCase {
 
     override func setUpWithError() throws {
         path = "/tmp/ttc-\(UUID().uuidString.prefix(8)).sock"
-        listener = socket(AF_UNIX, SOCK_STREAM, 0)
+        listener = Self.listen(at: path)
+        XCTAssertGreaterThanOrEqual(listener, 0)
+    }
+
+    /// A listening Unix socket at `path`, or -1.
+    private static func listen(at path: String) -> Int32 {
+        let listener = socket(AF_UNIX, SOCK_STREAM, 0)
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         withUnsafeMutableBytes(of: &address.sun_path) { raw in
@@ -302,8 +308,11 @@ final class ControlClientTests: XCTestCase {
                 Darwin.bind(listener, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        XCTAssertEqual(bound, 0)
-        XCTAssertEqual(Darwin.listen(listener, 1), 0)
+        guard bound == 0, Darwin.listen(listener, 1) == 0 else {
+            close(listener)
+            return -1
+        }
+        return listener
     }
 
     override func tearDown() {
@@ -314,7 +323,10 @@ final class ControlClientTests: XCTestCase {
     /// Accepts one connection, writes `greeting`, then answers each request line
     /// with `{"reply":ID,"ok":true,"message":OP}`.
     private func serve(greeting: String) {
-        let listener = self.listener
+        Self.serve(on: listener, greeting: greeting)
+    }
+
+    private static func serve(on listener: Int32, greeting: String) {
         Thread.detachNewThread {
             let connection = accept(listener, nil, nil)
             guard connection >= 0 else { return }
@@ -380,6 +392,34 @@ final class ControlClientTests: XCTestCase {
         client.disconnect()
     }
 
+    /// A request sent while tt is still starting waits for the socket, and
+    /// says it was written only once it reaches tt, then gets its answer: the
+    /// reply clock a caller starts there never runs during the start.
+    func testARequestIsWrittenOnlyOnceTTHasStarted() {
+        let latePath = path + ".late"
+        defer { unlink(latePath) }
+        let client = TTControlClient(path: latePath)
+        var events: [String] = []
+        let replied = expectation(description: "reply")
+        client.connect()
+        client.send(.capture("Buy milk"), onWritten: { events.append("written") }) { reply in
+            XCTAssertTrue(reply.ok)
+            events.append("reply")
+            replied.fulfill()
+        }
+        // tt has not created its socket yet.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+        XCTAssertEqual(events, [], "nothing is written while tt starts")
+
+        let late = Self.listen(at: latePath)
+        XCTAssertGreaterThanOrEqual(late, 0)
+        defer { close(late) }
+        Self.serve(on: late, greeting: "")
+        wait(for: [replied], timeout: 5)
+        XCTAssertEqual(events, ["written", "reply"])
+        client.disconnect()
+    }
+
     func testARequestWithNoTtFails() {
         let client = TTControlClient(path: path + ".absent")
         let failed = expectation(description: "failure")
@@ -398,7 +438,7 @@ final class QuickCapturePanelTests: XCTestCase {
         var submitted: [String] = []
         var dismissals = 0
         panel.scheduleDismissal = { _ in dismissals += 1 }
-        panel.submit = { text, done in submitted.append(text); callbacks.append(done) }
+        panel.submit = { text, written, done in written(); submitted.append(text); callbacks.append(done) }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -454,7 +494,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testSuccessfulCaptureClearsTheRememberedSelection() throws {
         let panel = QuickCapturePanel()
         panel.scheduleDismissal = { _ in }
-        panel.submit = { _, done in done(true, "Captured", "tx") }
+        panel.submit = { _, written, done in written(); done(true, "Captured", "tx") }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -511,7 +551,7 @@ final class QuickCapturePanelTests: XCTestCase {
         let panel = QuickCapturePanel()
         var dismiss: (() -> Void)?
         panel.scheduleDismissal = { dismiss = $0 }
-        panel.submit = { _, done in done(true, "Captured", "tx") }
+        panel.submit = { _, written, done in written(); done(true, "Captured", "tx") }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -532,7 +572,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testLongRefusalsGrowThePanelAndTheNextOpeningShrinksIt() throws {
         let panel = QuickCapturePanel()
         let reason = String(repeating: "The selected project is unavailable; choose an existing project. ", count: 8)
-        panel.submit = { _, done in done(false, reason, nil) }
+        panel.submit = { _, written, done in written(); done(false, reason, nil) }
         panel.show()
         defer { panel.close() }
         let originalHeight = panel.panel.frame.height
@@ -577,10 +617,10 @@ final class QuickCapturePanelTests: XCTestCase {
     func testCommandZUndoesTheLastCaptureOnlyFromAnEmptyField() throws {
         let panel = QuickCapturePanel()
         panel.scheduleDismissal = { _ in }
-        panel.submit = { _, done in done(true, "Captured: Buy milk", "tx-1") }
+        panel.submit = { _, written, done in written(); done(true, "Captured: Buy milk", "tx-1") }
         var undone: [String] = []
         var undoReplies: [(Bool, String) -> Void] = []
-        panel.undo = { transaction, done in undone.append(transaction); undoReplies.append(done) }
+        panel.undo = { transaction, written, done in written(); undone.append(transaction); undoReplies.append(done) }
         panel.show()
         defer { panel.close() }
         let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
@@ -618,6 +658,152 @@ final class QuickCapturePanelTests: XCTestCase {
         XCTAssertEqual(undone, ["tx-1", "tx-1"], "an undone capture is forgotten")
     }
 
+    /// A capture tt does not answer stops waiting after the timeout, says so,
+    /// and keeps the draft; a late success still clears that draft and is
+    /// remembered for undo, and a late refusal changes nothing.
+    func testAnUnansweredCaptureTimesOutKeepingTheDraft() throws {
+        let panel = QuickCapturePanel()
+        var timeouts: [(TimeInterval, () -> Void)] = []
+        var replies: [(Bool, String, String?) -> Void] = []
+        var announced: [String] = []
+        panel.scheduleDismissal = { _ in }
+        panel.scheduleTimeout = { delay, action in timeouts.append((delay, action)) }
+        panel.announce = { announced.append($0) }
+        panel.submit = { _, written, done in written(); replies.append(done) }
+        panel.show()
+        defer { panel.close() }
+        let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
+        let field = try XCTUnwrap(labels.first { $0.isEditable })
+
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertTrue(panel.sending)
+        XCTAssertEqual(timeouts.map(\.0), [QuickCapturePanel.replyTimeout])
+        XCTAssertLessThanOrEqual(QuickCapturePanel.replyTimeout, 10)
+
+        timeouts[0].1()
+        XCTAssertFalse(panel.sending)
+        XCTAssertTrue(field.isEditable)
+        XCTAssertEqual(field.stringValue, "Buy milk")
+        XCTAssertTrue(labels.contains { $0.stringValue == QuickCapturePanel.captureTimeoutMessage })
+        XCTAssertEqual(announced.last, QuickCapturePanel.captureTimeoutMessage)
+
+        // A late refusal leaves the kept draft alone.
+        replies[0](false, "refused late", nil)
+        XCTAssertEqual(field.stringValue, "Buy milk")
+        XCTAssertFalse(labels.contains { $0.stringValue == "refused late" })
+
+        // It can be sent again, and that one's late success clears it.
+        field.sendAction(field.action, to: field.target)
+        XCTAssertEqual(replies.count, 2)
+        timeouts[1].1()
+        replies[1](true, "Captured: Buy milk", "tx-late")
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertEqual(panel.lastCaptureTransaction, "tx-late")
+        XCTAssertTrue(labels.contains { $0.stringValue == "Captured: Buy milk" })
+
+        // A timeout firing after its answer arrived does nothing.
+        field.stringValue = "Next"
+        field.sendAction(field.action, to: field.target)
+        replies[2](true, "Captured: Next", "tx-3")
+        timeouts[2].1()
+        XCTAssertTrue(labels.contains { $0.stringValue == "Captured: Next" })
+        XCTAssertFalse(labels.contains { $0.stringValue == QuickCapturePanel.captureTimeoutMessage })
+    }
+
+    /// While tt is still starting, no reply clock runs, however long the start
+    /// takes; once the request reaches tt a prompt answer captures, and no
+    /// timeout message follows.
+    func testASlowStartThenAPromptReplyCapturesWithoutATimeout() throws {
+        let panel = QuickCapturePanel()
+        var timeouts: [() -> Void] = []
+        var written: (() -> Void)?
+        var reply: ((Bool, String, String?) -> Void)?
+        panel.scheduleDismissal = { _ in }
+        panel.scheduleTimeout = { _, action in timeouts.append(action) }
+        panel.announce = { _ in }
+        panel.submit = { _, onWritten, done in written = onWritten; reply = done }
+        panel.show()
+        defer { panel.close() }
+        let labels = try XCTUnwrap(panel.panel.contentView).descendants(of: NSTextField.self)
+        let field = try XCTUnwrap(labels.first { $0.isEditable })
+
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertTrue(panel.sending)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertTrue(timeouts.isEmpty, "no reply clock while tt starts")
+        XCTAssertTrue(labels.contains { $0.stringValue == "Capturing…" })
+
+        try XCTUnwrap(written)()
+        XCTAssertEqual(timeouts.count, 1, "the clock starts once tt has the request")
+        try XCTUnwrap(reply)(true, "Captured: Buy milk", "tx-1")
+        for timeout in timeouts { timeout() }
+        XCTAssertEqual(field.stringValue, "")
+        XCTAssertEqual(panel.lastCaptureTransaction, "tx-1")
+        XCTAssertTrue(labels.contains { $0.stringValue == "Captured: Buy milk" })
+        XCTAssertFalse(labels.contains { $0.stringValue == QuickCapturePanel.captureTimeoutMessage })
+
+        // Written after the answer, as a reordered delivery might: no clock.
+        field.stringValue = "Next"
+        field.sendAction(field.action, to: field.target)
+        let lateWritten = try XCTUnwrap(written)
+        try XCTUnwrap(reply)(true, "Captured: Next", "tx-2")
+        lateWritten()
+        XCTAssertEqual(timeouts.count, 1)
+    }
+
+    /// Esc, or clicking elsewhere, while tt is asked stops waiting and keeps
+    /// the draft for the next opening, which can send it again.
+    func testCancellingAPendingCaptureKeepsTheDraft() throws {
+        let panel = QuickCapturePanel()
+        var replies: [(Bool, String, String?) -> Void] = []
+        panel.scheduleTimeout = { _, _ in }
+        panel.announce = { _ in }
+        panel.submit = { _, written, done in written(); replies.append(done) }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "Buy milk"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertTrue(panel.sending)
+
+        panel.panel.cancelOperation(nil)
+        XCTAssertFalse(panel.isVisible)
+        XCTAssertFalse(panel.sending)
+        replies[0](false, "tt is busy", nil)
+
+        panel.show()
+        XCTAssertEqual(field.stringValue, "Buy milk")
+        XCTAssertTrue(field.isEditable)
+        field.sendAction(field.action, to: field.target)
+        XCTAssertEqual(replies.count, 2, "a cancelled capture does not block the next")
+    }
+
+    /// VoiceOver hears the field's name, the list's, and each status but the
+    /// hint; the panel is placed, not dragged.
+    func testThePanelIsLabeledAndAnnouncesItsStatus() throws {
+        let panel = QuickCapturePanel()
+        var announced: [String] = []
+        panel.announce = { announced.append($0) }
+        panel.scheduleDismissal = { _ in }
+        panel.scheduleTimeout = { _, _ in }
+        panel.submit = { _, written, done in written(); done(false, "Unknown project %nope", nil) }
+        panel.show()
+        defer { panel.close() }
+        XCTAssertFalse(panel.panel.isMovableByWindowBackground)
+        let content = try XCTUnwrap(panel.panel.contentView)
+        let field = try XCTUnwrap(content.descendants(of: NSTextField.self).first { $0.isEditable })
+        XCTAssertEqual(field.accessibilityLabel(), "Quick capture")
+        let table = try XCTUnwrap(content.descendants(of: NSTableView.self).first)
+        XCTAssertEqual(table.accessibilityLabel(), "Suggestions")
+        XCTAssertEqual(announced, [], "the hint is not announced")
+
+        field.stringValue = "Buy milk %nope"
+        field.sendAction(field.action, to: field.target)
+        XCTAssertEqual(announced, ["Capturing…", "Unknown project %nope"])
+    }
+
     /// A tt without a control socket still opens the panel, which names the
     /// binary and what to do instead of sending anything.
     func testAnUnavailableTtIsExplainedInThePanelAndNothingIsSent() throws {
@@ -626,7 +812,7 @@ final class QuickCapturePanelTests: XCTestCase {
         XCTAssertTrue(reason.hasPrefix("~/.local/bin/tt predates --control"))
         panel.unavailableReason = { reason }
         var sent = false
-        panel.submit = { _, _ in sent = true }
+        panel.submit = { _, _, _ in sent = true }
 
         panel.show()
         defer { panel.close() }

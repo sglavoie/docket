@@ -378,3 +378,20 @@ func TestCheckInFeedbackCommandOriginSurvivesDelayedExecution(t *testing.T) {
 		})
 	}
 }
+
+// TestCheckInFeedbackSpeaksOncePerSession keeps the note a reminder rather than
+// a refrain: the first unscheduled Doing commit teaches the route, and a second
+// one, in another transaction on another task, says nothing more.
+func TestCheckInFeedbackSpeaksOncePerSession(t *testing.T) {
+	first, second := newBulkPickerTestTask(t, 1, "first"), newBulkPickerTestTask(t, 2, "second")
+	env := newAppBulkPickerEnv(t, []*models.Task{first, second})
+	model := env.appModel()
+	registerCheckInTestOperations(t, model)
+	model.Update(commitCheckInState(t, model, taskOperationTestContext(first, env.projects[0]), models.StateDoing))
+	requireCheckInNote(t, model, "No check-in: first")
+
+	model.Update(commitCheckInState(t, model, taskOperationTestContext(second, env.projects[0]), models.StateDoing))
+	if strings.Contains(model.feedback.message, "No check-in") {
+		t.Fatalf("footer = %q, want the note spoken once per session", model.feedback.message)
+	}
+}

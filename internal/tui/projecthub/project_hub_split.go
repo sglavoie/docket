@@ -28,7 +28,8 @@ func (m *ProjectHubModel) previewSplit() *ProjectHubPreviewSplit {
 }
 
 // ShiftPreviewSplit moves the divider one step: a negative direction narrows
-// the list and widens the preview, a positive one the reverse. It is inert while
+// the list and widens the preview, a positive one the reverse. The first move
+// turns the content-fitted default into an explicit share, which then holds. It is inert while
 // no preview pane is drawn, so a press the frame cannot show moves nothing.
 func (m *ProjectHubModel) ShiftPreviewSplit(direction int) {
 	if direction == 0 || !m.previewPaneVisible() {
@@ -37,16 +38,28 @@ func (m *ProjectHubModel) ShiftPreviewSplit(direction int) {
 	split := m.previewSplit()
 	current := split.ListPercent
 	if current <= 0 {
-		current = listsurface.ListSurfaceDefaultListWidthPercent
+		// The default split may already be narrowed to the list's content, so
+		// the first press moves from the divider the frame drew rather than
+		// jumping back to the default share first.
+		config := m.projectHubRenderConfig(0)
+		listWidth, _ := listsurface.ListSurfacePreviewGeometry(config)
+		current = listWidth * 100 / max(config.Width, 1)
 	}
 	step := listsurface.ListSurfaceListWidthPercentStep
 	if direction < 0 {
 		step = -step
 	}
-	split.ListPercent = min(
+	next := min(
 		max(current+step, listsurface.ListSurfaceMinListWidthPercent),
 		listsurface.ListSurfaceMaxListWidthPercent,
 	)
+	// A content-fitted list can already sit outside the bounds a moved split
+	// keeps, so clamping could carry the divider against the press. A move the
+	// divider cannot make in the pressed direction is no move at all.
+	if (direction < 0 && next >= current) || (direction > 0 && next <= current) {
+		return
+	}
+	split.ListPercent = next
 }
 
 // previewPaneVisible answers whether the frame draws a preview pane at all:

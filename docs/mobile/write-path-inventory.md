@@ -176,6 +176,7 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `CommitService.RecoverWorkspace` | commit-journal | Recovery completes or rolls back a journal entry, and its outbound record with it. |
 | `WorkspaceLedger.Undo` | commit-journal | A new forward `kind: undo` manifest. |
 | `WorkspaceLedger.UndoWithEntry` | commit-journal | As `Undo`. |
+| `WorkspaceLedger.UndoTransactionWithEntry` | commit-journal | As `UndoWithEntry`, refusing with `ErrUndoSuperseded` when the named transaction is no longer the newest entry. |
 | `WorkspaceLedger.Redo` | commit-journal | A new forward `kind: redo` manifest. |
 | `WorkspaceLedger.RedoWithEntry` | commit-journal | As `Redo`. |
 | `WorkspaceLedger.UndoCount` | — | Read-only. |

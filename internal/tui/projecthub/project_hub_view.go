@@ -65,8 +65,19 @@ func (m *ProjectHubModel) projectHubRenderConfig(height int) listsurface.ListSur
 		ShowPreview:      true,
 		HideHelp:         true,
 		ListWidthPercent: m.previewSplit().ListPercent,
+		ListContentWidth: m.listContentWidth(),
 		PreviewBody:      m.renderProjectPreviewTasks,
 	}
+}
+
+// listContentWidth is what the list pane's widest row needs, so the default
+// split hands the rest to the preview's task rows rather than to blank list
+// columns.
+func (m *ProjectHubModel) listContentWidth() int {
+	if m.surface == nil {
+		return 0
+	}
+	return m.surface.NaturalRowWidth()
 }
 
 func (m *ProjectHubModel) subtitle() string {

@@ -24,11 +24,7 @@
     { "type": "assert", "label": "the defer section is refused on the row rather than hidden", "assert": "contains", "value": "cannot defer a done task" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "step onto the first defer row", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
-    { "type": "key", "key": "j" },
+    { "type": "key", "label": "cross into the defer section, every row of which is refused", "key": "tab" },
     { "type": "key", "label": "the refusal is what Enter reports", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "cannot defer a done task" },
     { "type": "assert", "label": "the picker stays open on the refused row", "assert": "contains", "value": "Set Due, Defer, or Check-In: Design login mockup" },

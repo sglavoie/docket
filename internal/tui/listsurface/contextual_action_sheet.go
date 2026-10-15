@@ -367,6 +367,10 @@ func (model *ContextActionSheetModel) Render(width int) string {
 	return chrome.RenderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 }
 
+// actionSheetSearchHintMinItems is the item count a sheet must exceed before its
+// footer advertises `/ search`.
+const actionSheetSearchHintMinItems = 5
+
 func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool) {
 	if model == nil || model.Surface == nil {
 		return chrome.GuidanceSpec{}, false
@@ -399,8 +403,14 @@ func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool)
 		keymap.Bind("enter", "Apply current action", "Actions",
 			keymap.WithGate(func() bool { return hasSelection() || searching }),
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
+		// Searching a sheet short enough to read whole earns no footer entry: the
+		// key still answers, but a two-row sheet advertising `/ search` reads as
+		// filler. The bound is where scanning starts to cost more than typing; a
+		// standing query keeps the entry, since `/` is how it is edited.
 		keymap.Bind("/", "Search actions", "Filters",
-			keymap.WithGate(func() bool { return !searching }),
+			keymap.WithGate(func() bool {
+				return !searching && (query != "" || len(model.Surface.Items()) > actionSheetSearchHintMinItems)
+			}),
 			keymap.WithFooter(20, "search", false)),
 		keymap.Bind("esc", "Unwind action sheet", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),

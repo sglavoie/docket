@@ -116,15 +116,34 @@ to the whole list, so copy describing the current narrowing would leave the way
 back unsaid. The axis is session state on a Hub that
 `ManageHubModel.prepareActiveView` rebuilds on every `P`, so it resets on every open.
 
+The full Hub lists three groups in a fixed order — Active, Parked, Archived —
+and the pinned Hub one. A parked project is still an available project: its row
+keeps the active item ID, entry kind, operations, and bulk tags, and only its
+`CategoryID` and a muted `PrimaryStyle` differ, so navigation, search, `v`,
+`Ctrl+A`, `Ctrl+T`, and the action sheet cross the groups unchanged. Its chips
+drop `#parked`, which the heading already says, while its `parked project`
+lifecycle alias and its tags keep `parked` and `#parked` findable. The pinned Hub
+has no such group, so a pinned parked project keeps the chip there. The title's
+`N active` still counts every available project, parked ones included, since a
+parked project is not archived; a third count would cost the narrow title the
+`Ctrl+T` marker.
+
 The preview pane carries two blocks with different owners. The header is
 `ListPreview`, the renderer-neutral text snapshot taken when the item is built:
 `projectPreview` spends a title row on the name and one `Summary` row on
 `<lifecycle> · <tally phrase> · slug <slug>`, appending ` · pinned` only when
 there is a pin to report. It declares no `Fields`. Five labeled rows cost six
 lines of a pane thirty tall to print four numbers and a boolean, and
-`Pinned: false` was noise on every project that had no pin. `projectTaskPhrase`
+`Pinned: false` was noise on every project that had no pin. `projectTaskPhraseAt`
 is the one reading of the tally, so the meta line and the row's own counts
-cannot disagree. `Body` stays the description and is capped at
+cannot disagree. It reads `N open · N overdue · N tasks`, the overdue run present
+only when nonzero and counted by `ProjectTaskTally.OverdueAt` through
+`pulse.TaskIsOverdueAt`, the predicate the Outliner's project headers count
+with. On the row that run rides `ListItem.SecondaryAccent` in
+`theme.ProjectPressureOverdueStyle`: the secondary text stays plain for
+measuring, truncating, and matching, and the accent is painted only where the run
+survived truncation whole and no cursor, selection, or match highlight owns the
+line. `Body` stays the description and is capped at
 `listSurfacePreviewBodyLines` wrapped lines, since free text of any length would
 otherwise swallow the rows the rest of the pane exists to fill.
 
@@ -136,9 +155,16 @@ styled per segment, sized to its column budget, and thinned by
 `indicatorDropLadder` at the width it is drawn at — none of which an item built
 before layout knows. So the hook lets the pane paint during the render instead
 of letting the item carry a string it could not have sized. What it paints is
-`RenderOutlinerTaskRow` on an unmounted `OutlinerModel` over the previewed
+`RenderOutlinerPreviewTaskRow` on an unmounted `OutlinerModel` over the previewed
 project: the pane shows the product's own task row rather than a second row
 grammar that would drift from it, and it has no cursor, so no row opens Peek.
+That entry point differs from `RenderOutlinerTaskRow` in one number: the title
+width the shedding defends is the whole title rather than a readable floor, and
+it walks `previewIndicatorDropLadder` — the ladder less its deadline rung — so
+the census and the review go in their own order before a preview title is cut,
+while the deadline outlasts the title.
+The pane is read for what a project holds, and every indicator it sheds is one
+`Enter` away.
 
 `projectPreviewTaskRows` flattens the tree once per project and
 `projectHubPreviewState` caches it beside the painter until
@@ -175,7 +201,14 @@ would be one frame stale in the very pass that settles it.
 `<` and `>` move the split. `ListSurfaceRenderConfig.ListWidthPercent` is the
 list's share, zero meaning the 55% default and clamped to 25–75%, and
 `ListSurfacePreviewGeometry` still lets both panes' minimum widths win over it,
-so no percent can break the compact fallback. The value is session-only:
+so no percent can break the compact fallback. Under the default the Hub also
+passes `ListContentWidth`, `ListSurfaceModel.NaturalRowWidth` over every source
+row and header, so a list narrower than its share gives the spare columns to
+the preview's task rows; the default share stays the ceiling and
+`ListMinWidth` the floor, and the measurement ignores the query so the divider
+holds still while one is typed. The first press converts the divider the frame
+drew into an explicit share, and a press the clamp would turn against its own
+direction — `<` on a list already under 25% — moves nothing. The value is session-only:
 `ManageHubModel` outlives each Hub it mounts and lends every new one the same
 `ProjectHubPreviewSplit`, so a reopen keeps the divider and a restart forgets it.
 `ShiftPreviewSplit` moves it 5% a press and is inert while `previewPaneVisible`

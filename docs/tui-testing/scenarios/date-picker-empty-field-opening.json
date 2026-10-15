@@ -1,0 +1,53 @@
+{
+  "name": "date-picker-empty-field-opening",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
+
+    { "type": "key", "label": "open the one date picker on a task holding no dates", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Triage support inbox" },
+    { "type": "assert", "label": "nothing is stored, so there is no Now line to read", "assert": "not_contains", "value": "Now:" },
+    { "type": "assert", "label": "the empty due field keeps its Clear row, disabled", "assert": "contains", "value": "remove date · disabled: no date set" },
+    { "type": "assert", "label": "the weekday presets carry their own keys", "assert": "contains", "value": "s This weekend" },
+    { "type": "assert", "assert": "contains", "value": "o Start of next week" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "a reflexive Enter lands on Today, not on Clear", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "key", "label": "undo takes the deadline back", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+
+    { "type": "key", "label": "with the field empty again, reopen the picker", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Triage support inbox" },
+    { "type": "key", "label": "clearing an empty field refuses by name", "key": "0" },
+    { "type": "assert", "assert": "status_contains", "value": "no date set" },
+    { "type": "assert", "label": "the refusal leaves the picker up", "assert": "contains", "value": "Set Due, Defer, or Check-In: Triage support inbox" },
+    { "type": "key", "label": "leave without choosing", "key": "esc" },
+
+    { "type": "key", "label": "give the task a deadline that keeps it in Inbox", "key": "@" },
+    { "type": "key", "key": "m" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "key", "label": "reopen over the deadline just written", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Triage support inbox" },
+    { "type": "assert", "label": "the stored deadline is named under the title, since no row shows it", "assert": "contains", "value": "Now: due " },
+    { "type": "assert", "assert": "contains", "value": "check-in none" },
+    { "type": "assert", "label": "a held due date keeps Clear committable", "assert": "not_contains", "value": "0 Clear  remove date · disabled" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the Now line and the weekday rows fit the app's minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Now: due " },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave without choosing", "key": "esc" },
+    { "type": "key", "label": "undo takes the deadline back", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

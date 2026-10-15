@@ -52,14 +52,6 @@ func (model *OperationValuePickerModel) Subtitle() string {
 	return model.subtitle
 }
 
-// SetTitleSuffix names a value beside the title's subject. It is kept whole at
-// every width, so the subject is what a narrow picker shortens.
-func (model *OperationValuePickerModel) SetTitleSuffix(suffix string) {
-	if model != nil {
-		model.titleSuffix = suffix
-	}
-}
-
 // Multi reports whether this picker accepts more than one row.
 func (model *OperationValuePickerModel) Multi() bool {
 	return model != nil && model.multi

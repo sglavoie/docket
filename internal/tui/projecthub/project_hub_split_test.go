@@ -25,13 +25,22 @@ func projectHubDividerColumn(t *testing.T, hub *ProjectHubModel) int {
 func TestProjectHubSplitKeysMoveTheDividerWithinBounds(t *testing.T) {
 	hub := newProjectHubFixture(t, scopeTestProject("alpha", "Alpha", "1")).open()
 	start := projectHubDividerColumn(t, hub)
+	drawn := start * 100 / hub.Width()
 
+	// The fixture's one short row fits the list under the 25% bound, so `<` has
+	// nowhere to go and must not clamp the divider rightward against the press.
 	hub.Update(syntheticKey('<'))
-	if got := hub.previewSplit().ListPercent; got != listsurface.ListSurfaceDefaultListWidthPercent-listsurface.ListSurfaceListWidthPercentStep {
-		t.Fatalf("< left the split at %d%%", got)
+	if got := hub.previewSplit().ListPercent; got != 0 {
+		t.Fatalf("< from a list already under the bound moved the split to %d%%", got)
 	}
-	if left := projectHubDividerColumn(t, hub); left >= start {
-		t.Fatalf("< drew the divider at column %d, want left of %d", left, start)
+	// The first move starts from the divider the content-fitted default drew,
+	// not from the default share it was narrowed from.
+	hub.Update(syntheticKey('>'))
+	if got, want := hub.previewSplit().ListPercent, max(drawn+listsurface.ListSurfaceListWidthPercentStep, listsurface.ListSurfaceMinListWidthPercent); got != want {
+		t.Fatalf("> left the split at %d%%, want %d%% from the drawn %d%%", got, want, drawn)
+	}
+	if moved := projectHubDividerColumn(t, hub); moved <= start {
+		t.Fatalf("> drew the divider at column %d, want right of %d", moved, start)
 	}
 
 	for range 20 {
@@ -82,10 +91,29 @@ func TestProjectHubSplitOutlivesTheHubItWasMovedIn(t *testing.T) {
 	first := fixture.open()
 	first.SetPreviewSplit(shared)
 	first.Update(syntheticKey('>'))
+	moved := shared.ListPercent
+	if moved <= 0 {
+		t.Fatal("> left the shared split at the default")
+	}
 
 	second := fixture.open()
 	second.SetPreviewSplit(shared)
-	if got := second.projectHubRenderConfig(0).ListWidthPercent; got != listsurface.ListSurfaceDefaultListWidthPercent+listsurface.ListSurfaceListWidthPercentStep {
-		t.Fatalf("a reopened Hub drew the split at %d%%", got)
+	if got := second.projectHubRenderConfig(0).ListWidthPercent; got != moved {
+		t.Fatalf("a reopened Hub drew the split at %d%%, want %d%%", got, moved)
+	}
+}
+
+func TestProjectHubDefaultSplitFitsTheListToItsWidestRow(t *testing.T) {
+	hub := newProjectHubFixture(t, scopeTestProject("alpha", "Alpha", "1")).open()
+	config := hub.projectHubRenderConfig(0)
+	listWidth, previewWidth := listsurface.ListSurfacePreviewGeometry(config)
+	if want := max(hub.surface.NaturalRowWidth(), listsurface.ListSurfaceDefaultListMinWidth); listWidth != want {
+		t.Fatalf("default list pane = %d columns, want the widest row's %d", listWidth, want)
+	}
+	if previewWidth != hub.Width()-listWidth-3 {
+		t.Fatalf("preview pane = %d columns, want the rest of %d", previewWidth, hub.Width())
+	}
+	if column := projectHubDividerColumn(t, hub); column != listWidth {
+		t.Fatalf("divider drawn at column %d, want %d", column, listWidth)
 	}
 }

@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the state badge is what says the work is active", "assert": "contains", "value": "▶   [rich-project] Build login form" },
+    { "type": "assert", "label": "the state badge is what says the work is active", "assert": "contains", "value": "◐   [rich-project] Build login form" },
     { "type": "assert", "label": "the age beside it is Peek's now, at every width", "assert": "not_contains", "value": "doing now" },
     { "type": "assert", "label": "the age beside it is Peek's now, at every width", "assert": "not_contains", "value": "Doing now" },
     { "type": "assert", "assert": "no_layout_issues" },

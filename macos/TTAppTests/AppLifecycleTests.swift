@@ -61,13 +61,13 @@ final class MainMenuTests: XCTestCase {
         main.items.first { $0.submenu?.title == title }?.submenu
     }
 
-    func testAppMenuAndClipboardOnlyEditMenu() {
+    func testAppMenuAndTheStandardEditMenu() {
         let main = MainMenu.make()
         let app = titles(main.items.first?.submenu)
         for title in ["About tt", "Settings…", "Relaunch tt", "Hide tt", "Quit tt"] {
             XCTAssertTrue(app.contains(title), "\(title) missing from \(app)")
         }
-        XCTAssertEqual(titles(submenu(main, "Edit")), ["Copy", "Paste", "Select All"])
+        XCTAssertEqual(titles(submenu(main, "Edit")), ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All"])
         XCTAssertEqual(main.items.compactMap { $0.submenu?.title }, ["", "Edit", "View", "Window", "Help"])
     }
 
@@ -111,11 +111,41 @@ final class MainMenuTests: XCTestCase {
         XCTAssertEqual(MainMenu.make().items.first?.submenu?.item(withTitle: "Quick Capture…")?.keyEquivalent, "")
     }
 
-    func testHelpMenuOpensTheGuide() throws {
+    func testHelpMenuOpensTheGuideAndTheIssues() throws {
         let help = try XCTUnwrap(submenu(MainMenu.make(), "Help"))
-        XCTAssertEqual(titles(help), ["tt Guide"])
-        XCTAssertEqual(MainMenu.guideURL.host, "github.com")
-        XCTAssertTrue(MainMenu.guideURL.path.hasSuffix("docs/guide/README.md"))
+        XCTAssertEqual(titles(help), ["tt Guide", "Report an Issue…"])
+        XCTAssertEqual(help.item(withTitle: "Report an Issue…")?.action, MainMenu.reportIssue)
+        XCTAssertEqual(MainMenu.guideURL.absoluteString, "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")
+        XCTAssertEqual(MainMenu.issuesURL.absoluteString, "https://github.com/sglavoie/tt/issues")
+    }
+
+    /// Undo, Redo, and Cut are text-field edits: the surface keeps their keys,
+    /// while Copy, Paste, and Select All stay the menu's.
+    func testUndoRedoAndCutAreTheTextFieldsAlone() throws {
+        let edit = try XCTUnwrap(submenu(MainMenu.make(), "Edit"))
+        let undo = try XCTUnwrap(edit.item(withTitle: "Undo"))
+        let redo = try XCTUnwrap(edit.item(withTitle: "Redo"))
+        let cut = try XCTUnwrap(edit.item(withTitle: "Cut"))
+        XCTAssertNil(undo.target)
+        XCTAssertEqual([undo.action, redo.action, cut.action], [Selector(("undo:")), Selector(("redo:")), #selector(NSText.cut(_:))])
+        let main = MainMenu.make()
+        XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: .command)))
+        XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: [.shift, .command])))
+        XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "x", modifiers: .command)))
+        for key in ["c", "v", "a", "q"] {
+            let item = MainMenu.item(in: main, key: key, modifiers: .command)
+            XCTAssertNotNil(item, key)
+            XCTAssertFalse(MainMenu.isTextOnlyEdit(item), key)
+        }
+
+        // A field editor cuts and its window undoes; the terminal surface
+        // answers none of the three, so the items stay disabled over it.
+        XCTAssertTrue(NSTextView.instancesRespond(to: MainMenu.cut))
+        XCTAssertTrue(NSWindow.instancesRespond(to: MainMenu.undo))
+        XCTAssertTrue(NSWindow.instancesRespond(to: MainMenu.redo))
+        for action in MainMenu.textOnlyEditActions {
+            XCTAssertFalse(Ghostty.SurfaceView.instancesRespond(to: action), NSStringFromSelector(action))
+        }
     }
 
     func testAboutCreditsNameTheGhosttyVersionAndNotice() {
@@ -164,12 +194,30 @@ final class LaunchErrorTests: XCTestCase {
         XCTAssertEqual(all[2].action, #selector(NSApplication.terminate(_:)))
     }
 
-    /// A failure a retry cannot fix offers none, and Return quits.
-    func testWithoutARetryReturnQuits() throws {
-        let window = LaunchErrorWindow.make(title: "Ghostty failed to start.", message: "", openSettings: {})
+    /// A failure a retry cannot fix offers none, and Return opens Settings:
+    /// it never quits.
+    func testWithoutARetryReturnOpensSettings() throws {
+        let window = LaunchErrorWindow.make(title: "The terminal could not start.", message: "", openSettings: {})
         let all = buttons(in: try XCTUnwrap(window.contentView))
         XCTAssertEqual(all.map(\.title), ["Open Settings…", "Quit"])
-        XCTAssertEqual(all.first { $0.keyEquivalent == "\r" }?.title, "Quit")
+        XCTAssertEqual(all.filter { $0.keyEquivalent == "\r" }.map(\.title), ["Open Settings…"])
+    }
+
+    /// The launch errors speak to the user: the config file is named, and
+    /// what Ghostty said about it listed, rather than "see the log".
+    func testTerminalFailuresNameTheConfigAndItsProblems() {
+        let none = AppDelegate.terminalStartFailureMessage(configPath: "~/.config/tt-app/ghostty.conf", diagnostics: [])
+        XCTAssertTrue(none.contains("~/.config/tt-app/ghostty.conf"), none)
+        XCTAssertFalse(none.lowercased().contains("log"), none)
+        let one = AppDelegate.terminalStartFailureMessage(
+            configPath: "~/c.conf", diagnostics: ["unknown field: fnot-size"]
+        )
+        XCTAssertTrue(one.contains("has 1 problem; fix it"), one)
+        XCTAssertTrue(one.hasSuffix("\n\n• unknown field: fnot-size"), one)
+        let two = AppDelegate.terminalStartFailureMessage(configPath: "~/c.conf", diagnostics: ["a", "b"])
+        XCTAssertTrue(two.contains("has 2 problems; fix them"), two)
+        XCTAssertTrue(two.hasSuffix("• a\n• b"), two)
+        XCTAssertFalse(AppDelegate.engineInitFailureMessage.contains("ghostty_init"))
     }
 
     /// With no terminal, a Dock click or switching to tt.app brings the
@@ -615,6 +663,10 @@ final class TerminalWindowControllerTests: XCTestCase {
         XCTAssertGreaterThan(cell.width, 0)
         XCTAssertEqual(controller.window.contentResizeIncrements, cell)
         XCTAssertEqual(controller.window.contentMinSize, NSSize(width: cell.width * 80, height: cell.height * 24))
+        // Summoned onto the Space in use, and still able to go full screen.
+        XCTAssertTrue(controller.window.collectionBehavior.contains(.moveToActiveSpace))
+        XCTAssertTrue(controller.window.collectionBehavior.contains(.fullScreenPrimary))
+        XCTAssertFalse(controller.restoresFullScreen)
 
         let action = "increase_font_size:4"
         XCTAssertTrue(ghostty_surface_binding_action(surfaceView.surface, action, UInt(action.utf8.count)))

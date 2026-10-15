@@ -515,7 +515,7 @@ func (m *OutlinerModel) planningRowGroups(rows []OutlinerRow) []projectRowGroup 
 	return m.groupSectionRowsByProject(rows, sectionForestOptions{rankRootsBySubtree: true}, m.sectionTaskLead(rows))
 }
 
-func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
+func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild, lifted int) {
 	if len(section.rows) == 0 {
 		return
 	}
@@ -529,14 +529,15 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
-		Group:           OutlinerRowGroup{SectionKey: collapseKey},
-		IsSectionHeader: true,
-		IsTodaySection:  isToday,
-		IsNextSection:   isNext,
-		SectionName:     section.group.Label(),
-		SectionCount:    len(section.rows),
-		StateGroup:      section.group,
-		CollapseKey:     collapseKey,
+		Group:              OutlinerRowGroup{SectionKey: collapseKey},
+		IsSectionHeader:    true,
+		IsTodaySection:     isToday,
+		IsNextSection:      isNext,
+		SectionName:        section.group.Label(),
+		SectionCount:       len(section.rows),
+		StateGroup:         section.group,
+		SectionLiftedCount: lifted,
+		CollapseKey:        collapseKey,
 	})
 	if m.sectionCollapsed(collapseKey) {
 		m.hideProjectRowGroups(m.planningRowGroups(section.rows))

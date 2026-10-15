@@ -42,6 +42,12 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 			return time.Date(year, month, day+n, 9, 0, 0, 0, now.Location())
 		}
 	}
+	// The weekday rows name the next occurrence strictly after today, so neither
+	// can collapse onto Today: on a Saturday or a Sunday the weekend is the next
+	// one, and on a Monday so is Monday.
+	weekday := func(day time.Weekday) func() time.Time {
+		return func() time.Time { return util.NextWeekdayAfter(now, day) }
+	}
 	if deferred {
 		return []datePreset{
 			{id: chrome.DatePresetClear, label: "Clear defer", clear: true},
@@ -50,6 +56,8 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 			{id: chrome.DatePresetEightHours, label: "In 8 hours", value: hourOffset(8)},
 			{id: chrome.DatePresetMorning, label: "Tomorrow morning", value: morning(1)},
 			{id: chrome.DatePresetTomorrow, label: "Until tomorrow", value: dayOffset(1)},
+			{id: chrome.DatePresetWeekend, label: "Until the weekend", value: weekday(time.Saturday)},
+			{id: chrome.DatePresetNextMonday, label: "Until next week", value: weekday(time.Monday)},
 			{id: chrome.DatePresetWeek, label: "For one week", value: dayOffset(7)},
 			{id: chrome.DatePresetMonth, label: "For 30 days", value: dayOffset(30)},
 		}
@@ -58,6 +66,8 @@ func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 		{id: chrome.DatePresetClear, label: "Clear", clear: true},
 		{id: chrome.DatePresetToday, label: "Today", value: dayOffset(0)},
 		{id: chrome.DatePresetTomorrow, label: "Tomorrow", value: dayOffset(1)},
+		{id: chrome.DatePresetWeekend, label: "This weekend", value: weekday(time.Saturday)},
+		{id: chrome.DatePresetNextMonday, label: "Start of next week", value: weekday(time.Monday)},
 		{id: chrome.DatePresetWeek, label: "In one week", value: dayOffset(7)},
 		{id: chrome.DatePresetMonth, label: "In 30 days", value: dayOffset(30)},
 	}
@@ -106,13 +116,30 @@ func DateListItemID(deferred bool, presetID string) listsurface.ListItemID {
 	return listsurface.ListItemID("date:due:" + presetID)
 }
 
-func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, disabledReason string) []listsurface.ListItem {
+// DateClearNothingSetReason is what a Clear row says when its field holds
+// nothing on any target: the row stays listed, and its key and Enter refuse by
+// this reason rather than committing a removal that removes nothing.
+const DateClearNothingSetReason = "no date set"
+
+// DateFieldsSet records which of the two date fields any target holds a value
+// in. It decides only whether that field's Clear row may be committed.
+type DateFieldsSet struct {
+	Due, Defer bool
+}
+
+func operationDateItems(
+	deferred bool, categoryID listsurface.ListCategoryID, disabledReason string, fieldSet bool,
+) []listsurface.ListItem {
 	now := time.Now()
 	presets := OperationDatePresets(deferred, now)
 	items := make([]listsurface.ListItem, 0, len(presets))
 	for _, preset := range presets {
 		var date *time.Time
 		secondary := "remove date"
+		reason := disabledReason
+		if preset.clear && reason == "" && !fieldSet {
+			reason = DateClearNothingSetReason
+		}
 		if !preset.clear {
 			value := preset.value()
 			date = &value
@@ -125,7 +152,7 @@ func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, di
 			PrimaryMarker:  datePresetKeyMarker(deferred, preset.id),
 			SecondaryText:  secondary,
 			Aliases:        []string{preset.id, secondary},
-			DisabledReason: disabledReason,
+			DisabledReason: reason,
 			Data:           operation.OperationDateValue{Date: date, Deferred: deferred},
 		})
 	}
@@ -146,10 +173,11 @@ func DateSectionLabel(deferred bool) string {
 // OperationDateListSource is the one picker `@` opens. Due rows come first
 // because a deadline is the commoner answer, and deferReason disables the whole
 // defer section when a resolved task cannot be deferred, which leaves due
-// reachable on the same terminal task.
-func OperationDateListSource(deferReason string) listsurface.ListSource {
-	items := operationDateItems(false, dateListCategoryDue, "")
-	items = append(items, operationDateItems(true, dateListCategoryDefer, deferReason)...)
+// reachable on the same terminal task. A field no target holds a value in keeps
+// its Clear row listed but disabled, since clearing it would write nothing.
+func OperationDateListSource(deferReason string, set DateFieldsSet) listsurface.ListSource {
+	items := operationDateItems(false, dateListCategoryDue, "", set.Due)
+	items = append(items, operationDateItems(true, dateListCategoryDefer, deferReason, set.Defer)...)
 	items = append(items, listsurface.ListItem{
 		ID:            dateCheckInEditorItemID,
 		CategoryID:    dateListCategoryCheckIn,
@@ -170,8 +198,8 @@ func OperationDateListSource(deferReason string) listsurface.ListSource {
 
 // OperationDueDateListSource is the deadline-only projection, with no
 // deferral or check-in rows.
-func OperationDueDateListSource() listsurface.ListSource {
-	return listsurface.ListSource{Items: operationDateItems(false, "", "")}
+func OperationDueDateListSource(dueSet bool) listsurface.ListSource {
+	return listsurface.ListSource{Items: operationDateItems(false, "", "", dueSet)}
 }
 
 // parentListNoneID is the row expressing the `>0` grammar: no parent, task at
@@ -304,9 +332,14 @@ func ParentSelectedID(task *models.Task) []listsurface.ListItemID {
 	return []listsurface.ListItemID{listsurface.ListItemID("parent:" + *task.ParentID)}
 }
 
+// DueDateSelectedID names the due row a picker opens on for one shared due
+// value. No due date opens on Today, the first preset that writes one, so a
+// reflexive Enter sets a deadline rather than clearing a field that is already
+// empty; a date a preset reproduces opens on that preset; any other date names
+// no row.
 func DueDateSelectedID(date *time.Time) []listsurface.ListItemID {
 	if date == nil {
-		return []listsurface.ListItemID{DateListItemID(false, "clear")}
+		return []listsurface.ListItemID{DateListItemID(false, chrome.DatePresetToday)}
 	}
 	return RelativeDateSelectedID(date, false)
 }
@@ -314,14 +347,18 @@ func DueDateSelectedID(date *time.Time) []listsurface.ListItemID {
 // OperationDateSelectedID highlights the row the combined picker opens on. The
 // due field alone decides it: the cursor can only sit in one section, that
 // section is always Due, and a stored deferral is therefore never what draws it
-// somewhere else. A due date no preset reproduces names no row, so the cursor
-// falls to Due's Clear row, which is where the list opens anyway — the highlight
-// is a starting point, not a selection, and opening the picker writes nothing.
-func OperationDateSelectedID(due *time.Time) []listsurface.ListItemID {
-	if selected := DueDateSelectedID(due); len(selected) > 0 {
-		return selected
+// somewhere else. Targets agreeing on no due date open on Today. A due date no
+// preset reproduces, or a selection disagreeing about due, has a value to
+// replace and no row naming it, so the cursor falls to Due's Clear row — the
+// highlight is a starting point, not a selection, and opening the picker writes
+// nothing.
+func OperationDateSelectedID(due *time.Time, shared bool) []listsurface.ListItemID {
+	if shared {
+		if selected := DueDateSelectedID(due); len(selected) > 0 {
+			return selected
+		}
 	}
-	return []listsurface.ListItemID{DateListItemID(false, "clear")}
+	return []listsurface.ListItemID{DateListItemID(false, chrome.DatePresetClear)}
 }
 
 // RelativeDateSelectedID highlights a preset only when the stored value is

@@ -3,7 +3,11 @@ import AppKit
 /// A floating capture field over whatever app is in front, opened by its own
 /// global shortcut. Enter hands the line to the running tt, which parses it
 /// with the composer's grammar and commits it as one capture; a refusal keeps
-/// the line for fixing. Esc, or clicking elsewhere, puts it away unsent.
+/// the line for fixing. Esc, or clicking elsewhere, puts it away unsent. A
+/// capture or undo tt has not answered within `replyTimeout` of receiving it
+/// stops waiting and says so, keeping the draft; while tt is still starting,
+/// the control client's connect window governs instead. Esc or clicking
+/// elsewhere stops either wait sooner.
 ///
 /// Typing a sigil asks tt what its composer would suggest there, and the
 /// answers list under the field: ↑/↓ choose, Tab accepts, Enter accepts unless
@@ -14,12 +18,13 @@ import AppKit
 /// the typing.
 final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     NSTableViewDataSource, NSTableViewDelegate {
-    /// Sends one line to tt and calls back with whether it was captured, what
-    /// tt said, and the committed transaction a later undo names.
-    var submit: ((String, @escaping (Bool, String, String?) -> Void) -> Void)?
-    /// Asks tt to undo the named capture transaction and calls back with
-    /// whether it did and what tt said.
-    var undo: ((String, @escaping (Bool, String) -> Void) -> Void)?
+    /// Sends one line to tt, calls `written` once tt has the request, which
+    /// starts the reply timeout, and calls back with whether it was captured,
+    /// what tt said, and the committed transaction a later undo names.
+    var submit: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?) -> Void) -> Void)?
+    /// Asks tt to undo the named capture transaction, calls `written` once tt
+    /// has the request, and calls back with whether it did and what tt said.
+    var undo: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String) -> Void) -> Void)?
     /// Asks tt what to suggest for the draft up to the caret and calls back
     /// with its answer, or nil when there is none to show.
     var complete: ((String, @escaping (TTCompletion?) -> Void) -> Void)?
@@ -31,6 +36,31 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     var scheduleDismissal: (@escaping () -> Void) -> Void = { action in
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: action)
     }
+    /// Runs the action after the delay; tests run it when they choose.
+    var scheduleTimeout: (TimeInterval, @escaping () -> Void) -> Void = { delay, action in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+    }
+    /// Speaks a status line to VoiceOver, which does not read a label that
+    /// changes under the field on its own.
+    var announce: (String) -> Void = { text in
+        NSAccessibility.post(
+            element: NSApp as Any,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: text,
+                .priority: NSAccessibilityPriorityLevel.high.rawValue,
+            ]
+        )
+    }
+
+    /// How long a capture or undo waits for tt's answer.
+    static let replyTimeout: TimeInterval = 5
+    static let captureTimeoutMessage = "tt did not answer within 5 seconds, so the line is kept here. "
+        + "It may still arrive in tt: check there before sending it again."
+    static let undoTimeoutMessage = "tt did not answer the undo within 5 seconds. "
+        + "It may still happen in tt: check there before trying again."
+    static let accessibilityLabel = "Quick capture"
+    static let suggestionsAccessibilityLabel = "Suggestions"
 
     static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc cancel"
     /// The sigil examples, read only while the field is empty.
@@ -48,7 +78,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private let suggestionTable = NSTableView()
     private let suggestionScroll = NSScrollView()
     private var suggestionHeight: NSLayoutConstraint?
-    private var sending = false
+    private(set) var sending = false
+    /// The capture or undo being waited on; bumped when its answer arrives,
+    /// it times out, or it is cancelled, so a late answer finds it gone.
+    private var requestGeneration = 0
     private var dismissalGeneration = 0
     private var previewGeneration = 0
     private var pendingPreviewHeight: CGFloat = 0
@@ -106,6 +139,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     func close() {
         dismissalGeneration += 1
+        // Putting the panel away stops waiting on tt; the draft stays.
+        if sending {
+            abandonRequest()
+        }
         rememberSelection()
         clearPreview()
         stopObservingSelection()
@@ -151,7 +188,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         panel.standardWindowButton(.closeButton)?.isHidden = true
         panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
         panel.standardWindowButton(.zoomButton)?.isHidden = true
-        panel.isMovableByWindowBackground = true
+        // Always placed by `position()`, so it is not dragged anywhere a later
+        // show would ignore.
+        panel.isMovableByWindowBackground = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.hidesOnDeactivate = false
@@ -181,6 +220,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         field.delegate = self
         field.target = self
         field.action = #selector(enter(_:))
+        field.setAccessibilityLabel(Self.accessibilityLabel)
+        field.setAccessibilityHelp(Self.hint)
 
         status.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         status.textColor = .secondaryLabelColor
@@ -207,6 +248,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         suggestionTable.delegate = self
         suggestionTable.target = self
         suggestionTable.action = #selector(clickSuggestion(_:))
+        suggestionTable.setAccessibilityLabel(Self.suggestionsAccessibilityLabel)
         suggestionScroll.documentView = suggestionTable
         suggestionScroll.drawsBackground = false
         suggestionScroll.hasVerticalScroller = true
@@ -255,6 +297,32 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         status.textColor = error ? .systemRed : .secondaryLabelColor
         status.toolTip = error ? text : nil
         fitToContent()
+        // The hint is the field's help, read with it; anything else is news.
+        if text != Self.hint {
+            announce(text)
+        }
+    }
+
+    /// Stops waiting on the request in flight; its answer, if it comes, is
+    /// handled as late.
+    private func abandonRequest() {
+        requestGeneration += 1
+        sending = false
+        field.isEditable = true
+    }
+
+    /// Starts the timeout once tt has the request; a request already
+    /// answered, cancelled, or replaced arms nothing.
+    private func armTimeout(for request: Int, message: String) {
+        guard request == requestGeneration, sending else { return }
+        scheduleTimeout(Self.replyTimeout) { [weak self] in
+            guard let self, request == self.requestGeneration, self.sending else { return }
+            self.abandonRequest()
+            self.setStatus(message, error: true)
+            if self.isVisible {
+                self.panel.makeFirstResponder(self.field)
+            }
+        }
     }
 
     // MARK: Actions
@@ -275,9 +343,18 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         clearPreview()
         sending = true
         field.isEditable = false
+        requestGeneration += 1
+        let request = requestGeneration
         setStatus("Capturing…", error: false)
-        submit(text) { [weak self] ok, message, transaction in
+        submit(text, { [weak self] in
+            self?.armTimeout(for: request, message: Self.captureTimeoutMessage)
+        }) { [weak self] ok, message, transaction in
             guard let self else { return }
+            guard request == self.requestGeneration else {
+                self.lateCaptureReply(ok: ok, message: message, text: text, transaction: transaction)
+                return
+            }
+            self.requestGeneration += 1
             self.sending = false
             self.field.isEditable = true
             if ok {
@@ -303,6 +380,21 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         }
     }
 
+    /// tt answered a capture after the panel stopped waiting. A refusal changes
+    /// nothing, since the draft was kept; a capture is remembered for undo and
+    /// clears the draft it took, unless that has been edited since.
+    private func lateCaptureReply(ok: Bool, message: String, text: String, transaction: String?) {
+        guard ok else { return }
+        lastCaptureTransaction = transaction
+        if field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) == text {
+            savedSelection = nil
+            field.stringValue = ""
+        }
+        if isVisible, !sending {
+            setStatus(message.isEmpty ? "Captured" : message, error: false)
+        }
+    }
+
     /// Cmd+Z: the last capture when the field is empty and one is remembered,
     /// otherwise the field's own text undo.
     private func undoKey() -> Bool {
@@ -317,16 +409,29 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         return true
     }
 
-    private func undoCapture(_ transaction: String, through undo: (String, @escaping (Bool, String) -> Void) -> Void) {
+    private func undoCapture(
+        _ transaction: String,
+        through undo: (String, @escaping () -> Void, @escaping (Bool, String) -> Void) -> Void
+    ) {
         guard !sending else { return }
         clearCompletion()
         // The panel stays open to say what tt answered.
         dismissalGeneration += 1
         sending = true
         field.isEditable = false
+        requestGeneration += 1
+        let request = requestGeneration
         setStatus("Undoing…", error: false)
-        undo(transaction) { [weak self] ok, message in
+        undo(transaction, { [weak self] in
+            self?.armTimeout(for: request, message: Self.undoTimeoutMessage)
+        }) { [weak self] ok, message in
             guard let self else { return }
+            guard request == self.requestGeneration else {
+                // A late undo still took the capture back.
+                if ok, self.lastCaptureTransaction == transaction { self.lastCaptureTransaction = nil }
+                return
+            }
+            self.requestGeneration += 1
             self.sending = false
             self.field.isEditable = true
             if ok {
@@ -550,9 +655,18 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     /// Clicking another app puts the panel away; the line stays for next time.
+    /// While tt is asked something, the panel stays if it was tt.app's own
+    /// window that took the keyboard, as tt starting for a capture does, and
+    /// otherwise stops waiting and goes.
     func windowDidResignKey(_ notification: Notification) {
-        guard !sending else { return }
-        close()
+        guard sending else {
+            close()
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.sending, !self.panel.isKeyWindow, NSApp.keyWindow == nil else { return }
+            self.close()
+        }
     }
 }
 

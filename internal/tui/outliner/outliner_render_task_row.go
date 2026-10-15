@@ -200,6 +200,13 @@ func taskMatchSourceCue(row OutlinerRow) string {
 // ordinary row; it changes no piece's width, so a caller measuring the title
 // budget can pass the zero value.
 func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout, paint cursorPaint) taskRowSegments {
+	return m.buildTaskRowSegmentsFor(row, rowWidth, colLayout, paint, min(8, max(rowWidth/4, 4)), indicatorDropLadder)
+}
+
+// buildTaskRowSegmentsFor is buildTaskRowSegments with the title width the
+// shedding defends named by the caller: the match cue and then the indicators
+// along indicatorDropLadder go while the title budget is under titleTarget.
+func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout, paint cursorPaint, titleTarget int, ladder []func(*taskIndicatorSegments)) taskRowSegments {
 	task := row.Task
 	bg := paint.gutterBg()
 	foldIndicator := m.renderTaskFoldIndicator(row, colLayout, bg)
@@ -246,7 +253,6 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
 	// Queue membership, multi-select state, tree position, and workflow state
 	// remain; lower-priority badges are progressively removed as space tightens.
-	titleTarget := min(8, max(rowWidth/4, 4))
 	// The match cue goes first: it explains a result the title itself cannot
 	// show, which is worth nothing once that title is unreadable. It is also the
 	// only segment a row wears solely because a search is live, so shedding it
@@ -254,7 +260,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colL
 	if segments.titleWidth(rowWidth) < titleTarget {
 		segments.matchCue = ""
 	}
-	for _, dropSegment := range indicatorDropLadder {
+	for _, dropSegment := range ladder {
 		if segments.titleWidth(rowWidth) >= titleTarget {
 			break
 		}
@@ -278,6 +284,32 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 	titleStyle := m.renderTaskTitleStyle(task)
 	paint := m.cursorPaintFor(selected).overTaskRow()
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
+	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
+
+	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
+}
+
+// RenderOutlinerPreviewTaskRow draws one task row for a read-only glance at a
+// project — Select Project's preview pane — where the title is what the row is
+// read for and nothing below it can be opened: no cursor stands on it and no
+// Peek answers it. It is RenderOutlinerTaskRow with the shedding target raised
+// from a readable title to the whole one, so indicatorDropLadder empties, in its
+// own order, before a title is cut — except the deadline, which is the one
+// indicator a glance at a project is for: an overdue date outranks the end of a
+// title, so the preview cuts the title rather than drop it.
+func (m *OutlinerModel) RenderOutlinerPreviewTaskRow(
+	row OutlinerRow,
+	rowWidth, rowIndex int,
+	colLayout *chrome.ColumnLayout,
+) string {
+	task := row.Task
+	titleStyle := m.renderTaskTitleStyle(task)
+	paint := m.cursorPaintFor(false).overTaskRow()
+	titleTarget := min(8, max(rowWidth/4, 4))
+	if task != nil {
+		titleTarget = max(titleTarget, lipgloss.Width(task.Title))
+	}
+	segments := m.buildTaskRowSegmentsFor(row, rowWidth, colLayout, paint, titleTarget, previewIndicatorDropLadder)
 	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
 
 	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
@@ -395,6 +427,10 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.review = "" },
 	func(segments *taskIndicatorSegments) { segments.due = "" },
 }
+
+// previewIndicatorDropLadder is the ladder less its last rung: Select Project's
+// preview sheds the census and the review for a whole title, never the deadline.
+var previewIndicatorDropLadder = indicatorDropLadder[:len(indicatorDropLadder)-1]
 
 // renderTaskIndicatorSegments promotes the row's three surviving operational
 // signals: the deadline, the owed review, and the outgoing-reference census.

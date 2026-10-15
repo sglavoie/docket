@@ -26,9 +26,10 @@ type OperationValuePickerModel struct {
 	provider operation.ValueProviderID
 	title    string
 	subtitle string
-	// titleSuffix is a value the title carries after its subject and never
-	// shortens: the subject is fitted to what the suffix leaves.
-	titleSuffix string
+	// contextLine is one muted line under the title stating what the targets
+	// hold now, for a picker whose rows cannot show it. It wraps rather than
+	// truncates, and RenderWithin reserves the rows it wraps to.
+	contextLine string
 	multi       bool
 	searching   bool
 	searchInput listsurface.PickerSearchInput
@@ -105,6 +106,13 @@ func NewOperationValuePickerModel(
 		model.dateAdder = chrome.NewDateAdder()
 	}
 	return model, nil
+}
+
+// SetContextLine sets the line drawn under the title; empty draws none.
+func (model *OperationValuePickerModel) SetContextLine(line string) {
+	if model != nil {
+		model.contextLine = line
+	}
 }
 
 //nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.

@@ -10,8 +10,9 @@ package chrome
 // The two fields keep separate vocabularies on purpose. `t` is Today and a
 // deferral has no Today row, so `t` is unbound under Defer rather than quietly
 // landing on something near it; the hour keys are unbound under Due for the same
-// reason, since a due date is a calendar day. Only `0`, `m`, `w`, and `n` are
-// shared, and each names the same relative distance in both fields.
+// reason, since a due date is a calendar day. Only `0`, `m`, `s`, `o`, `w`, and
+// `n` are shared, and each names the same relative distance in both fields: `s`
+// the coming Saturday and `o` the coming Monday, both strictly after today.
 
 // The preset IDs. The picker's rows and the form's rows are both built from
 // these, so a shortcut and the row it applies cannot drift apart into two
@@ -26,15 +27,19 @@ const (
 	DatePresetFourHours  = "4h"
 	DatePresetEightHours = "8h"
 	DatePresetMorning    = "morning"
+	DatePresetWeekend    = "weekend"
+	DatePresetNextMonday = "monday"
 )
 
 var (
 	dueDatePresetKeys = map[string]string{
-		DatePresetClear:    "0",
-		DatePresetToday:    "t",
-		DatePresetTomorrow: "m",
-		DatePresetWeek:     "w",
-		DatePresetMonth:    "n",
+		DatePresetClear:      "0",
+		DatePresetToday:      "t",
+		DatePresetTomorrow:   "m",
+		DatePresetWeekend:    "s",
+		DatePresetNextMonday: "o",
+		DatePresetWeek:       "w",
+		DatePresetMonth:      "n",
 	}
 	deferDatePresetKeys = map[string]string{
 		DatePresetClear:      "0",
@@ -43,6 +48,8 @@ var (
 		DatePresetEightHours: "8",
 		DatePresetMorning:    "9",
 		DatePresetTomorrow:   "m",
+		DatePresetWeekend:    "s",
+		DatePresetNextMonday: "o",
 		DatePresetWeek:       "w",
 		DatePresetMonth:      "n",
 	}

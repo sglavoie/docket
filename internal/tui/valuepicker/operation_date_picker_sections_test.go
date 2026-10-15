@@ -21,7 +21,7 @@ func newDatePickerForTest(t *testing.T, deferReason string, selected ...listsurf
 		operation.ValueProviderDate,
 		"Set Due, Defer, or Check-In",
 		"Task",
-		OperationDateListSource(deferReason),
+		OperationDateListSource(deferReason, bothDateFieldsSet),
 		false,
 		selected,
 	)
@@ -38,7 +38,7 @@ func newDueOnlyPickerForTest(t *testing.T) *OperationValuePickerModel {
 		operation.ValueProviderDueDate,
 		"Set Due Date",
 		"Task",
-		OperationDueDateListSource(),
+		OperationDueDateListSource(true),
 		false,
 		nil,
 	)
@@ -70,26 +70,38 @@ func pressKey(picker *OperationValuePickerModel, key string) (bool, tea.Msg) {
 	return dismissed, result
 }
 
+// bothDateFieldsSet keeps both Clear rows committable, which is the picker a
+// task holding a due date and a deferral opens.
+var bothDateFieldsSet = DateFieldsSet{Due: true, Defer: true}
+
 // The combined picker always opens in Due, so only the due field may decide
 // which row the cursor starts on. A deferral the task happens to hold is not an
-// answer to "which due row is this?".
+// answer to "which due row is this?". No due date opens on Today, so a reflexive
+// Enter writes one instead of clearing nothing; a value a preset cannot name, or
+// a selection that disagrees, has something to replace and opens on Clear.
 func TestOperationDateSelectedIDReadsTheDueFieldAlone(t *testing.T) {
 	today := util.StartOfDay(time.Now())
 	arbitrary := today.AddDate(0, 0, 3)
+	for util.NextWeekdayAfter(today, time.Saturday).Equal(arbitrary) ||
+		util.NextWeekdayAfter(today, time.Monday).Equal(arbitrary) {
+		arbitrary = arbitrary.AddDate(0, 0, 1)
+	}
 	dueClear := DateListItemID(false, "clear")
 
 	cases := []struct {
-		name string
-		due  *time.Time
-		want listsurface.ListItemID
+		name   string
+		due    *time.Time
+		shared bool
+		want   listsurface.ListItemID
 	}{
-		{name: "no due date", due: nil, want: dueClear},
-		{name: "a due preset", due: &today, want: DateListItemID(false, "today")},
-		{name: "a due date no preset reproduces", due: &arbitrary, want: dueClear},
+		{name: "no due date", due: nil, shared: true, want: DateListItemID(false, "today")},
+		{name: "a due preset", due: &today, shared: true, want: DateListItemID(false, "today")},
+		{name: "a due date no preset reproduces", due: &arbitrary, shared: true, want: dueClear},
+		{name: "a selection disagreeing about due", due: nil, shared: false, want: dueClear},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			got := OperationDateSelectedID(testCase.due)
+			got := OperationDateSelectedID(testCase.due, testCase.shared)
 			if len(got) != 1 || got[0] != testCase.want {
 				t.Fatalf("OperationDateSelectedID = %v, want [%s]", got, testCase.want)
 			}
@@ -102,7 +114,8 @@ func TestOperationDateSelectedIDReadsTheDueFieldAlone(t *testing.T) {
 func TestCombinedDatePickerOpensOnADueRow(t *testing.T) {
 	for _, selected := range [][]listsurface.ListItemID{
 		nil,
-		OperationDateSelectedID(nil),
+		OperationDateSelectedID(nil, true),
+		OperationDateSelectedID(nil, false),
 		{DateListItemID(false, "today")},
 	} {
 		picker := newDatePickerForTest(t, "", selected...)
@@ -206,7 +219,7 @@ func TestTabReachesDisabledDeferRowsThatActivationStillRefuses(t *testing.T) {
 // A single matching section keeps its exact cursor and query, quietly.
 func TestTabStaysInTheOnlyMatchingSection(t *testing.T) {
 	picker := newDatePickerForTest(t, "")
-	picker.Surface().SetQuery("today")
+	picker.Surface().SetQuery("in one week")
 	before := currentDateRowID(t, picker)
 
 	_, result := pressKey(picker, "tab")
@@ -216,7 +229,7 @@ func TestTabStaysInTheOnlyMatchingSection(t *testing.T) {
 	if got := currentDateRowID(t, picker); got != before {
 		t.Fatalf("refused tab moved the cursor to %q, want it left on %q", got, before)
 	}
-	if got := picker.Surface().Query().Raw; got != "today" {
+	if got := picker.Surface().Query().Raw; got != "in one week" {
 		t.Fatalf("refused tab wrote query %q, want it preserved", got)
 	}
 }
@@ -318,7 +331,7 @@ func TestCheckInRowOpensTheTypedEditorRequestAndClaimsDateKeys(t *testing.T) {
 		operation.ValueProviderDate,
 		"Set Due, Defer, or Check-In",
 		"Task",
-		OperationDateListSource(""),
+		OperationDateListSource("", bothDateFieldsSet),
 		false,
 		nil,
 	)

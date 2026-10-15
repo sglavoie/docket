@@ -18,8 +18,9 @@ import (
 // its cursor starts. These cases pin the three answers that used to depend on
 // it: a selection that agrees about due but not about defer still opens on the
 // shared due preset, a stored deferral alone never drags the cursor into the
-// defer section, and a selection that disagrees about due opens on Due's Clear
-// row rather than nowhere in particular.
+// defer section — it opens on Today, the same as no dates at all — and a
+// selection that disagrees about due opens on Due's Clear row rather than
+// nowhere in particular.
 func TestCombinedDatePickerInitialCursorReadsTheDueFieldAlone(t *testing.T) {
 	today := util.StartOfDay(time.Now())
 	tomorrow := today.AddDate(0, 0, 1)
@@ -42,8 +43,18 @@ func TestCombinedDatePickerInitialCursorReadsTheDueFieldAlone(t *testing.T) {
 			want:  "date:due:tomorrow",
 		},
 		{
-			name:  "a deferral with no due date still opens on Due's Clear row",
+			name:  "a deferral with no due date still opens on Due's Today row",
 			dates: [][2]*time.Time{{nil, &week}},
+			want:  "date:due:today",
+		},
+		{
+			name:  "a selection agreeing on no due date opens on Today",
+			dates: [][2]*time.Time{{nil, nil}, {nil, &week}},
+			want:  "date:due:today",
+		},
+		{
+			name:  "a selection where only some hold a due date opens on Due's Clear row",
+			dates: [][2]*time.Time{{&today, nil}, {nil, nil}},
 			want:  "date:due:clear",
 		},
 		{

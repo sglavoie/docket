@@ -11,7 +11,7 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "one focused header leads the empty projection", "assert": "contains", "value": "[mix-quiet-planning]" },
-    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
 
     { "type": "key", "label": "b opens the same pane over the focused header form", "key": "b" },
     { "type": "assert", "label": "the project summary names its empty task list", "assert": "contains", "value": "Tasks: 0 · no sections" },

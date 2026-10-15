@@ -15,7 +15,7 @@
     { "type": "key", "label": "pin Build login form", "key": "*" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Pinned  (2)" },
-    { "type": "assert", "label": "the newest pin leads the group", "assert": "contains", "value": "├──   ▶   Build login form" },
+    { "type": "assert", "label": "the newest pin leads the group", "assert": "contains", "value": "├──   ◐   Build login form" },
     { "type": "assert", "assert": "contains", "value": "└──   ¿   Explore social login" },
     { "type": "key", "label": "the pin emptied the Doing lane and left the cursor sweeping it, so walk to the promoted row", "key": "home" },
     { "type": "key", "label": "past the Pinned lane's project group header", "key": "down" },
@@ -23,12 +23,12 @@
     { "type": "key", "label": "reorder the pinned task downward", "key": "J" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "├──   ¿   Explore social login" },
-    { "type": "assert", "assert": "contains", "value": "└──   ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "└──   ◐   Build login form" },
     { "type": "assert", "assert": "status_contains", "value": "Reorder Pinned" },
     { "type": "assert", "assert": "status_contains", "value": "u undo" },
     { "type": "key", "label": "undo the pinned reorder", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "├──   ▶   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "├──   ◐   Build login form" },
     { "type": "assert", "assert": "contains", "value": "└──   ¿   Explore social login" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

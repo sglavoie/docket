@@ -33,7 +33,10 @@ surface, scope, and mode once on the left, and reports the workspace pulse on th
 right as `workspace: inbox 3 · today 2 · overdue 1 · done 4`. A component at zero
 is left out, and a pulse with nothing to report is left out whole rather than
 leaving a bare `workspace:` behind. Narrow terminals drop Done, Inbox, overdue,
-then Today before shortening required interaction context.
+then Today before shortening required interaction context. A terminal wide
+enough to hold all of that whole follows the mode with its two Tab neighbours,
+muted — `Inbox  ‹ Today  Next ›` — so the title shows where `Shift+Tab` and
+`Tab` go; anywhere narrower the active mode stands alone.
 
 What is narrowing the view gets a second row, immediately under that one and
 above the list. It appears only while some axis is live — a selection, a lens, a

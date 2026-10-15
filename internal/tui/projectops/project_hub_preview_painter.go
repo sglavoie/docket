@@ -58,7 +58,10 @@ func (p *projectPreviewPainter) RenderRow(index, width int) string {
 	// the pane's rows are the product's rows down to the column their badges
 	// align in. The absolute row index keeps zebra striping anchored to the task
 	// rather than to the scroll position.
-	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, index, p.rowLayout(width))
+	// The preview row sheds its indicators before it cuts a title, since the pane
+	// is a glance at what a project holds and the deadline it drops is one `Enter`
+	// away in the Outliner.
+	return p.painter.RenderOutlinerPreviewTaskRow(p.rows[index], width, index, p.rowLayout(width))
 }
 
 func (p *projectPreviewPainter) rowLayout(width int) *chrome.ColumnLayout {

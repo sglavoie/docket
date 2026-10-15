@@ -116,10 +116,10 @@ the row `peekDockFooterWrapRows` already holds open.
 `title: subject suffix` inside the box's text columns. The subject is the part
 that gives way first, fitted to what the other two leave and dropped under four
 columns; a row still too narrow shortens the title, and the suffix is clipped
-only where it alone overruns the row, so a title never wraps. The date picker's
-`· due …` is the suffix, handed over through `SetTitleSuffix` rather than
-appended to the subtitle, which is what keeps the deadline being replaced whole,
-its year and clock included, at the minimum width.
+only where it alone overruns the row, so a title never wraps. The date picker
+no longer carries the deadline being replaced there: its `Now:` line under the
+title, `valuepicker.DateFieldsNowLine`, names due, defer, and check-in whole and
+wraps rather than clips, and the overlay reserves the rows it wraps to.
 
 #### One active instruction set
 

@@ -56,12 +56,12 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "assert", "label": "an empty project keeps its header as context", "assert": "contains", "value": "[mix-quiet-planning]" },
-    { "type": "assert", "label": "with the ordinary explanation printed beneath it", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "label": "with the ordinary explanation printed beneath it", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the header holds at the narrowest supported terminal", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
-    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the empty projection's only row is still the project's own", "key": "space" },

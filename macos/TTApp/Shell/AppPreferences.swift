@@ -27,6 +27,11 @@ enum TTActivationPolicy: String, CaseIterable {
         }
     }
 
+    /// Whether the Dock icon exists at all.
+    var showsDockIcon: Bool {
+        self != .menuBarOnly
+    }
+
     /// Whether the menu-bar icon exists at all.
     var showsStatusItem: Bool {
         self != .dockOnly

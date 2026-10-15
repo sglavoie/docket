@@ -344,19 +344,34 @@ or 08:00.
 
 Which row the combined picker opens on is the due field's business alone.
 `operation_value_picker_factory.go` reads `CommonTaskDate` for due only, and
-`OperationDateSelectedID` maps that to a due preset or, failing one, to
+`OperationDateSelectedID(due, shared)` maps that to a due preset, to Today when
+every target agrees on no due date, and otherwise to
 `DateListItemID(false, "clear")`. The cursor can sit in one section, that
 section is always Due, so deferral agreement can neither move the highlight nor
 withhold it: a selection sharing a deadline but not a hide-until still opens on
-the deadline it shares, and an absent, mixed, or non-preset due date opens on
-Due's Clear row, which is where the list would open anyway. The highlight is a
-starting point, not a selection — opening writes nothing and leaves
-`SelectedIDs` empty.
+the deadline it shares, an absent due date opens on Today so a reflexive `Enter`
+writes one, and a mixed or non-preset due date — a value to replace that no row
+names — opens on Due's Clear row. The highlight is a starting point, not a
+selection — opening writes nothing and leaves `SelectedIDs` empty.
+
+`DateFieldsSet` records which fields any target holds, and
+`operationDateItems` gives a Clear row of a field none holds
+`DateClearNothingSetReason`, `no date set`, through the same `DisabledReason`
+the terminal-task refusal uses, which it never overrides; `0`, `a`, and
+`Enter` refuse there by that reason. `DateFieldsNowLine` is the picker's
+context line, set through `SetContextLine` and drawn muted under the title: the
+stored due, the pending deferral, and the check-in with its cadence, each the
+targets' shared value or `mixed`, agreement judged by instant rather than by
+printed text. `RenderWithin` wraps it at the box's content width and adds the
+wrapped rows to its reservation, so it costs list rows, never terminal rows,
+and it is never truncated. Targets holding none of the three get no line, since
+nothing stored is nothing to replace. The title itself truncates the subtitle to
+the width the title leaves, so it stays the one row the budget reserves for it.
 
 `Tab` and `Shift+Tab` cross between the sections. `switchDateSection` walks
-`Matches()` for the first row whose `dateRowField` disagrees with the cursor's,
-so the switch lands on a row the current search left on screen, disabled rows
-included. Nothing to land on leaves cursor and query untouched and returns a
+`Matches()` for the adjacent section's first enabled row, else its first row, so
+the switch lands on a row the current search left on screen, stepping over a
+disabled Clear while still reaching a section a terminal task disables whole. Nothing to land on leaves cursor and query untouched and returns a
 status naming the section through `DateSectionLabel`, the one authority for
 both field names, which the section headers and the `a` hint also spell. The
 browse `switch key` block consumes both keys on every picker, so a picker with

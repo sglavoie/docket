@@ -409,11 +409,14 @@ func uxDailyUseIntegratedSchedulesExplicitly(
 	uxClarityPress(t, driver, uxClarityKeys("@")...)
 	obs := driver.Observe(ObserveOptions{})
 	assertUXScreenFitsItsTerminal(t, obs, size)
-	for _, field := range []string{"DUE", "DEFER"} {
-		if !strings.Contains(obs.PlainScreen, field) {
-			t.Fatalf("`@` opened a picker with no %s section, so it is not the one date picker\n%s",
-				field, obs.PlainScreen)
-		}
+	// DEFER sits below the due presets and scrolls off the smallest size, so the
+	// combined picker is recognized by the crossing its footer offers instead.
+	if !strings.Contains(obs.PlainScreen, "DUE") {
+		t.Fatalf("`@` opened a picker with no DUE section\n%s", obs.PlainScreen)
+	}
+	if !strings.Contains(obs.PlainScreen, "DEFER") && !strings.Contains(obs.PlainScreen, "Tab switch field") {
+		t.Fatalf("`@` opened a picker offering no Defer section, so it is not the one date picker\n%s",
+			obs.PlainScreen)
 	}
 
 	uxClarityPress(t, driver, uxClarityKeys("t")...)

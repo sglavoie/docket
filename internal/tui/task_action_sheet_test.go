@@ -258,8 +258,12 @@ func TestActionSheetBrowsesWithJAndK(t *testing.T) {
 		t.Fatalf("j/k changed the query to %q", query)
 	}
 	view := ansi.Strip(sheet.Render(100))
-	if !strings.Contains(view, "j/k navigate") || !strings.Contains(view, "/ search") {
-		t.Fatalf("action sheet footer does not advertise j/k and / :\n%s", view)
+	if !strings.Contains(view, "j/k navigate") {
+		t.Fatalf("action sheet footer does not advertise j/k:\n%s", view)
+	}
+	// A sheet short enough to read whole does not advertise searching it.
+	if len(sheet.Surface.Items()) <= 5 && strings.Contains(view, "/ search") {
+		t.Fatalf("a short action sheet advertises / search:\n%s", view)
 	}
 	if strings.Contains(view, "Search:") {
 		t.Fatalf("a browsing sheet drew a search row:\n%s", view)

@@ -17,8 +17,9 @@
 
     { "type": "key", "label": "walk to the new final check-in section", "key": "G" },
     { "type": "assert", "label": "the appended editor action is reachable when the window moves", "assert": "contains", "value": "Set check-in" },
-    { "type": "key", "label": "return to the first defer row", "key": "shift+tab" },
-    { "type": "assert", "assert": "contains", "value": "Clear defer" },
+    { "type": "key", "label": "return to the first defer row Enter can commit", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "› 1 In 1 hour" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },

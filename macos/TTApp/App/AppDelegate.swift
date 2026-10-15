@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         // app or surface exists.
         if ghostty_init(UInt(CommandLine.argc), CommandLine.unsafeArgv) != GHOSTTY_SUCCESS {
             NSLog("tt: ghostty_init failed")
-            showLaunchError(title: "Ghostty failed to initialize.", message: "ghostty_init returned an error.")
+            showLaunchError(title: "The terminal could not start.", message: Self.engineInitFailureMessage)
             return
         }
         guard !Self.isRunningTests else { return }
@@ -98,8 +98,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         guard ghostty.readiness == .ready else {
             showLaunchError(
-                title: "Ghostty failed to start.",
-                message: "The terminal engine could not be created; see the log for config diagnostics."
+                title: "The terminal could not start.",
+                message: Self.terminalStartFailureMessage(
+                    configPath: PreferencesModel.abbreviated(Ghostty.Config.userConfigURL().path),
+                    diagnostics: ghostty.config.diagnostics
+                )
             )
             return
         }
@@ -124,6 +127,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         model.onDockBadgeChange = { [weak self] _ in self?.refreshBadge() }
         terminal = controller
         controller.show()
+    }
+
+    /// tt.app's embedded terminal engine could not set itself up at all;
+    /// nothing in Settings or the config is at fault.
+    static let engineInitFailureMessage = "tt.app's built-in terminal (Ghostty) could not initialize. "
+        + "Quit and open tt.app again; if this keeps happening, reinstall it (just mac-install)."
+
+    /// The terminal engine refused to start, most often over its config: the
+    /// file is named, and what Ghostty said about it listed.
+    static func terminalStartFailureMessage(configPath: String, diagnostics: [String]) -> String {
+        guard !diagnostics.isEmpty else {
+            return "tt.app's built-in terminal could not be created. Check its config, \(configPath), "
+                + "or move it aside, then quit and open tt.app again."
+        }
+        let (noun, pronoun) = diagnostics.count == 1 ? ("problem", "it") : ("problems", "them")
+        return "tt.app's built-in terminal could not be created. Its config, \(configPath), "
+            + "has \(diagnostics.count) \(noun); fix \(pronoun), then quit and open tt.app again:\n\n"
+            + diagnostics.map { "• " + $0 }.joined(separator: "\n")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -204,14 +225,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    /// Right-clicking the Dock icon.
+    /// Right-clicking the Dock icon: the status menu's commands, for a Dock
+    /// with no menu-bar icon beside it.
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        Self.dockMenu(
+            pulse: lastPulse, terminalFrontmost: isTerminalFrontmost, canRelaunch: canRelaunchTerminal, target: self
+        )
+    }
+
+    /// The pulse counts still owed, each showing tt in its mode, then
+    /// Show/Hide, Quick Capture…, and Relaunch tt.
+    static func dockMenu(pulse: TTPulse?, terminalFrontmost: Bool, canRelaunch: Bool, target: AnyObject) -> NSMenu {
         let menu = NSMenu()
-        let capture = menu.addItem(withTitle: "Quick Capture…", action: #selector(showQuickCapture(_:)), keyEquivalent: "")
-        capture.target = self
-        let relaunch = menu.addItem(withTitle: "Relaunch tt", action: #selector(relaunchFromMenu(_:)), keyEquivalent: "")
-        relaunch.target = self
+        menu.autoenablesItems = false
+        let counts = pulse.map(TTPulseSummary.items(for:)) ?? []
+        for entry in counts {
+            let item = menu.addItem(withTitle: entry.title, action: #selector(AppDelegate.showViewFromMenu(_:)), keyEquivalent: "")
+            item.target = target
+            item.representedObject = entry.view.rawValue
+        }
+        if !counts.isEmpty {
+            menu.addItem(.separator())
+        }
+        let toggle = menu.addItem(
+            withTitle: terminalFrontmost ? "Hide tt" : "Show tt", action: #selector(AppDelegate.toggleFromMenu(_:)), keyEquivalent: ""
+        )
+        toggle.target = target
+        let capture = menu.addItem(withTitle: "Quick Capture…", action: #selector(AppDelegate.showQuickCapture(_:)), keyEquivalent: "")
+        capture.target = target
+        let relaunch = menu.addItem(withTitle: "Relaunch tt", action: #selector(AppDelegate.relaunchFromMenu(_:)), keyEquivalent: "")
+        relaunch.target = target
+        relaunch.isEnabled = canRelaunch
         return menu
+    }
+
+    @objc func toggleFromMenu(_ sender: Any?) {
+        toggleTerminal()
+    }
+
+    @objc func showViewFromMenu(_ sender: NSMenuItem) {
+        guard let view = (sender.representedObject as? String).flatMap(TTView.init(rawValue:)) else { return }
+        showView(view)
     }
 
     @objc func showPreferences(_ sender: Any?) {
@@ -224,6 +278,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         NSWorkspace.shared.open(MainMenu.guideURL)
     }
 
+    @objc func reportIssue(_ sender: Any?) {
+        NSWorkspace.shared.open(MainMenu.issuesURL)
+    }
+
     @objc func relaunchFromMenu(_ sender: Any?) {
         relaunchTerminal()
     }
@@ -233,13 +291,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     /// tt's title is its pulse: the status item's tooltip carries it whole, its
-    /// menu leads with the counts, and the Dock badge its overdue count when Preferences asks for one,
-    /// read from the control socket's pulse when tt reports one.
+    /// menu leads with the counts, and the overdue count goes on the Dock icon
+    /// when Preferences asks for one, or beside the menu-bar icon when there is
+    /// no Dock icon; read from the control socket's pulse when tt reports one.
     private func showTitle(_ title: String) {
         statusItem?.statusItem.button?.toolTip = title.isEmpty ? "tt" : title
         statusItem?.refreshPulse()
         let badge = lastPulse.map(TTPulseBadge.label(for:)) ?? TTWindowTitle.badgeLabel(for: title)
-        NSApp.dockTile.badgeLabel = preferencesModel.dockBadge ? badge : nil
+        let placement = TTBadgePlacement(
+            policy: preferencesModel.activationPolicy, enabled: preferencesModel.dockBadge, label: badge
+        )
+        NSApp.dockTile.badgeLabel = placement.dock
+        statusItem?.showCount(placement.statusItem)
     }
 
     private func refreshBadge() {
@@ -371,8 +434,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.onDefer = { [weak self] task in
             self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "tt could not defer it")
         }
-        quickCapture.submit = { [weak self] text, done in self?.capture(text, done: done) }
-        quickCapture.undo = { [weak self] transaction, done in self?.undoCapture(transaction, done: done) }
+        quickCapture.submit = { [weak self] text, written, done in self?.capture(text, written: written, done: done) }
+        quickCapture.undo = { [weak self] transaction, written, done in
+            self?.undoCapture(transaction, written: written, done: done)
+        }
         quickCapture.complete = { [weak self] text, done in self?.complete(text, done: done) }
         quickCapture.preview = { [weak self] text, done in self?.previewCapture(text, done: done) }
     }
@@ -412,7 +477,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    private func capture(_ text: String, done: @escaping (Bool, String, String?) -> Void) {
+    private func capture(_ text: String, written: @escaping () -> Void, done: @escaping (Bool, String, String?) -> Void) {
         guard let control, let terminal else {
             done(false, "This tt has no control socket. Update it (just install) to capture from here.", nil)
             return
@@ -421,17 +486,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         if terminal.surfaceView == nil {
             terminal.show()
         }
-        control.send(.capture(text)) { reply in done(reply.ok, reply.message ?? "", reply.transaction) }
+        // The reply clock starts once tt has the request, not while it starts.
+        control.send(.capture(text), onWritten: written) { reply in
+            done(reply.ok, reply.message ?? "", reply.transaction)
+        }
     }
 
     /// Undoes a capture in the running tt. Unlike a capture it never starts tt;
     /// with nothing connected the panel says so and keeps the capture.
-    private func undoCapture(_ transaction: String, done: @escaping (Bool, String) -> Void) {
+    private func undoCapture(_ transaction: String, written: @escaping () -> Void, done: @escaping (Bool, String) -> Void) {
         guard let control, control.isConnected else {
             done(false, "tt is not running")
             return
         }
-        control.send(.undo(transaction)) { reply in done(reply.ok, reply.message ?? "") }
+        control.send(.undo(transaction), onWritten: written) { reply in done(reply.ok, reply.message ?? "") }
     }
 
     /// Asks the running tt what its composer would suggest. Unlike a capture it
@@ -487,9 +555,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             }
         }
         model.onOpenGhosttyConfig = { Ghostty.App.openConfig() }
-        model.onReloadGhosttyConfig = { [weak self] in
-            self?.ghostty?.reloadConfig()
+        model.onReloadGhosttyConfig = { [weak self, weak model] in
+            let applied = self?.ghostty?.reloadConfig() ?? false
             self?.refreshConfigFontSize()
+            model?.ghosttyConfigReport = GhosttyConfigReport(
+                applied: applied, diagnostics: applied ? self?.ghostty?.config.diagnostics ?? [] : []
+            )
         }
 
         notifications.isEnabled = { [weak model] in model?.notificationsEnabled ?? false }
@@ -596,6 +667,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private func applyActivationPolicy(_ policy: TTActivationPolicy) {
         NSApp.setActivationPolicy(policy.appKitPolicy)
         syncStatusItem(to: policy)
+        // The count moves between the Dock icon and the menu-bar icon.
+        refreshBadge()
         let front = [preferences, terminal?.window, launchErrorWindow].compactMap { $0 }.first { $0.isVisible }
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)

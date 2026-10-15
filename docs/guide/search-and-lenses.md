@@ -254,6 +254,17 @@ remove individual filters, or `fx` to clear them all. Hierarchy, dependency, and
 cleanup filters are retained during these checks, but are not suggested for
 removal. If no single removal reveals matches, the general explanation remains.
 
+With no filters active, an empty ranked search names the sigil clause that
+emptied it instead. A `#tag`, `##context`, or `%project` value that no task in
+the searched scope carries at all is named as such — `No task carries #nope.`
+or `No project matches %zzz.` — since that is a value to correct. Otherwise
+each clause is left out once and the clause whose removal restores the most
+matches is named: `1 task matches "bank"; @overdue removes it.` when it is the
+query's only sigil, `2 tasks match without !1.` when there are several. A
+sigil-only query of one clause, a query whose free text matches nothing, and a
+query of more than eight clauses keep the general sentence, and the finished
+and deferred hint above outranks this one.
+
 The input remembers the queries you submitted. Inside the `/` box, `↑` walks
 back through them newest first and `↓` walks forward again, ending on whatever
 you had half-typed when the walk started, with its caret restored to the same

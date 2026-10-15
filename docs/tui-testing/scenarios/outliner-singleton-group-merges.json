@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "80x24",
   "actions": [
-    { "type": "assert", "label": "Doing holds one task, so its group draws no header and the row leads with the project", "assert": "contains", "value": "▶   [rich-project] Build login form" },
+    { "type": "assert", "label": "Doing holds one task, so its group draws no header and the row leads with the project", "assert": "contains", "value": "◐   [rich-project] Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project] (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -27,7 +27,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "and the second p merges them again", "key": "p" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project] (1)" },
-    { "type": "assert", "assert": "contains", "value": "▶   [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": "◐   [rich-project] Build login form" },
 
     { "type": "key", "label": "back to the top", "key": "home" },
     { "type": "key", "key": "j" },

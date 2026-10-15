@@ -54,7 +54,11 @@ func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.
 	}
 
 	spec, ok := sheet.GuidanceSpec()
-	assertSession8Guidance(t, "browse", spec, ok, "Enter run", "/ search", "Esc close")
+	assertSession8Guidance(t, "browse", spec, ok, "Enter run", "Esc close")
+	// One action reads whole at a glance, so the footer does not offer to search it.
+	if strings.Contains(session8GuidanceText(spec), "/ search") {
+		t.Fatalf("a one-action sheet advertises search: %s", session8GuidanceText(spec))
+	}
 
 	sheet.Searching = true
 	spec, ok = sheet.GuidanceSpec()

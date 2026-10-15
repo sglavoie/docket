@@ -67,14 +67,46 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 		if seen[binding.OperationID] {
 			continue
 		}
-		seen[binding.OperationID] = true
 		descriptor, exists := registry.Descriptor(binding.OperationID)
 		if !exists || !descriptor.Applicable(ctx) {
+			seen[binding.OperationID] = true
 			continue
 		}
+		if presets := presetChordHelpItems(strategy, binding.OperationID, descriptor); len(presets) > 0 {
+			seen[binding.OperationID] = true
+			items = append(items, presets...)
+			continue
+		}
+		seen[binding.OperationID] = true
 		items = append(items, HelpItem{
 			Key:         DisplayKeysForOperation(strategy, binding.OperationID),
 			Description: descriptor.Label,
+			Category:    OperationCategoryLabel(descriptor.Category),
+			Aliases:     descriptor.Aliases,
+		})
+	}
+	return items
+}
+
+// presetChordHelpItems spells a chord whose one display key compresses several
+// presets — `wi/g/w/p/m/d/c` — as one help row per preset instead, `wi` Set
+// State: Inbox, so `?` names what each letter does rather than leaving the
+// reader to decode a run of initials. Any other operation returns nothing and
+// keeps its single row.
+func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descriptor OperationDescriptor) []HelpItem {
+	var items []HelpItem
+	for _, binding := range strategy.Bindings {
+		if binding.OperationID != operationID {
+			continue
+		}
+		if !binding.HasPresetValue || binding.HintLabel == "" || len(binding.Sequence) == 0 ||
+			!strings.Contains(binding.DisplayKey, "/") {
+			return nil
+		}
+		label := binding.HintLabel
+		items = append(items, HelpItem{
+			Key:         strings.Join(binding.Sequence, ""),
+			Description: descriptor.Label + ": " + strings.ToUpper(label[:1]) + label[1:],
 			Category:    OperationCategoryLabel(descriptor.Category),
 			Aliases:     descriptor.Aliases,
 		})

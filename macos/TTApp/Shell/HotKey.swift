@@ -221,7 +221,8 @@ final class HotKeyCenter {
             case eventHotKeyInvalidErr:
                 return "\(combo.displayString) cannot be used as a global shortcut."
             default:
-                return "\(combo.displayString) could not be registered (error \(status))."
+                // The status code means nothing to a reader; the log keeps it.
+                return "macOS would not register \(combo.displayString) as a global shortcut. Choose another shortcut."
             }
         }
     }
@@ -290,6 +291,7 @@ final class HotKeyCenter {
             hotKeyRef = ref
             registration = .registered(combo)
         } else {
+            NSLog("tt: RegisterEventHotKey(%@) failed: %d", combo.string, status)
             registration = .failed(combo, status)
         }
         return registration

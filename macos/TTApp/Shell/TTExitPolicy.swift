@@ -23,7 +23,7 @@ enum TTExitBehavior: String, CaseIterable {
     var label: String {
         switch self {
         case .relaunchOnShow: return "Hide, and start a fresh tt next time"
-        case .quitApp: return "Quit tt.app"
+        case .quitApp: return "Quit tt"
         }
     }
 }

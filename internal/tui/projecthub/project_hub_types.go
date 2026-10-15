@@ -1,10 +1,13 @@
 package projecthub
 
 import (
+	"time"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -16,6 +19,7 @@ type ShowProjectHubMsg struct {
 
 const (
 	projectHubCategoryActive   listsurface.ListCategoryID = "project-hub:active"
+	projectHubCategoryParked   listsurface.ListCategoryID = "project-hub:parked"
 	projectHubCategoryArchived listsurface.ListCategoryID = "project-hub:archived"
 
 	projectHubActionCategoryProject  listsurface.ListCategoryID = "project-hub-actions:project"
@@ -114,6 +118,19 @@ type ProjectTaskTally struct {
 	// the preview pane can list work for a parked or archived project, whose Hub
 	// entry is a rehydrated catalog record holding no tasks at all.
 	Tasks []*models.Task
+}
+
+// OverdueAt counts the tasks whose deadline has passed at now, by the one
+// definition the Outliner's project headers and the workspace pulse count with,
+// so the Hub can never report a different number for the same project.
+func (t ProjectTaskTally) OverdueAt(now time.Time) int {
+	overdue := 0
+	for _, task := range t.Tasks {
+		if pulse.TaskIsOverdueAt(task, now) {
+			overdue++
+		}
+	}
+	return overdue
 }
 
 func ProjectTaskTallyOf(project *models.Project) ProjectTaskTally {

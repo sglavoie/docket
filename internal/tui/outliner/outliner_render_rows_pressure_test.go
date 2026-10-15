@@ -206,3 +206,51 @@ func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 		t.Fatalf("narrow row shed the deadline before shallower signals: %q", narrow)
 	}
 }
+
+// TestPreviewRowShedsIndicatorsBeforeCuttingTheTitle pins the Select Project
+// preview's rule: where the ordinary row defends only a readable title and then
+// cuts it, the preview row sheds the census and the review first, keeps the
+// deadline whatever it costs the title, and only then cuts the title.
+func TestPreviewRowShedsIndicatorsBeforeCuttingTheTitle(t *testing.T) {
+	now := time.Now()
+	due := util.StartOfDay(now.AddDate(0, 0, -4))
+	title := "Await signing certificate"
+	task := &models.Task{
+		ID:             "preview-title",
+		Title:          title,
+		WorkflowState:  models.StateBacklog,
+		StateChangedAt: now.AddDate(0, 0, -3),
+		UpdatedAt:      now,
+		DueDate:        &due,
+		Review:         true,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "├── "}
+	dueText := ansi.Strip(query.FormatDueDate(task))
+
+	const width = 40
+	ordinary := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, 0, nil))
+	if strings.Contains(ordinary, title) {
+		t.Fatalf("fixture too roomy: the ordinary %d-column row already shows the whole title: %q", width, ordinary)
+	}
+	preview := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, width, 0, nil))
+	if got := lipgloss.Width(preview); got > width {
+		t.Fatalf("%d-column preview row assembled %d columns: %q", width, got, preview)
+	}
+	if !strings.Contains(preview, dueText) {
+		t.Fatalf("preview row shed the deadline a glance at a project is for: %q", preview)
+	}
+	if roomy := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, 46, 0, nil)); !strings.Contains(roomy, title) ||
+		!strings.Contains(roomy, dueText) || strings.Contains(roomy, "review") {
+		t.Fatalf("a preview row with room for title and deadline alone kept the review instead: %q", roomy)
+	}
+	if strings.Contains(preview, "review") {
+		t.Fatalf("preview row kept the review ahead of the deadline the ladder sheds last: %q", preview)
+	}
+
+	wide := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, 100, 0, nil))
+	if !strings.Contains(wide, title) || !strings.Contains(wide, dueText) || !strings.Contains(wide, "review") {
+		t.Fatalf("a roomy preview row shed indicators it had room for: %q", wide)
+	}
+}

@@ -268,6 +268,13 @@ func daysUntilWeekday(today time.Time, targetDay time.Weekday, includeToday bool
 	return daysUntil
 }
 
+// NextWeekdayAfter is the start of the first day strictly after now's calendar
+// day that falls on weekday, so it never answers today: on a Monday the next
+// Monday is a week away, and on a Saturday the coming Saturday is too.
+func NextWeekdayAfter(now time.Time, weekday time.Weekday) time.Time {
+	return StartOfDay(now).AddDate(0, 0, daysUntilWeekday(now, weekday, false))
+}
+
 func weekEndTargetDay(weekEndDay string) time.Weekday {
 	switch weekEndDay {
 	case "fri":

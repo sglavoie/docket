@@ -1,5 +1,43 @@
 import AppKit
 import SwiftUI
+import UserNotifications
+
+/// What Settings › Terminal says under Reload: that the config was applied,
+/// with anything Ghostty found wrong in it, or that it was not.
+struct GhosttyConfigReport: Equatable {
+    let lines: [String]
+    let warning: Bool
+
+    init(applied: Bool, diagnostics: [String]) {
+        guard applied else {
+            lines = ["Could not reload; the terminal keeps its previous config."]
+            warning = true
+            return
+        }
+        guard !diagnostics.isEmpty else {
+            lines = ["Reloaded."]
+            warning = false
+            return
+        }
+        let noun = diagnostics.count == 1 ? "problem" : "problems"
+        lines = ["Reloaded, with \(diagnostics.count) \(noun) in the config:"] + diagnostics.map { "• " + $0 }
+        warning = true
+    }
+
+    var text: String { lines.joined(separator: "\n") }
+}
+
+/// Where System Settings shows tt.app's notification permission.
+enum NotificationSettingsLink {
+    static func url(bundleIdentifier: String? = Bundle.main.bundleIdentifier) -> URL {
+        let base = "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
+        guard let bundleIdentifier else { return URL(string: base)! }
+        return URL(string: base + "?id=" + bundleIdentifier) ?? URL(string: base)!
+    }
+
+    static let deniedNote = "macOS has notifications for tt.app turned off, so none will show. "
+        + "Allow them in System Settings › Notifications."
+}
 
 /// Everything Settings edits. Each change is saved to `UserDefaults` as it
 /// is made; the app delegate applies the live ones through the callbacks.
@@ -138,6 +176,18 @@ final class PreferencesModel: ObservableObject {
     var localBinaryPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/tt").path
     var readVersion: (String) -> TTVersion? = { TTVersion.read(binary: $0) }
 
+    /// What the last Reload in Settings › Terminal found; nil until one.
+    @Published var ghosttyConfigReport: GhosttyConfigReport?
+
+    /// macOS refuses tt.app's notifications, read as Settings opens.
+    @Published private(set) var notificationsDenied = false
+    /// Reads macOS's answer for tt.app's notifications; tests answer it.
+    var readNotificationAuthorization: (@escaping (UNAuthorizationStatus) -> Void) -> Void = { done in
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            done(settings.authorizationStatus)
+        }
+    }
+
     @Published private(set) var launchAtLogin = false
     @Published private(set) var launchAtLoginNote: String?
 
@@ -186,6 +236,18 @@ final class PreferencesModel: ObservableObject {
         }
         refreshLoginItem()
         refreshBinaryStatus()
+        refreshNotificationAuthorization()
+        ghosttyConfigReport = nil
+    }
+
+    /// Asks macOS whether tt.app may notify, off the main thread, and
+    /// publishes the answer on it. Not yet asked is not denied.
+    func refreshNotificationAuthorization() {
+        readNotificationAuthorization { [weak self] status in
+            let denied = status == .denied
+            let publish: () -> Void = { self?.notificationsDenied = denied }
+            if Thread.isMainThread { publish() } else { DispatchQueue.main.async(execute: publish) }
+        }
     }
 
     /// Reads the running binary's version and, when it is one of the bundled
@@ -311,7 +373,7 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
         // Each tab is its own height; the window follows the one chosen.
         host.sizingOptions = .preferredContentSize
         let window = NSWindow(contentViewController: host)
-        window.title = "tt Settings"
+        window.title = "Settings"
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -404,10 +466,22 @@ struct PreferencesView: View {
 
             Section {
                 Toggle("Notify when work arrives", isOn: $model.notificationsEnabled)
+                if model.notificationsEnabled, model.notificationsDenied {
+                    HStack {
+                        note(NotificationSettingsLink.deniedNote, warning: true)
+                        Spacer()
+                        Button("Open Notification Settings") {
+                            NSWorkspace.shared.open(NotificationSettingsLink.url())
+                        }
+                    }
+                }
                 note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
                     + "while tt is not in front. Click one to show its task; Acknowledge, Done, and Defer 1 Hour "
                     + "act on it from the notification.")
-                Toggle("Show overdue count on the Dock icon", isOn: $model.dockBadge)
+                Toggle(model.activationPolicy.showsDockIcon
+                       ? "Show overdue count on the Dock icon"
+                       : "Show overdue count beside the menu-bar icon",
+                       isOn: $model.dockBadge)
             }
         }
     }
@@ -416,7 +490,8 @@ struct PreferencesView: View {
         tabForm {
             Section {
                 LabeledContent("Show and hide tt") {
-                    HotKeyRecorderView(combo: $model.hotKey, model: model, recorder: recorder, other: captureRecorder)
+                    HotKeyRecorderView(combo: $model.hotKey, defaultCombo: TTHotKeyPreference.default,
+                                       model: model, recorder: recorder, other: captureRecorder)
                 }
                 if let problem = model.hotKeyProblem {
                     note(problem, warning: true)
@@ -424,13 +499,14 @@ struct PreferencesView: View {
                 note("Works from any app. Pressing it while tt is in front hides tt. "
                     + "A Karabiner rule can send this same shortcut.")
                 LabeledContent("Quick capture") {
-                    HotKeyRecorderView(combo: $model.captureHotKey, model: model, recorder: captureRecorder, other: recorder)
+                    HotKeyRecorderView(combo: $model.captureHotKey, defaultCombo: TTCaptureHotKeyPreference.default,
+                                       model: model, recorder: captureRecorder, other: recorder)
                 }
                 if let problem = model.captureHotKeyProblem {
                     note(problem, warning: true)
                 }
                 note("Opens a capture field over any app. Enter sends the line to tt, "
-                    + "which reads it as the a composer would: #tag, @date, %project, $state.")
+                    + "which reads it as its composer would: #tag, @date, %project, $state, !1.")
             }
         }
     }
@@ -469,6 +545,10 @@ struct PreferencesView: View {
                 }
                 note(Ghostty.Config.userConfigURL().path
                     .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                if let report = model.ghosttyConfigReport {
+                    note(report.text, warning: report.warning)
+                        .textSelection(.enabled)
+                }
             }
         }
     }
@@ -572,6 +652,8 @@ struct PreferencesView: View {
 /// must use Control, Option, or Command, unless it is a function key.
 struct HotKeyRecorderView: View {
     @Binding var combo: HotKeyCombo?
+    /// What Restore Default sets, offered only while the combo differs.
+    let defaultCombo: HotKeyCombo
     @ObservedObject var model: PreferencesModel
     @ObservedObject var recorder: HotKeyRecorder
     /// The other shortcut's recorder, stopped when this one starts.
@@ -587,8 +669,18 @@ struct HotKeyRecorderView: View {
             if combo != nil, !recorder.isRecording {
                 Button("Clear") { combo = nil }
             }
+            if Self.offersRestoreDefault(combo: combo, default: defaultCombo, recording: recorder.isRecording) {
+                Button("Restore Default") { combo = defaultCombo }
+                    .help("Use \(defaultCombo.displayString)")
+            }
         }
         .onDisappear { recorder.stop() }
+    }
+
+    /// Restore Default shows while the shortcut is another one, or off, and
+    /// nothing is being recorded.
+    static func offersRestoreDefault(combo: HotKeyCombo?, default defaultCombo: HotKeyCombo, recording: Bool) -> Bool {
+        !recording && combo != defaultCombo
     }
 
     private var label: String {
