@@ -31,6 +31,45 @@ extension Ghostty {
         /// Rebuilds the layered config, so a reload re-applies the overrides.
         private let makeConfig: () -> Config
 
+        /// What Ghostty's callbacks hold instead of the app: a number the
+        /// registry resolves, since a wakeup can arrive on another thread
+        /// after the app is freed, and must then find nothing rather than a
+        /// freed object.
+        private let token: UInt = Registry.mint()
+
+        private final class Weak {
+            weak var app: App?
+            init(_ app: App) { self.app = app }
+        }
+
+        private enum Registry {
+            private static let lock = NSLock()
+            private static var next: UInt = 0
+            private static var apps: [UInt: Weak] = [:]
+
+            static func mint() -> UInt {
+                lock.lock(); defer { lock.unlock() }
+                next += 1
+                return next
+            }
+
+            static func register(_ app: App) {
+                lock.lock(); defer { lock.unlock() }
+                apps[app.token] = Weak(app)
+            }
+
+            static func remove(_ token: UInt) {
+                lock.lock(); defer { lock.unlock() }
+                apps[token] = nil
+            }
+
+            static func app(for userdata: UnsafeMutableRawPointer?) -> App? {
+                guard let userdata else { return nil }
+                lock.lock(); defer { lock.unlock() }
+                return apps[UInt(bitPattern: userdata)]?.app
+            }
+        }
+
         private(set) var app: ghostty_app_t? {
             didSet {
                 guard let old = oldValue else { return }
@@ -47,8 +86,9 @@ extension Ghostty {
                 return
             }
 
+            Registry.register(self)
             var runtime = ghostty_runtime_config_s(
-                userdata: Unmanaged.passUnretained(self).toOpaque(),
+                userdata: UnsafeMutableRawPointer(bitPattern: token),
                 supports_selection_clipboard: false,
                 wakeup_cb: { userdata in App.wakeup(userdata) },
                 action_cb: { app, target, action in App.action(app!, target: target, action: action) },
@@ -93,6 +133,7 @@ extension Ghostty {
         }
 
         deinit {
+            Registry.remove(token)
             NotificationCenter.default.removeObserver(self)
             appearanceObserver = nil
             app = nil
@@ -173,7 +214,7 @@ extension Ghostty {
 
         private static func appState(from userdata: UnsafeMutableRawPointer?) -> App? {
             guard let userdata else { return nil }
-            return Unmanaged<App>.fromOpaque(userdata).takeUnretainedValue()
+            return Registry.app(for: userdata)
         }
 
         private static func appState(from app: ghostty_app_t) -> App? {
@@ -181,9 +222,9 @@ extension Ghostty {
         }
 
         static func wakeup(_ userdata: UnsafeMutableRawPointer?) {
-            guard let state = appState(from: userdata) else { return }
-            // Wakeup may arrive on any thread; the tick belongs to the main one.
-            DispatchQueue.main.async { state.appTick() }
+            // Wakeup may arrive on any thread; the tick belongs to the main
+            // one, and finds the app there only if it is still alive.
+            DispatchQueue.main.async { appState(from: userdata)?.appTick() }
         }
 
         static func action(_ app: ghostty_app_t, target: ghostty_target_s, action: ghostty_action_s) -> Bool {
