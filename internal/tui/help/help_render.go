@@ -184,11 +184,16 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		if len(items) == 0 {
 			continue
 		}
-		if !first {
+		// The category margin separates sections; the first sits directly under
+		// the header, so it renders without one.
+		heading := theme.HelpCategoryStyle
+		if first {
+			heading = heading.MarginTop(0)
+		} else {
 			b.WriteString("\n")
 		}
 		first = false
-		b.WriteString(theme.HelpCategoryStyle.Render(section))
+		b.WriteString(heading.Render(section))
 		b.WriteString("\n")
 		for j := 0; j < len(items); j += columns {
 			col1 := columnStyle.Render(renderItem(items[j]))
@@ -223,7 +228,9 @@ func (m *HelpViewModel) renderFullHelpTabBar() string {
 			tabNames[i] = fmt.Sprintf("%s (%d)", tabNames[i], count)
 		}
 	}
-	return chrome.RenderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
+	// Compact spacing is what keeps every Outliner section's tab on one row at
+	// 80 columns; the default padding wraps the last tab onto a row of its own.
+	return chrome.RenderWrappingTabBar(tabNames, m.activeTab, m.innerWidth(), chrome.TabSpacingCompact)
 }
 
 func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
@@ -232,9 +239,12 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 
 	b.WriteString(chrome.RenderFullscreenTitleWithPulse("Help", m.viewName, m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n")
-	b.WriteString(pad)
-	b.WriteString(tabBar)
-	b.WriteString("\n")
+	// A wrapped tab bar is several rows; each takes the same pad as the first.
+	for _, row := range strings.Split(tabBar, "\n") {
+		b.WriteString(pad)
+		b.WriteString(row)
+		b.WriteString("\n")
+	}
 
 	if m.tabSearchMode {
 		b.WriteString(pad)

@@ -202,12 +202,19 @@ Due or Deferred** — and the row appends the aliases that earned it as a muted
 suffix, dropped whole rather than clipped when the description column has no
 room. Aliases feed matching only: their positions index into the alias, not into
 the rendered columns. `GrammarHelpItems()` (`internal/tui/help/help_grammar.go`) then
-adds the **Capture & Edit Grammar** section from
+adds the **Grammar** section from
 `textgrammar.GuideDefinitions` over the union of the capture, edit, and search
 surfaces, making the sigil language discoverable outside the composer's own `?`.
 It is the second `GuideDefinitions` consumer and teaches in the same order as the
 first. `AppModel.coreInputHelpItems` appends it, because `?` is a core input
 operation and that function is the Outliner's one help projection.
+
+The help tab bar renders through `chrome.RenderWrappingTabBar` with
+`chrome.TabSpacingCompact` — no padding inside a tab, one border column between
+tabs — which is what fits every Outliner section on one row at 80 columns; every
+wrapped row takes the header's one-column pad, and the first section heading
+drops `theme.HelpCategoryStyle`'s top margin, which separates sections rather
+than leading them.
 
 A value provider is exactly one of `operation.TextEntry()` (a separate overlay),
 `operation.TagEntry()` (inline add mode), `operation.DateEntry()` (inline add mode), or a plain list

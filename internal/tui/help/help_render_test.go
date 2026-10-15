@@ -165,3 +165,77 @@ func TestHelpAliasExplanationSurvivesWrapping(t *testing.T) {
 		}
 	}
 }
+
+// outlinerHelpSections are the sections the Outliner's own `?` draws: the
+// categories its registry emits, then the grammar.
+var outlinerHelpSections = []string{
+	"Tasks", "Sorting", "Discovery", "Modes", "Navigation", "Projects", "Notes", "System",
+}
+
+func outlinerShapedHelpItems() []operation.HelpItem {
+	items := make([]operation.HelpItem, 0, len(outlinerHelpSections))
+	for _, section := range outlinerHelpSections {
+		items = append(items, operation.HelpItem{Key: "x", Description: section + " item", Category: section})
+	}
+	return append(items, GrammarHelpItems()...)
+}
+
+// helpTabBarRows renders the header and returns the tab bar's lines: the
+// title is the header's first line and the bar is the rest.
+func helpTabBarRows(t *testing.T, width int) []string {
+	t.Helper()
+	m := NewHelpViewModel(outlinerShapedHelpItems(), "Outliner")
+	m.SetSize(width, 30)
+	header := strings.TrimSuffix(ansi.Strip(m.renderHelpHeader(m.renderHelpTabBar())), "\n")
+	return strings.Split(header, "\n")[1:]
+}
+
+func TestHelpTabBarFitsOneRowAt80Columns(t *testing.T) {
+	rows := helpTabBarRows(t, 80)
+	if len(rows) != 2 {
+		t.Fatalf("80 columns: tab bar is %d lines, want one row of label and underline:\n%s", len(rows), strings.Join(rows, "\n"))
+	}
+	labels := strings.Fields(rows[0])
+	want := append(append([]string{"All"}, outlinerHelpSections...), helpGrammarCategory)
+	if strings.Join(labels, " ") != strings.Join(want, " ") {
+		t.Errorf("80 columns: tab labels = %v, want %v", labels, want)
+	}
+	if !strings.Contains(rows[1], "━") {
+		t.Errorf("80 columns: the active tab carries no thick underline: %q", rows[1])
+	}
+}
+
+func TestHelpWrappedTabRowsShareTheFirstRowsPad(t *testing.T) {
+	rows := helpTabBarRows(t, 60)
+	if len(rows) < 4 {
+		t.Fatalf("60 columns: tab bar did not wrap:\n%s", strings.Join(rows, "\n"))
+	}
+	for _, row := range rows {
+		if !strings.HasPrefix(row, " ") || strings.HasPrefix(row, "  ") {
+			t.Errorf("60 columns: tab bar line %q is not padded by exactly one column", row)
+		}
+	}
+}
+
+func TestHelpFirstSectionHasNoBlankLineAbove(t *testing.T) {
+	for _, width := range []int{60, 80} {
+		m := NewHelpViewModel(outlinerShapedHelpItems(), "Outliner")
+		m.SetSize(width, 30)
+		content := strings.Split(ansi.Strip(m.renderContent()), "\n")
+		if strings.TrimSpace(content[0]) != outlinerHelpSections[0] {
+			t.Errorf("width %d: first content line = %q, want the %q heading", width, content[0], outlinerHelpSections[0])
+		}
+		blankBeforeSecond := 0
+		for i, line := range content {
+			if strings.TrimSpace(line) == outlinerHelpSections[1] {
+				for j := i - 1; j >= 0 && strings.TrimSpace(content[j]) == ""; j-- {
+					blankBeforeSecond++
+				}
+				break
+			}
+		}
+		if blankBeforeSecond == 0 {
+			t.Errorf("width %d: later sections lost the margin that separates them", width)
+		}
+	}
+}

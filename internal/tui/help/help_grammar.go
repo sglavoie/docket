@@ -8,10 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// helpGrammarCategory is the `?` section the shared sigil grammar renders under.
-// It is a section name rather than an OperationCategory because the grammar is
-// not an operation: no key dispatches it and the registry never sees it.
-const helpGrammarCategory = "Capture & Edit Grammar"
+// helpGrammarCategory is the `?` section the shared sigil grammar renders under,
+// and so also its tab's label: one short name in both places keeps the tab bar
+// on one row at 80 columns. It is a section name rather than an
+// OperationCategory because the grammar is not an operation: no key dispatches
+// it and the registry never sees it.
+const helpGrammarCategory = "Grammar"
 
 // GrammarHelpItems projects the shared inline grammar into `?` help rows, giving
 // textgrammar.GuideDefinitions a second consumer beside the capture composer's

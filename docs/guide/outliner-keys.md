@@ -110,8 +110,9 @@ section header, a project header, or a checklist row the keys refuse by name, an
 while you are typing anywhere they are ordinary text.
 
 `?` opens the generated key reference for the surface you are on, sectioned by
-the same categories the operations declare, with a **Capture & Edit Grammar**
-section holding the sigils — `@@defer` among them — that no key spells. `\`
+the same categories the operations declare, with a **Grammar** section holding
+the sigils — `@@defer` among them — that no key spells. Its tabs fit one row at
+80 columns and wrap, aligned, on a narrower terminal. `\`
 jumps to a section, `/` filters the rows, and the filter reads vocabulary the
 labels hide: `defer` finds `@` **Set Due, Defer, or Check-In** and `hidden` finds `f@`
 **Filter by Due or Deferred**, each row naming the word that matched it.

@@ -9,28 +9,44 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+// TabSpacing chooses how a wrapping tab bar spaces its tabs.
+type TabSpacing int
+
+const (
+	// TabSpacingDefault pads each tab by one column on both sides.
+	TabSpacingDefault TabSpacing = iota
+	// TabSpacingCompact pads no tab and separates neighbors by one border
+	// column, so the active tab's underline covers its label alone. It is for a
+	// bar whose labels would otherwise wrap at the width it is read at.
+	TabSpacingCompact
+)
+
 // RenderWrappingTabBar renders a tab bar that wraps to multiple rows when tabs
 // overflow the available width. Each row is filled with a border filler on the right.
 // This differs from RenderTabBar which renders a single-line tab bar.
 // Pass an optional accent color to tint the active tab.
-func RenderWrappingTabBar(tabs []string, activeIdx, availableWidth int, accent ...color.Color) string {
-	return renderWrappingTabBarColored(tabs, activeIdx, nil, nil, availableWidth, accent...)
+func RenderWrappingTabBar(tabs []string, activeIdx, availableWidth int, spacing TabSpacing, accent ...color.Color) string {
+	return renderWrappingTabBarColored(tabs, activeIdx, nil, nil, availableWidth, spacing, accent...)
 }
 
 // renderWrappingTabBarColored is like RenderWrappingTabBar but accepts per-tab
 // foreground colors for inactive tabs (nil entry = default muted color) and an
 // optional emptyTabs slice. When emptyTabs[i] is true and i is not the active tab,
 // the tab is rendered faint to indicate it has no items.
-func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color.Color, emptyTabs []bool, availableWidth int, accent ...color.Color) string {
+func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color.Color, emptyTabs []bool, availableWidth int, spacing TabSpacing, accent ...color.Color) string {
 	if len(tabs) == 0 {
 		return ""
 	}
 	if activeIdx < 0 || activeIdx >= len(tabs) {
 		activeIdx = 0
 	}
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	active := ActiveTabStyle(1, true, accent...)
-	inactive := InactiveTabStyle(1, true)
+	padding, gap := 1, 0
+	if spacing == TabSpacingCompact {
+		padding, gap = 0, 1
+	}
+	plainStyle := lipgloss.NewStyle().Padding(0, padding)
+	active := ActiveTabStyle(padding, true, accent...)
+	inactive := InactiveTabStyle(padding, true)
 
 	// Build rows of tabs that fit within available width
 	var rows []string
@@ -39,17 +55,21 @@ func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color
 
 	for i, name := range tabs {
 		tabWidth := lipgloss.Width(plainStyle.Render(name))
-		if currentWidth+tabWidth > availableWidth && len(currentRow) > 0 {
+		if len(currentRow) > 0 && currentWidth+gap+tabWidth > availableWidth {
 			rows = append(rows, finishWrappingTabRow(currentRow, availableWidth))
 			currentRow = nil
 			currentWidth = 0
+		}
+		if len(currentRow) > 0 && gap > 0 {
+			currentRow = append(currentRow, renderTabFiller(gap))
+			currentWidth += gap
 		}
 		if i == activeIdx {
 			currentRow = append(currentRow, active.Render(name))
 		} else {
 			s := inactive
 			if i < len(tabColors) && tabColors[i] != nil {
-				s = InactiveTabStyle(1, true).Foreground(tabColors[i])
+				s = InactiveTabStyle(padding, true).Foreground(tabColors[i])
 			}
 			if i < len(emptyTabs) && emptyTabs[i] {
 				s = s.Faint(true)

@@ -11,7 +11,8 @@
     { "type": "assert", "assert": "contains", "value": "Discovery" },
     { "type": "assert", "assert": "contains", "value": "Modes" },
     { "type": "assert", "assert": "contains", "value": "Navigation" },
-    { "type": "assert", "label": "the shared sigil grammar is a section of its own", "assert": "contains", "value": "Capture & Edit Grammar" },
+    { "type": "assert", "label": "the shared sigil grammar is a section of its own", "assert": "contains", "value": "Grammar" },
+    { "type": "assert", "assert": "not_contains", "value": "Capture & Edit Grammar" },
 
     { "type": "assert", "assert": "contains", "value": "Capture" },
     { "type": "assert", "assert": "contains", "value": "Set State" },
@@ -56,6 +57,10 @@
 
     { "type": "key", "label": "clear the filter", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Toggle Pin" },
+
+    { "type": "resize", "label": "every tab fits one row at 80 columns", "width": 80, "height": 24 },
+    { "type": "assert", "assert": "contains", "value": " All Tasks Sorting Discovery Modes Navigation Projects Notes System Grammar " },
+    { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the same help at the minimum supported width", "width": 60, "height": 20 },
     { "type": "assert", "assert": "no_layout_issues" },
